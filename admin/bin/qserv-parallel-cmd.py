@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2014 AURA/LSST.
+# Copyright 2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,7 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-User-friendly tool allowing to manage a set of Qserv nodes via ssh
+Tool allowing to manage a set of Qserv nodes via ssh
 
 Script is launched with these input arguments:
   - ssh command to launch
@@ -48,7 +48,7 @@ import sys
 # -----------------------------
 # Imports for other modules  --
 # -----------------------------
-from lsst.qserv.admin.workerAdmin import WorkerAdmin
+from lsst.qserv.admin.nodeAdmin import NodeAdmin
 from lsst.qserv.admin.nodePool import NodePool
 import lsst.qserv.admin.logger
 
@@ -114,7 +114,7 @@ class ParallelCmd(object):
                            help='ssh command to launch on all nodes')
         group.add_argument('-S', '--stdin', dest='stdin',
                            default=os.devnull,
-                           help='absolute path to file used as standard input'
+                           help="path to file used as standard input, use with command like 'sh -s'"
                            'default: %(default)s.')
         group.add_argument('-R', '--run-dir', dest='run_dir',
                            default=None,
@@ -127,7 +127,7 @@ class ParallelCmd(object):
         group.add_argument('-p', '--sudo-password', dest='sudo_password',
                            default=None,
                            help='sudo-user password, WARNING: insecure, prefer'
-                           'passwordless sudo'
+                           'password-less sudo'
                            )
 
         # parse all arguments
@@ -152,10 +152,10 @@ class ParallelCmd(object):
                      for n in range(self.args.node_first,
                                     self.args.node_last+1)]
 
-        nodes = [WorkerAdmin(host=h,
-                             runDir=self.args.run_dir,
-                             kerberos=self.args.kerberos,
-                             ssh_user=self.args.user)
+        nodes = [NodeAdmin(host=h,
+                           runDir=self.args.run_dir,
+                           kerberos=self.args.kerberos,
+                           ssh_user=self.args.user)
                  for h in hosts]
 
         self.nodePool = NodePool(nodes)
@@ -163,8 +163,7 @@ class ParallelCmd(object):
     def run(self):
         """
         Run a command on a set of nodes  based on parameters defined in
-        constructor. This will throw exception if anything goes wrong.
-        : TODO check if exception is effectively launched
+        constructor.
         """
         params = {'command': self.args.command}
         cmd_tpl = '{command}'
@@ -178,16 +177,19 @@ class ParallelCmd(object):
                 cmd_tpl = "/bin/echo '{sudo_password}' | " + cmd_tpl
 
         cmd = cmd_tpl.format(**params)
-        self.nodePool.execParallel(cmd, self.args.stdin)
-        _LOG.info("Run successfully command: '%s'", cmd)
-        return 0
+        failed_nb = self.nodePool.execParallel(cmd, self.args.stdin)
+        _LOG.error("Nodes in error: '%s'", failed_nb)
+        return failed_nb
 
 
 if __name__ == "__main__":
     try:
         parallelCmd = ParallelCmd()
         r = parallelCmd.run()
-        sys.exit(r)
+        if r is not 0:
+            sys.exit(1)
+        else:
+            sys.exit(0)
     except Exception as exc:
         _LOG.critical('Exception occured: %s', exc, exc_info=True)
-        sys.exit(1)
+        sys.exit(2)

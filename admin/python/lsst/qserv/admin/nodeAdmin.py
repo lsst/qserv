@@ -19,16 +19,16 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-Module defining WorkerAdmin class and related methods.
+Module defining NodeAdmin class and related methods.
 
-WorkerAdmin is an interface which controls or communicates with qserv
+NodeAdmin is an interface which controls or communicates with qserv
 worker instance. Exact form of control is still to be defined, for now
 we are going to support communication with mysql instance or ability to
 start/stop worker processes. Current implementation is based on SSH
 tunneling (or direct mysql connection if possible), in the future there
 is supposed to be a special service for worker administration.
 
-WorkerAdmin uses information about worker nodes defined in Qserv CSS, for
+NodeAdmin uses information about worker nodes defined in Qserv CSS, for
 details see https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related.
 For testing purposes it it also possible to provide worker information as
 a set of parameters to constructor.
@@ -40,20 +40,19 @@ a set of parameters to constructor.
 #  Imports of standard modules --
 #--------------------------------
 import logging
-import socket
-import subprocess
 
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
 from lsst.db.exception import produceExceptionClass
 from lsst.db.db import Db
+from lsst.qserv.admin.ssh import SSHCommand, SSHTunnel
 
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
-_LOG = logging.getLogger(__name__)
 
+_LOG = logging.getLogger(__name__)
 
 _Exception = produceExceptionClass('WorkerAdminException', [
     (100, "ARG_ERR", "Missing or inconsistent arguments"),
@@ -62,149 +61,11 @@ _Exception = produceExceptionClass('WorkerAdminException', [
     (110, "MYSQL_CONN_FMT", "Unsupported format of mysql connection string"),
     ])
 
-
-def _getFreePort():
-    """
-    Try to find one free local port number. Returned port number
-    is not guaranteed to be free, race condition is unavoidable.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(('', 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    return port
-
-
-class _SSHCommand(object):
-    """
-    Class implementing execution of the command on remote host.
-    """
-
-    # options for ssh:
-    # - known_hosts file has tendency to become inconsistent, ignore it
-    sshOptions = ['StrictHostKeyChecking=no']
-
-    def __init__(self, host, cwd=None, kerberos=False, user=None):
-        """
-        Start ssh and wait for commands.
-
-        @param host:         String, host name or IP address to SSH to.
-        @param cwd:          If specified then use it as current working directory
-        """
-
-        args = ['ssh', '-T', '-x']
-
-        if kerberos:
-            args.append('-K')
-
-        if user:
-            args += ['-l', user]
-
-        if _LOG.isEnabledFor(logging.DEBUG):
-            args += ['-vvv']
-
-        for option in self.sshOptions:
-            args += ['-o', option]
-        args += [host]
-        self.cmd = args
-        self.cwd = cwd
-
-    def getCommand(self, command):
-        cmd = ""
-        if self.cwd:
-            cmd = "cd '{0}' && ".format(self.cwd)
-        cmd += command
-        args = self.cmd + [cmd]
-        return args
-
-    def execute(self, command, capture=False):
-        """
-        Send command to remote host.
-
-        It will raise exception if ssh returns with error code.
-
-        @param command: command to be executed by remote shell
-        @param capture: if set to True then output produced by remote
-                        command is captured and returned as string
-        """
-
-        args = self.getCommand(command)
-        _LOG.debug("ssh command: '%s'", args)
-        if capture:
-            result = subprocess.check_output(args, subprocess.STDOUT, close_fds=True)
-            return result
-        else:
-            subprocess.check_call(args, close_fds=True)
-
-
-class _SSHTunnel(object):
-    """
-    Class implementing SSH tunneling of TCP port(s).
-
-    Instance of this class starts separate SSH process configured for TCP
-    forwarding. Instance also controls lifetime of the process, when
-    instance disappears the process is killed.
-    """
-
-    # options for ssh:
-    # - known_hosts file has tendency to become inconsistent, ignore it
-    # - if port forwarding fails there is no reason to stay alive
-    sshOptions = ['StrictHostKeyChecking=no', 'ExitOnForwardFailure=yes']
-
-    def __init__(self, host, localPort, fwdHost, fwdPort, localAddress=None, cipher='arcfour'):
-        """
-        Start SSH tunnelling with specified parameters.
-
-        This can generate same exceptions as subprocess.check_call method.
-
-        @param host:         String, host name or IP address to SSH to.
-        @param localPort:    Local port number (or range) that SSH will listen to, pass
-                             0 to try to auto-select port number, use `port` member
-                             later to access actual port used.
-        @param fwdHost:      Remote host name or IP address to forward connections to.
-        @param fwdPort:      Remote port number to forward connections to.
-        @param localAddress: Local address to bind, by default all interfaces are used,
-                             to bind to local interace only use "127.0.0.1" or "localhost".
-        @param cipher:       Encryption cipher name, default is to use arcfour which is one
-                             of the least CPU-intensive ciphers.
-        """
-
-        self.port = localPort or _getFreePort()
-
-        # we are going to run ssh in background using -f option so that we can
-        # wait until it forks itself after opening local port, that needs control
-        # socket which will be used to shut it down later
-        self.controlSocket = '/tmp/sshtunnel-control-socket-' + str(self.port)
-
-        fwdSpec = [str(self.port), fwdHost, str(fwdPort)]
-        if localAddress:
-            fwdSpec.insert(0, localAddress)
-        args = ['ssh', '-N', '-T', '-L', ':'.join(fwdSpec), '-x', '-c', cipher,
-                '-f', '-M', '-S', self.controlSocket]
-        for option in self.sshOptions:
-            args += ['-o', option]
-        args += [host]
-
-        _LOG.debug('ssh tunnel: executing %s', args)
-        subprocess.check_call(args, close_fds=True)
-
-    def __del__(self):
-        """
-        When this instance is destroyed we also want to stop SSH.
-        """
-        # use control socket to stop ssh
-        args = ['ssh', '-S', self.controlSocket, '-O', 'exit', 'localhost']
-        try:
-            _LOG.debug('ssh tunnel: signaling process to exit: %s', args)
-            subprocess.check_call(args, stderr=open('/dev/null', 'w'), close_fds=True)
-        except Exception as exc:
-            _LOG.warning('Exception while trying to shutdown ssh tunnel: %s', exc)
-
 #------------------------
 # Exported definitions --
 #------------------------
 
-class WorkerAdmin(object):
+class NodeAdmin(object):
     """
     Class representing administration/communication endpoint for qserv worker.
     """
@@ -303,7 +164,7 @@ class WorkerAdmin(object):
         if tunnel:
             # start ssh tunnel
             host = '127.0.0.1'   # do not use 'localhost' here
-            tunnel = _SSHTunnel(self.host, 0, self.host, port, host)
+            tunnel = SSHTunnel(self.host, 0, self.host, port, host)
             port = tunnel.port
         else:
             host = self.host
@@ -340,7 +201,7 @@ class WorkerAdmin(object):
         return db
 
     def _createSSHCommand(self):
-        cmd = _SSHCommand(self.host, self.runDir, self._kerberos, self._ssh_user)
+        cmd = SSHCommand(self.host, self.runDir, self._kerberos, self._ssh_user)
         return cmd
 
     def execCommand(self, command, capture=False):

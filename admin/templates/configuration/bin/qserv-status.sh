@@ -24,7 +24,7 @@
 # Check status of Qserv services
 # returns:
 #   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 255
+#   * if all Qserv services are down: 127
 #   * else the number of stopped Qserv services
 
 # @author  Fabrice JAMMES, IN2P3
@@ -42,7 +42,7 @@ for service in ${SERVICES}; do
 done
 
 if [ $service_stop_nb -eq $service_nb ]; then
-    exit 255
+    exit 127
 else
     exit $service_stop_nb
 fi

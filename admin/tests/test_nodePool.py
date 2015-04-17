@@ -33,7 +33,7 @@ import socket
 import tempfile
 import unittest
 
-import lsst.qserv.admin.workerAdmin as workerAdmin
+import lsst.qserv.admin.nodeAdmin as nodeAdmin
 import lsst.qserv.admin.qservAdmin as qservAdmin
 import lsst.qserv.admin.nodePool as nodePool
 
@@ -43,34 +43,34 @@ _LOG = logging.getLogger('TEST')
 
 class TestNodePool(unittest.TestCase):
 
-    def test_NodePoolExecParallel(self):
-        """ Check execution of simple command in parallel,
+    @classmethod
+    def setUpClass(cls):
+        host = "localhost"
+        cls._nb_nodes = 3
+        krb = False
 
-        """
+        nodeAdmins = [nodeAdmin.NodeAdmin(host=host,
+                                          kerberos=krb)
+                      for n in range(cls._nb_nodes)]
+        cls._nodePool = nodePool.NodePool(nodeAdmins)
 
-        host_tpl = "ccqserv{0}"
-        node_start = 100
-        node_stop = 120
-        user = "fjammes"
-        krb = True
+    def test_ExecParallel(self):
+        """ Check parallel execution of command """
+        failed = self._nodePool.execParallel('echo ECHO')
+        self.assertEquals(failed, 0)
 
-        # setup for direct connection
-        wAdmins = [workerAdmin.WorkerAdmin(host=host_tpl.format(n),
-                                           runDir="/bin",
-                                           kerberos=krb,
-                                           ssh_user=user)
-                   for n in range(node_start, node_stop)]
-        nPool = nodePool.NodePool(wAdmins)
-        nPool.execParallel('./ls')
 
-#
-#     def test_NodePoolExecParallel_Fail(self):
-#         """ Check execution of simple command, failure results in exception """
-#
-#         # setup for direct connection
-#         wAdmin = workerAdmin.WorkerAdmin(host="localhost", runDir='/tmp')
-#
-#         self.assertRaises(Exception, wAdmin.execCommand, '/bin/false')
+    def test_ExecParallel_Stdin(self):
+        """ Check parallel execution of command from stdin """
+        failed = self._nodePool.execParallel('echo ECHO')
+        self.assertEquals(failed, 0)
+
+
+    def test_ExecParallel_Fail(self):
+        """ Check parallel execution of command, with failure """
+        failed = self._nodePool.execParallel('false')
+        self.assertEquals(failed, self._nb_nodes)
+
 
 
 ####################################################################################

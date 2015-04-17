@@ -55,7 +55,10 @@ def add_logfile_opt(parser):
     """
     Add option to command line interface in order to set path to standard
     configuration file for python logger
-    :rtype : argparse.ArgumentParser
+    Input object isn't duplicated here.
+    @param parser: a parser which may contains some options (mutable object)
+    @type: argparse.ArgumentParser
+    @rtype : argparse.ArgumentParser
     """
 
     parser.add_argument("-V", "--log-cfg", dest="log_conf",

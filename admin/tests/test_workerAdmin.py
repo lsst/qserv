@@ -34,8 +34,9 @@ import tempfile
 import unittest
 from threading import Thread
 
-import lsst.qserv.admin.workerAdmin as workerAdmin
+import lsst.qserv.admin.nodeAdmin as nodeAdmin
 import lsst.qserv.admin.qservAdmin as qservAdmin
+from lsst.qserv.admin.ssh import SSHTunnel
 
 
 logging.basicConfig(level=logging.INFO)
@@ -120,7 +121,7 @@ class TestWorkerAdmin(unittest.TestCase):
         client.close()
 
         # start port forwarder
-        fwd = workerAdmin._SSHTunnel('localhost', 0, 'localhost', server.port, 'localhost')
+        fwd = SSHTunnel('localhost', 0, 'localhost', server.port, 'localhost')
         client = _EchoClient(fwd.port)
         data = client.echo('ECHO')
         self.assertEqual(data, '@ECHO')
@@ -131,16 +132,16 @@ class TestWorkerAdmin(unittest.TestCase):
 
 
     def test_WorkerAdminExceptions(self):
-        """ Check that some instantiations of WorkerAdmin cause exceptions """
+        """ Check that some instantiations of NodeAdmin cause exceptions """
 
         # no arguments to constructor
-        self.assertRaises(Exception, workerAdmin.WorkerAdmin)
+        self.assertRaises(Exception, nodeAdmin.NodeAdmin)
 
         # name given but no qservAdmin
-        self.assertRaises(Exception, workerAdmin.WorkerAdmin, name="worker")
+        self.assertRaises(Exception, nodeAdmin.NodeAdmin, name="worker")
 
         # host given but no mysqlConn, causes exception on method call
-        wAdmin = workerAdmin.WorkerAdmin(host="worker")
+        wAdmin = nodeAdmin.NodeAdmin(host="worker")
         self.assertRaises(Exception, wAdmin.mysqlConn)
 
 
@@ -154,7 +155,7 @@ class TestWorkerAdmin(unittest.TestCase):
 
         # setup for direct connection
         mysqlConn = str(server.port)
-        wAdmin = workerAdmin.WorkerAdmin(host="localhost", mysqlConn=mysqlConn)
+        wAdmin = nodeAdmin.NodeAdmin(host="localhost", mysqlConn=mysqlConn)
 
         # setup tunneling, expect direct connection
         host, port, tunnel = wAdmin._mysqlTunnel()
@@ -181,7 +182,7 @@ class TestWorkerAdmin(unittest.TestCase):
 
         # setup for direct connection
         mysqlConn = 'lo:' + str(server.port)
-        wAdmin = workerAdmin.WorkerAdmin(host="localhost", mysqlConn=mysqlConn)
+        wAdmin = nodeAdmin.NodeAdmin(host="localhost", mysqlConn=mysqlConn)
 
         # setup tunneling
         host, port, tunnel = wAdmin._mysqlTunnel()
@@ -218,7 +219,7 @@ class TestWorkerAdmin(unittest.TestCase):
         admin = _makeAdmin(initData)
 
         # setup with CSS
-        wAdmin = workerAdmin.WorkerAdmin(name="worker", qservAdmin=admin)
+        wAdmin = nodeAdmin.NodeAdmin(name="worker", qservAdmin=admin)
 
         # setup tunneling
         host, port, tunnel = wAdmin._mysqlTunnel()
@@ -238,7 +239,7 @@ class TestWorkerAdmin(unittest.TestCase):
         """ Check execution of simple command with output capture """
 
         # setup for direct connection
-        wAdmin = workerAdmin.WorkerAdmin(host="localhost", runDir='/tmp')
+        wAdmin = nodeAdmin.NodeAdmin(host="localhost", runDir='/tmp')
 
         output = wAdmin.execCommand('/bin/echo ECHO', capture=True)
         self.assertEqual(output, "ECHO\n")
@@ -248,7 +249,7 @@ class TestWorkerAdmin(unittest.TestCase):
         """ Check execution of simple command and changing CWD """
 
         # setup for direct connection
-        wAdmin = workerAdmin.WorkerAdmin(host="localhost", runDir='/bin')
+        wAdmin = nodeAdmin.NodeAdmin(host="localhost", runDir='/bin')
 
         output = wAdmin.execCommand('./true')
         self.assertIs(output, None)
@@ -258,7 +259,7 @@ class TestWorkerAdmin(unittest.TestCase):
         """ Check execution of simple command, failure results in exception """
 
         # setup for direct connection
-        wAdmin = workerAdmin.WorkerAdmin(host="localhost", runDir='/tmp')
+        wAdmin = nodeAdmin.NodeAdmin(host="localhost", runDir='/tmp')
 
         self.assertRaises(Exception, wAdmin.execCommand, '/bin/false')
 
