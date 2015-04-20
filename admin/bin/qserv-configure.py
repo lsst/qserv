@@ -110,9 +110,17 @@ def main():
             "..")
     )
 
+    if commons.status(args.qserv_run_dir) not in [commons.NO_STATUS_SCRIPT, commons.DOWN]:
+        logging.fatal(
+            "Qserv services are already running "
+            "for this Qserv run directory (%s),"
+            " stop it before running this script.", args.qserv_run_dir)
+        sys.exit(1)
+
     if configure.PREPARE in args.step_list:
 
         if os.path.exists(args.qserv_run_dir):
+
             if args.force or configure.user_yes_no_query(
                 "WARNING : Do you want to erase all configuration" +
                 " data in {0} ?".format(args.qserv_run_dir)
@@ -280,8 +288,8 @@ def main():
 
                     if not is_symlink_correct:
                         if args.force or configure.user_yes_no_query(
-                            "Do you want to update symbolic link {0} to {1}?"
-                            .format(os.path.realpath(symlink),cfg_file)):
+                            "Do you want to update symbolic link {0} to {1}?".format(os.path.realpath(symlink),
+                                                                                     cfg_file)):
                             os.remove(symlink)
                             os.symlink(cfg_file, symlink)
                         else:
