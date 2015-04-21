@@ -86,7 +86,7 @@ def status(qserv_run_dir):
     """
     Check if Qserv services are up
     @qserv_run_dir Qserv run directory of Qserv instance to ckeck
-    @:return the exit code of qserv-status.sh, i.e.:
+    @return: the exit code of qserv-status.sh, i.e.:
              id status file doesn't exists: -1 (NO_STATUS_SCRIPT)
              if all Qserv services are up:   0 (UP)
              if all Qserv services are down: 255 (DOWN)
