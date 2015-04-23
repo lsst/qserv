@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -140,6 +140,14 @@ ResourceUnit::setAsCquery(std::string const& db, int chunk) {
     _chunk = chunk;
 }
 
+bool ResourceUnit::_markGarbageIfDone(Tokenizer& t) {
+    if(t.done()) {
+        _unitType = GARBAGE;
+        return true;
+    }
+    return false;
+}
+
 void
 ResourceUnit::_setFromPath(std::string const& path) {
     std::string rTypeString;
@@ -148,10 +156,12 @@ ResourceUnit::_setFromPath(std::string const& path) {
         _unitType = UNKNOWN;
         return;
     }
+    if(_markGarbageIfDone(t)) { return; } // Consider using GOTO structure.
     t.next();
     rTypeString = t.token();
     if(rTypeString == prefix(DBCHUNK)) {
         // XrdSsi query
+        if(_markGarbageIfDone(t)) { return; }
         _unitType = DBCHUNK;
         t.next();
         _db = t.token();
@@ -159,26 +169,33 @@ ResourceUnit::_setFromPath(std::string const& path) {
             _unitType = GARBAGE;
             return;
         }
+        if(_markGarbageIfDone(t)) { return; }
         t.next();
+        if(t.token().empty()) { _unitType = GARBAGE; return; }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
     } else if(rTypeString == prefix(CQUERY)) {
         // Import as chunk query
         _unitType = CQUERY;
+        if(_markGarbageIfDone(t)) { return; }
         t.next();
         _db = t.token();
         if(_db.empty()) {
             _unitType = GARBAGE;
             return;
         }
+        if(_markGarbageIfDone(t)) { return; }
         t.next();
+        if(t.token().empty()) { _unitType = GARBAGE; return; }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
 
     } else if(rTypeString == prefix(RESULT)) {
         _unitType = RESULT;
+        if(_markGarbageIfDone(t)) { return; }
         t.next();
         _hashName = t.token();
+        if(_hashName.empty()) { _unitType = GARBAGE; return; }
     } else {
         _unitType = GARBAGE;
     }
