@@ -1,0 +1,12 @@
+# -*- python -*-
+Import('env')
+
+programs = []
+p = env.Program(['testResourceUnit.cc', 'ResourceUnit.cc'])
+programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
+Return('programs')
