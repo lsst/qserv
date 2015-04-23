@@ -8,6 +8,11 @@ import subprocess
 import sys
 import ConfigParser
 
+
+NO_STATUS_SCRIPT = -1
+DOWN = 255
+UP = 0
+
 config = dict()
 
 log = logging.getLogger(__name__)
@@ -69,7 +74,6 @@ def getConfig():
     return config
 
 def restart(service_name):
-
     config = getConfig()
     if len(config) == 0:
         raise RuntimeError("Qserv configuration is empty")
@@ -78,6 +82,22 @@ def restart(service_name):
     out = os.system("%s stop" % daemon_script)
     out = os.system("%s start" % daemon_script)
 
+def status(qserv_run_dir):
+    """
+    Check if Qserv services are up
+    @qserv_run_dir Qserv run directory of Qserv instance to ckeck
+    @return: the exit code of qserv-status.sh, i.e.:
+             id status file doesn't exists: -1 (NO_STATUS_SCRIPT)
+             if all Qserv services are up:   0 (UP)
+             if all Qserv services are down: 255 (DOWN)
+             else the number of stopped Qserv services
+    """
+    script_path = os.path.join(qserv_run_dir, 'bin', 'qserv-status.sh')
+    if not os.path.exists(script_path):
+        return NO_STATUS_SCRIPT
+    with open(os.devnull, "w") as fnull:
+        retcode = subprocess.call([script_path], stdout=fnull, stderr=fnull, shell=False)
+    return retcode
 
 def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
                 loglevel=logging.INFO):

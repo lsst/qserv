@@ -23,7 +23,7 @@ def add_logfile_opt(parser):
 
     parser.add_argument("-V", "--log-cfg", dest="log_conf",
                         default=get_default_log_conf(),
-                        help="Absolute path to yaml file containing python" +
+                        help="Absolute path to file containing python" +
                         "logger standard configuration file")
     return parser
 
