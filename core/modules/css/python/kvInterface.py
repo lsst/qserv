@@ -251,7 +251,7 @@ class KvInterface(object):
             children = self.getChildren(p)
             if p == "/": p = "" # Prevent // in concatenated path.
             for child in children:
-                self.visitPrefix(p + "/" + child, nodeFunc, acceptFunc)
+                self.visitPostfix(p + "/" + child, nodeFunc, acceptFunc)
             nodeFunc(p)
         except NoNodeError:
             self._logger.warning("Caught NoNodeError, someone deleted node just now")
@@ -649,7 +649,7 @@ class KvInterfaceMem(KvInterface):
         @raise     Raise KvException if the key doesn't exist.
         """
         if recursive:
-            self.visitPostfix(k, lambda p: self._kvi.deleteKey(k))
+            self.visitPostfix(k, lambda p: self._kvi.deleteKey(p))
         else:
             self._kvi.deleteKey(k)
 
