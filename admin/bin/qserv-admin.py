@@ -109,6 +109,7 @@ class CommandParser(object):
         self._initLogging()
         self._funcMap = {
             'CREATE':  self._parseCreate,
+            'DELETE':  self._parseDelete,
             'DROP':    self._parseDrop,
             'DUMP':    self._parseDump,
             'EXIT':    self._justExit,
@@ -128,6 +129,7 @@ class CommandParser(object):
     CREATE TABLE <dbName>.<tableName> LIKE <dbName2>.<tableName2>;
     CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn, state
     UPDATE NODE <nodeName> state=value;  # value: ACTIVE, INACTIVE
+    DELETE NODE <nodeName>;
     DROP DATABASE <dbName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
@@ -293,6 +295,21 @@ class CommandParser(object):
                                       "DROP TABLE")
         elif t == 'EVERYTHING':
             self._impl.dropEverything()
+        else:
+            raise QservAdminException(QservAdminException.BAD_CMD)
+
+    def _parseDelete(self, tokens):
+        """
+        Subparser - handles all DELETE requests.
+        Throws KvException, QservAdminException.
+        """
+        t = tokens[0].upper()
+        l = len(tokens)
+        if t == 'NODE':
+            if l != 2:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                                    "unexpected number of arguments")
+            self._impl.deleteNode(tokens[1])
         else:
             raise QservAdminException(QservAdminException.BAD_CMD)
 
