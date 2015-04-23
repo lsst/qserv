@@ -57,7 +57,7 @@ allModules = """ccontrol css czar global log mysql obsolete
 # Products
 def pyDistRelative(env, module):
     return os.path.join(env['python_relative_prefix'],"lsst","qserv",module)
-shProducts = { "xrdoss" : {'mods' : """global mysql obsolete sql util wconfig
+shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
                                        wpublish xrdoss""".split(),
                            'libs' : """boost_regex boost_thread crypto log
                                        log4cxx mysqlclient_r ssl""".split(),
