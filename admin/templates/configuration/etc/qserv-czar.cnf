@@ -28,18 +28,18 @@ connection=127.0.0.1:{{ZOOKEEPER_PORT}}
 [resultdb]
 passwd =
 db=qservResult
-unix_socket={{QSERV_RUN_DIR}}/var/lib/mysql/mysql.sock
+unix_socket={{MYSQLD_SOCK}}
 host=
 user=qsmaster
 port=0
 
 [partitioner]
 # emptyChunkPath is used to check existence of empty_$DBNAME.txt
-emptyChunkPath={{QSERV_RUN_DIR}}/var/lib/qserv
+emptyChunkPath={{QSERV_DATA_DIR}}/qserv
 
 # If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
 # doesn't exist then emptyChunkListFile is used for queries on $DBNAME
-emptyChunkListFile={{QSERV_RUN_DIR}}/var/lib/qserv/emptyChunks.txt
+emptyChunkListFile={{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 
 #[tuning]
 #memoryEngine=yes
