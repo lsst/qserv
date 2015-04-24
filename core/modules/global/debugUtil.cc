@@ -34,7 +34,6 @@ std::string
 makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen) {
     std::ostringstream os;
     os << tag << "(" << bufLen << ")[";
-    //for(int i=0; (i < 5) && (i < bufLen); ++i) {
     for(int i=0; i < bufLen; ++i) {
         os << (int)buf[i] << ",";
     }

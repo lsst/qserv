@@ -55,8 +55,8 @@ class MergingRequester : public qdisp::ResponseRequester {
 public:
     /// Possible MergingRequester message state
     enum class MsgState { INVALID, HEADER_SIZE_WAIT,
-                    HEADER_WAIT, RESULT_WAIT, RESULT_EXTRA,
-                    RESULT_RECV, BUFFER_DRAIN, RESULT_LAST,
+                    RESULT_WAIT, RESULT_EXTRA,
+                    RESULT_RECV, BUFFER_DRAIN,
                     HEADER_ERR, RESULT_ERR };
     static const char* getStateStr(MsgState const& st);
 

@@ -32,8 +32,9 @@
 // System headers
 #include <iostream>
 #include <map>
-#include <string>
 #include <sstream>
+#include <string>
+
 
 namespace lsst {
 namespace qserv {
@@ -120,10 +121,13 @@ std::string prettyCharList(C const& c, uint edge) {
     std::ostringstream os;
     auto sz = c.size();
     os << "[";
-    auto j = c.size();
+    auto j = sz;
     for(j = 0; j < sz && j < edge; ++j) {
         auto val = static_cast<int>(c[j]);
-        os << "[" << j << "]=" << val << ", ";
+        os << "[" << j << "]=" << val;
+        if (j < sz - 1) {
+            os << ", ";
+        }
     }
     if (j < sz) {
         if (j < sz - edge) {
@@ -134,7 +138,7 @@ std::string prettyCharList(C const& c, uint edge) {
     for(;j < sz; ++j) {
         int val = c[j];
         os << "[" << j << "]=" << val;
-        if (j < sz -1) {
+        if (j < sz - 1) {
             os << ", ";
         }
     }
@@ -149,7 +153,10 @@ std::string prettyCharBuf(C* c, uint bufLen, uint edge) {
     uint j;
     for(j = 0; j < bufLen && j < edge; ++j) {
         auto val = static_cast<int>(c[j]);
-        os << "[" << j << "]=" << val << ", ";
+        os << "[" << j << "]=" << val;
+        if (j < bufLen - 1) {
+            os << ", ";
+        }
     }
     if (j < bufLen) {
         if (j < bufLen - edge) {

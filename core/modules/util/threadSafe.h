@@ -32,7 +32,6 @@
 #include <utility>
 
 // external headers
-//#include "boost/thread.hpp"
 
 namespace lsst {
 namespace qserv {

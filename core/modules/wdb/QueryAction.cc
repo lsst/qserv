@@ -252,7 +252,7 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
 #if 0 // Enable for tracing result values while debugging.
         std::cout << "row: ";
         std::copy(row, row+numFields,
-                std::ostream_iterator<char*>(std::cout, ","));
+                  std::ostream_iterator<char*>(std::cout, ","));
         std::cout << "\n";
 #endif
         // Each element needs to be mysql-sanitized
@@ -285,7 +285,7 @@ void QueryAction::Impl::_transmit(bool last) {
     }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
-    LOGF_DEBUG("_transmit last=%1% resultString=%2%" % last % util::prettyCharList(resultString, 5));
+    LOGF_INFO("_transmit last=%1% resultString=%2%" % last % util::prettyCharList(resultString, 5));
     _sendChannel->sendStream(resultString.data(), resultString.size(), last);
 }
 

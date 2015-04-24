@@ -365,7 +365,6 @@ ForemanImpl::~ForemanImpl() {
 
 void
 ForemanImpl::_startRunner(wbase::Task::Ptr t) {
-    //boost::thread(Runner(*_rManager, t));
     std::thread thrd{Runner{*_rManager, t}};
     thrd.detach();
 }

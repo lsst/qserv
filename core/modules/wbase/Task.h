@@ -52,12 +52,15 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
-/// struct Task defines a query task to be done, containing a TaskMsg
-/// (over-the-wire) additional concrete info related to physical
-/// execution conditions.
-/// Task encapsulates nearly zero logic, aside from:
-/// * constructors
-/// * poison()
+/** struct Task defines a query task to be done, containing a TaskMsg
+ * (over-the-wire) additional concrete info related to physical
+ * execution conditions.
+ * Task is non-copyable
+ * Task encapsulates nearly zero logic, aside from:
+ *  * constructors
+ *  * poison()
+ *
+ */
 struct Task {
 public:
     static std::string const defaultUser;
