@@ -238,10 +238,11 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
     MYSQL_ROW row;
     uint size = 0;
     while ((row = mysql_fetch_row(result))) {
-        proto::RowBundle* rawRow = _result->add_row();
+        auto lengths = mysql_fetch_lengths(result);
+        proto::RowBundle* rawRow =_result->add_row();
         for(int i=0; i < numFields; ++i) {
             if(row[i]) {
-                rawRow->add_column(row[i]);
+                rawRow->add_column(row[i], lengths[i]);
                 rawRow->add_isnull(false);
             } else {
                 rawRow->add_column();
