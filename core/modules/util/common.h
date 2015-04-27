@@ -32,7 +32,9 @@
 // System headers
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
+
 
 namespace lsst {
 namespace qserv {
@@ -92,6 +94,87 @@ std::ostream& printList(std::ostream &os, char const* label, C const& c) {
     }
     return os;
 }
+
+template <typename C>
+std::string prettyCharList(C const& c) {
+    std::ostringstream os;
+    os << "[";
+    for(auto i = c.begin(); i != c.end();) {
+        int val = *i;
+        os << val ;
+        ++i;
+        if (i == c.end()) {
+            break;
+        }
+        os << ", ";
+    }
+    os << "]";
+    return os.str();
+}
+
+/** Return a string showing the 'edge' of a list as integers.
+ * c is the container, edge is how many elements to include from
+ * the begging and end of the list.
+ */
+template <typename C>
+std::string prettyCharList(C const& c, uint edge) {
+    std::ostringstream os;
+    auto sz = c.size();
+    os << "[";
+    auto j = sz;
+    for(j = 0; j < sz && j < edge; ++j) {
+        auto val = static_cast<int>(c[j]);
+        os << "[" << j << "]=" << val;
+        if (j < sz - 1) {
+            os << ", ";
+        }
+    }
+    if (j < sz) {
+        if (j < sz - edge) {
+            os << "..., ";
+            j = sz - edge;
+        }
+    }
+    for(;j < sz; ++j) {
+        int val = c[j];
+        os << "[" << j << "]=" << val;
+        if (j < sz - 1) {
+            os << ", ";
+        }
+    }
+    os << "]";
+    return os.str();
+}
+
+template <typename C>
+std::string prettyCharBuf(C* c, uint bufLen, uint edge) {
+    std::ostringstream os;
+    os << "[";
+    uint j;
+    for(j = 0; j < bufLen && j < edge; ++j) {
+        auto val = static_cast<int>(c[j]);
+        os << "[" << j << "]=" << val;
+        if (j < bufLen - 1) {
+            os << ", ";
+        }
+    }
+    if (j < bufLen) {
+        if (j < bufLen - edge) {
+            os << "..., ";
+            j = bufLen - edge;
+        }
+    }
+    for(;j < bufLen; ++j) {
+        int val = c[j];
+        os << "[" << j << "]=" << val;
+        if (j < bufLen -1) {
+            os << ", ";
+        }
+    }
+    os << "]";
+    return os.str();
+}
+
 
 }}} // namespace lsst::qserv::util
 

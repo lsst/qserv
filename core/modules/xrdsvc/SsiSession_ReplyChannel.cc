@@ -79,7 +79,8 @@ SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
 bool
 SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
     // Initialize streaming object if not initialized.
-    LOGF_INFO("sendStream, checking stream %1%" % (void*) _stream);
+    LOGF_INFO("sendStream, checking stream %1% len=%2% last=%3%" %
+            (void*) _stream % bufLen % last);
     if(!_stream) {
         _initStream();
     } else if(_stream->closed()) {

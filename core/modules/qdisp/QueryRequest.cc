@@ -179,8 +179,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" %
-              blen % (last ? "(last)" : "(more)"));
+    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" % blen % (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         const char* chs = eInfo.Get(eCode);
@@ -194,10 +193,17 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     _status.report(ExecStatus::RESPONSE_DATA);
     bool flushOk = _requester->flush(blen, last);
     if(flushOk) {
-        if(last) {
+        // last is not reliable in indicating this is the last message
+        auto sz = _requester->nextBuffer().size();
+        if (last) {
+            auto sz = _requester->nextBuffer().size();
+            if (last && sz != 0) {
+                LOGF_WARN("Connection closed when more information expected sz=%1%" % sz);
+            }
             _status.report(ExecStatus::COMPLETE);
             _finish();
         } else {
+            LOGF_INFO("ProcessResponse waiting for more data");
             std::vector<char>& buffer = _requester->nextBuffer();
             if(!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
@@ -205,6 +211,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             }
         }
     } else {
+        LOGF_INFO("ProcessResponse data flush failed");
         ResponseRequester::Error err = _requester->getError();
         _status.report(ExecStatus::MERGE_ERROR, err.code, err.msg);
         // @todo DM-2378 Take a closer look at what causes this error and take

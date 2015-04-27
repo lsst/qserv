@@ -37,6 +37,7 @@
 #include "boost/thread.hpp"
 
 // Qserv headers
+#include "lsst/log/Log.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"

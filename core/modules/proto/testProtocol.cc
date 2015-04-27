@@ -26,14 +26,18 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 // Qserv headers
+#include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "proto/TaskMsgDigest.h"
+#include "proto/WorkerResponse.h"
+
 #include "proto/FakeProtocolFixture.h"
 
 // Boost unit test header
@@ -42,6 +46,8 @@
 
 namespace test = boost::test_tools;
 namespace gio = google::protobuf::io;
+
+using namespace lsst::qserv;
 
 struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
     ProtocolFixture(void) : FakeProtocolFixture() {}
@@ -158,6 +164,22 @@ BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     std::string hash = hashTaskMsg(*t1);
     std::string expected = "4c6e5ad217891467addaa0db015eef80";
     BOOST_CHECK_EQUAL(hash, expected);
+}
+
+BOOST_AUTO_TEST_CASE(ProtoHeaderWrap) {
+    std::unique_ptr<proto::ProtoHeader> ph(makeProtoHeader());
+    std::string str;
+    ph->SerializeToString(&str);
+    LOGF_INFO("wrapping %1%" % str.size());
+    std::string msgBuf = proto::ProtoHeaderWrap::wrap(str);
+    std::vector<char> msgVect;
+    std::copy(msgBuf.begin(), msgBuf.end(), std::back_inserter(msgVect));
+    std::shared_ptr<proto::WorkerResponse> response(new proto::WorkerResponse());
+    response->headerSize = msgBuf.size();
+    LOGF_INFO("unwrapping");
+    bool worked = proto::ProtoHeaderWrap::unwrap(response, msgVect);
+    BOOST_CHECK(worked);
+    BOOST_CHECK(compareProtoHeaders(response->protoHeader, *ph));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

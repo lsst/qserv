@@ -127,8 +127,8 @@ bool InfileMergerError::resultTooBig() const {
 /// large result sets.
 class InfileMerger::Mgr {
 public:
-    class Action;
-    friend class Action;
+    class ActionMerge;
+    friend class ActionMerge;
 
     Mgr(MySqlConfig const& config, std::string const& mergeTable);
 
@@ -136,7 +136,7 @@ public:
 
     /// Enqueue an bundle of result rows to be inserted, as represented by the
     /// Protobufs message bundle
-    void enqueueAction(boost::shared_ptr<WorkerResponse> response);
+    void queMerge(std::shared_ptr<WorkerResponse> response);
 
     /// Wait until work queue is empty.
     /// @return true on success
@@ -153,7 +153,7 @@ public:
 
     /// Report completion of an action (used by Action threads to report their
     /// completion before they destroy themselves).
-    void signalDone(bool success, Action& a) {
+    void signalDone(bool success, ActionMerge& a) {
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         --_numInflight;
         // TODO: do something with the result so we can catch errors.
@@ -163,6 +163,8 @@ public:
     }
 
 private:
+    bool _doMerge(std::shared_ptr<WorkerResponse>& response);
+
     void _incrementInflight() {
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         ++_numInflight;
@@ -188,28 +190,19 @@ private:
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 };
 
-class InfileMerger::Mgr::Action : public util::WorkQueue::Callable {
+class InfileMerger::Mgr::ActionMerge : public util::WorkQueue::Callable {
 public:
-    Action(Mgr& mgr, boost::shared_ptr<WorkerResponse> response,
-           std::string const& table)
-        : _mgr(mgr), _response(response), _table(table) {
-        mgr._incrementInflight();
+    ActionMerge(Mgr& mgr, std::shared_ptr<WorkerResponse> response) : _mgr(mgr), _response(response) {
+        _mgr._incrementInflight();
         // Delay preparing the virtual file until just before it is needed.
     }
     void operator()() {
-        _virtFile = _mgr._infileMgr.prepareSrc(
-            rproc::newProtoRowBuffer(_response->result));
-
-        // load data infile.
-        std::string infileStatement = sql::formLoadInfile(_table, _virtFile);
-        bool result = _mgr.applyMysql(infileStatement);
+        auto result = _mgr._doMerge(_response);
         assert(result);
         _mgr.signalDone(result, *this);
     }
     Mgr& _mgr;
-    boost::shared_ptr<WorkerResponse> _response;
-    std::string _table;
-    std::string _virtFile;
+    std::shared_ptr<WorkerResponse> _response;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -225,9 +218,19 @@ InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
     }
 }
 
-void InfileMerger::Mgr::enqueueAction(boost::shared_ptr<WorkerResponse> response) {
-    boost::shared_ptr<Action> a(new Action(*this, response, _mergeTable));
+/** Queue merging the rows encoded in the 'response'.
+ */
+void InfileMerger::Mgr::queMerge(std::shared_ptr<WorkerResponse> response) {
+    boost::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
     _workQueue.add(a);
+}
+
+/** Load data from the 'response' into the 'table'. Return true if successful.
+ */
+bool InfileMerger::Mgr::_doMerge(std::shared_ptr<WorkerResponse>& response) {
+    std::string virtFile = _infileMgr.prepareSrc(rproc::newProtoRowBuffer(response->result));
+    std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
+    return applyMysql(infileStatement);
 }
 
 bool InfileMerger::Mgr::applyMysql(std::string const& query) {
@@ -268,7 +271,7 @@ InfileMerger::~InfileMerger() {
     //LOGF_INFO("InfileMerger destruct ------- ()%1%" % (void*) this);
 }
 
-bool InfileMerger::merge(boost::shared_ptr<proto::WorkerResponse> response) {
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     if(!response) {
         return false;
     }
@@ -398,14 +401,13 @@ bool InfileMerger::_verifySession(int sessionId) {
     return true; // TODO: for better message integrity
 }
 
-bool InfileMerger::_importResponse(boost::shared_ptr<WorkerResponse> response) {
+bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
     // Check for the no-row condition
     if(response->result.row_size() == 0) {
         // Nothing further, don't bother importing
     } else {
-        // Delegate merging thread mgmt to mgr, which will handle
-        // LocalInfile objects
-        _mgr->enqueueAction(response);
+        // Delegate merging thread mgmt to mgr
+        _mgr->queMerge(response);
     }
     return true;
 }

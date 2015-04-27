@@ -136,7 +136,7 @@ public:
     /// ProtoHeader message
     /// Result message
     /// @return true if merge was successfully imported (queued)
-    bool merge(boost::shared_ptr<proto::WorkerResponse> response);
+    bool merge(std::shared_ptr<proto::WorkerResponse> response);
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
@@ -151,7 +151,7 @@ private:
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
-    bool _importResponse(boost::shared_ptr<proto::WorkerResponse> response);
+    bool _importResponse(std::shared_ptr<proto::WorkerResponse> response);
     bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);

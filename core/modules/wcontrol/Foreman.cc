@@ -29,6 +29,9 @@
 #include <cassert>
 #include <deque>
 #include <iostream>
+#include <memory>
+#include <thread>
+#include <utility>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
@@ -41,6 +44,7 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
+#include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
@@ -99,7 +103,7 @@ public:
     private:
         RunnerMgr& _rm;
         wbase::Task::Ptr _task;
-        bool _isPoisoned;
+        std::shared_ptr<util::Flag<bool>> _isPoisoned;
         LOG_LOGGER _log;
         boost::shared_ptr<wdb::QueryAction> _action;
     };
@@ -129,7 +133,7 @@ private:
 
     void _startRunner(wbase::Task::Ptr t);
 
-    boost::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
+    std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     boost::mutex _mutex;
     boost::mutex _runnersMutex;
     Scheduler::Ptr _scheduler;
@@ -270,7 +274,7 @@ bool ForemanImpl::RunnerMgr::squashByHash(std::string const& hash) {
 ForemanImpl::Runner::Runner(RunnerMgr& rm, wbase::Task::Ptr firstTask)
     : _rm(rm),
       _task(firstTask),
-      _isPoisoned(false),
+      _isPoisoned(std::make_shared<util::Flag<bool>>(false)),
       _log(rm.getLog()) {
     // nothing to do.
 }
@@ -284,12 +288,12 @@ void ForemanImpl::Runner::poison() {
     // managing its storage is a hassle.
     // Probably not worth it because Runners probably won't be poisoned through
     // this interface anyway--poison reqs will come through xrootd.
-    _isPoisoned = true;
+    _isPoisoned->set(true);
 }
 
 void ForemanImpl::Runner::operator()() {
     _rm.registerRunner(this, _task);
-    while(!_isPoisoned) {
+    while(!_isPoisoned->get()) {
         LOGF(_log, LOG_LVL_INFO, "Runner running %1%" % *_task);
         proto::TaskMsg const& msg = *_task->msg;
         if(!msg.has_protocol() || msg.protocol() < 2) {
@@ -298,7 +302,7 @@ void ForemanImpl::Runner::operator()() {
             _action = _rm.newQueryAction(_task);
             (*_action)();
         }
-        if(_isPoisoned) break;
+        if(_isPoisoned->get()) break;
         // Request new work from the manager
         // (mgr is a role of the foreman, who will check with the
         // scheduler for the next assignment)
@@ -361,7 +365,8 @@ ForemanImpl::~ForemanImpl() {
 
 void
 ForemanImpl::_startRunner(wbase::Task::Ptr t) {
-    boost::thread(Runner(*_rManager, t));
+    std::thread thrd{Runner{*_rManager, t}};
+    thrd.detach();
 }
 
 bool ForemanImpl::squashByHash(std::string const& hash) {

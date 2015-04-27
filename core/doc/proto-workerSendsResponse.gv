@@ -1,0 +1,6 @@
+digraph G {
+        "ForemanImpl::Runner::operator()()" -> "QueryAction::act" -> "QueryAction::_dispatchChannel" -> 
+            fillSchema -> fillRows -> transmit -> transmitHeader -> transmitResult -> 
+            "Done, all rows sent";
+        transmitResult -> fillRows;
+}

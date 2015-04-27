@@ -27,9 +27,11 @@
 #define LSST_QSERV_UTIL_THREADSAFE_H_
 
 // system headers
+#include <mutex>
+#include <thread>
+#include <utility>
 
 // external headers
-#include "boost/thread.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -43,16 +45,16 @@ public:
     explicit Sequential(T seq) : _seq(seq) {};
     // Returns the value before incrementing.
     T incr() {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         T val = _seq++;
         return val;
     }
     T get() {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         return _seq;
     }
 private:
-    boost::mutex _mutex;
+    std::mutex _mutex;
     T _seq;
 };
 
@@ -62,17 +64,26 @@ template <class T>
 class Flag {
 public:
     explicit Flag(T flag) : _flag(flag) {};
+    Flag& operator=(Flag&& other) = delete;
+    Flag(const Flag&&) = delete;
+    Flag& operator=(const Flag&) = delete;
+    Flag(const Flag&) = delete;
     virtual ~Flag() {};
-    virtual void set(T val) {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+
+    /** Sets flag value to 'val' and returns the old value of flag.
+     */
+    virtual T set(T val) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        auto oldVal = _flag;
         _flag = val;
+        return oldVal;
     }
     T get() {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         return _flag;
     }
 protected:
-    boost::mutex _mutex;
+    std::mutex _mutex;
     T _flag;
 };
 
@@ -84,19 +95,24 @@ class FlagNotify : public Flag<T> {
 public:
     explicit FlagNotify(T flag) : Flag<T>(flag) {};
     virtual ~FlagNotify() {};
-    virtual void set(T val) {
-        boost::lock_guard<boost::mutex> lock(Flag<T>::_mutex);
+    /** Sets flag value to 'val' while notifying others of the change,
+     * and returns the old value of flag.
+     */
+    virtual T set(T val) {
+        std::lock_guard<std::mutex> lock(Flag<T>::_mutex);
+        auto oldVal = Flag<T>::_flag;
         Flag<T>::_flag = val;
         _condition.notify_all();
+        return oldVal;
     }
     void wait(T val) {
-        boost::unique_lock<boost::mutex> lock(Flag<T>::_mutex);
+        std::unique_lock<std::mutex> lock(Flag<T>::_mutex);
         while (Flag<T>::_flag != val) {
             _condition.wait(lock);
         }
     }
 protected:
-    boost::condition_variable _condition;
+    std::condition_variable _condition;
 };
 
 }}} // namespace

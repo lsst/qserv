@@ -1,0 +1,10 @@
+digraph G {
+        czar_xrootd_client -> "QueryRequest::ProcessResponseData" -> 
+            "MergingRequester::flush"-> "QueryRequest::_finish";
+        HEADER_SIZE_WAIT -> RESULT_WAIT -> RESULT_RECV -> BUFFER_DRAIN -> finish;
+        RESULT_WAIT -> finish;
+        RESULT_RECV -> finish;
+        RESULT_WAIT -> RESULT_EXTRA -> RESULT_WAIT;
+        HEADER_SIZE_WAIT -> HEADER_ERR -> failed;
+        RESULT_WAIT -> RESULT_ERR -> failed;
+}

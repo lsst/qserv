@@ -456,15 +456,15 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // ChunkResourceMgr
 ////////////////////////////////////////////////////////////////////////
-boost::shared_ptr<ChunkResourceMgr>
+std::shared_ptr<ChunkResourceMgr>
 ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
-    return boost::shared_ptr<ChunkResourceMgr>(new Impl(c));
+    return std::shared_ptr<ChunkResourceMgr>(new Impl(c));
 
 }
 
-boost::shared_ptr<ChunkResourceMgr>
+std::shared_ptr<ChunkResourceMgr>
 ChunkResourceMgr::newFakeMgr() {
-    return boost::shared_ptr<ChunkResourceMgr>(new Impl());
+    return std::shared_ptr<ChunkResourceMgr>(new Impl());
 }
 
 }}} // namespace lsst::qserv::wdb

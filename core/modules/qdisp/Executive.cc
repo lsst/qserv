@@ -150,9 +150,9 @@ private:
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
     : _config(*c),
-      _empty(true),
+      _empty{true},
       _messageStore(ms),
-      _cancelled(false) {
+      _cancelled{false} {
     _setup();
 }
 

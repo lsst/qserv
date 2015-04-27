@@ -52,13 +52,16 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
-/// struct Task defines a query task to be done, containing a TaskMsg
-/// (over-the-wire) additional concrete info related to physical
-/// execution conditions.
-/// Task encapsulates nearly zero logic, aside from:
-/// * constructors
-/// * poison()
-struct Task : public boost::noncopyable {
+/** struct Task defines a query task to be done, containing a TaskMsg
+ * (over-the-wire) additional concrete info related to physical
+ * execution conditions.
+ * Task is non-copyable
+ * Task encapsulates nearly zero logic, aside from:
+ *  * constructors
+ *  * poison()
+ *
+ */
+struct Task {
 public:
     static std::string const defaultUser;
 
@@ -74,8 +77,10 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task() : _poisoned(false) {}
+    explicit Task() : _poisoned{false} {}
     explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
+    Task& operator=(const Task&) = delete;
+    Task(const Task&) = delete;
 
     TaskMsgPtr msg; ///< Protobufs Task spec
     boost::shared_ptr<wbase::SendChannel> sendChannel; ///< For result reporting
