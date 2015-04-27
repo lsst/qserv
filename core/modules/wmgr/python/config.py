@@ -29,6 +29,7 @@ Module defining Config class and related methods.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+import logging
 import tempfile
 import warnings
 
@@ -43,6 +44,8 @@ import MySQLdb
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
+
+_log = logging.getLogger('config')
 
 #------------------------
 # Exported definitions --
@@ -98,6 +101,7 @@ class Config(object):
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
         if self.dbUser: kwargs['user'] = self.dbUser
+        _log.debug('creating new connection %s', kwargs)
         if self.dbPasswd: kwargs['passwd'] = self.dbPasswd
         inst = db.Db(**kwargs)
         # ignore mysql warnings
@@ -111,6 +115,7 @@ class Config(object):
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
         if self.dbUserPriv: kwargs['user'] = self.dbUserPriv
+        _log.debug('creating new connection %s', kwargs)
         if self.dbPasswdPriv: kwargs['passwd'] = self.dbPasswdPriv
         inst = db.Db(**kwargs)
         # ignore mysql warnings

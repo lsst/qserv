@@ -3,6 +3,7 @@ from distutils.util import strtobool
 import getpass
 import logging
 import os
+import random
 import sys
 import string
 import shutil
@@ -51,6 +52,16 @@ for step in STEP_LIST:
             STEP_ABBR[step]=step[0].upper()
     else:
         STEP_ABBR[step]=step[0]
+
+# list of files that should only be readable by this account
+SECRET_FILES = ['qserv-wmgr.cnf', 'wmgr.secret']
+
+def random_string(charset, size):
+    """
+    Generates a random string consisting of size charaters picked randomly
+    from a given character set.
+    """
+    return ''.join(random.choice(charset) for _ in range(size))
 
 def exists_and_is_writable(dir):
     """
@@ -213,6 +224,9 @@ def _get_template_params():
         'HOME': os.path.expanduser("~"),
         'NODE_TYPE': config['qserv']['node_type'],
         'WMGR_PORT': config['wmgr']['port'],
+        'WMGR_USER_NAME': random_string(string.ascii_letters + string.digits, 12),
+        'WMGR_PASSWORD': random_string(string.ascii_letters + string.digits + string.punctuation, 23),
+        'WMGR_SECRET_KEY': random_string(string.ascii_letters + string.digits, 57),
         }
 
         logger.debug("Template input parameters:\n {0}".format(params_dict))
@@ -229,8 +243,10 @@ def _set_perms(file):
         os.path.basename(path) == "init.d" or
         basename in script_list):
         os.chmod(file, 0760)
-    # all other files are configuration files
+    elif basename in SECRET_FILES:
+        os.chmod(file, 0600)
     else:
+        # all other files are configuration files
         os.chmod(file, 0660)
 
 def apply_tpl_once(src_file, target_file, params_dict = None):

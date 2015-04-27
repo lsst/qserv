@@ -37,8 +37,7 @@ import sys
 # Imports for other modules --
 #-----------------------------
 from flask import Flask
-from lsst.qserv.wmgr.config import Config
-from lsst.qserv.wmgr import dbMgr, procMgr, xrdMgr
+from lsst.qserv.wmgr import auth, config, dbMgr, procMgr, xrdMgr
 
 #----------------------------------
 # Local non-exported definitions --
@@ -73,12 +72,16 @@ def main():
         app.config.from_pyfile(args.configFile)
     else:
         app.config.from_envvar('WMGRCONFIG')
-    Config.init(app)
+    config.Config.init(app)
 
     # add few blueprints
     app.register_blueprint(dbMgr.dbService, url_prefix='/dbs')
     app.register_blueprint(procMgr.procService, url_prefix='/services')
     app.register_blueprint(xrdMgr.xrdService, url_prefix='/xrootd')
+
+    # check authentication before every request
+    authCheck = auth.Auth(app.config)
+    app.before_request(authCheck.checkAuth)
 
     # port number comes from SERVER_HOST configuration
     host = app.config.get('WMGR_INTERFACE')
