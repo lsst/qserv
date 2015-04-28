@@ -27,6 +27,7 @@
 #define LSST_QSERV_UTIL_THREADSAFE_H_
 
 // system headers
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <utility>
