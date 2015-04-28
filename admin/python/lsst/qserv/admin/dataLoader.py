@@ -895,8 +895,9 @@ class DataLoader(object):
                 idxColType = row[1]
                 break
 
-        # make a table
+        # make a table, InnoDB engine is required for scalability
         q = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
+        q += " ENGINE = INNODB"
         q = q.format(table=metaTable, column=idxCol, type=idxColType)
         self._log.debug('query: %s', q)
         czarCursor.execute(q)
@@ -942,6 +943,7 @@ class DataLoader(object):
 
             wCursor.close()
 
+        self.mysql.commit()
         czarCursor.close()
 
     def _makeIndexSingleNode(self, database, table, metaTable, idxCol):
@@ -958,4 +960,5 @@ class DataLoader(object):
             self._log.debug('query: %s', q)
             cursor.execute(q)
 
+        self.mysql.commit()
         cursor.close()
