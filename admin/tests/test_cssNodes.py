@@ -32,6 +32,7 @@ import tempfile
 import unittest
 
 import lsst.qserv.admin.qservAdmin as qservAdmin
+from lsst.qserv.admin.qservAdminException import QservAdminException
 import lsst.qserv.admin.workerMgmt as workerMgmt
 
 
@@ -65,7 +66,7 @@ class TestCssNodes(unittest.TestCase):
     def testGetNode(self):
         """ Test for getting nodes """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -100,7 +101,7 @@ class TestCssNodes(unittest.TestCase):
     def testGetNodeUnpacked(self):
         """ Test for getting nodes, data in CSS is not packed """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -141,7 +142,7 @@ class TestCssNodes(unittest.TestCase):
     def testGetNodes(self):
         """ Test for getting all nodes """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -177,7 +178,7 @@ class TestCssNodes(unittest.TestCase):
     def testAddNode(self):
         """ Test for creating new nodes """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -218,10 +219,53 @@ class TestCssNodes(unittest.TestCase):
 
         self.assertRaises(Exception, admin.getNode, 'worker-3')
 
+    def testDeleteNode(self):
+        """ Test for deleting nodes """
+
+        # instantiate kvI with some initial data
+        initData = """\
+/\t\\N
+/css_meta\t\\N
+/css_meta/version\t{version}
+/DBS\t\\N
+/DBS/TEST\t\\N
+/DBS/TEST/TABLES\t\\N
+/DBS/TEST/TABLES/TEST\t\\N
+/DBS/TEST/TABLES/TEST.json\t{{}}
+/DBS/TEST/TABLES/TEST/CHUNKS\t\\N
+/DBS/TEST/TABLES/TEST/CHUNKS/1\t\\N
+/DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS\t\\N
+/DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS/001.json\t{{"nodeName": "worker-2"}}
+/NODES\t\\N
+/NODES/worker-1\tACTIVE
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-2\tINACTIVE
+/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+"""
+
+        initData = initData.format(version=qservAdmin.VERSION)
+        admin = _makeAdmin(initData)
+
+        admin.getNode('worker-1')
+        admin.getNode('worker-2')
+
+        # delete one node
+        admin.deleteNode('worker-1')
+        self.assertRaises(QservAdminException, admin.getNode, 'worker-1')
+        admin.getNode('worker-2')
+
+        # must throw because there is a table using it
+        self.assertRaises(QservAdminException, admin.deleteNode, 'worker-2')
+
+        # drop table that uses it and retry
+        admin.dropTable('TEST', 'TEST')
+        admin.deleteNode('worker-2')
+        self.assertRaises(QservAdminException, admin.getNode, 'worker-2')
+
     def testSetNodeState(self):
         """ Test for changing node state """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -268,7 +312,7 @@ class TestCssNodes(unittest.TestCase):
     def testMgmtSelect(self):
         """ Test for WorkerMgmt.select methods """
 
-        # instantiate kvI with come initial data
+        # instantiate kvI with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N

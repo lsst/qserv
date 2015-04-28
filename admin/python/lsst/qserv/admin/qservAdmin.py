@@ -347,6 +347,13 @@ class QservAdmin(object):
         else:
             print self._kvI.getChildren("/DBS")
 
+    def databases(self):
+        """
+        Returns list of database names defined in CSS. If CSS is not correctly
+        initialized yet (/DBS is missing) it returns None.
+        """
+        return self._cssChildren("/DBS")
+
     #### TABLES ####################################################################
     def tableExists(self, dbName, tableName):
         """
@@ -534,6 +541,16 @@ class QservAdmin(object):
         # first check version
         self._versionCheck()
 
+        # protect against concurrent modifications
+        with self._getNodeLock():
+            return self._getNode(nodeName)
+
+    def _getNode(self, nodeName):
+        """
+        Returns node definition for specified node name. Does not lock nodes,
+        used internally by other methods.
+        """
+
         nodeKey = '/NODES/' + nodeName
         if self._kvI.exists(nodeKey + '.json'):
             data = self._cssGet(nodeKey + '.json')
@@ -561,14 +578,16 @@ class QservAdmin(object):
         # first check version
         self._versionCheck()
 
-        # we support both JSON-packed data and non-packed data
-        result = {}
-        for node in self._cssChildren('/NODES', []):
-            if node.endswith('.json'):
-                node = node[:-5]
-            data = self.getNode(node)
-            if data:
-                result[node] = data
+        # protect against concurrent modifications
+        with self._getNodeLock():
+            # we support both JSON-packed data and non-packed data
+            result = {}
+            for node in self._cssChildren('/NODES', []):
+                if node.endswith('.json'):
+                    node = node[:-5]
+                data = self._getNode(node)
+                if data:
+                    result[node] = data
         return result
 
     def addNode(self, nodeName, nodeType, host, runDir, mysqlConn, state=NodeState.ACTIVE):
@@ -597,18 +616,21 @@ class QservAdmin(object):
             else:
                 self._versionSave()
 
-        # node must not exist, check both packed and non-packed keys
-        nodeKey = '/NODES/' + nodeName
-        for ext in ['', '.json']:
-            path = nodeKey + ext
-            if self._kvI.exists(path):
-                raise QservAdminException(QservAdminException.NODE_EXISTS,
-                                          'Node: ' + nodeName, 'Existing key: ' + path)
+        # protect against concurrent modifications
+        with self._getNodeLock():
 
-        # make a node and set all options
-        options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
-        self._kvI.create(nodeKey, str(state))
-        self._addPacked(nodeKey, options)
+            # node must not exist, check both packed and non-packed keys
+            nodeKey = '/NODES/' + nodeName
+            for ext in ['', '.json']:
+                path = nodeKey + ext
+                if self._kvI.exists(path):
+                    raise QservAdminException(QservAdminException.NODE_EXISTS,
+                                              'Node: ' + nodeName, 'Existing key: ' + path)
+
+            # make a node and set all options
+            options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
+            self._kvI.create(nodeKey, str(state))
+            self._addPacked(nodeKey, options)
 
     def setNodeState(self, nodes, state):
         """
@@ -627,15 +649,51 @@ class QservAdmin(object):
         if isinstance(nodes, types.StringTypes):
             nodes = [nodes]
 
-        for node in nodes:
-            # check that node exists
-            nodeKey = '/NODES/' + node
-            if not self._kvI.exists(nodeKey):
-                raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
-                                          'Node: ' + node, 'Key: ' + nodeKey)
+        # protect against concurrent modifications
+        with self._getNodeLock():
+            for node in nodes:
+                # check that node exists
+                nodeKey = '/NODES/' + node
+                if not self._kvI.exists(nodeKey):
+                    raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
+                                              'Node: ' + node, 'Key: ' + nodeKey)
+                # update its state
+                self._kvI.set(nodeKey, state)
 
-            # update its state
-            self._kvI.set(nodeKey, state)
+    def deleteNode(self, nodeName):
+        """
+        Delete specified node from CSS database.
+
+        Only "unused" nodes that have no associated chunks can be deleted. If
+        node has any chunk an attempt to delete it will result in exception.
+        """
+
+        # first check version
+        self._versionCheck()
+
+        # protect against concurrent modifications
+        with self._getNodeLock():
+
+            # check that node is there
+            nodeKey = '/NODES/' + nodeName
+            if not self._kvI.exists(nodeKey) and not self._kvI.exists(nodeKey + '.json'):
+                raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
+                                          'Node: ' + nodeName, 'Key: ' + nodeKey)
+
+            # build the list of all used nodes
+            chunkNodes = set()
+            for dbName in self.databases():
+                for tblName in self.tables(dbName):
+                    chunks = self.chunks(dbName, tblName)
+                    for nodes in chunks.values():
+                        chunkNodes.update(nodes)
+
+            # must not be used
+            if nodeName in chunkNodes:
+                raise QservAdminException(QservAdminException.NODE_DELETE_FAILURE, 'Node: ' + nodeName)
+
+            # delete both regular and packed stuff
+            self._deletePacked(nodeKey)
 
     #### CHUNKS ####################################################################
     def chunks(self, dbName, tableName):
@@ -678,16 +736,18 @@ class QservAdmin(object):
         self._logger.debug("Add chunk replicas '%s.%s', chunk: %s hosts: %s",
                            dbName, tableName, chunk, hosts)
 
+        # protect against concurrent modifications
         with self._getDbLock(dbName):
+            with self._getNodeLock():
 
-            key = "/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS" % (dbName, tableName, chunk)
+                key = "/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS" % (dbName, tableName, chunk)
 
-            # TODO: no checks yet whether host already has the chunk registered
+                # TODO: no checks yet whether host already has the chunk registered
 
-            for host in hosts:
-                path = self._kvI.create(key + '/', sequence=True)
-                self._logger.debug("New chunk replica key: %s", path)
-                self._addPacked(path, dict(nodeName=host))
+                for host in hosts:
+                    path = self._kvI.create(key + '/', sequence=True)
+                    self._logger.debug("New chunk replica key: %s", path)
+                    self._addPacked(path, dict(nodeName=host))
 
     ################################################################################
     def dumpEverything(self, dest=None):
@@ -796,6 +856,10 @@ class QservAdmin(object):
     ##### Locking related ##########################################################
     def _getDbLock(self, dbName):
         return self._kvI.getLockObject("/DBS/%s" % dbName, self._uniqueId())
+
+    def _getNodeLock(self):
+        """ Lock all nodes """
+        return self._kvI.getLockObject("/NODES", self._uniqueId())
 
     def _uniqueId(self):
         self._uniqueLockId += 1

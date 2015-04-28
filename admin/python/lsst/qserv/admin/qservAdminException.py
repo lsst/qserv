@@ -46,5 +46,6 @@ QservAdminException = produceExceptionClass('QservAdminException', [
     (3055, "VERSION_MISSING",   "CSS schema/data version does not exist."),
     (3060, "NODE_EXISTS",       "Node already exists."),
     (3065, "NODE_DOES_NOT_EXIST", "Node does not exist."),
+    (3070, "NODE_DELETE_FAILURE", "Node cannot be deleted because it is used by one or more chunks."),
     (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
     (9999, "INTERNAL",          "Internal error.")])
