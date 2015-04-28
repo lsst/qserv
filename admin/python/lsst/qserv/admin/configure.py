@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # LSST Data Management System
 # Copyright 2015 AURA/LSST.
 #
@@ -32,7 +30,6 @@ Utilities for directory tree creation, templates management and command-line opt
 # --------------------------------
 #  Imports of standard modules --
 # -------------------------------
-import commons
 from distutils.util import strtobool
 import getpass
 import logging
@@ -46,6 +43,7 @@ from twisted.python.procutils import which
 # Imports for other modules --
 # ----------------------------
 from lsst.qserv.admin import path
+from lsst.qserv.admin import commons
 
 # ---------------------------------
 # Local non-exported definitions --
@@ -81,7 +79,7 @@ ALL_STEPS_DOC = {
           "and QSERV_DATA_DIR (see QSERV_RUN_DIR/qserv-meta.conf for details)",
     DIRTREE: "Create directory tree in QSERV_RUN_DIR, "
              "eventually create symbolic link from QSERV_RUN_DIR/var/lib to QSERV_DATA_DIR.",
-    ETC: "Create Qserv configuration files in  QSERV_RUN_DIR using values issued "+
+    ETC: "Create Qserv configuration files in QSERV_RUN_DIR using values issued " +
          "from meta-config file QSERV_RUN_DIR/qserv-meta.conf",
     MYSQL: "Remove MySQL previous data, install db and set password",
     XROOTD: "Create xrootd query and result directories",
@@ -130,7 +128,7 @@ def exists_and_is_writable(dir):
 
 
 # TODO : put in a shell script
-def check_root_dirs():
+def update_root_dirs():
 
     config = commons.getConfig()
 
@@ -156,7 +154,7 @@ def check_root_dirs():
         sys.exit(1)
     _LOG.info("Qserv directory structure creation succeeded")
 
-def check_root_symlinks():
+def update_root_symlinks():
     """ symlinks creation for directories externalised from qserv run dir
         i.e. QSERV_RUN_DIR/var/log will be symlinked to  config['qserv']['log_dir'] if needed
     """
@@ -367,13 +365,13 @@ def intersect(seq1, seq2):
     return [item for item in seq1 if item in seq2]
 
 
-def has_configuration_step(step_list):
+def has_configuration_step(steps):
     """
-    Reurn
+    Check if steps contains at least one configuration step
     @param step_list: list of string
     @return: True if step_list contains a configuration step
     """
-    return bool(intersect(step_list, CONFIGURATION_STEPS))
+    return bool(intersect(steps, CONFIGURATION_STEPS))
 
 
 class QservConfigTemplate(string.Template):

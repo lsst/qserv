@@ -1,40 +1,58 @@
-#  @file
-#
-# This module acts like a singleton, holding all global state for sconsUtils.
-# This includes the primary Environment object (state.env), the message log (state.log),
-# the command-line variables object (state.opts), and a dictionary of command-line targets
-# used to setup aliases, default targets, and dependencies (state.targets).  All four of
-# these variables are aliased to the main lsst.sconsUtils scope, so there should be no
-# need for users to deal with the state module directly.
-#
-# These are all initialized when the module is imported, but may be modified by other code
-# (particularly dependencies.configure()).
-##
 
+# LSST Data Management System
+# Copyright 2015 AURA/LSST.
+#
+# This product includes software developed by the
+# LSST Project (http://www.lsst.org/).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
+# see <http://www.lsstcorp.org/LegalNotices/>.
+
+"""
+This module acts like a singleton, holding all global state for Qserv scons script.
+This includes the primary Environment object (state.env), the message log (state.log),
+the command-line variables object (state.opts).
+
+These are all initialized when the module is imported, but may be modified by other code.
+
+@author  Fabrice Jammes, IN2P3
+
+"""
+
+# -------------------------------
+#  Imports of standard modules --
+# -------------------------------
 import os
+
+# ----------------------------
+# Imports for other modules --
+# ----------------------------
 import SCons.Script
 import SCons.Util
 from SCons.Environment import *
 from SCons.Variables import *
 
-##
-#  @brief A dictionary of SCons aliases and targets.
-#
-#  These are used to setup aliases, default targets, and dependencies by BasicSConstruct.finish().
-#  While one can still use env.Alias to setup aliases (and should for "install"), putting targets
-#  here will generally provide better build-time dependency handling (like ensuring everything
-#  is built before we try to install, and making sure SCons doesn't rebuild the world before
-#  installing).
-#
-#  Users can add additional keys to the dictionary if desired.
-#
-#  Targets should be added by calling extend() or using += on the dict values, to keep the lists of
-#  targets from turning into lists-of-lists.
-##
+# ---------------------------------
+# Local non-exported definitions --
+# ---------------------------------
 
-## @cond INTERNAL
 
+# -----------------------
+# Exported definitions --
+# -----------------------
 env = None
+# custom logger
 log = None
 opts = None
 
@@ -111,20 +129,34 @@ def _setEnvWithDependencies():
 
     log.info("Adding build dependencies information in scons environment")
     opts.AddVariables(
-            (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
-            (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc',"Looking for protoc compiler"), PathVariable.PathIsFile)),
-            (PathVariable('SWIG_BIN', 'swig binary path', _getBinPath('swig',"Looking for swig preprocessor"), PathVariable.PathIsFile)),
-            # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
-            (PathVariable('ANTLR', 'antlr binary path', _getBinPathFromBinList(['antlr','runantlr'],'Looking for antlr parser generator'), PathVariable.PathIsFile)),
-            (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin( 'XROOTD_DIR', "xrootd"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld_safe"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"), PathVariable.PathIsDir)),
-            (PathVariable('LOG4CXX_DIR', 'log4cxx install dir', _findPrefixFromName('LOG4CXX'), PathVariable.PathIsDir)),
-            (PathVariable('LOG_DIR', 'log install dir', _findPrefixFromName('LOG'), PathVariable.PathIsDir)),
-            (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"), PathVariable.PathIsDir)),
-            (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
-            (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
-            )
+        (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
+        (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc', "Looking for protoc compiler"),
+                      PathVariable.PathIsFile)),
+        (PathVariable('SWIG_BIN', 'swig binary path', _getBinPath('swig', "Looking for swig preprocessor"),
+                      PathVariable.PathIsFile)),
+        # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
+        (PathVariable('ANTLR', 'antlr binary path',
+                      _getBinPathFromBinList(['antlr', 'runantlr'], 'Looking for antlr parser generator'),
+                      PathVariable.PathIsFile)),
+        (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin('XROOTD_DIR', "xrootd"),
+                      PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld_safe"),
+                      PathVariable.PathIsDir)),
+        (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir',
+                      _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"),
+                      PathVariable.PathIsDir)),
+        (PathVariable('LOG4CXX_DIR', 'log4cxx install dir', _findPrefixFromName('LOG4CXX'),
+                      PathVariable.PathIsDir)),
+        (PathVariable('LOG_DIR', 'log install dir', _findPrefixFromName('LOG'),
+                      PathVariable.PathIsDir)),
+        (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"),
+                      PathVariable.PathIsDir)),
+        (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir',
+                      _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
+        (PathVariable('python_relative_prefix',
+                      'qserv install directory for python modules, relative to prefix',
+                      os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
+    )
     opts.Update(env)
 
     opts.AddVariables(

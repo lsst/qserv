@@ -82,15 +82,19 @@ class Configurator(object):
         parser = argparse.ArgumentParser(
             description="Qserv services configuration tool.",
             epilog="DESCRIPTION:\n"
-                   "  - Create an execution directory (QSERV_RUN_DIR) which contains configuration and execution\n"
+                   "  - Create an execution directory (QSERV_RUN_DIR) which contains configuration and"
+                   "execution\n"
                    "    data for a given Qserv instance.\n"
-                   "  - Create  a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data.\n"
-                   "  - Use templates and meta-config file parameters (see QSERV_RUN_DIR/qserv-meta.conf) to generate\n"
+                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data.\n"
+                   "  - Use templates and meta-config file parameters (see QSERV_RUN_DIR/qserv-meta.conf) to"
+                   "generate\n"
                    "    Qserv configuration files and databases.\n"
-                   "  - Default behaviour will configure a mono-node instance in " + default_qserv_run_dir + ".\n\n"
-                   "CAUTION:\n"
-                   "  - --all must be used for a setup from scratch.\n"
-                   "  - Consistency of binaries/configuration/data not garanteed when not starting from scratch.\n\n",
+                   "  - Default behaviour will configure a mono-node instance in " +
+                   default_qserv_run_dir + ".\n\n"
+                                           "CAUTION:\n"
+                                           "  - --all must be used for a setup from scratch.\n"
+                                           "  - Consistency of binaries/configuration/data not garanteed when"
+                                           " not starting from scratch.\n\n",
             formatter_class=argparse.RawDescriptionHelpFormatter
         )
 
@@ -105,11 +109,15 @@ class Configurator(object):
                             help='Run initialization and configuration'
                             )
         # Defining option of each configuration step
-        init_group = parser.add_argument_group('Initialization', 'Creation of QSERV_RUN_DIR and QSERV_DATA_DIR')
+        init_group = parser.add_argument_group('Initialization',
+                                               'Creation of QSERV_RUN_DIR and QSERV_DATA_DIR')
         config_group = parser.add_argument_group('Configuration steps', 'General configuration steps')
-        nodb_component_group = parser.add_argument_group('Components configuration', 'Configuration of external components')
-        db_component_group = parser.add_argument_group('Database components configuration', 'Configuration of external components '
-                                                       'impacting data,\nlaunched if and only if QSERV_DATA_DIR is empty')
+        nodb_component_group = parser.add_argument_group('Components configuration',
+                                                         'Configuration of external components')
+        db_component_group = parser.add_argument_group('Database components configuration',
+                                                       'Configuration of external components '
+                                                       'impacting data,\n'
+                                                       'launched if and only if QSERV_DATA_DIR is empty')
         for step_name in configure.ALL_STEPS:
             if step_name in configure.INIT:
                 group = init_group
@@ -120,8 +128,8 @@ class Configurator(object):
             else:
                 group = config_group
             group.add_argument(
-                "-{0}".format(configure.ALL_STEPS_SHORT[step_name]),
-                "--{0}".format(step_name),
+                '-' + configure.ALL_STEPS_SHORT[step_name],
+                '--' + step_name,
                 dest="step_list",
                 action='append_const',
                 const=step_name,
@@ -134,20 +142,19 @@ class Configurator(object):
                             help="Answer yes to all questions, use with care. Default: %(default)s"
                             )
 
-        # run dir, all mutable data related to a qserv running instance are
-        # located here
+        # run dir, all configuration/log data related to a qserv running instance are located here
         parser.add_argument("-R", "--qserv-run-dir", dest="qserv_run_dir",
                             default=default_qserv_run_dir,
                             help="Absolute path to qserv_run_dir. Default: %(default)s"
                             )
 
-        # run dir, all mutable data related to a qserv running instance are
-        # located here
+        # data dir, all business data/meta-data related to a qserv running instance are located here
         init_group.add_argument("-D", "--qserv-data-dir", dest="qserv_data_dir",
-                            default=None,
-                            help="Absolute path to directory containing Qserv data, default to QSERV_RUN_DIR/var/lib. "
-                                 "IMPORTANT: Set QSERV_DATA_DIR outside of QSERV_RUN_DIR to protect data when configuring Qserv."
-                            )
+                                default=None,
+                                help="Absolute path to directory containing Qserv data, default to "
+                                     "QSERV_RUN_DIR/var/lib. IMPORTANT: Set QSERV_DATA_DIR outside of "
+                                     "QSERV_RUN_DIR to protect data when configuring Qserv."
+                                )
 
         # meta-configuration file whose parameters will be dispatched in Qserv
         # services configuration files
@@ -193,11 +200,11 @@ class Configurator(object):
 
     def _template_to_symlink(self, filename, symlink):
         """
-        Generate qserv_run_dir/etc/filename from
-        qserv template and symlink it
-        @param filename:
-        @param symlink:
-        @return:
+        Use template qserv_prefix/cfg/templates/filename to generate
+        qserv_run_dir/etc/filename and create a symlink to the latter
+        @param filename: absolute path to the source template file
+        @param symlink: absolute path to the created symlink
+        @return: nothing
         """
 
         template_file = os.path.join(
@@ -295,20 +302,18 @@ class Configurator(object):
                     shutil.rmtree(self.args.qserv_run_dir)
                 else:
                     _LOG.fatal(
-                        "Stop Qserv configuration, specify an other configuration directory")
+                        "Terminating Qserv configuration, specify a different configuration directory")
                     sys.exit(1)
 
             in_meta_config_file = os.path.join(self._in_config_dir, "qserv-meta.conf")
-            _LOG.info("Create meta-configuration file: {0}"
+            _LOG.debug("Create meta-configuration file: {0}"
                       .format(self.args.meta_config_file)
                       )
             params_dict = {
                 'QSERV_RUN_DIR': self.args.qserv_run_dir,
                 'QSERV_DATA_DIR': self._qserv_data_dir
             }
-            _LOG.info("Store data in: {0}"
-                      .format(self._qserv_data_dir)
-                      )
+            _LOG.info("Store data in: %s" % self._qserv_data_dir)
             configure.apply_tpl_once(
                 in_meta_config_file, self.args.meta_config_file, params_dict)
 
@@ -328,13 +333,13 @@ class Configurator(object):
                 config['qserv']['meta_config_file'] = self.args.meta_config_file
 
             except ConfigParser.NoOptionError, exc:
-                _LOG.fatal("Miss option in meta-configuration file: %s", exc)
+                _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 
             if configure.DIRTREE in self.args.step_list:
                 _LOG.info("Define main directory structure")
-                configure.check_root_dirs()
-                configure.check_root_symlinks()
+                configure.update_root_dirs()
+                configure.update_root_symlinks()
 
             ##########################################
             #

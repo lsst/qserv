@@ -47,7 +47,6 @@ import os
 # -----------------------
 
 
-
 def get_default_log_conf():
     default_log_conf = "{0}/.lsst/logging.ini".format(os.path.expanduser('~'))
     return default_log_conf
@@ -78,7 +77,7 @@ def setup_logging(path='logging.ini',
             logging.config.fileConfig(f)
         return True
     else:
-        logging.config.basicConfig(level=default_level)
+        logging.basicConfig(level=default_level)
         return False
 
 

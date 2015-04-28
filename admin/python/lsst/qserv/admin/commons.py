@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # LSST Data Management System
 # Copyright 2015 AURA/LSST.
 #
@@ -68,8 +66,7 @@ def read_user_config():
 
 def read_config(config_file):
 
-    global config
-    _LOG.debug("Reading config file : %s" % config_file)
+    _LOG.debug('Reading config file %s' % config_file)
     if not os.path.isfile(config_file):
         _LOG.fatal("qserv configuration file not found : %s" % config_file)
         exit(1)

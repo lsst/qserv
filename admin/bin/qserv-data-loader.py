@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2015 AURA/LSST.
+# Copyright 2014-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -52,9 +52,9 @@ option will be added later.
 
 """
 
-#--------------------------------
+# -------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# -------------------------------
 import os
 import sys
 import argparse
@@ -62,17 +62,17 @@ import logging
 import MySQLdb as mysql
 import warnings
 
-#-----------------------------
+# ----------------------------
 # Imports for other modules --
-#-----------------------------
+# ----------------------------
 from lsst.qserv.admin.dataLoader import DataLoader
 from lsst.qserv.admin.qservAdmin import QservAdmin
 from lsst.qserv.admin.workerAdmin import WorkerAdmin
 import lsst.qserv.admin.logger
 
-#----------------------------------
+# ---------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ---------------------------------
 
 class _LogFilter(object):
     """Filter for logging which passes all records from specified logger only"""
@@ -89,9 +89,9 @@ class _LogFilter(object):
             return 1
         return 0
 
-#------------------------
+# -----------------------
 # Exported definitions --
-#------------------------
+# -----------------------
 class Loader(object):
     """
     Application class for loader application
