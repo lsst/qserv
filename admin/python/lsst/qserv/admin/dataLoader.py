@@ -711,28 +711,76 @@ class DataLoader(object):
         and overlap tables are created.
         """
 
-        # build table names, regular non-overlap chunk table is always there
-        tables = [self._chunkTableName(table, chunkId, False)]
+        ctable = self._chunkTableName(table, chunkId, False)
+        self._copyTableDDL(conn, database, table, ctable)
+
+        # only make overlap tables for sub-chunked tables
         if self.partOptions.isSubChunked:
-            # only make overlap tables for sub-chunked tables
-            tables += [self._chunkTableName(table, chunkId, True)]
+            ctable = self._chunkTableName(table, chunkId, True)
+            self._copyTableDDL(conn, database, table, ctable)
+            # overlap tables may have duplicated entries which conflicts
+            # with unique indices, replace those indices
+            self._fixOverlapIndices(conn, database, ctable)
+
+
+    def _copyTableDDL(self, conn, database, table, ctable):
+        """
+        Create table using schema of the existing table, this is used
+        to make chunk/overlap tables from original table definition.
+        """
+
+        q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
+
+        self._log.info('Make chunk table: %s', ctable)
+        self._log.debug('query: %s', q)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(q)
+        except MySQLdb.Warning as exc:
+            # Usually we suppress mysql warnings via warnings.filterwarnings(ignore, ..)
+            # but there may be other libraries that re-enable it and make exceptions.
+            # Just catch and ignore it
+            self._log.debug('warning: %s', exc)
+
+
+    def _fixOverlapIndices(self, conn, database, ctable):
+        """
+        Replaces unique indices on overlap table with non-unique
+        """
 
         cursor = conn.cursor()
-        for ctable in tables:
 
-            # make table using DDL from non-chunked one
-            q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
+        # Query to fetch all unique indices with corresponding column names,
+        # this is not very portable.
+        query = "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS " \
+            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND NON_UNIQUE = 0"
+        self._log.debug('query: %s, data: %s', query, (database, ctable))
+        cursor.execute(query, (database, ctable))
 
-            self._log.info('Make chunk table: %s', ctable)
-            self._log.debug('query: %s', q)
-            try:
-                cursor.execute(q)
-            except MySQLdb.Warning as exc:
-                # Usually we suppress mysql warnings via warnings.filterwarnings(ignore, ..)
-                # but there may be other libraries that re-enable it and make exceptions.
-                # Just catch and ignore it
-                self._log.debug('warning: %s', exc)
+        # map index name to list of columns
+        indices = {}
+        for idx, seq, column in cursor.fetchall():
+            indices.setdefault(idx, []).append((seq, column))
 
+        # replace each index with non-unique one
+        for idx, columns in indices.items():
+
+            self._log.info('Replacing index %s on table %s.%s', idx, database, ctable)
+
+            # drop existing index, PRIMARY is a keyword so it must be quoted
+            query = 'DROP INDEX `{0}` ON `{1}`.`{2}`'.format(idx, database, ctable)
+            self._log.debug('query: %s', query)
+            cursor.execute(query)
+
+            # column names sorted by index sequence number
+            colNames = ', '.join([col[1] for col in sorted(columns)])
+
+            # create new index
+            if idx == 'PRIMARY':
+                idx = 'PRIMARY_NON_UNIQUE'
+            query = 'CREATE INDEX `{0}` ON `{1}`.`{2}` ({3})'.format(idx, database, ctable, colNames)
+            self._log.debug('query: %s', query)
+            cursor.execute(query)
 
     def _loadNonChunkedData(self, database, table, files):
         """
