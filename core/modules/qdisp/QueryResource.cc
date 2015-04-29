@@ -68,21 +68,26 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         return; // Don't bother doing anything if the requester doesn't care.
     }
     _session = s;
+    // _request = std::make_shared<QueryRequest>(s, _payload, _requester,
+    //                                           _finishFunc,  _retryFunc,
+    //                                           _status);
+    // Above causes an error for now:/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../../../include/c++/4.4.7/bits/shared_ptr.h:1584: error: conversion from 'boost::shared_ptr<lsst::qserv::qdisp::QueryRequest>' to non-scalar type 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' requested
+
     _request = new QueryRequest(s, _payload, _requester,
-                                _finishFunc,  _retryFunc, _status);
-    assert(_request);
+                                _finishFunc,  _retryFunc,
+                                _status);
+
     // Hand off the request and release ownership.
     _status.report(ExecStatus::REQUEST);
     bool requestSent = _session->ProcessRequest(_request);
     if(requestSent) {
-        _request = 0; // _session now has ownership
+        _request = NULL; // _session now has ownership
     } else {
         int code;
         std::string msg = eInfoGet(code);
         _status.report(ExecStatus::REQUEST_ERROR, code, msg);
         LOGF_ERROR("Failed to send request %1%" % *_request);
-        delete _request;
-        _request = 0;
+        _request = NULL;
         // Retry the request.
         // TODO: should be more selective about retrying a query.
         if(_retryFunc) {

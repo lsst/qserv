@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,9 +23,12 @@
 #ifndef LSST_QSERV_QDISP_QUERYREQUEST_H
 #define LSST_QSERV_QDISP_QUERYREQUEST_H
 
-// Third-party headers
+// System headers
 #include <exception>
+#include <memory>
 #include <string>
+
+// Third-party headers
 #include "boost/shared_ptr.hpp"
 #include "boost/make_shared.hpp"
 #include "boost/thread/mutex.hpp"
@@ -68,6 +71,24 @@ public:
 
 /// A client implementation of an XrdSsiRequest that adapts qserv's executing
 /// queries to the XrdSsi API.
+///
+/// Memory allocation notes:
+/// In the XrdSsi API, raw pointers are passed around for XrdSsiRequest objects,
+/// and care needs to be taken to avoid deleting the request objects before
+/// Finished() is called. Typically, an XrdSsiRequest subclass is allocated with
+/// operator new, and passed into XrdSsi. At certain points in the transaction,
+/// XrdSsi will call methods in the request object or hand back the request
+/// object pointer. XrdSsi ceases interest in the object once the
+/// XrdSsiRequest::Finished() completes. Generally, this would mean the
+/// QueryRequest should clean itself up after calling Finished(). This requires
+/// special care, because there is a cancellation function in the wild that may
+/// call into QueryRequest after Finished() has been called. The cancellation
+/// code is
+/// designed to allow the client requester (elsewhere in qserv) to request
+/// cancellation without knowledge of XrdSsi, so the QueryRequest registers a
+/// cancellation function with its client that maintains a pointer to the
+/// QueryRequest. After Finished(), the cancellation function must be prevented
+/// from accessing the QueryRequest instance.
 class QueryRequest : public XrdSsiRequest {
 public:
     QueryRequest(
@@ -94,10 +115,11 @@ public:
     /// Called by xrootd when new data is available.
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
-    virtual void cancel();
-    virtual bool cancelled();
+    void cancel();
 
 private:
+    bool cancelled();
+
     bool _importStream();
     bool _importError(std::string const& msg, int code);
     void _errorFinish(bool shouldCancel=false);
@@ -119,10 +141,10 @@ private:
     boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
     /// Reference to an updatable Status
     ExecStatus& _status;
-    std::string _errorDesc; ///< Error description
 
-    boost::mutex _cancelledMutex;
-    bool _cancelled;
+    boost::mutex _finishStatusMutex;
+    enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus;
+
     class Canceller;
     friend class Canceller;
 }; // class QueryRequest

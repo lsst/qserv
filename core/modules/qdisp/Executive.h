@@ -46,13 +46,6 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
-namespace control {
-    class AsyncQueryManager;
-}}} // End of forward declarations
-
-
-namespace lsst {
-namespace qserv {
 namespace qdisp {
 class MessageStore;
 class QueryResource;
