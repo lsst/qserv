@@ -1,3 +1,34 @@
+R E L E A S E   2015_04
+=======================
+
+Release highlights:
+ * Switched to C++ 11
+ * Introduced dependency on flask
+ * Queries with large results (>2MB) are now properly handled.
+ * Query cancellation works, however multiple consecutive Ctrl-C
+   are not handled yet.
+
+Code improvements:
+ * DM-2177: Implement worker-side squashing
+ * DM-1692: Implement "unlimited" result size handling
+ * DM-2469: Turn on C++ 11 flag for Qserv
+ * DM-2497: Fix g++ 4.9 return value implicit conversion incompato
+ * DM-2519: Check for Qserv processes at configuration tool startup
+ * DM-2595: Symlink data directory at configuration
+
+New features:
+ * DM-2419: Implement authentication mechanism for worker management service
+ * DM-2385: Implement data loading in worker manager service
+ * DM-2617: Fix engine type in loader for index table
+ * DM-2618: Drop PK on overlap tables in data loader
+ * DM-2411: Allow qserv-admin.py to delete a node
+
+Bug fixes:
+ * DM-2547: Fix again interface between QservOss and new cmsd version
+ * DM-2481: Fix intermittent race condition in worker
+ * DM-2552: xrootd can't be started via ssh
+ * DM-2629: Fix build for gcc 4.7.2 and gcc 4.8.2
+
 R E L E A S E   2015_03
 =======================
 
