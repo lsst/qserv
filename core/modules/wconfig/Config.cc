@@ -44,15 +44,13 @@ using lsst::qserv::wconfig::Config;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////
-static const int settingsCount = 6;
+static const int settingsCount = 5;
 // key, env var name, default, description
 static const char* settings[settingsCount][4] = {
     {"mysqlSocket", "QSW_DBSOCK", "/var/lib/mysql/mysql.sock",
      "MySQL socket file path for db connections"},
     {"mysqlDefaultUser", "QSW_DEFUSER", "qsmaster",
      "Default username for mysql connections"},
-    {"mysqlDump", "QSW_MYSQLDUMP", "/usr/bin/mysqldump",
-     "path to mysqldump program binary"},
     {"scratchPath", "QSW_SCRATCHPATH", "/tmp/qserv",
      "path to store (temporary) dump files, e.g., /tmp/qserv"},
     {"scratchDb", "QSW_SCRATCHDB", "qservScratch",
@@ -93,12 +91,6 @@ std::string validateMysql(Config const& c) {
         if(!scn.connectToDb(eo)) {
             return "Unable to connect to MySQL with config:" + sc.asString();
         }
-    }
-
-    // Can't do dump w/o an executable.
-    // Shell exec will crash a boost test case badly if this fails.
-    if(!isExecutable(c.getString("mysqlDump"))) {
-        return "Could not find mysqldump.";
     }
     return std::string(); // All checks passed.
 }

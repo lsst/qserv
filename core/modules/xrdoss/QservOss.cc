@@ -45,15 +45,10 @@
 #include "XrdSys/XrdSysLogger.hh"
 
 // Qserv headers
-#include "obsolete/QservPath.h"
+#include "global/version.h"
+#include "global/ResourceUnit.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
-
-namespace XrdSsi
-{
-    extern XrdSysError Log;
-}
-
 
 namespace {
 /*
@@ -102,7 +97,7 @@ namespace xrdoss {
 // QservOss static
 ////////////////////////////////////////////////////////////////////////
 QservOss* QservOss::getInstance() {
-    static boost::shared_ptr<QservOss> instance;
+    static std::unique_ptr<QservOss> instance;
     if(!instance.get()) {
         instance.reset(new QservOss());
     }
@@ -202,12 +197,12 @@ int QservOss::Stat(const char *path, struct stat *buff, int opts, XrdOucEnv*) {
     // Lookup db/chunk in hash set.
 
     // Extract db and chunk from path
-    obsolete::QservPath qp(path);
-    if(qp.requestType() != obsolete::QservPath::CQUERY) {
+    ResourceUnit ru(path);
+    if(ru.unitType() != ResourceUnit::DBCHUNK) {
         // FIXME: Do we need to support /result here?
         return -ENOENT;
     }
-    if(_checkExist(qp.db(), qp.chunk())) {
+    if(_checkExist(ru.db(), ru.chunk())) {
         _fillQueryFileStat(*buff);
         LOGF(_log, LOG_LVL_INFO, "QservOss Stat %1% OK" % path);
         return XrdOssOK;
@@ -265,11 +260,20 @@ int QservOss::Init(XrdSysLogger* log, const char* cfgFn) {
     }
     LOG(_log, LOG_LVL_INFO, "QservOss Init");
     std::ostringstream ss;
-    ss << "Valid paths(ci): ";
-    _chunkInventory = boost::make_shared<wpublish::ChunkInventory>(_name);
-    _chunkInventory->dbgPrint(ss);
-    LOGF(_log, LOG_LVL_INFO, "%1%" % ss.str());
-    // TODO: update self with new config?
+    if(cfgFn) {
+        ss << "Valid paths(ci): ";
+        _chunkInventory.reset(new wpublish::ChunkInventory(_name));
+        _chunkInventory->dbgPrint(ss);
+    } else {
+        ss << "QservOss Init(pre-init)";
+    }
+    LOGF(_log, LOG_LVL_INFO, "%1%" % ss.str());    // TODO: update self with new config?
+    if(log) {
+        // XrdSsi log-unification not available w/osslib
+        XrdSysError sysError(log, "QservOssFs");
+        sysError.Say("QservOss Init");
+        sysError.Say(ss.str().c_str());
+    }
     return 0;
 }
 
@@ -295,7 +299,6 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
                        const char   *config_fn,
                        const char   *parms)
 {
-    XrdSsi::Log.logger(Logger);
     lsst::qserv::xrdoss::QservOss* oss =
         lsst::qserv::xrdoss::QservOss::getInstance();
     lsst::qserv::xrdsvc::XrdName x;
@@ -303,8 +306,8 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
     oss->reset(native_oss, Logger, config_fn, parms, name.c_str());
     static XrdSysError eRoute(Logger, "QservOssFs");
     std::stringstream ss;
-    ss << "QservOss (Qserv Oss for server cmsd) ";
-    ss << "\"" << name << "\"";
+    ss << "QservOss (for server cmsd) " << QSERV_SOURCE_VERSION;
+    ss << " \"" << name << "\"";
     eRoute.Say(ss.str().c_str());
     return oss;
 }

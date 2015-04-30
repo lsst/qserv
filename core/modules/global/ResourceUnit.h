@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -84,6 +84,7 @@ private:
     void _setFromPath(std::string const& path);
     void _ingestLeafAndKeys(std::string const& leafPlusKeys);
     void _ingestKeyStr(std::string const& keyStr);
+    bool _markGarbageIfDone(Tokenizer& t);
 
     UnitType _unitType; //< Type of unit
     std::string _db; //< for CQUERY and DBCHUNK types

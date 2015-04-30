@@ -10,12 +10,12 @@ import itertools
 
 
 programs = []
-unbuntuDeps = ["pthread"]
-extDeps = unbuntuDeps + "boost_regex boost_system boost_thread mysqlclient_r protobuf ssl crypto log log4cxx XrdClient XrdSsi XrdUtils".split()
+ubuntuDeps = ["pthread"]
+extDeps = ubuntuDeps + "boost_regex boost_system boost_thread mysqlclient_r ssl crypto log log4cxx XrdUtils".split()
 
-modDeps = 'mysql obsolete sql wbase wconfig wpublish util'.split() # deps on other modules
+modDeps = 'global mysql sql wconfig wpublish'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
-pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss', 'proto']))
+pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss']))
 pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
