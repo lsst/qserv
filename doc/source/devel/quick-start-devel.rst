@@ -8,6 +8,8 @@ Using Qserv with your own custom code or arbitrary versions can be done by
 connecting your local git clone with an eups software stack containing Qserv
 dependencies.
 
+.. _quick-start-devel-pre-requisites:
+
 **************
 Pre-requisites
 **************

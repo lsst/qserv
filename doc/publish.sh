@@ -29,6 +29,8 @@
 
 # eval `ssh-agent -s`
 # ssh-add ~/.ssh/id_rsa_lsst
+USER=fjammes
+
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 cd $DIR/..
 (
@@ -39,5 +41,5 @@ REMOTE_HOST=lsst-db2.slac.stanford.edu
 DOC_ROOT_PATH=/afs/slac/www/exp/lsst/qserv
 VERSION=`${DIR}/../admin/bin/qserv-version.sh`
 echo "Uploading documentation from $PWD to $REMOTE_HOST"
-rsync -ave ssh  doc/build/html/* ${REMOTE_HOST}:${DOC_ROOT_PATH}/${VERSION}
-ssh ${REMOTE_HOST} "ln -sf ${DOC_ROOT_PATH}/${VERSION}/toplevel.html ${DOC_ROOT_PATH}/index.html; ln -sf ${DOC_ROOT_PATH}/${VERSION}/_static ${DOC_ROOT_PATH}/_static"
+rsync -ave ssh  doc/build/html/* ${USER}@${REMOTE_HOST}:${DOC_ROOT_PATH}/${VERSION}
+ssh ${USER}@${REMOTE_HOST} "ln -sf ${DOC_ROOT_PATH}/${VERSION}/toplevel.html ${DOC_ROOT_PATH}/index.html; ln -sf ${DOC_ROOT_PATH}/${VERSION}/_static ${DOC_ROOT_PATH}/_static"
