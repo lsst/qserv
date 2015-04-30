@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
-
 # LSST Data Management System
-# Copyright 2014 AURA/LSST.
+# Copyright 2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -22,7 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-User-friendly configuration script for Qserv
+Configuration script for Qserv
 
 Can configure mono/master/worker instance.
 
@@ -42,7 +41,7 @@ A Qserv run directory can only run one Qserv instance at a time.
 
 # --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# -------------------------------
 import argparse
 import ConfigParser
 import logging
@@ -51,20 +50,20 @@ import shutil
 from subprocess import check_output
 import sys
 
-#-----------------------------
+# ----------------------------
 # Imports for other modules --
-#-----------------------------
+# ----------------------------
 from lsst.qserv.admin import configure, commons
 import lsst.qserv.admin.logger
 
-#----------------------------------
+# ---------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ---------------------------------
 _LOG = logging.getLogger()
 
-#------------------------
+# -----------------------
 # Exported definitions --
-#------------------------
+# -----------------------
 class Configurator(object):
     """
     Application class for configuration application
@@ -81,13 +80,22 @@ class Configurator(object):
             os.path.expanduser("~"), "qserv-run", qserv_version)
 
         parser = argparse.ArgumentParser(
-            description='''Qserv configuration tool. Creates an execution
-            directory (qserv_run_dir) which will contains configuration and execution
-            data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv-meta.conf
-            in all Qserv configuration files and databases. Default behaviour will configure a mono-node
-            instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
-            FOR A SETUP FROM SCRATCH.''',
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            description="Qserv services configuration tool.",
+            epilog="DESCRIPTION:\n"
+                   "  - Create an execution directory (QSERV_RUN_DIR) which contains configuration and"
+                   "execution\n"
+                   "    data for a given Qserv instance.\n"
+                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data.\n"
+                   "  - Use templates and meta-config file parameters (see QSERV_RUN_DIR/qserv-meta.conf) to"
+                   "generate\n"
+                   "    Qserv configuration files and databases.\n"
+                   "  - Default behaviour will configure a mono-node instance in " +
+                   default_qserv_run_dir + ".\n\n"
+                                           "CAUTION:\n"
+                                           "  - --all must be used for a setup from scratch.\n"
+                                           "  - Consistency of binaries/configuration/data not garanteed when"
+                                           " not starting from scratch.\n\n",
+            formatter_class=argparse.RawDescriptionHelpFormatter
         )
 
         parser.add_argument('-v', '--verbose', dest='verbose', default=[],
@@ -96,33 +104,57 @@ class Configurator(object):
                             help='More verbose output, can use several times.')
         parser = lsst.qserv.admin.logger.add_logfile_opt(parser)
 
-        parser.add_argument("-a", "--all", dest="all", action='store_true',
+        parser.add_argument('-a', '--all', dest='all', action='store_true',
                             default=False,
-                            help='''clean execution directory and then run all configuration steps'''
+                            help='Run initialization and configuration'
                             )
         # Defining option of each configuration step
-        for step_name in configure.STEP_LIST:
-            parser.add_argument(
-                "-{0}".format(configure.STEP_ABBR[step_name]),
-                "--{0}".format(step_name),
+        init_group = parser.add_argument_group('Initialization',
+                                               'Creation of QSERV_RUN_DIR and QSERV_DATA_DIR')
+        config_group = parser.add_argument_group('Configuration steps', 'General configuration steps')
+        nodb_component_group = parser.add_argument_group('Components configuration',
+                                                         'Configuration of external components')
+        db_component_group = parser.add_argument_group('Database components configuration',
+                                                       'Configuration of external components '
+                                                       'impacting data,\n'
+                                                       'launched if and only if QSERV_DATA_DIR is empty')
+        for step_name in configure.ALL_STEPS:
+            if step_name in configure.INIT:
+                group = init_group
+            elif step_name in configure.DB_COMPONENTS:
+                group = db_component_group
+            elif step_name in configure.NODB_COMPONENTS:
+                group = nodb_component_group
+            else:
+                group = config_group
+            group.add_argument(
+                '-' + configure.ALL_STEPS_SHORT[step_name],
+                '--' + step_name,
                 dest="step_list",
                 action='append_const',
                 const=step_name,
-                help=configure.STEP_DOC[step_name]
+                help=configure.ALL_STEPS_DOC[step_name]
             )
 
         # forcing options which may ask user confirmation
         parser.add_argument("-f", "--force", dest="force", action='store_true',
                             default=False,
-                            help="forcing removal of existing execution data"
+                            help="Answer yes to all questions, use with care. Default: %(default)s"
                             )
 
-        # run dir, all mutable data related to a qserv running instance are
-        # located here
+        # run dir, all configuration/log data related to a qserv running instance are located here
         parser.add_argument("-R", "--qserv-run-dir", dest="qserv_run_dir",
                             default=default_qserv_run_dir,
-                            help="full path to qserv_run_dir"
+                            help="Absolute path to qserv_run_dir. Default: %(default)s"
                             )
+
+        # data dir, all business data/meta-data related to a qserv running instance are located here
+        init_group.add_argument("-D", "--qserv-data-dir", dest="qserv_data_dir",
+                                default=None,
+                                help="Absolute path to directory containing Qserv data, default to "
+                                     "QSERV_RUN_DIR/var/lib. IMPORTANT: Set QSERV_DATA_DIR outside of "
+                                     "QSERV_RUN_DIR to protect data when configuring Qserv."
+                                )
 
         # meta-configuration file whose parameters will be dispatched in Qserv
         # services configuration files
@@ -148,9 +180,9 @@ class Configurator(object):
             lsst.qserv.admin.logger.setup_logging(self.args.log_conf)
 
         if self.args.all:
-            self.args.step_list = configure.STEP_LIST
+            self.args.step_list = configure.ALL_STEPS
         elif self.args.step_list is None:
-            self.args.step_list = configure.STEP_RUN_LIST
+            self.args.step_list = configure.CONFIGURATION_STEPS
 
 
         qserv_dir = os.path.abspath(
@@ -161,21 +193,20 @@ class Configurator(object):
         self._in_config_dir = os.path.join(qserv_dir, "cfg")
         self._template_root = os.path.join(self._in_config_dir, "templates")
 
-    @staticmethod
-    def _intersect(seq1, seq2):
-        ''' returns subset of seq1 which is contained in seq2 keeping original ordering of items '''
-        seq2 = set(seq2)
-        return [item for item in seq1 if item in seq2]
-
-    @staticmethod
-    def _contains_configuration_step(step_list):
-        return bool(Configurator._intersect(step_list, configure.STEP_RUN_LIST))
+        if self.args.qserv_data_dir:
+            self._qserv_data_dir = self.args.qserv_data_dir
+        else:
+            self._qserv_data_dir = os.path.join(self.args.qserv_run_dir, "var", "lib")
 
     def _template_to_symlink(self, filename, symlink):
         """
-        Generate qserv_run_dir/etc/filename from
-        qserv template and symlink it
+        Use template qserv_prefix/cfg/templates/filename to generate
+        qserv_run_dir/etc/filename and create a symlink to the latter
+        @param filename: absolute path to the source template file
+        @param symlink: absolute path to the created symlink
+        @return: nothing
         """
+
         template_file = os.path.join(
             self._template_root, "etc", filename
         )
@@ -260,7 +291,7 @@ class Configurator(object):
                 " stop it before running this script.", self.args.qserv_run_dir)
             sys.exit(1)
 
-        if configure.PREPARE in self.args.step_list:
+        if configure.INIT in self.args.step_list:
 
             if os.path.exists(self.args.qserv_run_dir):
 
@@ -270,17 +301,19 @@ class Configurator(object):
                 ):
                     shutil.rmtree(self.args.qserv_run_dir)
                 else:
-                    _LOG.info(
-                        "Stopping Qserv configuration, please specify an other configuration directory")
+                    _LOG.fatal(
+                        "Terminating Qserv configuration, specify a different configuration directory")
                     sys.exit(1)
 
             in_meta_config_file = os.path.join(self._in_config_dir, "qserv-meta.conf")
-            _LOG.info("Creating meta-configuration file: {0}"
+            _LOG.debug("Create meta-configuration file: {0}"
                       .format(self.args.meta_config_file)
                       )
             params_dict = {
-                'RUN_BASE_DIR': self.args.qserv_run_dir
+                'QSERV_RUN_DIR': self.args.qserv_run_dir,
+                'QSERV_DATA_DIR': self._qserv_data_dir
             }
+            _LOG.info("Store data in: %s" % self._qserv_data_dir)
             configure.apply_tpl_once(
                 in_meta_config_file, self.args.meta_config_file, params_dict)
 
@@ -289,11 +322,11 @@ class Configurator(object):
         # Running configuration procedure
         #
         ###################################
-        if Configurator._contains_configuration_step(self.args.step_list):
+        if configure.has_configuration_step(self.args.step_list):
 
             try:
                 _LOG.info(
-                    "Reading meta-configuration file {0}".format(self.args.meta_config_file))
+                    "Read meta-configuration file {0}".format(self.args.meta_config_file))
                 config = commons.read_config(self.args.meta_config_file)
 
                 # used in templates targets comments
@@ -304,9 +337,9 @@ class Configurator(object):
                 sys.exit(1)
 
             if configure.DIRTREE in self.args.step_list:
-                _LOG.info("Defining main directory structure")
-                configure.check_root_dirs()
-                configure.check_root_symlinks()
+                _LOG.info("Define main directory structure")
+                configure.update_root_dirs()
+                configure.update_root_symlinks()
 
             ##########################################
             #
@@ -314,11 +347,13 @@ class Configurator(object):
             # using templates and meta_config_file
             #
             ##########################################
-            run_base_dir = config['qserv']['run_base_dir']
+            qserv_run_dir = config['qserv']['qserv_run_dir']
+            qserv_data_dir = config['qserv']['qserv_data_dir']
+
             if configure.ETC in self.args.step_list:
                 _LOG.info(
-                    "Creating configuration files in {0}".format(os.path.join(run_base_dir, "etc")) +
-                    " and scripts in {0}".format(os.path.join(run_base_dir, "tmp"))
+                    "Create configuration files in {0}".format(os.path.join(qserv_run_dir, "etc")) +
+                    " and scripts in {0}".format(os.path.join(qserv_run_dir, "tmp"))
                 )
 
                 # TODO: see DM-2580
@@ -329,43 +364,45 @@ class Configurator(object):
                 #          )
                 # shutil.copytree(in_template_config_dir, out_template_config_dir)
 
-                dest_root = os.path.join(run_base_dir)
+                dest_root = os.path.join(qserv_run_dir)
                 configure.apply_tpl_all(
                     self._template_root,
                     dest_root
                 )
 
-            components_to_configure = Configurator._intersect(
+            component_cfg_steps = configure.intersect(
                 self.args.step_list, configure.COMPONENTS)
-            if len(components_to_configure) > 0:
-                _LOG.info("Running configuration scripts")
+            if len(component_cfg_steps) > 0:
+                _LOG.info("Run configuration scripts")
                 configuration_scripts_dir = os.path.join(
-                    run_base_dir, 'tmp', 'configure'
+                    qserv_run_dir, 'tmp', 'configure'
                 )
 
                 if config['qserv']['node_type'] in ['master']:
                     _LOG.info(
-                        "Master instance : not configuring " +
+                        "Master instance: not configuring " +
                         "%s and %s",
                         configure.SCISQL,
                         configure.WORKER
                     )
-                    components_to_configure.remove(configure.SCISQL)
-                    components_to_configure.remove(configure.WORKER)
+                    component_cfg_steps.remove(configure.SCISQL)
+                    component_cfg_steps.remove(configure.WORKER)
                 elif config['qserv']['node_type'] in ['worker']:
                     _LOG.info(
-                        "Worker instance : not configuring " +
+                        "Worker instance: not configuring " +
                         "{0}".format(configure.CZAR)
                     )
-                    components_to_configure.remove(configure.CZAR)
+                    component_cfg_steps.remove(configure.CZAR)
 
-                for comp in components_to_configure:
+                component_cfg_steps = configure.keep_data(component_cfg_steps, qserv_data_dir)
+
+                for comp in component_cfg_steps:
                     cfg_script = os.path.join(
                         configuration_scripts_dir, comp + ".sh")
                     if os.path.isfile(cfg_script):
                         commons.run_command([cfg_script])
 
-            if configure.CSS in self.args.step_list:
+            if configure.CSS_WATCHER in self.args.step_list:
                 self._template_to_client_config(configure.MYSQL)
 
             if configure.CLIENT in self.args.step_list:

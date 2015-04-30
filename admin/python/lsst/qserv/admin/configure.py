@@ -1,4 +1,35 @@
-import commons
+# LSST Data Management System
+# Copyright 2015 AURA/LSST.
+#
+# This product includes software developed by the
+# LSST Project (http://www.lsst.org/).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
+# see <http://www.lsstcorp.org/LegalNotices/>.
+
+"""
+Configuration module for Qserv
+
+Utilities for directory tree creation, templates management and command-line options
+
+@author  Fabrice Jammes, IN2P3
+
+"""
+
+# --------------------------------
+#  Imports of standard modules --
+# -------------------------------
 from distutils.util import strtobool
 import getpass
 import logging
@@ -6,52 +37,68 @@ import os
 import random
 import sys
 import string
-import shutil
 from twisted.python.procutils import which
 
+# ----------------------------
+# Imports for other modules --
+# ----------------------------
 from lsst.qserv.admin import path
+from lsst.qserv.admin import commons
 
+# ---------------------------------
+# Local non-exported definitions --
+# ---------------------------------
+_LOG = logging.getLogger(__name__)
+
+# -----------------------
+# Exported definitions --
+# -----------------------
 
 # used in cmd-line tool
-PREPARE = 'prepare'
+INIT = 'init'
 DIRTREE = 'directory-tree'
-ETC     = 'etc'
-CLIENT  = 'client'
+ETC = 'etc'
+CLIENT = 'client'
 
 MYSQL = 'mysql'
 XROOTD = 'xrootd'
-CSS = 'css'
+CSS_WATCHER = 'css-watcher'
 CZAR = 'qserv-czar'
 WORKER = 'qserv-worker'
 QSERV = 'qserv'
 SCISQL =  'scisql'
 
-COMPONENTS = [MYSQL, XROOTD, CSS, CZAR, WORKER, SCISQL]
-STEP_RUN_LIST = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
-STEP_LIST = [PREPARE] + STEP_RUN_LIST
-STEP_DOC = {
-    PREPARE: "create qserv_run_dir and attach it to current Qserv instance",
-    DIRTREE: "create directory tree in qserv_run_dir",
-    ETC: "fill qserv_run_dir configuration files with values issued "+
-         "from meta-config file $qserv_run_dir/qserv-meta.conf""",
-    MYSQL: "remove MySQL previous data, install db and set password",
-    XROOTD: "create xrootd query and result directories",
-    CSS: "configure CSS (i.e. MySQL credentials for css-watcher)",
-    CZAR: "initialize Qserv master databases",
-    WORKER: "initialize Qserv worker database",
-    SCISQL: "install and configure SciSQL",
-    CLIENT: "create client configuration file (used by integration tests for example)"
+DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
+NODB_COMPONENTS = [XROOTD, CSS_WATCHER]
+COMPONENTS = NODB_COMPONENTS + DB_COMPONENTS
+CONFIGURATION_STEPS = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
+
+ALL_STEPS = [INIT] + CONFIGURATION_STEPS
+ALL_STEPS_DOC = {
+    INIT: "Remove previous QSERV_RUN_DIR if exists, then create QSERV_RUN_DIR pointing to both current Qserv binaries "
+          "and QSERV_DATA_DIR (see QSERV_RUN_DIR/qserv-meta.conf for details)",
+    DIRTREE: "Create directory tree in QSERV_RUN_DIR, "
+             "eventually create symbolic link from QSERV_RUN_DIR/var/lib to QSERV_DATA_DIR.",
+    ETC: "Create Qserv configuration files in QSERV_RUN_DIR using values issued " +
+         "from meta-config file QSERV_RUN_DIR/qserv-meta.conf",
+    MYSQL: "Remove MySQL previous data, install db and set password",
+    XROOTD: "Create xrootd query and result directories",
+    CSS_WATCHER: "Configure CSS-watcher (i.e. MySQL credentials)",
+    CZAR: "Initialize Qserv master database",
+    WORKER: "Initialize Qserv worker database",
+    SCISQL: "Install and configure SciSQL",
+    CLIENT: "Create client configuration file (used by integration tests for example)"
 }
 
-STEP_ABBR = dict()
-for step in STEP_LIST:
+ALL_STEPS_SHORT = dict()
+for step in ALL_STEPS:
     if step in COMPONENTS:
         if step == WORKER:
-            STEP_ABBR[step]='W'
+            ALL_STEPS_SHORT[step] = 'W'
         else:
-            STEP_ABBR[step]=step[0].upper()
+            ALL_STEPS_SHORT[step] = step[0].upper()
     else:
-        STEP_ABBR[step]=step[0]
+        ALL_STEPS_SHORT[step] = step[0]
 
 # list of files that should only be readable by this account
 SECRET_FILES = ['qserv-wmgr.cnf', 'wmgr.secret']
@@ -68,8 +115,7 @@ def exists_and_is_writable(dir):
     Test if a dir exists. If no creates it, if yes checks if it is writeable.
     Return True if a writeable directory exists at the end of function execution, else False
     """
-    logger = logging.getLogger()
-    logger.debug("Checking existence and write access for : %s", dir)
+    _LOG.debug("Checking existence and write access for : %s", dir)
     if not os.path.exists(dir):
         try:
             os.makedirs(dir)
@@ -82,48 +128,46 @@ def exists_and_is_writable(dir):
 
 
 # TODO : put in a shell script
-def check_root_dirs():
-
-    logger = logging.getLogger()
+def update_root_dirs():
 
     config = commons.getConfig()
 
     for (section, option) in (('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
-                             ('mysqld', 'data_dir')):
+                             ('qserv', 'qserv_data_dir')):
         dir = config[section][option]
         if not exists_and_is_writable(dir):
-            logging.fatal("%s is not writable check/update permissions or"
+            _LOG.fatal("%s is not writable check/update permissions or"
                             " change config['%s']['%s']", dir, section, option)
             sys.exit(1)
 
-    for suffix in ('etc', 'var', 'var/lib', 'var/lib/qserv', 'var/run',
+    for suffix in ('etc', 'var', 'var/run',
                    'var/run/mysqld', 'var/lock/subsys'):
-        dir = os.path.join(config['qserv']['run_base_dir'], suffix)
+        dir = os.path.join(config['qserv']['qserv_run_dir'], suffix)
         if not exists_and_is_writable(dir):
-            logging.fatal("%s is not writable check/update permissions", dir)
+            _LOG.fatal("%s is not writable check/update permissions", dir)
             sys.exit(1)
 
     # user config
     user_config_dir = os.path.join(os.getenv("HOME"), ".lsst")
     if not exists_and_is_writable(user_config_dir):
-        logging.fatal("%s is not writable check/update permissions", dir)
+        _LOG.fatal("%s is not writable check/update permissions", dir)
         sys.exit(1)
-    logger.info("Qserv directory structure creation succeeded")
+    _LOG.info("Qserv directory structure creation succeeded")
 
-def check_root_symlinks():
+def update_root_symlinks():
     """ symlinks creation for directories externalised from qserv run dir
         i.e. QSERV_RUN_DIR/var/log will be symlinked to  config['qserv']['log_dir'] if needed
     """
-    log = logging.getLogger()
     config = commons.getConfig()
 
-    for (section, option, symlink_suffix) in (('qserv', 'log_dir', 'var/log'), ('qserv', 'tmp_dir', 'tmp'),
-                                              ('mysqld', 'data_dir', 'var/lib/mysql')):
+    for (section, option, symlink_suffix) in (('qserv', 'log_dir', os.path.join("var", "log")),
+                                              ('qserv', 'tmp_dir', 'tmp'),
+                                              ('qserv', 'qserv_data_dir', os.path.join("var", "lib"))):
         symlink_target = config[section][option]
-        default_dir = os.path.join(config['qserv']['run_base_dir'], symlink_suffix)
+        default_dir = os.path.join(config['qserv']['qserv_run_dir'], symlink_suffix)
 
-        # A symlink is needed if the target directory is not set to its default value
-        if  not os.path.samefile(symlink_target, os.path.realpath(default_dir)):
+        # symlink if target directory is not set to its default value
+        if symlink_target != default_dir:
             if os.path.exists(default_dir):
                 if os.path.islink(default_dir):
                     os.unlink(default_dir)
@@ -132,34 +176,17 @@ def check_root_symlinks():
                     sys.exit(1)
             _symlink(symlink_target, default_dir)
 
-    log.info("Qserv symlinks creation for externalized directories succeeded")
+    _LOG.info("Qserv symlinks creation for externalized directories succeeded")
 
 def _symlink(target, link_name):
-    logger = logging.getLogger()
-    logger.debug("Creating symlink, target : %s, link name : %s ", target, link_name)
+    _LOG.debug("Creating symlink, target : %s, link name : %s ", target, link_name)
     os.symlink(target, link_name)
-
-def uninstall(target, source, env):
-    logger = logging.getLogger()
-    config = commons.getConfig()
-    uninstall_paths = [
-            os.path.join(config['qserv']['log_dir']),
-            os.path.join(config['mysqld']['data_dir']),
-            os.path.join(config['qserv']['scratch_dir']),
-#            client_config_dir
-            ]
-    for upath in uninstall_paths:
-        if not os.path.exists(upath):
-            logger.info("Not uninstalling %s because it doesn't exists.", upath)
-        else:
-            shutil.rmtree(upath)
 
 template_params_dict = None
 def _get_template_params():
     """ Compute templates parameters from Qserv meta-configuration file
         from PATH or from environment variables for products not needed during build
     """
-    logger = logging.getLogger()
     config = commons.getConfig()
 
     global template_params_dict
@@ -176,16 +203,16 @@ def _get_template_params():
         if config['qserv']['node_type'] in ['mono', 'worker']:
             scisql_dir = os.environ.get('SCISQL_DIR')
             if scisql_dir is None:
-                logger.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+                _LOG.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
                 sys.exit(1)
         else:
             scisql_dir = "NOT-AVAILABLE # please set environment variable SCISQL_DIR if needed"
 
         python_bin_list = which("python")
         if python_bin_list:
-            python_bin=python_bin_list[0]
+            python_bin = python_bin_list[0]
         else:
-            python_bin="NOT-AVAILABLE"
+            python_bin = "NOT-AVAILABLE"
 
         params_dict = {
         'COMMENT_MONO_NODE' : comment_mono_node,
@@ -194,18 +221,19 @@ def _get_template_params():
         'PYTHON_BIN': python_bin,
         'PYTHONPATH': os.environ['PYTHONPATH'],
         'QSERV_MASTER': config['qserv']['master'],
+        'QSERV_DATA_DIR': config['qserv']['qserv_data_dir'],
         'QSERV_DIR': config['qserv']['base_dir'],
-        'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
+        'QSERV_RUN_DIR': config['qserv']['qserv_run_dir'],
         'QSERV_UNIX_USER': getpass.getuser(),
         'QSERV_LOG_DIR': config['qserv']['log_dir'],
         'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
-        'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
+        'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
         'QSERV_RPC_PORT': config['qserv']['rpc_port'],
         'QSERV_USER': config['qserv']['user'],
         'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
         'LUA_DIR': os.path.join(config['lua']['base_dir']),
         'MYSQL_DIR': config['mysqld']['base_dir'],
-        'MYSQLD_DATA_DIR': config['mysqld']['data_dir'],
+        'MYSQLD_DATA_DIR': os.path.join(config['qserv']['qserv_data_dir'], "mysql"),
         'MYSQLD_PORT': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
         'MYSQLD_HOST': '127.0.0.1',
@@ -217,8 +245,8 @@ def _get_template_params():
         'XROOTD_DIR': config['xrootd']['base_dir'],
         'XROOTD_MANAGER_HOST': config['qserv']['master'],
         'XROOTD_PORT': config['xrootd']['xrootd_port'],
-        'XROOTD_RUN_DIR': os.path.join(config['qserv']['run_base_dir'], "xrootd-run"),
-        'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['run_base_dir'], 'tmp'),
+        'XROOTD_RUN_DIR': os.path.join(config['qserv']['qserv_run_dir'], "xrootd-run"),
+        'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
         'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
         'ZOOKEEPER_PORT': config['zookeeper']['port'],
         'HOME': os.path.expanduser("~"),
@@ -229,7 +257,7 @@ def _get_template_params():
         'WMGR_SECRET_KEY': random_string(string.ascii_letters + string.digits, 57),
         }
 
-        logger.debug("Template input parameters:\n {0}".format(params_dict))
+        _LOG.debug("Template input parameters:\n {0}".format(params_dict))
         template_params_dict=params_dict
     else:
         params_dict=template_params_dict
@@ -253,8 +281,7 @@ def apply_tpl_once(src_file, target_file, params_dict = None):
     """ Creating one configuration file from one template
     """
 
-    logger = logging.getLogger()
-    logger.debug("Creating {0} from {1}".format(target_file, src_file))
+    _LOG.debug("Creating {0} from {1}".format(target_file, src_file))
 
     if params_dict is None:
         params_dict = _get_template_params()
@@ -266,7 +293,7 @@ def apply_tpl_once(src_file, target_file, params_dict = None):
     for match in t.pattern.findall(t.template):
         name = match[1]
         if len(name) != 0 and not params_dict.has_key(name):
-            logger.fatal("Template \"%s\" in file %s is not defined in configuration tool", name, src_file)
+            _LOG.fatal("Template \"%s\" in file %s is not defined in configuration tool", name, src_file)
             sys.exit(1)
 
     dirname = os.path.dirname(target_file)
@@ -277,11 +304,9 @@ def apply_tpl_once(src_file, target_file, params_dict = None):
 
 def apply_tpl_all(template_root, dest_root):
 
-    logger = logging.getLogger()
-
-    logger.info("Creating configuration from templates")
+    _LOG.info("Creating configuration from templates")
     if not os.path.isdir(template_root):
-        logger.fatal("Template root directory: {0} doesn't exist.".format(template_root))
+        _LOG.fatal("Template root directory: {0} doesn't exist.".format(template_root))
         sys.exit(1)
 
     for root, dirs, files in os.walk(template_root):
@@ -299,6 +324,25 @@ def apply_tpl_all(template_root, dest_root):
 
     return True
 
+
+def keep_data(components, qserv_data_dir):
+    """
+    If qserv_data_dir isn't empty then remove from components list
+    those whose configuration impact data
+
+    @param components: list of components to analyze
+    @param qserv_data_dir: absolute path to directory containing data
+    @return: list of components to configure
+    """
+    if os.listdir(qserv_data_dir):
+        current_db_comp = intersect(components, DB_COMPONENTS)
+        _LOG.warn("Remove configuration steps impacting data (%s) because of non-empty QSERV_DATA_DIR (%s)",
+                  current_db_comp,
+                  qserv_data_dir)
+        components = [item for item in components if item not in current_db_comp]
+    return components
+
+
 def user_yes_no_query(question):
     sys.stdout.write('\n%s [y/n]\n' % question)
     while True:
@@ -307,7 +351,32 @@ def user_yes_no_query(question):
         except ValueError:
             sys.stdout.write('Please respond with \'y\' or \'n\'.\n')
 
+
+def intersect(seq1, seq2):
+    """
+    Performs intersection of two configuration steps lists
+    @param seq1: first list of string
+    @type: list
+    @param seq2: second list of string
+    @type: list
+    @return: subset of seq1 which is contained in seq2 keeping original ordering of items
+    """
+    seq2 = set(seq2)
+    return [item for item in seq1 if item in seq2]
+
+
+def has_configuration_step(steps):
+    """
+    Check if steps contains at least one configuration step
+    @param step_list: list of string
+    @return: True if step_list contains a configuration step
+    """
+    return bool(intersect(steps, CONFIGURATION_STEPS))
+
+
 class QservConfigTemplate(string.Template):
+
+
     delimiter = '{{'
     pattern = r'''
     \{\{(?:
