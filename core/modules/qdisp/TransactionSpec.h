@@ -60,6 +60,10 @@ public:
     class Reader;
 };
 
+/// class TransactionSpec::Reader
+/// Constructs a TransactionSpec from an input file. Used for replaying
+/// transactions during development, debugging, and load testing. Probably
+/// obsolete.
 class TransactionSpec::Reader {
 public:
     Reader(std::string const& inFile);

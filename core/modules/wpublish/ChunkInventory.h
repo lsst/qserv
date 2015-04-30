@@ -68,14 +68,17 @@ public:
     ChunkInventory(std::string const& name);
     ChunkInventory(std::string const& name, boost::shared_ptr<sql::SqlConnection> sc);
 
+    /// (helper) Create a key string from a (db, chunk) pair
     static inline std::string makeKey(std::string const& db, int chunk) {
         std::stringstream ss;
         ss << db << chunk << "**key";
         return std::string(ss.str());
     }
+    /// @return true if the specified db and chunk are in the inventory
     bool has(std::string const& db, int chunk,
              std::string table=std::string()) const;
 
+    /// Construct a ResourceUnit::Checker backed by this instance
     boost::shared_ptr<ResourceUnit::Checker> newValidator();
 
     void dbgPrint(std::ostream& os);

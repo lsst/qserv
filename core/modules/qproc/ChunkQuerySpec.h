@@ -51,9 +51,9 @@ namespace qproc {
 class ChunkQuerySpec {
 public:
     // Contents could change
-    std::string db;
+    std::string db; ///< dominant db
     int chunkId;
-    StringPairVector scanTables;
+    StringPairVector scanTables; ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;
@@ -61,7 +61,7 @@ public:
     std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.
-    boost::shared_ptr<ChunkQuerySpec> nextFragment;
+    boost::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)
 };
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);

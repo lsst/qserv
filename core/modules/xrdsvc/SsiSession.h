@@ -56,6 +56,7 @@ public:
     typedef util::VoidCallable<void> CancelFunc;
     typedef boost::shared_ptr<CancelFunc> CancelFuncPtr;
 
+    /// Construct a new session (called by SsiService)
     SsiSession(char const* sname,
                ValidatorPtr validator,
                boost::shared_ptr<wbase::MsgProcessor> processor)
@@ -70,6 +71,8 @@ public:
         // XrdSsiSession::sessName is unmanaged, need to free()
         if(sessName) { ::free(sessName); sessName = 0; }
     }
+
+    // XrdSsiSession and XrdSsiResponder interfaces
     virtual bool ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
     virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
                                  bool cancel=false);
@@ -77,6 +80,7 @@ public:
     virtual bool Unprovision(bool forced);
 
 private:
+    /// Admit a new task for execution addressed to a resource unit
     void _enqueue(ResourceUnit const& ru, char* reqData, int reqSize);
     void _addCanceller(CancelFuncPtr p);
 

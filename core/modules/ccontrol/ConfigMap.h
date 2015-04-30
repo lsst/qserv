@@ -53,6 +53,7 @@ class ConfigMap {
 public:
     typedef boost::shared_ptr<ConfigMap> Ptr;
 
+    /// Construct a ConfigMap from a deep copy of a StringMap
     ConfigMap(StringMap const& m) : _m(m) {}
 
     /// @return the string value for a key, defaulting to defaultValue

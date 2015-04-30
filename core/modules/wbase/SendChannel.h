@@ -74,7 +74,12 @@ public:
             (*_release)();
         }
     }
+
+    /// Construct a new NopChannel that ignores everything it is asked to send
     static boost::shared_ptr<SendChannel> newNopChannel();
+
+    /// Construct a StringChannel, which appends all it receives into a string
+    /// provided by reference at construction.
     static boost::shared_ptr<SendChannel> newStringChannel(std::string& dest);
 
 protected:

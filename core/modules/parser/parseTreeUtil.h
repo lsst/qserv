@@ -54,6 +54,7 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+/// @return the text of a token, or an empty string if the reference is NULL
 template <typename AnAst>
 std::string tokenText(AnAst const& r) {
     if(r.get()) {

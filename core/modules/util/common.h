@@ -23,7 +23,8 @@
 /*
  * @file
  *
- * @brief Common utilty functions for lsst::qserv::master. Only std C++ dependencies allowed.
+ * @brief Common utilty functions for lsst::qserv.
+ *        Only std C++ dependencies allowed.
  *
  */
 #ifndef LSST_QSERV_UTIL_COMMON_H

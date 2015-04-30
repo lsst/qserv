@@ -49,6 +49,7 @@ namespace qserv {
 namespace wdb {
 
 /// Management class for handling query results.
+/// Dumps the specified result tables to a file or to a SendChannel
 class QueryPhyResult {
 public:
     typedef std::set<std::string> StringSet;
