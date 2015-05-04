@@ -812,7 +812,7 @@ class DataLoader(object):
         # need to know special characters used in csv
         # default delimiter is the same as in partitioner
         special_chars = {'delimiter': '\t',
-                         'enclose':  '"',
+                         'enclose':  '',
                          'escape': '\\',
                          'newline': '\n'}
 
