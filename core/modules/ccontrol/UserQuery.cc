@@ -208,6 +208,7 @@ void UserQuery::submit() {
 QueryState UserQuery::join() {
     bool successful = _executive->join(); // Wait for all data
     _infileMerger->finalize(); // Wait for all data to get merged
+    _discardMerger();
     if(successful) {
         LOGF_INFO("Joined everything (success)");
         return SUCCESS;
@@ -215,7 +216,6 @@ QueryState UserQuery::join() {
         LOGF_ERROR("Joined everything (failure!)");
         return ERROR;
     }
-    _discardMerger();
 }
 
 /// Release resources held by the merger
