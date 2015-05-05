@@ -611,7 +611,7 @@ def loadData(dbName, tblName, chunkId=None):
     - one with the name "load-options" which contains set of options encoded
       with usual application/x-www-form-urlencoded content type, options are:
       - delimiter - defaults to TAB
-      - enclose - defaults to double quote
+      - enclose - defaults to empty string (strings are not enclosed)
       - escape - defaults to backslash
       - terminate - defaults to newline
       - compressed - "0" or "1", by default is guessed from file extension (.gz)
@@ -677,8 +677,7 @@ def loadData(dbName, tblName, chunkId=None):
                                     "Chunk table %s.%s does not exist" % (dbName, tblName))
 
     # optional load-options
-    options = dict(delimiter='\t', enclose='"', escape='\\', terminate='\n',
-                   compressed=None, local="0")
+    options = dict(delimiter='\t', enclose='', escape='\\', terminate='\n', compressed=None)
     formOptions = request.form.get('load-options')
     _log.debug('formOptions: %s', formOptions)
     if formOptions:
@@ -693,9 +692,11 @@ def loadData(dbName, tblName, chunkId=None):
         _log.debug('options: %s', options)
 
     # get table data
-    with closing(request.files.get('table-data')) as data:
-        if data is None:
-            raise ExceptionResponse(400, "MissingFileData", "table-data part is missing from request")
+    table_data = request.files.get('table-data')
+    if table_data is None:
+        _log.debug("table-data part is missing from request")
+        raise ExceptionResponse(400, "MissingFileData", "table-data part is missing from request")
+    with closing(table_data) as data:
         _log.debug('data: name=%s filename=%s', data.name, data.filename)
 
         # named pipe to send data to mysql, make it in a temporary dir

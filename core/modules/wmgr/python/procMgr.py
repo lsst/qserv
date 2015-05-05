@@ -105,7 +105,7 @@ def getServiceState(service):
     cmd = [initScript, 'status']
     running = _runCmd(cmd) == 0
 
-    return json.jsonify(results=_svcDict(service, running))
+    return json.jsonify(result=_svcDict(service, running))
 
 
 @procService.route('/<service>', methods=['PUT'])
@@ -143,4 +143,4 @@ def execAction(service):
     cmd = [initScript, 'status']
     running = _runCmd(cmd) == 0
 
-    return json.jsonify(results=_svcDict(service, running))
+    return json.jsonify(result=_svcDict(service, running))
