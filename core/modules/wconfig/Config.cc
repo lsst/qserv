@@ -34,9 +34,9 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include "boost/thread/once.hpp"
+#include "lsst/log/Log.h"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 

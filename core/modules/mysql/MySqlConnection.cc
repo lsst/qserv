@@ -31,6 +31,8 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include "boost/lexical_cast.hpp"
+#include "lsst/log/Log.h"
+
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -38,6 +40,7 @@
 
 namespace { // File-scope helpers
 inline void killMySql(MYSQL* mysql, bool useThreadMgmt) {
+    LOG_DEBUG("Closing MySQL connection");
     mysql_close(mysql);
     // Dangerous to use mysql_thread_end(), because caller may belong to a
     // different thread other than the one that called mysql_init(). Suggest
@@ -181,6 +184,7 @@ MYSQL* MySqlConnection::_connectHelper() {
         return m;
     }
     unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
+    LOGF_DEBUG("Connecting to %1%" % _sqlConfig->dbName.c_str());
     MYSQL* c = mysql_real_connect(
         m,
         _sqlConfig->socket.empty() ?_sqlConfig->hostname.c_str() : 0,
