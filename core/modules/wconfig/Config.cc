@@ -36,6 +36,7 @@
 #include "boost/thread/once.hpp"
 
 // Qserv headers
+#include "lsst/log/Log.h"
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 
@@ -61,6 +62,7 @@ static const char* settings[settingsCount][4] = {
 
 // Singleton Config object support /////////////////////////////////////
 Config& getConfigHelper() {
+    LOG_DEBUG("Calling getConfigHelper()");
     static Config c;
     return c;
 }
@@ -105,6 +107,8 @@ namespace wconfig {
 // class Config
 ////////////////////////////////////////////////////////////////////////
 Config::Config() {
+
+    LOG_DEBUG("Calling Config::Config()");
     _load();
     _validate();
 }
@@ -166,6 +170,8 @@ void Config::_load() {
 
 void Config::_validate() {
     // assume we're thread-protected
+
+    LOGF_DEBUG("Calling Config::_validate()");
     _error = validateMysql(*this);
     _isValid = _error.empty();
 }
