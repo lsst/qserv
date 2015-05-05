@@ -85,7 +85,7 @@ def main():
 
     # port number comes from SERVER_HOST configuration
     host = app.config.get('WMGR_INTERFACE')
-    app.run(host)
+    app.run(host, threaded=True)
 
 
 if __name__ == '__main__':
