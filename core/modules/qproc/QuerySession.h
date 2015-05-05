@@ -67,14 +67,12 @@ namespace qserv {
 namespace qproc {
 
 ///  QuerySession contains state and behavior for operating on user queries. It
-///  contains much of the query analysis-side of AsyncQueryManager's
-///  responsibility, including the text of the original query, a parsed query
-///  tree, and other user state/context.
+///  contains much of the query analysis-side responsibility, including the text 
+///  of the original query, a parsed query  tree, and other user state/context.
 class QuerySession {
 public:
     class Iter;
     friend class Iter;
-    friend class AsyncQueryManager; // factory for QuerySession.
     typedef boost::shared_ptr<QuerySession> Ptr;
 
     explicit QuerySession(boost::shared_ptr<css::Facade>);

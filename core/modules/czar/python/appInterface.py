@@ -40,6 +40,10 @@ def parseKillId(killQuery):
         # Could add validation code here, but shouldn't be necessary.
         return int(tokens[2])
     except:
+        pass
+    try:
+        return int(tokens[1])
+    except:
         return None
 
 # Main AppInterface class

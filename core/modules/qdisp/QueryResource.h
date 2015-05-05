@@ -77,7 +77,10 @@ public:
 
 private:
     XrdSsiSession* _session; ///< unowned, do not delete.
-    QueryRequest* _request; ///< Owned temporarily, special deletion handling.
+
+    /// Owned temporarily, special deletion handling.
+    QueryRequest* _request;
+
     std::string const _payload; ///< Request payload
     boost::shared_ptr<ResponseRequester> _requester; ///< Response requester
     /// Called upon transaction finish

@@ -239,7 +239,7 @@ bool Executive::join() {
 
 void Executive::markCompleted(int refNum, bool success) {
     ResponseRequester::Error e;
-    LOGF_INFO("Executive::markCompletion(%1%,%2%)" % refNum % success);
+    LOGF_INFO("Executive::markCompleted(%1%,%2%)" % refNum % success);
     if(!success) {
         {
             boost::lock_guard<boost::mutex> lock(_requestersMutex);

@@ -34,6 +34,8 @@
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 #include "boost/utility.hpp"
+#include "boost/thread/locks.hpp"
+#include "boost/thread/mutex.hpp"
 
 // Local headers
 #include "ccontrol/QueryState.h"
@@ -117,6 +119,8 @@ private:
     boost::shared_ptr<rproc::InfileMerger> _infileMerger;
     boost::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
 
+    bool _killed;
+    boost::mutex _killMutex;
     int _sessionId; ///< External reference number
     int _sequence; ///< Sequence number for subtask ids
     std::string _errorExtra; ///< Additional error information

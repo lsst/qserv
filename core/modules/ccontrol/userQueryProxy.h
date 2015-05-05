@@ -45,9 +45,6 @@ namespace qserv {
 namespace ccontrol {
 class UserQuery;
 
-// Set UserQueryEnable=1 to enable code that prefers UserQuery framework
-// UserQueryEnable=0 to prefer AsyncQueryManager
-enum _userQueryProxyConst {UserQueryEnable=1};
 
 /// @return error description
 std::string const& UserQuery_getError(int session);

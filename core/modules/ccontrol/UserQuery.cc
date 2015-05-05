@@ -137,7 +137,16 @@ std::string const& UserQuery::getError() const {
 /// Attempt to kill in progress.
 void UserQuery::kill() {
     LOGF_INFO("UserQuery kill");
-    _executive->squash();
+    boost::lock_guard<boost::mutex> lock(_killMutex);
+    if(!_killed) {
+        _killed = true;
+        try {
+            _executive->squash();
+        } catch(UserQueryError e) {
+            // Silence merger discarding errors, because this object is being
+            // released. Client no longer cares about merger errors.
+        }
+    }
 }
 
 /// Add a chunk to be executed
@@ -220,6 +229,12 @@ void UserQuery::_discardMerger() {
 
 /// Release resources.
 void UserQuery::discard() {
+    {
+        boost::lock_guard<boost::mutex> lock(_killMutex);
+        if(_killed) {
+            return;
+        }
+    }
     // Make sure resources are released.
     if(_executive && _executive->getNumInflight() > 0) {
         throw UserQueryError("Executive unfinished, cannot discard");
