@@ -127,10 +127,6 @@ private:
 
     XrdSsiSession* _session;
 
-    char* _buffer; ///< Response buffer
-    char* _cursor; ///< Response buffer cursor
-    int _bufferSize; ///< Response buffer size
-    int _bufferRemain; ///< Remaining size (_cursor to end)
     std::string _payload; ///< Request buffer
     std::shared_ptr<ResponseRequester> _requester; ///< Response requester
 

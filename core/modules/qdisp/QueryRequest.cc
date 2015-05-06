@@ -153,7 +153,6 @@ bool QueryRequest::_importStream() {
     bool retrieveInitiated = false;
     // Pass ResponseRequester's buffer directly.
     std::vector<char>& buffer = _requester->nextBuffer();
-    LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
