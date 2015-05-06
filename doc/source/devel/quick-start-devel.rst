@@ -20,9 +20,9 @@ source dependencies for the current Qserv release:
 .. code-block:: bash
 
    # use Qserv official distribution server
-   eups distrib install --current-all --onlydepend --tag qserv qserv
+   eups distrib install --onlydepend --tag qserv qserv
    # only if you want to launch integration tests with your Qserv code
-   eups distrib install --current-all --tag qserv qserv_testdata
+   eups distrib install --tag qserv qserv_testdata
    setup qserv_testdata
  
 .. note::

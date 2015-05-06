@@ -1,8 +1,7 @@
 #!/bin/sh
 
-
 # LSST Data Management System
-# Copyright 2015 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,30 +20,23 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Dependencies for Debian8.x-based distributions
-# Tested on jessie
-#
 
-# @author  Fabrice Jammes, IN2P3
+# Replicate Qserv install/configuration scripts to a number of servers.
 
-apt-get --yes install bash \
-    bison \
-    bzip2 \
-    cmake \
-    curl \
-    flex \
-    g++ \
-    gettext \
-    libbz2-dev \
-    libglib2.0-dev \
-    libpthread-workqueue-dev \
-    libreadline-dev \
-    make \
-    numpy \
-    ncurses-dev \
-    openjdk-7-jre-headless \
-    openssl \
-    python-dev \
-    python-setuptools \
-    zlib1g-dev
+# @author  Fabrice Jammes, IN2P3/SLAC
+
+set -e
+set -x
+
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+
+. "$DIR"/scripts/params.sh
+
+SRC_LOC="$USER@ccqservbuild.in2p3.fr:$DIR/scripts"
+
+# each server rsync scripts using current AFS user account in order to use krb token for ssh connection
+sh "$DIR"/hosts.sh | /opt/shmux/bin/shmux -c "sh -c \"rsync --delete -avz -e ssh $SRC_LOC /tmp\"" -
+
+# on each server, copy scripts to qserv account workspace
+sh "$DIR"/hosts.sh | /opt/shmux/bin/shmux -c \
+    "sudo -u qserv sh -c \"rsync --delete -av /tmp/scripts $INSTALL_BASE\"" -

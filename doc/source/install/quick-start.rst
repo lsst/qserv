@@ -64,7 +64,7 @@ Then below, please set ``RELEASE`` to "|release|" to install explicitly this rel
    # First, define RELEASE, here we install current Qserv release
    RELEASE="qserv"
    # loadLSST.bash must have been sourced before running this (see above)
-   eups distrib install --current-all --tag $RELEASE qserv_distrib
+   eups distrib install --tag $RELEASE qserv_distrib
    setup qserv_distrib
 
 .. _quick-start-configuration:

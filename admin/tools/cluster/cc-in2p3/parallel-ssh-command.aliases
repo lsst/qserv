@@ -1,3 +1,6 @@
+# FIXME: obsolete, remove also qserv-parallel-cmd.py and specific dependencies
+# from Qserv
+
 if [ "$QSERV_DIR" = "" ]; then
     echo "ERROR: \$QSERV_DIR undefined"
 else
