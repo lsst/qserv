@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -66,8 +66,7 @@ public:
           _requester(requester),
           _finishFunc(finishFunc),
           _retryFunc(retryFunc),
-          _status(status)
-    {
+          _status(status) {
         if (rName == NULL) {
             throw std::bad_alloc();
         }
