@@ -67,7 +67,7 @@ import warnings
 # ----------------------------
 from lsst.qserv.admin.dataLoader import DataLoader
 from lsst.qserv.admin.qservAdmin import QservAdmin
-from lsst.qserv.admin.workerAdmin import WorkerAdmin
+from lsst.qserv.admin.nodeAdmin import NodeAdmin
 import lsst.qserv.admin.logger
 
 # ---------------------------------
@@ -287,11 +287,11 @@ class Loader(object):
 
         if qservAdmin:
             # will get node info from CSS
-            wAdmin = WorkerAdmin(name=nodeName, qservAdmin=qservAdmin)
+            wAdmin = NodeAdmin(name=nodeName, qservAdmin=qservAdmin)
         else:
             # no CSS, use node name as host name for direct mysql connection
             mysqlConn = str(self.args.mysqlPort)
-            wAdmin = WorkerAdmin(host=nodeName, mysqlConn=mysqlConn)
+            wAdmin = NodeAdmin(host=nodeName, mysqlConn=mysqlConn)
 
         kws = dict(local_infile=1)
         if self.args.user:

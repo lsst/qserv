@@ -52,7 +52,7 @@ _LOG = logging.getLogger(__name__)
 
 # Qserv service states
 NO_STATUS_SCRIPT = -1
-DOWN = 255
+DOWN = 127
 UP = 0
 
 config = dict()
@@ -123,7 +123,7 @@ def restart(service_name):
 def status(qserv_run_dir):
     """
     Check if Qserv services are up
-    @qserv_run_dir Qserv run directory of Qserv instance to ckeck
+    @param qserv_run_dir: Qserv run directory of Qserv instance to ckeck
     @return: the exit code of qserv-status.sh, i.e.:
              id status file doesn't exists: -1 (NO_STATUS_SCRIPT)
              if all Qserv services are up:   0 (UP)

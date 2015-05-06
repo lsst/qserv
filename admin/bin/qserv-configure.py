@@ -159,14 +159,9 @@ class Configurator(object):
         # meta-configuration file whose parameters will be dispatched in Qserv
         # services configuration files
         self.args = parser.parse_args()
-        default_meta_config_file = os.path.join(
-            self.args.qserv_run_dir, "qserv-meta.conf")
-        parser.add_argument("-m", "--metaconfig", dest="meta_config_file",
-                            default=default_meta_config_file,
-                            help="full path to Qserv meta-configuration file"
-                            )
 
-        self.args = parser.parse_args()
+        self._meta_config_file = os.path.join(
+            self.args.qserv_run_dir, "qserv-meta.conf")
 
         verbosity = len(self.args.verbose)
         if verbosity != 0:
@@ -217,9 +212,7 @@ class Configurator(object):
             template_file,
             cfg_file
         )
-        _LOG.debug(
-            "Client configuration file created: {0}".format(cfg_file)
-        )
+        _LOG.debug("Client configuration file created: %s", cfg_file)
 
         if os.path.exists(symlink):
             try:
@@ -241,14 +234,12 @@ class Configurator(object):
         else:
             try:
                 os.remove(symlink)
-                _LOG.debug("Removing broken symbolic link : {0}".format(symlink))
+                _LOG.debug("Removing broken symbolic link : %s", symlink)
             except os.error:
                 pass
             os.symlink(cfg_file, symlink)
 
-        _LOG.info(
-            "{0} points to: {1}".format(symlink, cfg_file)
-        )
+        _LOG.info("%s points to: %s", symlink, cfg_file)
 
     def _template_to_client_config(self, product):
         """
@@ -269,7 +260,7 @@ class Configurator(object):
             self._template_to_symlink("logging.ini", os.path.join(homedir, ".lsst", "logging.ini"))
         elif product == configure.MYSQL:
             self._template_to_symlink("my-client.cnf",
-                                      os.path.join(homedir, ".my.cnf"))
+                                      os.path.join(homedir, ".lsst", ".my.cnf"))
         else:
             _LOG.fatal("Unable to apply configuration template " +
                        "for product %s", product)
@@ -296,8 +287,7 @@ class Configurator(object):
             if os.path.exists(self.args.qserv_run_dir):
 
                 if self.args.force or configure.user_yes_no_query(
-                                "WARNING : Do you want to erase all configuration" +
-                                " data in {0} ?".format(self.args.qserv_run_dir)
+                                "WARNING : Do you want to erase all configuration data in {0} ?".format(self.args.qserv_run_dir)
                 ):
                     shutil.rmtree(self.args.qserv_run_dir)
                 else:
@@ -306,16 +296,14 @@ class Configurator(object):
                     sys.exit(1)
 
             in_meta_config_file = os.path.join(self._in_config_dir, "qserv-meta.conf")
-            _LOG.debug("Create meta-configuration file: {0}"
-                      .format(self.args.meta_config_file)
-                      )
+            _LOG.info("Creating meta-configuration file: %s", self._meta_config_file)
             params_dict = {
                 'QSERV_RUN_DIR': self.args.qserv_run_dir,
                 'QSERV_DATA_DIR': self._qserv_data_dir
             }
             _LOG.info("Store data in: %s" % self._qserv_data_dir)
             configure.apply_tpl_once(
-                in_meta_config_file, self.args.meta_config_file, params_dict)
+                in_meta_config_file, self._meta_config_file, params_dict)
 
         ###################################
         #
@@ -325,12 +313,11 @@ class Configurator(object):
         if configure.has_configuration_step(self.args.step_list):
 
             try:
-                _LOG.info(
-                    "Read meta-configuration file {0}".format(self.args.meta_config_file))
-                config = commons.read_config(self.args.meta_config_file)
+                _LOG.info("Reading meta-configuration file {0}".format(self._meta_config_file))
+                config = commons.read_config(self._meta_config_file)
 
                 # used in templates targets comments
-                config['qserv']['meta_config_file'] = self.args.meta_config_file
+                config['qserv']['meta_config_file'] = self._meta_config_file
 
             except ConfigParser.NoOptionError, exc:
                 _LOG.fatal("Missing option in meta-configuration file: %s", exc)
@@ -365,10 +352,7 @@ class Configurator(object):
                 # shutil.copytree(in_template_config_dir, out_template_config_dir)
 
                 dest_root = os.path.join(qserv_run_dir)
-                configure.apply_tpl_all(
-                    self._template_root,
-                    dest_root
-                )
+                configure.apply_tpl_all( self._template_root, dest_root)
 
             component_cfg_steps = configure.intersect(
                 self.args.step_list, configure.COMPONENTS)

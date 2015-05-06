@@ -41,7 +41,7 @@ import types
 # Imports for other modules --
 #-----------------------------
 from lsst.db.exception import produceExceptionClass
-from .workerAdmin import WorkerAdmin
+from .nodeAdmin import NodeAdmin
 
 #----------------------------------
 # Local non-exported definitions --
@@ -67,7 +67,7 @@ class WorkerMgmt(object):
       2. doing some operation on the selected set of nodes
 
     For some operations latter responsibility can possibly be delegated to some
-    other entity, e.g. WorkerAdmin class.
+    other entity, e.g. NodeAdmin class.
     """
 
     #----------------
@@ -90,7 +90,7 @@ class WorkerMgmt(object):
 
     def select(self, state=None, nodeType=None):
         """
-        Returns set of WorkerAdmin instances based on supplied selection criteria.
+        Returns set of NodeAdmin instances based on supplied selection criteria.
 
         @param state:   string or list of strings from a list defined in  QservAdmin.NodeState.STATES
                         (e.g. QservAdmin.NodeState.ACTIVE). If provided then only nodes with
@@ -103,7 +103,7 @@ class WorkerMgmt(object):
         nodes = self.selectDict(state, nodeType)
 
         # convert to instances
-        return [WorkerAdmin(name=key, qservAdmin=self.css) for key, _ in nodes.items()]
+        return [NodeAdmin(name=key, qservAdmin=self.css) for key, _ in nodes.items()]
 
 
     def selectDict(self, state=None, nodeType=None):
@@ -140,7 +140,7 @@ class WorkerMgmt(object):
 
         Method takes arguments that select the list of nodes (same arguments
         as defined for select() method) and additional keyword arguments that
-        are passed to WorkerAdmin.mysqlConn() method. Note that in the future
+        are passed to NodeAdmin.mysqlConn() method. Note that in the future
         we will likely replaces those positional arguments with something else.
 
         If database already exists on some nodes it will not be re-created.
@@ -150,7 +150,7 @@ class WorkerMgmt(object):
                           "ALL" privileges on created database
         @param state:     same as in select() method
         @param nodeType:  same as in select() method
-        @param kwargs:    optional keyword arguments passed to WorkerAdmin.mysqlConn()
+        @param kwargs:    optional keyword arguments passed to NodeAdmin.mysqlConn()
                           method
         @return: tuple of two integers, first integer is the number of workers selected,
                  second is the number of workers where database did not exist and was created
@@ -199,7 +199,7 @@ class WorkerMgmt(object):
 
         Method takes arguments that select the list of nodes (same arguments
         as defined for select() method) and additional keyword arguments that
-        are passed to WorkerAdmin.mysqlConn() method. Note that in the future
+        are passed to NodeAdmin.mysqlConn() method. Note that in the future
         we will likely replaces those positional arguments with something else.
 
         If table already exists on some nodes it will not be re-created.
@@ -208,7 +208,7 @@ class WorkerMgmt(object):
         @param tableName: table name to be created
         @param state:     same as in select() method
         @param nodeType:  same as in select() method
-        @param kwargs:    optional keyword arguments passed to WorkerAdmin.mysqlConn()
+        @param kwargs:    optional keyword arguments passed to NodeAdmin.mysqlConn()
                           method
         @return: tuple of two integers, first integer is the number of workers selected,
                  second is the number of workers where table did not exist and was created
