@@ -34,10 +34,7 @@
 
 // System headers
 #include <map>
-
-// Third-party headers
-#include "boost/thread/locks.hpp"
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 
 // Qserv headers
 #include "qana/PluginNotFoundError.h"
@@ -47,36 +44,39 @@ namespace qserv {
 namespace qana {
 
 namespace { // File-scope helpers
+
+struct Registry {
     typedef std::map<std::string, lsst::qserv::qana::QueryPlugin::FactoryPtr> FactoryMap;
 
-//boost::once_flag factoryMapFlag = BOOST_ONCE_INIT;
-static boost::mutex factoryMapMutex;
+    std::mutex mutex;
+    FactoryMap map;
+};
 
-// Static local member
-FactoryMap& factoryMap() {
-    static FactoryMap instance;
+Registry& registry() {
+    static Registry instance;
     return instance;
 }
 
 } // anonymous namespace
 
-QueryPlugin::Ptr
-QueryPlugin::newInstance(std::string const& name) {
-    boost::lock_guard<boost::mutex> guard(factoryMapMutex);
 
-    FactoryMap::iterator e = factoryMap().find(name);
-    if(e == factoryMap().end()) { // No plugin.
+QueryPlugin::Ptr QueryPlugin::newInstance(std::string const& name) {
+    Registry& r = registry();
+    std::lock_guard<std::mutex> guard(r.mutex);
+    Registry::FactoryMap::iterator e = r.map.find(name);
+    if(e == r.map.end()) {
         throw PluginNotFoundError(name);
     } else {
         return e->second->newInstance();
     }
 }
 
-void
-QueryPlugin::registerClass(QueryPlugin::FactoryPtr f) {
-    boost::lock_guard<boost::mutex> guard(factoryMapMutex);
-    if(!f.get()) return;
-    factoryMap()[f->getName()] = f;
+void QueryPlugin::registerClass(QueryPlugin::FactoryPtr f) {
+    Registry& r = registry();
+    std::lock_guard<std::mutex> guard(r.mutex);
+    if (f) {
+        r.map[f->getName()] = f;
+    }
 }
 
 }}} // namespace lsst::qserv::qana
