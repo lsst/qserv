@@ -24,7 +24,10 @@
 #define LSST_QSERV_QDISP_QUERYRESOURCE_H
 
 // System headers
+#include <cstdlib>
+#include <new>
 #include <string>
+#include <string.h>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
@@ -56,17 +59,23 @@ public:
                   boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                   boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                   ExecStatus& status)
-        : Resource(rPath.c_str()),
+        : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
           _session(NULL),
           _request(NULL),
           _payload(payload),
           _requester(requester),
           _finishFunc(finishFunc),
           _retryFunc(retryFunc),
-          _status(status) {
+          _status(status)
+    {
+        if (rName == NULL) {
+            throw std::bad_alloc();
+        }
     }
 
-    virtual ~QueryResource() {}
+    virtual ~QueryResource() {
+        std::free(const_cast<char *>(rName)); // clean up heap allocated resource path copy
+    }
 
     void ProvisionDone(XrdSsiSession* s);
     const char* eInfoGet(int &code);
