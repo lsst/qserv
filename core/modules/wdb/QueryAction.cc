@@ -141,9 +141,16 @@ class QueryAction::Impl::Poisoner : public util::VoidCallable<void> {
 public:
     Poisoner(std::shared_ptr<Impl> i) : _i(i) {}
     void operator()() {
-        _i->poison();
+        std::shared_ptr<Impl> iSharedPtr(_i.lock());
+        if (iSharedPtr) {
+            iSharedPtr->poison();
+        }
     }
-    std::shared_ptr<Impl> _i;
+    // Poisoners are potentially long-lived, so weak_ptr is better,
+    // otherwise we would unnecessarily hold resources corresponding
+    // to work that has been completed (and we wouldn't be able to do
+    // poisoning for these resources anyway).
+    std::weak_ptr<Impl> _i;
 };
 
 ////////////////////////////////////////////////////////////////////////
