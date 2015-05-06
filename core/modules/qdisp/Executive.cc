@@ -181,7 +181,6 @@ private:
 };
 
 /// Add a spec to be executed. Not thread-safe.
-///
 void Executive::add(int refNum, Executive::Spec const& s) {
     bool alreadyCancelled = lockedRead(_cancelled, _cancelledMutex);
     if(alreadyCancelled) {
@@ -390,7 +389,7 @@ void Executive::_dispatchQuery(int refNum,
         delete r;
         return;
     }
-    
+
     LOGF_DEBUG("Provision was ok");
     // FIXME: For squashing, need to hold ptr to QueryResource, so we can
     // instruct it to call XrdSsiRequest::Finished(cancel=true). Also, can send
@@ -416,9 +415,8 @@ void Executive::_setup() {
     assert(_service);
 }
 
-/** Check to see if a requester should retry, based on how many retries have
- * been attempted. Increments the retry counter as a side effect.
- */
+/// Check to see if a requester should retry, based on how many retries have
+/// been attempted. Increments the retry counter as a side effect.
 bool Executive::_shouldRetry(int refNum) {
     const int MAX_RETRY = 5;
     boost::lock_guard<boost::mutex> lock(_retryMutex);
@@ -488,6 +486,9 @@ void Executive::_unTrack(int refNum) {
     }
 }
 
+/// This function only acts when there are errors. In there are no errors,
+/// markCompleted() does the cleanup, while we are waiting (in
+/// _waitAllUntilEmpty()).
 void Executive::_reapRequesters(boost::unique_lock<boost::mutex> const&) {
     RequesterMap::iterator i, e;
     while(true) {
@@ -525,8 +526,9 @@ void Executive::_reportStatuses() {
     }
 }
 
-/** This function blocks until it has reaped all the requesters.
- */
+/// This function blocks until it has reaped all the requesters.
+/// Typically the requesters are handled by markCompleted().
+/// _reapRequesters() deals with cases that involve errors.
 void Executive::_waitAllUntilEmpty() {
     boost::unique_lock<boost::mutex> lock(_requestersMutex);
     int lastCount = -1;
