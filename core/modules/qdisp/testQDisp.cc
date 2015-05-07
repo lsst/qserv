@@ -171,7 +171,7 @@ void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt 
  */
 void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
     LOGF_INFO("timeoutFunc");
-    boost::this_thread::sleep(boost::posix_time::milliseconds(millisecs));
+    usleep(1000*millisecs);
     bool done = flagDone.get();
     LOGF_INFO("timeoutFunc sleep over millisecs=%1% done=%2%" % millisecs % done);
     BOOST_REQUIRE(done == true);
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
     jobs += 5;
     while (qdisp::XrdSsiServiceMock::_count.get() < jobs) {
         LOGF_INFO("waiting for _count(%1%) == jobs(%2%)" % qdisp::XrdSsiServiceMock::_count.get() % jobs);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+        usleep(10000);
     }
     BOOST_CHECK(ex.getEmpty() == false);
     qdisp::XrdSsiServiceMock::_go.set(true);

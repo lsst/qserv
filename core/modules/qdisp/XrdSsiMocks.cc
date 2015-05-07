@@ -89,7 +89,7 @@ void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr, unsigned sho
     // barrier for all threads when _go is false.
     _go.wait(true);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep begin");
-    boost::this_thread::sleep(boost::posix_time::milliseconds(millisecs));
+    usleep(1000*millisecs);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
     QueryResourceDebug::getStatus(*qr).report(ExecStatus::RESPONSE_DONE);
     QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()

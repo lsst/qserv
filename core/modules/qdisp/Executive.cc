@@ -40,6 +40,8 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <chrono>
+#include <functional>
 #include <iostream>
 #include <sstream>
 
@@ -532,7 +534,7 @@ void Executive::_waitAllUntilEmpty() {
     int count;
     int moreDetailThreshold = 5;
     int complainCount = 0;
-    const boost::posix_time::seconds statePrintDelay(5);
+    const std::chrono::seconds statePrintDelay(5);
     //_printState(LOG_STRM(Debug));
     while(!_requesters.empty()) {
         count = _requesters.size();
@@ -553,7 +555,7 @@ void Executive::_waitAllUntilEmpty() {
                 lock.lock();
             }
         }
-        _requestersEmpty.timed_wait(lock, statePrintDelay);
+        _requestersEmpty.wait_for(lock, statePrintDelay);
     }
 }
 
