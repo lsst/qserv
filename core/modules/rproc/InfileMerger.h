@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,11 +30,11 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
 #include "boost/thread.hpp" // for mutex.
-#include <memory>
 
 // Local headers
 #include "rproc/mergeTypes.h"

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,11 +29,9 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include <memory>
 
 // Local headers
 #include "css/Facade.h"
@@ -65,7 +63,7 @@ public:
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
-                                              ///  for this lifetime.
+                                            ///  for this lifetime.
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context

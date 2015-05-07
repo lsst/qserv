@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,11 +25,11 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 
 // Third-party headers
-#include <memory>
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 

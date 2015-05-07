@@ -75,7 +75,7 @@ std::vector<T> convertVec(StringVector const& v) {
 }
 template <typename T>
 std::shared_ptr<Region> make(StringVector const& v) {
-        return std::shared_ptr<Region>(new T(convertVec<double>(v)));
+    return std::shared_ptr<Region>(new T(convertVec<double>(v)));
 }
 template <>
 std::shared_ptr<Region> make<Box>(StringVector const& v) {
@@ -148,7 +148,7 @@ public:
     };
     explicit PartitioningMap(css::StripingParams const& sp) {
         _chunker = std::make_shared<sg::Chunker>(sp.stripes,
-                                                   sp.subStripes);
+                                                 sp.subStripes);
 
     }
     /// @return un-canonicalized vector<SubChunks> of concatenated region
@@ -199,7 +199,6 @@ IndexMap::IndexMap(css::StripingParams const& sp,
                    std::shared_ptr<SecondaryIndex> si)
     : _pm(std::make_shared<PartitioningMap>(sp)),
       _si(si) {
-
 }
 
 ChunkSpecVector IndexMap::getAll() {

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,11 +29,9 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include <memory>
 
 // Local headers
 #include "query/typedefs.h"

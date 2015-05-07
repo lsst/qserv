@@ -30,10 +30,10 @@
 
 // System headers
 #include <iostream>
+#include <memory>
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include <memory>
 
 // Forward declarations
 namespace lsst {

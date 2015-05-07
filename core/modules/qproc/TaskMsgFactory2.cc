@@ -79,7 +79,7 @@ public:
         : _session(session), _resultTable(resultTable) {
     }
     std::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
-                                              std::string const& chunkResultName);
+                                            std::string const& chunkResultName);
 private:
     template <class C1, class C2, class C3>
     void addFragment(proto::TaskMsg& m, std::string const& resultName,

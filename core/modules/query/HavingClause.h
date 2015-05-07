@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,7 +29,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
+// System headers
 #include <memory>
 
 // Local headers

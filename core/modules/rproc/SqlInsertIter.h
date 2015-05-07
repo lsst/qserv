@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,9 +29,11 @@
 #ifndef LSST_QSERV_RPROC_SQLINSERTITER_H
 #define LSST_QSERV_RPROC_SQLINSERTITER_H
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include "boost/regex.hpp"
-#include <memory>
 
 // Local headers
 #include "util/PacketBuffer.h"

@@ -115,18 +115,16 @@ SqlConnection::SqlConnection()
 }
 
 SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt)
-    : _connection(std::make_shared<mysql::MySqlConnection>(
-                                                             sc,
-                                                             useThreadMgmt
-                                                            )) {
+    : _connection(std::make_shared<mysql::MySqlConnection>(sc,
+                                                           useThreadMgmt
+                                                           )) {
 }
 
 void
 SqlConnection::reset(mysql::MySqlConfig const& sc, bool useThreadMgmt) {
-    _connection = std::make_shared<mysql::MySqlConnection>(
-                                                             sc,
-                                                             useThreadMgmt
-                                                            );
+    _connection = std::make_shared<mysql::MySqlConnection>(sc,
+                                                           useThreadMgmt
+                                                           );
 }
 
 SqlConnection::~SqlConnection() {
@@ -219,10 +217,7 @@ SqlConnection::runQuery(std::string const query,
 std::shared_ptr<SqlResultIter>
 SqlConnection::getQueryIter(std::string const& query) {
     std::shared_ptr<SqlResultIter> i =
-            std::make_shared<SqlResultIter>(
-                                              _connection->getConfig(),
-                                              query
-                                             );
+            std::make_shared<SqlResultIter>(_connection->getConfig(), query);
     return i; // Can't defer to iterator without thread mgmt.
 }
 

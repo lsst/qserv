@@ -35,13 +35,13 @@
 #include <algorithm> // sort
 #include <cstdlib>   // rand, srand
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <time.h>    // time
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
-#include <memory>
 
 // Qserv headers
 #include "css/CssError.h"

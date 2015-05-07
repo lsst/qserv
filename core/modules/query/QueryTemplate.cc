@@ -145,7 +145,7 @@ struct EntryMerger {
             std::shared_ptr<QueryTemplate::Entry> e;
             e = std::make_shared<QueryTemplate::StringEntry>(
                                                    outputString(_candidates)
-                                                              );
+                                                             );
             _entries.push_back(e);
             _candidates.clear();
         } else if(!_candidates.empty()) {

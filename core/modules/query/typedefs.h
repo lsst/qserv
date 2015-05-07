@@ -26,17 +26,16 @@
  * @ingroup global
  *
  * @brief Query-related C++ types used by query, parser, and qana modules
- *                                                                                                                                                                                       
- * @author Fabrice Jammes, IN2P3/SLAC                                                                                                                                                    
- */                                                                                                                                                                                 
-                                                                                                                                                                                         
-// Class header                                                                                                                                                                           
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
+
 // System headers
 #include <vector>
 
 // Third-party headers
-                                                                                                                                                                                         
-// Qserv headers 
+
+// Qserv headers
 
 #ifndef QUERY_TYPES_H_
 #define QUERY_TYPES_H_

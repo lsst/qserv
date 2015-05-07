@@ -29,7 +29,6 @@
 #include <string>
 
 // Third-party headers
-#include <memory>
 #include "boost/thread/mutex.hpp"
 #include "XrdSsi/XrdSsiRequest.hh"
 

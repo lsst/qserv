@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,10 +34,10 @@
 #define LSST_QSERV_CSS_EMPTYCHUNKS_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
-#include <memory>
 #include "boost/thread/mutex.hpp"
 
 // Local headers

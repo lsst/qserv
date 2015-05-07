@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,7 +49,7 @@
 #ifndef LSST_QSERV_WCONTROL_FOREMAN_H
 #define LSST_QSERV_WCONTROL_FOREMAN_H
 
-// Third-party headers
+// System headers
 #include <memory>
 
 // Local headers

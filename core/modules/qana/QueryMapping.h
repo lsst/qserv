@@ -30,10 +30,8 @@
 
 // System headers
 #include <map>
-#include <set>
-
-// Third-party headers
 #include <memory>
+#include <set>
 
 // Forward declarations
 namespace lsst {

@@ -26,7 +26,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
+// System headers
 #include <memory>
 
 // Qserv headers

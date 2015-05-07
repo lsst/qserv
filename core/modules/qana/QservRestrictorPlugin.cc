@@ -337,25 +337,25 @@ private:
     void _setGenerator(query::QsRestrictor const& r) {
         if(r._name == "qserv_areaspec_box") {
             _generator = std::make_shared<AreaGenerator>("s2PtInBox",
-                                                           4,
-                                                           r._params
-                                                          );
+                                                         4,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_circle") {
             _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
-                                                           3,
-                                                           r._params
-                                                          );
+                                                         3,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_ellipse") {
             _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
-                                                           5,
-                                                           r._params
-                                                          );
+                                                         5,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
             _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
-                                                           use_string,
-                                                           r._params
-                                                          );
+                                                         use_string,
+                                                         r._params
+                                                         );
         } else if(_name == "qserv_objectId") {
             _generator = std::make_shared<ObjectIdGenerator>(r._params);
         } else {

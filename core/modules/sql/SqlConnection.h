@@ -34,11 +34,9 @@
 #define LSST_QSERV_SQL_SQLCONNECTION_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include <memory>
 
 // Local headers
 #include "global/stringTypes.h"

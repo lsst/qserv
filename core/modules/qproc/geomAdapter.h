@@ -33,8 +33,6 @@
 // System headers
 #include <vector>
 
-// Other external headers
-
 // LSST headers
 #include "sg/Box.h"
 #include "sg/Circle.h"

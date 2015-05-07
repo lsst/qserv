@@ -25,12 +25,12 @@
 
 // System headers
 #include <cstdlib>
+#include <memory>
 #include <new>
 #include <string>
 #include <string.h>
 
 // Third-party headers
-#include <memory>
 #include "XrdSsi/XrdSsiService.hh" // Resource
 
 // Local headers

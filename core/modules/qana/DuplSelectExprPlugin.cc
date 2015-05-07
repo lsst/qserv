@@ -34,9 +34,11 @@
 // Class header
 #include "qana/DuplSelectExprPlugin.h"
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include "boost/algorithm/string/case_conv.hpp"
-#include <memory>
 
 // LSST headers
 #include "lsst/log/Log.h"

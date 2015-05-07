@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,10 +24,10 @@
 #define LSST_QSERV_MYSQL_ROWBUFFER_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
-#include <memory>
 #include <mysql/mysql.h>
 
 namespace lsst {

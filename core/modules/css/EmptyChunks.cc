@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,9 +28,9 @@
 #include <iterator>
 #include <fstream>
 #include <functional>
+#include <memory>
 
 // Third-party headers
-#include <memory>
 #include "boost/thread.hpp"
 
 // Qserv headers

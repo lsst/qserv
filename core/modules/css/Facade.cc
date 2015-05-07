@@ -478,7 +478,7 @@ std::shared_ptr<Facade>
 FacadeFactory::createMemFacade(std::istream& mapStream,
                                std::string const& emptyChunkPath) {
     std::shared_ptr<css::Facade> cssFPtr(new css::Facade(
-                                               mapStream, emptyChunkPath));
+                                           mapStream, emptyChunkPath));
     return cssFPtr;
 }
 

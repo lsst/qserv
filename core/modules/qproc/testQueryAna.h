@@ -106,9 +106,9 @@ std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
 }
 
 std::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
-                                               std::string const& stmt,
-                                               std::string const& expected,
-                                               std::string const& expectedErr="") {
+                                             std::string const& stmt,
+                                             std::string const& expected,
+                                             std::string const& expectedErr="") {
 
     std::shared_ptr<QuerySession> qs = prepareTestQuerySession(t, stmt, expectedErr);
     if(qs->getError().empty()) {

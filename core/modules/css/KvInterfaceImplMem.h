@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,11 +35,9 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party
-#include <memory>
 
 // Local headers
 #include "css/KvInterface.h"

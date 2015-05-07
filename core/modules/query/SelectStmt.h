@@ -30,8 +30,6 @@
   */
 
 // System headers
-
-// Third-party headers
 #include <memory>
 
 // Local headers

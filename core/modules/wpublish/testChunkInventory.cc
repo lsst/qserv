@@ -76,10 +76,8 @@ struct ChunkSql : public MockSql {
     virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
         if(startswith(query, "SELECT db FROM")) {
             std::shared_ptr<SqlIter> it;
-            it = std::make_shared<SqlIter>(
-                                             _selectDbTuples.begin(),
-                                             _selectDbTuples.end()
-                                            );
+            it = std::make_shared<SqlIter>(_selectDbTuples.begin(),
+                                           _selectDbTuples.end());
             return it;
         }
         return std::shared_ptr<SqlIter>();

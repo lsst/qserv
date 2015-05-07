@@ -191,7 +191,7 @@ void UserQuery::submit() {
         cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         std::shared_ptr<MergingRequester> mr
             = std::make_shared<MergingRequester>(cmr, _infileMerger,
-                                                   chunkResultName);
+                                                 chunkResultName);
         qdisp::Executive::Spec s = { ru,
                                      ss.str(),
                                      mr};
