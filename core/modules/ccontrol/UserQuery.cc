@@ -66,8 +66,6 @@
 // System headers
 #include <cassert>
 
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 

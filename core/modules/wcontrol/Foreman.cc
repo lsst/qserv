@@ -30,12 +30,12 @@
 #include <deque>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <utility>
 
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
-#include <mutex>
 
 // LSST headers
 #include "lsst/log/Log.h"

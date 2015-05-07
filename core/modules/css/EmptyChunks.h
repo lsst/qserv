@@ -34,13 +34,12 @@
 #define LSST_QSERV_CSS_EMPTYCHUNKS_H
 
 // System headers
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
-// Third-party headers
-#include <mutex>
-
-// Local headers
+// Qserv headers
 #include "global/intTypes.h"
 
 namespace lsst {

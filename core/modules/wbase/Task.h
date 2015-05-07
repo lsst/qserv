@@ -28,10 +28,8 @@
 // System headers
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <string>
-
-// Third-party headers
-#include <mutex> // Mutexes
 
 // Qserv headers
 #include "util/Callable.h"

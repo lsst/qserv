@@ -34,10 +34,10 @@
 
 // System headers
 #include <iostream>
+#include <mutex>
 
 // Third-party headers
 #include "boost/format.hpp"
-#include <mutex>
 
 // Qserv headers
 #include "global/Bug.h"

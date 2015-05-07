@@ -32,13 +32,11 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <set>
 #include <vector>
 
-// Third-party headers
-#include <mutex>
-
-// Local headers
+// Qserv headers
 #include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"

@@ -25,12 +25,9 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include <mutex>
-#include <mutex>
 
 // Qserv headers
 #include "util/Callable.h"

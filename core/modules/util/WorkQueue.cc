@@ -31,8 +31,8 @@
 
 // System headers
 #include <iostream>
+#include <sstream>
 
-// Third-party headers
 
 namespace lsst {
 namespace qserv {

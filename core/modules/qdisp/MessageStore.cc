@@ -22,6 +22,7 @@
  */
 // See MessageStore.h
 
+// Class header
 #include "qdisp/MessageStore.h"
 
 // System headers

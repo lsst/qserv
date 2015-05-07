@@ -37,19 +37,17 @@
 
 // System headers
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
-// Third-party headers
 
 // Qserv headers
 #include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
-
 
 namespace lsst {
 namespace qserv {

@@ -25,6 +25,7 @@
 #define LSST_QSERV_UTIL_THREAD_H
 
 // System headers
+#include <cassert>
 #include <set>
 
 // Third-party headers
@@ -33,6 +34,7 @@
 #ifdef DO_NOT_USE_BOOST
 #else
 #include <mutex>
+#include <thread>
 #endif
 
 namespace lsst {

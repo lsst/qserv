@@ -34,10 +34,10 @@
 
 // System headers
 #include <ctime>
+#include <mutex>
 #include <string>
+#include <vector>
 
-// Third-party headers
-#include <mutex> // for mutex.
 
 namespace lsst {
 namespace qserv {

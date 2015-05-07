@@ -33,13 +33,12 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 
 // Third-party headers
 #include "boost/utility.hpp"
-#include <mutex>
-#include <mutex>
 
-// Local headers
+// Qserv headers
 #include "ccontrol/QueryState.h"
 #include "css/StripingParams.h"
 #include "qproc/ChunkSpec.h"

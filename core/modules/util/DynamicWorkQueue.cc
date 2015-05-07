@@ -26,8 +26,12 @@
 #include "util/DynamicWorkQueue.h"
 
 // System headers
+#include <cassert>
 #include <stdexcept>
 #include <sys/time.h>
+
+// Third-party headers
+#include <boost/scoped_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
@@ -202,7 +206,7 @@ DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
         throw std::runtime_error("Invalid DynamicWorkQueue min/max thread counts.");
     }
     for (size_t n = _numThreads; n != 0; --n) {
-        boost::thread(Runner(*this));
+        std::thread(Runner(*this));
     }
 }
 
@@ -231,7 +235,7 @@ void DynamicWorkQueue::add(void const * session,
 {
     std::lock_guard<std::mutex> lock(_mutex);
     if (_shouldIncreaseThreadCount()) {
-        boost::thread(Runner(*this));
+        std::thread(Runner(*this));
         // Increment the thread count. Note, if this were done by Runner in
         // operator()(), the following sequence of events would become
         // possible:

@@ -26,9 +26,8 @@
 // System headers
 #include <deque>
 #include <memory>
-
-// Third-party headers
 #include <mutex>
+#include <thread>
 
 namespace lsst {
 namespace qserv {

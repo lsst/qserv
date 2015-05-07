@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
-// Local headers
+// Qserv headers
 #include "lsst/log/Log.h"
 #include "wcontrol/Foreman.h"
 

@@ -30,10 +30,6 @@
 #include <iostream>
 #include <sstream>
 
-// Third-party headers
-#include "boost/format.hpp"
-#include <mutex> // for mutex.
-
 // Qserv headers
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlResults.h"

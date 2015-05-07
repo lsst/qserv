@@ -34,10 +34,8 @@
 
 // System headers
 #include <iostream>
-#include <sstream>
-
-// Third-party headers
 #include <mutex>
+#include <sstream>
 
 // Qserv headers
 #include "global/Bug.h"

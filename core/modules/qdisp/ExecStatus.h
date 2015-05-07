@@ -24,15 +24,13 @@
 #define LSST_QSERV_QDISP_EXECSTATUS_H
 
 // System headers
+#include <fstream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <time.h>
-#include <fstream>
 
-// Third-party headers
-#include <mutex>
-
-// Local headers
+// Qserv headers
 #include "global/ResourceUnit.h"
 
 namespace lsst {

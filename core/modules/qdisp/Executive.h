@@ -27,12 +27,10 @@
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
 // System headers
+#include <mutex>
 #include <vector>
 
-// Third-party headers
-#include <mutex> // std::mutex
-
-// Local headers
+// Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/TransactionSpec.h"

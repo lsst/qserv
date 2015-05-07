@@ -29,8 +29,6 @@
 #define BOOST_TEST_MODULE Qdisp_1
 #include "boost/test/included/unit_test.hpp"
 
-// External headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 

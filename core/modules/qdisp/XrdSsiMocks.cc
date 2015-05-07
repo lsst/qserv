@@ -26,12 +26,10 @@
 // System headers
 #include <string>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
 
-// External headers
-#include <mutex>
-
-// lsst headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Local headers

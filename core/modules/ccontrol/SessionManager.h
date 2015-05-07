@@ -35,8 +35,8 @@
 #ifndef LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 #define LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 
-// Third-party headers
-#include <mutex> // for mutex primitives
+// System headers
+#include <mutex>
 
 namespace lsst {
 namespace qserv {

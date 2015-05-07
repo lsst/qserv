@@ -42,6 +42,7 @@
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
+#include <thread>
 
 // Third-party headers
 #include "boost/format.hpp"

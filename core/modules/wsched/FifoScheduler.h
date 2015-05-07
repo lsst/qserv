@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 #define LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 
-// Third-party headers
+// System headers
 #include <mutex>
 
-// Local headers
+// Qserv headers
 #include "wcontrol/Foreman.h"
 
 namespace lsst {

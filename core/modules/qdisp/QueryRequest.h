@@ -26,10 +26,10 @@
 // System headers
 #include <exception>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Third-party headers
-#include <mutex>
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers

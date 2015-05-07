@@ -26,11 +26,9 @@
 
 // System headers
 #include <map>
-#include <set>
-
-// Third-party headers
 #include <mutex>
-
+#include <set>
+#include <thread>
 
 namespace lsst {
 namespace qserv {
@@ -105,12 +103,12 @@ private:
     size_t const _minThreadsPerSession;
     size_t const _maxThreads;
 
-    std::mutex              _mutex;
-    size_t                    _numCallables;
-    size_t                    _numThreads;
-    bool                      _exitNow;
-    SessionQueueMap           _sessions;
-    QueueSet                  _nonEmptyQueues;
+    std::mutex _mutex;
+    size_t _numCallables;
+    size_t _numThreads;
+    bool _exitNow;
+    SessionQueueMap _sessions;
+    QueueSet _nonEmptyQueues;
     std::condition_variable _workAvailable;
     std::condition_variable _threadsExited;
 

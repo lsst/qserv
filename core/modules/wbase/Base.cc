@@ -39,6 +39,8 @@
 #include <fstream>
 #include <glob.h>
 #include <iostream>
+#include <sstream>
+#include <string.h> // memcpy
 
 // Third-party headers
 #include "boost/format.hpp"

@@ -33,10 +33,11 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
-#include <mutex>
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"

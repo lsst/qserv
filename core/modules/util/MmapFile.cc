@@ -22,10 +22,11 @@
  */
 // MmapFile is a lightweight wrapper for a mmap'd file.
 
+// Class header
 #include "util/MmapFile.h"
 
 // System headers
-#include <assert.h>
+#include <cassert>
 #include <fcntl.h>
 #include <iostream>
 #include <sys/mman.h>

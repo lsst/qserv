@@ -31,12 +31,10 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <string>
 
-// Third-party headers
-#include <mutex> // for mutex.
-
-// Local headers
+// Qserv headers
 #include "rproc/mergeTypes.h"
 
 // Forward declarations

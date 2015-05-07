@@ -25,10 +25,10 @@
 
 // System headers
 #include <deque>
+#include <mutex>
+#include <thread>
 
 // Third-party headers
-#include "boost/thread/condition_variable.hpp"
-#include <mutex>
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 

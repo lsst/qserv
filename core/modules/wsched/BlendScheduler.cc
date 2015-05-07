@@ -29,14 +29,13 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wsched/BlendScheduler.h"
 
 // System headers
 #include <iostream>
-#include <sstream>
-
-// Third-party headers
 #include <mutex>
+#include <sstream>
 
 // Qserv headers
 #include "global/Bug.h"

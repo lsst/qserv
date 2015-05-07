@@ -15,7 +15,7 @@ deps = cacheObjs(env, deps, ".o")
 deps = map(lambda i:i, deps) # un-chain
 myDeps = filter(lambda i: not (str(i).startswith("test")),
                 env.Glob("*.cc"))
-extDeps = "boost_thread boost_system crypto log log4cxx ssl ".split()
+extDeps = "boost_system crypto log log4cxx ssl ".split()
 
 p = env.Program(["testMultiError.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)

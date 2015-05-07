@@ -27,10 +27,10 @@
 // System headers
 #include <cassert>
 #include <limits>
+#include <mutex>
 #include <string.h> // for memcpy
 
 // Third-party headers
-#include <mutex>
 #include <mysql/mysql.h>
 
 // Qserv headers

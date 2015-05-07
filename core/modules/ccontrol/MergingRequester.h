@@ -25,8 +25,6 @@
 
 // System headers
 #include <memory>
-
-// Third-party headers
 #include <mutex>
 
 // Qserv headers

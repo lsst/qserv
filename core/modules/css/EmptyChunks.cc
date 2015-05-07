@@ -21,6 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "css/EmptyChunks.h"
 
 // System headers
@@ -29,9 +30,6 @@
 #include <fstream>
 #include <functional>
 #include <memory>
-
-// Third-party headers
-#include <mutex>
 
 // Qserv headers
 #include "global/ConfigError.h"

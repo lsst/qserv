@@ -29,14 +29,13 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wsched/FifoScheduler.h"
 
 // System headers
 // #include <iostream> // Enable for debugging.
-
-// Third-party headers
 #include <mutex>
-
+#include <thread>
 
 namespace lsst {
 namespace qserv {

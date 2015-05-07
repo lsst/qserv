@@ -20,6 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/SsiSession.h"
 
 // System headers
@@ -27,7 +29,7 @@
 #include <string>
 #include <cctype>
 
-// Third-party
+// Third-party headers
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Qserv headers

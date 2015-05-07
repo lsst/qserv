@@ -26,11 +26,11 @@
 
 // System headers
 #include <deque>
+#include <mutex>
 #include <sstream>
 #include <string>
 
 // Third-party headers
-#include <mutex>
 #include "boost/format.hpp"
 
 // Forward declarations

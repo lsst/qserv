@@ -23,8 +23,11 @@
 #ifndef LSST_QSERV_XRDSVC_SSISESSION_H
 #define LSST_QSERV_XRDSVC_SSISESSION_H
 
+// System headers
+#include <mutex>
+#include <vector>
+
 // Third-party headers
-#include <mutex> // std::mutex
 #include "XrdSsi/XrdSsiSession.hh"
 #include "XrdSsi/XrdSsiResponder.hh"
 

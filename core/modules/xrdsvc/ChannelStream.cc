@@ -20,11 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/ChannelStream.h"
 
 // Third-party headers
-#include <mutex>
 #include "boost/utility.hpp"
+
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers

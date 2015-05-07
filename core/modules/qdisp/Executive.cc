@@ -37,8 +37,6 @@
 // Class header
 #include "qdisp/Executive.h"
 
-// Third-party headers
-
 // System headers
 #include <algorithm>
 #include <cassert>
