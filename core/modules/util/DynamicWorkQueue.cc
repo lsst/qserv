@@ -190,6 +190,11 @@ void DynamicWorkQueue::Runner::operator()() {
     }
 }
 
+void
+DynamicWorkQueue::_startRunner(DynamicWorkQueue& dwq) {
+    Runner r(dwq);
+    r();
+}
 
 DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
                                    size_t minThreadsPerSession,
@@ -235,7 +240,8 @@ void DynamicWorkQueue::add(void const * session,
 {
     std::lock_guard<std::mutex> lock(_mutex);
     if (_shouldIncreaseThreadCount()) {
-        std::thread(Runner(*this));
+        std::thread t(_startRunner, std::ref(*this));
+        t.detach();
         // Increment the thread count. Note, if this were done by Runner in
         // operator()(), the following sequence of events would become
         // possible:

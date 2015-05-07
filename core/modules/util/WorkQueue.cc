@@ -47,7 +47,6 @@ public:
     }
     void operator()() {
         _w.registerRunner(this);
-        //std::cerr << "Started!" << std::endl;
         std::shared_ptr<Callable> c = _w.getNextCallable();
         _c = c.get();
         //std::cerr << "got first job" << std::endl;
@@ -152,11 +151,17 @@ WorkQueue::signalDeath(Runner* r) {
 }
 
 void
+WorkQueue::_startRunner(WorkQueue& wq) {
+    Runner r(wq);
+    r();
+}
+
+void
 WorkQueue::_addRunner() {
     std::unique_lock<std::mutex> lock(_runnersMutex);
-    boost::thread(Runner(*this));
+    std::thread t(_startRunner, std::ref(*this));
+    t.detach();
     _runnerRegistered.wait(lock);
-    //_runners.back()->run();
 }
 
 void

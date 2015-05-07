@@ -70,6 +70,8 @@ public:
 
 private:
     void _addRunner();
+    static void _startRunner(WorkQueue& wq);
+
     void _dropQueue(bool final=true);
 
     typedef std::deque<std::shared_ptr<Callable> > WorkDeque;

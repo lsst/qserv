@@ -92,6 +92,8 @@ private:
     DynamicWorkQueue(DynamicWorkQueue const &);
     DynamicWorkQueue & operator=(DynamicWorkQueue const &);
 
+    static void _startRunner(DynamicWorkQueue& dwq);
+
     typedef std::map<void const *, Queue *> SessionQueueMap;
     typedef std::set<Queue *, QueuePtrCmp> QueueSet;
 
