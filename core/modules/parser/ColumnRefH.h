@@ -35,7 +35,7 @@
 // System headers
 
 // Third-party include
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "parser/parserBase.h" // VoidFourRefFunc
@@ -52,7 +52,7 @@ namespace parser {
 class ColumnRefH : public VoidFourRefFunc {
 public:
     class Listener;
-    typedef boost::shared_ptr<ColumnRefH> Ptr;
+    typedef std::shared_ptr<ColumnRefH> Ptr;
     ColumnRefH() {}
     virtual ~ColumnRefH() {}
     /// Accept nodes for a column ref and pass to a listener.
@@ -70,12 +70,12 @@ public:
             _process(antlr::RefAST(), antlr::RefAST(), a);
         }
     }
-    void setListener(boost::shared_ptr<Listener> crl) {
+    void setListener(std::shared_ptr<Listener> crl) {
         _listener = crl;
     }
 private:
     inline void _process(antlr::RefAST d, antlr::RefAST t, antlr::RefAST c);
-    boost::shared_ptr<Listener> _listener;
+    std::shared_ptr<Listener> _listener;
 };
 
 /// ColumnRefH::Listener is an interface that acts upon normalized

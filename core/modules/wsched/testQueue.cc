@@ -75,15 +75,15 @@ struct KeyedElem {
     int id;
     char const* name;
 };
-typedef boost::shared_ptr<KeyedElem> KeyedElemPtr;
+typedef std::shared_ptr<KeyedElem> KeyedElemPtr;
 std::ostream& operator<<(std::ostream& os, KeyedElem const& a) {
     return (os << a.id << ":" << a.name);
 }
 
 template<class T, class Equal>
 struct PtrEqual {
-    bool operator()(boost::shared_ptr<T> const& a,
-                    boost::shared_ptr<T> const& b) {
+    bool operator()(std::shared_ptr<T> const& a,
+                    std::shared_ptr<T> const& b) {
         return e(*a, *b);
     };
     Equal e;

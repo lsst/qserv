@@ -33,7 +33,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/ColumnRef.h"
@@ -43,7 +43,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef boost::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
+typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 class Vertex;
 
 /// A `ColumnVertexMap` is a mapping from query column references to relation

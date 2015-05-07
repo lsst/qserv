@@ -30,7 +30,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/thread.hpp" // Mutexes
 
 // Qserv headers
@@ -65,10 +65,10 @@ struct Task {
 public:
     static std::string const defaultUser;
 
-    typedef boost::shared_ptr<Task> Ptr;
+    typedef std::shared_ptr<Task> Ptr;
     typedef proto::TaskMsg_Fragment Fragment;
-    typedef boost::shared_ptr<Fragment> FragmentPtr;
-    typedef boost::shared_ptr<proto::TaskMsg> TaskMsgPtr;
+    typedef std::shared_ptr<Fragment> FragmentPtr;
+    typedef std::shared_ptr<proto::TaskMsg> TaskMsgPtr;
 
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
@@ -78,12 +78,12 @@ public:
     };
 
     explicit Task() : _poisoned{false} {}
-    explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
+    explicit Task(TaskMsgPtr t, std::shared_ptr<wbase::SendChannel> sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
 
     TaskMsgPtr msg; ///< Protobufs Task spec
-    boost::shared_ptr<wbase::SendChannel> sendChannel; ///< For result reporting
+    std::shared_ptr<wbase::SendChannel> sendChannel; ///< For result reporting
     std::string hash; ///< hash of TaskMsg
     std::string dbName; ///< dominant db
     std::string user; ///< Incoming username
@@ -92,16 +92,16 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     void poison(); ///< Call the previously-set poisonFunc
-    void setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc);
+    void setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc);
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
 private:
     boost::mutex _mutex; // Used for handling poison
-    boost::shared_ptr<util::VoidCallable<void> > _poisonFunc;
+    std::shared_ptr<util::VoidCallable<void> > _poisonFunc;
     bool _poisoned; ///< To prevent multiple-poisonings
 };
 typedef std::deque<Task::Ptr> TaskQueue;
-typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;
+typedef std::shared_ptr<TaskQueue> TaskQueuePtr;
 
 }}} // namespace lsst::qserv::wbase
 

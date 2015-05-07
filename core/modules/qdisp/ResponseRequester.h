@@ -30,7 +30,7 @@
 // Third-party headers
 #include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "util/Callable.h"
@@ -57,7 +57,7 @@ public:
 
     typedef util::VoidCallable<void> CancelFunc;
 
-    typedef boost::shared_ptr<ResponseRequester> Ptr;
+    typedef std::shared_ptr<ResponseRequester> Ptr;
     ResponseRequester() : _cancelled(false) {}
     virtual ~ResponseRequester() {}
 
@@ -88,7 +88,7 @@ public:
     /// Set a function to be called that forcibly cancels the ResponseRequester
     /// process. The buffer filler should call this function so that it can be
     /// notified when the receiver no longer cares about being filled.
-    virtual void registerCancel(boost::shared_ptr<CancelFunc> cancelFunc) {
+    virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
         boost::lock_guard<boost::mutex> lock(_cancelMutex);
         _cancelFunc = cancelFunc;
     }
@@ -106,7 +106,7 @@ protected:
     /// Call _cancelFunc.
     void _callCancel() {
     	// Ensure _cancelFunc is only called once.
-        boost::shared_ptr<CancelFunc> f;
+        std::shared_ptr<CancelFunc> f;
         {
             boost::lock_guard<boost::mutex> lock(_cancelMutex);
             if(!_cancelled) {
@@ -118,7 +118,7 @@ protected:
             (*f)();
         }
     }
-    boost::shared_ptr<CancelFunc> _cancelFunc;
+    std::shared_ptr<CancelFunc> _cancelFunc;
     bool _cancelled;
     boost::mutex _cancelMutex;
 };

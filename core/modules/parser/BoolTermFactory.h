@@ -33,7 +33,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 namespace lsst {
@@ -60,7 +60,7 @@ namespace parser {
 /// placed (typically) in WhereClause objects.
 class BoolTermFactory {
 public:
-    BoolTermFactory(boost::shared_ptr<ValueExprFactory> vf);
+    BoolTermFactory(std::shared_ptr<ValueExprFactory> vf);
 
     /// Apply a functor, unless the reject function returns true.
     template <class Apply, class Reject>
@@ -96,15 +96,15 @@ public:
         BoolTermFactory& _bf;
         query::BoolFactor& _bfr;
     };
-    boost::shared_ptr<query::BoolTerm> newBoolTerm(antlr::RefAST a);
-    boost::shared_ptr<query::OrTerm> newOrTerm(antlr::RefAST a);
-    boost::shared_ptr<query::AndTerm> newAndTerm(antlr::RefAST a);
-    boost::shared_ptr<query::BoolFactor> newBoolFactor(antlr::RefAST a);
-    boost::shared_ptr<query::UnknownTerm> newUnknown(antlr::RefAST a);
-    boost::shared_ptr<query::PassTerm> newPassTerm(antlr::RefAST a);
-    boost::shared_ptr<query::BoolTermFactor> newBoolTermFactor(antlr::RefAST a);
+    std::shared_ptr<query::BoolTerm> newBoolTerm(antlr::RefAST a);
+    std::shared_ptr<query::OrTerm> newOrTerm(antlr::RefAST a);
+    std::shared_ptr<query::AndTerm> newAndTerm(antlr::RefAST a);
+    std::shared_ptr<query::BoolFactor> newBoolFactor(antlr::RefAST a);
+    std::shared_ptr<query::UnknownTerm> newUnknown(antlr::RefAST a);
+    std::shared_ptr<query::PassTerm> newPassTerm(antlr::RefAST a);
+    std::shared_ptr<query::BoolTermFactor> newBoolTermFactor(antlr::RefAST a);
 
-    boost::shared_ptr<ValueExprFactory> _vFactory;
+    std::shared_ptr<ValueExprFactory> _vFactory;
 };
 
 }}} // namespace lsst::qserv::parser

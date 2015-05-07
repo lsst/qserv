@@ -34,7 +34,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -54,14 +54,14 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
-typedef boost::shared_ptr<query::ValueExpr> ValueExprPtr;
+typedef std::shared_ptr<query::ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 
 /// SelectListFactory maintains parse state so that a SelectList can be built
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
 class SelectListFactory {
 public:
-    boost::shared_ptr<query::SelectList> getProduct();
+    std::shared_ptr<query::SelectList> getProduct();
     void import(antlr::RefAST selectRoot);
     void importStar(antlr::RefAST asterisk);
 private:
@@ -72,8 +72,8 @@ private:
     class ColumnAliasH;
 
     // For "friends"
-    SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
-                      boost::shared_ptr<ValueExprFactory> vf);
+    SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
+                      std::shared_ptr<ValueExprFactory> vf);
     void attachTo(SqlSQL2Parser& p); ///< For column alias handling
 
     // Really private
@@ -83,12 +83,12 @@ private:
     ValueExprPtr _newSetFctSpec(antlr::RefAST expr);
 
     // Delegate handlers
-    boost::shared_ptr<ColumnAliasH> _columnAliasH;
+    std::shared_ptr<ColumnAliasH> _columnAliasH;
 
     // data
-    boost::shared_ptr<ParseAliasMap> _aliases;
-    boost::shared_ptr<ValueExprFactory> _vFactory;
-    boost::shared_ptr<ValueExprPtrVector> _valueExprList;
+    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ValueExprFactory> _vFactory;
+    std::shared_ptr<ValueExprPtrVector> _valueExprList;
 
 };
 

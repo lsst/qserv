@@ -31,7 +31,7 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "util/PacketBuffer.h"
@@ -92,7 +92,7 @@ private:
     bool _blockFound;
     class BufferMgr;
     // should be scoped_ptr, but requires exposed defn of BufferMgr
-    boost::shared_ptr<BufferMgr> _bufferMgr;
+    std::shared_ptr<BufferMgr> _bufferMgr;
     boost::regex _blockExpr;
     boost::regex _insExpr;
     boost::regex _nullExpr;

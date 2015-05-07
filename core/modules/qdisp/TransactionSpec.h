@@ -37,7 +37,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {

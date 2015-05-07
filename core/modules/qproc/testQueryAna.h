@@ -74,10 +74,10 @@ void testParse(SelectParser::Ptr p) {
 * list will be loaded
 *
 */
-boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
+std::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
                                           std::string const& stmt,
                                           std::string const& expectedErr="") {
-    boost::shared_ptr<QuerySession> qs(new QuerySession(t));
+    std::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
     if(!expectedErr.empty()) {
@@ -85,7 +85,7 @@ boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
         return qs;
     }
     ConstraintVec cv(qs->getConstraints());
-    boost::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
+    std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
     if(false && cvRaw) { // DEBUG
         std::copy(cvRaw->begin(), cvRaw->end(),
                   std::ostream_iterator<Constraint>(std::cout, ","));
@@ -105,12 +105,12 @@ std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
     return first.queries[0];
 }
 
-boost::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
+std::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
                                                std::string const& stmt,
                                                std::string const& expected,
                                                std::string const& expectedErr="") {
 
-    boost::shared_ptr<QuerySession> qs = prepareTestQuerySession(t, stmt, expectedErr);
+    std::shared_ptr<QuerySession> qs = prepareTestQuerySession(t, stmt, expectedErr);
     if(qs->getError().empty()) {
         std::string actual = computeFirstChunkQuery(*qs);
         BOOST_CHECK_EQUAL(actual, expected);
@@ -118,7 +118,7 @@ boost::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
     return qs;
 }
 
-void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
+void printChunkQuerySpecs(std::shared_ptr<QuerySession> qs) {
     for(QuerySession::Iter i = qs->cQueryBegin(),  e = qs->cQueryEnd();
         i != e; ++i) {
         lsst::qserv::qproc::ChunkQuerySpec& cs = *i;

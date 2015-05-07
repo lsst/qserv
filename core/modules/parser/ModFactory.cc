@@ -38,7 +38,6 @@
 #include <iterator>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 // LSST headers
@@ -111,7 +110,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // ModFactory
 ////////////////////////////////////////////////////////////////////////
-ModFactory::ModFactory(boost::shared_ptr<ValueExprFactory> vf)
+ModFactory::ModFactory(std::shared_ptr<ValueExprFactory> vf)
     : _vFactory(vf),
       _limit(-1)
 {
@@ -138,7 +137,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 }
 
 void ModFactory::_importOrderBy(antlr::RefAST a) {
-    _orderBy = boost::make_shared<query::OrderByClause>();
+    _orderBy = std::make_shared<query::OrderByClause>();
     // ORDER BY takes a column ref (expression)
     //LOGF_INFO("orderby got %1%" % walkTreeString(a));
     if(!a.get()) {
@@ -156,7 +155,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         RefAST key = a->getFirstChild();
         query::OrderByTerm ob;
         ob._order = query::OrderByTerm::DEFAULT;
-        boost::shared_ptr<query::ValueExpr> ve;
+        std::shared_ptr<query::ValueExpr> ve;
         if(key->getType() == SqlSQL2TokenTypes::SORT_KEY) {
             ob._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
@@ -191,7 +190,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 }
 
 void ModFactory::_importGroupBy(antlr::RefAST a) {
-    _groupBy = boost::make_shared<query::GroupByClause>();
+    _groupBy = std::make_shared<query::GroupByClause>();
     // GROUP BY takes a column reference (expression?)
     //LOGF_INFO("groupby got %1%" % walkTreeString(a));
     if(!a.get()) {
@@ -203,7 +202,7 @@ void ModFactory::_importGroupBy(antlr::RefAST a) {
         }
         query::GroupByTerm gb;
         RefAST key = a->getFirstChild();
-        boost::shared_ptr<query::ValueExpr> ve;
+        std::shared_ptr<query::ValueExpr> ve;
         if(key->getType() == SqlSQL2TokenTypes::COLUMN_REF) {
             gb._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
@@ -223,7 +222,7 @@ void ModFactory::_importGroupBy(antlr::RefAST a) {
 }
 
 void ModFactory::_importHaving(antlr::RefAST a) {
-    _having = boost::make_shared<query::HavingClause>();
+    _having = std::make_shared<query::HavingClause>();
     // HAVING takes an boolean expression that is dependent on an
     // aggregation expression that was specified in the select list.
     // Online examples for SQL HAVING always have only one aggregation

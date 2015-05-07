@@ -40,7 +40,7 @@
 
 // Third-party headers
 #include "boost/thread.hpp" // for mutex.
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "rproc/mergeTypes.h"
@@ -110,7 +110,7 @@ public:
 /// be called after each result is read back from the worker.
 class TableMerger {
 public:
-    typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
+    typedef std::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit TableMerger(TableMergerConfig const& c);
 
     /// Probably obsolete
@@ -161,8 +161,8 @@ private:
 
     TableMergerConfig _config;
     std::string _loadCmd;
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
-    boost::shared_ptr<sql::SqlConnection> _sqlConn;
+    std::shared_ptr<mysql::MySqlConfig> _sqlConfig;
+    std::shared_ptr<sql::SqlConnection> _sqlConn;
 
     std::string _mergeTable;
     TableMergerError _error;

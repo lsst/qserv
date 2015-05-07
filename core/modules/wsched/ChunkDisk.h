@@ -35,7 +35,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/thread.hpp"
 
 // Local headers
@@ -51,7 +51,7 @@ namespace wsched {
 
 class ChunkDisk {
 public:
-    typedef boost::shared_ptr<wbase::Task> TaskPtr;
+    typedef std::shared_ptr<wbase::Task> TaskPtr;
     typedef std::set<wbase::Task const*> TaskSet;
 
     ChunkDisk(LOG_LOGGER const& logger)

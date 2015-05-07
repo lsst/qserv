@@ -30,7 +30,6 @@
 #include "boost/test/included/unit_test.hpp"
 
 // External headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -55,9 +54,9 @@ public:
     virtual void operator()(int code, std::string const& msg) {
         LOGF_INFO("chunkId=%1%, code=%2%, msg=%3%" % _chunkId % code % msg);
     }
-    static boost::shared_ptr<ChunkMsgReceiverMock>
+    static std::shared_ptr<ChunkMsgReceiverMock>
     newInstance(int chunkId) {
-        boost::shared_ptr<ChunkMsgReceiverMock> r = boost::make_shared<ChunkMsgReceiverMock>();
+        std::shared_ptr<ChunkMsgReceiverMock> r = std::make_shared<ChunkMsgReceiverMock>();
         r->_chunkId = chunkId;
         return r;
     }
@@ -68,7 +67,7 @@ public:
  */
 class RetryTest : public util::VoidCallable<void> {
 public:
-    typedef boost::shared_ptr<RetryTest> Ptr;
+    typedef std::shared_ptr<RetryTest> Ptr;
     RetryTest() : _retryCalled(false) {}
     virtual ~RetryTest() {}
     virtual void operator()() {
@@ -82,7 +81,7 @@ public:
  */
 class FinishTest : public util::UnaryCallable<void, bool> {
 public:
-    typedef boost::shared_ptr<FinishTest> Ptr;
+    typedef std::shared_ptr<FinishTest> Ptr;
     FinishTest() : _finishCalled(false) {}
     virtual ~FinishTest() {}
     virtual void operator()(bool val) {
@@ -157,9 +156,9 @@ void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt 
     // Modeled after ccontrol::UserQuery::submit()
     ResourceUnit ru;
     std::string chunkResultName = "mock";
-    boost::shared_ptr<rproc::InfileMerger> infileMerger;
-    boost::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId.get());
-    ccontrol::MergingRequester::Ptr mr = boost::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
+    std::shared_ptr<rproc::InfileMerger> infileMerger;
+    std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId.get());
+    ccontrol::MergingRequester::Ptr mr = std::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
     std::string msg = millisecs;
     RequesterVector rv;
     for (int j=0; j < copies; ++j) {
@@ -187,8 +186,8 @@ BOOST_AUTO_TEST_CASE(Executive) {
     util::Flag<bool> done(false);
     // Modeled after ccontrol::UserQuery::submit()
     std::string str = qdisp::Executive::Config::getMockStr();
-    qdisp::Executive::Config::Ptr conf = boost::make_shared<qdisp::Executive::Config>(str);
-    boost::shared_ptr<qdisp::MessageStore> ms = boost::make_shared<qdisp::MessageStore>();
+    qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
+    std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
     qdisp::Executive ex(conf, ms);
     SequentialInt sequence(0);
     SequentialInt chunkId(1234);
@@ -246,23 +245,23 @@ BOOST_AUTO_TEST_CASE(MessageStore) {
 BOOST_AUTO_TEST_CASE(QueryResource) {
     LOGF_INFO("QueryResource test 1");
     std::string str = qdisp::Executive::Config::getMockStr();
-    qdisp::Executive::Config::Ptr conf = boost::make_shared<qdisp::Executive::Config>(str);
-    boost::shared_ptr<qdisp::MessageStore> ms = boost::make_shared<qdisp::MessageStore>();
+    qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
+    std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
     qdisp::Executive ex(conf, ms);
     int refNum = 93;
     int chunkId = 14;
     ResourceUnit ru;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
-    boost::shared_ptr<rproc::InfileMerger> infileMerger;
-    boost::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
+    std::shared_ptr<rproc::InfileMerger> infileMerger;
+    std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ccontrol::MergingRequester::Ptr mr =
-            boost::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
+            std::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
     qdisp::Executive::Spec s;
     s.resource = ru;
     s.request = "a message";
     s.requester = mr;
     qdisp::ExecStatus status(ru);
-    boost::shared_ptr<RetryTest> retryTest = boost::make_shared<RetryTest>();
+    std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
     qdisp::QueryResource* r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
             qdisp::Executive::newNotifier(ex, refNum),
             retryTest, status);
@@ -295,12 +294,12 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     char buf[20];
     strcpy(buf, "sessionMock");
     qdisp::XrdSsiSessionMock sessionMock(buf);
-    boost::shared_ptr<FinishTest> finishTest = boost::make_shared<FinishTest>();
-    boost::shared_ptr<RetryTest> retryTest = boost::make_shared<RetryTest>();
-    //        boost::make_shared<RetryTest>(boost::ref(ex), refNum, boost::ref(s), boost::ref(status));
+    std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
+    std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
+    //        std::make_shared<RetryTest>(boost::ref(ex), refNum, boost::ref(s), boost::ref(status));
     qdisp::ExecStatus status(ru);
-    boost::shared_ptr<ResponseRequesterTest> respReq = boost::make_shared<ResponseRequesterTest>();
-    boost::shared_ptr<CancelTest> cancelTest = boost::make_shared<CancelTest>();
+    std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
+    std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
     respReq->registerCancel(cancelTest);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 1");
@@ -315,7 +314,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     BOOST_CHECK(retryTest->_retryCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 2");
-    boost::shared_ptr<RetryTest> retryNull;
+    std::shared_ptr<RetryTest> retryNull;
     qrq = new qdisp::QueryRequest(&sessionMock, "mock", respReq, finishTest, retryNull, status);
     int magicErrNum = 5678;
     rInfo.rType = XrdSsiRespInfo::isError;
@@ -367,8 +366,8 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 
 BOOST_AUTO_TEST_CASE(ResponseRequester) {
     LOGF_INFO("ResponseRequester test 1");
-    boost::shared_ptr<ResponseRequesterTest> respReq = boost::make_shared<ResponseRequesterTest>();
-    boost::shared_ptr<CancelTest> cancelTest = boost::make_shared<CancelTest>();
+    std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
+    std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
     respReq->registerCancel(cancelTest);
     // The cancel function should only be called once.
     BOOST_CHECK(cancelTest->_count == 0);
@@ -390,7 +389,7 @@ class CancellableRequester : public qdisp::ResponseRequester {
 public:
     using ResponseRequester::CancelFunc;
 
-    typedef boost::shared_ptr<CancellableRequester> Ptr;
+    typedef std::shared_ptr<CancellableRequester> Ptr;
     CancellableRequester()
         : _cancelCalls(0) {
         reset();
@@ -428,7 +427,7 @@ public:
 
     virtual Error getError() const { return _lastError; }
 
-    virtual void registerCancel(boost::shared_ptr<CancelFunc> cancelFunc) {
+    virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
         throw std::runtime_error("Unexpected registerCancel() call");
     }
 
@@ -444,8 +443,8 @@ public:
 };
 
 BOOST_AUTO_TEST_CASE(ExecutiveSquash) {
-    qdisp::Executive ex(boost::make_shared<qdisp::Executive::Config>(0,0),
-                        boost::make_shared<qdisp::MessageStore>());
+    qdisp::Executive ex(std::make_shared<qdisp::Executive::Config>(0,0),
+                        std::make_shared<qdisp::MessageStore>());
     SequentialInt sequence(0);
     SequentialInt chunkId(1234);
     int jobs = 0;
@@ -456,7 +455,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveSquash) {
     jobs += CHUNK_COUNT;
     RequesterVector rv;
     for (int j=0; j < CHUNK_COUNT; ++j) {
-        rv.push_back(boost::make_shared<CancellableRequester>());
+        rv.push_back(std::make_shared<CancellableRequester>());
     }
     addFakeRequests(ex, sequence, millis, rv);
     LOGF_INFO("jobs=%1%" % jobs);
@@ -472,7 +471,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveSquash) {
     BOOST_CHECK_EQUAL(rCancels, 1);
 
     for (int j=0; j < CHUNK_COUNT; ++j) { // Reset rv
-        rv[j] = boost::make_shared<CancellableRequester>();
+        rv[j] = std::make_shared<CancellableRequester>();
     }
     addFakeRequests(ex, sequence, millis, rv);
     LOGF_INFO("jobs=%1%" % jobs);

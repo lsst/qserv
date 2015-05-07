@@ -37,7 +37,6 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/ColumnRef.h"
@@ -51,7 +50,7 @@ namespace query {
 
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
-    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
+    FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->name = newName;
     e->params = src.params; // Shallow list copy.
     return e;
@@ -59,14 +58,14 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
-    boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","",arg1);
+    std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","",arg1);
     return newArg1(newName,
                    ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
 }
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
-    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
+    FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->name = newName;
     e->params.push_back(ve);
     return e;
@@ -82,9 +81,9 @@ FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) {
     }
 }
 
-boost::shared_ptr<FuncExpr>
+std::shared_ptr<FuncExpr>
 FuncExpr::clone() const {
-    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
+    FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->name = name;
     cloneValueExprPtrVector(e->params, params);
     return e;

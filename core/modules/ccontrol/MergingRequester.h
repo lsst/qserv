@@ -24,7 +24,7 @@
 #define LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/thread/mutex.hpp"
 
 // Qserv headers
@@ -60,14 +60,14 @@ public:
                     HEADER_ERR, RESULT_ERR };
     static const char* getStateStr(MsgState const& st);
 
-    typedef boost::shared_ptr<MergingRequester> Ptr;
+    typedef std::shared_ptr<MergingRequester> Ptr;
     virtual ~MergingRequester() {}
 
     /// @param msgReceiver Message code receiver
     /// @param merger downstream merge acceptor
     /// @param tableName target table for incoming data
-    MergingRequester(boost::shared_ptr<MsgReceiver> msgReceiver,
-                     boost::shared_ptr<rproc::InfileMerger> merger,
+    MergingRequester(std::shared_ptr<MsgReceiver> msgReceiver,
+                     std::shared_ptr<rproc::InfileMerger> merger,
                      std::string const& tableName);
 
     /// @return a char vector to receive the next message. The vector
@@ -112,8 +112,8 @@ private:
     bool _setResult();
     bool _verifyResult();
 
-    boost::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
-    boost::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
+    std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
+    std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
     std::string _tableName; ///< Target table name
     std::vector<char> _buffer; ///< Raw response buffer, resized for each msg
     Error _error; ///< Error description

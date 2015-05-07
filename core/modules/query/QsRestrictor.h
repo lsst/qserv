@@ -34,7 +34,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "global/stringTypes.h"
@@ -66,13 +66,13 @@ class QueryTemplate;
 /// to the python layer to evaluate the geometry restriction.
 class QsRestrictor {
 public:
-    typedef boost::shared_ptr<QsRestrictor> Ptr;
+    typedef std::shared_ptr<QsRestrictor> Ptr;
     typedef std::vector<Ptr> PtrVector;
 
     class render {
     public:
         render(QueryTemplate& qt_) : qt(qt_) {}
-        void operator()(boost::shared_ptr<QsRestrictor> const& p);
+        void operator()(std::shared_ptr<QsRestrictor> const& p);
         QueryTemplate& qt;
     };
 

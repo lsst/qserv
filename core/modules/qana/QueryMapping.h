@@ -33,7 +33,7 @@
 #include <set>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 namespace lsst {
@@ -73,7 +73,7 @@ namespace qana {
 /// moved to the worker.
 class QueryMapping {
 public:
-    typedef boost::shared_ptr<QueryMapping> Ptr;
+    typedef std::shared_ptr<QueryMapping> Ptr;
     enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
     typedef std::map<std::string,Parameter> ParameterMap;
     typedef std::set<std::string> StringSet;

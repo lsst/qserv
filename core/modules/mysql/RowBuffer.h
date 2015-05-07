@@ -27,7 +27,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include <mysql/mysql.h>
 
 namespace lsst {
@@ -67,7 +67,7 @@ struct Row {
 /// line-delimited-tuple sequence of tuples.
 class RowBuffer {
 public:
-    typedef boost::shared_ptr<RowBuffer> Ptr;
+    typedef std::shared_ptr<RowBuffer> Ptr;
 
     virtual ~RowBuffer() {}
 

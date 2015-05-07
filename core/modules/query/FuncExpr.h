@@ -36,7 +36,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/ColumnRef.h"
@@ -52,7 +52,7 @@ class QueryTemplate;
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
 public:
-    typedef boost::shared_ptr<FuncExpr> Ptr;
+    typedef std::shared_ptr<FuncExpr> Ptr;
     std::string getName() const;
     ValueExprPtrVector getParams() const;
 
@@ -66,7 +66,7 @@ public:
                                  ValueExprPtr ve);
 
     void findColumnRefs(ColumnRef::Vector& outputRefs);
-    boost::shared_ptr<FuncExpr> clone() const;
+    std::shared_ptr<FuncExpr> clone() const;
 
     // Fields
     std::string name;

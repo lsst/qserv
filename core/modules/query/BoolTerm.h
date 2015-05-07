@@ -38,7 +38,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/iterator_adaptors.hpp"
 
 // Local headers
@@ -56,7 +56,7 @@ class QueryTemplate;
 /// BfTerm is a term in a in a BoolFactor
 class BfTerm {
 public:
-    typedef boost::shared_ptr<BfTerm> Ptr;
+    typedef std::shared_ptr<BfTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
     virtual ~BfTerm() {}
     virtual Ptr clone() const = 0;
@@ -71,7 +71,7 @@ public:
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
 class BoolTerm {
 public:
-    typedef boost::shared_ptr<BoolTerm> Ptr;
+    typedef std::shared_ptr<BoolTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
 
     virtual ~BoolTerm() {}
@@ -96,15 +96,15 @@ public:
 
     /// @return the reduced form of this term, or null if no reduction is
     /// possible.
-    virtual boost::shared_ptr<BoolTerm> getReduced() { return Ptr(); }
+    virtual std::shared_ptr<BoolTerm> getReduced() { return Ptr(); }
 
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     /// Deep copy this term.
-    virtual boost::shared_ptr<BoolTerm> clone() const = 0;
+    virtual std::shared_ptr<BoolTerm> clone() const = 0;
 
-    virtual boost::shared_ptr<BoolTerm> copySyntax() const {
-        return boost::shared_ptr<BoolTerm>(); }
+    virtual std::shared_ptr<BoolTerm> copySyntax() const {
+        return std::shared_ptr<BoolTerm>(); }
 };
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
@@ -112,7 +112,7 @@ std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
 /// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public BoolTerm {
 public:
-    typedef boost::shared_ptr<OrTerm> Ptr;
+    typedef std::shared_ptr<OrTerm> Ptr;
 
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
@@ -133,12 +133,12 @@ public:
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
 
-    virtual boost::shared_ptr<BoolTerm> getReduced();
+    virtual std::shared_ptr<BoolTerm> getReduced();
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual boost::shared_ptr<BoolTerm> clone() const;
-    virtual boost::shared_ptr<BoolTerm> copySyntax() const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
+    virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     BoolTerm::PtrVector _terms;
 };
@@ -146,7 +146,7 @@ public:
 /// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public BoolTerm {
 public:
-    typedef boost::shared_ptr<AndTerm> Ptr;
+    typedef std::shared_ptr<AndTerm> Ptr;
 
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
@@ -167,20 +167,20 @@ public:
     virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
     virtual PtrVector::iterator iterEnd() { return _terms.end(); }
 
-    virtual boost::shared_ptr<BoolTerm> getReduced();
+    virtual std::shared_ptr<BoolTerm> getReduced();
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
-    virtual boost::shared_ptr<BoolTerm> clone() const;
-    virtual boost::shared_ptr<BoolTerm> copySyntax() const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
+    virtual std::shared_ptr<BoolTerm> copySyntax() const;
     BoolTerm::PtrVector _terms;
 };
 
 /// BoolFactor is a plain factor in a BoolTerm
 class BoolFactor : public BoolTerm {
 public:
-    typedef boost::shared_ptr<BoolFactor> Ptr;
+    typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
 
@@ -197,12 +197,12 @@ public:
         }
     }
 
-    virtual boost::shared_ptr<BoolTerm> getReduced();
+    virtual std::shared_ptr<BoolTerm> getReduced();
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual boost::shared_ptr<BoolTerm> clone() const;
-    virtual boost::shared_ptr<BoolTerm> copySyntax() const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
+    virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     BfTerm::PtrVector _terms;
 private:
@@ -214,17 +214,17 @@ private:
 /// syntax that is not analyzed, modified, or manipulated in Qserv.
 class UnknownTerm : public BoolTerm {
 public:
-    typedef boost::shared_ptr<UnknownTerm> Ptr;
+    typedef std::shared_ptr<UnknownTerm> Ptr;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual boost::shared_ptr<BoolTerm> clone() const;
+    virtual std::shared_ptr<BoolTerm> clone() const;
 };
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
 class PassTerm : public BfTerm {
 public: // text
-    typedef boost::shared_ptr<PassTerm> Ptr;
+    typedef std::shared_ptr<PassTerm> Ptr;
 
     virtual BfTerm::Ptr clone() const { return copySyntax(); }
     virtual BfTerm::Ptr copySyntax() const;
@@ -237,7 +237,7 @@ public: // text
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BfTerm {
 public: // ( term, term, term )
-    typedef boost::shared_ptr<PassListTerm> Ptr;
+    typedef std::shared_ptr<PassListTerm> Ptr;
 
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const;
@@ -251,7 +251,7 @@ public: // ( term, term, term )
 /// entire factor, and it contains bool terms.
 class BoolTermFactor : public BfTerm {
 public:
-    typedef boost::shared_ptr<BoolTermFactor> Ptr;
+    typedef std::shared_ptr<BoolTermFactor> Ptr;
 
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const;
@@ -265,7 +265,7 @@ public:
         if (_term) { _term->findColumnRefs(vector); }
     }
 
-    boost::shared_ptr<BoolTerm> _term;
+    std::shared_ptr<BoolTerm> _term;
 };
 
 }}} // namespace lsst::qserv::query

@@ -36,7 +36,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "global/ResourceUnit.h"
@@ -62,11 +62,11 @@ public:
     typedef std::set<std::string> StringSet;
     typedef std::map<int,StringSet> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
-    typedef boost::shared_ptr<ChunkInventory> Ptr;
-    typedef boost::shared_ptr<ChunkInventory const> CPtr;
+    typedef std::shared_ptr<ChunkInventory> Ptr;
+    typedef std::shared_ptr<ChunkInventory const> CPtr;
 
     ChunkInventory(std::string const& name);
-    ChunkInventory(std::string const& name, boost::shared_ptr<sql::SqlConnection> sc);
+    ChunkInventory(std::string const& name, std::shared_ptr<sql::SqlConnection> sc);
 
     /// (helper) Create a key string from a (db, chunk) pair
     static inline std::string makeKey(std::string const& db, int chunk) {
@@ -79,7 +79,7 @@ public:
              std::string table=std::string()) const;
 
     /// Construct a ResourceUnit::Checker backed by this instance
-    boost::shared_ptr<ResourceUnit::Checker> newValidator();
+    std::shared_ptr<ResourceUnit::Checker> newValidator();
 
     void dbgPrint(std::ostream& os);
 

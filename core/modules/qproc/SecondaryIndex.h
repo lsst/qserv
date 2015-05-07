@@ -34,7 +34,7 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -67,7 +67,7 @@ public:
     class Backend;
 private:
     // change to unique_ptr
-    boost::shared_ptr<Backend> _backend;
+    std::shared_ptr<Backend> _backend;
 };
 
 }}} // namespace lsst::qserv::qproc

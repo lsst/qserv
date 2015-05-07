@@ -41,7 +41,7 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -66,7 +66,7 @@ public:
 private:
     class Impl;
 
-    boost::shared_ptr<Impl> _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::qserv::qproc

@@ -33,7 +33,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -83,7 +83,7 @@ public:
         virtual bool isDynamic() const { return false; }
     };
 
-    typedef std::vector<boost::shared_ptr<Entry> > EntryPtrVector;
+    typedef std::vector<std::shared_ptr<Entry> > EntryPtrVector;
 
     class StringEntry : public Entry {
     public:
@@ -104,7 +104,7 @@ public:
     class EntryMapping {
     public:
         virtual ~EntryMapping() {}
-        virtual boost::shared_ptr<Entry> mapEntry(Entry const& e) const = 0;
+        virtual std::shared_ptr<Entry> mapEntry(Entry const& e) const = 0;
     };
 
     QueryTemplate() {}
@@ -112,7 +112,7 @@ public:
     void append(std::string const& s);
     void append(ColumnRef const& cr);
     void append(TableEntry const& t);
-    void append(boost::shared_ptr<Entry> const& e);
+    void append(std::shared_ptr<Entry> const& e);
 
     std::string dbgStr() const;
     std::string generate() const;

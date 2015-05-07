@@ -28,7 +28,7 @@
 #include <time.h>
 #include <fstream>
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/thread.hpp"
 
 // Local headers
@@ -45,7 +45,7 @@ namespace qdisp {
 /// is not currently implemented.
 class ExecStatus {
 public:
-    typedef boost::shared_ptr<ExecStatus> Ptr;
+    typedef std::shared_ptr<ExecStatus> Ptr;
     ExecStatus(ResourceUnit const& r) : _info(r) {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error

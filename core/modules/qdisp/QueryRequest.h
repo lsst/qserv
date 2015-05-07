@@ -29,8 +29,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 #include "boost/thread/mutex.hpp"
 #include "XrdSsi/XrdSsiRequest.hh"
 
@@ -94,9 +93,9 @@ public:
     QueryRequest(
         XrdSsiSession* session,
         std::string const& payload,
-        boost::shared_ptr<ResponseRequester> const requester,
-        boost::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
-        boost::shared_ptr<util::VoidCallable<void> > const retryFunc,
+        std::shared_ptr<ResponseRequester> const requester,
+        std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
+        std::shared_ptr<util::VoidCallable<void> > const retryFunc,
         ExecStatus& status);
 
     virtual ~QueryRequest();
@@ -133,12 +132,12 @@ private:
     int _bufferSize; ///< Response buffer size
     int _bufferRemain; ///< Remaining size (_cursor to end)
     std::string _payload; ///< Request buffer
-    boost::shared_ptr<ResponseRequester> _requester; ///< Response requester
+    std::shared_ptr<ResponseRequester> _requester; ///< Response requester
 
     /// To be called when the request completes
-    boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     /// To be called to retry a failed request
-    boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
+    std::shared_ptr<util::VoidCallable<void> > _retryFunc;
     /// Reference to an updatable Status
     ExecStatus& _status;
 

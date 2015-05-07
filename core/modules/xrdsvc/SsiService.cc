@@ -30,7 +30,6 @@
 #include <unistd.h>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "lsst/log/Log.h"
 #include "XProtocol/XProtocol.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
@@ -58,11 +57,11 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
-    boost::shared_ptr<sql::SqlConnection> conn;
+std::shared_ptr<sql::SqlConnection> makeSqlConnection() {
+    std::shared_ptr<sql::SqlConnection> conn;
     mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
     sqlConfig.dbName = ""; // Force dbName empty to prevent accidental context
-    conn = boost::make_shared<sql::SqlConnection>(sqlConfig, true);
+    conn = std::make_shared<sql::SqlConnection>(sqlConfig, true);
     return conn;
 }
 
@@ -79,9 +78,9 @@ SsiService::SsiService(XrdSsiLogger* log) {
     }
 
     _foreman = wcontrol::newForeman(
-        boost::make_shared<wsched::BlendScheduler>(
-            boost::make_shared<wsched::GroupScheduler>(),
-            boost::make_shared<wsched::ScanScheduler>()
+        std::make_shared<wsched::BlendScheduler>(
+            std::make_shared<wsched::GroupScheduler>(),
+            std::make_shared<wsched::ScanScheduler>()
         )
     );
 }
@@ -105,10 +104,10 @@ SsiService::Provision(XrdSsiService::Resource* r,
 
 void SsiService::_initInventory() {
     XrdName x;
-    boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
+    std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
     _chunkInventory =
-            boost::make_shared<wpublish::ChunkInventory>(
+            std::make_shared<wpublish::ChunkInventory>(
                                                          x.getName(),
                                                          conn
                                                         );
@@ -137,7 +136,7 @@ void SsiService::_configure() {
 /// qserv workers. Take heed.
 /// @return true if cleanup was successful, false otherwise.
 bool SsiService::_setupScratchDb() {
-    boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
+    std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     if(!conn) {
         return false;
     }

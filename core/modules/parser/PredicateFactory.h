@@ -34,7 +34,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 namespace lsst {
@@ -60,11 +60,11 @@ class PredicateFactory {
 public:
     explicit PredicateFactory(ValueExprFactory& vf)
         : _vf(vf) {}
-    boost::shared_ptr<query::CompPredicate> newCompPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
-    boost::shared_ptr<query::NullPredicate> newNullPredicate(antlr::RefAST a);
+    std::shared_ptr<query::CompPredicate> newCompPredicate(antlr::RefAST a);
+    std::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
+    std::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
+    std::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
+    std::shared_ptr<query::NullPredicate> newNullPredicate(antlr::RefAST a);
 private:
     ValueExprFactory& _vf;
 };

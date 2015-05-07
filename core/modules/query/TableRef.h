@@ -38,7 +38,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/DbTablePair.h"
@@ -51,7 +51,7 @@ namespace query {
 class QueryTemplate; // Forward
 class JoinSpec;
 class JoinRef;
-typedef std::vector<boost::shared_ptr<JoinRef> > JoinRefPtrVector;
+typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
 
 /// TableRefN is a parsed table reference node
 // table_ref :
@@ -60,8 +60,8 @@ typedef std::vector<boost::shared_ptr<JoinRef> > JoinRefPtrVector;
 //   (n:table_name | /*derived_table*/q:table_subquery) ((as:"as")? c:correlation_name (LEFT_PAREN derived_column_list RIGHT_PAREN)?)?
 class TableRef {
 public:
-    typedef boost::shared_ptr<TableRef> Ptr;
-    typedef boost::shared_ptr<TableRef const> CPtr;
+    typedef std::shared_ptr<TableRef> Ptr;
+    typedef std::shared_ptr<TableRef const> CPtr;
 
     TableRef(std::string const& db_, std::string const& table_,
                std::string const& alias_)
@@ -84,7 +84,7 @@ public:
     void setDb(std::string const& db_) { _db = db_; }
     void setTable(std::string const& table_) { _table = table_; }
     JoinRefPtrVector& getJoins() { return _joinRefs; }
-    void addJoin(boost::shared_ptr<JoinRef> r);
+    void addJoin(std::shared_ptr<JoinRef> r);
 
     class Func {
     public:
@@ -126,7 +126,7 @@ std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
 // Containers
 typedef std::vector<TableRef::Ptr> TableRefList;
-typedef boost::shared_ptr<TableRefList> TableRefListPtr;
+typedef std::shared_ptr<TableRefList> TableRefListPtr;
 
 }}} // namespace lsst::qserv::query
 #endif // LSST_QSERV_QUERY_TABLEREF_H

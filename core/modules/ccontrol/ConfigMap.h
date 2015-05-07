@@ -32,7 +32,7 @@
   */
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/utility.hpp"
 #include "boost/lexical_cast.hpp"
 
@@ -51,7 +51,7 @@ namespace ccontrol {
 /// to simplify code at the call site.
 class ConfigMap {
 public:
-    typedef boost::shared_ptr<ConfigMap> Ptr;
+    typedef std::shared_ptr<ConfigMap> Ptr;
 
     /// Construct a ConfigMap from a deep copy of a StringMap
     ConfigMap(StringMap const& m) : _m(m) {}

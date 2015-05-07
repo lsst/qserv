@@ -39,8 +39,8 @@ namespace parser {
 /// in the parse node domain.
 class ParseAliasMap {
 public:
-    typedef boost::shared_ptr<ParseAliasMap> Ptr;
-    typedef boost::shared_ptr<ParseAliasMap const> Cptr;
+    typedef std::shared_ptr<ParseAliasMap> Ptr;
+    typedef std::shared_ptr<ParseAliasMap const> Cptr;
 
     typedef std::map<antlr::RefAST, antlr::RefAST> Map; // Aliases are unique
     // Although in SQL, a table may have multiple aliases, each

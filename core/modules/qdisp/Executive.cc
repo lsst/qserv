@@ -38,7 +38,6 @@
 #include "qdisp/Executive.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // System headers
 #include <algorithm>
@@ -128,7 +127,7 @@ struct printMapSecond {
 
 class NotifyExecutive : public util::UnaryCallable<void, bool> {
 public:
-    typedef boost::shared_ptr<NotifyExecutive> Ptr;
+    typedef std::shared_ptr<NotifyExecutive> Ptr;
 
     NotifyExecutive(qdisp::Executive& e, int refNum)
         : _executive(e), _refNum(refNum) {}
@@ -138,7 +137,7 @@ public:
     }
 
     static Ptr newInstance(qdisp::Executive& e, int refNum) {
-        return boost::make_shared<NotifyExecutive>(boost::ref(e), refNum);;
+        return std::make_shared<NotifyExecutive>(boost::ref(e), refNum);;
     }
 private:
     qdisp::Executive& _executive;
@@ -148,7 +147,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
+Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     : _config(*c),
       _empty{true},
       _messageStore(ms),
@@ -158,7 +157,7 @@ Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
 
 class Executive::DispatchAction : public util::VoidCallable<void> {
 public:
-    typedef boost::shared_ptr<DispatchAction> Ptr;
+    typedef std::shared_ptr<DispatchAction> Ptr;
     DispatchAction(Executive& executive,
                    int refNum,
                    Executive::Spec const& spec,
@@ -267,7 +266,7 @@ void Executive::markCompleted(int refNum, bool success) {
     }
 }
 
-boost::shared_ptr<util::UnaryCallable<void, bool> >
+std::shared_ptr<util::UnaryCallable<void, bool> >
 Executive::newNotifier(Executive &e, int refNum) {
     return NotifyExecutive::newInstance(e, refNum);
 }
@@ -366,7 +365,7 @@ std::string Executive::getProgressDesc() const {
 void Executive::_dispatchQuery(int refNum,
                                Executive::Spec const& spec,
                                ExecStatus::Ptr execStatus) {
-    boost::shared_ptr<DispatchAction> retryFunc;
+    std::shared_ptr<DispatchAction> retryFunc;
     if(_shouldRetry(refNum)) { // limit retries for each request.
         retryFunc.reset(new DispatchAction(*this, refNum,
                                            spec,
@@ -433,7 +432,7 @@ bool Executive::_shouldRetry(int refNum) {
 
 ExecStatus::Ptr Executive::_insertNewStatus(int refNum,
                                             ResourceUnit const& r) {
-    ExecStatus::Ptr es = boost::make_shared<ExecStatus>(r);
+    ExecStatus::Ptr es = std::make_shared<ExecStatus>(r);
     boost::lock_guard<boost::mutex> lock(_statusesMutex);
     _statuses.insert(StatusMap::value_type(refNum, es));
     return es;

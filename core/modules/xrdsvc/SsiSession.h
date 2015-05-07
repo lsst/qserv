@@ -52,14 +52,14 @@ namespace xrdsvc {
 /// XrdSsiResponder classes.
 class SsiSession : public XrdSsiSession, public XrdSsiResponder {
 public:
-    typedef boost::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
+    typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
     typedef util::VoidCallable<void> CancelFunc;
-    typedef boost::shared_ptr<CancelFunc> CancelFuncPtr;
+    typedef std::shared_ptr<CancelFunc> CancelFuncPtr;
 
     /// Construct a new session (called by SsiService)
     SsiSession(char const* sname,
                ValidatorPtr validator,
-               boost::shared_ptr<wbase::MsgProcessor> processor)
+               std::shared_ptr<wbase::MsgProcessor> processor)
         : XrdSsiSession(strdup(sname), 0),
           XrdSsiResponder(this, (void *)0),
           _validator(validator),
@@ -88,7 +88,7 @@ private:
     friend class ReplyChannel;
 
     ValidatorPtr _validator; ///< validates request against what's available
-    boost::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
+    std::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
 
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.

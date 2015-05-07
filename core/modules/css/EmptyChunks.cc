@@ -30,8 +30,7 @@
 #include <functional>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 #include "boost/thread.hpp"
 
 // Qserv headers
@@ -73,7 +72,7 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-boost::shared_ptr<IntSet const>
+std::shared_ptr<IntSet const>
 EmptyChunks::getEmpty(std::string const& db) const {
     boost::lock_guard<boost::mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
@@ -81,7 +80,7 @@ EmptyChunks::getEmpty(std::string const& db) const {
         IntSetConstPtr readOnly = i->second;
         return readOnly;
     }
-    IntSetPtr newSet = boost::make_shared<IntSet>();
+    IntSetPtr newSet = std::make_shared<IntSet>();
     _sets.insert(IntSetMap::value_type(db, newSet));
     populate(_path, _fallbackFile, *newSet, db); // Populate reference
     return IntSetConstPtr(newSet);

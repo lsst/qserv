@@ -33,7 +33,6 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -49,7 +48,7 @@ public:
     void operator()() {
         _w.registerRunner(this);
         //std::cerr << "Started!" << std::endl;
-        boost::shared_ptr<Callable> c = _w.getNextCallable();
+        std::shared_ptr<Callable> c = _w.getNextCallable();
         _c = c.get();
         //std::cerr << "got first job" << std::endl;
         while(!_w.isPoison(c.get())) {
@@ -83,7 +82,7 @@ WorkQueue::~WorkQueue() {
     _dropQueue(true);
     int poisonToMake = 2*_runners.size(); // double dose of poison
     for(int i = 0; i < poisonToMake; ++i) {
-        add(boost::shared_ptr<Callable>()); // add poison
+        add(std::shared_ptr<Callable>()); // add poison
     }
     boost::unique_lock<boost::mutex> lock(_runnersMutex);
 
@@ -95,7 +94,7 @@ WorkQueue::~WorkQueue() {
 }
 
 void
-WorkQueue::add(boost::shared_ptr<WorkQueue::Callable> c) {
+WorkQueue::add(std::shared_ptr<WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
         //std::cerr << "Queue refusing work: dead" << std::endl;
@@ -108,7 +107,7 @@ WorkQueue::add(boost::shared_ptr<WorkQueue::Callable> c) {
 void
 WorkQueue::cancelQueued() {
     boost::unique_lock<boost::mutex> lock(_mutex);
-    boost::shared_ptr<Callable> c;
+    std::shared_ptr<Callable> c;
     while(!_queue.empty()) {
         c = _queue.front();
         _queue.pop_front();
@@ -118,13 +117,13 @@ WorkQueue::cancelQueued() {
     }
 }
 
-boost::shared_ptr<WorkQueue::Callable>
+std::shared_ptr<WorkQueue::Callable>
 WorkQueue::getNextCallable() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while(_queue.empty()) {
         _queueNonEmpty.wait(lock);
     }
-    boost::shared_ptr<Callable> c = _queue.front();
+    std::shared_ptr<Callable> c = _queue.front();
     _queue.pop_front();
     return c;
 }
@@ -176,7 +175,7 @@ WorkQueue::_dropQueue(bool final) {
 namespace {
 class MyCallable : public lsst::qserv::util::WorkQueue::Callable {
 public:
-    typedef boost::shared_ptr<MyCallable> Ptr;
+    typedef std::shared_ptr<MyCallable> Ptr;
 
     MyCallable(int id, float time)  : _myId(id), _spinTime(time) {}
     virtual void operator()() {
@@ -212,7 +211,7 @@ void test() {
     lsst::qserv::util::WorkQueue wq(10);
     cout << "wq started " << endl;
     for(int i=0; i < 50; ++i) {
-        wq.add(boost::make_shared<MyCallable>(i, 0.2));
+        wq.add(std::make_shared<MyCallable>(i, 0.2));
     }
     cout << "added items" << endl;
     //nanosleep(&ts,&rem);

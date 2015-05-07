@@ -37,7 +37,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 // Qserv headers
@@ -62,7 +61,7 @@ ScanScheduler::ScanScheduler()
       _logger(LOG_GET(getName())),
       _mutex()
 {
-    _disks.push_back(boost::make_shared<ChunkDisk>(_logger));
+    _disks.push_back(std::make_shared<ChunkDisk>(_logger));
     dbgChunkDisk1 = _disks.front().get();
     dbgScanScheduler = this;
     assert(!_disks.empty());
@@ -185,7 +184,7 @@ ScanScheduler::_getNextTasks(int max) {
         if(!p) { break; }
         allowNewChunk = false; // Only allow one new chunk
         if(!tq) {
-            tq = boost::make_shared<wbase::TaskQueue>();
+            tq = std::make_shared<wbase::TaskQueue>();
         }
         tq->push_back(p);
 

@@ -37,7 +37,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -70,18 +69,18 @@ operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WHERE " << wc.getGenerated();
     return os;
 }
-void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
+void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
     if(f) {
         f->findColumnRefs(vector);
     }
 }
-void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
+void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     if(!t) { return; }
     BoolTerm::PtrVector::iterator i = t->iterBegin();
     BoolTerm::PtrVector::iterator e = t->iterEnd();
     if(i == e) { // Leaf.
         // Bool factor?
-        boost::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
+        std::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
         if(bf) {
             findColumnRefs(bf, vector);
         } else {
@@ -98,9 +97,9 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     }
 }
 
-boost::shared_ptr<ColumnRef::Vector const>
+std::shared_ptr<ColumnRef::Vector const>
 WhereClause::getColumnRefs() const {
-    boost::shared_ptr<ColumnRef::Vector> vector = boost::make_shared<ColumnRef::Vector>();
+    std::shared_ptr<ColumnRef::Vector> vector = std::make_shared<ColumnRef::Vector>();
 
     // Idea: Walk the expression tree and add all column refs to the
     // list. We will walk in depth-first order, but the interface spec
@@ -111,7 +110,7 @@ WhereClause::getColumnRefs() const {
 }
 
 
-boost::shared_ptr<AndTerm>
+std::shared_ptr<AndTerm>
 WhereClause::getRootAndTerm() {
     // Walk the list to find the global AND. If an OR term is root,
     // and has multiple terms, there is no global AND which means we
@@ -140,23 +139,23 @@ void WhereClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<WhereClause> WhereClause::clone() const {
+std::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
-    boost::shared_ptr<WhereClause> newC = boost::make_shared<WhereClause>(*this);
+    std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
     if(_tree.get()) {
         newC->_tree = _tree->copySyntax();
     }
     if(_restrs.get()) {
-        newC->_restrs = boost::make_shared<QsRestrictor::PtrVector>(*_restrs);
+        newC->_restrs = std::make_shared<QsRestrictor::PtrVector>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
     return newC;
 
 }
 
-boost::shared_ptr<WhereClause> WhereClause::copySyntax() {
-    boost::shared_ptr<WhereClause> newC = boost::make_shared<WhereClause>(*this);
+std::shared_ptr<WhereClause> WhereClause::copySyntax() {
+    std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
     if(_tree.get()) {
         newC->_tree = _tree->copySyntax();
@@ -166,17 +165,17 @@ boost::shared_ptr<WhereClause> WhereClause::copySyntax() {
 }
 
 void
-WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
+WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
     // Walk to AndTerm and prepend new BoolTerm in front of the
     // list. If the new BoolTerm is an instance of AndTerm, prepend
     // its terms rather than the AndTerm itself.
-    boost::shared_ptr<BoolTerm> insertPos = skipTrivialOrTerms(_tree);
+    std::shared_ptr<BoolTerm> insertPos = skipTrivialOrTerms(_tree);
 
     // FIXME: Should deal with case where AndTerm is not found.
     AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
     if(!rootAnd) {
-        boost::shared_ptr<AndTerm> a = boost::make_shared<AndTerm>();
-        boost::shared_ptr<BoolTerm> oldTree(_tree);
+        std::shared_ptr<AndTerm> a = std::make_shared<AndTerm>();
+        std::shared_ptr<BoolTerm> oldTree(_tree);
         _tree = a;
         if(oldTree.get()) { // Only add oldTree root if non-NULL
             a->_terms.push_back(oldTree);
@@ -208,7 +207,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
 ////////////////////////////////////////////////////////////////////////
 void
 WhereClause::resetRestrs() {
-    _restrs = boost::make_shared<QsRestrictor::PtrVector>();
+    _restrs = std::make_shared<QsRestrictor::PtrVector>();
 }
 
 }}} // namespace lsst::qserv::query

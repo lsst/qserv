@@ -42,7 +42,7 @@ class ChannelStream; // Forward declaration
 /// XrdSsiResponder (which SsiSession inherits from).
 class SsiSession::ReplyChannel : public wbase::SendChannel {
 public:
-    typedef boost::shared_ptr<ReplyChannel> Ptr;
+    typedef std::shared_ptr<ReplyChannel> Ptr;
 
     ReplyChannel(SsiSession& s)
         : _ssiSession(s), _stream(0) {}

@@ -35,7 +35,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
                                                                                                                                                                                          
 // Qserv headers 
 
@@ -47,13 +46,13 @@ namespace qserv {
 namespace query {
 
 class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
+typedef std::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 typedef ValueExprPtrVector::const_iterator ValueExprPtrVectorConstIter;
 
 class SelectStmt;
-typedef boost::shared_ptr<SelectStmt> SelectStmtPtr;
-typedef std::vector<boost::shared_ptr<SelectStmt> > SelectStmtPtrVector;
+typedef std::shared_ptr<SelectStmt> SelectStmtPtr;
+typedef std::vector<std::shared_ptr<SelectStmt> > SelectStmtPtrVector;
 
 }}} // namespace lsst::qserv::query
 

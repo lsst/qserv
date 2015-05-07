@@ -30,7 +30,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp" // boost::mutex
 
 // Local headers
@@ -55,11 +54,11 @@ class ResponseRequester;
 /// maintaining minimal information about the tasks themselves.
 class Executive {
 public:
-    typedef boost::shared_ptr<Executive> Ptr;
+    typedef std::shared_ptr<Executive> Ptr;
     typedef std::map<int, ExecStatus::Ptr> StatusMap;
 
     struct Config {
-        typedef boost::shared_ptr<Config> Ptr;
+        typedef std::shared_ptr<Config> Ptr;
         Config(std::string const& serviceUrl_)
             : serviceUrl(serviceUrl_) {}
         Config(int,int) : serviceUrl(getMockStr()) {}
@@ -72,13 +71,13 @@ public:
     struct Spec {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
-        boost::shared_ptr<ResponseRequester> requester;
+        std::shared_ptr<ResponseRequester> requester;
     };
 
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms);
+    Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms);
 
     /// Add an item with a reference number (not necessarily a chunk number)
     void add(int refNum, Spec const& s);
@@ -104,11 +103,11 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
-    static boost::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
+    static std::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
 
 
 private:
-    typedef boost::shared_ptr<ResponseRequester> RequesterPtr;
+    typedef std::shared_ptr<ResponseRequester> RequesterPtr;
     typedef std::map<int, RequesterPtr> RequesterMap;
 
     class DispatchAction;
@@ -134,7 +133,7 @@ private:
 
     Config _config; ///< Personal copy of config
     util::Flag<bool> _empty;
-    boost::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
+    std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _service; ///< RPC interface
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
     StatusMap _statuses; ///< Statuses of submitted tasks

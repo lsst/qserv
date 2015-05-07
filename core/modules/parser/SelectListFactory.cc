@@ -34,7 +34,6 @@
 #include "parser/SelectListFactory.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "parser/ParseAliasMap.h"
@@ -70,7 +69,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class SelectListFactory::ColumnAliasH : public VoidTwoRefFunc {
 public:
-    ColumnAliasH(boost::shared_ptr<ParseAliasMap> map) : _map(map) {}
+    ColumnAliasH(std::shared_ptr<ParseAliasMap> map) : _map(map) {}
     virtual ~ColumnAliasH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
         if(b.get()) {
@@ -81,18 +80,18 @@ public:
         // regardless of alias.
     }
 private:
-    boost::shared_ptr<ParseAliasMap> _map;
+    std::shared_ptr<ParseAliasMap> _map;
 }; // class ColumnAliasH
 
 
 ////////////////////////////////////////////////////////////////////////
 // class SelectListFactory
 ////////////////////////////////////////////////////////////////////////
-SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
-                                     boost::shared_ptr<ValueExprFactory> vf)
+SelectListFactory::SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
+                                     std::shared_ptr<ValueExprFactory> vf)
     : _aliases(aliasMap),
       _vFactory(vf),
-      _valueExprList(boost::make_shared<ValueExprPtrVector>()) {
+      _valueExprList(std::make_shared<ValueExprPtrVector>()) {
 }
 
 /// attach the column alias handler. This is needed until we implement code to
@@ -100,12 +99,12 @@ SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
 /// in a function to be called at the beginning of the import() call.
 void
 SelectListFactory::attachTo(SqlSQL2Parser& p) {
-    _columnAliasH = boost::make_shared<ColumnAliasH>(_aliases);
+    _columnAliasH = std::make_shared<ColumnAliasH>(_aliases);
     p._columnAliasHandler = _columnAliasH;
 }
 
-boost::shared_ptr<query::SelectList> SelectListFactory::getProduct() {
-    boost::shared_ptr<query::SelectList> slist = boost::make_shared<query::SelectList>();
+std::shared_ptr<query::SelectList> SelectListFactory::getProduct() {
+    std::shared_ptr<query::SelectList> slist = std::make_shared<query::SelectList>();
     slist->_valueExprList = _valueExprList;
     return slist;
 }

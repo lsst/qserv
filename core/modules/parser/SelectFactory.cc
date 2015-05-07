@@ -66,17 +66,17 @@ namespace qserv {
 namespace parser {
 
 SelectFactory::SelectFactory()
-    : _columnAliases(boost::make_shared<ParseAliasMap>()),
-      _tableAliases(boost::make_shared<ParseAliasMap>()),
-      _columnRefNodeMap(boost::make_shared<ColumnRefNodeMap>()),
+    : _columnAliases(std::make_shared<ParseAliasMap>()),
+      _tableAliases(std::make_shared<ParseAliasMap>()),
+      _columnRefNodeMap(std::make_shared<ColumnRefNodeMap>()),
       _hasDistinct(false),
-      _vFactory(boost::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
+      _vFactory(std::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
 
-    _fFactory = boost::make_shared<FromFactory>(_tableAliases, _vFactory);
-    _slFactory = boost::shared_ptr<SelectListFactory>(
+    _fFactory = std::make_shared<FromFactory>(_tableAliases, _vFactory);
+    _slFactory = std::shared_ptr<SelectListFactory>(
             new SelectListFactory(_columnAliases, _vFactory));
-    _mFactory = boost::make_shared<ModFactory>(_vFactory);
-    _wFactory = boost::make_shared<WhereFactory>(_vFactory);
+    _mFactory = std::make_shared<ModFactory>(_vFactory);
+    _wFactory = std::make_shared<WhereFactory>(_vFactory);
 }
 
 void
@@ -89,9 +89,9 @@ SelectFactory::attachTo(SqlSQL2Parser& p) {
     _mFactory->attachTo(p);
 }
 
-boost::shared_ptr<query::SelectStmt>
+std::shared_ptr<query::SelectStmt>
 SelectFactory::getStatement() {
-    boost::shared_ptr<query::SelectStmt> stmt = boost::make_shared<query::SelectStmt>();
+    std::shared_ptr<query::SelectStmt> stmt = std::make_shared<query::SelectStmt>();
     stmt->_selectList = _slFactory->getProduct();
     stmt->_fromList = _fFactory->getProduct();
     stmt->_whereClause = _wFactory->getProduct();
@@ -155,9 +155,9 @@ public:
 
 void
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
-    boost::shared_ptr<ColumnRefH> crh = boost::make_shared<ColumnRefH>();
+    std::shared_ptr<ColumnRefH> crh = std::make_shared<ColumnRefH>();
     // Non-const argument, can't use make_shared.
-    boost::shared_ptr<QuerySpecH> qsh(new QuerySpecH(*this, *_slFactory));
+    std::shared_ptr<QuerySpecH> qsh(new QuerySpecH(*this, *_slFactory));
     crh->setListener(_columnRefNodeMap);
     p._columnRefHandler = crh;
     p._querySpecHandler = qsh;

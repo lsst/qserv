@@ -34,7 +34,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -60,10 +60,10 @@ public:
     class WhereCondH;
     friend class WhereCondH;
 
-    explicit WhereFactory(boost::shared_ptr<ValueExprFactory> vf);
+    explicit WhereFactory(std::shared_ptr<ValueExprFactory> vf);
 
-    boost::shared_ptr<query::WhereClause> getProduct();
-    static boost::shared_ptr<query::WhereClause> newEmpty();
+    std::shared_ptr<query::WhereClause> getProduct();
+    static std::shared_ptr<query::WhereClause> newEmpty();
 private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
@@ -71,8 +71,8 @@ private:
     void _addOrSibs(antlr::RefAST a);
 
     // Fields
-    boost::shared_ptr<query::WhereClause> _clause;
-    boost::shared_ptr<ValueExprFactory> _vf;
+    std::shared_ptr<query::WhereClause> _clause;
+    std::shared_ptr<ValueExprFactory> _vf;
 };
 
 }}} // namespace lsst::qserv::parser

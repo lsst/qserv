@@ -38,7 +38,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "global/stringTypes.h"
@@ -74,7 +74,7 @@ public:
 private:
     bool _setup(mysql::MySqlConfig const& sqlConfig, std::string const& query);
 
-    boost::shared_ptr<mysql::MySqlConnection> _connection;
+    std::shared_ptr<mysql::MySqlConnection> _connection;
     StringVector _current;
     SqlErrorObject _errObj;
     int _columnCount;
@@ -95,7 +95,7 @@ public:
     virtual bool runQuery(std::string const query, SqlResults&,
                           SqlErrorObject&);
     /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
-    virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
+    virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
     virtual bool runQuery(std::string const query, SqlErrorObject&);
     virtual bool dbExists(std::string const& dbName, SqlErrorObject&);
     virtual bool createDb(std::string const& dbName, SqlErrorObject&,
@@ -125,7 +125,7 @@ private:
     bool _connect(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&,
                          std::string const& details=std::string(""));
-    boost::shared_ptr<mysql::MySqlConnection> _connection;
+    std::shared_ptr<mysql::MySqlConnection> _connection;
 }; // class SqlConnection
 
 }}} // namespace lsst::qserv::sql

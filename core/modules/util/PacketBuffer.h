@@ -28,7 +28,7 @@
 #include <utility>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -42,7 +42,7 @@ namespace util {
 /// disk usage, theoretically improving overall latency.
 class PacketBuffer {
 public:
-    typedef boost::shared_ptr<PacketBuffer> Ptr;
+    typedef std::shared_ptr<PacketBuffer> Ptr;
     typedef std::pair<char*, unsigned> Value;
     typedef unsigned long long Pos;
 

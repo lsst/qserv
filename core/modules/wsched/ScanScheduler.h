@@ -44,8 +44,8 @@ namespace wsched {
 
 class ScanScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<ScanScheduler> Ptr;
-    typedef std::vector<boost::shared_ptr<ChunkDisk> > ChunkDiskList;
+    typedef std::shared_ptr<ScanScheduler> Ptr;
+    typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;
 
     ScanScheduler();
     virtual ~ScanScheduler() {}

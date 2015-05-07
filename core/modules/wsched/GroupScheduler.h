@@ -37,7 +37,7 @@ namespace wsched {
 /// same chunks are grouped together.
 class GroupScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<GroupScheduler> Ptr;
+    typedef std::shared_ptr<GroupScheduler> Ptr;
 
     GroupScheduler();
     virtual ~GroupScheduler() {}

@@ -210,7 +210,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class FromFactory::TableRefAuxH : public VoidFourRefFunc {
 public:
-    TableRefAuxH(boost::shared_ptr<ParseAliasMap> map)
+    TableRefAuxH(std::shared_ptr<ParseAliasMap> map)
         : _map(map) {}
     virtual ~TableRefAuxH() {}
     virtual void operator()(antlr::RefAST name, antlr::RefAST sub,
@@ -222,7 +222,7 @@ public:
         // regardless of alias.
     }
 private:
-    boost::shared_ptr<ParseAliasMap> _map;
+    std::shared_ptr<ParseAliasMap> _map;
 };
 class QualifiedName {
 public:
@@ -244,7 +244,7 @@ public:
 class FromFactory::RefGenerator {
 public:
     RefGenerator(antlr::RefAST firstRef,
-                 boost::shared_ptr<ParseAliasMap> aliases,
+                 std::shared_ptr<ParseAliasMap> aliases,
                  BoolTermFactory& bFactory)
         : _cursor(firstRef),
           _aliases(aliases),
@@ -341,10 +341,10 @@ private:
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
         sib = sib->getNextSibling();
-        boost::shared_ptr<query::JoinSpec> js = _processJoinSpec(sib);
+        std::shared_ptr<query::JoinSpec> js = _processJoinSpec(sib);
 
-        boost::shared_ptr<query::JoinRef> p =
-                boost::make_shared<query::JoinRef>(right, j, false, js);
+        std::shared_ptr<query::JoinRef> p =
+                std::make_shared<query::JoinRef>(right, j, false, js);
         return p;
     }
     /// "natural" ( "inner" | outer_join_type ("outer")? )? "join" table_ref
@@ -365,8 +365,8 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        boost::shared_ptr<query::JoinRef> p =
-                boost::make_shared<query::JoinRef>(
+        std::shared_ptr<query::JoinRef> p =
+                std::make_shared<query::JoinRef>(
                         right,
                         j,
                         true, // Natural join, no conditions
@@ -389,8 +389,8 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        boost::shared_ptr<query::JoinRef> p =
-                boost::make_shared<query::JoinRef>(right, query::JoinRef::UNION,
+        std::shared_ptr<query::JoinRef> p =
+                std::make_shared<query::JoinRef>(right, query::JoinRef::UNION,
                         false, // union join: no condititons
                         query::JoinSpec::Ptr());
         return p;
@@ -411,8 +411,8 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        boost::shared_ptr<query::JoinRef> p =
-                boost::make_shared<query::JoinRef>(
+        std::shared_ptr<query::JoinRef> p =
+                std::make_shared<query::JoinRef>(
                         right,
                         query::JoinRef::CROSS,
                         false, // cross join: no conditions
@@ -422,15 +422,15 @@ private:
 
     /// USING_SPEC:
     /// "using" LEFT_PAREN column_name_list  RIGHT_PAREN
-    boost::shared_ptr<query::JoinSpec>  _processJoinSpec(RefAST specToken) const {
-        boost::shared_ptr<query::JoinSpec> js;
+    std::shared_ptr<query::JoinSpec>  _processJoinSpec(RefAST specToken) const {
+        std::shared_ptr<query::JoinSpec> js;
         // std::cout << "remaining join spec: " << walkIndentedString(specToken)
         // << std::endl;
         if(!specToken.get()) {
             throw ParseException("Null join spec", specToken);
         }
         RefAST token = specToken;
-        boost::shared_ptr<query::BoolTerm> bt;
+        std::shared_ptr<query::BoolTerm> bt;
         switch(specToken->getType()) {
         case SqlSQL2TokenTypes::USING_SPEC:
             token = specToken->getFirstChild(); // Descend to "using"
@@ -446,7 +446,7 @@ private:
                || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
                 break;
             }
-            js = boost::make_shared<query::JoinSpec>(
+            js = std::make_shared<query::JoinSpec>(
                     _processColumn(token->getFirstChild()));
             token = token->getNextSibling();
             if(!token.get()
@@ -466,14 +466,14 @@ private:
                 throw ParseException("Expected OR_OP in join condition", specToken);
             }
             bt = _bFactory.newOrTerm(token);
-            js = boost::make_shared<query::JoinSpec>(bt->getReduced());
+            js = std::make_shared<query::JoinSpec>(bt->getReduced());
             return js;
 
         default:
             break;
         }
         throw ParseException("Invalid join spec token", token);
-        return boost::shared_ptr<query::JoinSpec>(); // should never reach
+        return std::shared_ptr<query::JoinSpec>(); // should never reach
     }
     void  _processJoinCondition(RefAST joinCondition) const {
         std::cout << "Join condition: " << walkIndentedString(joinCondition)
@@ -509,13 +509,13 @@ private:
     /// column_name_list :
     ///    column_name (COMMA column_name)*
     /// ;
-    boost::shared_ptr<query::ColumnRef> _processColumn(RefAST sib) const {
+    std::shared_ptr<query::ColumnRef> _processColumn(RefAST sib) const {
         if(!sib.get()) {
             throw ParseException("NULL column node", sib); }
         if(sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
             throw ParseException("Bad column node for USING", sib); }
-        boost::shared_ptr<query::ColumnRef> c =
-                boost::make_shared<query::ColumnRef>("", "", tokenText(sib));
+        std::shared_ptr<query::ColumnRef> c =
+                std::make_shared<query::ColumnRef>("", "", tokenText(sib));
         return c;
     }
     query::TableRef::Ptr _processQualifiedName(RefAST n) const {
@@ -526,7 +526,7 @@ private:
         QualifiedName qn(n->getFirstChild());
         std::string db;
         if(qn.names.size() > 1) db = qn.getQual(1);
-        return boost::make_shared<query::TableRef>(
+        return std::make_shared<query::TableRef>(
                 db,
                 qn.getName(),
                 alias);
@@ -537,35 +537,35 @@ private:
 
     // Fields
     antlr::RefAST _cursor;
-    boost::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _aliases;
     BoolTermFactory& _bFactory;
 };
 ////////////////////////////////////////////////////////////////////////
 // FromFactory (impl)
 ////////////////////////////////////////////////////////////////////////
-FromFactory::FromFactory(boost::shared_ptr<ParseAliasMap> aliases,
-                         boost::shared_ptr<ValueExprFactory> vf)
+FromFactory::FromFactory(std::shared_ptr<ParseAliasMap> aliases,
+                         std::shared_ptr<ValueExprFactory> vf)
     : _aliases(aliases),
-      _bFactory(boost::make_shared<BoolTermFactory>(vf)) {
+      _bFactory(std::make_shared<BoolTermFactory>(vf)) {
 }
 
-boost::shared_ptr<query::FromList>
+std::shared_ptr<query::FromList>
 FromFactory::getProduct() {
     return _list;
 }
 
 void
 FromFactory::attachTo(SqlSQL2Parser& p) {
-    boost::shared_ptr<TableRefListH> lh(new TableRefListH(*this));
+    std::shared_ptr<TableRefListH> lh(new TableRefListH(*this));
     p._tableListHandler = lh;
-    boost::shared_ptr<TableRefAuxH> ah = boost::make_shared<TableRefAuxH>(_aliases);
+    std::shared_ptr<TableRefAuxH> ah = std::make_shared<TableRefAuxH>(_aliases);
     p._tableAliasHandler = ah;
 }
 
 void
 FromFactory::_import(antlr::RefAST a) {
-    boost::shared_ptr<query::TableRefList> r = boost::make_shared<query::TableRefList>();
-    _list = boost::make_shared<query::FromList>(r);
+    std::shared_ptr<query::TableRefList> r = std::make_shared<query::TableRefList>();
+    _list = std::make_shared<query::FromList>(r);
 
     // LOGF_INFO("FROM starts with: %1% (%2%)" % a->getText() % a->getType());
     std::stringstream ss;

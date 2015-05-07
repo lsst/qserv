@@ -33,7 +33,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "css/Facade.h"
@@ -59,12 +59,12 @@ class QsRestrictor;
 /// materialized query text.
 class QueryContext {
 public:
-    typedef boost::shared_ptr<QueryContext> Ptr;
+    typedef std::shared_ptr<QueryContext> Ptr;
 
     QueryContext() {}
-    typedef std::vector<boost::shared_ptr<QsRestrictor> > RestrList;
+    typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
-    boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
+    std::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
                                               ///  for this lifetime.
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
@@ -79,8 +79,8 @@ public:
     query::TableAliasReverse tableAliasReverses;
 
     // Owned QueryMapping and query restrictors
-    boost::shared_ptr<qana::QueryMapping> queryMapping;
-    boost::shared_ptr<RestrList> restrictors;
+    std::shared_ptr<qana::QueryMapping> queryMapping;
+    std::shared_ptr<RestrList> restrictors;
 
     int chunkCount; //< -1: all, 0: none, N: #chunks
 
@@ -94,7 +94,7 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    DbTablePair resolve(boost::shared_ptr<ColumnRef> cr);
+    DbTablePair resolve(std::shared_ptr<ColumnRef> cr);
 };
 
 }}} // namespace lsst::qserv::query

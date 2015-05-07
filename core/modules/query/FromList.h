@@ -32,7 +32,7 @@
 // System headers
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/TableRef.h"
@@ -51,7 +51,7 @@ namespace query {
 // FromList is a representation of SQL FROM.
 class FromList {
 public:
-    typedef boost::shared_ptr<FromList> Ptr;
+    typedef std::shared_ptr<FromList> Ptr;
     explicit FromList(TableRefListPtr p) : _tableRefs(p) {}
     ~FromList() {}
     /// @return a list of TableRef that occur
@@ -67,9 +67,9 @@ public:
     void renderTo(QueryTemplate& qt) const;
 
     /// Deep-copy this node
-    boost::shared_ptr<FromList> clone() const;
+    std::shared_ptr<FromList> clone() const;
     /// Shallow copy this node, sharing its linked objects.
-    boost::shared_ptr<FromList> copySyntax();
+    std::shared_ptr<FromList> copySyntax();
 
 private:
     friend std::ostream& operator<<(std::ostream& os, FromList const& fl);

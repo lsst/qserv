@@ -28,7 +28,6 @@
   */
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "proto/worker.pb.h"
@@ -47,16 +46,16 @@ using lsst::qserv::wbase::TaskQueue;
 using lsst::qserv::wbase::TaskQueuePtr;
 using lsst::qserv::wbase::SendChannel;
 
-Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {
-    return boost::make_shared<Task>(tm, boost::shared_ptr<SendChannel>());
+Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
+    return std::make_shared<Task>(tm, std::shared_ptr<SendChannel>());
 }
 struct SchedulerFixture {
-    typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
+    typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
     SchedulerFixture(void)
         : fs(1) {
         counter = 1;
-        emptyTqp = boost::make_shared<TaskQueue>();
+        emptyTqp = std::make_shared<TaskQueue>();
     }
     ~SchedulerFixture(void) { }
 

@@ -78,9 +78,9 @@ private:
 QueryRequest::QueryRequest(
     XrdSsiSession* session,
     std::string const& payload,
-    boost::shared_ptr<ResponseRequester> const requester,
-    boost::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
-    boost::shared_ptr<util::VoidCallable<void> > const retryFunc,
+    std::shared_ptr<ResponseRequester> const requester,
+    std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
+    std::shared_ptr<util::VoidCallable<void> > const retryFunc,
     ExecStatus& status)
     : _session(session),
       _payload(payload),
@@ -245,8 +245,8 @@ bool QueryRequest::cancelled() {
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
     LOGF_DEBUG("Error finish");
-    boost::shared_ptr<util::UnaryCallable<void, bool>> finish;
-    boost::shared_ptr<util::VoidCallable<void>> retry;
+    std::shared_ptr<util::UnaryCallable<void, bool>> finish;
+    std::shared_ptr<util::VoidCallable<void>> retry;
     {
         boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
@@ -275,7 +275,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 
 /// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
-    boost::shared_ptr<util::UnaryCallable<void, bool>> finish;
+    std::shared_ptr<util::UnaryCallable<void, bool>> finish;
     {
         boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
@@ -299,7 +299,7 @@ void QueryRequest::_finish() {
 /// Register a cancellation function with the query receiver in order to receive
 /// notifications upon errors detected in the receiver.
 void QueryRequest::_registerSelfDestruct() {
-    boost::shared_ptr<Canceller> canceller(new Canceller(this));
+    std::shared_ptr<Canceller> canceller(new Canceller(this));
     _requester->registerCancel(canceller);
 }
 

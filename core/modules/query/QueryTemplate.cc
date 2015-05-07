@@ -39,7 +39,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -66,7 +65,7 @@ struct SpacedOutput {
         os << s;
         last = s;
     }
-    void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
+    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
         if(!e) { throw std::invalid_argument("NULL QueryTemplate::Entry"); }
         //if(e->isDynamic()) { os << "(" << count << ")"; }
         (*this)(e->getValue());
@@ -90,7 +89,7 @@ struct MappingWrapper {
     MappingWrapper(QueryTemplate::EntryMapping const& em_,
                    QueryTemplate& qt_)
         : em(em_), qt(qt_) {}
-    void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
+    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
             qt.append(em.mapEntry(*e));
         }
     QueryTemplate::EntryMapping const& em;
@@ -128,7 +127,7 @@ public:
 struct EntryMerger {
     EntryMerger() {}
 
-    void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
+    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
         if(!_candidates.empty()) {
             if(!_checkMergeable(_candidates.back(), e)) {
                 _mergeCurrent();
@@ -137,14 +136,14 @@ struct EntryMerger {
         _candidates.push_back(e);
     }
     void pack() { _mergeCurrent(); }
-    bool _checkMergeable(boost::shared_ptr<QueryTemplate::Entry> left,
-                         boost::shared_ptr<QueryTemplate::Entry> right) {
+    bool _checkMergeable(std::shared_ptr<QueryTemplate::Entry> left,
+                         std::shared_ptr<QueryTemplate::Entry> right) {
         return !((left->isDynamic() || right->isDynamic()));
     }
     void _mergeCurrent() {
         if(_candidates.size() > 1) {
-            boost::shared_ptr<QueryTemplate::Entry> e;
-            e = boost::make_shared<QueryTemplate::StringEntry>(
+            std::shared_ptr<QueryTemplate::Entry> e;
+            e = std::make_shared<QueryTemplate::StringEntry>(
                                                    outputString(_candidates)
                                                               );
             _entries.push_back(e);
@@ -169,24 +168,24 @@ QueryTemplate::dbgStr() const {
 
 void
 QueryTemplate::append(std::string const& s) {
-    boost::shared_ptr<Entry> e = boost::make_shared<StringEntry>(s);
+    std::shared_ptr<Entry> e = std::make_shared<StringEntry>(s);
     _entries.push_back(e);
 }
 
 void
 QueryTemplate::append(query::ColumnRef const& cr) {
-    boost::shared_ptr<Entry> e = boost::make_shared<ColumnEntry>(cr);
+    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr);
     _entries.push_back(e);
 }
 
 void
 QueryTemplate::append(TableEntry const& te) {
-    boost::shared_ptr<Entry> e = boost::make_shared<TableEntry>(te);
+    std::shared_ptr<Entry> e = std::make_shared<TableEntry>(te);
     _entries.push_back(e);
 }
 
 void
-QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
+QueryTemplate::append(std::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
 

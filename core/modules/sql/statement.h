@@ -28,7 +28,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -49,7 +49,7 @@ struct InsertColumn {
 typedef std::vector<InsertColumn> InsertColumnVector;
 
 /// Construct patch spec from a schema
-boost::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
+std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
 
 /// Compose a LOAD DATA INFILE statement
 std::string formLoadInfile(std::string const& table,

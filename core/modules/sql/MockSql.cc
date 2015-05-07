@@ -21,7 +21,6 @@
  */
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "sql/MockSql.h"
@@ -38,10 +37,10 @@ StringVectorVector vec;
 namespace sql {
 // class MockSql Implementation
 
-boost::shared_ptr<SqlResultIter>
+std::shared_ptr<SqlResultIter>
 MockSql::getQueryIter(std::string const& query) {
     typedef StringVectorVector::const_iterator SubIter;
-    boost::shared_ptr<Iter<SubIter> > iter = boost::make_shared<Iter<SubIter> >(vec.begin(), vec.end());
+    std::shared_ptr<Iter<SubIter> > iter = std::make_shared<Iter<SubIter> >(vec.begin(), vec.end());
     return iter;
 }
 

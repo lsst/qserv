@@ -36,7 +36,6 @@
 #include <sstream>
 
  // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/JoinRef.h"
@@ -90,7 +89,7 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     }
 }
 
-void TableRef::addJoin(boost::shared_ptr<JoinRef> r) {
+void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
     _joinRefs.push_back(r);
 }
 
@@ -119,7 +118,7 @@ JoinRef::Ptr joinRefClone(JoinRef::Ptr const& r) {
 } // anonymous
 
 TableRef::Ptr TableRef::clone() const {
-    TableRef::Ptr newCopy = boost::make_shared<TableRef>(_db, _table, _alias);
+    TableRef::Ptr newCopy = std::make_shared<TableRef>(_db, _table, _alias);
     std::transform(_joinRefs.begin(), _joinRefs.end(),
                    std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;

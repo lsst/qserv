@@ -41,7 +41,7 @@ namespace wsched {
 
 class FifoScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<FifoScheduler> Ptr;
+    typedef std::shared_ptr<FifoScheduler> Ptr;
 
     explicit FifoScheduler(int maxRunning=-1);
     virtual ~FifoScheduler() {}

@@ -27,7 +27,7 @@
   */
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "wdb/ChunkResource.h"

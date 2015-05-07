@@ -35,7 +35,7 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "util/common.h"
@@ -65,7 +65,7 @@ namespace parser {
 /// representation, without any furhter analysis or annotation.
 class SelectParser {
 public:
-    typedef boost::shared_ptr<SelectParser> Ptr;
+    typedef std::shared_ptr<SelectParser> Ptr;
 
     static Ptr newInstance(std::string const& statement);
 
@@ -75,14 +75,14 @@ public:
     // @return Original select statement
     std::string const& getStatement() const { return _statement; }
 
-    boost::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
+    std::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
 
 private:
     SelectParser(std::string const& statement);
 
     std::string const _statement;
-    boost::shared_ptr<query::SelectStmt> _selectStmt;
-    boost::shared_ptr<AntlrParser> _aParser;
+    std::shared_ptr<query::SelectStmt> _selectStmt;
+    std::shared_ptr<AntlrParser> _aParser;
 };
 
 }}} // namespace lsst::qserv::parser

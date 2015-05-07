@@ -28,8 +28,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 
 // Qserv headers
 #include "util/Callable.h"
@@ -42,21 +41,21 @@ namespace proto {
 /// Minimal-copy import of an arbitrary proto msg from a raw buffer.
 /// Example:
 /// struct TaskMsgAcceptor : public ProtoImporter<TaskMsg> {
-///  virtual void operator()(boost::shared_ptr<TaskMsg> m) { ...}
+///  virtual void operator()(std::shared_ptr<TaskMsg> m) { ...}
 /// };
-/// ProtoImporter<TaskMsg> p(boost::shared_ptr<TaskMsgAcceptor>());
+/// ProtoImporter<TaskMsg> p(std::shared_ptr<TaskMsgAcceptor>());
 /// p(data,size); // calls operator() defined above.
 template <typename Msg>
 class ProtoImporter {
 public:
-    typedef util::UnaryCallable<void, boost::shared_ptr<Msg> > Acceptor;
-    typedef boost::shared_ptr<Acceptor> AcceptorPtr;
+    typedef util::UnaryCallable<void, std::shared_ptr<Msg> > Acceptor;
+    typedef std::shared_ptr<Acceptor> AcceptorPtr;
 
     ProtoImporter(AcceptorPtr a) : _numAccepted(0), _acceptor(a) {}
     ProtoImporter() : _numAccepted(0) {}
 
     bool operator()(char const* data, int size) {
-        boost::shared_ptr<Msg> m = boost::make_shared<Msg>();
+        std::shared_ptr<Msg> m = std::make_shared<Msg>();
         bool isClean = setMsgFrom(*m, data, size);
         if(isClean) {
             if(_acceptor) {

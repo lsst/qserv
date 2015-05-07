@@ -34,7 +34,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "global/stringTypes.h"
@@ -61,7 +61,7 @@ public:
     std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.
-    boost::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)
+    std::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)
 };
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);

@@ -35,7 +35,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -46,7 +45,7 @@ class QueryTemplate; // Forward
 /// ColumnRef is an abstract value class holding a parsed single column ref
 class ColumnRef {
 public:
-    typedef boost::shared_ptr<ColumnRef>  Ptr;
+    typedef std::shared_ptr<ColumnRef>  Ptr;
     typedef std::vector<Ptr> Vector;
 
     ColumnRef(std::string db_, std::string table_, std::string column_)
@@ -54,7 +53,7 @@ public:
     static Ptr newShared(std::string const& db_,
                          std::string const& table_,
                          std::string const& column_) {
-        return boost::make_shared<ColumnRef>(db_, table_, column_);
+        return std::make_shared<ColumnRef>(db_, table_, column_);
     }
 
     std::string db;

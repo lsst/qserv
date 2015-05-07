@@ -32,7 +32,7 @@
   */
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/utility.hpp"
 #include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
@@ -70,7 +70,7 @@ class UserQueryFactory;
 /// its delegates are thread-safe as appropriate.
 class UserQuery : public boost::noncopyable {
 public:
-    typedef boost::shared_ptr<UserQuery> Ptr;
+    typedef std::shared_ptr<UserQuery> Ptr;
     friend class UserQueryFactory;
 
     // Accessors
@@ -99,25 +99,25 @@ public:
     void discard();
 
     // Delegate objects
-    boost::shared_ptr<qdisp::Executive> getExecutive() {
+    std::shared_ptr<qdisp::Executive> getExecutive() {
         return _executive; }
-    boost::shared_ptr<qdisp::MessageStore> getMessageStore() {
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() {
         return _messageStore; }
 
 private:
-    explicit UserQuery(boost::shared_ptr<qproc::QuerySession> qs);
+    explicit UserQuery(std::shared_ptr<qproc::QuerySession> qs);
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
     void _discardMerger();
     void _setupChunking();
 
     // Delegate classes
-    boost::shared_ptr<qdisp::Executive> _executive;
-    boost::shared_ptr<qdisp::MessageStore> _messageStore;
-    boost::shared_ptr<qproc::QuerySession> _qSession;
-    boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
-    boost::shared_ptr<rproc::InfileMerger> _infileMerger;
-    boost::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
+    std::shared_ptr<qdisp::Executive> _executive;
+    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qproc::QuerySession> _qSession;
+    std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
+    std::shared_ptr<rproc::InfileMerger> _infileMerger;
+    std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
 
     bool _killed;
     boost::mutex _killMutex;

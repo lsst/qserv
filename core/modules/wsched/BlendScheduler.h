@@ -48,10 +48,10 @@ namespace wsched {
 /// it should be set for reduced concurrency limited I/O sharing.
 class BlendScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<BlendScheduler> Ptr;
+    typedef std::shared_ptr<BlendScheduler> Ptr;
 
-    BlendScheduler(boost::shared_ptr<GroupScheduler> group,
-                   boost::shared_ptr<ScanScheduler> scan);
+    BlendScheduler(std::shared_ptr<GroupScheduler> group,
+                   std::shared_ptr<ScanScheduler> scan);
     virtual ~BlendScheduler() {}
 
     virtual void queueTaskAct(wbase::Task::Ptr incoming);
@@ -74,8 +74,8 @@ private:
     bool _integrityHelper() const;
     wcontrol::Foreman::Scheduler* _lookup(wbase::Task::Ptr p);
 
-    boost::shared_ptr<GroupScheduler> _group;
-    boost::shared_ptr<ScanScheduler> _scan;
+    std::shared_ptr<GroupScheduler> _group;
+    std::shared_ptr<ScanScheduler> _scan;
     LOG_LOGGER _logger;
     typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;

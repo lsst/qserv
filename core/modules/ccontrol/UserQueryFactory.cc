@@ -29,7 +29,6 @@
 #include <stdlib.h>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -60,28 +59,28 @@ public:
 
     /// Import facade config and construct Facade
     void readConfigFacade(StringMap const& m,
-                          boost::shared_ptr<css::KvInterface> kvi);
+                          std::shared_ptr<css::KvInterface> kvi);
 
     void initFacade(std::string const& cssTech, std::string const& cssConn,
                     int timeout,
                     std::string const& emptyChunkPath);
 
-    void initFacade(boost::shared_ptr<css::KvInterface> kvi,
+    void initFacade(std::shared_ptr<css::KvInterface> kvi,
                     std::string const& emptyChunkPath);
 
     void initMergerTemplate(); ///< Construct template config for merger
 
     /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
-    boost::shared_ptr<css::Facade> facade;
+    std::shared_ptr<css::Facade> facade;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
-    boost::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
+    std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
 };
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(StringMap const& m,
-                                   boost::shared_ptr<css::KvInterface> kvi)
-    :  _impl(boost::make_shared<Impl>()) {
+                                   std::shared_ptr<css::KvInterface> kvi)
+    :  _impl(std::make_shared<Impl>()) {
     ::putenv((char*)"XRDDEBUG=1");
     assert(_impl);
     _impl->readConfig(m);
@@ -95,7 +94,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     bool sessionValid = true;
     std::string errorExtra;
     qproc::QuerySession::Ptr qs =
-            boost::make_shared<qproc::QuerySession>(_impl->facade);
+            std::make_shared<qproc::QuerySession>(_impl->facade);
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
@@ -122,7 +121,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     uq->_sessionId = sessionId;
     uq->_secondaryIndex = _impl->secondaryIndex;
     if(sessionValid) {
-        uq->_executive = boost::make_shared<qdisp::Executive>(
+        uq->_executive = std::make_shared<qdisp::Executive>(
                 _impl->executiveConfig, uq->_messageStore);
 
         rproc::InfileMergerConfig* ict
@@ -144,7 +143,7 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "frontend.xrootd", // czar.serviceUrl
         "WARNING! No xrootd spec. Using localhost:1094",
         "localhost:1094");
-    executiveConfig = boost::make_shared<qdisp::Executive::Config>(serviceUrl);
+    executiveConfig = std::make_shared<qdisp::Executive::Config>(serviceUrl);
     // This should be overriden by the installer properly.
     infileMergerConfigTemplate.socket = cm.get(
         "resultdb.unix_socket",
@@ -162,12 +161,12 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
     mc.username = infileMergerConfigTemplate.user;
     mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
     mc.socket = infileMergerConfigTemplate.socket;
-    secondaryIndex = boost::make_shared<qproc::SecondaryIndex>(mc);
+    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mc);
 }
 
 void UserQueryFactory::Impl::readConfigFacade(
     StringMap const& m,
-    boost::shared_ptr<css::KvInterface> kvi) {
+    std::shared_ptr<css::KvInterface> kvi) {
     ConfigMap cm(m);
 
     std::string emptyChunkPath = cm.get(
@@ -208,7 +207,7 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
 }
 
 void UserQueryFactory::Impl::initFacade(
-    boost::shared_ptr<css::KvInterface> kvi,
+    std::shared_ptr<css::KvInterface> kvi,
     std::string const& emptyChunkPath) {
     facade = css::FacadeFactory::createCacheFacade(kvi, emptyChunkPath);
     LOGF_INFO("Initializing cache-based css facade");

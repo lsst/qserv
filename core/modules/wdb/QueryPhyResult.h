@@ -29,7 +29,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "lsst/log/Log.h"
@@ -72,7 +72,7 @@ public:
     /// Dump results to a SendChannel
     bool dumpToChannel(LOG_LOGGER const& log,
                        std::string const& user,
-                       boost::shared_ptr<wbase::SendChannel> sc,
+                       std::shared_ptr<wbase::SendChannel> sc,
                        sql::SqlErrorObject&);
 
 private:

@@ -45,7 +45,7 @@ public:
     virtual bool runQuery(std::string const query, SqlResults&,
                           SqlErrorObject&) {
         return false; }
-    virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
+    virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
     virtual bool runQuery(std::string const query, SqlErrorObject&) {
         return false; }
     virtual bool dbExists(std::string const& dbName, SqlErrorObject&) {

@@ -25,7 +25,6 @@
 #include "query/TestFactory.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/FromList.h"
@@ -42,31 +41,31 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-boost::shared_ptr<QueryContext>
+std::shared_ptr<QueryContext>
 TestFactory::newContext() {
-    boost::shared_ptr<QueryContext> context = boost::make_shared<QueryContext>();
+    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
 }
 
-boost::shared_ptr<QueryContext>
-TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
-    boost::shared_ptr<QueryContext> context = boost::make_shared<QueryContext>();
+std::shared_ptr<QueryContext>
+TestFactory::newContext(std::shared_ptr<css::Facade> cssFacade) {
+    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
     context->cssFacade = cssFacade;
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
 }
 
-void TestFactory::addSelectField(boost::shared_ptr<SelectStmt> const& stmt, StringVector const& fields) {
-    SelectList::Ptr sl = boost::make_shared<SelectList>();
+void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields) {
+    SelectList::Ptr sl = std::make_shared<SelectList>();
 
     typedef StringVector::const_iterator It;
     for (It i = fields.begin(), e = fields.end(); i != e; ++i) {
-        boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","","foo");
+        std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","","foo");
         ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
-        ValueExprPtr expr = boost::make_shared<ValueExpr>();
+        ValueExprPtr expr = std::make_shared<ValueExpr>();
         expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
         sl->getValueExprList()->push_back(expr);
     }
@@ -74,34 +73,34 @@ void TestFactory::addSelectField(boost::shared_ptr<SelectStmt> const& stmt, Stri
     stmt->setSelectList(sl);
 }
 
-void TestFactory::addFrom(boost::shared_ptr<SelectStmt> const& stmt) {
-    TableRefListPtr refp = boost::make_shared<TableRefList>();
-    TableRef::Ptr tr = boost::make_shared<TableRef>("", "Bar", "b");
+void TestFactory::addFrom(std::shared_ptr<SelectStmt> const& stmt) {
+    TableRefListPtr refp = std::make_shared<TableRefList>();
+    TableRef::Ptr tr = std::make_shared<TableRef>("", "Bar", "b");
     refp->push_back(tr);
-    FromList::Ptr fl = boost::make_shared<FromList>(refp);
+    FromList::Ptr fl = std::make_shared<FromList>(refp);
     stmt->setFromList(fl);
 }
 
-void TestFactory::addWhere(boost::shared_ptr<SelectStmt> const& stmt) {
-    boost::shared_ptr<WhereClause> wc = boost::make_shared<WhereClause>();
-    CompPredicate::Ptr cp = boost::make_shared<CompPredicate>();
-    cp->left = boost::make_shared<ValueExpr>(); // baz
+void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
+    std::shared_ptr<WhereClause> wc = std::make_shared<WhereClause>();
+    CompPredicate::Ptr cp = std::make_shared<CompPredicate>();
+    cp->left = std::make_shared<ValueExpr>(); // baz
     ValueFactorPtr fact = ValueFactor::newColumnRefFactor((ColumnRef::newShared("","b","baz")));
     cp->left->getFactorOps().push_back(ValueExpr::FactorOp(fact));
     cp->op = CompPredicate::lookupOp("==");
-    cp->right = boost::make_shared<ValueExpr>(); // 42
+    cp->right = std::make_shared<ValueExpr>(); // 42
     fact = ValueFactor::newConstFactor("42");
     cp->right->getFactorOps().push_back(ValueExpr::FactorOp(fact));
-    BoolFactor::Ptr bfactor = boost::make_shared<BoolFactor>();
+    BoolFactor::Ptr bfactor = std::make_shared<BoolFactor>();
     bfactor->_terms.push_back(cp);
     wc->prependAndTerm(bfactor);
     stmt->setWhereClause(wc);
 }
 
-boost::shared_ptr<SelectStmt>
+std::shared_ptr<SelectStmt>
 TestFactory::newDuplSelectExprStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
-    boost::shared_ptr<SelectStmt> stmt = boost::make_shared<SelectStmt>();
+    std::shared_ptr<SelectStmt> stmt = std::make_shared<SelectStmt>();
 
     // SELECT foo, foo
     StringVector fields;
@@ -118,10 +117,10 @@ TestFactory::newDuplSelectExprStmt() {
     return stmt;
 }
 
-boost::shared_ptr<SelectStmt>
+std::shared_ptr<SelectStmt>
 TestFactory::newSimpleStmt() {
     // Create a "SELECT foo FROM Bar b WHERE b.baz=42;
-    boost::shared_ptr<SelectStmt> stmt = boost::make_shared<SelectStmt>();
+    std::shared_ptr<SelectStmt> stmt = std::make_shared<SelectStmt>();
 
     // SELECT foo
     StringVector fields;

@@ -34,7 +34,6 @@
 #include <vector>
 
 // Other external headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "css/StripingParams.h"
@@ -50,7 +49,7 @@ class Region {
 public:
     virtual ~Region() {}
 };
-typedef boost::shared_ptr<Region> RegionPtr;
+typedef std::shared_ptr<Region> RegionPtr;
 typedef std::vector<RegionPtr> RegionPtrVector;
 typedef std::pair<Coordinate, Coordinate> UnitVector3d;
 
@@ -114,8 +113,8 @@ public:
           _subStripes(sp.subStripes) {
     }
 
-    boost::shared_ptr<ChunkRegion> intersect(Region const& r) {
-        boost::shared_ptr<ChunkRegion> cr = boost::make_shared<ChunkRegion>();
+    std::shared_ptr<ChunkRegion> intersect(Region const& r) {
+        std::shared_ptr<ChunkRegion> cr = std::make_shared<ChunkRegion>();
         cr->push_back(ChunkTuple::makeFake(1));
         cr->push_back(ChunkTuple::makeFake(2));
         return cr;

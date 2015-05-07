@@ -32,7 +32,6 @@
 #include "wbase/Task.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/regex.hpp"
 #include "boost/thread.hpp"
 
@@ -125,9 +124,9 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 std::string const
 Task::defaultUser = "qsmaster";
 
-Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
+Task::Task(Task::TaskMsgPtr t, std::shared_ptr<wbase::SendChannel> sc) {
     // Make msg copy.
-    msg = boost::make_shared<proto::TaskMsg>(*t);
+    msg = std::make_shared<proto::TaskMsg>(*t);
     sendChannel = sc;
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
@@ -141,7 +140,7 @@ Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
 }
 
 void Task::poison() {
-    boost::shared_ptr<util::VoidCallable<void> > func;
+    std::shared_ptr<util::VoidCallable<void> > func;
     {
         boost::lock_guard<boost::mutex> lock(_mutex);
         if(_poisonFunc && !_poisoned) {
@@ -154,8 +153,8 @@ void Task::poison() {
     }
 }
 
-void Task::setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc) {
-    boost::shared_ptr<util::VoidCallable<void> > func;
+void Task::setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc) {
+    std::shared_ptr<util::VoidCallable<void> > func;
     {
         boost::lock_guard<boost::mutex> lock(_mutex);
         // Were we poisoned without a poison function available?

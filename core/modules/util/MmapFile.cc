@@ -33,11 +33,11 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-typedef boost::shared_ptr<MmapFile> MmapPtr;
+typedef std::shared_ptr<MmapFile> MmapPtr;
 
 MmapPtr
 MmapFile::newMap(std::string const& filename, bool read, bool write) {
-    boost::shared_ptr<MmapFile> m(new MmapFile());
+    std::shared_ptr<MmapFile> m(new MmapFile());
     assert(m.get());
     m->_init(filename, read, write);
     if(!m->isValid()) {

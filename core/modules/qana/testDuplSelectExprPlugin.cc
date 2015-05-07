@@ -31,7 +31,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "qana/DuplSelectExprPlugin.h"

@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 
 #if !defined(_FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS<64)
@@ -48,7 +48,7 @@ namespace util {
 
 class MmapFile {
 public:
-    static boost::shared_ptr<MmapFile> newMap(std::string const& filename,
+    static std::shared_ptr<MmapFile> newMap(std::string const& filename,
                                               bool read, bool write);
     ~MmapFile();
     bool isValid() const { return (_filename.length() > 0) && _fd && _buf; }

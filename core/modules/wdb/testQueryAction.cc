@@ -29,7 +29,6 @@
 
 // Third-party headers
 #include "lsst/log/Log.h"
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "proto/worker.pb.h"
@@ -62,8 +61,8 @@ using lsst::qserv::wdb::QueryAction;
 using lsst::qserv::wdb::QueryActionArg;
 
 struct Fixture {
-    boost::shared_ptr<TaskMsg> newTaskMsg() {
-        boost::shared_ptr<TaskMsg> t = boost::make_shared<TaskMsg>();
+    std::shared_ptr<TaskMsg> newTaskMsg() {
+        std::shared_ptr<TaskMsg> t = std::make_shared<TaskMsg>();
         t->set_protocol(2);
         t->set_session(123456);
         t->set_chunkid(3240); // hardcoded
@@ -74,10 +73,10 @@ struct Fixture {
         return t;
     }
     QueryActionArg newArg() {
-        boost::shared_ptr<TaskMsg> msg(newTaskMsg());
-        boost::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
+        std::shared_ptr<TaskMsg> msg(newTaskMsg());
+        std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         lsst::qserv::wbase::Task::Ptr t =
-                boost::make_shared<lsst::qserv::wbase::Task>(msg, sc);
+                std::make_shared<lsst::qserv::wbase::Task>(msg, sc);
         LOG_LOGGER w(LOG_GET("test"));
         std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
         QueryActionArg a(w, t, crm);
@@ -98,7 +97,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
 BOOST_AUTO_TEST_CASE(Output) {
     std::string out;
     QueryActionArg aa(newArg());
-    boost::shared_ptr<SendChannel> sc = SendChannel::newStringChannel(out);
+    std::shared_ptr<SendChannel> sc = SendChannel::newStringChannel(out);
     aa.task->sendChannel = sc;
     QueryAction a(aa);
     BOOST_CHECK(a());

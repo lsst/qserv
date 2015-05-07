@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(Test1) {
     BOOST_CHECK_EQUAL(result, XrdOssOK);
 
     // Test XrdOss overrides (stubs)
-    boost::shared_ptr<XrdOssDF>  ossDf;
+    std::shared_ptr<XrdOssDF>  ossDf;
     ossDf.reset(oss->newDir(tident));
     BOOST_CHECK_NE(ossDf.get(), static_cast<XrdOssDF*>(NULL));
     ossDf.reset(oss->newFile(tident));

@@ -38,7 +38,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 
 // Forward declarations
@@ -58,7 +58,7 @@ namespace wdb {
 
 class QuerySql {
 public:
-typedef boost::shared_ptr<QuerySql> Ptr;
+typedef std::shared_ptr<QuerySql> Ptr;
     typedef std::deque<std::string> StringDeque;
     typedef lsst::qserv::proto::TaskMsg_Fragment Fragment;
 

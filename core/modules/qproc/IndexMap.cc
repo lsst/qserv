@@ -74,27 +74,27 @@ std::vector<T> convertVec(StringVector const& v) {
     return out;
 }
 template <typename T>
-boost::shared_ptr<Region> make(StringVector const& v) {
-        return boost::shared_ptr<Region>(new T(convertVec<double>(v)));
+std::shared_ptr<Region> make(StringVector const& v) {
+        return std::shared_ptr<Region>(new T(convertVec<double>(v)));
 }
 template <>
-boost::shared_ptr<Region> make<Box>(StringVector const& v) {
+std::shared_ptr<Region> make<Box>(StringVector const& v) {
     return lsst::qserv::qproc::getBoxFromParams(convertVec<double>(v));
 }
 template <>
-boost::shared_ptr<Region> make<Circle>(StringVector const& v) {
+std::shared_ptr<Region> make<Circle>(StringVector const& v) {
     return lsst::qserv::qproc::getCircleFromParams(convertVec<double>(v));
 }
 template <>
-boost::shared_ptr<Region> make<Ellipse>(StringVector const& v) {
+std::shared_ptr<Region> make<Ellipse>(StringVector const& v) {
     return lsst::qserv::qproc::getEllipseFromParams(convertVec<double>(v));
 }
 template <>
-boost::shared_ptr<Region> make<ConvexPolygon>(StringVector const& v) {
+std::shared_ptr<Region> make<ConvexPolygon>(StringVector const& v) {
     return lsst::qserv::qproc::getConvexPolyFromParams(convertVec<double>(v));
 }
 
-typedef boost::shared_ptr<Region>(*MakeFunc)(StringVector const& v);
+typedef std::shared_ptr<Region>(*MakeFunc)(StringVector const& v);
 
 struct FuncMap {
     FuncMap() {
@@ -112,12 +112,12 @@ struct FuncMap {
 };
 static FuncMap funcMap;
 
-boost::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
+std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
     FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
     if(i != funcMap.fMap.end()) {
         return i->second(c.params);
     }
-    return boost::shared_ptr<Region>();
+    return std::shared_ptr<Region>();
 }
 
 lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
@@ -134,7 +134,7 @@ lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
 namespace lsst {
 namespace qserv {
 namespace qproc {
-typedef std::vector<boost::shared_ptr<Region> > RegionPtrVector;
+typedef std::vector<std::shared_ptr<Region> > RegionPtrVector;
 
 ////////////////////////////////////////////////////////////////////////
 // IndexMap::PartitioningMap definition and implementation
@@ -147,7 +147,7 @@ public:
             {}
     };
     explicit PartitioningMap(css::StripingParams const& sp) {
-        _chunker = boost::make_shared<sg::Chunker>(sp.stripes,
+        _chunker = std::make_shared<sg::Chunker>(sp.stripes,
                                                    sp.subStripes);
 
     }
@@ -189,15 +189,15 @@ public:
         return csv;
     }
 private:
-    boost::shared_ptr<sg::Chunker> _chunker;
+    std::shared_ptr<sg::Chunker> _chunker;
 };
 
 ////////////////////////////////////////////////////////////////////////
 // IndexMap implementation
 ////////////////////////////////////////////////////////////////////////
 IndexMap::IndexMap(css::StripingParams const& sp,
-                   boost::shared_ptr<SecondaryIndex> si)
-    : _pm(boost::make_shared<PartitioningMap>(sp)),
+                   std::shared_ptr<SecondaryIndex> si)
+    : _pm(std::make_shared<PartitioningMap>(sp)),
       _si(si) {
 
 }

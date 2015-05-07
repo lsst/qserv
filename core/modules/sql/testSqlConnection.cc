@@ -30,7 +30,6 @@
 #include <unistd.h> // for getpass
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE SqlConnection_1
@@ -86,10 +85,10 @@ struct PerTestFixture {
             std::cout << "Enter mysql socket: ";
             std::cin >> sqlConfig.socket;
         }
-        sqlConn = boost::make_shared<SqlConnection>(sqlConfig);
+        sqlConn = std::make_shared<SqlConnection>(sqlConfig);
     }
     ~PerTestFixture () {}
-    boost::shared_ptr<SqlConnection> sqlConn;
+    std::shared_ptr<SqlConnection> sqlConn;
     static lsst::qserv::mysql::MySqlConfig sqlConfig;
 };
 MySqlConfig PerTestFixture::sqlConfig;
@@ -223,7 +222,7 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 }
 
 BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
-    sqlConn = boost::make_shared<SqlConnection>(sqlConfig, true);
+    sqlConn = std::make_shared<SqlConnection>(sqlConfig, true);
     // Setup for "list tables"
     std::string dbN = "one_xysdfed34d";
     std::string tList[] = {
@@ -242,7 +241,7 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
     std::for_each(tList, tList + tListLen,
                   createIntTable(sqlConn.get(), errObj));
 
-    boost::shared_ptr<SqlResultIter> ri;
+    std::shared_ptr<SqlResultIter> ri;
     ri = sqlConn->getQueryIter(makeShowTables());
     int i=0;
     for(; !ri->done(); ++*ri, ++i) { // Assume mysql is order-preserving.

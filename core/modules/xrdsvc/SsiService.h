@@ -25,7 +25,7 @@
 #define LSST_QSERV_XRDSVC_SSISERVICE_H
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "XrdSsi/XrdSsiService.hh"
 
 // Local headers
@@ -51,7 +51,7 @@ namespace xrdsvc {
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-    typedef boost::shared_ptr<SsiService> Ptr;
+    typedef std::shared_ptr<SsiService> Ptr;
 
     // take ownership of logger for now
     SsiService(XrdSsiLogger* log);
@@ -67,8 +67,8 @@ private:
     void _setupResultPath();
     bool _setupScratchDb();
 
-    boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
-    boost::shared_ptr<wcontrol::Foreman> _foreman;
+    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+    std::shared_ptr<wcontrol::Foreman> _foreman;
 
 }; // class SsiService
 

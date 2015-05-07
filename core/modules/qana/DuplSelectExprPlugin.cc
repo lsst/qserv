@@ -36,7 +36,7 @@
 
 // Third-party headers
 #include "boost/algorithm/string/case_conv.hpp"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -165,13 +165,13 @@ void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
 class DuplSelectExprPluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<DuplSelectExprPluginFactory> Ptr;
+    typedef std::shared_ptr<DuplSelectExprPluginFactory> Ptr;
     DuplSelectExprPluginFactory() {}
     virtual ~DuplSelectExprPluginFactory() {}
 
     virtual std::string getName() const { return "DuplicateSelectExpr"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<DuplSelectExprPlugin>();
+        return std::make_shared<DuplSelectExprPlugin>();
     }
 };
 
@@ -181,7 +181,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        DuplSelectExprPluginFactory::Ptr f = boost::make_shared<DuplSelectExprPluginFactory>();
+        DuplSelectExprPluginFactory::Ptr f = std::make_shared<DuplSelectExprPluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };

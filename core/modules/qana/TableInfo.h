@@ -66,7 +66,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "global/constants.h" // for SUBCHUNKDB_PREFIX
@@ -83,7 +83,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef boost::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
+typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 
 class DirTableInfo;
 class ChildTableInfo;

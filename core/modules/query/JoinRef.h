@@ -28,7 +28,7 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/JoinSpec.h"
@@ -55,12 +55,12 @@ class ColumnRef;
 ///
 class JoinRef {
 public:
-    typedef boost::shared_ptr<JoinRef> Ptr;
+    typedef std::shared_ptr<JoinRef> Ptr;
     enum Type {DEFAULT, INNER, LEFT, RIGHT, FULL, CROSS, UNION};
 
     JoinRef(TableRef::Ptr right_,
             Type jt, bool isNatural_,
-            boost::shared_ptr<JoinSpec> spec_)
+            std::shared_ptr<JoinSpec> spec_)
         : _right(right_),
           _joinType(jt),
           _isNatural(isNatural_),
@@ -72,8 +72,8 @@ public:
     TableRef::CPtr getRight() const { return _right; }
     TableRef::Ptr getRight() { return _right; }
 
-    boost::shared_ptr<JoinSpec const> getSpec() const { return _spec; }
-    boost::shared_ptr<JoinSpec> getSpec() { return _spec; }
+    std::shared_ptr<JoinSpec const> getSpec() const { return _spec; }
+    std::shared_ptr<JoinSpec> getSpec() { return _spec; }
 
     std::ostream& putStream(std::ostream& os) const;
     void putTemplate(QueryTemplate& qt) const;
@@ -83,7 +83,7 @@ private:
     TableRef::Ptr _right;
     Type _joinType;
     bool _isNatural;
-    boost::shared_ptr<JoinSpec> _spec;
+    std::shared_ptr<JoinSpec> _spec;
 };
 std::ostream& operator<<(std::ostream& os, JoinRef const& js);
 std::ostream& operator<<(std::ostream& os, JoinRef const* js);

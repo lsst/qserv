@@ -40,7 +40,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -177,31 +176,31 @@ public:
 // WhereFactory
 ////////////////////////////////////////////////////////////////////////
 
-WhereFactory::WhereFactory(boost::shared_ptr<ValueExprFactory> vf)
+WhereFactory::WhereFactory(std::shared_ptr<ValueExprFactory> vf)
     : _vf(vf) {
 }
 
-boost::shared_ptr<query::WhereClause>
+std::shared_ptr<query::WhereClause>
 WhereFactory::getProduct() {
     return _clause;
 }
 
-boost::shared_ptr<query::WhereClause>
+std::shared_ptr<query::WhereClause>
 WhereFactory::newEmpty() {
-    boost::shared_ptr<query::WhereClause> w = boost::make_shared<query::WhereClause>();
+    std::shared_ptr<query::WhereClause> w = std::make_shared<query::WhereClause>();
     return w;
 }
 
 void
 WhereFactory::attachTo(SqlSQL2Parser& p) {
-    boost::shared_ptr<WhereCondH> wch(new WhereCondH(*this));
+    std::shared_ptr<WhereCondH> wch(new WhereCondH(*this));
     p._whereCondHandler = wch;
 }
 
 void
 WhereFactory::_import(antlr::RefAST a) {
-    _clause = boost::make_shared<query::WhereClause>();
-    _clause->_restrs = boost::make_shared<query::QsRestrictor::PtrVector>();
+    _clause = std::make_shared<query::WhereClause>();
+    _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
     // LOGF_INFO("WHERE starts with: %1% (%2%)" 
     //           % a->getText() % a->getType());
     // LOGF_INFO("WHERE indented: %1%" % walkIndentedString(a));
@@ -230,7 +229,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     std::string r(a->getText()); // e.g. qserv_areaspec_box
     ParamGenerator pg(a->getNextSibling());
 
-    query::QsRestrictor::Ptr restr = boost::make_shared<query::QsRestrictor>();
+    query::QsRestrictor::Ptr restr = std::make_shared<query::QsRestrictor>();
     StringVector& params = restr->_params;
 
     // for(ParamGenerator::Iter it = pg.begin();

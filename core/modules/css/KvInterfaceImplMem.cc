@@ -51,7 +51,6 @@
 // Third-party headers
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -210,9 +209,9 @@ void KvInterfaceImplMem::_init(std::istream& mapStream) {
     //}
 }
 
-boost::shared_ptr<KvInterfaceImplMem>
+std::shared_ptr<KvInterfaceImplMem>
 KvInterfaceImplMem::clone() const {
-    boost::shared_ptr<KvInterfaceImplMem> newOne = boost::make_shared<KvInterfaceImplMem>();
+    std::shared_ptr<KvInterfaceImplMem> newOne = std::make_shared<KvInterfaceImplMem>();
     newOne->_kvMap = _kvMap;
     return newOne;
 }

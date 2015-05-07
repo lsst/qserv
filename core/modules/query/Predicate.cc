@@ -51,7 +51,7 @@ void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) {
 
 void InPredicate::findColumnRefs(ColumnRef::Vector& vector) {
     if(value) { value->findColumnRefs(vector); }
-    std::vector<boost::shared_ptr<ValueExpr> >::iterator i;
+    std::vector<std::shared_ptr<ValueExpr> >::iterator i;
     for(i=cands.begin(); i != cands.end(); ++i) {
         (**i).findColumnRefs(vector);
     }
@@ -244,7 +244,7 @@ namespace {
 }
 
 BfTerm::Ptr InPredicate::clone() const {
-    InPredicate::Ptr p  = boost::make_shared<InPredicate>();
+    InPredicate::Ptr p  = std::make_shared<InPredicate>();
     if(value) p->value = value->clone();
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
@@ -253,7 +253,7 @@ BfTerm::Ptr InPredicate::clone() const {
 }
 
 BfTerm::Ptr BetweenPredicate::clone() const {
-    BetweenPredicate::Ptr p = boost::make_shared<BetweenPredicate>();
+    BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if(value) p->value = value->clone();
     if(minValue) p->minValue = minValue->clone();
     if(maxValue) p->maxValue = maxValue->clone();
@@ -261,14 +261,14 @@ BfTerm::Ptr BetweenPredicate::clone() const {
 }
 
 BfTerm::Ptr LikePredicate::clone() const {
-    LikePredicate::Ptr p = boost::make_shared<LikePredicate>();
+    LikePredicate::Ptr p = std::make_shared<LikePredicate>();
     if(value) p->value = value->clone();
     if(charValue) p->charValue = charValue->clone();
     return BfTerm::Ptr(p);
 }
 
 BfTerm::Ptr NullPredicate::clone() const {
-    NullPredicate::Ptr p = boost::make_shared<NullPredicate>();
+    NullPredicate::Ptr p = std::make_shared<NullPredicate>();
     if(value) p->value = value->clone();
     p->hasNot = hasNot;
     return BfTerm::Ptr(p);

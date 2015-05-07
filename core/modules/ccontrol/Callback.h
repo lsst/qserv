@@ -25,7 +25,7 @@
 #define LSST_QSERV_CCONTROL_CALLBACK_H
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -33,7 +33,7 @@ namespace ccontrol {
 
 class Callback {
 public:
-    typedef boost::shared_ptr<Callback> Ptr;
+    typedef std::shared_ptr<Callback> Ptr;
     virtual ~Callback() {}
     void operator()() {}
 };

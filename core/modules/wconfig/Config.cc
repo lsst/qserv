@@ -32,7 +32,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/thread/once.hpp"
 
 // Qserv headers
@@ -152,7 +151,7 @@ void Config::_load() {
     for(int i = 0; i < settingsCount; ++i) {
         _map[settings[i][0]] = _getEnvDefault(settings[i][1], settings[i][2]);
     }
-    _sqlConfig = boost::make_shared<MySqlConfig>();
+    _sqlConfig = std::make_shared<MySqlConfig>();
     MySqlConfig& sc = *_sqlConfig;
     sc.hostname = "";
     sc.username = "qsmaster"; /// Empty default for now.

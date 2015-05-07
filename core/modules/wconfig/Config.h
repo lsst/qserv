@@ -29,7 +29,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "global/stringTypes.h"
@@ -65,7 +65,7 @@ private:
     StringMap _map;
     bool _isValid;
     std::string _error;
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
+    std::shared_ptr<mysql::MySqlConfig> _sqlConfig;
 };
 
 Config& getConfig();

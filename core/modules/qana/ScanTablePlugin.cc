@@ -34,7 +34,6 @@
 
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -66,7 +65,7 @@ namespace qana {
 class ScanTablePlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<ScanTablePlugin> Ptr;
+    typedef std::shared_ptr<ScanTablePlugin> Ptr;
 
     virtual ~ScanTablePlugin() {}
 
@@ -88,13 +87,13 @@ private:
 class ScanTablePluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<ScanTablePluginFactory> Ptr;
+    typedef std::shared_ptr<ScanTablePluginFactory> Ptr;
     ScanTablePluginFactory() {}
     virtual ~ScanTablePluginFactory() {}
 
     virtual std::string getName() const { return "ScanTable"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<ScanTablePlugin>();
+        return std::make_shared<ScanTablePlugin>();
     }
 };
 
@@ -104,7 +103,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        ScanTablePluginFactory::Ptr f = boost::make_shared<ScanTablePluginFactory>();
+        ScanTablePluginFactory::Ptr f = std::make_shared<ScanTablePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
@@ -193,12 +192,12 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     if(stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
         // Check WHERE for spatial select
-        boost::shared_ptr<query::QsRestrictor::PtrVector const> restrs = wc.getRestrs();
+        std::shared_ptr<query::QsRestrictor::PtrVector const> restrs = wc.getRestrs();
         hasSpatialSelect = restrs && !restrs->empty();
 
 
         // Look for column refs
-        boost::shared_ptr<query::ColumnRef::Vector const> crl = wc.getColumnRefs();
+        std::shared_ptr<query::ColumnRef::Vector const> crl = wc.getColumnRefs();
         if(crl) {
             hasWhereColumnRef = !crl->empty();
 #if 0
@@ -207,7 +206,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
             // The qserv restrictor must be a condition on the
             // secondary key--spatial selects can still be part of
             // scans if they involve >k chunks.
-            boost::shared_ptr<AndTerm> aterm = wc.getRootAndTerm();
+            std::shared_ptr<AndTerm> aterm = wc.getRootAndTerm();
             if(aterm) {
                 // Look for secondary key matches
                 typedef BoolTerm::PtrList PtrList;
@@ -223,7 +222,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         }
     }
     query::SelectList& sList = stmt.getSelectList();
-    boost::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
+    std::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
 
     if(sVexpr) {
         query::ColumnRef::Vector cList; // For each expr, get column refs.

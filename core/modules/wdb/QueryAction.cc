@@ -37,7 +37,6 @@
 #include <memory>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
 
 // Qserv headers
@@ -72,7 +71,7 @@ public:
     Impl(QueryActionArg const& a);
     ~Impl() {
         if(_task) { // Detach poisoner
-            _task->setPoison(boost::shared_ptr<util::VoidCallable<void> >());
+            _task->setPoison(std::shared_ptr<util::VoidCallable<void> >());
         }
     }
 
@@ -123,9 +122,9 @@ private:
     wbase::Task::Ptr _task;
     std::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
     std::string _dbName;
-    boost::shared_ptr<proto::TaskMsg> _msg;
+    std::shared_ptr<proto::TaskMsg> _msg;
     util::Flag<bool> _poisoned;
-    boost::shared_ptr<wbase::SendChannel> _sendChannel;
+    std::shared_ptr<wbase::SendChannel> _sendChannel;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
     uint _maxMsgBytes;
@@ -438,7 +437,7 @@ void QueryAction::Impl::poison() {
 ////////////////////////////////////////////////////////////////////////
 QueryAction::QueryAction(QueryActionArg& a)
     : _impl(new Impl(a)) {
-    auto p = boost::make_shared<Impl::Poisoner>(_impl);
+    auto p = std::make_shared<Impl::Poisoner>(_impl);
     // Attach a poisoner that will use us.
     a.task->setPoison(p);
 }

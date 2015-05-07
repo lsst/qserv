@@ -29,7 +29,7 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Qserv headers
 #include "global/Bug.h"
@@ -45,7 +45,7 @@ namespace wbase {
 class SendChannel {
 public:
     typedef util::VoidCallable<void> ReleaseFunc;
-    typedef boost::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
+    typedef std::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
     typedef long long Size;
 
     virtual ~SendChannel() {}
@@ -76,11 +76,11 @@ public:
     }
 
     /// Construct a new NopChannel that ignores everything it is asked to send
-    static boost::shared_ptr<SendChannel> newNopChannel();
+    static std::shared_ptr<SendChannel> newNopChannel();
 
     /// Construct a StringChannel, which appends all it receives into a string
     /// provided by reference at construction.
-    static boost::shared_ptr<SendChannel> newStringChannel(std::string& dest);
+    static std::shared_ptr<SendChannel> newStringChannel(std::string& dest);
 
 protected:
     ReleaseFuncPtr _release;

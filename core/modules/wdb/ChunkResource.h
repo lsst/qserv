@@ -39,7 +39,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "boost/utility.hpp"
 
 // Qserv headers

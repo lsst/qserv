@@ -41,7 +41,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -79,7 +78,7 @@ public:
     Impl(int session, std::string const& resultTable)
         : _session(session), _resultTable(resultTable) {
     }
-    boost::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
+    std::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
                                               std::string const& chunkResultName);
 private:
     template <class C1, class C2, class C3>
@@ -108,15 +107,15 @@ private:
 
     int _session;
     std::string _resultTable;
-    boost::shared_ptr<proto::TaskMsg> _taskMsg;
+    std::shared_ptr<proto::TaskMsg> _taskMsg;
 };
 
-boost::shared_ptr<proto::TaskMsg>
+std::shared_ptr<proto::TaskMsg>
 TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
                                std::string const& chunkResultName) {
     std::string resultTable = _resultTable;
     if(!chunkResultName.empty()) { resultTable = chunkResultName; }
-    _taskMsg = boost::make_shared<proto::TaskMsg>();
+    _taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
@@ -164,13 +163,13 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
 // class TaskMsgFactory2
 ////////////////////////////////////////////////////////////////////////
 TaskMsgFactory2::TaskMsgFactory2(int session)
-    : _impl(boost::make_shared<Impl>(session, "Asdfasfd" )) {
+    : _impl(std::make_shared<Impl>(session, "Asdfasfd" )) {
 
 }
 void TaskMsgFactory2::serializeMsg(ChunkQuerySpec const& s,
                                    std::string const& chunkResultName,
                                    std::ostream& os) {
-    boost::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName);
+    std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName);
     m->SerializeToOstream(&os);
 }
 

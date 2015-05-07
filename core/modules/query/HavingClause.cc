@@ -35,7 +35,6 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/BoolTerm.h"
@@ -69,18 +68,18 @@ HavingClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<HavingClause>
+std::shared_ptr<HavingClause>
 HavingClause::clone() const {
-    boost::shared_ptr<HavingClause> hc = boost::make_shared<HavingClause>();
+    std::shared_ptr<HavingClause> hc = std::make_shared<HavingClause>();
     if(_tree) {
         hc->_tree = _tree->clone();
     }
     return hc;
 }
 
-boost::shared_ptr<HavingClause>
+std::shared_ptr<HavingClause>
 HavingClause::copySyntax() {
-    return boost::make_shared<HavingClause>(*this);
+    return std::make_shared<HavingClause>(*this);
 }
 
 void

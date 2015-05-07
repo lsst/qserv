@@ -34,7 +34,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Forward declarations
 namespace lsst {
@@ -55,11 +55,11 @@ namespace parser {
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
-    ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
+    ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap);
+    std::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
 
 private:
-    boost::shared_ptr<ValueFactorFactory> _valueFactorFactory;
+    std::shared_ptr<ValueFactorFactory> _valueFactorFactory;
 };
 
 }}} // namespace lsst::qserv::parser

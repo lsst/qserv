@@ -27,7 +27,6 @@
 #include <string>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "rproc/SqlInsertIter.h"

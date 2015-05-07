@@ -28,7 +28,7 @@
 
 // Third-party headers
 #include "boost/thread.hpp"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -56,10 +56,10 @@ public:
     WorkQueue(int numRunners);
     ~WorkQueue();
 
-    void add(boost::shared_ptr<Callable> c);
+    void add(std::shared_ptr<Callable> c);
     void cancelQueued();
 
-    boost::shared_ptr<Callable> getNextCallable();
+    std::shared_ptr<Callable> getNextCallable();
 
     // For use by runners.
     class Runner;
@@ -73,7 +73,7 @@ private:
     void _addRunner();
     void _dropQueue(bool final=true);
 
-    typedef std::deque<boost::shared_ptr<Callable> > WorkDeque;
+    typedef std::deque<std::shared_ptr<Callable> > WorkDeque;
     typedef std::deque<Runner*> RunnerDeque;
 
     boost::mutex _mutex;
