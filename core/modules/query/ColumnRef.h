@@ -30,6 +30,7 @@
   */
 
 // System headers
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>

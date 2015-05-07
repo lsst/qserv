@@ -33,7 +33,9 @@
 #include "qana/QueryPlugin.h"
 
 // System headers
+#include <algorithm>
 #include <deque>
+#include <memory>
 #include <string>
 
 // Third-party headers
@@ -515,7 +517,7 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
             b != factor->_terms.end();
             ++b) {
             query::InPredicate::Ptr ip =
-                boost::dynamic_pointer_cast<query::InPredicate>(*b);
+                std::dynamic_pointer_cast<query::InPredicate>(*b);
             if(ip) {
                 std::shared_ptr<query::ColumnRef> cr
                     = resolveAsColumnRef(context, ip->value);
@@ -526,7 +528,7 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
                 }
             } else {
                 query::CompPredicate::Ptr cp =
-                    boost::dynamic_pointer_cast<query::CompPredicate>(*b);
+                    std::dynamic_pointer_cast<query::CompPredicate>(*b);
                 if(cp) {
                     query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, cp);
                     addPred(secIndexPreds, p);

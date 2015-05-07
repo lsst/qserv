@@ -30,6 +30,7 @@
 // System headers
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 
 // Qserv headers
@@ -292,12 +293,12 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
 {
     std::pair<ColumnRef::Ptr, ColumnRef::Ptr> p;
     // Look for a BoolFactor containing a single CompPredicate.
-    BoolFactor::Ptr bf = boost::dynamic_pointer_cast<BoolFactor>(bt);
+    BoolFactor::Ptr bf = std::dynamic_pointer_cast<BoolFactor>(bt);
     if (!bf || bf->_terms.size() != 1) {
         return p;
     }
     CompPredicate::Ptr cp =
-        boost::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
+        std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp || cp->op != SqlSQL2TokenTypes::EQUALS_OP) {
         return p;
     }
@@ -324,7 +325,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
 {
     size_t numEdges = 0;
     on = findFirstNonTrivialChild(on);
-    AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(on);
+    AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(on);
     if (at) {
         // Recurse to the children.
         typedef BoolTerm::PtrVector::const_iterator BtIter;
@@ -455,7 +456,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
 {
     size_t numEdges = 0;
     where = findFirstNonTrivialChild(where);
-    AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(where);
+    AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(where);
     if (at) {
         // Recurse to the children.
         typedef BoolTerm::PtrVector::const_iterator BtIter;
@@ -490,7 +491,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
 {
     size_t numEdges = 0;
     bt = findFirstNonTrivialChild(bt);
-    AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(bt);
+    AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(bt);
     if (at) {
         // Recurse to the children.
         typedef BoolTerm::PtrVector::const_iterator BtIter;
@@ -500,12 +501,12 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
         return numEdges;
     }
     // Look for a BoolFactor containing a single CompPredicate.
-    BoolFactor::Ptr bf = boost::dynamic_pointer_cast<BoolFactor>(bt);
+    BoolFactor::Ptr bf = std::dynamic_pointer_cast<BoolFactor>(bt);
     if (!bf || bf->_terms.size() != 1) {
         return 0;
     }
     CompPredicate::Ptr cp =
-        boost::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
+        std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp) {
         return 0;
     }

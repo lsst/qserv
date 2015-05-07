@@ -32,6 +32,7 @@
 #include "query/AggOp.h"
 
 // System headers
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 

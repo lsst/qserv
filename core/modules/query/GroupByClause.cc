@@ -33,6 +33,7 @@
 #include "query/GroupByClause.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <iterator>
 

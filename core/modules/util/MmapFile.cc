@@ -25,6 +25,7 @@
 #include "util/MmapFile.h"
 
 // System headers
+#include <assert.h>
 #include <fcntl.h>
 #include <iostream>
 #include <sys/mman.h>

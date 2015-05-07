@@ -32,7 +32,9 @@
 #include "query/WhereClause.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 
@@ -80,7 +82,7 @@ void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     BoolTerm::PtrVector::iterator e = t->iterEnd();
     if(i == e) { // Leaf.
         // Bool factor?
-        std::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
+        std::shared_ptr<BoolFactor> bf = std::dynamic_pointer_cast<BoolFactor>(t);
         if(bf) {
             findColumnRefs(bf, vector);
         } else {
@@ -116,7 +118,7 @@ WhereClause::getRootAndTerm() {
     // and has multiple terms, there is no global AND which means we
     // should return NULL.
     BoolTerm::Ptr t = skipTrivialOrTerms(_tree);
-    return boost::dynamic_pointer_cast<AndTerm>(t);
+    return std::dynamic_pointer_cast<AndTerm>(t);
 }
 
 void WhereClause::findValueExprs(ValueExprPtrVector& vector) {

@@ -37,11 +37,11 @@
 
 // System headers
 #include <algorithm>
+#include <assert.h>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
-
 // Third-party headers
 
 // Qserv headers

@@ -32,6 +32,7 @@
 #include "query/Predicate.h"
 
 // System
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers

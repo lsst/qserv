@@ -107,7 +107,7 @@ namespace std {
 
 // ------------------------------------------------------------------------
 
-%include "boost_shared_ptr.i"
+%include "std_shared_ptr.i"
 %shared_ptr(lsst::qserv::css::KvInterface)
 %shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
 
