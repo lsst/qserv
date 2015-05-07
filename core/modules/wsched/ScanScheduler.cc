@@ -37,7 +37,7 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 // Qserv headers
 #include "global/Bug.h"
@@ -69,7 +69,7 @@ ScanScheduler::ScanScheduler()
 
 bool
 ScanScheduler::removeByHash(std::string const& hash) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     int numRemoved = _disks.front()->removeByHash(hash);
     // Consider creating poisoned list, that is checked during later
     // read/write ops; this would avoid O(nlogn) update for each
@@ -79,14 +79,14 @@ ScanScheduler::removeByHash(std::string const& hash) {
 
 void
 ScanScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
 wbase::TaskQueuePtr
 ScanScheduler::nopAct(wbase::TaskQueuePtr running) {
     if(!running) { throw Bug("ScanScheduler::nopAct: null run list"); }
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
     int available = _maxRunning - running->size();
     return _getNextTasks(available);
@@ -97,7 +97,7 @@ ScanScheduler::nopAct(wbase::TaskQueuePtr running) {
 wbase::TaskQueuePtr
 ScanScheduler::newTaskAct(wbase::Task::Ptr incoming,
                           wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
     if(!running) { throw Bug("ScanScheduler::newTaskAct: null run list"); }
 
@@ -115,7 +115,7 @@ ScanScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 ScanScheduler::taskFinishAct(wbase::Task::Ptr finished,
                              wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
 
     // No free threads? Exit.
@@ -132,14 +132,14 @@ ScanScheduler::taskFinishAct(wbase::Task::Ptr finished,
 
 void
 ScanScheduler::markStarted(wbase::Task::Ptr t) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->registerInflight(t);
 }
 
 void
 ScanScheduler::markFinished(wbase::Task::Ptr t) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->removeInflight(t);
 }
@@ -147,7 +147,7 @@ ScanScheduler::markFinished(wbase::Task::Ptr t) {
 /// @return true if data is okay.
 bool
 ScanScheduler::checkIntegrity() {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     return _integrityHelper();
 }
 

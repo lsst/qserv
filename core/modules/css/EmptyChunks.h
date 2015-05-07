@@ -38,7 +38,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 
 // Local headers
 #include "global/intTypes.h"
@@ -75,7 +75,7 @@ private:
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks
     mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)
-    mutable boost::mutex _setsMutex;
+    mutable std::mutex _setsMutex;
 };
 
 }}} // namespace lsst::qserv::css

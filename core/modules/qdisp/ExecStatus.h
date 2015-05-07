@@ -30,7 +30,7 @@
 #include <fstream>
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 // Local headers
 #include "global/ResourceUnit.h"
@@ -67,7 +67,7 @@ public:
                  CANCEL, COMPLETE=2000};
     /// Report a state transition. Past state history is not currently saved.
     void report(State s, int code=0, std::string const& desc=_empty) {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 #if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
         of << "Reporting " << (void*)this
@@ -93,7 +93,7 @@ public:
     ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
 
     Info getInfo() const {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         return _info;
     }
 
@@ -102,7 +102,7 @@ private:
     Info _info;
 
 private:
-    mutable boost::mutex _mutex; ///< Mutex to guard concurrent updates
+    mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
     static std::string const _empty;
 };
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es);

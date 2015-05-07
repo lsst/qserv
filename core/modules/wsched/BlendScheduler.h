@@ -79,7 +79,7 @@ private:
     LOG_LOGGER _logger;
     typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;
-    boost::mutex _mapMutex;
+    std::mutex _mapMutex;
 };
 
 }}} // namespace lsst::qserv::wsched

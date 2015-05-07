@@ -24,7 +24,7 @@
 #define LSST_QSERV_XRDSVC_SSISESSION_H
 
 // Third-party headers
-#include "boost/thread.hpp" // boost::mutex
+#include <mutex> // std::mutex
 #include "XrdSsi/XrdSsiSession.hh"
 #include "XrdSsi/XrdSsiResponder.hh"
 
@@ -93,7 +93,7 @@ private:
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.
     std::vector<CancelFuncPtr> _cancellers;
-    boost::mutex _cancelMutex; ///< For _cancellers and _cancelled
+    std::mutex _cancelMutex; ///< For _cancellers and _cancelled
     bool _cancelled; ///< true if the session has been cancelled.
 
     friend class SsiProcessor; // Allow access for cancellation

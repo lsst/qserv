@@ -36,8 +36,8 @@
 
 // Third-party headers
 #include "boost/utility.hpp"
-#include "boost/thread/locks.hpp"
-#include "boost/thread/mutex.hpp"
+#include <mutex>
+#include <mutex>
 
 // Local headers
 #include "ccontrol/QueryState.h"
@@ -122,7 +122,7 @@ private:
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
 
     bool _killed;
-    boost::mutex _killMutex;
+    std::mutex _killMutex;
     int _sessionId; ///< External reference number
     int _sequence; ///< Sequence number for subtask ids
     std::string _errorExtra; ///< Additional error information

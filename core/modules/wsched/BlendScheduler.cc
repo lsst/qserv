@@ -36,7 +36,7 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 // Qserv headers
 #include "global/Bug.h"
@@ -92,7 +92,7 @@ BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
         s = _group.get();
     }
     {
-        boost::lock_guard<boost::mutex> guard(_mapMutex);
+        std::lock_guard<std::mutex> guard(_mapMutex);
         _map[incoming.get()] = s;
     }
     s->queueTaskAct(incoming);
@@ -124,7 +124,7 @@ BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
     assert(_integrityHelper());
     wcontrol::Foreman::Scheduler* s = 0;
     {
-        boost::lock_guard<boost::mutex> guard(_mapMutex);
+        std::lock_guard<std::mutex> guard(_mapMutex);
         Map::iterator i = _map.find(finished.get());
         if(i == _map.end()) {
             throw Bug("BlendScheduler::taskFinishAct: Finished untracked task");
@@ -166,14 +166,14 @@ BlendScheduler::markFinished(wbase::Task::Ptr t) {
 /// @return true if data is okay.
 bool
 BlendScheduler::checkIntegrity() {
-    boost::lock_guard<boost::mutex> guard(_mapMutex);
+    std::lock_guard<std::mutex> guard(_mapMutex);
     return _integrityHelper();
 }
 
 /// @return ptr to scheduler that is tracking p
 wcontrol::Foreman::Scheduler*
 BlendScheduler::lookup(wbase::Task::Ptr p) {
-    boost::lock_guard<boost::mutex> guard(_mapMutex);
+    std::lock_guard<std::mutex> guard(_mapMutex);
     Map::iterator i = _map.find(p.get());
     return i->second;
 }

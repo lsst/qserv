@@ -84,7 +84,7 @@ WorkQueue::~WorkQueue() {
     for(int i = 0; i < poisonToMake; ++i) {
         add(std::shared_ptr<Callable>()); // add poison
     }
-    boost::unique_lock<boost::mutex> lock(_runnersMutex);
+    std::unique_lock<std::mutex> lock(_runnersMutex);
 
     while(_runners.size() > 0) {
         _runnersEmpty.wait(lock);
@@ -95,7 +95,7 @@ WorkQueue::~WorkQueue() {
 
 void
 WorkQueue::add(std::shared_ptr<WorkQueue::Callable> c) {
-    boost::lock_guard<boost::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
         //std::cerr << "Queue refusing work: dead" << std::endl;
     } else {
@@ -106,7 +106,7 @@ WorkQueue::add(std::shared_ptr<WorkQueue::Callable> c) {
 
 void
 WorkQueue::cancelQueued() {
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     std::shared_ptr<Callable> c;
     while(!_queue.empty()) {
         c = _queue.front();
@@ -119,7 +119,7 @@ WorkQueue::cancelQueued() {
 
 std::shared_ptr<WorkQueue::Callable>
 WorkQueue::getNextCallable() {
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     while(_queue.empty()) {
         _queueNonEmpty.wait(lock);
     }
@@ -130,14 +130,14 @@ WorkQueue::getNextCallable() {
 
 void
 WorkQueue::registerRunner(Runner* r) {
-    boost::lock_guard<boost::mutex> lock(_runnersMutex);
+    std::lock_guard<std::mutex> lock(_runnersMutex);
     _runners.push_back(r);
     _runnerRegistered.notify_all();
 }
 
 void
 WorkQueue::signalDeath(Runner* r) {
-    boost::lock_guard<boost::mutex> lock(_runnersMutex);
+    std::lock_guard<std::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
     // LOGF_INFO("%1% dying" % (void*) r);
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
@@ -153,7 +153,7 @@ WorkQueue::signalDeath(Runner* r) {
 
 void
 WorkQueue::_addRunner() {
-    boost::unique_lock<boost::mutex> lock(_runnersMutex);
+    std::unique_lock<std::mutex> lock(_runnersMutex);
     boost::thread(Runner(*this));
     _runnerRegistered.wait(lock);
     //_runners.back()->run();
@@ -161,7 +161,7 @@ WorkQueue::_addRunner() {
 
 void
 WorkQueue::_dropQueue(bool final) {
-    boost::lock_guard<boost::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     _queue.clear();
     if(final) _isDead = true;
 }

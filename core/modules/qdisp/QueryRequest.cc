@@ -223,7 +223,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
 
 void QueryRequest::cancel() {
     {
-        boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if(_finishStatus == CANCELLED) {
             return; // Don't do anything if already cancelled.
         }
@@ -235,7 +235,7 @@ void QueryRequest::cancel() {
 }
 
 bool QueryRequest::cancelled() {
-    boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
+    std::lock_guard<std::mutex> lock(_finishStatusMutex);
     return _finishStatus == CANCELLED;
 }
 
@@ -251,7 +251,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
     std::shared_ptr<util::UnaryCallable<void, bool>> finish;
     std::shared_ptr<util::VoidCallable<void>> retry;
     {
-        boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             return;
         }
@@ -281,7 +281,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 void QueryRequest::_finish() {
     std::shared_ptr<util::UnaryCallable<void, bool>> finish;
     {
-        boost::lock_guard<boost::mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             return;
         }

@@ -60,7 +60,7 @@ private:
     wbase::TaskQueuePtr _getNextIfAvail(int runCount);
     wbase::TaskQueuePtr _getNextTasks(int max);
 
-    boost::mutex _mutex;
+    std::mutex _mutex;
 
     Queue _queue;
     int _maxRunning;

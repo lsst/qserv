@@ -321,7 +321,7 @@ bool TableMerger::_applySql(std::string const& sql) {
     return _applySqlLocal(sql); //try local impl now.
     FILE* fp;
     {
-        boost::lock_guard<boost::mutex> m(_popenMutex);
+        std::lock_guard<std::mutex> m(_popenMutex);
         fp = popen(_loadCmd.c_str(), "w"); // check error
     }
     if(fp == NULL) {
@@ -337,14 +337,14 @@ bool TableMerger::_applySql(std::string const& sql) {
         _error.errorCode = written;
         _error.description = "Error writing sql to mysql process.." + sql;
         {
-            boost::lock_guard<boost::mutex> m(_popenMutex);
+            std::lock_guard<std::mutex> m(_popenMutex);
             pclose(fp); // cleanup
         }
         return false;
     }
     int r;
     {
-        boost::lock_guard<boost::mutex> m(_popenMutex);
+        std::lock_guard<std::mutex> m(_popenMutex);
         r = pclose(fp);
     }
     if(r == -1) {
@@ -357,7 +357,7 @@ bool TableMerger::_applySql(std::string const& sql) {
 }
 
 bool TableMerger::_applySqlLocal(std::string const& sql) {
-    boost::lock_guard<boost::mutex> m(_sqlMutex);
+    std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
         _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
@@ -408,7 +408,7 @@ std::string TableMerger::_buildOrderByLimit() {
 
 bool TableMerger::_createTableIfNotExists(TableMerger::CreateStmt& cs) {
     LOGF_DEBUG("Importing %1%" % cs.getTable());
-    boost::lock_guard<boost::mutex> g(_countMutex);
+    std::lock_guard<std::mutex> g(_countMutex);
     ++_tableCount;
     if(_tableCount == 1) {
         bool isOk = _dropAndCreate(cs.getTable(), cs.getStmt());
@@ -540,7 +540,7 @@ bool TableMerger::_slowImport(std::string const& dumpFile,
     _importResult(dumpFile);
     {
         LOGF_DEBUG("Importing %1%" % tableName);
-        boost::lock_guard<boost::mutex> g(_countMutex);
+        std::lock_guard<std::mutex> g(_countMutex);
         ++_tableCount;
         if(_tableCount == 1) {
             sql = _buildMergeSql(tableName, true);

@@ -35,7 +35,7 @@
 // #include <iostream> // Enable for debugging.
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 
 namespace lsst {
@@ -45,7 +45,7 @@ namespace wsched {
 FifoScheduler::FifoScheduler(int maxRunning)
     : _maxRunning(maxRunning) {
     if(maxRunning < 0) {
-        _maxRunning = boost::thread::hardware_concurrency();
+        _maxRunning = std::thread::hardware_concurrency();
     }
     // FIXME: _maxRunning needs some design. The optimal value can
     // be quite complex, and is probably dynamic. This is noted as a
@@ -55,7 +55,7 @@ FifoScheduler::FifoScheduler(int maxRunning)
 
 void
 FifoScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     _queue.push_back(incoming);
 }
 
@@ -71,7 +71,7 @@ FifoScheduler::nopAct(wbase::TaskQueuePtr running) {
 wbase::TaskQueuePtr
 FifoScheduler::newTaskAct(wbase::Task::Ptr incoming,
                           wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(running.get());
     assert(incoming.get());
 
@@ -85,7 +85,7 @@ FifoScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 FifoScheduler::taskFinishAct(wbase::Task::Ptr finished,
                              wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     wbase::TaskQueuePtr tq;
     assert(running.get());
     assert(finished.get());

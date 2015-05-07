@@ -28,7 +28,7 @@
 #define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 #include "boost/utility.hpp"
 
 // Local headers
@@ -76,7 +76,7 @@ public:
 private:
     bool _initMySql();
     MYSQL* _connectHelper();
-    static boost::mutex _mysqlShared;
+    static std::mutex _mysqlShared;
     static bool _mysqlReady;
 
     MYSQL* _mysql;
@@ -86,7 +86,7 @@ private:
     bool _useThreadMgmt;
     bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
     bool _interrupted; ///< true if cancellation requested
-    boost::mutex _interruptMutex;
+    std::mutex _interruptMutex;
 };
 
 }}} // namespace lsst::qserv::mysql

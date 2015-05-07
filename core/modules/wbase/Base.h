@@ -30,7 +30,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 #include "boost/format.hpp"
 
 // Forward declarations
@@ -112,7 +112,7 @@ private:
 #if DO_NOT_USE_BOOST
     XrdSysMutex _mutex;
 #else
-    boost::mutex _mutex;
+    std::mutex _mutex;
 #endif
     std::stringstream _ss;
     };
@@ -133,7 +133,7 @@ private:
 #if DO_NOT_USE_BOOST
     XrdSysMutex _mutex;
 #else
-    boost::mutex _mutex;
+    std::mutex _mutex;
 #endif
     char* _buffer;
     unsigned _bufferSize;

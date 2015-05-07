@@ -29,7 +29,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
@@ -141,7 +141,7 @@ private:
     /// Reference to an updatable Status
     ExecStatus& _status;
 
-    boost::mutex _finishStatusMutex;
+    std::mutex _finishStatusMutex;
     enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus;
 
     class Canceller;

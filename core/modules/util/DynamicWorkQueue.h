@@ -29,7 +29,7 @@
 #include <set>
 
 // Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 
 namespace lsst {
@@ -105,14 +105,14 @@ private:
     size_t const _minThreadsPerSession;
     size_t const _maxThreads;
 
-    boost::mutex              _mutex;
+    std::mutex              _mutex;
     size_t                    _numCallables;
     size_t                    _numThreads;
     bool                      _exitNow;
     SessionQueueMap           _sessions;
     QueueSet                  _nonEmptyQueues;
-    boost::condition_variable _workAvailable;
-    boost::condition_variable _threadsExited;
+    std::condition_variable _workAvailable;
+    std::condition_variable _threadsExited;
 
     friend struct Runner;
 };

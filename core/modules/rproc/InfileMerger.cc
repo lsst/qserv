@@ -141,7 +141,7 @@ public:
     /// Wait until work queue is empty.
     /// @return true on success
     bool join() {
-        boost::unique_lock<boost::mutex> lock(_inflightMutex);
+        std::unique_lock<std::mutex> lock(_inflightMutex);
         while(_numInflight > 0) {
             _inflightZero.wait(lock);
         }
@@ -154,7 +154,7 @@ public:
     /// Report completion of an action (used by Action threads to report their
     /// completion before they destroy themselves).
     void signalDone(bool success, ActionMerge& a) {
-        boost::lock_guard<boost::mutex> lock(_inflightMutex);
+        std::lock_guard<std::mutex> lock(_inflightMutex);
         --_numInflight;
         // TODO: do something with the result so we can catch errors.
         if(_numInflight == 0) {
@@ -166,7 +166,7 @@ private:
     bool _doMerge(std::shared_ptr<WorkerResponse>& response);
 
     void _incrementInflight() {
-        boost::lock_guard<boost::mutex> lock(_inflightMutex);
+        std::lock_guard<std::mutex> lock(_inflightMutex);
         ++_numInflight;
     }
 
@@ -179,12 +179,12 @@ private:
     }
 
     mysql::MySqlConnection _mysqlConn;
-    boost::mutex _mysqlMutex;
+    std::mutex _mysqlMutex;
     std::string const& _mergeTable;
 
     util::WorkQueue _workQueue;
-    boost::mutex _inflightMutex;
-    boost::condition_variable _inflightZero;
+    std::mutex _inflightMutex;
+    std::condition_variable _inflightZero;
     int _numInflight;
 
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
@@ -234,7 +234,7 @@ bool InfileMerger::Mgr::_doMerge(std::shared_ptr<WorkerResponse>& response) {
 }
 
 bool InfileMerger::Mgr::applyMysql(std::string const& query) {
-    boost::lock_guard<boost::mutex> lock(_mysqlMutex);
+    std::lock_guard<std::mutex> lock(_mysqlMutex);
     if(!_mysqlConn.connected()) {
         // should have connected during Mgr construction
         // Try reconnecting--maybe we timed out.
@@ -340,7 +340,7 @@ bool InfileMerger::isFinished() const {
 
 /// Apply a SQL query, setting the appropriate error upon failure.
 bool InfileMerger::_applySqlLocal(std::string const& sql) {
-    boost::lock_guard<boost::mutex> m(_sqlMutex);
+    std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
         _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
@@ -416,7 +416,7 @@ bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
 /// supplied Protobufs message
 bool InfileMerger::_setupTable(WorkerResponse const& response) {
     // Create table, using schema
-    boost::lock_guard<boost::mutex> lock(_createTableMutex);
+    std::lock_guard<std::mutex> lock(_createTableMutex);
     if(_needCreateTable) {
         // create schema
         proto::RowSchema const& rs = response.result.rowschema();

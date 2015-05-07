@@ -29,8 +29,8 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/thread/locks.hpp"
-#include "boost/thread/mutex.hpp"
+#include <mutex>
+#include <mutex>
 
 // Qserv headers
 #include "util/Callable.h"
@@ -89,7 +89,7 @@ public:
     /// process. The buffer filler should call this function so that it can be
     /// notified when the receiver no longer cares about being filled.
     virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
-        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        std::lock_guard<std::mutex> lock(_cancelMutex);
         _cancelFunc = cancelFunc;
     }
 
@@ -98,7 +98,7 @@ public:
     /// Default behavior invokes registered function.
     virtual void cancel() { _callCancel(); }
     virtual bool cancelled() {
-        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        std::lock_guard<std::mutex> lock(_cancelMutex);
         return _cancelled;
     }
 
@@ -108,7 +108,7 @@ protected:
     	// Ensure _cancelFunc is only called once.
         std::shared_ptr<CancelFunc> f;
         {
-            boost::lock_guard<boost::mutex> lock(_cancelMutex);
+            std::lock_guard<std::mutex> lock(_cancelMutex);
             if(!_cancelled) {
                 f = _cancelFunc;
                 _cancelled = true;
@@ -120,7 +120,7 @@ protected:
     }
     std::shared_ptr<CancelFunc> _cancelFunc;
     bool _cancelled;
-    boost::mutex _cancelMutex;
+    std::mutex _cancelMutex;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseRequester const& r) {

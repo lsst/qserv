@@ -40,7 +40,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/thread.hpp" // for mutex.
+#include <mutex> // for mutex.
 
 // Local headers
 #include "rproc/mergeTypes.h"
@@ -169,9 +169,9 @@ private:
     long long _resultLimit;
     int _tableCount;
     bool _isFinished;
-    boost::mutex _countMutex;
-    boost::mutex _popenMutex;
-    boost::mutex _sqlMutex;
+    std::mutex _countMutex;
+    std::mutex _popenMutex;
+    std::mutex _sqlMutex;
 };
 
 }}} // namespace lsst::qserv::rproc

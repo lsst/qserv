@@ -27,7 +27,7 @@
 #include <memory>
 
 // Third-party headers
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 
 // Qserv headers
 #include "qdisp/ResponseRequester.h"
@@ -96,7 +96,7 @@ public:
 
     /// @return an error code and description
     virtual Error getError() const {
-        boost::lock_guard<boost::mutex> lock(_errorMutex);
+        std::lock_guard<std::mutex> lock(_errorMutex);
         return _error;
     }
 
@@ -119,11 +119,11 @@ private:
     std::string _tableName; ///< Target table name
     std::vector<char> _buffer; ///< Raw response buffer, resized for each msg
     Error _error; ///< Error description
-    mutable boost::mutex _errorMutex; ///< Protect readers from partial updates
+    mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
     std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed; ///< flushed to InfileMerger?
-    boost::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
+    std::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
     bool _cancelled; ///< Cancelled?
 };
 

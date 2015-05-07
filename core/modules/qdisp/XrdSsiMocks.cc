@@ -29,7 +29,7 @@
 #include <unistd.h>
 
 // External headers
-#include "boost/thread.hpp"
+#include <mutex>
 
 // lsst headers
 #include "lsst/log/Log.h"
@@ -75,7 +75,7 @@ bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
     }
     _count.incr();
 
-    boost::thread t(&XrdSsiServiceMock::mockProvisionTest, this, qr, timeOut);
+    std::thread t(&XrdSsiServiceMock::mockProvisionTest, this, qr, timeOut);
     // Thread must live past the end of this function, and the calling body
     // is not really dealing with threads, and this is for testing only.
     t.detach();

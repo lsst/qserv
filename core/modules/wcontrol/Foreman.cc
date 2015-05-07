@@ -35,7 +35,7 @@
 
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
-#include "boost/thread.hpp"
+#include <mutex>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -133,8 +133,8 @@ private:
     void _startRunner(wbase::Task::Ptr t);
 
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
-    boost::mutex _mutex;
-    boost::mutex _runnersMutex;
+    std::mutex _mutex;
+    std::mutex _runnersMutex;
     Scheduler::Ptr _scheduler;
     RunnerDeque _runners;
     boost::scoped_ptr<RunnerMgr> _rManager;
@@ -171,7 +171,7 @@ ForemanImpl::RunnerMgr::RunnerMgr(ForemanImpl& f)
 void
 ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
     {
-        boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
+        std::lock_guard<std::mutex> lock(_f._runnersMutex);
         _f._runners.push_back(r);
     }
 
@@ -189,7 +189,7 @@ ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
 void
 ForemanImpl::RunnerMgr::reportComplete(wbase::Task::Ptr t) {
     {
-        boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
+        std::lock_guard<std::mutex> lock(_f._runnersMutex);
         bool popped = popFrom(*_f._running, t);
         assert(popped);
     }
@@ -206,7 +206,7 @@ ForemanImpl::RunnerMgr::reportStart(wbase::Task::Ptr t) {
 void
 ForemanImpl::RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
     {
-        boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
+        std::lock_guard<std::mutex> lock(_f._runnersMutex);
         _f._running->push_back(t);
     }
     LOGF(_f._log, LOG_LVL_DEBUG, "Started task %1%" % *t);
@@ -214,7 +214,7 @@ ForemanImpl::RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
 }
 
 void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
-    boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
+    std::lock_guard<std::mutex> lock(_f._runnersMutex);
     RunnerDeque::iterator end = _f._runners.end();
     // std::cout << (void*) r << " dying" << std::endl;
     for(RunnerDeque::iterator i = _f._runners.begin(); i != end; ++i) {
@@ -254,7 +254,7 @@ public:
 };
 
 bool ForemanImpl::RunnerMgr::squashByHash(std::string const& hash) {
-    boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
+    std::lock_guard<std::mutex> lock(_f._runnersMutex);
 
     RunnerDeque::iterator b = _f._runners.begin();
     RunnerDeque::iterator e = _f._runners.end();
@@ -282,7 +282,7 @@ void ForemanImpl::Runner::poison() {
     // No safe way(within reason) to access _action in order to send it a
     // poison() message.
     // --can't use a mutex in a Runner, because Runner instances must be
-    // copyable to use boost::thread interface.
+    // copyable to use std::thread interface.
     // -- can store mutex outside (e.g., in RunnerMgr or ForemanImpl), but
     // managing its storage is a hassle.
     // Probably not worth it because Runners probably won't be poisoned through
@@ -372,7 +372,7 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
     // Most (all?) cancellations are invoked by client with the
     // active/outstanding request. This should only get called when a client not
     // directly holding the active query wishes to cancel the query.
-    boost::lock_guard<boost::mutex> m(_mutex);
+    std::lock_guard<std::mutex> m(_mutex);
     bool success = _scheduler->removeByHash(hash);
     success = success || _rManager->squashByHash(hash);
     return success;

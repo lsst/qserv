@@ -36,7 +36,7 @@
 #define LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 
 // Third-party headers
-#include "boost/thread.hpp" // for mutex primitives
+#include <mutex> // for mutex primitives
 
 namespace lsst {
 namespace qserv {
@@ -48,19 +48,19 @@ public:
     SessionManager() :_idLimit(200000000), _nextId(1) {}
 
     int newSession(Value const& v) {
-        boost::lock_guard<boost::mutex> g(_mutex);
+        std::lock_guard<std::mutex> g(_mutex);
         int id = _getNextId();
         _map[id] = v;
         return id;
     }
 
     Value& getSession(int id) {
-        boost::lock_guard<boost::mutex> g(_mutex);
+        std::lock_guard<std::mutex> g(_mutex);
         return _map[id];
     }
 
     void discardSession(int id) {
-        boost::lock_guard<boost::mutex> g(_mutex);
+        std::lock_guard<std::mutex> g(_mutex);
         MapIterator i = _map.find(id);
         if(i != _map.end()) {
             _map.erase(i);
@@ -86,7 +86,7 @@ private:
         return goodId;
     }
 
-    boost::mutex _mutex;
+    std::mutex _mutex;
     Map _map;
     int const _idLimit; // explicit arbitrary numerical id limit.
     int _nextId;

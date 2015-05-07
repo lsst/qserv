@@ -32,7 +32,7 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/thread.hpp" // for mutex.
+#include <mutex> // for mutex.
 
 // Qserv headers
 #include "mysql/MySqlConnection.h"

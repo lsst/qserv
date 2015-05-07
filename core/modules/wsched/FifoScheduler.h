@@ -24,7 +24,7 @@
 #define LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 
 // Third-party headers
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 
 // Local headers
 #include "wcontrol/Foreman.h"
@@ -56,7 +56,7 @@ public:
 private:
     wbase::TaskQueuePtr _fetchTask();
 
-    boost::mutex _mutex;
+    std::mutex _mutex;
     wbase::TaskQueue _queue;
     int _maxRunning;
 };

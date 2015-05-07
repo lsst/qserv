@@ -24,7 +24,7 @@
 #define LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
 // Third party headers
-#include "boost/thread/mutex.hpp"
+#include <mutex>
 
 // Local headers
 #include "lsst/log/Log.h"
@@ -71,7 +71,7 @@ private:
     int _maxRunning;
     ChunkDiskList _disks;
     LOG_LOGGER _logger;
-    boost::mutex _mutex;
+    std::mutex _mutex;
 };
 
 }}} // namespace lsst::qserv::wsched

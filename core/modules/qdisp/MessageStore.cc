@@ -49,7 +49,7 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
         LOGF_DEBUG("Msg: %1% %2% %3%" % chunkId % code % description);
     }
     {
-        boost::lock_guard<boost::mutex> lock(_storeMutex);
+        std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),
             QueryMessage(chunkId, code, description, std::time(0)));
     }
