@@ -80,7 +80,7 @@ Facade::Facade(std::istream& mapStream,
   *           for querying.
   * @param emptyChunkPath Path to a directory containing: empty_<dbname>.txt
   */
-Facade::Facade(boost::shared_ptr<KvInterface> kv,
+Facade::Facade(std::shared_ptr<KvInterface> kv,
                std::string const& emptyChunkPath)
     : _kvI(kv) {
     if (_kvI) _versionCheck();
@@ -464,7 +464,7 @@ Facade::_tableIsSubChunked(string const& dbName,
     return retV;
 }
 
-boost::shared_ptr<Facade>
+std::shared_ptr<Facade>
 FacadeFactory::createMemFacade(string const& mapPath,
                                std::string const& emptyChunkPath) {
     std::ifstream f(mapPath.c_str());
@@ -474,11 +474,11 @@ FacadeFactory::createMemFacade(string const& mapPath,
     return FacadeFactory::createMemFacade(f, emptyChunkPath);
 }
 
-boost::shared_ptr<Facade>
+std::shared_ptr<Facade>
 FacadeFactory::createMemFacade(std::istream& mapStream,
                                std::string const& emptyChunkPath) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(
-                                               mapStream, emptyChunkPath));
+    std::shared_ptr<css::Facade> cssFPtr(new css::Facade(
+                                           mapStream, emptyChunkPath));
     return cssFPtr;
 }
 
@@ -577,10 +577,10 @@ private:
 #endif
 };
 
-boost::shared_ptr<Facade>
-FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv,
+std::shared_ptr<Facade>
+FacadeFactory::createCacheFacade(std::shared_ptr<KvInterface> kv,
                                  std::string const& emptyChunkPath) {
-    boost::shared_ptr<css::Facade> facade(new Facade(kv, emptyChunkPath));
+    std::shared_ptr<css::Facade> facade(new Facade(kv, emptyChunkPath));
     return facade;
 }
 }}} // namespace lsst::qserv::css

@@ -35,15 +35,13 @@
 #include <algorithm> // sort
 #include <cstdlib>   // rand, srand
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <time.h>    // time
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
-#include "boost/make_shared.hpp"
-#include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "css/CssError.h"
@@ -136,23 +134,23 @@ struct FacadeFixture {
     };
 
     std::string prefix;
-    boost::shared_ptr<KvInterfaceImplMem> kvI;
+    std::shared_ptr<KvInterfaceImplMem> kvI;
     vector<std::pair<string, string> > kv;
-    boost::shared_ptr<Facade> facade;
+    std::shared_ptr<Facade> facade;
 };
 
 BOOST_FIXTURE_TEST_SUITE(FacadeTest, FacadeFixture)
 
 BOOST_FIXTURE_TEST_CASE(test_noVersion, EmptyFixture) {
     // check that Facade throws exception for missing version key
-    boost::shared_ptr<KvInterfaceImplMem> kvI = boost::make_shared<KvInterfaceImplMem>();
+    std::shared_ptr<KvInterfaceImplMem> kvI = std::make_shared<KvInterfaceImplMem>();
     BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI, "."), VersionMissingError);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_wrongVersion, EmptyFixture) {
     // check that Facade throws exception for mismatching version key
     std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t1000000000");
-    boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
+    std::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
     BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI, "."), VersionMismatchError);
 }
 
@@ -160,7 +158,7 @@ BOOST_FIXTURE_TEST_CASE(test_okVersion, EmptyFixture) {
     // check that Facade throws exception for mismatching version key
     std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
             boost::lexical_cast<string>(Facade::cssVersion()));
-    boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
+    std::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
     BOOST_CHECK_NO_THROW(FacadeFactory::createCacheFacade(kvI, "."));
 }
 

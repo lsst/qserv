@@ -33,11 +33,11 @@
 #include "query/GroupByClause.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <iterator>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/QueryTemplate.h"
@@ -113,15 +113,15 @@ GroupByTerm callClone(GroupByTerm const& t) {
 }
 }
 
-boost::shared_ptr<GroupByClause> GroupByClause::clone() const {
-    GroupByClause::Ptr p = boost::make_shared<GroupByClause>();
+std::shared_ptr<GroupByClause> GroupByClause::clone() const {
+    GroupByClause::Ptr p = std::make_shared<GroupByClause>();
     std::transform(_terms->begin(), _terms->end(),
                    std::back_inserter(*p->_terms), callClone);
     return p;
 }
 
-boost::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
-    return boost::make_shared<GroupByClause>(*this);
+std::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
+    return std::make_shared<GroupByClause>(*this);
 }
 
 void GroupByClause::findValueExprs(ValueExprPtrVector& list) {

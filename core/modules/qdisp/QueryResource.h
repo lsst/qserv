@@ -25,12 +25,12 @@
 
 // System headers
 #include <cstdlib>
+#include <memory>
 #include <new>
 #include <string>
 #include <string.h>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "XrdSsi/XrdSsiService.hh" // Resource
 
 // Local headers
@@ -55,9 +55,9 @@ public:
     /// @param status reference to update the current execution status
     QueryResource(std::string const& rPath,
                   std::string const& payload,
-                  boost::shared_ptr<ResponseRequester> requester,
-                  boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
-                  boost::shared_ptr<util::VoidCallable<void> > retryFunc,
+                  std::shared_ptr<ResponseRequester> requester,
+                  std::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
+                  std::shared_ptr<util::VoidCallable<void> > retryFunc,
                   ExecStatus& status)
         : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
           _session(NULL),
@@ -90,11 +90,11 @@ private:
     QueryRequest* _request;
 
     std::string const _payload; ///< Request payload
-    boost::shared_ptr<ResponseRequester> _requester; ///< Response requester
+    std::shared_ptr<ResponseRequester> _requester; ///< Response requester
     /// Called upon transaction finish
-    boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     /// Called to retry the transaction
-    boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
+    std::shared_ptr<util::VoidCallable<void> > _retryFunc;
     ExecStatus& _status;
 };
 

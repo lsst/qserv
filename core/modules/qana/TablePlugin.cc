@@ -48,7 +48,6 @@
 #include <string>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -238,7 +237,7 @@ private:
 class TablePlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<TablePlugin> Ptr;
+    typedef std::shared_ptr<TablePlugin> Ptr;
 
     virtual ~TablePlugin() {}
 
@@ -252,7 +251,7 @@ private:
     int _rewriteTables(SelectStmtPtrVector& outList,
                        query::SelectStmt& in,
                        query::QueryContext& context,
-                       boost::shared_ptr<qana::QueryMapping>& mapping);
+                       std::shared_ptr<qana::QueryMapping>& mapping);
 
     std::string _dominantDb;
 };
@@ -263,13 +262,13 @@ private:
 class TablePluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<TablePluginFactory> Ptr;
+    typedef std::shared_ptr<TablePluginFactory> Ptr;
     TablePluginFactory() {}
     virtual ~TablePluginFactory() {}
 
     virtual std::string getName() const { return "Table"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<TablePlugin>();
+        return std::make_shared<TablePlugin>();
     }
 };
 
@@ -279,7 +278,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        TablePluginFactory::Ptr f = boost::make_shared<TablePluginFactory>();
+        TablePluginFactory::Ptr f = std::make_shared<TablePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
@@ -362,12 +361,12 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     for (TableRefIter t = tList.begin(), te = tList.end(); t != te; ++t) {
         query::JoinRefPtrVector& joinRefs = (*t)->getJoins();
         for (JoinRefIter j = joinRefs.begin(), je = joinRefs.end(); j != je; ++j) {
-            boost::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
+            std::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
             if (spec) {
                 fixExprAlias fix(context.defaultDb, context.tableAliasReverses);
                 // A column name in a using clause should be unqualified,
                 // so only patch on clauses.
-                boost::shared_ptr<query::BoolTerm> on = spec->getOn();
+                std::shared_ptr<query::BoolTerm> on = spec->getOn();
                 if (on) {
                     query::ValueExprPtrVector e;
                     on->findValueExprs(e);
@@ -384,7 +383,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
 {
     TableInfoPool pool;
     if (!context.queryMapping) {
-        context.queryMapping = boost::make_shared<QueryMapping>();
+        context.queryMapping = std::make_shared<QueryMapping>();
     }
     // Process each entry in the parallel select statement set.
     typedef SelectStmtPtrVector::iterator Iter;

@@ -36,7 +36,6 @@
 #include "util/common.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/BoolTerm.h"
@@ -57,7 +56,7 @@ namespace qana {
 class WherePlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<WherePlugin> Ptr;
+    typedef std::shared_ptr<WherePlugin> Ptr;
 
     virtual ~WherePlugin() {}
 
@@ -73,13 +72,13 @@ public:
 class WherePluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<WherePluginFactory> Ptr;
+    typedef std::shared_ptr<WherePluginFactory> Ptr;
     WherePluginFactory() {}
     virtual ~WherePluginFactory() {}
 
     virtual std::string getName() const { return "Where"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<WherePlugin>();
+        return std::make_shared<WherePlugin>();
     }
 };
 
@@ -89,7 +88,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        WherePluginFactory::Ptr f = boost::make_shared<WherePluginFactory>();
+        WherePluginFactory::Ptr f = std::make_shared<WherePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
@@ -104,11 +103,11 @@ WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     if(!stmt.hasWhereClause()) { return; }
 
     query::WhereClause& wc = stmt.getWhereClause();
-    boost::shared_ptr<query::AndTerm> at = wc.getRootAndTerm();
+    std::shared_ptr<query::AndTerm> at = wc.getRootAndTerm();
     if(!at) { return; }
     typedef query::BoolTerm::PtrVector::iterator Iter;
     for(Iter i=at->iterBegin(), e=at->iterEnd(); i != e; ++i) {
-        boost::shared_ptr<query::BoolTerm> reduced = (**i).getReduced();
+        std::shared_ptr<query::BoolTerm> reduced = (**i).getReduced();
         if(reduced) {
             *i = reduced;
         }

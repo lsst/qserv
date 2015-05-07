@@ -46,7 +46,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/regex.hpp"
 
 // LSST headers
@@ -73,8 +72,8 @@ std::string getTimeStampId() {
     // FIXME: is there a better idea?
 }
 
-boost::shared_ptr<MySqlConfig> makeSqlConfig(TableMergerConfig const& c) {
-    boost::shared_ptr<MySqlConfig> sc = boost::make_shared<MySqlConfig>();
+std::shared_ptr<MySqlConfig> makeSqlConfig(TableMergerConfig const& c) {
+    std::shared_ptr<MySqlConfig> sc = std::make_shared<MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -277,7 +276,7 @@ off_t TableMerger::merge(char const* dumpBuffer, int dumpLength,
     return used;
 }
 
-bool TableMerger::merge(boost::shared_ptr<util::PacketBuffer> pb,
+bool TableMerger::merge(std::shared_ptr<util::PacketBuffer> pb,
                         std::string const& tableName) {
     LOGF_DEBUG("EXECUTING TableMerger::merge(packetbuffer, %1%)" % tableName);
     bool allowNull = false;
@@ -361,7 +360,7 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
-        _sqlConn = boost::make_shared<sql::SqlConnection>(*_sqlConfig, true);
+        _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
         if(!_sqlConn->connectToDb(errObj)) {
             _error.status = TableMergerError::MYSQLCONNECT;
             _error.errorCode = errObj.errNo();
@@ -452,7 +451,7 @@ bool TableMerger::_importResult(std::string const& dumpFile) {
 
 bool TableMerger::merge2(std::string const& dumpFile,
                         std::string const& tableName) {
-    boost::shared_ptr<util::MmapFile> m =
+    std::shared_ptr<util::MmapFile> m =
         util::MmapFile::newMap(dumpFile, true, false);
     if(!m.get()) {
         // Fallback to non-mmap version.

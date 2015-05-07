@@ -35,7 +35,6 @@
 #include <algorithm>
 
 // Third-party headers
-#include "boost/make_shared.hpp" // switch to make_unique
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
@@ -115,7 +114,7 @@ public:
         std::string lookupSql = makeLookupSql(c.params[0], c.params[1],
                                               c.params[2], c.params[3]);
         ChunkSpecMap m;
-        for(boost::shared_ptr<sql::SqlResultIter> results
+        for(std::shared_ptr<sql::SqlResultIter> results
                 = _sqlConnection.getQueryIter(lookupSql);
             !results->done();
             ++(*results)) {
@@ -168,11 +167,11 @@ private:
 };
 
 SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
-    : _backend(boost::make_shared<MySqlBackend>(c)) {
+    : _backend(std::make_shared<MySqlBackend>(c)) {
 }
 
 SecondaryIndex::SecondaryIndex(int)
-    : _backend(boost::make_shared<FakeBackend>()) {
+    : _backend(std::make_shared<FakeBackend>()) {
 }
 
 ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {

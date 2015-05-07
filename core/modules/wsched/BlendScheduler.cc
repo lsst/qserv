@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -58,8 +58,8 @@ BlendScheduler* dbgBlendScheduler=0; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
-BlendScheduler::BlendScheduler(boost::shared_ptr<GroupScheduler> group,
-                               boost::shared_ptr<ScanScheduler> scan)
+BlendScheduler::BlendScheduler(std::shared_ptr<GroupScheduler> group,
+                               std::shared_ptr<ScanScheduler> scan)
     : _group(group),
       _scan(scan),
       _logger(LOG_GET(getName()))

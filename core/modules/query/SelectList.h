@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,10 +30,8 @@
   */
 
 // System headers
+#include <memory>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -67,20 +65,20 @@ namespace query {
 /// columns in the SELECT query's result.
 class SelectList {
 public:
-    typedef boost::shared_ptr<SelectList> Ptr;
+    typedef std::shared_ptr<SelectList> Ptr;
 
-    SelectList() : _valueExprList(boost::make_shared<ValueExprPtrVector>()) {}
+    SelectList() : _valueExprList(std::make_shared<ValueExprPtrVector>()) {}
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<SelectList> clone();
-    boost::shared_ptr<SelectList> copySyntax();
+    std::shared_ptr<SelectList> clone();
+    std::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    boost::shared_ptr<ValueExprPtrVector> getValueExprList() const {
+    std::shared_ptr<ValueExprPtrVector> getValueExprList() const {
         return _valueExprList;
     }
 
@@ -88,7 +86,7 @@ public:
 private:
 
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-    boost::shared_ptr<ValueExprPtrVector> _valueExprList;
+    std::shared_ptr<ValueExprPtrVector> _valueExprList;
 
     static LOG_LOGGER _logger;
 };

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2010-2014 LSST Corporation.
+ * Copyright 2010-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,7 +41,7 @@ namespace wsched {
 
 class FifoScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<FifoScheduler> Ptr;
+    typedef std::shared_ptr<FifoScheduler> Ptr;
 
     explicit FifoScheduler(int maxRunning=-1);
     virtual ~FifoScheduler() {}

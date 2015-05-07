@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,8 +39,8 @@ namespace parser {
 /// in the parse node domain.
 class ParseAliasMap {
 public:
-    typedef boost::shared_ptr<ParseAliasMap> Ptr;
-    typedef boost::shared_ptr<ParseAliasMap const> Cptr;
+    typedef std::shared_ptr<ParseAliasMap> Ptr;
+    typedef std::shared_ptr<ParseAliasMap const> Cptr;
 
     typedef std::map<antlr::RefAST, antlr::RefAST> Map; // Aliases are unique
     // Although in SQL, a table may have multiple aliases, each

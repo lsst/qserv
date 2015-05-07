@@ -59,7 +59,7 @@ LocalInfile::LocalInfile(char const* filename, MYSQL_RES* result)
 }
 
 LocalInfile::LocalInfile(char const* filename,
-                         boost::shared_ptr<RowBuffer> rowBuffer)
+                         std::shared_ptr<RowBuffer> rowBuffer)
     : _filename(filename),
       _rowBuffer(rowBuffer) {
     // Should have buffer >= sizeof(single row)
@@ -133,23 +133,23 @@ class LocalInfile::Mgr::Impl {
 public:
     Impl() {}
 
-    std::string insertBuffer(boost::shared_ptr<RowBuffer> rb) {
+    std::string insertBuffer(std::shared_ptr<RowBuffer> rb) {
         std::string f = _nextFilename();
         _set(f, rb);
         return f;
     }
 
-    void setBuffer(std::string const& s, boost::shared_ptr<RowBuffer> rb) {
+    void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> rb) {
         if(get(s)) {
             throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
         }
         _set(s, rb);//RowBuffer::newResRowBuffer(result));
     }
 
-    boost::shared_ptr<RowBuffer> get(std::string const& s) {
+    std::shared_ptr<RowBuffer> get(std::string const& s) {
         boost::lock_guard<boost::mutex> lock(_mapMutex);
         RowBufferMap::iterator i = _map.find(s);
-        if(i == _map.end()) { return boost::shared_ptr<RowBuffer>(); }
+        if(i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
         return i->second;
     }
 
@@ -166,12 +166,12 @@ private:
         return os.str();
     }
 
-    void _set(std::string const& s, boost::shared_ptr<RowBuffer> rb) {
+    void _set(std::string const& s, std::shared_ptr<RowBuffer> rb) {
         boost::lock_guard<boost::mutex> lock(_mapMutex);
         _map[s] = rb;
     }
 
-    typedef std::map<std::string, boost::shared_ptr<RowBuffer> > RowBufferMap;
+    typedef std::map<std::string, std::shared_ptr<RowBuffer> > RowBufferMap;
     RowBufferMap _map;
     boost::mutex _mapMutex;
 };
@@ -205,7 +205,7 @@ std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
     return _impl->insertBuffer(RowBuffer::newResRowBuffer(result));
 }
 
-std::string LocalInfile::Mgr::prepareSrc(boost::shared_ptr<RowBuffer> rowBuffer) {
+std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> rowBuffer) {
     return _impl->insertBuffer(rowBuffer);
 }
 
@@ -215,7 +215,7 @@ int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *
     assert(userdata);
     //cout << "New infile:" << filename << "\n";
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    boost::shared_ptr<RowBuffer> rb= m->_impl->get(std::string(filename));
+    std::shared_ptr<RowBuffer> rb= m->_impl->get(std::string(filename));
     assert(rb);
     LocalInfile* lf = new LocalInfile(filename, rb);
     *ptr = lf;

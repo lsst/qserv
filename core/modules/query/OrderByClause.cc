@@ -37,7 +37,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/QueryTemplate.h"
@@ -134,11 +133,11 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<OrderByClause> OrderByClause::clone() const {
-    return boost::make_shared<OrderByClause>(*this); // FIXME
+std::shared_ptr<OrderByClause> OrderByClause::clone() const {
+    return std::make_shared<OrderByClause>(*this); // FIXME
 }
-boost::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
-    return boost::make_shared<OrderByClause>(*this);
+std::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
+    return std::make_shared<OrderByClause>(*this);
 }
 
 void OrderByClause::findValueExprs(ValueExprPtrVector& list) {

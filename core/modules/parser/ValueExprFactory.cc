@@ -32,7 +32,6 @@
 #include "parser/ValueExprFactory.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -55,7 +54,7 @@ namespace parser {
 ////////////////////////////////////////////////////////////////////////
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
-ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
+ValueExprFactory::ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap)
     : _valueFactorFactory(new ValueFactorFactory(cMap, *this)) {
 }
 
@@ -63,9 +62,9 @@ ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
 // |      \                      //
 // TERM   (TERM_OP TERM)*        //
 /// @param first child of VALUE_EXP node.
-boost::shared_ptr<query::ValueExpr>
+std::shared_ptr<query::ValueExpr>
 ValueExprFactory::newExpr(antlr::RefAST a) {
-    boost::shared_ptr<query::ValueExpr> expr = boost::make_shared<query::ValueExpr>();
+    std::shared_ptr<query::ValueExpr> expr = std::make_shared<query::ValueExpr>();
     // LOGF_INFO("%1%" % walkIndentedString(a));
     while(a.get()) {
         query::ValueExpr::FactorOp newFactorOp;

@@ -58,7 +58,7 @@ struct TestFixture {
 
     ~TestFixture(void) {}
 
-    boost::shared_ptr<lsst::qserv::css::Facade> cssFacade;
+    std::shared_ptr<lsst::qserv::css::Facade> cssFacade;
     int metaSession;
 };
 
@@ -70,14 +70,14 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     // Under normal operation, the columnref is patched by the TablePlugin
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor");
     TestFactory factory;
-    boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
-    boost::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
+    std::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
+    std::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 #if 0
-    std::list<boost::shared_ptr<SelectStmt> > parallel;
+    std::list<std::shared_ptr<SelectStmt> > parallel;
     parallel.push_back(stmt->copyDeep());
-    boost::shared_ptr<SelectStmt> mergeStmt = stmt->copyMerge();
+    std::shared_ptr<SelectStmt> mergeStmt = stmt->copyMerge();
     QueryPlugin::Plan p(*stmt, parallel, *mergeStmt, false);
     qp->applyPhysical(p, *qc);
     qp->applyFinal(*qc);
@@ -87,8 +87,8 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
 BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr");
     TestFactory factory;
-    boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
-    boost::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
+    std::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
+    std::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 }

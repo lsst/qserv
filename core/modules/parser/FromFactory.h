@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,11 +35,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/make_shared.hpp"
-#include "boost/shared_ptr.hpp"
-
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -67,17 +67,17 @@ public:
     friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(boost::shared_ptr<ParseAliasMap> aliases,
-                boost::shared_ptr<ValueExprFactory> vf);
+    FromFactory(std::shared_ptr<ParseAliasMap> aliases,
+                std::shared_ptr<ValueExprFactory> vf);
 
-    boost::shared_ptr<query::FromList> getProduct();
+    std::shared_ptr<query::FromList> getProduct();
 private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
 
-    boost::shared_ptr<ParseAliasMap> _aliases;
-    boost::shared_ptr<BoolTermFactory> _bFactory;
-    boost::shared_ptr<query::FromList> _list;
+    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<BoolTermFactory> _bFactory;
+    std::shared_ptr<query::FromList> _list;
 };
 
 }}} // namespace lsst::qserv::parser

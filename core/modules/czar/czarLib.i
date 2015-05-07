@@ -1,7 +1,7 @@
 // -*- lsst-c++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 AURA/LSST.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -107,7 +107,7 @@ namespace std {
 
 // ------------------------------------------------------------------------
 
-%include "boost_shared_ptr.i"
+%include "std_shared_ptr.i"
 %shared_ptr(lsst::qserv::css::KvInterface)
 %shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
 

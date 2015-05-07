@@ -41,7 +41,6 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "qproc/ChunkSpec.h"
@@ -102,10 +101,10 @@ public:
     }
     virtual ~Mapping() {}
 
-    virtual boost::shared_ptr<query::QueryTemplate::Entry>
+    virtual std::shared_ptr<query::QueryTemplate::Entry>
     mapEntry(query::QueryTemplate::Entry const& e) const {
         typedef query::QueryTemplate::StringEntry StringEntry;
-        boost::shared_ptr<StringEntry> newE = boost::make_shared<StringEntry>(e.getValue());
+        std::shared_ptr<StringEntry> newE = std::make_shared<StringEntry>(e.getValue());
         Map::const_iterator i;
 
         // FIXME see if this works

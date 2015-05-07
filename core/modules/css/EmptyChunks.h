@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,10 +34,10 @@
 #define LSST_QSERV_CSS_EMPTYCHUNKS_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "boost/thread/mutex.hpp"
 
 // Local headers
@@ -61,14 +61,14 @@ public:
     // accessors
 
     /// @return set of empty chunks for this db
-    boost::shared_ptr<IntSet const> getEmpty(std::string const& db) const;
+    std::shared_ptr<IntSet const> getEmpty(std::string const& db) const;
 
     /// @return true if db/chunk is empty
     bool isEmpty(std::string const& db, int chunk) const;
 
     // Convenience types
-    typedef boost::shared_ptr<IntSet> IntSetPtr;
-    typedef boost::shared_ptr<IntSet const> IntSetConstPtr;
+    typedef std::shared_ptr<IntSet> IntSetPtr;
+    typedef std::shared_ptr<IntSet const> IntSetConstPtr;
 
 private:
     typedef std::map<std::string, IntSetPtr> IntSetMap;

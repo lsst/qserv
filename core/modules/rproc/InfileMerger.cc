@@ -93,8 +93,8 @@ std::string getTimeStampId() {
     // guaranteed to be unique.
 }
 
-boost::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
-    boost::shared_ptr<MySqlConfig> sc = boost::make_shared<MySqlConfig>();
+std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
+    std::shared_ptr<MySqlConfig> sc = std::make_shared<MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -221,7 +221,7 @@ InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
 /** Queue merging the rows encoded in the 'response'.
  */
 void InfileMerger::Mgr::queMerge(std::shared_ptr<WorkerResponse> response) {
-    boost::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
+    std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
     _workQueue.add(a);
 }
 
@@ -343,7 +343,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
-        _sqlConn = boost::make_shared<sql::SqlConnection>(*_sqlConfig, true);
+        _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
         if(!_sqlConn->connectToDb(errObj)) {
             _error.status = InfileMergerError::MYSQLCONNECT;
             _error.errorCode = errObj.errNo();

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,9 +32,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
 
 // Forward declarations
 namespace lsst {
@@ -55,11 +57,11 @@ namespace parser {
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
-    ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
+    ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap);
+    std::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
 
 private:
-    boost::shared_ptr<ValueFactorFactory> _valueFactorFactory;
+    std::shared_ptr<ValueFactorFactory> _valueFactorFactory;
 };
 
 }}} // namespace lsst::qserv::parser

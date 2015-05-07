@@ -45,7 +45,6 @@
 #include <antlr/CommonAST.hpp>
 
 #include "boost/bind.hpp"
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -134,7 +133,7 @@ public:
 // Static factory function
 SelectParser::Ptr
 SelectParser::newInstance(std::string const& statement) {
-    return boost::shared_ptr<SelectParser>(new SelectParser(statement));
+    return std::shared_ptr<SelectParser>(new SelectParser(statement));
 }
 
 // Construtor
@@ -144,8 +143,8 @@ SelectParser::SelectParser(std::string const& statement)
 
 void
 SelectParser::setup() {
-    _selectStmt = boost::make_shared<query::SelectStmt>();
-    _aParser = boost::make_shared<AntlrParser>(_statement);
+    _selectStmt = std::make_shared<query::SelectStmt>();
+    _aParser = std::make_shared<AntlrParser>(_statement);
     // model 3: parse tree construction to build intermediate expr.
     SelectFactory sf;
     sf.attachTo(_aParser->parser);

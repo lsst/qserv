@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,12 +30,10 @@
 
 // System headers
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/ColumnRef.h"
@@ -66,10 +64,10 @@ public:
     ValueExpr();
     enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE};
     struct FactorOp {
-        explicit FactorOp(boost::shared_ptr<ValueFactor> factor_, Op op_=NONE)
+        explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_=NONE)
             : factor(factor_), op(op_) {}
         FactorOp() {}
-        boost::shared_ptr<ValueFactor> factor;
+        std::shared_ptr<ValueFactor> factor;
         Op op;
     };
     typedef std::vector<FactorOp> FactorOpVector;
@@ -90,7 +88,7 @@ public:
      */
     void dbgPrint(std::ostream& os);
 
-    boost::shared_ptr<ColumnRef> copyAsColumnRef() const;
+    std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
     std::string copyAsLiteral() const;
 
@@ -111,7 +109,7 @@ public:
      * @return the ColumnRef in current object if there is one.
      */
     ColumnRef::Ptr getColumnRef() const;
-    boost::shared_ptr<ValueFactor const> getFactor() const;
+    std::shared_ptr<ValueFactor const> getFactor() const;
 
     bool isStar() const;
     bool isFactor() const;
@@ -125,7 +123,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);
 
-    static ValueExprPtr newSimple(boost::shared_ptr<ValueFactor> vt);
+    static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
 
     friend class parser::ValueExprFactory;
     class render;
@@ -146,7 +144,7 @@ public:
     void operator()(ValueExpr const& ve);
     void operator()(ValueExpr const* vep) {
         if(vep) (*this)(*vep); }
-    void operator()(boost::shared_ptr<ValueExpr> const& vep) {
+    void operator()(std::shared_ptr<ValueExpr> const& vep) {
         (*this)(vep.get()); }
     QueryTemplate& _qt;
     bool _needsComma;

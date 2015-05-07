@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,10 +34,8 @@
 
 // System headers
 #include <iostream>
+#include <memory>
 #include <stack>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/BoolTerm.h"
@@ -66,31 +64,31 @@ public:
     WhereClause() {}
     ~WhereClause() {}
 
-    boost::shared_ptr<QsRestrictor::PtrVector const> getRestrs() const {
+    std::shared_ptr<QsRestrictor::PtrVector const> getRestrs() const {
         return _restrs;
     }
-    boost::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
-    boost::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
-    boost::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
-    boost::shared_ptr<AndTerm> getRootAndTerm();
+    std::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
+    std::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
+    std::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
+    std::shared_ptr<AndTerm> getRootAndTerm();
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<WhereClause> clone() const;
-    boost::shared_ptr<WhereClause> copySyntax();
+    std::shared_ptr<WhereClause> clone() const;
+    std::shared_ptr<WhereClause> copySyntax();
 
     void findValueExprs(ValueExprPtrVector& list);
 
     void resetRestrs();
-    void prependAndTerm(boost::shared_ptr<BoolTerm> t);
+    void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
     friend class parser::WhereFactory;
 
     std::string _original;
-    boost::shared_ptr<BoolTerm> _tree;
-    boost::shared_ptr<QsRestrictor::PtrVector> _restrs;
+    std::shared_ptr<BoolTerm> _tree;
+    std::shared_ptr<QsRestrictor::PtrVector> _restrs;
 
 };
 

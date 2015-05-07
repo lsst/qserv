@@ -36,7 +36,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -83,7 +82,7 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 newConstFactor(RefAST t) {
     return query::ValueFactor::newConstFactor(walkTreeString(t));
 }
@@ -92,7 +91,7 @@ newConstFactor(RefAST t) {
 // ValueFactorFactory implementation
 ////////////////////////////////////////////////////////////////////////
 ValueFactorFactory::ValueFactorFactory(
-    boost::shared_ptr<ColumnRefNodeMap> cMap,
+    std::shared_ptr<ColumnRefNodeMap> cMap,
     ValueExprFactory& exprFactory)
     : _columnRefNodeMap(cMap), _exprFactory(exprFactory) {
 }
@@ -101,12 +100,12 @@ ValueFactorFactory::ValueFactorFactory(
 /* VALUE_EXP               */
 /* |             \         */
 /* TERM   (TERM_OP TERM)*  */
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::newFactor(antlr::RefAST a) {
     if(!_columnRefNodeMap) {
         throw std::logic_error("ValueFactorFactory missing _columnRefNodeMap");
     }
-    boost::shared_ptr<query::ValueFactor> vt;
+    std::shared_ptr<query::ValueFactor> vt;
     int eType = a->getType();
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
@@ -146,7 +145,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
     return vt;
 }
 
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     assert(_columnRefNodeMap);
     ColumnRefNodeMap& cMap = *_columnRefNodeMap;
@@ -155,8 +154,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         t = child;
         child = t->getFirstChild();
     }
-    boost::shared_ptr<query::ValueFactor> vt = boost::make_shared<query::ValueFactor>();
-    boost::shared_ptr<query::FuncExpr> fe;
+    std::shared_ptr<query::ValueFactor> vt = std::make_shared<query::ValueFactor>();
+    std::shared_ptr<query::FuncExpr> fe;
     RefAST last;
     // LOGF_INFO("colterm: %1% %2%" % t->getType() % t->getText());
     int tType = t->getType();
@@ -174,8 +173,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             }
             ColumnRefNodeMap::Ref r = it->second;
 
-            boost::shared_ptr<query::ColumnRef> newColumnRef;
-            newColumnRef = boost::make_shared<query::ColumnRef>(
+            std::shared_ptr<query::ColumnRef> newColumnRef;
+            newColumnRef = std::make_shared<query::ColumnRef>(
                     tokenText(r.db),
                     tokenText(r.table),
                     tokenText(r.column));
@@ -185,7 +184,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
         // LOGF_INFO("col child (fct): %1% %2%"
         //           % child->getType() % child->getText());
-        fe = boost::make_shared<query::FuncExpr>();
+        fe = std::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
@@ -196,7 +195,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         for(antlr::RefAST current = last->getNextSibling();
             current.get(); current = current->getNextSibling()) {
             // Should be a * or a value expr.
-            boost::shared_ptr<query::ValueFactor> pvt;
+            std::shared_ptr<query::ValueFactor> pvt;
             // LOGF_INFO("fctspec param: %1% %2%"
             //           % current->getType() % current->getText());
             switch(current->getType()) {
@@ -222,14 +221,14 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         throw ParseException("ValueFactorFactory::newColumnFactor with ", t);
         break;
     }
-    return boost::shared_ptr<query::ValueFactor>();
+    return std::shared_ptr<query::ValueFactor>();
 }
 
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
     // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
-    boost::shared_ptr<query::FuncExpr> fe = boost::make_shared<query::FuncExpr>();
+    std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
     // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
     RefAST nNode = expr->getFirstChild();
     if(!nNode.get()) {
@@ -244,7 +243,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     }
     current = current->getNextSibling();
     // Should be a * or a value expr.
-    boost::shared_ptr<query::ValueFactor> pvt;
+    std::shared_ptr<query::ValueFactor> pvt;
     switch(current->getType()) {
     case SqlSQL2TokenTypes::VALUE_EXP:
         pvt = _newColumnFactor(current->getFirstChild());
@@ -262,10 +261,10 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     return query::ValueFactor::newAggFactor(fe);
 }
 
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     assert(_columnRefNodeMap);
-    boost::shared_ptr<query::FuncExpr> fe = boost::make_shared<query::FuncExpr>();
+    std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
     //LOGF_DEBUG("fspec: %1%" % walkIndentedString(fspec));
     // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
     RefAST nNode = fspec->getFirstChild();
@@ -289,7 +288,7 @@ ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
             throw ParseException("Expected VALUE_EXP for parameter", current);
         }
         RefAST child = current->getFirstChild();
-        boost::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(child);
+        std::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(child);
         fe->params.push_back(ve);
         current = current->getNextSibling();
         if(!current.get()) {
@@ -305,7 +304,7 @@ ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     return query::ValueFactor::newFuncFactor(fe);
 }
 
-boost::shared_ptr<query::ValueFactor>
+std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSubFactor(antlr::RefAST s) {
     // Subfactor is an expression of factor and factor-op.
     // ( expr )
@@ -317,7 +316,7 @@ ValueFactorFactory::_newSubFactor(antlr::RefAST s) {
     }
     //LOGF_DEBUG("expr: %1%" % walkIndentedString(expr));
     RefAST exprChild = expr->getFirstChild();
-    boost::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(exprChild);
+    std::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(exprChild);
     if(ve && ve->isFactor() && ve->getAlias().empty()) {
         return ve->getFactorOps().front().factor;
     }

@@ -67,7 +67,6 @@
 #include <cassert>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -95,10 +94,10 @@ namespace qserv {
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
-class ProtoPrinter : public util::UnaryCallable<void, boost::shared_ptr<proto::TaskMsg> > {
+class ProtoPrinter : public util::UnaryCallable<void, std::shared_ptr<proto::TaskMsg> > {
 public:
     ProtoPrinter() {}
-    virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
+    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
         std::cout << "Got taskmsg ok";
     }
 };
@@ -110,17 +109,17 @@ public:
     virtual void operator()(int code, std::string const& msg) {
             messageStore->addMessage(chunkId, code, msg);
         }
-    static boost::shared_ptr<ChunkMsgReceiver>
+    static std::shared_ptr<ChunkMsgReceiver>
     newInstance(int chunkId,
-                boost::shared_ptr<qdisp::MessageStore> ms) {
-        boost::shared_ptr<ChunkMsgReceiver> r = boost::make_shared<ChunkMsgReceiver>();
+                std::shared_ptr<qdisp::MessageStore> ms) {
+        std::shared_ptr<ChunkMsgReceiver> r = std::make_shared<ChunkMsgReceiver>();
         r->chunkId = chunkId;
         r->messageStore = ms;
         return r;
     }
 
     int chunkId;
-    boost::shared_ptr<qdisp::MessageStore> messageStore;
+    std::shared_ptr<qdisp::MessageStore> messageStore;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -188,11 +187,11 @@ void UserQuery::submit() {
 
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
-        boost::shared_ptr<ChunkMsgReceiver> cmr;
+        std::shared_ptr<ChunkMsgReceiver> cmr;
         cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-        boost::shared_ptr<MergingRequester> mr
-            = boost::make_shared<MergingRequester>(cmr, _infileMerger,
-                                                   chunkResultName);
+        std::shared_ptr<MergingRequester> mr
+            = std::make_shared<MergingRequester>(cmr, _infileMerger,
+                                                 chunkResultName);
         qdisp::Executive::Spec s = { ru,
                                      ss.str(),
                                      mr};
@@ -252,8 +251,8 @@ void UserQuery::discard() {
 }
 
 /// Constructor. Most setup work done by the UserQueryFactory
-UserQuery::UserQuery(boost::shared_ptr<qproc::QuerySession> qs)
-    :  _messageStore(boost::make_shared<qdisp::MessageStore>()),
+UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs)
+    :  _messageStore(std::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
@@ -265,32 +264,32 @@ std::string UserQuery::getExecDesc() const {
 void UserQuery::_setupMerger() {
     LOGF_INFO("UserQuery::_setupMerger()");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
-    _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
+    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }
 
 void UserQuery::_setupChunking() {
     // Do not throw exceptions here, set _errorExtra .
-    boost::shared_ptr<qproc::IndexMap> im;
+    std::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
     if(dominantDb.empty() || !_qSession->validateDominantDb()) {
         // TODO: Revisit this for L3
         throw UserQueryError("Couldn't determine dominantDb for dispatch");
     }
 
-    boost::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
+    std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
         eSet = _qSession->getEmptyChunks();
         if(!eSet) {
-            eSet = boost::make_shared<IntSet>();
+            eSet = std::make_shared<IntSet>();
             LOGF_WARN("Missing empty chunks info for %s" % dominantDb);
         }
     }
     if (_qSession->hasChunks()) {
-        boost::shared_ptr<query::ConstraintVector> constraints
+        std::shared_ptr<query::ConstraintVector> constraints
             = _qSession->getConstraints();
         css::StripingParams partStriping = _qSession->getDbStriping();
 
-        im = boost::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
+        im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
         if(constraints) {
             csv = im->getIntersect(*constraints);

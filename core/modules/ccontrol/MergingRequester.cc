@@ -54,8 +54,8 @@ namespace ccontrol {
 // MergingRequester public
 ////////////////////////////////////////////////////////////////////////
 MergingRequester::MergingRequester(
-    boost::shared_ptr<MsgReceiver> msgReceiver,
-    boost::shared_ptr<rproc::InfileMerger> merger,
+    std::shared_ptr<MsgReceiver> msgReceiver,
+    std::shared_ptr<rproc::InfileMerger> merger,
     std::string const& tableName)
     : _msgReceiver{msgReceiver},
       _infileMerger{merger},

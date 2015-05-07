@@ -30,9 +30,7 @@
   */
 
 // System headers
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "global/stringTypes.h"
@@ -65,36 +63,36 @@ namespace query {
 // persistent or run-time state.
 class SelectStmt  {
 public:
-    typedef boost::shared_ptr<SelectStmt> Ptr;
-    typedef boost::shared_ptr<SelectStmt const> Cptr;
+    typedef std::shared_ptr<SelectStmt> Ptr;
+    typedef std::shared_ptr<SelectStmt const> Cptr;
 
     SelectStmt();
 
     std::string diagnose(); // for debugging
 
-    boost::shared_ptr<WhereClause const> getWhere() const;
+    std::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getTemplate() const;
     QueryTemplate getPostTemplate() const;
-    boost::shared_ptr<SelectStmt> clone() const;
-    boost::shared_ptr<SelectStmt> copyMerge() const;
-    boost::shared_ptr<SelectStmt> copySyntax() const;
+    std::shared_ptr<SelectStmt> clone() const;
+    std::shared_ptr<SelectStmt> copyMerge() const;
+    std::shared_ptr<SelectStmt> copySyntax() const;
 
     bool getDistinct() const { return _hasDistinct; }
     void setDistinct(bool d) { _hasDistinct = d; }
 
     SelectList const& getSelectList() const { return *_selectList; }
     SelectList& getSelectList() { return *_selectList; }
-    void setSelectList(boost::shared_ptr<SelectList> s) { _selectList = s; }
+    void setSelectList(std::shared_ptr<SelectList> s) { _selectList = s; }
 
     FromList const& getFromList() const { return *_fromList; }
     FromList& getFromList() { return *_fromList; }
-    void setFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
+    void setFromList(std::shared_ptr<FromList> f) { _fromList = f; }
     void setFromListAsTable(std::string const& t);
 
     bool hasWhereClause() const { return static_cast<bool>(_whereClause); }
     WhereClause const& getWhereClause() const { return *_whereClause; }
     WhereClause& getWhereClause() { return *_whereClause; }
-    void setWhereClause(boost::shared_ptr<WhereClause> w) { _whereClause = w; }
+    void setWhereClause(std::shared_ptr<WhereClause> w) { _whereClause = w; }
 
     int getLimit() const { return _limit; }
     void setLimit(int limit) { _limit = limit; }
@@ -102,17 +100,17 @@ public:
     bool hasOrderBy() const { return static_cast<bool>(_orderBy); }
     OrderByClause const& getOrderBy() const { return *_orderBy; }
     OrderByClause& getOrderBy() { return *_orderBy; }
-    void setOrderBy(boost::shared_ptr<OrderByClause> o) { _orderBy = o; }
+    void setOrderBy(std::shared_ptr<OrderByClause> o) { _orderBy = o; }
 
     bool hasGroupBy() const { return static_cast<bool>(_groupBy); }
     GroupByClause const& getGroupBy() const { return *_groupBy; }
     GroupByClause& getGroupBy() { return *_groupBy; }
-    void setGroupBy(boost::shared_ptr<GroupByClause> g) { _groupBy = g; }
+    void setGroupBy(std::shared_ptr<GroupByClause> g) { _groupBy = g; }
 
     bool hasHaving() const { return static_cast<bool>(_having); }
     HavingClause const& getHaving() const { return *_having; }
     HavingClause& getHaving() { return *_having; }
-    void setHaving(boost::shared_ptr<HavingClause> h) { _having = h; }
+    void setHaving(std::shared_ptr<HavingClause> h) { _having = h; }
 
  private:
     // Declarations
@@ -123,12 +121,12 @@ public:
     std::string _generateDbg();
 
     // Fields
-    boost::shared_ptr<FromList> _fromList; // Data sources
-    boost::shared_ptr<SelectList> _selectList; // Desired columns
-    boost::shared_ptr<WhereClause> _whereClause; // Filtering conditions (WHERE)
-    boost::shared_ptr<OrderByClause> _orderBy; // Ordering
-    boost::shared_ptr<GroupByClause> _groupBy; // Aggr. grouping
-    boost::shared_ptr<HavingClause> _having; // Aggr. grouping
+    std::shared_ptr<FromList> _fromList; // Data sources
+    std::shared_ptr<SelectList> _selectList; // Desired columns
+    std::shared_ptr<WhereClause> _whereClause; // Filtering conditions (WHERE)
+    std::shared_ptr<OrderByClause> _orderBy; // Ordering
+    std::shared_ptr<GroupByClause> _groupBy; // Aggr. grouping
+    std::shared_ptr<HavingClause> _having; // Aggr. grouping
 
     bool _hasDistinct; ///< SELECT DISTINCT (consider merging with ALL)
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,10 +25,10 @@
 
 // System headers
 #include <deque>
+#include <memory>
 
 // Third-party headers
 #include "boost/thread.hpp"
-#include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -56,10 +56,10 @@ public:
     WorkQueue(int numRunners);
     ~WorkQueue();
 
-    void add(boost::shared_ptr<Callable> c);
+    void add(std::shared_ptr<Callable> c);
     void cancelQueued();
 
-    boost::shared_ptr<Callable> getNextCallable();
+    std::shared_ptr<Callable> getNextCallable();
 
     // For use by runners.
     class Runner;
@@ -73,7 +73,7 @@ private:
     void _addRunner();
     void _dropQueue(bool final=true);
 
-    typedef std::deque<boost::shared_ptr<Callable> > WorkDeque;
+    typedef std::deque<std::shared_ptr<Callable> > WorkDeque;
     typedef std::deque<Runner*> RunnerDeque;
 
     boost::mutex _mutex;

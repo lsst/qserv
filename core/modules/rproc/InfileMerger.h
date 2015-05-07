@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,11 +30,11 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
 #include "boost/thread.hpp" // for mutex.
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "rproc/mergeTypes.h"
@@ -94,10 +94,10 @@ public:
 class InfileMergerConfig {
 public:
     InfileMergerConfig() {}
-    InfileMergerConfig(boost::shared_ptr<qdisp::MessageStore> messageStore_,
+    InfileMergerConfig(std::shared_ptr<qdisp::MessageStore> messageStore_,
                        std::string const& targetDb_,
                        std::string const& targetTable_,
-                       boost::shared_ptr<query::SelectStmt> mergeStmt_,
+                       std::shared_ptr<query::SelectStmt> mergeStmt_,
                        std::string const& user_, std::string const& socket_)
         :  messageStore(messageStore_),
            targetDb(targetDb_),  targetTable(targetTable_),
@@ -105,10 +105,10 @@ public:
     {
     }
 
-    boost::shared_ptr<qdisp::MessageStore> messageStore;
+    std::shared_ptr<qdisp::MessageStore> messageStore;
     std::string targetDb; // for final result, and imported result
     std::string targetTable;
-    boost::shared_ptr<query::SelectStmt> mergeStmt;
+    std::shared_ptr<query::SelectStmt> mergeStmt;
     std::string user;
     std::string socket;
 };
@@ -127,7 +127,7 @@ public:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
+    typedef std::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit InfileMerger(InfileMergerConfig const& c);
     ~InfileMerger();
 
@@ -159,8 +159,8 @@ private:
     void _fixupTargetName();
 
     InfileMergerConfig _config; ///< Configuration
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig; ///< SQL connection config
-    boost::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
+    std::shared_ptr<mysql::MySqlConfig> _sqlConfig; ///< SQL connection config
+    std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
 
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state

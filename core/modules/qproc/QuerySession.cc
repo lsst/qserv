@@ -43,7 +43,6 @@
 
 // Third-party headers
 #include <antlr/NoViableAltException.hpp>
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -88,7 +87,7 @@ void printConstraints(query::ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) :
+QuerySession::QuerySession(std::shared_ptr<css::Facade> cssFacade) :
     _cssFacade(cssFacade) {
 }
 
@@ -151,12 +150,12 @@ bool QuerySession::hasChunks() const {
     return _context->hasChunks();
 }
 
-boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
-    boost::shared_ptr<query::ConstraintVector> cv;
-    boost::shared_ptr<query::QsRestrictor::PtrVector const> p = _context->restrictors;
+std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
+    std::shared_ptr<query::ConstraintVector> cv;
+    std::shared_ptr<query::QsRestrictor::PtrVector const> p = _context->restrictors;
 
     if(p.get()) {
-        cv = boost::make_shared<query::ConstraintVector>(p->size());
+        cv = std::make_shared<query::ConstraintVector>(p->size());
         int i=0;
         query::QsRestrictor::PtrVector::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
@@ -219,7 +218,7 @@ QuerySession::getDbStriping() {
     return _context->getDbStriping();
 }
 
-boost::shared_ptr<IntSet const>
+std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
     // FIXME: do we need to catch an exception here?
     return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
@@ -247,12 +246,12 @@ QuerySession::makeMergeFixup() const {
 
 /// Returns the merge statment, if appropriate.
 /// If a post-execution merge fixup is not needed, return a NULL pointer.
-boost::shared_ptr<query::SelectStmt>
+std::shared_ptr<query::SelectStmt>
 QuerySession::getMergeStmt() const {
     if(_context->needsMerge) {
         return _stmtMerge;
     } else {
-        return boost::shared_ptr<query::SelectStmt>();
+        return std::shared_ptr<query::SelectStmt>();
     }
 }
 
@@ -287,7 +286,7 @@ QuerySession::QuerySession(Test& t)
 }
 
 void QuerySession::_initContext() {
-    _context = boost::make_shared<query::QueryContext>();
+    _context = std::make_shared<query::QueryContext>();
     _context->defaultDb = _defaultDb;
     _context->username = "default";
     _context->needsMerge = false;
@@ -297,7 +296,7 @@ void QuerySession::_initContext() {
 
 void QuerySession::_preparePlugins() {
     // TODO: use C++11 syntax to refactor this code
-    _plugins = boost::make_shared<QueryPluginPtrVector>();
+    _plugins = std::make_shared<QueryPluginPtrVector>();
 
     _plugins->push_back(qana::QueryPlugin::newInstance("DuplicateSelectExpr"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
@@ -473,16 +472,16 @@ void QuerySession::Iter::_buildCache() const {
     }
 }
 
-boost::shared_ptr<ChunkQuerySpec>
+std::shared_ptr<ChunkQuerySpec>
 QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
-    boost::shared_ptr<ChunkQuerySpec> first;
-    boost::shared_ptr<ChunkQuerySpec> last;
+    std::shared_ptr<ChunkQuerySpec> first;
+    std::shared_ptr<ChunkQuerySpec> last;
     while(!f.isDone()) {
         if(last.get()) {
-            last->nextFragment = boost::make_shared<ChunkQuerySpec>();
+            last->nextFragment = std::make_shared<ChunkQuerySpec>();
             last = last->nextFragment;
         } else {
-            last = boost::make_shared<ChunkQuerySpec>();
+            last = std::make_shared<ChunkQuerySpec>();
             first = last;
         }
         ChunkSpec s = f.get();

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,9 +33,7 @@
 
 // System headers
 #include <map>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 // Local headers
 #include "query/AggRecord.h"
@@ -54,7 +52,7 @@ namespace query {
 /// TODO: Refactor to eliminate AggOp functors to make things simpler.
 class AggOp {
 public:
-    typedef boost::shared_ptr<AggOp> Ptr;
+    typedef std::shared_ptr<AggOp> Ptr;
     class Mgr;
     /// Produce an AggRecord from a ValueFactor.
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) = 0;

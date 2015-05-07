@@ -27,7 +27,6 @@
   */
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "proto/worker.pb.h"
@@ -78,23 +77,22 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(QuerySqlSuite, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
-    boost::shared_ptr<QuerySql>  qSql;
+    std::shared_ptr<QuerySql> qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = boost::make_shared<QuerySql>(
-                                        defaultDb,
-                                        1001,
-                                        frag,
-                                        true,
-                                        defaultResult
-                                       );
+    qSql = std::make_shared<QuerySql>(defaultDb,
+                                      1001,
+                                      frag,
+                                      true,
+                                      defaultResult
+                                      );
     BOOST_CHECK(qSql.get());
     printQsql(*qSql);
 }
 
 BOOST_AUTO_TEST_CASE(QueryBatch) {
-    boost::shared_ptr<QuerySql>  qSql;
+    std::shared_ptr<QuerySql> qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = boost::make_shared<QuerySql>(
+    qSql = std::make_shared<QuerySql>(
                                         defaultDb,
                                         1001,
                                         frag,

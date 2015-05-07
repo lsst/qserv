@@ -82,7 +82,7 @@ private:
     MYSQL* _mysql;
     MYSQL_RES* _mysql_res;
     bool _isConnected;
-    boost::shared_ptr<MySqlConfig> _sqlConfig;
+    std::shared_ptr<MySqlConfig> _sqlConfig;
     bool _useThreadMgmt;
     bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
     bool _interrupted; ///< true if cancellation requested

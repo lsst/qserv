@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -75,7 +75,7 @@ namespace qserv {
 namespace xrdsvc {
 
 typedef proto::ProtoImporter<proto::TaskMsg> Importer;
-typedef boost::shared_ptr<Importer> ImporterPtr;
+typedef std::shared_ptr<Importer> ImporterPtr;
 
 ////////////////////////////////////////////////////////////////////////
 // class SsiProcessor
@@ -85,11 +85,11 @@ typedef boost::shared_ptr<Importer> ImporterPtr;
 /// SendChannel
 class SsiProcessor : public Importer::Acceptor {
 public:
-    typedef boost::shared_ptr<SsiProcessor> Ptr;
+    typedef std::shared_ptr<SsiProcessor> Ptr;
 
     SsiProcessor(ResourceUnit const& ru,
                  wbase::MsgProcessor::Ptr mp,
-                 boost::shared_ptr<wbase::SendChannel> sc,
+                 std::shared_ptr<wbase::SendChannel> sc,
                  SsiSession& ssiSession)
         : _ru(ru),
           _msgProcessor(mp),
@@ -99,7 +99,7 @@ public:
     /// Accept a TaskMsg. Pass the msg to _msgProcessor, which returns a
     /// cancellation function to be called if the _msgProcessor's async
     /// operations (outputting through _sendChannel) should be cancelled
-    virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
+    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
         util::Timer t;
         if(m->has_db() && m->has_chunkid()
            && (_ru.db() == m->db()) && (_ru.chunk() == m->chunkid())) {
@@ -118,7 +118,7 @@ public:
 private:
     ResourceUnit const& _ru;
     wbase::MsgProcessor::Ptr _msgProcessor;
-    boost::shared_ptr<wbase::SendChannel> _sendChannel;
+    std::shared_ptr<wbase::SendChannel> _sendChannel;
     SsiSession& _ssiSession;
 };
 ////////////////////////////////////////////////////////////////////////

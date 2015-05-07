@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,9 +33,7 @@
 
 // System headers
 #include <iostream>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -62,26 +60,26 @@ class ColumnRef;
 /// search_condition is used for WHERE conditions as well.
 class JoinSpec {
 public:
-    typedef boost::shared_ptr<JoinSpec> Ptr;
+    typedef std::shared_ptr<JoinSpec> Ptr;
 
-    JoinSpec(boost::shared_ptr<BoolTerm> onTerm)
+    JoinSpec(std::shared_ptr<BoolTerm> onTerm)
         : _onTerm(onTerm) {}
 
     /// FIXME: not supporting join by multiple columns now
-    JoinSpec(boost::shared_ptr<ColumnRef> ref)
+    JoinSpec(std::shared_ptr<ColumnRef> ref)
         : _usingColumn(ref) {}
 
-    boost::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
-    boost::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }
-    boost::shared_ptr<BoolTerm> getOn() { return _onTerm; }
-    boost::shared_ptr<BoolTerm const> getOn() const { return _onTerm; }
+    std::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
+    std::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }
+    std::shared_ptr<BoolTerm> getOn() { return _onTerm; }
+    std::shared_ptr<BoolTerm const> getOn() const { return _onTerm; }
 
     std::ostream& putStream(std::ostream& os) const;
     void putTemplate(QueryTemplate& qt) const;
     Ptr clone() const;
 private:
-    boost::shared_ptr<ColumnRef> _usingColumn;
-    boost::shared_ptr<BoolTerm> _onTerm;
+    std::shared_ptr<ColumnRef> _usingColumn;
+    std::shared_ptr<BoolTerm> _onTerm;
 };
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js);

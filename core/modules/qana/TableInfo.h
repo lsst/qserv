@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -61,12 +61,10 @@
 /// chunk containing `b` (and vice versa).
 
 // System headers
+#include <memory>
 #include <stdint.h>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Qserv headers
 #include "global/constants.h" // for SUBCHUNKDB_PREFIX
@@ -83,7 +81,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef boost::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
+typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 
 class DirTableInfo;
 class ChildTableInfo;

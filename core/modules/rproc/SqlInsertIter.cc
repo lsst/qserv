@@ -34,7 +34,6 @@
 #include <iostream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -180,7 +179,7 @@ SqlInsertIter::SqlInsertIter(util::PacketBuffer::Ptr p,
                              std::string const& tableName,
                              bool allowNull)
     : _allowNull(allowNull),
-      _bufferMgr(boost::make_shared<BufferMgr>(p)) {
+      _bufferMgr(std::make_shared<BufferMgr>(p)) {
 
     // We will need to keep our own buffer.  This is because the regex
     // iterator needs a continuous piece of memory.

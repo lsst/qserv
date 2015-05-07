@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,11 +34,9 @@
 
 // System headers
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "css/KvInterface.h"
@@ -100,7 +98,7 @@ virtual     EmptyChunks const& getEmptyChunks() const;
 private:
     Facade(std::istream& mapStream,
            std::string const& emptyChunkPath="");
-    Facade(boost::shared_ptr<KvInterface> kv,
+    Facade(std::shared_ptr<KvInterface> kv,
            std::string const& emptyChunkPath="");
 
     void _throwIfNotDbExists(std::string const& dbName) const;
@@ -120,7 +118,7 @@ private:
     friend class FacadeFactory;
 
 private:
-    boost::shared_ptr<KvInterface> _kvI;
+    std::shared_ptr<KvInterface> _kvI;
     std::auto_ptr<EmptyChunks> _emptyChunks;
 
 protected:
@@ -130,12 +128,12 @@ protected:
 
 class FacadeFactory {
 public:
-    static boost::shared_ptr<Facade> createMemFacade(
+    static std::shared_ptr<Facade> createMemFacade(
         std::string const& mapPath, std::string const& emptyChunkPath);
-    static boost::shared_ptr<Facade> createMemFacade(
+    static std::shared_ptr<Facade> createMemFacade(
         std::istream& mapStream, std::string const& emptyChunkPath);
-    static boost::shared_ptr<Facade> createCacheFacade(
-        boost::shared_ptr<KvInterface> kv, std::string const& emptyChunkPath);
+    static std::shared_ptr<Facade> createCacheFacade(
+        std::shared_ptr<KvInterface> kv, std::string const& emptyChunkPath);
 };
 
 }}} // namespace lsst::qserv::css

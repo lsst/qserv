@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,8 +24,8 @@
 #ifndef LSST_QSERV_WBASE_MSGPROCESSOR_H
 #define LSST_QSERV_WBASE_MSGPROCESSOR_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 // Qserv headers
 #include "util/Callable.h"
@@ -47,9 +47,9 @@ namespace wbase {
 /// MsgProcessor implementations handle incoming TaskMsg objects and write their
 /// results over a SendChannel
 class MsgProcessor
-    : public util::BinaryCallable<boost::shared_ptr<util::VoidCallable<void> >,
-                                  boost::shared_ptr<proto::TaskMsg>,
-                                  boost::shared_ptr<SendChannel> > {
+    : public util::BinaryCallable<std::shared_ptr<util::VoidCallable<void> >,
+                                  std::shared_ptr<proto::TaskMsg>,
+                                  std::shared_ptr<SendChannel> > {
 public:
     /// @return a cancellation function.
     /// This allows the caller to request work stoppage.

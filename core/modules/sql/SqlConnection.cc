@@ -32,7 +32,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp" // for mutex.
 
 // Qserv headers
@@ -96,7 +95,7 @@ bool
 SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
                       std::string const& query) {
     _columnCount = 0;
-    _connection = boost::make_shared<mysql::MySqlConnection>(sqlConfig, true);
+    _connection = std::make_shared<mysql::MySqlConnection>(sqlConfig, true);
     if(!_connection->connect()) {
         populateErrorObject(*_connection, _errObj);
         return false;
@@ -116,18 +115,16 @@ SqlConnection::SqlConnection()
 }
 
 SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt)
-    : _connection(boost::make_shared<mysql::MySqlConnection>(
-                                                             sc,
-                                                             useThreadMgmt
-                                                            )) {
+    : _connection(std::make_shared<mysql::MySqlConnection>(sc,
+                                                           useThreadMgmt
+                                                           )) {
 }
 
 void
 SqlConnection::reset(mysql::MySqlConfig const& sc, bool useThreadMgmt) {
-    _connection = boost::make_shared<mysql::MySqlConnection>(
-                                                             sc,
-                                                             useThreadMgmt
-                                                            );
+    _connection = std::make_shared<mysql::MySqlConnection>(sc,
+                                                           useThreadMgmt
+                                                           );
 }
 
 SqlConnection::~SqlConnection() {
@@ -217,13 +214,10 @@ SqlConnection::runQuery(std::string const query,
 }
 
 /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
-boost::shared_ptr<SqlResultIter>
+std::shared_ptr<SqlResultIter>
 SqlConnection::getQueryIter(std::string const& query) {
-    boost::shared_ptr<SqlResultIter> i =
-            boost::make_shared<SqlResultIter>(
-                                              _connection->getConfig(),
-                                              query
-                                             );
+    std::shared_ptr<SqlResultIter> i =
+            std::make_shared<SqlResultIter>(_connection->getConfig(), query);
     return i; // Can't defer to iterator without thread mgmt.
 }
 

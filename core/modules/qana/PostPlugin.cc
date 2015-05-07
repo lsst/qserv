@@ -39,7 +39,6 @@
 #include <string>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -61,7 +60,7 @@ namespace qana {
 class PostPlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<PostPlugin> Ptr;
+    typedef std::shared_ptr<PostPlugin> Ptr;
 
     virtual ~PostPlugin() {}
 
@@ -75,7 +74,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&);
 
     int _limit;
-    boost::shared_ptr<query::OrderByClause> _orderBy;
+    std::shared_ptr<query::OrderByClause> _orderBy;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -84,13 +83,13 @@ public:
 class PostPluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<PostPluginFactory> Ptr;
+    typedef std::shared_ptr<PostPluginFactory> Ptr;
     PostPluginFactory() {}
     virtual ~PostPluginFactory() {}
 
     virtual std::string getName() const { return "Post"; }
     virtual QueryPlugin::Ptr newInstance() {
-        QueryPlugin::Ptr p = boost::make_shared<PostPlugin>();
+        QueryPlugin::Ptr p = std::make_shared<PostPlugin>();
         return p;
     }
 };
@@ -133,7 +132,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             // Prepare merge statment.
             // If empty select in merger, create one with *
             query::SelectList& mList = p.stmtMerge.getSelectList();
-            boost::shared_ptr<query::ValueExprPtrVector> vlist;
+            std::shared_ptr<query::ValueExprPtrVector> vlist;
             vlist = mList.getValueExprList();
             if(!vlist) {
                 throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
@@ -149,7 +148,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             // (no need to sort until we have all the results)
             SelectStmtPtrVector::iterator i, e;
             for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-                (**i).setOrderBy(boost::shared_ptr<query::OrderByClause>());
+                (**i).setOrderBy(std::shared_ptr<query::OrderByClause>());
             }
             // Make sure the merge has an ORDER BY
             p.stmtMerge.setOrderBy(_orderBy);

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,11 +24,11 @@
 #ifndef LSST_QSERV_XRDSVC_SSISERVICE_H
 #define LSST_QSERV_XRDSVC_SSISERVICE_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
-#include "XrdSsi/XrdSsiService.hh"
+// System headers
+#include <memory>
 
-// Local headers
+// Third-party headers
+#include "XrdSsi/XrdSsiService.hh"
 
 // Forward declarations
 class XrdSsiLogger;
@@ -51,7 +51,7 @@ namespace xrdsvc {
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-    typedef boost::shared_ptr<SsiService> Ptr;
+    typedef std::shared_ptr<SsiService> Ptr;
 
     // take ownership of logger for now
     SsiService(XrdSsiLogger* log);
@@ -67,8 +67,8 @@ private:
     void _setupResultPath();
     bool _setupScratchDb();
 
-    boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
-    boost::shared_ptr<wcontrol::Foreman> _foreman;
+    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+    std::shared_ptr<wcontrol::Foreman> _foreman;
 
 }; // class SsiService
 

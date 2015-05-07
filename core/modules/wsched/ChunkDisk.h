@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,11 +31,11 @@
   */
 
 // System headers
+#include <memory>
 #include <set>
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "boost/thread.hpp"
 
 // Local headers
@@ -51,7 +51,7 @@ namespace wsched {
 
 class ChunkDisk {
 public:
-    typedef boost::shared_ptr<wbase::Task> TaskPtr;
+    typedef std::shared_ptr<wbase::Task> TaskPtr;
     typedef std::set<wbase::Task const*> TaskSet;
 
     ChunkDisk(LOG_LOGGER const& logger)

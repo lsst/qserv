@@ -44,7 +44,7 @@ namespace query {
 /// Resolve a column ref to a concrete (db,table)
 /// @return the concrete (db,table), based on current context.
 query::DbTablePair
-QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
+QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     if(!cr) { return query::DbTablePair(); }
 
     // If alias, retrieve real reference.

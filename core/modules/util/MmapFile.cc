@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 #include "util/MmapFile.h"
 
 // System headers
+#include <assert.h>
 #include <fcntl.h>
 #include <iostream>
 #include <sys/mman.h>
@@ -33,11 +34,11 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-typedef boost::shared_ptr<MmapFile> MmapPtr;
+typedef std::shared_ptr<MmapFile> MmapPtr;
 
 MmapPtr
 MmapFile::newMap(std::string const& filename, bool read, bool write) {
-    boost::shared_ptr<MmapFile> m(new MmapFile());
+    std::shared_ptr<MmapFile> m(new MmapFile());
     assert(m.get());
     m->_init(filename, read, write);
     if(!m->isValid()) {

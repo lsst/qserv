@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,11 +33,8 @@
 
 // System headers
 #include <deque>
+#include <memory>
 #include <string>
-
-// Third-party headers
-#include "boost/make_shared.hpp"
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/typedefs.h"
@@ -80,16 +77,16 @@ private:
 /// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
 public:
-    typedef boost::shared_ptr<GroupByClause> Ptr;
+    typedef std::shared_ptr<GroupByClause> Ptr;
     typedef std::deque<GroupByTerm> List;
 
-    GroupByClause() : _terms(boost::make_shared<List>()) {}
+    GroupByClause() : _terms(std::make_shared<List>()) {}
     ~GroupByClause() {}
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<GroupByClause> clone() const;
-    boost::shared_ptr<GroupByClause> copySyntax();
+    std::shared_ptr<GroupByClause> clone() const;
+    std::shared_ptr<GroupByClause> copySyntax();
 
     void findValueExprs(ValueExprPtrVector& list);
 
@@ -98,7 +95,7 @@ private:
     friend class parser::ModFactory;
 
     void _addTerm(GroupByTerm const& t) { _terms->push_back(t); }
-    boost::shared_ptr<List> _terms;
+    std::shared_ptr<List> _terms;
 };
 
 }}} // namespace lsst::qserv::query

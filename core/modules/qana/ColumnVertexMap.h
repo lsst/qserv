@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,21 +29,18 @@
 
 // System headers
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
-
 // Local headers
 #include "query/ColumnRef.h"
-
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef boost::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
+typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 class Vertex;
 
 /// A `ColumnVertexMap` is a mapping from query column references to relation

@@ -28,7 +28,6 @@
 #include "qana/TableInfo.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/ColumnRef.h"
@@ -51,18 +50,18 @@ void appendColumnRefs(std::string const& column,
         return;
     }
     std::string const _; // an empty string
-    refs.push_back(boost::make_shared<query::ColumnRef>(_, _, column));
+    refs.push_back(std::make_shared<query::ColumnRef>(_, _, column));
     if (!tableAlias.empty()) {
         // If a table alias has been introduced, then it is an error to
         // refer to a column using table.column or db.table.column
         refs.push_back(
-            boost::make_shared<query::ColumnRef>(_, tableAlias, column));
+            std::make_shared<query::ColumnRef>(_, tableAlias, column));
     } else if (!table.empty()) {
         refs.push_back(
-            boost::make_shared<query::ColumnRef>(_, table, column));
+            std::make_shared<query::ColumnRef>(_, table, column));
         if (!database.empty()) {
             refs.push_back(
-                boost::make_shared<query::ColumnRef>(database, table, column));
+                std::make_shared<query::ColumnRef>(database, table, column));
         }
     }
 }

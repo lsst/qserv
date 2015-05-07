@@ -34,7 +34,6 @@
 #include <utility>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/scoped_ptr.hpp"
 #include "boost/thread.hpp"
 
@@ -89,7 +88,7 @@ public:
     bool squashByHash(std::string const& hash);
     void newTaskAction(wbase::Task::Ptr task);
 
-    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor();
+    virtual std::shared_ptr<wbase::MsgProcessor> getProcessor();
 
     class Processor;
     class RunnerMgr;
@@ -105,14 +104,14 @@ public:
         wbase::Task::Ptr _task;
         std::shared_ptr<util::Flag<bool>> _isPoisoned;
         LOG_LOGGER _log;
-        boost::shared_ptr<wdb::QueryAction> _action;
+        std::shared_ptr<wdb::QueryAction> _action;
     };
     // For use by runners.
     class RunnerMgr {
     public:
         RunnerMgr(ForemanImpl& f);
         void registerRunner(Runner* r, wbase::Task::Ptr t);
-        boost::shared_ptr<wdb::QueryAction> newQueryAction(wbase::Task::Ptr t);
+        std::shared_ptr<wdb::QueryAction> newQueryAction(wbase::Task::Ptr t);
         void reportComplete(wbase::Task::Ptr t);
         void reportStart(wbase::Task::Ptr t);
         void signalDeath(Runner* r);
@@ -148,7 +147,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 Foreman::Ptr
 newForeman(Foreman::Scheduler::Ptr sched) {
-    ForemanImpl::Ptr fmi = boost::make_shared<ForemanImpl>(sched);
+    ForemanImpl::Ptr fmi = std::make_shared<ForemanImpl>(sched);
     return fmi;
 }
 
@@ -180,10 +179,10 @@ ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
     _reportStartHelper(t);
 }
 
-boost::shared_ptr<wdb::QueryAction>
+std::shared_ptr<wdb::QueryAction>
 ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
     wdb::QueryActionArg a(_f._log, t, _f._chunkResourceMgr);
-    boost::shared_ptr<wdb::QueryAction> qa = boost::make_shared<wdb::QueryAction>(a);
+    std::shared_ptr<wdb::QueryAction> qa = std::make_shared<wdb::QueryAction>(a);
     return qa;
 }
 
@@ -331,14 +330,14 @@ public:
     };
     Processor(ForemanImpl& f) : _foremanImpl(f) {}
 
-    virtual boost::shared_ptr<util::VoidCallable<void> >
-    operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
-               boost::shared_ptr<wbase::SendChannel> replyChannel) {
+    virtual std::shared_ptr<util::VoidCallable<void> >
+    operator()(std::shared_ptr<proto::TaskMsg> taskMsg,
+               std::shared_ptr<wbase::SendChannel> replyChannel) {
 
-        wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
+        wbase::Task::Ptr t = std::make_shared<wbase::Task>(taskMsg, replyChannel);
         _foremanImpl.newTaskAction(t);
-        boost::shared_ptr<Cancel> c
-            = boost::make_shared<Cancel>(t, _foremanImpl._scheduler);
+        std::shared_ptr<Cancel> c
+            = std::make_shared<Cancel>(t, _foremanImpl._scheduler);
         return c;
     }
     ForemanImpl& _foremanImpl;
@@ -349,7 +348,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 ForemanImpl::ForemanImpl(Scheduler::Ptr s)
     : _scheduler(s), _log(LOG_GET("Foreman")),
-      _running(boost::make_shared<wbase::TaskQueue>()) {
+      _running(std::make_shared<wbase::TaskQueue>()) {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
@@ -392,8 +391,8 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
     }
 }
 
-boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
-    return boost::shared_ptr<Processor>(new Processor(*this));
+std::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
+    return std::shared_ptr<Processor>(new Processor(*this));
 }
 
 }}} // namespace lsst::qserv::wcontrol

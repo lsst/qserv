@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,8 +24,8 @@
 #ifndef LSST_QSERV_CCONTROL_CALLBACK_H
 #define LSST_QSERV_CCONTROL_CALLBACK_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -33,7 +33,7 @@ namespace ccontrol {
 
 class Callback {
 public:
-    typedef boost::shared_ptr<Callback> Ptr;
+    typedef std::shared_ptr<Callback> Ptr;
     virtual ~Callback() {}
     void operator()() {}
 };

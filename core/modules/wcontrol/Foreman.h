@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,8 +49,8 @@
 #ifndef LSST_QSERV_WCONTROL_FOREMAN_H
 #define LSST_QSERV_WCONTROL_FOREMAN_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 // Local headers
 #include "wbase/Base.h"
@@ -71,7 +71,7 @@ namespace wcontrol {
 /// scheduling objects
 class Foreman {
 public:
-    typedef boost::shared_ptr<Foreman> Ptr;
+    typedef std::shared_ptr<Foreman> Ptr;
 
     /// An abstract interface. Runners receive a reference to an
     /// object implementing this and make calls to report start and
@@ -88,7 +88,7 @@ public:
     /// to determine what tasks to launch upon triggering events.
     class Scheduler : public TaskWatcher {
     public:
-        typedef boost::shared_ptr<Scheduler> Ptr;
+        typedef std::shared_ptr<Scheduler> Ptr;
         virtual ~Scheduler() {}
 
         virtual bool removeByHash(std::string const& hash) { return false; }
@@ -102,7 +102,7 @@ public:
 
     virtual bool squashByHash(std::string const& hash) { return false; }
 
-    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
+    virtual std::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
     virtual ~Foreman() {}
 
 protected:

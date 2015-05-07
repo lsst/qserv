@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,7 +36,6 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 // Qserv headers
@@ -141,7 +140,7 @@ GroupScheduler::_getNextTasks(int max) {
     LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
     wbase::TaskQueuePtr tq;
     if(_queue.size() > 0) {
-        tq = boost::make_shared<wbase::TaskQueue>();
+        tq = std::make_shared<wbase::TaskQueue>();
         for(int i=max; i >= 0; --i) {
             if(_queue.empty()) { break; }
             wbase::Task::Ptr t = _queue.front();

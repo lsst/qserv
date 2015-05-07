@@ -48,7 +48,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -126,18 +125,18 @@ SelectList::renderTo(QueryTemplate& qt) const {
                   ValueExpr::render(qt, true));
 
 }
-boost::shared_ptr<SelectList> SelectList::clone() {
-    boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
-    newS->_valueExprList  = boost::make_shared<ValueExprPtrVector>();
+std::shared_ptr<SelectList> SelectList::clone() {
+    std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
+    newS->_valueExprList  = std::make_shared<ValueExprPtrVector>();
     cloneValueExprPtrVector(*(newS->_valueExprList), *_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
 }
 
-boost::shared_ptr<SelectList> SelectList::copySyntax() {
-    boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
+std::shared_ptr<SelectList> SelectList::copySyntax() {
+    std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
     // Shallow copy of expr list is okay.
-    newS->_valueExprList = boost::make_shared<ValueExprPtrVector>(*_valueExprList);
+    newS->_valueExprList = std::make_shared<ValueExprPtrVector>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
 }

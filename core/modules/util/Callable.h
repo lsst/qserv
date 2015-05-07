@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,8 +23,8 @@
 #ifndef LSST_QSERV_UTIL_CALLABLE_H
 #define LSST_QSERV_UTIL_CALLABLE_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 /// VoidCallable, UnaryCallable, and BinaryCallable are convenience templates
 /// for declaring no-argument, unary-argument, and binary-argument function
@@ -37,7 +37,7 @@ namespace util {
 template <typename Ret>
 class VoidCallable {
 public:
-    typedef boost::shared_ptr<VoidCallable<Ret> > Ptr;
+    typedef std::shared_ptr<VoidCallable<Ret> > Ptr;
     typedef Ret R;
     virtual ~VoidCallable() {}
     virtual Ret operator()() = 0;
@@ -46,7 +46,7 @@ public:
 template <typename Ret, typename Arg>
 class UnaryCallable {
 public:
-    typedef boost::shared_ptr<UnaryCallable<Ret,Arg> > Ptr;
+    typedef std::shared_ptr<UnaryCallable<Ret,Arg> > Ptr;
     typedef Ret R;
     typedef Arg A;
 
@@ -57,7 +57,7 @@ public:
 template <typename Ret, typename Arg1, typename Arg2>
 class BinaryCallable {
 public:
-    typedef boost::shared_ptr<BinaryCallable<Ret,Arg1,Arg2> > Ptr;
+    typedef std::shared_ptr<BinaryCallable<Ret,Arg1,Arg2> > Ptr;
     typedef Ret R;
     typedef Arg1 A1;
     typedef Arg2 A2;

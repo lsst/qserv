@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,12 +29,12 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
 
 // Third-party headers
 #include "boost/iterator/iterator_facade.hpp"
-#include "boost/shared_ptr.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -73,9 +73,9 @@ class QuerySession {
 public:
     class Iter;
     friend class Iter;
-    typedef boost::shared_ptr<QuerySession> Ptr;
+    typedef std::shared_ptr<QuerySession> Ptr;
 
-    explicit QuerySession(boost::shared_ptr<css::Facade>);
+    explicit QuerySession(std::shared_ptr<css::Facade>);
 
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
@@ -83,7 +83,7 @@ public:
     bool hasAggregate() const;
     bool hasChunks() const;
 
-    boost::shared_ptr<query::ConstraintVector> getConstraints() const;
+    std::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
     void addChunk(ChunkSpecVector const& cs);
     void setDummy();
@@ -103,11 +103,11 @@ public:
     bool containsDb(std::string const& dbName) const;
     bool validateDominantDb() const;
     css::StripingParams getDbStriping();
-    boost::shared_ptr<IntSet const> getEmptyChunks();
+    std::shared_ptr<IntSet const> getEmptyChunks();
     std::string const& getError() const { return _error; }
 
     rproc::MergeFixup makeMergeFixup() const; ///< as obsolete as TableMerger
-    boost::shared_ptr<query::SelectStmt> getMergeStmt() const;
+    std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
     /// Finalize a query after chunk coverage has been updated
     void finalize();
@@ -118,11 +118,11 @@ public:
     // For test harnesses.
     struct Test {
         int cfgNum;
-        boost::shared_ptr<css::Facade> cssFacade;
+        std::shared_ptr<css::Facade> cssFacade;
         std::string defaultDb;
     };
     explicit QuerySession(Test& t); ///< Debug constructor
-    boost::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
+    std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
 private:
     typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
@@ -139,11 +139,11 @@ private:
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
 
     // Fields
-    boost::shared_ptr<css::Facade> _cssFacade; ///< Metadata access facade
+    std::shared_ptr<css::Facade> _cssFacade; ///< Metadata access facade
     std::string _defaultDb; ///< User db context
     std::string _original; ///< Original user query
-    boost::shared_ptr<query::QueryContext> _context; ///< Analysis context
-    boost::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
+    std::shared_ptr<query::QueryContext> _context; ///< Analysis context
+    std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
 
     /// Group of parallel statements (not a sequence)
     /**
@@ -182,7 +182,7 @@ private:
     int _isFinal; ///< Has query analysis/optimization completed?
 
     ChunkSpecVector _chunks; ///< Chunk coverage
-    boost::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
+    std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
 
     static LOG_LOGGER _logger;
 };
@@ -213,7 +213,7 @@ private:
             _dirty = false;
         }
     }
-    boost::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
+    std::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
 
     QuerySession* _qs;
     ChunkSpecVector::const_iterator _pos;

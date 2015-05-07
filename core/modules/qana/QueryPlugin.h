@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,11 +29,9 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/typedefs.h"
@@ -65,8 +63,8 @@ public:
     // Types
     class Factory;
     class Plan;
-    typedef boost::shared_ptr<QueryPlugin> Ptr;
-    typedef boost::shared_ptr<Factory> FactoryPtr;
+    typedef std::shared_ptr<QueryPlugin> Ptr;
+    typedef std::shared_ptr<Factory> FactoryPtr;
 
     virtual ~QueryPlugin() {}
 
@@ -93,7 +91,7 @@ public:
 class QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<Factory> Ptr;
+    typedef std::shared_ptr<Factory> Ptr;
 
     virtual ~Factory() {}
 
@@ -116,7 +114,7 @@ public:
     SelectStmtPtrVector& stmtParallel; //< Group of parallel statements (not a sequence)
     query::SelectStmt& stmtMerge;
     std::string dominantDb;
-    boost::shared_ptr<QueryMapping> queryMapping;
+    std::shared_ptr<QueryMapping> queryMapping;
     bool const hasMerge;
 };
 

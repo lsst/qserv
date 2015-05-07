@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,10 +26,8 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <string>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Qserv headers
 #include "global/stringTypes.h"
@@ -65,7 +63,7 @@ private:
     StringMap _map;
     bool _isValid;
     std::string _error;
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
+    std::shared_ptr<mysql::MySqlConfig> _sqlConfig;
 };
 
 Config& getConfig();

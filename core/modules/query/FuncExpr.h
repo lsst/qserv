@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,10 +33,8 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/ColumnRef.h"
@@ -52,7 +50,7 @@ class QueryTemplate;
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
 public:
-    typedef boost::shared_ptr<FuncExpr> Ptr;
+    typedef std::shared_ptr<FuncExpr> Ptr;
     std::string getName() const;
     ValueExprPtrVector getParams() const;
 
@@ -66,7 +64,7 @@ public:
                                  ValueExprPtr ve);
 
     void findColumnRefs(ColumnRef::Vector& outputRefs);
-    boost::shared_ptr<FuncExpr> clone() const;
+    std::shared_ptr<FuncExpr> clone() const;
 
     // Fields
     std::string name;

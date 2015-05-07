@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,12 +34,12 @@
 
 // System headers
 #include <deque>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "boost/utility.hpp"
 
 // Qserv headers

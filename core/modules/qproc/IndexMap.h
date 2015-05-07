@@ -44,7 +44,7 @@ class SecondaryIndex;
 class IndexMap {
 public:
     IndexMap(css::StripingParams const& sp,
-             boost::shared_ptr<SecondaryIndex> si);
+             std::shared_ptr<SecondaryIndex> si);
 
     ChunkSpecVector getAll();
 
@@ -55,8 +55,8 @@ public:
 
     class PartitioningMap;
 private:
-    boost::shared_ptr<PartitioningMap> _pm;
-    boost::shared_ptr<SecondaryIndex> _si;
+    std::shared_ptr<PartitioningMap> _pm;
+    std::shared_ptr<SecondaryIndex> _si;
 };
 
 }}} // namespace lsst::qserv::qproc

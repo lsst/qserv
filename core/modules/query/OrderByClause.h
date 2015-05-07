@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,11 +33,8 @@
 
 // System headers
 #include <deque>
+#include <memory>
 #include <string>
-
-// Third party headers
-#include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
 
 // Local headers
 #include "query/typedefs.h"
@@ -62,13 +59,13 @@ public:
     class render;
 
     OrderByTerm() {}
-    OrderByTerm(boost::shared_ptr<ValueExpr> val,
+    OrderByTerm(std::shared_ptr<ValueExpr> val,
                 Order _order,
                 std::string _collate);
 
     ~OrderByTerm() {}
 
-    boost::shared_ptr<ValueExpr>& getExpr() { return _expr; }
+    std::shared_ptr<ValueExpr>& getExpr() { return _expr; }
     Order getOrder() const;
     std::string getCollate() const;
     void renderTo(QueryTemplate& qt) const;
@@ -78,7 +75,7 @@ private:
     friend class render;
     friend class parser::ModFactory;
 
-    boost::shared_ptr<ValueExpr> _expr;
+    std::shared_ptr<ValueExpr> _expr;
     Order _order;
     std::string _collate;
 };
@@ -86,16 +83,16 @@ private:
 /// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
 public:
-    typedef boost::shared_ptr<OrderByClause> Ptr;
+    typedef std::shared_ptr<OrderByClause> Ptr;
     typedef std::deque<OrderByTerm> List;
 
-    OrderByClause() : _terms(boost::make_shared<List>()) {}
+    OrderByClause() : _terms(std::make_shared<List>()) {}
     ~OrderByClause() {}
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<OrderByClause> clone() const;
-    boost::shared_ptr<OrderByClause> copySyntax();
+    std::shared_ptr<OrderByClause> clone() const;
+    std::shared_ptr<OrderByClause> copySyntax();
 
     void findValueExprs(ValueExprPtrVector& list);
 private:
@@ -103,7 +100,7 @@ private:
     friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
-    boost::shared_ptr<List> _terms;
+    std::shared_ptr<List> _terms;
 };
 
 }}} // namespace lsst::qserv::query

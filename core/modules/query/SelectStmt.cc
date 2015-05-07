@@ -41,7 +41,6 @@
 
 // Third-party headers
 #include "boost/algorithm/string/predicate.hpp" // string iequal
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -62,7 +61,7 @@ namespace {
 template <typename T>
 inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
                            char const prefix[],
-                           boost::shared_ptr<T> t) {
+                           std::shared_ptr<T> t) {
     if(t.get()) {
         qt.append(prefix);
         t->renderTo(qt);
@@ -70,12 +69,12 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 }
 template <typename T>
 inline void
-cloneIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
+cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if(source.get()) dest = source->clone();
 }
 template <typename T>
 inline void
-copySyntaxIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
+copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if(source.get()) dest = source->copySyntax();
 }
 } // namespace
@@ -134,14 +133,14 @@ SelectStmt::getPostTemplate() const {
     return qt;
 }
 
-boost::shared_ptr<WhereClause const>
+std::shared_ptr<WhereClause const>
 SelectStmt::getWhere() const {
     return _whereClause;
 }
 
-boost::shared_ptr<SelectStmt>
+std::shared_ptr<SelectStmt>
 SelectStmt::clone() const {
-    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
+    std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, make a copy of the syntax portion.
     cloneIf(newS->_fromList, _fromList);
     cloneIf(newS->_selectList, _selectList);
@@ -154,9 +153,9 @@ SelectStmt::clone() const {
     return newS;
 }
 
-boost::shared_ptr<SelectStmt>
+std::shared_ptr<SelectStmt>
 SelectStmt::copyMerge() const {
-    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
+    std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, copy only the pieces that matter
     // for the merge clause.
     copySyntaxIf(newS->_selectList, _selectList);
@@ -170,9 +169,9 @@ SelectStmt::copyMerge() const {
     return newS;
 }
 
-boost::shared_ptr<SelectStmt>
+std::shared_ptr<SelectStmt>
 SelectStmt::copySyntax() const {
-    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
+    std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, make a copy of the syntax portion.
     copySyntaxIf(newS->_fromList, _fromList);
     copySyntaxIf(newS->_selectList, _selectList);
@@ -186,9 +185,9 @@ SelectStmt::copySyntax() const {
 }
 
 void SelectStmt::setFromListAsTable(std::string const& t) {
-    TableRefListPtr tr = boost::make_shared<TableRefList>();
-    tr->push_back(boost::make_shared<TableRef>("", t, ""));
-    _fromList = boost::make_shared<FromList>(tr);
+    TableRefListPtr tr = std::make_shared<TableRefList>();
+    tr->push_back(std::make_shared<TableRef>("", t, ""));
+    _fromList = std::make_shared<FromList>(tr);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -196,14 +195,14 @@ void SelectStmt::setFromListAsTable(std::string const& t) {
 ////////////////////////////////////////////////////////////////////////
 namespace {
 template <typename OS, typename T>
-inline OS& print(OS& os, char const label[], boost::shared_ptr<T> t) {
+inline OS& print(OS& os, char const label[], std::shared_ptr<T> t) {
     if(t.get()) {
         os << label << ": " << *t << std::endl;
     }
     return os;
 }
 template <typename OS, typename T>
-inline OS& generate(OS& os, char const label[], boost::shared_ptr<T> t) {
+inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
     if(t.get()) {
         os << label << " " << t->getGenerated() << std::endl;
     }

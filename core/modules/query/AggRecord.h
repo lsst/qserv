@@ -43,7 +43,7 @@ namespace query {
 /// TODO: Consider renaming to AggEntry
 struct AggRecord {
 public:
-    typedef boost::shared_ptr<AggRecord> Ptr;
+    typedef std::shared_ptr<AggRecord> Ptr;
     /// Original ValueFactor representing the call (e.g., COUNT(ra_PS))
     query::ValueFactorPtr orig;
     /// List of expressions to pass for parallel execution.

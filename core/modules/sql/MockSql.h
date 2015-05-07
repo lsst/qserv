@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,7 +45,7 @@ public:
     virtual bool runQuery(std::string const query, SqlResults&,
                           SqlErrorObject&) {
         return false; }
-    virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
+    virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
     virtual bool runQuery(std::string const query, SqlErrorObject&) {
         return false; }
     virtual bool dbExists(std::string const& dbName, SqlErrorObject&) {

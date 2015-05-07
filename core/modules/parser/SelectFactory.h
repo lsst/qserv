@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,12 +33,10 @@
 
 // System headers
 #include <map>
+#include <memory>
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/make_shared.hpp"
-#include "boost/shared_ptr.hpp"
-
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -71,13 +69,13 @@ public:
     SelectFactory();
     void attachTo(SqlSQL2Parser& p);
 
-    boost::shared_ptr<query::SelectStmt> getStatement();
+    std::shared_ptr<query::SelectStmt> getStatement();
 
-    boost::shared_ptr<SelectListFactory> getSelectListFactory() {
+    std::shared_ptr<SelectListFactory> getSelectListFactory() {
         return _slFactory; }
-    boost::shared_ptr<FromFactory> getFromFactory() {
+    std::shared_ptr<FromFactory> getFromFactory() {
         return _fFactory; }
-    boost::shared_ptr<WhereFactory> getWhereFactory() {
+    std::shared_ptr<WhereFactory> getWhereFactory() {
         return _wFactory; }
 
     void setDistinct(bool d) { _hasDistinct = d; }
@@ -85,17 +83,17 @@ private:
     void _attachShared(SqlSQL2Parser& p);
 
     // parse-domain state
-    boost::shared_ptr<ParseAliasMap> _columnAliases;
-    boost::shared_ptr<ParseAliasMap> _tableAliases;
-    boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
+    std::shared_ptr<ParseAliasMap> _columnAliases;
+    std::shared_ptr<ParseAliasMap> _tableAliases;
+    std::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 
     // delegates
     bool _hasDistinct;
-    boost::shared_ptr<SelectListFactory> _slFactory;
-    boost::shared_ptr<FromFactory> _fFactory;
-    boost::shared_ptr<WhereFactory> _wFactory;
-    boost::shared_ptr<ModFactory> _mFactory;
-    boost::shared_ptr<ValueExprFactory> _vFactory;
+    std::shared_ptr<SelectListFactory> _slFactory;
+    std::shared_ptr<FromFactory> _fFactory;
+    std::shared_ptr<WhereFactory> _wFactory;
+    std::shared_ptr<ModFactory> _mFactory;
+    std::shared_ptr<ValueExprFactory> _vFactory;
 };
 
 }}} // namespace lsst::qserv::parser

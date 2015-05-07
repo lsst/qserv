@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,11 +36,11 @@
 #define LSST_QSERV_RPROC_TABLEMERGER_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
 #include "boost/thread.hpp" // for mutex.
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "rproc/mergeTypes.h"
@@ -110,7 +110,7 @@ public:
 /// be called after each result is read back from the worker.
 class TableMerger {
 public:
-    typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
+    typedef std::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit TableMerger(TableMergerConfig const& c);
 
     /// Probably obsolete
@@ -161,8 +161,8 @@ private:
 
     TableMergerConfig _config;
     std::string _loadCmd;
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
-    boost::shared_ptr<sql::SqlConnection> _sqlConn;
+    std::shared_ptr<mysql::MySqlConfig> _sqlConfig;
+    std::shared_ptr<sql::SqlConnection> _sqlConn;
 
     std::string _mergeTable;
     TableMergerError _error;

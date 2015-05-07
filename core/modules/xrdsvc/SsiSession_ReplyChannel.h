@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,7 +42,7 @@ class ChannelStream; // Forward declaration
 /// XrdSsiResponder (which SsiSession inherits from).
 class SsiSession::ReplyChannel : public wbase::SendChannel {
 public:
-    typedef boost::shared_ptr<ReplyChannel> Ptr;
+    typedef std::shared_ptr<ReplyChannel> Ptr;
 
     ReplyChannel(SsiSession& s)
         : _ssiSession(s), _stream(0) {}

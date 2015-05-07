@@ -37,13 +37,12 @@
 
 // System headers
 #include <algorithm>
+#include <assert.h>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
-
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "qana/CheckAggregation.h"
@@ -90,11 +89,11 @@ operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
-ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
+ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
     if(!vt) {
         throw std::invalid_argument("Unexpected NULL ValueFactor");
     }
-    boost::shared_ptr<ValueExpr> ve = boost::make_shared<ValueExpr>();
+    std::shared_ptr<ValueExpr> ve = std::make_shared<ValueExpr>();
     FactorOp t(vt, NONE);
     ve->_factorOps.push_back(t);
     return ve;
@@ -131,14 +130,14 @@ void ValueExpr::dbgPrint(std::ostream& os) {
     }
 }
 
-boost::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
-    boost::shared_ptr<ColumnRef> cr;
+std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
+    std::shared_ptr<ColumnRef> cr;
     if(_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
-    boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
+    std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     cr = factor->getColumnRef();
     if(cr) {
-        cr = boost::make_shared<ColumnRef>(*cr);  // Make a copy
+        cr = std::make_shared<ColumnRef>(*cr);  // Make a copy
     }
     return cr;
 }
@@ -148,7 +147,7 @@ std::string ValueExpr::copyAsLiteral() const{
     // Make sure there is only one factor.
     if(_factorOps.empty() || (_factorOps.size() > 1)) { return s; }
 
-    boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
+    std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     if(factor->getType() != ValueFactor::CONST) { return s; }
     return factor->getTableStar();
@@ -210,7 +209,7 @@ ColumnRef::Ptr ValueExpr::getColumnRef() const {
 /// @return true if holding a single ValueFactor, and that factor is a *
 bool ValueExpr::isStar() const {
     if(!_factorOps.empty() && _factorOps.size() == 1) {
-        boost::shared_ptr<ValueFactor const> vf = getFactor();
+        std::shared_ptr<ValueFactor const> vf = getFactor();
         if(!vf) {
             throw std::invalid_argument("ValueExpr::isStar null ValueFactor");
         }
@@ -224,7 +223,7 @@ bool ValueExpr::isFactor() const {
     return _factorOps.size() == 1;
 }
 /// @return first ValueFactorPtr held. Useful when isFactor() == true
-boost::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
+std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
     if(_factorOps.empty()) {
         throw std::logic_error("ValueExpr::getFactor no factors");
     }
@@ -244,7 +243,7 @@ bool ValueExpr::isColumnRef() const {
 
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
-    ValueExprPtr expr = boost::make_shared<ValueExpr>(*this);
+    ValueExprPtr expr = std::make_shared<ValueExpr>(*this);
     FactorOpVector::iterator ti = expr->_factorOps.begin();
     for(FactorOpVector::const_iterator i=_factorOps.begin();
         i != _factorOps.end(); ++i, ++ti) {

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,8 +23,8 @@
 #ifndef LSST_QSERV_QUERY_TESTFACTORY_H
 #define LSST_QSERV_QUERY_TESTFACTORY_H
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 // Qserv headers
 #include "global/stringTypes.h"
@@ -49,15 +49,15 @@ namespace query {
 class TestFactory {
 public:
     TestFactory() {}
-    boost::shared_ptr<QueryContext> newContext();
-    boost::shared_ptr<QueryContext> newContext(
-                         boost::shared_ptr<css::Facade> cssFacade);
-    boost::shared_ptr<SelectStmt> newSimpleStmt();
-    boost::shared_ptr<SelectStmt> newDuplSelectExprStmt();
+    std::shared_ptr<QueryContext> newContext();
+    std::shared_ptr<QueryContext> newContext(
+                         std::shared_ptr<css::Facade> cssFacade);
+    std::shared_ptr<SelectStmt> newSimpleStmt();
+    std::shared_ptr<SelectStmt> newDuplSelectExprStmt();
 private:
-    static void addSelectField(boost::shared_ptr<SelectStmt> const& stmt, StringVector const& fields);
-    static void addFrom(boost::shared_ptr<SelectStmt> const& stmt);
-    static void addWhere(boost::shared_ptr<SelectStmt> const& stmt);
+    static void addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields);
+    static void addFrom(std::shared_ptr<SelectStmt> const& stmt);
+    static void addWhere(std::shared_ptr<SelectStmt> const& stmt);
 };
 
 }}} // namespace lsst::qserv::query

@@ -71,7 +71,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
     // _request = std::make_shared<QueryRequest>(s, _payload, _requester,
     //                                           _finishFunc,  _retryFunc,
     //                                           _status);
-    // Above causes an error for now:/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../../../include/c++/4.4.7/bits/shared_ptr.h:1584: error: conversion from 'boost::shared_ptr<lsst::qserv::qdisp::QueryRequest>' to non-scalar type 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' requested
+    // Above causes an error for now:/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../../../include/c++/4.4.7/bits/shared_ptr.h:1584: error: conversion from 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' to non-scalar type 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' requested
 
     _request = new QueryRequest(s, _payload, _requester,
                                 _finishFunc,  _retryFunc,

@@ -30,12 +30,9 @@
 #define LSST_QSERV_UTIL_MMAPFILE_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <sys/stat.h>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
-
 
 #if !defined(_FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS<64)
 // 64-bit support is needed to handle files > 2GB.
@@ -48,8 +45,8 @@ namespace util {
 
 class MmapFile {
 public:
-    static boost::shared_ptr<MmapFile> newMap(std::string const& filename,
-                                              bool read, bool write);
+    static std::shared_ptr<MmapFile> newMap(std::string const& filename,
+                                            bool read, bool write);
     ~MmapFile();
     bool isValid() const { return (_filename.length() > 0) && _fd && _buf; }
     void* getBuf() { return _buf; }

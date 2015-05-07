@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,11 +25,11 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
@@ -60,7 +60,7 @@ public:
     class Mgr; // Helper for attaching to MYSQL*
 
     LocalInfile(char const* filename, MYSQL_RES* result);
-    LocalInfile(char const* filename, boost::shared_ptr<RowBuffer> rowBuffer);
+    LocalInfile(char const* filename, std::shared_ptr<RowBuffer> rowBuffer);
     ~LocalInfile();
 
     /// Read up to bufLen bytes of infile contents into buf.
@@ -80,7 +80,7 @@ private:
     char* _leftover; ///< Ptr to bytes not yet sent to mysql
     unsigned _leftoverSize; ///< Size of bytes not yet sent in _leftover
     std::string _filename; ///< virtual filename for mysql
-    boost::shared_ptr<RowBuffer> _rowBuffer; ///< Underlying row source
+    std::shared_ptr<RowBuffer> _rowBuffer; ///< Underlying row source
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler
@@ -112,7 +112,7 @@ public:
     /// Prepare a local infile from a RowBuffer and link it to an
     /// auto-generated filename.
     /// @return generated filename
-    std::string prepareSrc(boost::shared_ptr<RowBuffer> rowbuffer);
+    std::string prepareSrc(std::shared_ptr<RowBuffer> rowbuffer);
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler

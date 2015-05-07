@@ -97,7 +97,7 @@ using antlr::RefAST;
 
 #endif
 #include "parser/parserBase.h"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 //  Global header ends here
 }
 
@@ -280,28 +280,28 @@ void handleQservFctSpec(RefAST name, RefAST params) {
 
 
 public: // Public (Until the functionality is complete?)
-boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
-boost::shared_ptr<VoidFourRefFunc> _columnRefHandler;
-boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
-boost::shared_ptr<VoidTwoRefFunc> _columnAliasHandler;
-boost::shared_ptr<VoidFourRefFunc> _tableAliasHandler;
-boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
-boost::shared_ptr<VoidTwoRefFunc> _functionSpecHandler;
-boost::shared_ptr<VoidOneRefFunc> _querySpecHandler;
-boost::shared_ptr<VoidOneRefFunc> _selectStarHandler;
-boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
-boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
-boost::shared_ptr<VoidOneRefFunc> _limitHandler;
-boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
-boost::shared_ptr<VoidOneRefFunc> _havingHandler;
+std::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
+std::shared_ptr<VoidFourRefFunc> _columnRefHandler;
+std::shared_ptr<VoidTwoRefFunc> _tableListHandler;
+std::shared_ptr<VoidTwoRefFunc> _columnAliasHandler;
+std::shared_ptr<VoidFourRefFunc> _tableAliasHandler;
+std::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
+std::shared_ptr<VoidTwoRefFunc> _functionSpecHandler;
+std::shared_ptr<VoidOneRefFunc> _querySpecHandler;
+std::shared_ptr<VoidOneRefFunc> _selectStarHandler;
+std::shared_ptr<VoidOneRefFunc> _groupByHandler;
+std::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
+std::shared_ptr<VoidOneRefFunc> _limitHandler;
+std::shared_ptr<VoidOneRefFunc> _orderByHandler;
+std::shared_ptr<VoidOneRefFunc> _havingHandler;
 
 // for WHERE clause editing/injection.
-boost::shared_ptr<VoidVoidFunc> _fromHandler;
-boost::shared_ptr<VoidOneRefFunc> _fromWhereHandler;
-boost::shared_ptr<VoidOneRefFunc> _whereCondHandler;
+std::shared_ptr<VoidVoidFunc> _fromHandler;
+std::shared_ptr<VoidOneRefFunc> _fromWhereHandler;
+std::shared_ptr<VoidOneRefFunc> _whereCondHandler;
 // for qserv restriction detector
-boost::shared_ptr<VoidVoidFunc> _qservRestrictorHandler;
-boost::shared_ptr<VoidTwoRefFunc> _qservFctSpecHandler;
+std::shared_ptr<VoidVoidFunc> _qservRestrictorHandler;
+std::shared_ptr<VoidTwoRefFunc> _qservFctSpecHandler;
 
 //  Class body inset ends here
 }

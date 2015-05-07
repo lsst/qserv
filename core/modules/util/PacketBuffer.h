@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,11 +24,9 @@
 #define LSST_QSERV_UTIL_PACKETBUFFER_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <utility>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -42,7 +40,7 @@ namespace util {
 /// disk usage, theoretically improving overall latency.
 class PacketBuffer {
 public:
-    typedef boost::shared_ptr<PacketBuffer> Ptr;
+    typedef std::shared_ptr<PacketBuffer> Ptr;
     typedef std::pair<char*, unsigned> Value;
     typedef unsigned long long Pos;
 

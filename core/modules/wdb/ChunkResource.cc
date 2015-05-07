@@ -37,7 +37,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 // Qserv headers
@@ -167,7 +166,7 @@ typedef std::vector<ScTable> ScTableVector;
 
 class Backend {
 public:
-    typedef boost::shared_ptr<Backend> Ptr;
+    typedef std::shared_ptr<Backend> Ptr;
     bool load(ScTableVector const& v, sql::SqlErrorObject& err) {
         using namespace lsst::qserv::wbase;
         if(_isFake) {
@@ -199,13 +198,13 @@ public:
     void discard(ScTableVector const& v) {
         _discard(v.begin(), v.end());
     }
-    static boost::shared_ptr<Backend>
+    static std::shared_ptr<Backend>
     newInstance(mysql::MySqlConfig const& mc) {
-        return boost::shared_ptr<Backend>(new Backend(mc));
+        return std::shared_ptr<Backend>(new Backend(mc));
     }
-    static boost::shared_ptr<Backend>
+    static std::shared_ptr<Backend>
     newFakeInstance() {
-        return boost::shared_ptr<Backend>(new Backend('f'));
+        return std::shared_ptr<Backend>(new Backend('f'));
     }
 private:
     /// Construct a fake instance
@@ -246,7 +245,7 @@ public:
     typedef std::map<int, int> SubChunkMap; // subchunkid -> count
     typedef std::map<std::string, SubChunkMap> TableMap; // tablename -> subchunk map
 
-    typedef boost::shared_ptr<ChunkEntry> Ptr;
+    typedef std::shared_ptr<ChunkEntry> Ptr;
 
     ChunkEntry(int chunkId)
         : _chunkId(chunkId) {}
@@ -356,7 +355,7 @@ private:
         }
     }
 
-    boost::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
+    std::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
     int _chunkId;
     int _refCount; ///< Number of known users
     TableMap _tableMap; ///< tables in use
@@ -436,7 +435,7 @@ private:
         if(it == m.end()) { // Insert if not exist
             Map::value_type v(
                               chunkId,
-                              boost::make_shared<ChunkEntry>(chunkId)
+                              std::make_shared<ChunkEntry>(chunkId)
                              );
             m.insert(v);
             return *(v.second.get());
@@ -449,7 +448,7 @@ private:
     DbMap _dbMap;
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
-    boost::shared_ptr<Backend> _backend;
+    std::shared_ptr<Backend> _backend;
     boost::mutex _mapMutex; // Do not alter map without this mutex
 };
 

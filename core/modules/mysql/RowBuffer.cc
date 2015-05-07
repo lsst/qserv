@@ -262,8 +262,8 @@ void ResRowBuffer::_initializeLargeRow(Row const& largeRow) {
 ////////////////////////////////////////////////////////////////////////
 // RowBuffer Implementation
 ////////////////////////////////////////////////////////////////////////
-boost::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
-    Ptr p = boost::make_shared<ResRowBuffer>(result);
+std::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
+    Ptr p = std::make_shared<ResRowBuffer>(result);
     return p;
 }
 }}} // lsst::qserv::mysql

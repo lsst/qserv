@@ -33,9 +33,6 @@
 // System headers
 #include <vector>
 
-// Other external headers
-#include "boost/make_shared.hpp"
-
 // LSST headers
 #include "sg/Box.h"
 #include "sg/Circle.h"
@@ -50,15 +47,15 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-inline boost::shared_ptr<sg::Box>
+inline std::shared_ptr<sg::Box>
 getBoxFromParams(std::vector<double> const& params) {
     if(params.size() != 4) {
         throw QueryProcessingError("Invalid number of parameters for box");
     }
-    return boost::make_shared<sg::Box>(sg::Box::fromDegrees(params[0], params[1], params[2], params[3]));
+    return std::make_shared<sg::Box>(sg::Box::fromDegrees(params[0], params[1], params[2], params[3]));
 }
 
-inline boost::shared_ptr<sg::Circle>
+inline std::shared_ptr<sg::Circle>
 getCircleFromParams(std::vector<double> const& params) {
     // lon, lat radius_deg
     if(params.size() != 3) {
@@ -66,24 +63,24 @@ getCircleFromParams(std::vector<double> const& params) {
     }
     sg::LonLat center = sg::LonLat::fromDegrees(params[0], params[1]);
     sg::Angle a = sg::Angle::fromDegrees(params[2]);
-    return boost::make_shared<sg::Circle>(sg::UnitVector3d(center), a);
+    return std::make_shared<sg::Circle>(sg::UnitVector3d(center), a);
 }
 
-inline boost::shared_ptr<sg::Ellipse>
+inline std::shared_ptr<sg::Ellipse>
 getEllipseFromParams(std::vector<double> const& params) {
     // lon, lat, semimajang, semiminang, posangle
     if(params.size() != 5) {
         throw QueryProcessingError("Invalid number of parameters for ellips");
     }
     sg::UnitVector3d center(sg::LonLat::fromDegrees(params[0], params[1]));
-    return boost::make_shared<sg::Ellipse>(
+    return std::make_shared<sg::Ellipse>(
         center,
         sg::Angle::fromDegrees(params[2]),
         sg::Angle::fromDegrees(params[3]),
         sg::Angle::fromDegrees(params[4]));
 }
 
-inline boost::shared_ptr<sg::ConvexPolygon>
+inline std::shared_ptr<sg::ConvexPolygon>
 getConvexPolyFromParams(std::vector<double> const& params) {
     // polygon vertices, min 3 vertices, must get even number of params
     if((params.size() <= 6) || ((params.size() & 1) != 0)) {
@@ -94,7 +91,7 @@ getConvexPolyFromParams(std::vector<double> const& params) {
         sg::LonLat vx = sg::LonLat::fromDegrees(params[i], params[i+1]);
         uv3.push_back(sg::UnitVector3d(vx));
     }
-    return boost::make_shared<sg::ConvexPolygon>(uv3);
+    return std::make_shared<sg::ConvexPolygon>(uv3);
 }
 
 }}} // namespace lsst::qserv::qproc

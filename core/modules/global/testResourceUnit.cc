@@ -23,7 +23,6 @@
 /// testResourceUnit
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "global/ResourceUnit.h"

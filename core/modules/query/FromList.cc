@@ -36,7 +36,6 @@
 #include <iterator>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -107,21 +106,21 @@ FromList::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<FromList>
+std::shared_ptr<FromList>
 FromList::copySyntax() {
-    boost::shared_ptr<FromList> newL = boost::make_shared<FromList>(*this);
+    std::shared_ptr<FromList> newL = std::make_shared<FromList>(*this);
     // Shallow copy of expr list is okay.
-    newL->_tableRefs  = boost::make_shared<TableRefList>(*_tableRefs);
+    newL->_tableRefs  = std::make_shared<TableRefList>(*_tableRefs);
     // For the other fields, default-copied versions are okay.
     return newL;
 }
 
-boost::shared_ptr<FromList>
+std::shared_ptr<FromList>
 FromList::clone() const {
     typedef TableRefList::const_iterator Iter;
-    boost::shared_ptr<FromList> newL = boost::make_shared<FromList>(*this);
+    std::shared_ptr<FromList> newL = std::make_shared<FromList>(*this);
 
-    newL->_tableRefs = boost::make_shared<TableRefList>();
+    newL->_tableRefs = std::make_shared<TableRefList>();
 
     for(Iter i=_tableRefs->begin(), e=_tableRefs->end(); i != e; ++ i) {
         newL->_tableRefs->push_back((*i)->clone());

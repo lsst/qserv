@@ -33,7 +33,6 @@
 #include <utility>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "css/Facade.h"

@@ -32,7 +32,6 @@
 #include <sys/stat.h>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "sql/SqlErrorObject.h"
@@ -55,9 +54,9 @@ public:
         ::unlink(filename.c_str());
     }
 
-    static boost::shared_ptr<FileCleanup> newInstance(int fd,
+    static std::shared_ptr<FileCleanup> newInstance(int fd,
                                                std::string const& filename) {
-        return boost::make_shared<FileCleanup>(fd, filename);
+        return std::make_shared<FileCleanup>(fd, filename);
     }
 
     int fd;
@@ -112,7 +111,7 @@ std::string QueryPhyResult::_computeTmpFileName() const {
 
 bool QueryPhyResult::dumpToChannel(LOG_LOGGER const& log,
                                    std::string const& user,
-                                   boost::shared_ptr<wbase::SendChannel> sc,
+                                   std::shared_ptr<wbase::SendChannel> sc,
                                    sql::SqlErrorObject& errObj) {
     std::string dumpFile = _computeTmpFileName();
     if(!performMysqldump(log, user, dumpFile, errObj)) {

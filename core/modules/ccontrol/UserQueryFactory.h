@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,8 +31,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 #include "boost/utility.hpp"
 
 // Local headers
@@ -55,7 +57,7 @@ namespace ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-    typedef boost::shared_ptr<lsst::qserv::css::KvInterface> KviPtr;
+    typedef std::shared_ptr<lsst::qserv::css::KvInterface> KviPtr;
     UserQueryFactory(std::map<std::string,std::string> const& m,
                      KviPtr kvi=KviPtr());
 
@@ -66,7 +68,7 @@ public:
                      std::string const& resultTable);
 private:
     class Impl;
-    boost::shared_ptr<Impl> _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::qserv:control

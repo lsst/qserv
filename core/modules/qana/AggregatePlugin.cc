@@ -36,7 +36,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -59,8 +58,8 @@ namespace qana {
 
 inline query::ValueExprPtr
 newExprFromAlias(std::string const& alias) {
-    boost::shared_ptr<query::ColumnRef> cr = boost::make_shared<query::ColumnRef>("", "", alias);
-    boost::shared_ptr<query::ValueFactor> vf;
+    std::shared_ptr<query::ColumnRef> cr = std::make_shared<query::ColumnRef>("", "", alias);
+    std::shared_ptr<query::ValueFactor> vf;
     vf = query::ValueFactor::newColumnRefFactor(cr);
     return query::ValueExpr::newSimple(vf);
 }
@@ -111,7 +110,7 @@ private:
         // constituent ValueFactors, compute the lists in parallel, and
         // then compute the expression result from the parallel
         // results during merging.
-        query::ValueExprPtr mergeExpr = boost::make_shared<query::ValueExpr>();
+        query::ValueExprPtr mergeExpr = std::make_shared<query::ValueExpr>();
         query::ValueExpr::FactorOpVector& mergeFactorOps = mergeExpr->getFactorOps();
         query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
         for(query::ValueExpr::FactorOpVector::const_iterator i=factorOps.begin();
@@ -157,7 +156,7 @@ private:
 class AggregatePlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<AggregatePlugin> Ptr;
+    typedef std::shared_ptr<AggregatePlugin> Ptr;
 
     virtual ~AggregatePlugin() {}
 
@@ -175,13 +174,13 @@ private:
 class AggregatePluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<AggregatePluginFactory> Ptr;
+    typedef std::shared_ptr<AggregatePluginFactory> Ptr;
     AggregatePluginFactory() {}
     virtual ~AggregatePluginFactory() {}
 
     virtual std::string getName() const { return "Aggregate"; }
     virtual QueryPlugin::Ptr newInstance() {
-        QueryPlugin::Ptr p =boost::make_shared<AggregatePlugin>();
+        QueryPlugin::Ptr p =std::make_shared<AggregatePlugin>();
         return p;
     }
 };
@@ -218,7 +217,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     query::SelectList& pList = p.stmtParallel.front()->getSelectList();
     bool hasLimit = p.stmtOriginal.getLimit() != -1;
     query::SelectList& mList = p.stmtMerge.getSelectList();
-    boost::shared_ptr<query::ValueExprPtrVector> vlist;
+    std::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
     if(!vlist) {
         throw std::invalid_argument("No select list in original SelectStmt");
@@ -249,18 +248,18 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     // portion the same.
     typedef SelectStmtPtrVector::iterator Iter;
     typedef query::ValueExprPtrVector::iterator Viter;
-    boost::shared_ptr<query::ValueExprPtrVector> veList = pList.getValueExprList();
+    std::shared_ptr<query::ValueExprPtrVector> veList = pList.getValueExprList();
     for(Iter b=p.stmtParallel.begin(), i=b, e=p.stmtParallel.end();
         i != e;
         ++i) {
         // Strip ORDER BY from parallel if merging.
         if(context.needsMerge && !hasLimit) {
-            (*i)->setOrderBy(boost::shared_ptr<query::OrderByClause>());
+            (*i)->setOrderBy(std::shared_ptr<query::OrderByClause>());
         }
 
         if(i == b) continue;
         query::SelectList& pList2 = (*i)->getSelectList();
-        boost::shared_ptr<query::ValueExprPtrVector> veList2 = pList2.getValueExprList();
+        std::shared_ptr<query::ValueExprPtrVector> veList2 = pList2.getValueExprList();
         veList2->clear();
         for(Viter j=veList->begin(), je=veList->end(); j != je; ++j) {
             veList2->push_back((**j).clone());

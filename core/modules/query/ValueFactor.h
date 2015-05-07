@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,10 +31,8 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/ColumnRef.h"
@@ -49,7 +47,7 @@ class FuncExpr;
 class ValueExpr; // To support nested expressions.
 
 class ValueFactor;
-typedef boost::shared_ptr<ValueFactor> ValueFactorPtr;
+typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
 
 /// ValueFactor is some kind of value that can exist in a column. It can be
 /// logical (i.e. a column name) or physical (a constant number or value).
@@ -58,12 +56,12 @@ public:
     enum Type { COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
 
     // May need non-const, otherwise, need new construction
-    boost::shared_ptr<ColumnRef const> getColumnRef() const { return _columnRef; }
-    boost::shared_ptr<ColumnRef> getColumnRef() { return _columnRef; }
-    boost::shared_ptr<FuncExpr const> getFuncExpr() const { return _funcExpr; }
-    boost::shared_ptr<FuncExpr> getFuncExpr() { return _funcExpr; }
-    boost::shared_ptr<ValueExpr const> getExpr() const { return _valueExpr; }
-    boost::shared_ptr<ValueExpr> getExpr() { return _valueExpr; }
+    std::shared_ptr<ColumnRef const> getColumnRef() const { return _columnRef; }
+    std::shared_ptr<ColumnRef> getColumnRef() { return _columnRef; }
+    std::shared_ptr<FuncExpr const> getFuncExpr() const { return _funcExpr; }
+    std::shared_ptr<FuncExpr> getFuncExpr() { return _funcExpr; }
+    std::shared_ptr<ValueExpr const> getExpr() const { return _valueExpr; }
+    std::shared_ptr<ValueExpr> getExpr() { return _valueExpr; }
     Type getType() const { return _type; }
 
     std::string const& getAlias() const { return _alias; }
@@ -76,12 +74,12 @@ public:
 
     ValueFactorPtr clone() const;
 
-    static ValueFactorPtr newColumnRefFactor(boost::shared_ptr<ColumnRef const> cr);
+    static ValueFactorPtr newColumnRefFactor(std::shared_ptr<ColumnRef const> cr);
     static ValueFactorPtr newStarFactor(std::string const& table);
-    static ValueFactorPtr newAggFactor(boost::shared_ptr<FuncExpr> fe);
-    static ValueFactorPtr newFuncFactor(boost::shared_ptr<FuncExpr> fe);
+    static ValueFactorPtr newAggFactor(std::shared_ptr<FuncExpr> fe);
+    static ValueFactorPtr newFuncFactor(std::shared_ptr<FuncExpr> fe);
     static ValueFactorPtr newConstFactor(std::string const& alnum);
-    static ValueFactorPtr newExprFactor(boost::shared_ptr<ValueExpr> ve);
+    static ValueFactorPtr newExprFactor(std::shared_ptr<ValueExpr> ve);
 
     friend std::ostream& operator<<(std::ostream& os, ValueFactor const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueFactor const* ve);
@@ -90,9 +88,9 @@ public:
     friend class render;
 private:
     Type _type;
-    boost::shared_ptr<ColumnRef> _columnRef;
-    boost::shared_ptr<FuncExpr> _funcExpr;
-    boost::shared_ptr<ValueExpr> _valueExpr;
+    std::shared_ptr<ColumnRef> _columnRef;
+    std::shared_ptr<FuncExpr> _funcExpr;
+    std::shared_ptr<ValueExpr> _valueExpr;
     std::string _alias;
     std::string _tableStar; // Reused as const val (no tablestar)
 };
@@ -103,7 +101,7 @@ public:
     void operator()(ValueFactor const& ve);
     void operator()(ValueFactor const* vep) {
         if(vep) (*this)(*vep); }
-    void operator()(boost::shared_ptr<ValueFactor> const& vep) {
+    void operator()(std::shared_ptr<ValueFactor> const& vep) {
         (*this)(vep.get()); }
     QueryTemplate& _qt;
 };

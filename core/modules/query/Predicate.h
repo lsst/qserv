@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,10 +31,8 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
-
-// Third party headers
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/typedefs.h"
@@ -64,7 +62,7 @@ class QueryTemplate;
 ///     | unique_predicate
 class Predicate : public BfTerm {
 public:
-    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef std::shared_ptr<Predicate> Ptr;
 
     virtual ~Predicate() {}
     virtual char const* getName() const { return "Predicate"; }
@@ -80,7 +78,7 @@ public:
 /// is unimportant for qserv
 class GenericPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<GenericPredicate> Ptr;
+    typedef std::shared_ptr<GenericPredicate> Ptr;
 
     virtual ~GenericPredicate() {}
     virtual char const* getName() const { return "GenericPredicate"; }
@@ -95,7 +93,7 @@ public:
 /// (literals can be row values)
 class CompPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<CompPredicate> Ptr;
+    typedef std::shared_ptr<CompPredicate> Ptr;
 
     virtual ~CompPredicate() {}
     virtual char const* getName() const { return "CompPredicate"; }
@@ -121,7 +119,7 @@ public:
 /// InPredicate is a Predicate comparing a row value to a set
 class InPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<InPredicate> Ptr;
+    typedef std::shared_ptr<InPredicate> Ptr;
 
     virtual ~InPredicate() {}
     virtual char const* getName() const { return "InPredicate"; }
@@ -142,7 +140,7 @@ public:
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<BetweenPredicate> Ptr;
+    typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     virtual ~BetweenPredicate() {}
     virtual char const* getName() const { return "BetweenPredicate"; }
@@ -164,7 +162,7 @@ public:
 /// (pattern is a char-valued value expression
 class LikePredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<LikePredicate> Ptr;
+    typedef std::shared_ptr<LikePredicate> Ptr;
 
     virtual ~LikePredicate() {}
     virtual char const* getName() const { return "LikePredicate"; }
@@ -184,7 +182,7 @@ public:
 /// NullPredicate is a Predicate involving a row value compared to NULL
 class NullPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<NullPredicate> Ptr;
+    typedef std::shared_ptr<NullPredicate> Ptr;
 
     virtual ~NullPredicate() {}
     virtual char const* getName() const { return "NullPredicate"; }

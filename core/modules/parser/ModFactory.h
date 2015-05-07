@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,9 +32,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -68,12 +70,12 @@ public:
     class HavingH;
     friend class HavingH;
 
-    ModFactory(boost::shared_ptr<ValueExprFactory> vf);
+    ModFactory(std::shared_ptr<ValueExprFactory> vf);
 
     int getLimit() { return _limit; } // -1: not specified.
-    boost::shared_ptr<query::OrderByClause> getOrderBy() { return _orderBy; }
-    boost::shared_ptr<query::GroupByClause> getGroupBy() { return _groupBy; }
-    boost::shared_ptr<query::HavingClause> getHaving() { return _having; }
+    std::shared_ptr<query::OrderByClause> getOrderBy() { return _orderBy; }
+    std::shared_ptr<query::GroupByClause> getGroupBy() { return _groupBy; }
+    std::shared_ptr<query::HavingClause> getHaving() { return _having; }
 
 private:
     void attachTo(SqlSQL2Parser& p);
@@ -83,11 +85,11 @@ private:
     void _importHaving(antlr::RefAST a);
 
     // Fields
-    boost::shared_ptr<ValueExprFactory> _vFactory;
+    std::shared_ptr<ValueExprFactory> _vFactory;
     int _limit;
-    boost::shared_ptr<query::OrderByClause> _orderBy;
-    boost::shared_ptr<query::GroupByClause> _groupBy;
-    boost::shared_ptr<query::HavingClause> _having;
+    std::shared_ptr<query::OrderByClause> _orderBy;
+    std::shared_ptr<query::GroupByClause> _groupBy;
+    std::shared_ptr<query::HavingClause> _having;
 };
 
 }}} // namespace lsst::qserv::parser

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,7 +28,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -62,8 +61,8 @@ public:
     }
 };
 
-boost::shared_ptr<SendChannel> SendChannel::newNopChannel() {
-    boost::shared_ptr<NopChannel> n = boost::make_shared<NopChannel>();
+std::shared_ptr<SendChannel> SendChannel::newNopChannel() {
+    std::shared_ptr<NopChannel> n = std::make_shared<NopChannel>();
     return n;
 }
 
@@ -118,8 +117,8 @@ private:
     std::string& _dest;
 };
 
-boost::shared_ptr<SendChannel> SendChannel::newStringChannel(std::string& d) {
-    return boost::shared_ptr<StringChannel>(new StringChannel(d));
+std::shared_ptr<SendChannel> SendChannel::newStringChannel(std::string& d) {
+    return std::shared_ptr<StringChannel>(new StringChannel(d));
 }
 
 }}} // namespace lsst::qserv::wbase

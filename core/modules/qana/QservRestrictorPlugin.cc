@@ -33,11 +33,12 @@
 #include "qana/QueryPlugin.h"
 
 // System headers
+#include <algorithm>
 #include <deque>
+#include <memory>
 #include <string>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/pointer_cast.hpp"
 
 // Qserv headers
@@ -67,9 +68,9 @@ namespace qana {
 
 typedef std::pair<std::string, std::string> StringPair;
 
-boost::shared_ptr<query::ColumnRef>
+std::shared_ptr<query::ColumnRef>
 resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
-    boost::shared_ptr<query::ColumnRef> cr = vexpr->copyAsColumnRef();
+    std::shared_ptr<query::ColumnRef> cr = vexpr->copyAsColumnRef();
     if(!cr) {
         return cr;
     }
@@ -82,7 +83,7 @@ resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
 /// @return true if cr represents a valid secondary index column.
 bool
 lookupSecIndex(query::QueryContext& context,
-               boost::shared_ptr<query::ColumnRef> cr) {
+               std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
     if((!cr) || !context.cssFacade) { return false; }
@@ -100,13 +101,13 @@ lookupSecIndex(query::QueryContext& context,
 }
 
 query::PassTerm::Ptr newPass(std::string const& s) {
-    query::PassTerm::Ptr p = boost::make_shared<query::PassTerm>();
+    query::PassTerm::Ptr p = std::make_shared<query::PassTerm>();
     p->_text = s;
     return p;
 }
 template <typename C>
 query::PassListTerm::Ptr newPassList(C& c) {
-    query::PassListTerm::Ptr p = boost::make_shared<query::PassListTerm>();
+    query::PassListTerm::Ptr p = std::make_shared<query::PassListTerm>();
     p->_terms.insert(p->_terms.begin(), c.begin(), c.end());
     return p;
 }
@@ -115,9 +116,9 @@ query::InPredicate::Ptr
 newInPred(std::string const& aliasTable,
           std::string const& secIndexColumn,
           std::vector<std::string> const& params) {
-    query::InPredicate::Ptr p = boost::make_shared<query::InPredicate>();
-    boost::shared_ptr<query::ColumnRef> cr =
-               boost::make_shared<query::ColumnRef>(
+    query::InPredicate::Ptr p = std::make_shared<query::InPredicate>();
+    std::shared_ptr<query::ColumnRef> cr =
+               std::make_shared<query::ColumnRef>(
                        "", aliasTable, secIndexColumn);
     p->value =
         query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
@@ -136,15 +137,15 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
                                  std::string const& tableAlias,
                                  StringPair const& chunkColumns,
                                  C& c) {
-    query::FuncExpr::Ptr fe = boost::make_shared<query::FuncExpr>();
+    query::FuncExpr::Ptr fe = std::make_shared<query::FuncExpr>();
     fe->name = UDF_PREFIX + fName;
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                  boost::make_shared<query::ColumnRef>(
+                  std::make_shared<query::ColumnRef>(
                           "", tableAlias, chunkColumns.first))));
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                  boost::make_shared<query::ColumnRef>(
+                  std::make_shared<query::ColumnRef>(
                           "", tableAlias, chunkColumns.second))));
 
     typename C::const_iterator i;
@@ -226,7 +227,7 @@ public:
 class QservRestrictorPlugin : public QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<QservRestrictorPlugin> Ptr;
+    typedef std::shared_ptr<QservRestrictorPlugin> Ptr;
     class Restriction;
 
     virtual ~QservRestrictorPlugin() {}
@@ -238,18 +239,18 @@ public:
 
 private:
     query::BoolTerm::Ptr
-        _makeCondition(boost::shared_ptr<query::QsRestrictor> const restr,
+        _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
-    boost::shared_ptr<query::QsRestrictor::PtrVector>
+    std::shared_ptr<query::QsRestrictor::PtrVector>
         _getSecIndexPreds(query::QueryContext&,
                           query::AndTerm::Ptr);
     query::QsRestrictor::Ptr
         _newSecIndexRestrictor(query::QueryContext& context,
-                               boost::shared_ptr<query::ColumnRef> cr,
+                               std::shared_ptr<query::ColumnRef> cr,
                                query::ValueExprPtrVector& vList);
     query::QsRestrictor::Ptr
         _newSecIndexRestrictor(query::QueryContext& context,
-                               boost::shared_ptr<query::CompPredicate> cp);
+                               std::shared_ptr<query::CompPredicate> cp);
     query::QsRestrictor::Ptr
         _convertObjectId(query::QueryContext& context,
                          query::QsRestrictor const& original);
@@ -291,7 +292,7 @@ private:
 
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
-                    boost::make_shared<query::BoolFactor>();
+                    std::make_shared<query::BoolFactor>();
             query::BfTerm::PtrVector& terms = newFactor->_terms;
             terms.push_back(newInPred(e.alias, e.secIndexColumn, params));
             return newFactor;
@@ -313,11 +314,11 @@ private:
 
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
-                    boost::make_shared<query::BoolFactor>();
+                    std::make_shared<query::BoolFactor>();
             query::BfTerm::PtrVector& terms = newFactor->_terms;
             query::CompPredicate::Ptr cp =
-                    boost::make_shared<query::CompPredicate>();
-            boost::shared_ptr<query::FuncExpr> fe =
+                    std::make_shared<query::CompPredicate>();
+            std::shared_ptr<query::FuncExpr> fe =
                 newFuncExpr(fName, e.alias, e.chunkColumns, params);
             cp->left =
                 query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
@@ -335,35 +336,35 @@ private:
 
     void _setGenerator(query::QsRestrictor const& r) {
         if(r._name == "qserv_areaspec_box") {
-            _generator = boost::make_shared<AreaGenerator>("s2PtInBox",
-                                                           4,
-                                                           r._params
-                                                          );
+            _generator = std::make_shared<AreaGenerator>("s2PtInBox",
+                                                         4,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_circle") {
-            _generator = boost::make_shared<AreaGenerator>("s2PtInCircle",
-                                                           3,
-                                                           r._params
-                                                          );
+            _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
+                                                         3,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_ellipse") {
-            _generator = boost::make_shared<AreaGenerator>("s2PtInEllipse",
-                                                           5,
-                                                           r._params
-                                                          );
+            _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
+                                                         5,
+                                                         r._params
+                                                         );
         } else if(r._name == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
-            _generator = boost::make_shared<AreaGenerator>("s2PtInCPoly",
-                                                           use_string,
-                                                           r._params
-                                                          );
+            _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
+                                                         use_string,
+                                                         r._params
+                                                         );
         } else if(_name == "qserv_objectId") {
-            _generator = boost::make_shared<ObjectIdGenerator>(r._params);
+            _generator = std::make_shared<ObjectIdGenerator>(r._params);
         } else {
             throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
         }
     }
     std::string _name;
     std::vector<double> _params;
-    boost::shared_ptr<Generator> _generator;
+    std::shared_ptr<Generator> _generator;
 };
 
 
@@ -373,13 +374,13 @@ private:
 class QservRestrictorPluginFactory : public QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<QservRestrictorPluginFactory> Ptr;
+    typedef std::shared_ptr<QservRestrictorPluginFactory> Ptr;
     QservRestrictorPluginFactory() {}
     virtual ~QservRestrictorPluginFactory() {}
 
     virtual std::string getName() const { return "QservRestrictor"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<QservRestrictorPlugin>();
+        return std::make_shared<QservRestrictorPlugin>();
     }
 };
 
@@ -389,7 +390,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        QservRestrictorPluginFactory::Ptr f = boost::make_shared<QservRestrictorPluginFactory>();
+        QservRestrictorPluginFactory::Ptr f = std::make_shared<QservRestrictorPluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
@@ -422,17 +423,17 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     // Prepare to patch the WHERE clause
     query::WhereClause& wc = stmt.getWhereClause();
 
-    boost::shared_ptr<query::QsRestrictor::PtrVector const> restrsPtr = wc.getRestrs();
+    std::shared_ptr<query::QsRestrictor::PtrVector const> restrsPtr = wc.getRestrs();
     query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    boost::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds =
+    std::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds =
         _getSecIndexPreds(context, originalAnd);
     query::AndTerm::Ptr newTerm;
     // Now handle the explicit restrictors
     if(restrsPtr && !restrsPtr->empty()) {
         // spatial restrictions
         query::QsRestrictor::PtrVector const& restrs = *restrsPtr;
-        context.restrictors = boost::make_shared<query::QueryContext::RestrList>();
-        newTerm = boost::make_shared<query::AndTerm>();
+        context.restrictors = std::make_shared<query::QueryContext::RestrList>();
+        newTerm = std::make_shared<query::AndTerm>();
 
         // At least one table should exist in the restrictor entries
         if(entries.empty()) {
@@ -483,29 +484,29 @@ QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
 
 query::BoolTerm::Ptr
 QservRestrictorPlugin::_makeCondition(
-             boost::shared_ptr<query::QsRestrictor> const restr,
+             std::shared_ptr<query::QsRestrictor> const restr,
              RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
 }
 
 inline void
-addPred(boost::shared_ptr<query::QsRestrictor::PtrVector>& preds,
+addPred(std::shared_ptr<query::QsRestrictor::PtrVector>& preds,
         query::QsRestrictor::Ptr p) {
     if(p) {
         if(!preds) {
-            preds = boost::make_shared<query::QsRestrictor::PtrVector>();
+            preds = std::make_shared<query::QsRestrictor::PtrVector>();
         }
         preds->push_back(p);
     }
 }
 
-boost::shared_ptr<query::QsRestrictor::PtrVector>
+std::shared_ptr<query::QsRestrictor::PtrVector>
 QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
                                          query::AndTerm::Ptr p) {
     typedef query::BoolTerm::PtrVector::iterator TermIter;
     typedef query::BfTerm::PtrVector::iterator BfIter;
-    boost::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds;
+    std::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds;
 
     if(!p) return secIndexPreds;
 
@@ -516,9 +517,9 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
             b != factor->_terms.end();
             ++b) {
             query::InPredicate::Ptr ip =
-                boost::dynamic_pointer_cast<query::InPredicate>(*b);
+                std::dynamic_pointer_cast<query::InPredicate>(*b);
             if(ip) {
-                boost::shared_ptr<query::ColumnRef> cr
+                std::shared_ptr<query::ColumnRef> cr
                     = resolveAsColumnRef(context, ip->value);
                 if(cr && lookupSecIndex(context, cr)) {
                     query::QsRestrictor::Ptr p =
@@ -527,7 +528,7 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
                 }
             } else {
                 query::CompPredicate::Ptr cp =
-                    boost::dynamic_pointer_cast<query::CompPredicate>(*b);
+                    std::dynamic_pointer_cast<query::CompPredicate>(*b);
                 if(cp) {
                     query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, cp);
                     addPred(secIndexPreds, p);
@@ -560,7 +561,7 @@ struct extractLiteral {
 query::QsRestrictor::Ptr
 QservRestrictorPlugin::_newSecIndexRestrictor(
     query::QueryContext& context,
-    boost::shared_ptr<query::ColumnRef> cr,
+    std::shared_ptr<query::ColumnRef> cr,
     query::ValueExprPtrVector& vList)
 {
     // Extract the literals, bailing out if we see a non-literal
@@ -571,7 +572,7 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
     }
 
     // Build the QsRestrictor
-    query::QsRestrictor::Ptr p = boost::make_shared<query::QsRestrictor>();
+    query::QsRestrictor::Ptr p = std::make_shared<query::QsRestrictor>();
     p->_name = "sIndex";
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...
@@ -587,10 +588,10 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
 query::QsRestrictor::Ptr
 QservRestrictorPlugin::_newSecIndexRestrictor(
     query::QueryContext& context,
-    boost::shared_ptr<query::CompPredicate> cp)
+    std::shared_ptr<query::CompPredicate> cp)
 {
     query::QsRestrictor::Ptr p;
-    boost::shared_ptr<query::ColumnRef> secIndex =
+    std::shared_ptr<query::ColumnRef> secIndex =
         resolveAsColumnRef(context, cp->left);
     int op = cp->op;
     query::ValueExprPtr literalValue = cp->right;
@@ -611,7 +612,7 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
     validateLiteral vl(isValid);
     vl(literalValue);
     if(!isValid) { return p; } // No secondary index. Leave alone.
-    std::vector<boost::shared_ptr<query::ValueExpr> > cands;
+    std::vector<std::shared_ptr<query::ValueExpr> > cands;
     cands.push_back(literalValue);
     return _newSecIndexRestrictor(context, secIndex, cands);
 }
@@ -620,7 +621,7 @@ query::QsRestrictor::Ptr
 QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
                                         query::QsRestrictor const& original) {
     // Build the QsRestrictor
-    query::QsRestrictor::Ptr p = boost::make_shared<query::QsRestrictor>();
+    query::QsRestrictor::Ptr p = std::make_shared<query::QsRestrictor>();
     p->_name = "sIndex";
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...

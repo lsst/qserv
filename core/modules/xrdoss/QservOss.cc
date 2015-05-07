@@ -40,7 +40,6 @@
 #include <sys/time.h>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "XrdSys/XrdSysError.hh"
 #include "XrdSys/XrdSysLogger.hh"
 

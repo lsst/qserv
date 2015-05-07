@@ -32,11 +32,11 @@
 #include "query/AggOp.h"
 
 // System headers
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "query/FuncExpr.h"
@@ -57,7 +57,7 @@ public:
     explicit PassAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
+        AggRecord::Ptr arp = std::make_shared<AggRecord>();
         arp->orig = orig.clone();
         arp->parallel.push_back(ValueExpr::newSimple(orig.clone()));
         arp->merge = orig.clone();
@@ -72,12 +72,12 @@ public:
     explicit CountAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
+        AggRecord::Ptr arp = std::make_shared<AggRecord>();
         std::string interName = _mgr.getAggName("COUNT");
         arp->orig = orig.clone();
-        boost::shared_ptr<FuncExpr> fe;
-        boost::shared_ptr<ValueFactor> vf;
-        boost::shared_ptr<ValueExpr> parallelExpr;
+        std::shared_ptr<FuncExpr> fe;
+        std::shared_ptr<ValueFactor> vf;
+        std::shared_ptr<ValueExpr> parallelExpr;
 
         parallelExpr = ValueExpr::newSimple(orig.clone());
         parallelExpr->setAlias(interName);
@@ -104,12 +104,12 @@ public:
     }
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
+        AggRecord::Ptr arp = std::make_shared<AggRecord>();
         std::string interName = _mgr.getAggName(accName);
         arp->orig = orig.clone();
-        boost::shared_ptr<FuncExpr> fe;
-        boost::shared_ptr<ValueFactor> vf;
-        boost::shared_ptr<ValueExpr> parallelExpr;
+        std::shared_ptr<FuncExpr> fe;
+        std::shared_ptr<ValueFactor> vf;
+        std::shared_ptr<ValueExpr> parallelExpr;
 
         parallelExpr = ValueExpr::newSimple(orig.clone());
         parallelExpr->setAlias(interName);
@@ -131,12 +131,12 @@ public:
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
 
-        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
+        AggRecord::Ptr arp = std::make_shared<AggRecord>();
         arp->orig = orig.clone();
         // Parallel: get each aggregation subterm.
-        boost::shared_ptr<FuncExpr> fe;
-        boost::shared_ptr<ValueFactor const> origVf(orig.clone());
-        boost::shared_ptr<ValueExpr> ve;
+        std::shared_ptr<FuncExpr> fe;
+        std::shared_ptr<ValueFactor const> origVf(orig.clone());
+        std::shared_ptr<ValueExpr> ve;
         std::string cAlias = _mgr.getAggName("COUNT");
         fe = FuncExpr::newLike(*origVf->getFuncExpr(), "COUNT");
         ve = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
@@ -149,11 +149,11 @@ public:
         ve->setAlias(sAlias);
         arp->parallel.push_back(ve);
 
-        boost::shared_ptr<FuncExpr> feSum;
-        boost::shared_ptr<FuncExpr> feCount;
+        std::shared_ptr<FuncExpr> feSum;
+        std::shared_ptr<FuncExpr> feCount;
         feSum = FuncExpr::newArg1("SUM", sAlias);
         feCount = FuncExpr::newArg1("SUM", cAlias);
-        ve = boost::make_shared<ValueExpr>();
+        ve = std::make_shared<ValueExpr>();
         ve->setAlias(orig.getAlias());
         ValueExpr::FactorOpVector& factorOps = ve->getFactorOps();
         factorOps.clear();

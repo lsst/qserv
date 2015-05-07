@@ -29,7 +29,6 @@
 #include "mysql/MySqlConnection.h"
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
@@ -71,7 +70,7 @@ MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig,
                                  bool useThreadMgmt)
     : _mysql(NULL), _mysql_res(NULL),
       _isConnected(false),
-      _sqlConfig(boost::make_shared<MySqlConfig>(sqlConfig)),
+      _sqlConfig(std::make_shared<MySqlConfig>(sqlConfig)),
       _useThreadMgmt(useThreadMgmt),
       _isExecuting(false),
       _interrupted(false) {

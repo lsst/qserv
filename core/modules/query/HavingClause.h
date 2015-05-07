@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,8 +29,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 // Local headers
 #include "query/BoolTerm.h"
@@ -60,14 +60,14 @@ public:
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<HavingClause> clone() const;
-    boost::shared_ptr<HavingClause> copySyntax();
+    std::shared_ptr<HavingClause> clone() const;
+    std::shared_ptr<HavingClause> copySyntax();
     void findValueExprs(ValueExprPtrVector& list);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);
     friend class parser::ModFactory;
-    boost::shared_ptr<BoolTerm> _tree;
+    std::shared_ptr<BoolTerm> _tree;
 };
 
 }}} // namespace lsst::qserv::query

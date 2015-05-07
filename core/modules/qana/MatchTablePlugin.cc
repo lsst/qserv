@@ -31,7 +31,6 @@
 #include <string>
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "css/Facade.h"
@@ -93,7 +92,7 @@ namespace qana {
 /// database. As a result, MatchTablePlugin must run after TablePlugin.
 class MatchTablePlugin : public QueryPlugin {
 public:
-    typedef boost::shared_ptr<MatchTablePlugin> Ptr;
+    typedef std::shared_ptr<MatchTablePlugin> Ptr;
 
     virtual ~MatchTablePlugin() {}
 
@@ -107,7 +106,7 @@ public:
 /// MatchTablePluginFactory creates MatchTablePlugin instances.
 class MatchTablePluginFactory : public QueryPlugin::Factory {
 public:
-    typedef boost::shared_ptr<MatchTablePluginFactory> Ptr;
+    typedef std::shared_ptr<MatchTablePluginFactory> Ptr;
 
     MatchTablePluginFactory() {}
     virtual ~MatchTablePluginFactory() {}
@@ -116,7 +115,7 @@ public:
         return "MatchTable";
     }
     virtual QueryPlugin::Ptr newInstance() {
-        return boost::make_shared<MatchTablePlugin>();
+        return std::make_shared<MatchTablePlugin>();
     }
 };
 
@@ -126,7 +125,7 @@ namespace {
     struct registerPlugin {
         registerPlugin() {
             QueryPlugin::registerClass(
-                 boost::make_shared<MatchTablePluginFactory>());
+                 std::make_shared<MatchTablePluginFactory>());
         }
     };
 
@@ -156,39 +155,39 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
     // are possible.
     //
     // First, create IR nodes for "dirCol1 IS NULL".
-    boost::shared_ptr<NullPredicate> nullPred =
-        boost::make_shared<NullPredicate>();
+    std::shared_ptr<NullPredicate> nullPred =
+        std::make_shared<NullPredicate>();
     nullPred->hasNot = false;
     nullPred->value = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(
-        boost::make_shared<ColumnRef>("", "", mt.dirColName1)));
+        std::make_shared<ColumnRef>("", "", mt.dirColName1)));
     // Then create IR nodes for "flagCol<>2".
-    boost::shared_ptr<CompPredicate> compPred =
-        boost::make_shared<CompPredicate>();
+    std::shared_ptr<CompPredicate> compPred =
+        std::make_shared<CompPredicate>();
     compPred->left = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(
-        boost::make_shared<ColumnRef>("", "", mt.flagColName)));
+        std::make_shared<ColumnRef>("", "", mt.flagColName)));
     compPred->op = SqlSQL2TokenTypes::NOT_EQUALS_OP;
     compPred->right = ValueExpr::newSimple(ValueFactor::newConstFactor("2"));
     // Create BoolFactors for each Predicate node.
-    boost::shared_ptr<BoolFactor> bf1 = boost::make_shared<BoolFactor>();
+    std::shared_ptr<BoolFactor> bf1 = std::make_shared<BoolFactor>();
     bf1->_terms.push_back(nullPred);
-    boost::shared_ptr<BoolFactor> bf2 = boost::make_shared<BoolFactor>();
+    std::shared_ptr<BoolFactor> bf2 = std::make_shared<BoolFactor>();
     bf2->_terms.push_back(compPred);
     // OR together the BoolFactors created above and place
     // inside a BoolTermFactor.
-    boost::shared_ptr<OrTerm> bfs = boost::make_shared<OrTerm>();
+    std::shared_ptr<OrTerm> bfs = std::make_shared<OrTerm>();
     bfs->_terms.push_back(bf1);
     bfs->_terms.push_back(bf2);
-    boost::shared_ptr<BoolTermFactor> btf =
-        boost::make_shared<BoolTermFactor>();
+    std::shared_ptr<BoolTermFactor> btf =
+        std::make_shared<BoolTermFactor>();
     btf->_term = bfs;
     // Create PassTerm objects for parentheses.
     // TODO: remove this after DM-737 is resolved.
-    boost::shared_ptr<PassTerm> openParen = boost::make_shared<PassTerm>();
+    std::shared_ptr<PassTerm> openParen = std::make_shared<PassTerm>();
     openParen->_text = "(";
-    boost::shared_ptr<PassTerm> closeParen = boost::make_shared<PassTerm>();
+    std::shared_ptr<PassTerm> closeParen = std::make_shared<PassTerm>();
     closeParen->_text = ")";
     // Wrap everything up in a BoolFactor
-    boost::shared_ptr<BoolFactor> filter = boost::make_shared<BoolFactor>();
+    std::shared_ptr<BoolFactor> filter = std::make_shared<BoolFactor>();
     filter->_terms.push_back(openParen);
     filter->_terms.push_back(btf);
     filter->_terms.push_back(closeParen);
@@ -196,8 +195,8 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
     if (stmt.hasWhereClause()) {
         stmt.getWhereClause().prependAndTerm(filter);
     } else {
-        boost::shared_ptr<WhereClause> where =
-            boost::make_shared<WhereClause>();
+        std::shared_ptr<WhereClause> where =
+            std::make_shared<WhereClause>();
         where->prependAndTerm(filter);
         stmt.setWhereClause(where);
     }

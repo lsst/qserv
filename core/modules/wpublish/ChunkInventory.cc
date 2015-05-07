@@ -76,7 +76,7 @@ void fetchDbs(std::string const& instanceName,
 
     std::string listq = "SELECT db FROM " + tableNameDbListing;
     LOGF_DEBUG("Launching query : %1%" % listq);
-    boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
+    std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
     if(resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
@@ -214,7 +214,7 @@ ChunkInventory::ChunkInventory(std::string const& name)
     _init(sc);
 }
 ChunkInventory::ChunkInventory(std::string const& name,
-                               boost::shared_ptr<SqlConnection> sc)
+                               std::shared_ptr<SqlConnection> sc)
     : _name(name) {
     _init(*sc);
 }
@@ -236,8 +236,8 @@ bool ChunkInventory::has(std::string const& db, int chunk,
     }
 }
 
-boost::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
-    return boost::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
+std::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
+    return std::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
 }
 
 void ChunkInventory::dbgPrint(std::ostream& os) {

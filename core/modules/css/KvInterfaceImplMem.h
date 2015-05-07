@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,11 +35,9 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party
-#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "css/KvInterface.h"
@@ -63,7 +61,7 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 
-    boost::shared_ptr<KvInterfaceImplMem> clone() const;
+    std::shared_ptr<KvInterfaceImplMem> clone() const;
 
 protected:
     std::string _get(std::string const& key,

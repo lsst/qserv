@@ -26,8 +26,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
-#include "boost/shared_ptr.hpp"
+// System headers
+#include <memory>
 
 // Qserv headers
 #include "wdb/ChunkResource.h"

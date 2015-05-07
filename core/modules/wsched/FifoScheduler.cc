@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +35,6 @@
 // #include <iostream> // Enable for debugging.
 
 // Third-party headers
-#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 
@@ -106,7 +105,7 @@ FifoScheduler::_fetchTask() {
         wbase::Task::Ptr t = _queue.front();
         _queue.pop_front();
         assert(t); // Memory corruption if t is null.
-        tq = boost::make_shared<wbase::TaskQueue>();
+        tq = std::make_shared<wbase::TaskQueue>();
         tq->push_back(t);
     }
     return tq;

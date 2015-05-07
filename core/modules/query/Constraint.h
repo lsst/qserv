@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +35,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace lsst {
 namespace qserv {
@@ -61,7 +61,7 @@ typedef std::vector<Constraint> ConstraintVector;
 /// A SWIG-purposed wrapper of a ConstraintVector.
 class ConstraintVec {
 public:
-    ConstraintVec(boost::shared_ptr<ConstraintVector > v)
+    ConstraintVec(std::shared_ptr<ConstraintVector > v)
         : _vec(v) {}
 
     // SWIG-friendly interface
@@ -73,10 +73,10 @@ public:
         return _vec->size();
     }
     // Internal vector
-    boost::shared_ptr<ConstraintVector> getVector() { return _vec; }
+    std::shared_ptr<ConstraintVector> getVector() { return _vec; }
 
 private:
-    boost::shared_ptr<ConstraintVector> _vec;
+    std::shared_ptr<ConstraintVector> _vec;
 };
 
 }}} // namespace lsst::qserv::query

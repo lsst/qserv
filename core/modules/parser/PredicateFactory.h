@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,9 +32,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Third-party headers
 #include <antlr/AST.hpp>
-#include "boost/shared_ptr.hpp"
 
 // Forward declarations
 namespace lsst {
@@ -60,11 +62,11 @@ class PredicateFactory {
 public:
     explicit PredicateFactory(ValueExprFactory& vf)
         : _vf(vf) {}
-    boost::shared_ptr<query::CompPredicate> newCompPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
-    boost::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
-    boost::shared_ptr<query::NullPredicate> newNullPredicate(antlr::RefAST a);
+    std::shared_ptr<query::CompPredicate> newCompPredicate(antlr::RefAST a);
+    std::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
+    std::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
+    std::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
+    std::shared_ptr<query::NullPredicate> newNullPredicate(antlr::RefAST a);
 private:
     ValueExprFactory& _vf;
 };

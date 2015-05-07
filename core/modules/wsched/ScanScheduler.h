@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,8 +44,8 @@ namespace wsched {
 
 class ScanScheduler : public wcontrol::Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<ScanScheduler> Ptr;
-    typedef std::vector<boost::shared_ptr<ChunkDisk> > ChunkDiskList;
+    typedef std::shared_ptr<ScanScheduler> Ptr;
+    typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;
 
     ScanScheduler();
     virtual ~ScanScheduler() {}

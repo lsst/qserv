@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,11 +24,9 @@
 #define LSST_QSERV_SQL_STATEMENT_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -49,7 +47,7 @@ struct InsertColumn {
 typedef std::vector<InsertColumn> InsertColumnVector;
 
 /// Construct patch spec from a schema
-boost::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
+std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
 
 /// Compose a LOAD DATA INFILE statement
 std::string formLoadInfile(std::string const& table,
