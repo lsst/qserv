@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <sys/mman.h>
+#include <unistd.h>
 
 namespace lsst {
 namespace qserv {

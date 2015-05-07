@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <sys/mman.h>
+#include <unistd.h>
 
 namespace {
 int seekMagic(int start, char* buffer, int term) {

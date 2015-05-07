@@ -25,6 +25,7 @@
 // System headers
 #include <iostream>
 #include <sstream>
+#include <unistd.h>
 #include <vector>
 
 // Third-party headers
