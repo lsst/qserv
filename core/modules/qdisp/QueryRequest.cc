@@ -195,8 +195,6 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     _status.report(ExecStatus::RESPONSE_DATA);
     bool flushOk = _requester->flush(blen, last);
     if(flushOk) {
-        // last is not reliable in indicating this is the last message
-        auto sz = _requester->nextBuffer().size();
         if (last) {
             auto sz = _requester->nextBuffer().size();
             if (last && sz != 0) {
