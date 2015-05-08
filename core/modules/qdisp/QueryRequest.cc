@@ -241,6 +241,11 @@ bool QueryRequest::cancelled() {
     return _finishStatus == CANCELLED;
 }
 
+void QueryRequest::_cleanup() {
+    _retryFunc.reset();
+    _requester.reset();
+}
+
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
@@ -271,6 +276,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         (*finish)(false);
     }
     // canceller is responsible for deleting upon destruction
+    _cleanup(); // This causes the canceller to delete this.
 }
 
 /// Finalize under success conditions and report completion.
@@ -294,6 +300,7 @@ void QueryRequest::_finish() {
         (*finish)(true);
     }
     // canceller is responsible for deleting upon destruction
+    _cleanup(); // This causes the canceller to delete this.
 }
 
 /// Register a cancellation function with the query receiver in order to receive
