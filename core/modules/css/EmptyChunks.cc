@@ -21,6 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "css/EmptyChunks.h"
 
 // System headers
@@ -29,9 +30,6 @@
 #include <fstream>
 #include <functional>
 #include <memory>
-
-// Third-party headers
-#include "boost/thread.hpp"
 
 // Qserv headers
 #include "global/ConfigError.h"
@@ -74,7 +72,7 @@ namespace css {
 
 std::shared_ptr<IntSet const>
 EmptyChunks::getEmpty(std::string const& db) const {
-    boost::lock_guard<boost::mutex> lock(_setsMutex);
+    std::lock_guard<std::mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
     if(i != _sets.end()) {
         IntSetConstPtr readOnly = i->second;

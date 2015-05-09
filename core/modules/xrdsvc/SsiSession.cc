@@ -20,6 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/SsiSession.h"
 
 // System headers
@@ -27,7 +29,7 @@
 #include <string>
 #include <cctype>
 
-// Third-party
+// Third-party headers
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Qserv headers
@@ -178,7 +180,7 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
     {
-        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        std::lock_guard<std::mutex> lock(_cancelMutex);
         if(!_cancelled && cancel) { // Cancel if not already cancelled
             _cancelled = true;
             typedef std::vector<CancelFuncPtr>::iterator Iter;
@@ -213,7 +215,7 @@ SsiSession::Unprovision(bool forced) {
 void SsiSession::_addCanceller(CancelFuncPtr p) {
     bool shouldCall = false;
     {
-        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        std::lock_guard<std::mutex> lock(_cancelMutex);
         if(_cancelled) {
             // Don't add the canceller, just call it.
             shouldCall = true;

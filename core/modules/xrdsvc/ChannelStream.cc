@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,11 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/ChannelStream.h"
 
 // Third-party headers
-#include "boost/thread/locks.hpp"
 #include "boost/utility.hpp"
+
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -87,7 +90,7 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
     //LOGF_INFO("last=%1% %2%" % last % makeByteStreamAnnotated("StreamMsg", buf, bufLen));
     LOGF_INFO("last=%1% %2%" % last % util::prettyCharBuf(buf, bufLen, 10));
     {
-        boost::unique_lock<boost::mutex> lock(_mutex);
+        std::unique_lock<std::mutex> lock(_mutex);
         LOG_INFO(" trying to append message (flowing)");
 
         _msgs.push_back(std::string(buf, bufLen));
@@ -99,7 +102,7 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
 XrdSsiStream::Buffer*
 ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
         LOG_INFO("Waiting, no data ready");

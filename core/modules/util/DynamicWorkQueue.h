@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,11 +26,9 @@
 
 // System headers
 #include <map>
+#include <mutex>
 #include <set>
-
-// Third-party headers
-#include "boost/thread.hpp"
-
+#include <thread>
 
 namespace lsst {
 namespace qserv {
@@ -94,6 +92,8 @@ private:
     DynamicWorkQueue(DynamicWorkQueue const &);
     DynamicWorkQueue & operator=(DynamicWorkQueue const &);
 
+    static void _startRunner(DynamicWorkQueue& dwq);
+
     typedef std::map<void const *, Queue *> SessionQueueMap;
     typedef std::set<Queue *, QueuePtrCmp> QueueSet;
 
@@ -105,14 +105,14 @@ private:
     size_t const _minThreadsPerSession;
     size_t const _maxThreads;
 
-    boost::mutex              _mutex;
-    size_t                    _numCallables;
-    size_t                    _numThreads;
-    bool                      _exitNow;
-    SessionQueueMap           _sessions;
-    QueueSet                  _nonEmptyQueues;
-    boost::condition_variable _workAvailable;
-    boost::condition_variable _threadsExited;
+    std::mutex _mutex;
+    size_t _numCallables;
+    size_t _numThreads;
+    bool _exitNow;
+    SessionQueueMap _sessions;
+    QueueSet _nonEmptyQueues;
+    std::condition_variable _workAvailable;
+    std::condition_variable _threadsExited;
 
     friend struct Runner;
 };

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,6 +22,7 @@
  */
 // See MessageStore.h
 
+// Class header
 #include "qdisp/MessageStore.h"
 
 // System headers
@@ -49,7 +50,7 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
         LOGF_DEBUG("Msg: %1% %2% %3%" % chunkId % code % description);
     }
     {
-        boost::lock_guard<boost::mutex> lock(_storeMutex);
+        std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),
             QueryMessage(chunkId, code, description, std::time(0)));
     }

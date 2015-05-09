@@ -113,12 +113,12 @@ void ChunkDisk::IterablePq::_maintainHeap() {
 // ChunkDisk implementation
 ////////////////////////////////////////////////////////////////////////
 ChunkDisk::TaskSet ChunkDisk::getInflight() const {
-    boost::lock_guard<boost::mutex> lock(_inflightMutex);
+    std::lock_guard<std::mutex> lock(_inflightMutex);
     return TaskSet(_inflight);
 }
 
 void ChunkDisk::enqueue(TaskPtr a) {
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
     int chunkId = taskChunkId(*a);
     time(&a->entryTime);
     /// Compute entry time to reduce spurious valgrind errors
@@ -152,7 +152,7 @@ void ChunkDisk::enqueue(TaskPtr a) {
 /// Get the next task, popping it off the queue. Client must do
 /// something with this task.
 ChunkDisk::TaskPtr ChunkDisk::getNext(bool allowAdvance) {
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
 
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
@@ -194,7 +194,7 @@ ChunkDisk::TaskPtr ChunkDisk::getNext(bool allowAdvance) {
 bool ChunkDisk::busy() const {
     // Simplistic view, only one chunk in flight.
     // We are busy if the inflight list is non-empty
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
     bool busy = _chunkState.hasScan();
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk busyness: %1%" % (busy ? "yes" : "no"));
     return busy;
@@ -208,7 +208,7 @@ bool ChunkDisk::busy() const {
 }
 
 bool ChunkDisk::empty() const {
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
     return _activeTasks.empty() && _pendingTasks.empty();
 }
 struct matchHash {
@@ -219,7 +219,7 @@ struct matchHash {
     std::string hash;
 };
 int ChunkDisk::removeByHash(std::string const& hash) {
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
     int numErased;
     matchHash mh(hash);
     numErased = _activeTasks.removeIf(mh);
@@ -229,7 +229,7 @@ int ChunkDisk::removeByHash(std::string const& hash) {
 
 void
 ChunkDisk::registerInflight(TaskPtr const& e) {
-    boost::lock_guard<boost::mutex> lock(_inflightMutex);
+    std::lock_guard<std::mutex> lock(_inflightMutex);
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk registering for %1% : %2% p=%3%" %
             e->msg->chunkid() % e->msg->fragment(0).query(0) % (void*) e.get());
     _inflight.insert(e.get());
@@ -237,13 +237,13 @@ ChunkDisk::registerInflight(TaskPtr const& e) {
 }
 
 void ChunkDisk::removeInflight(TaskPtr const& e) {
-    boost::lock_guard<boost::mutex> lock(_inflightMutex);
+    std::lock_guard<std::mutex> lock(_inflightMutex);
     int chunkId = e->msg->chunkid();
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk remove for %1% : %2%" % chunkId %
             e->msg->fragment(0).query(0));
     _inflight.erase(e.get());
     {
-        boost::lock_guard<boost::mutex> lock(_queueMutex);
+        std::lock_guard<std::mutex> lock(_queueMutex);
         _chunkState.markComplete(chunkId);
     }
 }
@@ -251,7 +251,7 @@ void ChunkDisk::removeInflight(TaskPtr const& e) {
 
 // @return true if things are okay
 bool ChunkDisk::checkIntegrity() {
-    boost::lock_guard<boost::mutex> lock(_queueMutex);
+    std::lock_guard<std::mutex> lock(_queueMutex);
     // Check for chunk ids in all tasks.
     return checkQueueOk(_activeTasks) && checkQueueOk(_pendingTasks);
 }

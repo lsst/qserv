@@ -27,12 +27,10 @@
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
 // System headers
+#include <mutex>
 #include <vector>
 
-// Third-party headers
-#include "boost/thread.hpp" // boost::mutex
-
-// Local headers
+// Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/TransactionSpec.h"
@@ -123,7 +121,7 @@ private:
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
 
-    void _reapRequesters(boost::unique_lock<boost::mutex> const& requestersLock);
+    void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
     void _reportStatuses();
 
     void _waitAllUntilEmpty();
@@ -141,11 +139,11 @@ private:
     bool _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
-    boost::mutex _requestersMutex;
-    boost::condition_variable _requestersEmpty;
-    mutable boost::mutex _statusesMutex;
-    boost::mutex _retryMutex;
-    boost::mutex _cancelledMutex;
+    std::mutex _requestersMutex;
+    std::condition_variable _requestersEmpty;
+    mutable std::mutex _statusesMutex;
+    std::mutex _retryMutex;
+    std::mutex _cancelledMutex;
 
     typedef std::map<int,int> IntIntMap;
     IntIntMap _retryMap; ///< Counter for task retries.

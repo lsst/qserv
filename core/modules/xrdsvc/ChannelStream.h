@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,10 +25,10 @@
 
 // System headers
 #include <deque>
+#include <mutex>
+#include <thread>
 
 // Third-party headers
-#include "boost/thread/condition_variable.hpp"
-#include "boost/thread/mutex.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
@@ -54,8 +54,8 @@ private:
     bool _closed; ///< Closed to new append() calls?
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
     std::deque<std::string> _msgs; ///< Message queue
-    boost::mutex _mutex; ///< _msgs protection
-    boost::condition_variable _hasDataCondition; ///< _msgs condition
+    std::mutex _mutex; ///< _msgs protection
+    std::condition_variable _hasDataCondition; ///< _msgs condition
 };
 
 }}} // namespace lsst::qserv::xrdsvc

@@ -33,10 +33,11 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
-#include "boost/thread.hpp"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
@@ -142,7 +143,7 @@ Task::Task(Task::TaskMsgPtr t, std::shared_ptr<wbase::SendChannel> sc) {
 void Task::poison() {
     std::shared_ptr<util::VoidCallable<void> > func;
     {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         if(_poisonFunc && !_poisoned) {
             func.swap(_poisonFunc);
         }
@@ -156,7 +157,7 @@ void Task::poison() {
 void Task::setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc) {
     std::shared_ptr<util::VoidCallable<void> > func;
     {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         // Were we poisoned without a poison function available?
         if(_poisoned && !_poisonFunc) {
             func = _poisonFunc;

@@ -66,8 +66,6 @@
 // System headers
 #include <cassert>
 
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -136,7 +134,7 @@ std::string const& UserQuery::getError() const {
 /// Attempt to kill in progress.
 void UserQuery::kill() {
     LOGF_INFO("UserQuery kill");
-    boost::lock_guard<boost::mutex> lock(_killMutex);
+    std::lock_guard<std::mutex> lock(_killMutex);
     if(!_killed) {
         _killed = true;
         try {
@@ -229,7 +227,7 @@ void UserQuery::_discardMerger() {
 /// Release resources.
 void UserQuery::discard() {
     {
-        boost::lock_guard<boost::mutex> lock(_killMutex);
+        std::lock_guard<std::mutex> lock(_killMutex);
         if(_killed) {
             return;
         }

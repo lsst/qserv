@@ -27,10 +27,10 @@
 // System headers
 #include <cassert>
 #include <limits>
+#include <mutex>
 #include <string.h> // for memcpy
 
 // Third-party headers
-#include "boost/thread.hpp"
 #include <mysql/mysql.h>
 
 // Qserv headers
@@ -147,7 +147,7 @@ public:
     }
 
     std::shared_ptr<RowBuffer> get(std::string const& s) {
-        boost::lock_guard<boost::mutex> lock(_mapMutex);
+        std::lock_guard<std::mutex> lock(_mapMutex);
         RowBufferMap::iterator i = _map.find(s);
         if(i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
         return i->second;
@@ -159,21 +159,21 @@ private:
         std::ostringstream os;
         // Switch to boost::atomic when boost 1.53 or c++11 (std::atomic)
         static int sequence = 0;
-        static boost::mutex m;
-        boost::lock_guard<boost::mutex> lock(m);
+        static std::mutex m;
+        std::lock_guard<std::mutex> lock(m);
 
         os << "virtualinfile_" << ++sequence;
         return os.str();
     }
 
     void _set(std::string const& s, std::shared_ptr<RowBuffer> rb) {
-        boost::lock_guard<boost::mutex> lock(_mapMutex);
+        std::lock_guard<std::mutex> lock(_mapMutex);
         _map[s] = rb;
     }
 
     typedef std::map<std::string, std::shared_ptr<RowBuffer> > RowBufferMap;
     RowBufferMap _map;
-    boost::mutex _mapMutex;
+    std::mutex _mapMutex;
 };
 
 

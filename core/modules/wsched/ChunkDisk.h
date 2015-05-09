@@ -32,13 +32,11 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <set>
 #include <vector>
 
-// Third-party headers
-#include "boost/thread.hpp"
-
-// Local headers
+// Qserv headers
 #include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"
@@ -121,11 +119,11 @@ private:
     typedef IterablePq Queue;
 
 
-    mutable boost::mutex _queueMutex;
+    mutable std::mutex _queueMutex;
     Queue _activeTasks;
     Queue _pendingTasks;
     ChunkState _chunkState;
-    mutable boost::mutex _inflightMutex;
+    mutable std::mutex _inflightMutex;
     TaskSet _inflight;
     bool _completed;
     LOG_LOGGER _logger;

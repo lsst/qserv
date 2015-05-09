@@ -29,14 +29,13 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wsched/GroupScheduler.h"
 
 // System headers
 #include <iostream>
+#include <mutex>
 #include <sstream>
-
-// Third-party headers
-#include "boost/thread.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -69,13 +68,13 @@ GroupScheduler::removeByHash(std::string const& hash) {
 
 void
 GroupScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
 wbase::TaskQueuePtr
 GroupScheduler::nopAct(wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
     return _getNextIfAvail(running->size());
 }
@@ -85,7 +84,7 @@ GroupScheduler::nopAct(wbase::TaskQueuePtr running) {
 wbase::TaskQueuePtr
 GroupScheduler::newTaskAct(wbase::Task::Ptr incoming,
                            wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
     assert(running.get());
     _enqueueTask(incoming);
@@ -95,7 +94,7 @@ GroupScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 GroupScheduler::taskFinishAct(wbase::Task::Ptr finished,
                               wbase::TaskQueuePtr running) {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     assert(_integrityHelper());
 
     LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
@@ -106,7 +105,7 @@ GroupScheduler::taskFinishAct(wbase::Task::Ptr finished,
 /// @return true if data is okay.
 bool
 GroupScheduler::checkIntegrity() {
-    boost::lock_guard<boost::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     return _integrityHelper();
 }
 

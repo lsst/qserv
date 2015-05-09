@@ -23,8 +23,10 @@
 #ifndef LSST_QSERV_WSCHED_GROUPSCHEDULER_H
 #define LSST_QSERV_WSCHED_GROUPSCHEDULER_H
 
-// Local headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "wcontrol/Foreman.h"
 #include "wsched/GroupedQueue.h"
 
@@ -60,7 +62,7 @@ private:
     wbase::TaskQueuePtr _getNextIfAvail(int runCount);
     wbase::TaskQueuePtr _getNextTasks(int max);
 
-    boost::mutex _mutex;
+    std::mutex _mutex;
 
     Queue _queue;
     int _maxRunning;

@@ -32,7 +32,6 @@
 #include <string.h>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
 #include <mysql/mysql.h>
 
 // Qserv headers

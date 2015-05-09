@@ -25,7 +25,7 @@
 #define LSST_QSERV_UTIL_FORMAT_H
 
 // System headers
-#include <assert.h>
+#include <cassert>
 #include <regex.h>
 #include <string>
 #include <vector>

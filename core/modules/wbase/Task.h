@@ -28,10 +28,8 @@
 // System headers
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <string>
-
-// Third-party headers
-#include "boost/thread.hpp" // Mutexes
 
 // Qserv headers
 #include "util/Callable.h"
@@ -96,7 +94,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
 private:
-    boost::mutex _mutex; // Used for handling poison
+    std::mutex _mutex; // Used for handling poison
     std::shared_ptr<util::VoidCallable<void> > _poisonFunc;
     bool _poisoned; ///< To prevent multiple-poisonings
 };

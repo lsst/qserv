@@ -31,12 +31,10 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <string>
 
-// Third-party headers
-#include "boost/thread.hpp" // for mutex.
-
-// Local headers
+// Qserv headers
 #include "rproc/mergeTypes.h"
 
 // Forward declarations
@@ -166,8 +164,8 @@ private:
     InfileMergerError _error; ///< Error state
 
     bool _isFinished; ///< Completed?
-    boost::mutex _createTableMutex; ///< protection from creating tables
-    boost::mutex _sqlMutex; ///< Protection for SQL connection
+    std::mutex _createTableMutex; ///< protection from creating tables
+    std::mutex _sqlMutex; ///< Protection for SQL connection
 
     class Mgr;
     std::auto_ptr<Mgr> _mgr; ///< Delegate merging action object

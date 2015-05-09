@@ -26,9 +26,8 @@
 // System headers
 #include <deque>
 #include <memory>
-
-// Third-party headers
-#include "boost/thread.hpp"
+#include <mutex>
+#include <thread>
 
 namespace lsst {
 namespace qserv {
@@ -71,16 +70,18 @@ public:
 
 private:
     void _addRunner();
+    static void _startRunner(WorkQueue& wq);
+
     void _dropQueue(bool final=true);
 
     typedef std::deque<std::shared_ptr<Callable> > WorkDeque;
     typedef std::deque<Runner*> RunnerDeque;
 
-    boost::mutex _mutex;
-    boost::mutex _runnersMutex;
-    boost::condition_variable _queueNonEmpty;
-    boost::condition_variable _runnersEmpty;
-    boost::condition_variable _runnerRegistered;
+    std::mutex _mutex;
+    std::mutex _runnersMutex;
+    std::condition_variable _queueNonEmpty;
+    std::condition_variable _runnersEmpty;
+    std::condition_variable _runnerRegistered;
     WorkDeque _queue;
     bool _isDead;
     RunnerDeque _runners;

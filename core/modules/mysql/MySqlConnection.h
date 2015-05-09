@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,13 +27,14 @@
 #ifndef LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 #define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 
+// System headers
+#include <cassert>
+#include <memory>
+#include <mutex>
+
 // Third-party headers
-#include "boost/thread.hpp"
 #include "boost/utility.hpp"
-
-// Local headers
 #include <mysql/mysql.h>
-
 
 namespace lsst {
 namespace qserv {
@@ -76,7 +77,7 @@ public:
 private:
     bool _initMySql();
     MYSQL* _connectHelper();
-    static boost::mutex _mysqlShared;
+    static std::mutex _mysqlShared;
     static bool _mysqlReady;
 
     MYSQL* _mysql;
@@ -86,7 +87,7 @@ private:
     bool _useThreadMgmt;
     bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
     bool _interrupted; ///< true if cancellation requested
-    boost::mutex _interruptMutex;
+    std::mutex _interruptMutex;
 };
 
 }}} // namespace lsst::qserv::mysql

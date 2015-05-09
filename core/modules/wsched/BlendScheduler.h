@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
-// Local headers
+// Qserv headers
 #include "lsst/log/Log.h"
 #include "wcontrol/Foreman.h"
 
@@ -79,7 +79,7 @@ private:
     LOG_LOGGER _logger;
     typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;
-    boost::mutex _mapMutex;
+    std::mutex _mapMutex;
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -34,13 +34,12 @@
 #define LSST_QSERV_CSS_EMPTYCHUNKS_H
 
 // System headers
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
-// Third-party headers
-#include "boost/thread/mutex.hpp"
-
-// Local headers
+// Qserv headers
 #include "global/intTypes.h"
 
 namespace lsst {
@@ -75,7 +74,7 @@ private:
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks
     mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)
-    mutable boost::mutex _setsMutex;
+    mutable std::mutex _setsMutex;
 };
 
 }}} // namespace lsst::qserv::css

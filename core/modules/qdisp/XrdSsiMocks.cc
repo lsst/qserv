@@ -26,12 +26,10 @@
 // System headers
 #include <string>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
 
-// External headers
-#include "boost/thread.hpp"
-
-// lsst headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Local headers
@@ -75,7 +73,7 @@ bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
     }
     _count.incr();
 
-    boost::thread t(&XrdSsiServiceMock::mockProvisionTest, this, qr, timeOut);
+    std::thread t(&XrdSsiServiceMock::mockProvisionTest, this, qr, timeOut);
     // Thread must live past the end of this function, and the calling body
     // is not really dealing with threads, and this is for testing only.
     t.detach();
@@ -91,7 +89,7 @@ void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr, unsigned sho
     // barrier for all threads when _go is false.
     _go.wait(true);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep begin");
-    boost::this_thread::sleep(boost::posix_time::milliseconds(millisecs));
+    usleep(1000*millisecs);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
     QueryResourceDebug::getStatus(*qr).report(ExecStatus::RESPONSE_DONE);
     QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()

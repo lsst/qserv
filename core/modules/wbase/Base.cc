@@ -39,6 +39,8 @@
 #include <fstream>
 #include <glob.h>
 #include <iostream>
+#include <sstream>
+#include <string.h> // memcpy
 
 // Third-party headers
 #include "boost/format.hpp"
@@ -212,7 +214,7 @@ void StringBuffer::addBuffer(
 #  if DO_NOT_USE_BOOST
     UniqueLock lock(_mutex);
 #  else
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
 #  endif
     _ss << std::string(buffer,bufferSize);
     _totalSize += bufferSize;
@@ -224,7 +226,7 @@ void StringBuffer::addBuffer(
 #  if DO_NOT_USE_BOOST
         UniqueLock lock(_mutex);
 #  else
-        boost::unique_lock<boost::mutex> lock(_mutex);
+        std::unique_lock<std::mutex> lock(_mutex);
 #  endif
         _buffers.push_back(Fragment(offset, newItem, bufferSize));
         _totalSize += bufferSize;
@@ -238,8 +240,8 @@ std::string StringBuffer::getStr() const {
 #   if DO_NOT_USE_BOOST
     UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
 #   else
-    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
-    boost::unique_lock<boost::mutex> lock(mutex);
+    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
+    std::unique_lock<std::mutex> lock(mutex);
 #   endif
     return _ss.str();
 #else
@@ -278,8 +280,8 @@ std::string StringBuffer::getDigest() const {
 #if DO_NOT_USE_BOOST
     UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
 #else
-    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
-    boost::unique_lock<boost::mutex> lock(mutex);
+    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
+    std::unique_lock<std::mutex> lock(mutex);
 #endif
     int length = 200;
     if(length > _totalSize)
@@ -321,7 +323,7 @@ void StringBuffer::reset() {
 #if DO_NOT_USE_BOOST
         UniqueLock lock(_mutex);
 #else
-        boost::unique_lock<boost::mutex> lock(_mutex);
+        std::unique_lock<std::mutex> lock(_mutex);
 #endif
         std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
         _buffers.clear();
@@ -338,7 +340,7 @@ void StringBuffer2::addBuffer(
 #  if DO_NOT_USE_BOOST
     UniqueLock lock(_mutex);
 #  else
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
 #  endif
     if(_bufferSize < offset+bufferSize) {
         _setSize(offset+bufferSize);
@@ -353,8 +355,8 @@ std::string StringBuffer2::getStr() const {
 #if DO_NOT_USE_BOOST
     UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
 #else
-    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
-    boost::unique_lock<boost::mutex> lock(mutex);
+    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
+    std::unique_lock<std::mutex> lock(mutex);
 #endif
     assert(_bytesWritten == _bufferSize); //no holes.
     return std::string(_buffer, _bytesWritten);
@@ -366,8 +368,8 @@ char const* StringBuffer2::getData() const {
 #if DO_NOT_USE_BOOST
     UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
 #else
-    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
-    boost::unique_lock<boost::mutex> lock(mutex);
+    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
+    std::unique_lock<std::mutex> lock(mutex);
 #endif
     assert(_bytesWritten == _bufferSize); //no holes.
     return _buffer;
@@ -381,7 +383,7 @@ void StringBuffer2::reset() {
 #if DO_NOT_USE_BOOST
     UniqueLock lock(_mutex);
 #else
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
 #endif
     if(_buffer) {
         delete[] _buffer;

@@ -25,10 +25,9 @@
 #define LSST_QSERV_UTIL_REGEX_H
 
 // System headers
-#include <assert.h>
+#include <cassert>
 #include <regex.h>
 #include <string>
-
 
 namespace lsst {
 namespace qserv {

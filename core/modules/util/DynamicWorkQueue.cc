@@ -26,8 +26,12 @@
 #include "util/DynamicWorkQueue.h"
 
 // System headers
+#include <cassert>
 #include <stdexcept>
 #include <sys/time.h>
+
+// Third-party headers
+#include <boost/scoped_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
@@ -127,7 +131,7 @@ struct DynamicWorkQueue::Runner {
 };
 
 void DynamicWorkQueue::Runner::operator()() {
-    boost::unique_lock<boost::mutex> lock(wq._mutex);
+    std::unique_lock<std::mutex> lock(wq._mutex);
     do {
         // Wait for work or an exit signal.
         while (wq._nonEmptyQueues.empty() && !wq._exitNow) {
@@ -186,6 +190,11 @@ void DynamicWorkQueue::Runner::operator()() {
     }
 }
 
+void
+DynamicWorkQueue::_startRunner(DynamicWorkQueue& dwq) {
+    Runner r(dwq);
+    r();
+}
 
 DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
                                    size_t minThreadsPerSession,
@@ -202,13 +211,13 @@ DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
         throw std::runtime_error("Invalid DynamicWorkQueue min/max thread counts.");
     }
     for (size_t n = _numThreads; n != 0; --n) {
-        boost::thread(Runner(*this));
+        std::thread(Runner(*this));
     }
 }
 
 DynamicWorkQueue::~DynamicWorkQueue()
 {
-    boost::unique_lock<boost::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     // Signal all threads to exit, and wait until they do. This
     // is necessary because each Runner created by this DynamicWorkQueue
     // has a reference to *this which must not be invalidated from underfoot.
@@ -229,9 +238,10 @@ DynamicWorkQueue::~DynamicWorkQueue()
 void DynamicWorkQueue::add(void const * session,
                            DynamicWorkQueue::Callable * callable)
 {
-    boost::lock_guard<boost::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     if (_shouldIncreaseThreadCount()) {
-        boost::thread(Runner(*this));
+        std::thread t(_startRunner, std::ref(*this));
+        t.detach();
         // Increment the thread count. Note, if this were done by Runner in
         // operator()(), the following sequence of events would become
         // possible:
@@ -280,7 +290,7 @@ void DynamicWorkQueue::cancelQueued(void const * session)
 {
     Callable * c = 0;
     {
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         SessionQueueMap::iterator i = _sessions.find(session);
         if (i != _sessions.end()) {
             Queue * q = i->second;

@@ -34,10 +34,10 @@
 
 // System headers
 #include <iostream>
+#include <mutex>
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/thread.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -255,7 +255,7 @@ public:
                  StringVector const& tables,
                  IntVector const& sc, Backend::Ptr backend) {
         ScTableVector needed;
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         ++_refCount; // Increase usage count
         StringVector::const_iterator ti, te;
         for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
@@ -290,7 +290,7 @@ public:
                  StringVector const& tables,
                  IntVector const& sc, Backend::Ptr backend) {
         {
-            boost::lock_guard<boost::mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             StringVector::const_iterator ti, te;
             for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
                 SubChunkMap& scm = _tableMap[*ti]; // Should be in there.
@@ -314,7 +314,7 @@ public:
     void flush(std::string const& db, Backend::Ptr backend) {
         ScTableVector discardable;
 
-        boost::lock_guard<boost::mutex> lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         TableMap::iterator ti, te;
         for(ti=_tableMap.begin(), te=_tableMap.end(); ti != te; ++ti) {
             IntVector mapDiscardable;
@@ -359,7 +359,7 @@ private:
     int _chunkId;
     int _refCount; ///< Number of known users
     TableMap _tableMap; ///< tables in use
-    boost::mutex _mutex;
+    std::mutex _mutex;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -391,7 +391,7 @@ public:
             std::cout << "Releasing: " << i << std::endl;
         }
         {
-            boost::lock_guard<boost::mutex> lock(_mapMutex);
+            std::lock_guard<std::mutex> lock(_mapMutex);
             Map& map = _getMap(i.db);
             ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
             ce.release(i.db, i.tables, i.subChunkIds, _backend);
@@ -402,7 +402,7 @@ public:
             std::cout << "Acquiring: " << i << std::endl;
         }
         {
-            boost::lock_guard<boost::mutex> lock(_mapMutex);
+            std::lock_guard<std::mutex> lock(_mapMutex);
             Map& map = _getMap(i.db); // Select db
             ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
             // Actually acquire
@@ -449,7 +449,7 @@ private:
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
     std::shared_ptr<Backend> _backend;
-    boost::mutex _mapMutex; // Do not alter map without this mutex
+    std::mutex _mapMutex; // Do not alter map without this mutex
 };
 
 ////////////////////////////////////////////////////////////////////////

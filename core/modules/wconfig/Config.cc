@@ -31,9 +31,6 @@
 #include <cassert>
 #include <sstream>
 
-// Third-party headers
-#include "boost/thread/once.hpp"
-
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
@@ -57,16 +54,6 @@ static const char* settings[settingsCount][4] = {
     {"numThreads", "QSW_NUMTHREADS", "4",
      "Number of in-flight query threads allowed."}
 };
-
-// Singleton Config object support /////////////////////////////////////
-Config& getConfigHelper() {
-    static Config c;
-    return c;
-}
-void callOnceHelper() {
-    getConfigHelper();
-}
-boost::once_flag configHelperFlag = BOOST_ONCE_INIT;
 
 // Validator code /////////////////////////////////////////////////////
 bool isExecutable(std::string const& execFile) {
@@ -171,8 +158,8 @@ void Config::_validate() {
 
 ////////////////////////////////////////////////////////////////////////
 Config& getConfig() {
-    boost::call_once(callOnceHelper, configHelperFlag);
-    return getConfigHelper();
+    static Config c;
+    return c;
 }
 
 }}} // namespace lsst::qserv::wconfig

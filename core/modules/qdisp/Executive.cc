@@ -37,11 +37,11 @@
 // Class header
 #include "qdisp/Executive.h"
 
-// Third-party headers
-
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <chrono>
+#include <functional>
 #include <iostream>
 #include <sstream>
 
@@ -83,15 +83,15 @@ void populateState(lsst::qserv::qdisp::ExecStatus& es,
 /// Atomically set var to value.
 /// @param m the mutex protecting var.
 /// @return previous value of var.
-inline bool atomicSet(bool& var, bool value, boost::mutex& m) {
-    boost::lock_guard<boost::mutex> lock(m);
+inline bool atomicSet(bool& var, bool value, std::mutex& m) {
+    std::lock_guard<std::mutex> lock(m);
     bool oldValue = var;
     var = value;
     return oldValue;
 }
 
-inline bool lockedRead(bool& var, boost::mutex& m) {
-    boost::lock_guard<boost::mutex> lock(m);
+inline bool lockedRead(bool& var, std::mutex& m) {
+    std::lock_guard<std::mutex> lock(m);
     return var;
 }
 
@@ -137,7 +137,7 @@ public:
     }
 
     static Ptr newInstance(qdisp::Executive& e, int refNum) {
-        return std::make_shared<NotifyExecutive>(boost::ref(e), refNum);;
+        return std::make_shared<NotifyExecutive>(std::ref(e), refNum);;
     }
 private:
     qdisp::Executive& _executive;
@@ -220,7 +220,7 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-        boost::lock_guard<boost::mutex> lock(_statusesMutex);
+        std::lock_guard<std::mutex> lock(_statusesMutex);
         sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
     }
 
@@ -240,7 +240,7 @@ void Executive::markCompleted(int refNum, bool success) {
     LOGF_INFO("Executive::markCompleted(%1%,%2%)" % refNum % success);
     if(!success) {
         {
-            boost::lock_guard<boost::mutex> lock(_requestersMutex);
+            std::lock_guard<std::mutex> lock(_requestersMutex);
             RequesterMap::iterator i = _requesters.find(refNum);
             if(i != _requesters.end()) {
                 e = i->second->getError();
@@ -253,7 +253,7 @@ void Executive::markCompleted(int refNum, bool success) {
             }
         }
         {
-            boost::lock_guard<boost::mutex> lock(_statusesMutex);
+            std::lock_guard<std::mutex> lock(_statusesMutex);
             _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         }
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
@@ -276,7 +276,7 @@ void Executive::requestSquash(int refNum) {
     bool needToWarn = false;
     ResponseRequester::Error e;
     {
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        std::lock_guard<std::mutex> lock(_requestersMutex);
         RequesterMap::iterator i = _requesters.find(refNum);
         if(i != _requesters.end()) {
             ResponseRequester::Error e = i->second->getError();
@@ -310,7 +310,7 @@ void Executive::squash() {
     std::ostringstream os;
     os << "STATE=";
     {
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        std::lock_guard<std::mutex> lock(_requestersMutex);
         _printState(os);
         RequesterMap::iterator i,e;
         for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
@@ -347,12 +347,12 @@ struct printMapEntry {
 };
 
 int Executive::getNumInflight() {
-    boost::unique_lock<boost::mutex> lock(_requestersMutex);
+    std::unique_lock<std::mutex> lock(_requestersMutex);
     return _requesters.size();
 }
 
 std::string Executive::getProgressDesc() const {
-    boost::lock_guard<boost::mutex> lock(_statusesMutex);
+    std::lock_guard<std::mutex> lock(_statusesMutex);
     std::ostringstream os;
     std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
     LOGF_ERROR("%1%" % os.str());
@@ -418,7 +418,7 @@ void Executive::_setup() {
 /// been attempted. Increments the retry counter as a side effect.
 bool Executive::_shouldRetry(int refNum) {
     const int MAX_RETRY = 5;
-    boost::lock_guard<boost::mutex> lock(_retryMutex);
+    std::lock_guard<std::mutex> lock(_retryMutex);
     IntIntMap::iterator i = _retryMap.find(refNum);
     if(i == _retryMap.end()) {
         _retryMap[refNum] = 1;
@@ -433,7 +433,7 @@ bool Executive::_shouldRetry(int refNum) {
 ExecStatus::Ptr Executive::_insertNewStatus(int refNum,
                                             ResourceUnit const& r) {
     ExecStatus::Ptr es = std::make_shared<ExecStatus>(r);
-    boost::lock_guard<boost::mutex> lock(_statusesMutex);
+    std::lock_guard<std::mutex> lock(_statusesMutex);
     _statuses.insert(StatusMap::value_type(refNum, es));
     return es;
 }
@@ -441,11 +441,11 @@ ExecStatus::Ptr Executive::_insertNewStatus(int refNum,
 template <typename Map, typename Ptr>
 bool trackHelper(void* caller, Map& m, typename Map::key_type key,
                  Ptr ptr,
-                 boost::mutex& mutex) {
+                 std::mutex& mutex) {
     assert(ptr);
     {
         LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)caller % key);
-        boost::lock_guard<boost::mutex> lock(mutex);
+        std::lock_guard<std::mutex> lock(mutex);
         if(m.find(key) == m.end()) {
             m[key] = ptr;
         } else {
@@ -459,7 +459,7 @@ bool Executive::_track(int refNum, RequesterPtr r) {
     assert(r);
     {
         LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)this % refNum);
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        std::lock_guard<std::mutex> lock(_requestersMutex);
         if(_requesters.find(refNum) == _requesters.end()) {
             _requesters[refNum] = r;
         } else {
@@ -472,7 +472,7 @@ bool Executive::_track(int refNum, RequesterPtr r) {
 void Executive::_unTrack(int refNum) {
     bool untracked = false;
     {
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        std::lock_guard<std::mutex> lock(_requestersMutex);
         RequesterMap::iterator i = _requesters.find(refNum);
         if(i != _requesters.end()) {
             _requesters.erase(i);
@@ -488,7 +488,7 @@ void Executive::_unTrack(int refNum) {
 /// This function only acts when there are errors. In there are no errors,
 /// markCompleted() does the cleanup, while we are waiting (in
 /// _waitAllUntilEmpty()).
-void Executive::_reapRequesters(boost::unique_lock<boost::mutex> const&) {
+void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     RequesterMap::iterator i, e;
     while(true) {
         bool reaped = false;
@@ -509,7 +509,7 @@ void Executive::_reapRequesters(boost::unique_lock<boost::mutex> const&) {
 }
 
 void Executive::_reportStatuses() {
-    boost::lock_guard<boost::mutex> lock(_statusesMutex);
+    std::lock_guard<std::mutex> lock(_statusesMutex);
     StatusMap::const_iterator i,e;
     for(i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
         ExecStatus::Info info = i->second->getInfo();
@@ -529,12 +529,12 @@ void Executive::_reportStatuses() {
 /// Typically the requesters are handled by markCompleted().
 /// _reapRequesters() deals with cases that involve errors.
 void Executive::_waitAllUntilEmpty() {
-    boost::unique_lock<boost::mutex> lock(_requestersMutex);
+    std::unique_lock<std::mutex> lock(_requestersMutex);
     int lastCount = -1;
     int count;
     int moreDetailThreshold = 5;
     int complainCount = 0;
-    const boost::posix_time::seconds statePrintDelay(5);
+    const std::chrono::seconds statePrintDelay(5);
     //_printState(LOG_STRM(Debug));
     while(!_requesters.empty()) {
         count = _requesters.size();
@@ -555,7 +555,7 @@ void Executive::_waitAllUntilEmpty() {
                 lock.lock();
             }
         }
-        _requestersEmpty.timed_wait(lock, statePrintDelay);
+        _requestersEmpty.wait_for(lock, statePrintDelay);
     }
 }
 

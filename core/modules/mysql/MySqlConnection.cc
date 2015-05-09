@@ -53,7 +53,7 @@ namespace mysql {
 
 // Statics
 bool MySqlConnection::_mysqlReady = false;
-boost::mutex MySqlConnection::_mysqlShared;
+std::mutex MySqlConnection::_mysqlShared;
 
 
 MySqlConnection::MySqlConnection()
@@ -104,7 +104,7 @@ MySqlConnection::queryUnbuffered(std::string const& query) {
     // run query, store into list.
     int rc;
     {
-        boost::lock_guard<boost::mutex> lock(_interruptMutex);
+        std::lock_guard<std::mutex> lock(_interruptMutex);
         _isExecuting = true;
         _interrupted = false;
     }
@@ -123,7 +123,7 @@ MySqlConnection::queryUnbuffered(std::string const& query) {
 /// -1 indicates NOP: No query in progress or query already interrupted.
 int
 MySqlConnection::cancel() {
-    boost::lock_guard<boost::mutex> lock(_interruptMutex);
+    std::lock_guard<std::mutex> lock(_interruptMutex);
     int rc;
     if(!_isExecuting || _interrupted) {
         // Should we log this?
@@ -165,7 +165,7 @@ bool
 MySqlConnection::_initMySql() {
     _isConnected = false; // reset.
     _mysql = NULL;
-    boost::lock_guard<boost::mutex> g(_mysqlShared);
+    std::lock_guard<std::mutex> g(_mysqlShared);
     if(!_mysqlReady) {
         int rc = mysql_library_init(0, NULL, NULL);
         assert(0 == rc);

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,11 +26,11 @@
 
 // System headers
 #include <deque>
+#include <mutex>
 #include <sstream>
 #include <string>
 
 // Third-party headers
-#include "boost/thread.hpp"
 #include "boost/format.hpp"
 
 // Forward declarations
@@ -112,7 +112,7 @@ private:
 #if DO_NOT_USE_BOOST
     XrdSysMutex _mutex;
 #else
-    boost::mutex _mutex;
+    std::mutex _mutex;
 #endif
     std::stringstream _ss;
     };
@@ -133,7 +133,7 @@ private:
 #if DO_NOT_USE_BOOST
     XrdSysMutex _mutex;
 #else
-    boost::mutex _mutex;
+    std::mutex _mutex;
 #endif
     char* _buffer;
     unsigned _bufferSize;

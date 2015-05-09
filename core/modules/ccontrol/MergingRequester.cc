@@ -186,7 +186,7 @@ bool MergingRequester::reset() {
 
 void MergingRequester::cancel() {
     {
-        boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+        std::lock_guard<std::mutex> lock(_cancelledMutex);
         _setError(log::MSG_EXEC_SQUASHED, "Cancellation requested");
         _cancelled = true;
     }
@@ -208,7 +208,7 @@ void MergingRequester::_initState() {
 }
 
 bool MergingRequester::_merge() {
-    boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+    std::lock_guard<std::mutex> lock(_cancelledMutex);
     if(_cancelled) {
         LOGF_INFO("MergingRequester::_merge(), but already cancelled");
         return false;
@@ -229,7 +229,7 @@ bool MergingRequester::_merge() {
 void MergingRequester::_setError(int code, std::string const& msg) {
     LOGF_INFO("setError");
     LOGF_INFO("setError %1% %2%" % code % msg);
-    boost::lock_guard<boost::mutex> lock(_errorMutex);
+    std::lock_guard<std::mutex> lock(_errorMutex);
     _error.code = code;
     _error.msg = msg;
 }

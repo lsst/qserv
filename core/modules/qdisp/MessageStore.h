@@ -34,10 +34,10 @@
 
 // System headers
 #include <ctime>
+#include <mutex>
 #include <string>
+#include <vector>
 
-// Third-party headers
-#include "boost/thread.hpp" // for mutex.
 
 namespace lsst {
 namespace qserv {
@@ -68,7 +68,7 @@ public:
     const int messageCount(int code);
 
 private:
-    boost::mutex _storeMutex;
+    std::mutex _storeMutex;
     std::vector<QueryMessage> _queryMessages;
 };
 

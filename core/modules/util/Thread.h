@@ -25,6 +25,7 @@
 #define LSST_QSERV_UTIL_THREAD_H
 
 // System headers
+#include <cassert>
 #include <set>
 
 // Third-party headers
@@ -32,7 +33,8 @@
 
 #ifdef DO_NOT_USE_BOOST
 #else
-#include "boost/thread.hpp"
+#include <mutex>
+#include <thread>
 #endif
 
 namespace lsst {
@@ -73,7 +75,7 @@ public:
 
     void proberen() {
         // Lock the count variable
-        boost::unique_lock<boost::mutex> lock(_countLock);
+        std::unique_lock<std::mutex> lock(_countLock);
         while(_count <= 0) {
             //     sleep (release lock) until wakeup
             _countCondition.wait(lock);
@@ -86,7 +88,7 @@ public:
     void verhogen() {
         {
             // Lock the count variable.
-            boost::lock_guard<boost::mutex> lock(_countLock);
+            std::lock_guard<std::mutex> lock(_countLock);
             ++_count;
         }
         // Wake up one of the waiters.
@@ -96,15 +98,15 @@ public:
     inline void get() { proberen(); }
     inline void release() { verhogen(); }
 private:
-    boost::mutex _countLock;
-    boost::condition_variable _countCondition;
+    std::mutex _countLock;
+    std::condition_variable _countCondition;
     int _count;
 };
 
 #endif
 
 /// An xrootd-dependent thread library that
-/// roughly follows boost::thread semantics.
+/// roughly follows std::thread semantics.
 class ThreadDetail {
 public:
     virtual ~ThreadDetail() {}

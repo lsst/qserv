@@ -29,8 +29,6 @@
 #define BOOST_TEST_MODULE Qdisp_1
 #include "boost/test/included/unit_test.hpp"
 
-// External headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -173,7 +171,7 @@ void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt 
  */
 void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
     LOGF_INFO("timeoutFunc");
-    boost::this_thread::sleep(boost::posix_time::milliseconds(millisecs));
+    usleep(1000*millisecs);
     bool done = flagDone.get();
     LOGF_INFO("timeoutFunc sleep over millisecs=%1% done=%2%" % millisecs % done);
     BOOST_REQUIRE(done == true);
@@ -194,7 +192,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
     int jobs = 0;
     // test single instance
     int millisInt = 200;
-    boost::thread timeoutT(&timeoutFunc, boost::ref(done), millisInt*10);
+    std::thread timeoutT(&timeoutFunc, std::ref(done), millisInt*10);
     std::string millis(boost::lexical_cast<std::string>(millisInt));
     ++jobs;
     executiveTest(ex, sequence, chunkId, millis, 1);
@@ -216,7 +214,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
     jobs += 5;
     while (qdisp::XrdSsiServiceMock::_count.get() < jobs) {
         LOGF_INFO("waiting for _count(%1%) == jobs(%2%)" % qdisp::XrdSsiServiceMock::_count.get() % jobs);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+        usleep(10000);
     }
     BOOST_CHECK(ex.getEmpty() == false);
     qdisp::XrdSsiServiceMock::_go.set(true);
@@ -296,7 +294,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     qdisp::XrdSsiSessionMock sessionMock(buf);
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
     std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
-    //        std::make_shared<RetryTest>(boost::ref(ex), refNum, boost::ref(s), boost::ref(status));
+    //        std::make_shared<RetryTest>(std::ref(ex), refNum, std::ref(s), std::ref(status));
     qdisp::ExecStatus status(ru);
     std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
     std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
