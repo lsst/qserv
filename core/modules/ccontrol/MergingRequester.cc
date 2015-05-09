@@ -84,8 +84,8 @@ bool MergingRequester::flush(int bLen, bool last) {
     LOGF_INFO("flush state=%1% blen=%2% last=%3%" % getStateStr(_state) % bLen % last);
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
         if(_state != MsgState::RESULT_EXTRA) {
-            LOGF_ERROR("MergingRequester size mismatch: expected %1%  got %2%"
-                   % _buffer.size() % bLen);
+            LOGF_ERROR("MergingRequester size mismatch: expected %1% got %2%"
+                       % _buffer.size() % bLen);
             // Worker sent corrupted data, or there is some other error.
         }
     }

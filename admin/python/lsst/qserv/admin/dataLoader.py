@@ -693,10 +693,9 @@ class DataLoader(object):
                 # just make regular chunk with special ID, do not load any data
                 self._makeChunkAndOverlapTable(conn, database, table, 1234567890)
             else:
-                # TODO: table is a actually a view, need somethig special. Old loader was
+                # TODO: table is a actually a view, need something special. Old loader was
                 # creating new view just by renaming Table to Table_1234567890, I'm not sure
-                # this is a correct procedure. In any case here is the code that does it
-
+                # this is a correct procedure. In any case here is the code that does it.
                 cursor = conn.cursor()
                 q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
 
