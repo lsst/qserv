@@ -30,6 +30,7 @@
 // System headers
 #include <cassert>
 #include <sstream>
+#include <unistd.h>
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"

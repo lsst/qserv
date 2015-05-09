@@ -25,10 +25,10 @@
 #define LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
 
 // System headers
+#include <condition_variable>
 #include <map>
 #include <mutex>
 #include <set>
-#include <thread>
 
 namespace lsst {
 namespace qserv {

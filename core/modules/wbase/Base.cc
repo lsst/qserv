@@ -211,11 +211,7 @@ ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
 void StringBuffer::addBuffer(
     StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
 #if QSERV_USE_STUPID_STRING
-#  if DO_NOT_USE_BOOST
-    UniqueLock lock(_mutex);
-#  else
     std::unique_lock<std::mutex> lock(_mutex);
-#  endif
     _ss << std::string(buffer,bufferSize);
     _totalSize += bufferSize;
 #else
@@ -223,11 +219,7 @@ void StringBuffer::addBuffer(
     assert(newItem != (char*)0);
     memcpy(newItem, buffer, bufferSize);
     { // Assume(!) that there are no overlapping writes.
-#  if DO_NOT_USE_BOOST
-        UniqueLock lock(_mutex);
-#  else
         std::unique_lock<std::mutex> lock(_mutex);
-#  endif
         _buffers.push_back(Fragment(offset, newItem, bufferSize));
         _totalSize += bufferSize;
     }
@@ -237,12 +229,8 @@ void StringBuffer::addBuffer(
 std::string StringBuffer::getStr() const {
 #if QSERV_USE_STUPID_STRING
     // Cast away const in order to lock.
-#   if DO_NOT_USE_BOOST
-    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
-#   else
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-#   endif
     return _ss.str();
 #else
     std::string accumulated;
@@ -277,12 +265,8 @@ std::string StringBuffer::getStr() const {
 std::string StringBuffer::getDigest() const {
 #if QSERV_USE_STUPID_STRING
     // Cast away const in order to lock.
-#if DO_NOT_USE_BOOST
-    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
-#else
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-#endif
     int length = 200;
     if(length > _totalSize)
         length = _totalSize;
@@ -320,11 +304,7 @@ StringBufferOffset StringBuffer::getLength() const {
 
 void StringBuffer::reset() {
     {
-#if DO_NOT_USE_BOOST
-        UniqueLock lock(_mutex);
-#else
         std::unique_lock<std::mutex> lock(_mutex);
-#endif
         std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
         _buffers.clear();
     }
@@ -336,12 +316,7 @@ void StringBuffer::reset() {
 //////////////////////////////////////////////////////////////////////
 void StringBuffer2::addBuffer(
     StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
-
-#  if DO_NOT_USE_BOOST
-    UniqueLock lock(_mutex);
-#  else
     std::unique_lock<std::mutex> lock(_mutex);
-#  endif
     if(_bufferSize < offset+bufferSize) {
         _setSize(offset+bufferSize);
     }
@@ -352,12 +327,8 @@ void StringBuffer2::addBuffer(
 std::string StringBuffer2::getStr() const {
     // Bad idea to call this if the buffer has holes.
     // Cast away const in order to lock.
-#if DO_NOT_USE_BOOST
-    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
-#else
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-#endif
     assert(_bytesWritten == _bufferSize); //no holes.
     return std::string(_buffer, _bytesWritten);
 }
@@ -365,12 +336,8 @@ std::string StringBuffer2::getStr() const {
 char const* StringBuffer2::getData() const {
     // Don't call this unless the buffer has no holes.
     // Cast away const in order to lock.
-#if DO_NOT_USE_BOOST
-    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
-#else
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-#endif
     assert(_bytesWritten == _bufferSize); //no holes.
     return _buffer;
 }
@@ -380,11 +347,7 @@ StringBufferOffset StringBuffer2::getLength() const {
 }
 
 void StringBuffer2::reset() {
-#if DO_NOT_USE_BOOST
-    UniqueLock lock(_mutex);
-#else
     std::unique_lock<std::mutex> lock(_mutex);
-#endif
     if(_buffer) {
         delete[] _buffer;
         _buffer = 0;

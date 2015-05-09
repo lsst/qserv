@@ -29,6 +29,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <sys/time.h>
+#include <thread>
 
 // Third-party headers
 #include <boost/scoped_ptr.hpp>

@@ -26,46 +26,16 @@
 
 // System headers
 #include <cassert>
+#include <condition_variable>
+#include <mutex>
 #include <set>
 
 // Third-party headers
 #include "XrdSys/XrdSysPthread.hh"
 
-#ifdef DO_NOT_USE_BOOST
-#else
-#include <mutex>
-#include <thread>
-#endif
-
 namespace lsst {
 namespace qserv {
 namespace util {
-
-#ifdef DO_NOT_USE_BOOST
-/// xrootd-dependent unique_lock
-class UniqueLock { // scoped lock.
-public:
-    explicit UniqueLock(XrdSysMutex& m) : _m(m) {
-	_m.Lock();
-    }
-    ~UniqueLock() { _m.UnLock(); }
-private:
-    XrdSysMutex& _m;
-};
-
-/// An xrootd-dependent semaphore wrapper
-class Semaphore {
-public:
-    explicit Semaphore(int count=0) : _sema(count) {}
-    inline void proberen() { _sema.Wait(); }
-    inline void verhogen() { _sema.Post(); }
-    inline void get() { proberen(); }
-    inline void release() { verhogen(); }
-private:
-    XrdSysSemaphore _sema;
-};
-
-#else
 
 class Semaphore {
 public:
@@ -103,7 +73,6 @@ private:
     int _count;
 };
 
-#endif
 
 /// An xrootd-dependent thread library that
 /// roughly follows std::thread semantics.

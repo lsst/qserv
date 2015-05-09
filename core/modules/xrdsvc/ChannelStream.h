@@ -24,9 +24,9 @@
 #define LSST_QSERV_XRDSVC_CHANNELSTREAM_H
 
 // System headers
+#include <condition_variable>
 #include <deque>
 #include <mutex>
-#include <thread>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream

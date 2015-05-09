@@ -109,13 +109,9 @@ private:
     typedef std::deque<Fragment> FragmentDeque;
     FragmentDeque _buffers;
     StringBufferOffset _totalSize;
-#if DO_NOT_USE_BOOST
-    XrdSysMutex _mutex;
-#else
     std::mutex _mutex;
-#endif
     std::stringstream _ss;
-    };
+};
 
 class StringBuffer2 {
 public:
@@ -130,11 +126,7 @@ public:
     void reset();
 private:
     void _setSize(unsigned size);
-#if DO_NOT_USE_BOOST
-    XrdSysMutex _mutex;
-#else
     std::mutex _mutex;
-#endif
     char* _buffer;
     unsigned _bufferSize;
     unsigned _bytesWritten;
@@ -142,10 +134,6 @@ private:
 
 }}} // namespace lsst::qserv::wbase
 
-#if DO_NOT_USE_BOOST
-typedef lsst::qserv::worker::PosFormat Pformat;
-#else
 typedef boost::format Pformat;
-#endif
 
 #endif // LSST_QSERV_WBASE_BASE_H
