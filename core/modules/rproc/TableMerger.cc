@@ -525,7 +525,7 @@ bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
     SqlInsertIter sii(buf, size, tableName, allowNull);
     bool successful = _importIter(sii, tableName);
     if(!successful) {
-        LOGF_ERROR("Error importing to %1% buffer of size=%2%" % 
+        LOGF_ERROR("Error importing to %1% buffer of size=%2%" %
                    tableName % size);
         return false;
     }

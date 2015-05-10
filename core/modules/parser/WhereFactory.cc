@@ -201,7 +201,7 @@ void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
     _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
-    // LOGF_INFO("WHERE starts with: %1% (%2%)" 
+    // LOGF_INFO("WHERE starts with: %1% (%2%)"
     //           % a->getText() % a->getType());
     // LOGF_INFO("WHERE indented: %1%" % walkIndentedString(a));
     if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {

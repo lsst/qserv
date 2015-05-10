@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008-2014 AURA/LSST.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,31 +9,31 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
 # config.py : a module for qserv configuration file parsing and defaults
-# 
+#
 # The config module should contain all possible configuration options
 # and parameters for the qserv czar's operation.  Currently, it does
 # not include configuration of the xrootd system, nor does it include
 # configuration of workers (which are configured via environment
-# variables). 
-# 
+# variables).
+#
 # A sample configuration is included in this module, and should be
 # be similar to the sample configuration in examples/lsst-dev01.qserv.cnf
-# 
+#
 # It should be the "executable" python code's (e.g., startQserv.py's)
 # responsibility to invoke loading, since it should be the one parsing
-# arguments.  
+# arguments.
 
 # Standard Python
 import ConfigParser
@@ -151,7 +151,7 @@ def _initialize():
     "Perform some static initialization upon loading"
     if os.environ.has_key(envFilenameVar):
         envFilename = os.environ[envFilenameVar]
-    
+
     pass
 
 def _loadFile(filename):

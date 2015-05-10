@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -41,31 +41,31 @@ from lsst.qserv.czar import config
 from lsst.qserv.czar.testHintedParser import TestHintedParser
 from lsst.qserv.czar.testAppInterface import TestAppInterface
 
-def main():    
+def main():
 
     parser = OptionParser()
-    parser.add_option("--qhelp", action="store_true", 
-                      dest="appHelp", default=False, 
+    parser.add_option("--qhelp", action="store_true",
+                      dest="appHelp", default=False,
                       help="Get qserv frontend help.")
     parser.add_option("-c", "--config", dest="configFile", default=None,
                       help="Use config file. Can also be specified with\n" +
                       "%s as an environment variable." % config.envFilenameVar)
     parser.add_option("--check",
-                      dest="checkTaskId", default=None, metavar="ID", 
+                      dest="checkTaskId", default=None, metavar="ID",
                       help="Check status of task with id ID.")
-    parser.add_option("-q", "--query", 
+    parser.add_option("-q", "--query",
                       dest="queryFile", default=None, metavar="FILENAME",
                       help="Invoke a query stored in FILENAME.\n" +
                       "'-' will read from standard input.")
-    parser.add_option("--hintfile", 
+    parser.add_option("--hintfile",
                       dest="queryHints", default=None, metavar="FILENAME",
                       help="Use FILENAME to get hints. Use with --query.")
 
     parser.add_option("--hintTest",
-                      dest="hintTest", default=None, metavar="NAME", 
+                      dest="hintTest", default=None, metavar="NAME",
                       help="Run a hintedParser test named NAME.")
     parser.add_option("--test",
-                      dest="testName", default=None, metavar="NAME", 
+                      dest="testName", default=None, metavar="NAME",
                       help="Run a appInterface test named NAME.")
 
     (options, args) = parser.parse_args()

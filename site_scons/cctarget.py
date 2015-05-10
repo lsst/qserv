@@ -23,7 +23,7 @@
 import os
 
 def getDefaultTargets(env, path, ignore=lambda f:False):
-    """ 
+    """
     @param env   a SCons environment
     @param path  relative path to the module
     @param ignore a function that returns True if a file should be ignored.
