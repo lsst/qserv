@@ -48,10 +48,10 @@ def tryCountQuery():
         db.applySql("DROP TABLE IF EXISTS %s;" %(t))
 
     pmap = makePmap()
-    q = "SELECT %s FROM %s %s;" % ("count(*)", "LSST.Object", "LIMIT 10")
-    a = HintedQueryAction(q, 
+    q = "SELECT %s FROM %s %s" % ("count(*)", "LSST.Object", "LIMIT 10")
+    a = HintedQueryAction(q,
                           {"db" : "test"},  # Use test db.
-                          pmap, 
+                          pmap,
                           lambda e: None, tableName)
 
     assert a.getIsValid()
@@ -62,7 +62,7 @@ def tryCountQuery():
     logger.inf(a.getResult())
     db = Db()
     db.activate()
-    db.applySql("select * from %s;" % tableName) #could print this
+    db.applySql("select * from %s" % tableName) #could print this
 
     clear(tableName)
 

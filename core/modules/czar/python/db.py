@@ -135,7 +135,7 @@ class TaskDb:
     def _dropSilent(self, cursor, tables):
         for t in tables:
             try:
-                cursor.execute('DROP TABLE %s;' %t)
+                cursor.execute('DROP TABLE %s' %t)
             finally:
                 pass
         pass
@@ -143,9 +143,9 @@ class TaskDb:
     def makeTables(self):
         c = self._db.getCursor()
         self._dropSilent(c, ['tasks']) # don't drop the partmap anymore
-        c.execute("CREATE TABLE tasks (id int, queryText text);")
+        c.execute("CREATE TABLE tasks (id int, queryText text)")
         # We aren't in charge of the partition map anymore.
-        # c.execute("CREATE TABLE partmap (%s);" % (", ".join([
+        # c.execute("CREATE TABLE partmap (%s)" % (", ".join([
         #                 "chunkId int", "subchunkId int",
         #                 "ramin float", "ramax float",
         #                 "declmin float", "declmax float"])))
@@ -186,7 +186,7 @@ class TaskDb:
     def nextId(self):
         assert self._db.check()
         c = self._db.getCursor()
-        c.execute('SELECT MAX(id) FROM tasks;') # non-atomic.
+        c.execute('SELECT MAX(id) FROM tasks') # non-atomic.
         maxId = c.fetchall()[0][0]
         if not maxId:
             return 1

@@ -37,7 +37,7 @@ import MySQLdb as sql
 import sys
 import time
 
-dropSourceSql = "DROP TABLE IF EXISTS %s.%s;"
+dropSourceSql = "DROP TABLE IF EXISTS %s.%s"
 createSourceSql = """CREATE TABLE IF NOT EXISTS %s.%s
 (
 	sourceId BIGINT NOT NULL,
@@ -111,7 +111,7 @@ createSourceSql = """CREATE TABLE IF NOT EXISTS %s.%s
 	INDEX movingObjectId (movingObjectId ASC),
 	INDEX objectId (objectId ASC),
 	INDEX procHistoryId (procHistoryId ASC)
-) ENGINE=MyISAM;"""
+) ENGINE=MyISAM"""
 
 class SourceGenerator:
     def __init__(self):
@@ -140,7 +140,7 @@ class SourceGenerator:
                               self._synthFields)
         self._insertSourceTmpl = "INSERT INTO %(db)s.%(table)s (" \
             + ",".join(self._synthFields) \
-            + ") VALUES %(values)s;"""
+            + ") VALUES %(values)s"""
         self._lastId=0;
         self._lastProcId = 1
         self._procsPerSrc = 0.01
@@ -311,7 +311,7 @@ class App:
         pass
     def _getTableList(self, connection):
         c = connection.cursor()
-        c.execute("show tables in %s;" % self._options.database)
+        c.execute("show tables in %s" % self._options.database)
 
         def isGood(t):
             return t[:len(self._objPrefix)] == self._objPrefix
@@ -345,8 +345,8 @@ class App:
             values = []
             
 
-        stmt  = "SELECT * FROM %s.%s;" % (self._options.database, 
-                                        self._objPrefix + str(chunk))
+        stmt  = "SELECT * FROM %s.%s" % (self._options.database, 
+                                         self._objPrefix + str(chunk))
         cursor.execute(stmt)
         values = []
         for s in cursor.fetchall():
@@ -382,7 +382,7 @@ class App:
                                   imap(operator.itemgetter, [0,1,2])))
                         
     def _cleanupSrc(self):
-        template = "DROP TABLE IF EXISTS %s;"
+        template = "DROP TABLE IF EXISTS %s"
         stmt = template % ",".join(imap(lambda c: self._srcPrefix+str(c) % c, 
                                         self._chunks))
     

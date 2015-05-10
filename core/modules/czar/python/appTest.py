@@ -58,36 +58,35 @@ def qservBound(raref, declref, ramin, ramax, declmin,declmax):
 
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,%s AS dist
 FROM Object AS o1, Object AS o2
-WHERE dist < 25 AND o1.id != o2.id;""" % (distFuncStr %
-                                          nnDist("o1", "o2", "ra_PS", "decl_PS"))
+WHERE dist < 25 AND o1.id != o2.id""" % (distFuncStr %
+                                         nnDist("o1", "o2", "ra_PS", "decl_PS"))
 
 
 ##nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl)
-###  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 10.5 and 11.5 and o2.decl between 9.7 and 10 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
+###  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 10.5 and 11.5 and o2.decl between 9.7 and 10 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id"""
 nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,%s AS dist
   FROM Object AS o1, Object AS o2
   WHERE o1.ra between 30.5 and 31.5 and o2.decl between -20 and -19.2
-  AND %s < 1 AND o1.id != o2.id;""" % (distFuncStr
-                                       % nnDist("o1", "o2", "ra_PS", "decl_PS"),
-                                       distFuncStr
-                                       % nnDist("o1", "o2", "ra_PS", "decl_PS"))
+  AND %s < 1 AND o1.id != o2.id""" % (distFuncStr
+                                      % nnDist("o1", "o2", "ra_PS", "decl_PS"),
+                                      distFuncStr
+                                      % nnDist("o1", "o2", "ra_PS", "decl_PS"))
 
 nearNeighborQueryMySqlTemplate = """SELECT o1.id as o1id,o2.id as o2id,%s
   AS dist FROM Object AS o1, Object AS o2
   WHERE o1.ra between ${ramin} and ${ramax}
     AND o2.decl between ${declmin} and ${-19.2}
-  AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
+  AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id"""
 
 nearNeighborQuery = nearNeighborQueryMySql
 slowNearNeighborQuery = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl)
   AS dist FROM Object AS o1, Object AS o2
-  WHERE ABS(o1.decl-o2.decl) < 0.001 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 AND o1.id != o2.id;"""
+  WHERE ABS(o1.decl-o2.decl) < 0.001 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 AND o1.id != o2.id"""
 selectSmallQuery = """SELECT * FROM Object
 WHERE ra BETWEEN 20 AND 20.2
-AND decl BETWEEN 2 AND 2.2;"""
+AND decl BETWEEN 2 AND 2.2"""
 tableScanQuery = """SELECT * FROM Object
-WHERE bMag2 > 21.2;
-"""
+WHERE bMag2 > 21.2"""
 # Distance of 0.002 produces a selectivity of 10% on USNO.
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
 
@@ -118,7 +117,7 @@ class TestAppFunctions(unittest.TestCase):
         """Insert a query task into the tracker.
         """
         t = app.TaskTracker()
-        qtext = "select * from blah;"
+        qtext = "select * from blah"
         task = app.QueryAction(qtext)
         id = t.track("myquery", task, qtext)
         logger.inf("persisted as id ", id)
