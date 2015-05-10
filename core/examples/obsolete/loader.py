@@ -100,13 +100,13 @@ class SqlActions(object):
         self.cursor.fetchall()
 
     def createDatabase(self, database):
-        self._exec("CREATE DATABASE IF NOT EXISTS %s ;" % database)
+        self._exec("CREATE DATABASE IF NOT EXISTS %s" % database)
 
     def dropDatabase(self, database):
-        self._exec("DROP DATABASE IF EXISTS %s ;" % database)
+        self._exec("DROP DATABASE IF EXISTS %s" % database)
 
     def dropTable(self, table):
-        self._exec("DROP TABLE IF EXISTS %s ;" % table)
+        self._exec("DROP TABLE IF EXISTS %s" % table)
 
     def tableExists(self, table):
         components = table.split('.')
@@ -115,7 +115,7 @@ class SqlActions(object):
         self.cursor.execute("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE table_schema = '%s' AND table_name = '%s' ;""" %
+            WHERE table_schema = '%s' AND table_name = '%s'""" %
             (components[0], components[1]))
         return self.cursor.fetchone()[0] != 0
 
@@ -123,16 +123,16 @@ class SqlActions(object):
         self.cursor.execute("""
             SELECT table_name
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE table_schema = '%s' AND table_name LIKE '%s' ;""" %
+            WHERE table_schema = '%s' AND table_name LIKE '%s'""" %
             (database, prefix + '%'))
         for table in self.cursor.fetchall():
-            self.cursor.execute("DROP TABLE IF EXISTS %s.%s ;" %
+            self.cursor.execute("DROP TABLE IF EXISTS %s.%s" %
                                 (database, table[0]))
             self.cursor.fetchall()
 
     def getSchema(self, table):
         print("getSchema of table %s" % table)
-        self.cursor.execute("SHOW CREATE TABLE %s ;" % table)
+        self.cursor.execute("SHOW CREATE TABLE %s" % table)
         return self.cursor.fetchone()[1]
 
     def loadPartitions(self, table, partFile, index=True):
@@ -153,11 +153,11 @@ class SqlActions(object):
         self._exec("""
             LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
-            FIELDS TERMINATED BY ',';""" %
+            FIELDS TERMINATED BY ','""" %
             (os.path.abspath(partFile), table))
         if index:
             self._exec(
-                "ALTER TABLE %s ADD INDEX (chunkId, subChunkId);" % table)
+                "ALTER TABLE %s ADD INDEX (chunkId, subChunkId)" % table)
 
     def createPrototype(self, table, schema):
         self._exec("DROP TABLE IF EXISTS %s" % table)
@@ -170,11 +170,11 @@ class SqlActions(object):
 
     def createPaddedTable(self, table, npad):
         padded = table + "Padded"
-        self._exec("CREATE TABLE %s LIKE %s ;" % (padded, table))
+        self._exec("CREATE TABLE %s LIKE %s" % (padded, table))
         for i in xrange(npad):
             self._exec("""
                 ALTER TABLE %s
-                ADD COLUMN (_pad_%d FLOAT NOT NULL);""" % (padded, i))
+                ADD COLUMN (_pad_%d FLOAT NOT NULL)""" % (padded, i))
 
     def getAverageRowSize(self, table):
         """Return the average row size of table. Note that for this to work,
@@ -187,7 +187,7 @@ class SqlActions(object):
         self.cursor.execute("""
             SELECT avg_row_length
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE table_schema = '%s' AND table_name = '%s' ;""" %
+            WHERE table_schema = '%s' AND table_name = '%s'""" %
             (components[0], components[1]))
         return self.cursor.fetchone()[0]
 
@@ -196,18 +196,18 @@ class SqlActions(object):
             raise RuntimeError(
                 "Chunk and prototype tables have identical names: %s" % table)
         self.dropTable(table)
-        self._exec("CREATE TABLE %s LIKE %s ;" % (table, prototype))
+        self._exec("CREATE TABLE %s LIKE %s" % (table, prototype))
         if (dropPrimaryKey):
-            self._exec("ALTER TABLE %s DROP PRIMARY KEY;" % (table))
+            self._exec("ALTER TABLE %s DROP PRIMARY KEY" % (table))
         self._exec("""
             LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
-            FIELDS TERMINATED BY ',';""" %
+            FIELDS TERMINATED BY ','""" %
             (os.path.abspath(path), table))
         if npad != None and npad > 0:
             tmpTable = table + "Tmp"
-            self._exec("RENAME TABLE %s TO %s ;" % (table, tmpTable))
-            self._exec("CREATE TABLE %s LIKE %s ;" %
+            self._exec("RENAME TABLE %s TO %s" % (table, tmpTable))
+            self._exec("CREATE TABLE %s LIKE %s" %
                        (table, prototype + "Padded"))
             randomVals = ','.join(['RAND()']*npad)
             self._exec("INSERT INTO %s SELECT *, %s FROM %s" %
@@ -216,7 +216,7 @@ class SqlActions(object):
         # Create index on subChunkId
         if index:
             self.cursor.execute(
-                "ALTER TABLE %s ADD INDEX (subChunkId);" % table)
+                "ALTER TABLE %s ADD INDEX (subChunkId)" % table)
             self.cursor.fetchall()
 
     def testChunkTable(self, chunkPrefix, chunkId, partTable):
@@ -242,7 +242,7 @@ class SqlActions(object):
                   declMin < -90.0 OR declMax >= 90.01 OR
                   declMin >= declMax OR
                   numRows < 0 OR
-                  alpha < 0.0 OR alpha > 180.0;""" % partTable)
+                  alpha < 0.0 OR alpha > 180.0""" % partTable)
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
             print dedent("""\
@@ -255,7 +255,7 @@ class SqlActions(object):
         # Test 2: make sure spherical coordinates are in range
         self.cursor.execute("""
             SELECT COUNT(*) FROM %s
-            WHERE ra < 0.0 OR ra >= 360.0 OR decl < -90.0 OR decl > 90.0;""" %
+            WHERE ra < 0.0 OR ra >= 360.0 OR decl < -90.0 OR decl > 90.0""" %
             chunkTable)
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
@@ -269,7 +269,7 @@ class SqlActions(object):
             SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
             ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
             WHERE c.ra < p.raMin OR c.ra >= p.raMax OR
-                  c.decl < p.declMin OR c.decl >= p.declMax;""" %
+                  c.decl < p.declMin OR c.decl >= p.declMax""" %
             (chunkTable, partTable))
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
@@ -285,7 +285,7 @@ class SqlActions(object):
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
-                      c.decl >= p.declMin AND c.decl < p.declMax;""" %
+                      c.decl >= p.declMin AND c.decl < p.declMax""" %
                 (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
@@ -318,7 +318,7 @@ class SqlActions(object):
                             )
                         )
                     )
-                );""" % (selfTable, partTable))
+                )""" % (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
@@ -334,7 +334,7 @@ class SqlActions(object):
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
-                      c.decl >= p.declMin AND c.decl < p.declMax;""" %
+                      c.decl >= p.declMin AND c.decl < p.declMax""" %
                 (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
@@ -358,7 +358,7 @@ class SqlActions(object):
                             c.ra - 360.0 >= p.raMin - p.alpha
                         )
                     )
-                );""" % (fullTable, partTable))
+                )""" % (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
@@ -375,7 +375,7 @@ class SqlActions(object):
                 FROM %s GROUP BY chunkId, subChunkId) AS c
             INNER JOIN %s AS p
             ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
-            WHERE c.numRows != p.numRows;""" %
+            WHERE c.numRows != p.numRows""" %
             (chunkTable, partTable))
         nfailed = self.cursor.fetchone()[0]
 
