@@ -60,7 +60,7 @@ MINUS_SIGN("-")=286 // Imaginary token based on subtoken typecasting - see the r
 NOT_EQUALS_OP("<>")=289 // Imaginary token based on subtoken typecasting - see the rule <LESS_THAN_OP>
 LESS_THAN_OR_EQUALS_OP("<=")=290 // Imaginary token based on subtoken typecasting - see the rule <LESS_THAN_OP>
 GREATER_THAN_OR_EQUALS_OP(">=")=291 // Imaginary token based on subtoken typecasting - see the rule <GREATER_THAN_OP>
-CONCATENATION_OP("||")=292 // Imaginary token based on subtoken typecasting 
+CONCATENATION_OP("||")=292 // Imaginary token based on subtoken typecasting
 """
 # {0} header filename
 # {1} token ident
@@ -97,7 +97,7 @@ def splitEq(line):
 
 def stripQuotes(s):
     if s[0] == s[-1] and s[0] in ['"', "'"]:
-        return s[1:-1]            
+        return s[1:-1]
     return s
 
 class NoValueError(ValueError):
@@ -136,7 +136,7 @@ caseTemplate = "case {0}: return \"{1}\";"
 
 class Vocabulary:
     """Vocabulary is an object that bundles a ANTLRv2 token vocabulary.
-It consists of an identifier, some textual description or representation, 
+It consists of an identifier, some textual description or representation,
 and an integer tokenid.
 See: http://www.antlr2.org/doc/vocab.html
 """
@@ -149,7 +149,7 @@ See: http://www.antlr2.org/doc/vocab.html
     def importBuffer(self, text):
         """Import a text buffer into the vocabulary"""
         for line in text.split("\n"):
-            if not line: continue            
+            if not line: continue
             try:
                 self.tokens.append(Token(line))
             except NoValueError, e:
@@ -159,8 +159,8 @@ See: http://www.antlr2.org/doc/vocab.html
         pass
 
     def importFile(self, filename):
-        """Import the contents of a file into the vocabulary and remember the 
-source file name"""        
+        """Import the contents of a file into the vocabulary and remember the
+source file name"""
         self.sourceFile = self.sanitizeIdent(os.path.basename(filename))
         self.importBuffer(open(filename).read())
 
@@ -183,12 +183,12 @@ source file name"""
         cases = "\n".join(imap(lambda s: s.toCase(), self.tokens))
         return cppTemplate.format(filename, sourceFilename, __file__,
                                   structName, enums, cases)
-        
+
     def sanitizeIdent(self, raw):
         """Sanitize an identifier by converting illegal characters to underscores
 and prefixing with 'x' if the first character is still not legal."""
         def makeLegal(ch):
-            if ch not in self.legalIdent: 
+            if ch not in self.legalIdent:
                 return "_"
             else:
                 return ch
@@ -209,11 +209,11 @@ class Token:
         ident = t[0]
         tokenid = t[-1]
         descr = None
-        if len(t) == 2: # like: MINUS_SIGN("-")=286 // Imaginary token based on 
+        if len(t) == 2: # like: MINUS_SIGN("-")=286 // Imaginary token based on
             # look for parens
             lparen = t[0].find("(")
             rparen = t[0].rfind(")")
-            if lparen == -1: 
+            if lparen == -1:
                 raise RuntimeError('Expected Foo("foo")=1234, got' + line)
 
             descr = stripQuotes(t[0][lparen+1:rparen])
@@ -235,7 +235,7 @@ class Token:
 
     def toCase(self, indent="            "):
         return indent + caseTemplate.format(self.ident, self.descr)
-        
+
 
 def debugTest() :
     v = Vocabulary()
@@ -258,8 +258,8 @@ class UnitTest:
         self.inputTokenFile = os.path.join("/tmp", self.digest + ".txt")
         self.outputHeaderFile = os.path.join("/tmp", self.digest + "gen.h")
         self.ccFile = os.path.join("/tmp", self.digest + "test.cc")
-        self.progFile = os.path.splitext(self.ccFile)[0] 
-        self.testFiles = [self.inputTokenFile, self.outputHeaderFile, 
+        self.progFile = os.path.splitext(self.ccFile)[0]
+        self.testFiles = [self.inputTokenFile, self.outputHeaderFile,
                           self.ccFile, self.progFile]
 
     def writeFiles(self):
@@ -267,19 +267,19 @@ class UnitTest:
         open(self.inputTokenFile, "w").write(sample)
         m = Main()
         m.convertFile(self.inputTokenFile, self.outputHeaderFile)
-    
+
         # Compute a test .cc file and write it
         ccTest = sampleCC.format(self.outputHeaderFile, self.digest+"gen_h")
 
-        open(self.ccFile, "w").write(sampleCC.format(self.outputHeaderFile, 
+        open(self.ccFile, "w").write(sampleCC.format(self.outputHeaderFile,
                                                      self.digest+"gen"))
     def compile(self):
         # Try compiling
-        progFile = os.path.splitext(self.ccFile)[0]    
+        progFile = os.path.splitext(self.ccFile)[0]
 
         try:
-            retcode = subprocess.call(" ".join(["g++", "-o", 
-                                                self.progFile, self.ccFile]), 
+            retcode = subprocess.call(" ".join(["g++", "-o",
+                                                self.progFile, self.ccFile]),
                                       shell=True)
             if retcode < 0:
                 print >>sys.stderr, "Test failed: terminated by signal", -retcode
@@ -287,7 +287,7 @@ class UnitTest:
                 if retcode == 0:
                     print >>sys.stderr, "Test success"
                     # Cleanup
-                    map(os.remove, self.testFiles)                
+                    map(os.remove, self.testFiles)
                 else:
                     print >>sys.stderr, "Compilation failure: g++ returned", retcode
                     print "Test files:", " ".join(self.testFiles)
@@ -315,7 +315,7 @@ class Main:
         v = Vocabulary()
         v.importFile(tokenFile)
         open(headerFile, "w").write(v.exportCppHeader(headerFile))
-    
+
     def run(self):
         (options, args) = self.oParser.parse_args()
         if options.testOnly:
@@ -330,7 +330,7 @@ class Main:
                 self.oParser.print_help()
                 return
             self.convertFile(args[0], args[1])
-        
+
 if __name__ == "__main__":
     #debugTest()
     m = Main()

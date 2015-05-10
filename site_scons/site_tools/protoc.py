@@ -29,7 +29,7 @@ def _detect(env):
 
 def _protoc_emitter(target, source, env):
     """Process target, sources, and flags"""
-    
+
     # always ignore target
     target = []
 
@@ -68,7 +68,7 @@ def _protoc_emitter(target, source, env):
     if env['PROTOC_CCOUT']:
         env['PROTOC_CCOUT'] = Dir(env['PROTOC_CCOUT'])
         flags.append('--cpp_out=${PROTOC_CCOUT.abspath}')
-    
+
     # flag --python_out
     if env['PROTOC_PYOUT']:
         env['PROTOC_PYOUT'] = Dir(env['PROTOC_PYOUT'])
@@ -141,7 +141,7 @@ _protoc_builder = Builder(
 
 def generate(env):
     """Add Builders and construction variables."""
-    
+
     _detect(env)
 
     env.SetDefault(
@@ -166,7 +166,7 @@ def generate(env):
 
         # Protoc command
         PROTOC_COM = "$PROTOC $PROTOC_FLAGS $SOURCES.abspath",
-        PROTOC_COMSTR = '',       
+        PROTOC_COMSTR = '',
 
         )
 
@@ -174,5 +174,5 @@ def generate(env):
 
 def exists(env):
     _detect(env)
-    return True 
+    return True
 

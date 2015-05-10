@@ -1,15 +1,15 @@
 import fileutils
 import os
 import state
-import SCons.Action 
+import SCons.Action
 from SCons.Script import Delete
 
 def install_python_module(env, target, source):
-    """ Define targets which will install all python file contained in 
+    """ Define targets which will install all python file contained in
         source_dir_path and sub-directories in python_path_prefix.
-    """  
+    """
     python_path_prefix=target
-    source_dir_path=source 
+    source_dir_path=source
     target_lst = []
     clean_target_lst = []
 
@@ -22,11 +22,11 @@ def install_python_module(env, target, source):
         target_lst.append(target)
         # .pyc files will also be removed
         env.Clean(target, "%s%s" % (target ,"c"))
-       
+
         #print "AddPostAction to target %s" % target
 
     clean_python_path_dir(target_lst,env)
-        
+
     return target_lst
 
 def clean_python_path_dir(target_lst,env):
@@ -39,7 +39,7 @@ def clean_python_path_dir(target_lst,env):
 
     # Don't remove directory if it contains other files than current targets
     for target in  bottom_up_target_list:
-        py_dir = os.path.dirname(str(target))   
+        py_dir = os.path.dirname(str(target))
         if os.path.exists(py_dir):
             other_python_modules = []
             for e in os.listdir(py_dir):
@@ -49,13 +49,13 @@ def clean_python_path_dir(target_lst,env):
             if other_python_modules == []:
                 empty_py_dirs.add(py_dir)
 
-    # TODO : check that this  
+    # TODO : check that this
     # remove empty parent dirs until PYTHON_PATH if needed
-    # take common prefix of empty_py_dirs and check if upper dir to python_path are empty      
+    # take common prefix of empty_py_dirs and check if upper dir to python_path are empty
     # Keep __init__.py file if a subdirectory contains at least one file of bottom_up_target_list
     for d in empty_py_dirs:
         env.Clean(target_lst[0], d)
-        
+
     return ""
 
 

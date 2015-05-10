@@ -3,17 +3,17 @@
 Special tool which fixes standard swig scanner behavior.
 
 Standard scons swig tool defines scanner which does not work too well
-when one includes C++ headers using %include syntax. Scanner tries to 
-scan all includes recursively but it's no suitable for scanning pure 
-C++ headers as it does not recognize #include syntax. 
+when one includes C++ headers using %include syntax. Scanner tries to
+scan all includes recursively but it's no suitable for scanning pure
+C++ headers as it does not recognize #include syntax.
 
 For some details:
 http://scons.tigris.org/issues/show_bug.cgi?id=2798
 https://dev.lsstcorp.org/trac/ticket/1800
 https://jira.lsstcorp.org/browse/DM-546
 
-This tool replaces standard swig scanner with a special scanner which 
-is a combination of standard swig and C++ scanners, decision which one 
+This tool replaces standard swig scanner with a special scanner which
+is a combination of standard swig and C++ scanners, decision which one
 to use is based on file extension.
 """
 
@@ -24,13 +24,13 @@ from SCons.Tool import swig
 
 class SwigScanner(SCons.Scanner.ClassicCPP):
     '''
-    Special scanner which is a combination of SWIG and C++ scanners 
+    Special scanner which is a combination of SWIG and C++ scanners
     '''
 
-    # these are regexps used by default scons SWIG and C++ scanners 
+    # these are regexps used by default scons SWIG and C++ scanners
     swig_expr = re.compile('^[ \t]*%[ \t]*(?:include|import|extern)[ \t]*(<|"?)([^>\s"]+)(?:>|"?)', re.M)
     cpp_expr = re.compile('^[ \t]*#[ \t]*(?:include|import)[ \t]*(<|")([^>"]+)(>|")', re.M)
-    
+
     def __init__(self):
         SCons.Scanner.ClassicCPP.__init__(self, "SWIG_CPP_Scan", ".i", "SWIGPATH", "")
 
@@ -60,7 +60,7 @@ def generate(env):
         # and is always loaded first but there may be some corner cases.
         swig.generate(env)
 
-    # replace SWIG scanners    
+    # replace SWIG scanners
     scanners = [_repl(scanner) for scanner in env['SCANNERS']]
     env.Replace(SCANNERS = scanners)
 

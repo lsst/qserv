@@ -2,8 +2,8 @@
 #
 # env.RecursiveInstall( target, path )
 #
-# This is usefull for doing 
-# 
+# This is usefull for doing
+#
 #   k = env.RecursiveInstall(dir_target, dir_source)
 #
 # and if any thing in dir_source is updated

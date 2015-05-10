@@ -167,7 +167,7 @@ void Task::setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc) {
     }
     if(func) {
         (*func)();
-    } 
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
