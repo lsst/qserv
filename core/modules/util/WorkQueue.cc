@@ -32,7 +32,7 @@
 // System headers
 #include <iostream>
 #include <sstream>
-
+#include <thread>
 
 namespace lsst {
 namespace qserv {

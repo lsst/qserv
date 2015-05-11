@@ -24,10 +24,10 @@
 #define LSST_QSERV_UTIL_WORKQUEUE_H
 
 // System headers
+#include <condition_variable>
 #include <deque>
 #include <memory>
 #include <mutex>
-#include <thread>
 
 namespace lsst {
 namespace qserv {
