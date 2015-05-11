@@ -155,6 +155,11 @@ Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     _setup();
 }
 
+Executive::~Executive() {
+    // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
+    delete dynamic_cast<XrdSsiServiceMock *>(_service);
+}
+
 class Executive::DispatchAction : public util::VoidCallable<void> {
 public:
     typedef std::shared_ptr<DispatchAction> Ptr;
@@ -371,25 +376,25 @@ void Executive::_dispatchQuery(int refNum,
                                            spec,
                                            execStatus));
     }
-    QueryResource* r = new QueryResource(spec.resource.path(),
-                                         spec.request,
-                                         spec.requester,
-                                         NotifyExecutive::newInstance(*this, refNum),
-                                         retryFunc,
-                                         *execStatus);
+    std::unique_ptr<QueryResource> r(new QueryResource(
+        spec.resource.path(),
+        spec.request,
+        spec.requester,
+        NotifyExecutive::newInstance(*this, refNum),
+        retryFunc,
+        *execStatus));
     execStatus->report(ExecStatus::PROVISION);
-    bool provisionOk = _service->Provision(r);  // 2
-
-    if(!provisionOk) {
+    if (_service->Provision(r.get())) {
+        // Provisioning has started, so XrdSsiService will call
+        // ProvisionDone() on r, causing r to commit suicide.
+        r.release();
+        LOGF_DEBUG("Provision was ok");
+    } else {
         // handle error
         LOGF_ERROR("Resource provision error %1%" % spec.resource.path());
         populateState(*execStatus, ExecStatus::PROVISION_ERROR, r->eInfo);
         _unTrack(refNum);
-        delete r;
-        return;
     }
-
-    LOGF_DEBUG("Provision was ok");
     // FIXME: For squashing, need to hold ptr to QueryResource, so we can
     // instruct it to call XrdSsiRequest::Finished(cancel=true). Also, can send
     // cancellation into requester.

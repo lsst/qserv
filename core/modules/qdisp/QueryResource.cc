@@ -62,32 +62,31 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         _status.report(ExecStatus::PROVISION_NACK, code, msg);
         // FIXME code may be wrong.
         _requester->errorFlush(msg, code);
+        delete this;
         return;
     }
     if(_requester->cancelled()) {
+        delete this;
         return; // Don't bother doing anything if the requester doesn't care.
     }
     _session = s;
-    // _request = std::make_shared<QueryRequest>(s, _payload, _requester,
-    //                                           _finishFunc,  _retryFunc,
-    //                                           _status);
-    // Above causes an error for now:/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../../../include/c++/4.4.7/bits/shared_ptr.h:1584: error: conversion from 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' to non-scalar type 'std::shared_ptr<lsst::qserv::qdisp::QueryRequest>' requested
 
-    _request = new QueryRequest(s, _payload, _requester,
-                                _finishFunc,  _retryFunc,
-                                _status);
+    // QueryRequest handles its own deletion by registering a cancellation
+    // functor with the requester that deletes the request in its destructor.
+    QueryRequest * request = new QueryRequest(s, _payload, _requester,
+                                              _finishFunc, _retryFunc,
+                                              _status);
 
-    // Hand off the request and release ownership.
+    // Hand off the request.
     _status.report(ExecStatus::REQUEST);
-    bool requestSent = _session->ProcessRequest(_request);
-    if(requestSent) {
-        _request = NULL; // _session now has ownership
-    } else {
+    bool requestSent = _session->ProcessRequest(request);
+    if(!requestSent) {
         int code = 0;
         std::string msg = eInfoGet(code);
         _status.report(ExecStatus::REQUEST_ERROR, code, msg);
-        LOGF_ERROR("Failed to send request %1%" % *_request);
-        _request = NULL;
+        // It is unclear whether it is safe to refer to request here, say for
+        // better log messages. It may have been deleted by another thread.
+        LOGF_ERROR("Failed to send request");
         // Retry the request.
         // TODO: should be more selective about retrying a query.
         if(_retryFunc) {

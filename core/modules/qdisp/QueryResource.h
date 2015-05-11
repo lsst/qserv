@@ -61,7 +61,6 @@ public:
                   ExecStatus& status)
         : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
           _session(NULL),
-          _request(NULL),
           _payload(payload),
           _requester(requester),
           _finishFunc(finishFunc),
@@ -85,9 +84,6 @@ public:
 
 private:
     XrdSsiSession* _session; ///< unowned, do not delete.
-
-    /// Owned temporarily, special deletion handling.
-    QueryRequest* _request;
 
     std::string const _payload; ///< Request payload
     std::shared_ptr<ResponseRequester> _requester; ///< Response requester

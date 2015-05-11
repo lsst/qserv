@@ -115,9 +115,10 @@ public:
 
     void cancel();
 
+    void cleanup();
+
 private:
     bool cancelled();
-    void _cleanup();
 
     bool _importStream();
     bool _importError(std::string const& msg, int code);

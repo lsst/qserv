@@ -77,6 +77,8 @@ public:
     /// instead of a real XrdSsiService
     Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms);
 
+    ~Executive();
+
     /// Add an item with a reference number (not necessarily a chunk number)
     void add(int refNum, Spec const& s);
 
