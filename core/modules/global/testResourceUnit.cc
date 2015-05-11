@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(Garbage) {
         BOOST_CHECK_MESSAGE(
             r.unitType() == ResourceUnit::GARBAGE,
             std::string("Expected garbage: ") + *i);
-    }    
+    }
 }
 
 BOOST_AUTO_TEST_CASE(DbChunk) {
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(DbChunk) {
     for(auto i=p, e=p+pSize; i != e; ++i) {
         r.push_back(ResourceUnit(*i));
         BOOST_CHECK_EQUAL(r.back().unitType(), ResourceUnit::DBCHUNK);
-    }    
+    }
     BOOST_CHECK_EQUAL(r[0].db(), "qservTest_case01_qserv");
     BOOST_CHECK_EQUAL(r[1].db(), "abc");
     BOOST_CHECK_EQUAL(r[0].chunk(), 123);

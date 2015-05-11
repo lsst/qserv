@@ -40,7 +40,7 @@ def _antlr_emitter(target, source, env):
     deps = []
     for src in source:
         src = File(src)
-        stem = src.abspath;        
+        stem = src.abspath;
         if stem.endswith(antlr_suffix):
             stem = stem[:-len(antlr_suffix)]
         deps.append(File(stem + 'ImpTokenTypes' + antlr_txt_suffix))
@@ -59,7 +59,7 @@ def _antlr_emitter(target, source, env):
     return (target, source)
 
 
-_antlr_builder = Builder( 
+_antlr_builder = Builder(
         action = Action('$ANTLR_COM', '$ANTLR_COMSTR'),
         suffix = '$ANTLR_CCSUFFIX',
         src_suffix = '$ANTLR_SUFFIX',
@@ -68,7 +68,7 @@ _antlr_builder = Builder(
 
 
 def generate(env):
-    """Add Builders and construction variables."""    
+    """Add Builders and construction variables."""
     _detect(env)
     env.SetDefault(
         # Additional command-line flags
@@ -89,5 +89,5 @@ def generate(env):
 
 def exists(env):
     _detect(env)
-    return True 
+    return True
 

@@ -97,12 +97,12 @@ Facade::~Facade() {
 bool
 Facade::containsDb(string const& dbName) const {
     if (dbName.empty()) {
-        LOGF_INFO("Empty database name passed.");
+        LOGF_DEBUG("Empty database name passed.");
         return false;
     }
     string p = _prefix + "/DBS/" + dbName;
     bool ret =  _kvI->exists(p);
-    LOGF_INFO("*** containsDb(%1%): %2%" % dbName % ret);
+    LOGF_DEBUG("containsDb(%1%): %2%" % dbName % ret);
     return ret;
 }
 
@@ -111,7 +111,7 @@ Facade::containsDb(string const& dbName) const {
   */
 bool
 Facade::containsTable(string const& dbName, string const& tableName) const {
-    LOGF_INFO("*** containsTable(%1%, %2%)" % dbName % tableName);
+    LOGF_DEBUG("containsTable(%1%, %2%)" % dbName % tableName);
     _throwIfNotDbExists(dbName);
     return _containsTable(dbName, tableName);
 }
@@ -123,8 +123,8 @@ bool
 Facade::tableIsChunked(string const& dbName, string const& tableName) const {
     _throwIfNotDbTbExists(dbName, tableName);
     bool ret = _tableIsChunked(dbName, tableName);
-    LOGF_INFO("Table %1%.%2% %3% chunked"
-              % dbName % tableName % (ret?"is":"is not"));
+    LOGF_DEBUG("Table %1%.%2% %3% chunked"
+               % dbName % tableName % (ret?"is":"is not"));
     return ret;
 }
 
@@ -136,8 +136,8 @@ Facade::tableIsSubChunked(string const& dbName,
                           string const& tableName) const {
     _throwIfNotDbTbExists(dbName, tableName);
     bool ret = _tableIsSubChunked(dbName, tableName);
-    LOGF_INFO("Table %1%.%2% %3% subChunked"
-              % dbName % tableName % (ret?"is":"is not"));
+    LOGF_DEBUG("Table %1%.%2% %3% subChunked"
+               % dbName % tableName % (ret?"is":"is not"));
     return ret;
 }
 
@@ -148,12 +148,12 @@ Facade::tableIsSubChunked(string const& dbName,
 bool
 Facade::isMatchTable(std::string const& dbName,
                      std::string const& tableName) const {
-    LOGF_INFO("isMatchTable(%1%.%2%)" % dbName % tableName);
+    LOGF_DEBUG("isMatchTable(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     string k = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
     string v = _kvI->get(k, "0");
     bool m = (v == "1");
-    LOGF_INFO("%1%.%2% is %3% a match table" % dbName % tableName % (m?"":"not "));
+    LOGF_DEBUG("%1%.%2% is %3% a match table" % dbName % tableName % (m?"":"not "));
     return m;
 }
 
@@ -171,14 +171,14 @@ Facade::getAllowedDbs() const {
   */
 vector<string>
 Facade::getChunkedTables(string const& dbName) const {
-    LOGF_INFO("*** getChunkedTables(%1%)" % dbName);
+    LOGF_DEBUG("getChunkedTables(%1%)" % dbName);
     _throwIfNotDbExists(dbName);
     string p = _prefix + "/DBS/" + dbName + "/TABLES";
     vector<string> ret, v = _kvI->getChildren(p);
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
         if (tableIsChunked(dbName, *itr)) {
-            LOGF_INFO("*** getChunkedTables: %1%" % *itr);
+            LOGF_DEBUG("getChunkedTables: %1%" % *itr);
             ret.push_back(*itr);
         }
     }
@@ -190,14 +190,14 @@ Facade::getChunkedTables(string const& dbName) const {
   */
 vector<string>
 Facade::getSubChunkedTables(string const& dbName) const {
-    LOGF_INFO("*** getSubChunkedTables(%1%)" % dbName);
+    LOGF_DEBUG("getSubChunkedTables(%1%)" % dbName);
     _throwIfNotDbExists(dbName);
     string p = _prefix + "/DBS/" + dbName + "/TABLES";
     vector<string> ret, v = _kvI->getChildren(p);
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
         if (_tableIsSubChunked(dbName, *itr)) {
-            LOGF_INFO("*** getSubChunkedTables: %1%" % *itr);
+            LOGF_DEBUG("getSubChunkedTables: %1%" % *itr);
             ret.push_back(*itr);
         }
     }
@@ -212,7 +212,7 @@ Facade::getSubChunkedTables(string const& dbName) const {
   */
 vector<string>
 Facade::getPartitionCols(string const& dbName, string const& tableName) const {
-    LOGF_INFO("*** getPartitionCols(%1%, %2%)" % dbName % tableName);
+    LOGF_DEBUG("getPartitionCols(%1%, %2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
                tableName + "/partitioning/";
@@ -220,7 +220,7 @@ Facade::getPartitionCols(string const& dbName, string const& tableName) const {
     v.push_back(_kvI->get(p + "lonColName", ""));
     v.push_back(_kvI->get(p + "latColName", ""));
     v.push_back(_kvI->get(p + "dirColName", ""));
-    LOGF_INFO("*** getPartitionCols: %1%, %2%, %3%" % v[0] % v[1] % v[2]);
+    LOGF_DEBUG("getPartitionCols: %1%, %2%, %3%" % v[0] % v[1] % v[2]);
     return v;
 }
 
@@ -229,19 +229,19 @@ Facade::getPartitionCols(string const& dbName, string const& tableName) const {
   */
 int
 Facade::getChunkLevel(string const& dbName, string const& tableName) const {
-    LOGF_INFO("getChunkLevel(%1%, %2%)" % dbName % tableName);
+    LOGF_DEBUG("getChunkLevel(%1%, %2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     bool isChunked = _tableIsChunked(dbName, tableName);
     bool isSubChunked = _tableIsSubChunked(dbName, tableName);
     if (isSubChunked) {
-        LOGF_INFO("getChunkLevel returns 2");
+        LOGF_DEBUG("getChunkLevel returns 2");
         return 2;
     }
     if (isChunked) {
-        LOGF_INFO("getChunkLevel returns 1");
+        LOGF_DEBUG("getChunkLevel returns 1");
         return 1;
     }
-    LOGF_INFO("getChunkLevel returns 0");
+    LOGF_DEBUG("getChunkLevel returns 0");
     return 0;
 }
 
@@ -251,12 +251,12 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
   */
 string
 Facade::getDirTable(string const& dbName, string const& tableName) const {
-    LOGF_INFO("*** getDirTable(%1%, %2%)" % dbName % tableName);
+    LOGF_DEBUG("getDirTable(%1%, %2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName +
-                    "/partitioning/dirTable";
+        "/partitioning/dirTable";
     string ret = _kvI->get(p, "");
-    LOGF_INFO("getDirTable returns %1%" % ret);
+    LOGF_DEBUG("getDirTable returns %1%" % ret);
     return ret;
 }
 
@@ -266,12 +266,12 @@ Facade::getDirTable(string const& dbName, string const& tableName) const {
   */
 string
 Facade::getDirColName(string const& dbName, string const& tableName) const {
-    LOGF_INFO("getDirColName(%1%.%2%)" % dbName % tableName);
+    LOGF_DEBUG("getDirColName(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName +
-                    "/partitioning/dirColName";
+        "/partitioning/dirColName";
     string ret = _kvI->get(p, "");
-    LOGF_INFO("getDirColName, returning: '%1%'" % ret);
+    LOGF_DEBUG("getDirColName, returning: '%1%'" % ret);
     return ret;
 }
 
@@ -280,7 +280,7 @@ Facade::getDirColName(string const& dbName, string const& tableName) const {
   */
 vector<string>
 Facade::getSecIndexColNames(string const& dbName, string const& tableName) const {
-    LOGF_INFO("*** getSecIndexColNames(%1%.%2%)" % dbName % tableName);
+    LOGF_DEBUG("getSecIndexColNames(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     // TODO: we don't actually support multiple secondary indexes yet. So
     // the list of secondary index columnns is either empty, or contains
@@ -292,7 +292,7 @@ Facade::getSecIndexColNames(string const& dbName, string const& tableName) const
     if (!dc.empty()) {
         ret.push_back(dc);
     }
-    LOGF_INFO("getSecIndexColNames, returning: [%1%]" % dc);
+    LOGF_DEBUG("getSecIndexColNames, returning: [%1%]" % dc);
     return ret;
 }
 
@@ -302,7 +302,7 @@ Facade::getSecIndexColNames(string const& dbName, string const& tableName) const
   */
 StripingParams
 Facade::getDbStriping(string const& dbName) const {
-    LOGF_INFO("*** getDbStriping(%1%)" % dbName);
+    LOGF_DEBUG("getDbStriping(%1%)" % dbName);
     _throwIfNotDbExists(dbName);
     StripingParams striping;
     string v = _kvI->get(_prefix + "/DBS/" + dbName + "/partitioningId", "");
@@ -322,7 +322,7 @@ Facade::getDbStriping(string const& dbName) const {
   */
 double
 Facade::getOverlap(string const& dbName) const {
-    LOGF_INFO("getOverlap(%1%)" % dbName);
+    LOGF_DEBUG("getOverlap(%1%)" % dbName);
     _throwIfNotDbExists(dbName);
     string v = _kvI->get(_prefix + "/DBS/" + dbName + "/partitioningId", "");
     if (v == "") {
@@ -343,7 +343,7 @@ Facade::getOverlap(string const& dbName) const {
 MatchTableParams
 Facade::getMatchTableParams(std::string const& dbName,
                             std::string const& tableName) const {
-    LOGF_INFO("getMatchTableParams(%1%.%2%)" % dbName % tableName);
+    LOGF_DEBUG("getMatchTableParams(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     MatchTableParams p;
     string k = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
@@ -402,7 +402,7 @@ Facade::_getIntValue(string const& key, int defaultValue) const {
 void
 Facade::_throwIfNotDbExists(string const& dbName) const {
     if (!containsDb(dbName)) {
-        LOGF_INFO("Db '%1%' not found." % dbName);
+        LOGF_DEBUG("Db '%1%' not found." % dbName);
         throw NoSuchDb(dbName);
     }
 }
@@ -413,7 +413,7 @@ Facade::_throwIfNotDbExists(string const& dbName) const {
 void
 Facade::_throwIfNotTbExists(string const& dbName, string const& tableName) const {
     if (!containsTable(dbName, tableName)) {
-        LOGF_INFO("Table %1%.%2% not found." % dbName % tableName);
+        LOGF_DEBUG("Table %1%.%2% not found." % dbName % tableName);
         throw NoSuchTable(dbName+"."+tableName);
     }
 }
@@ -433,7 +433,7 @@ bool
 Facade::_containsTable(string const& dbName, string const& tableName) const {
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
     bool ret = _kvI->exists(p);
-    LOGF_INFO("*** containsTable returns: %1%" % ret);
+    LOGF_DEBUG("containsTable returns: %1%" % ret);
     return ret;
 }
 
@@ -445,7 +445,7 @@ Facade::_tableIsChunked(string const& dbName, string const& tableName) const{
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
                tableName + "/partitioning";
     bool ret = _kvI->exists(p);
-    LOGF_INFO("*** %1%.%2% %3% chunked." % dbName % tableName % (ret?"is":"is NOT"));
+    LOGF_DEBUG("%1%.%2% %3% chunked." % dbName % tableName % (ret?"is":"is NOT"));
     return ret;
 }
 
@@ -459,8 +459,8 @@ Facade::_tableIsSubChunked(string const& dbName,
                tableName + "/partitioning/" + "subChunks";
     string retS = _kvI->get(p, "0");
     bool retV = (retS == "1");
-    LOGF_INFO("*** %1%.%2% %3% subChunked."
-              % dbName % tableName % (retV?"is":"is NOT"));
+    LOGF_DEBUG("%1%.%2% %3% subChunked."
+               % dbName % tableName % (retV?"is":"is NOT"));
     return retV;
 }
 
@@ -481,101 +481,6 @@ FacadeFactory::createMemFacade(std::istream& mapStream,
                                            mapStream, emptyChunkPath));
     return cssFPtr;
 }
-
-
-/// Unfinished. Planned to be a re-thinking of Facade that collapses some
-/// genericity and simplifies things using the assumption of running on a
-/// snapshot.
-class FacadeSnapshot : public Facade {
-public:
-    StringMap _map; // Path --> key
-
-    FacadeSnapshot() {
-    }
-
-    virtual bool containsDb(std::string const& dbName) const {
-        if (dbName.empty()) {
-            LOGF_INFO("Empty database name passed.");
-            throw NoSuchDb("<empty>");
-        }
-        string p = _prefix + "/DBS/" + dbName;
-        bool ret =  (_map.find(p) != _map.end());
-        LOGF_INFO("*** containsDb(%1%): %2%" % dbName % ret);
-        return ret;
-    }
-    virtual bool containsTable(std::string const& dbName,
-                               std::string const& tableName) const {
-        if (!containsDb(dbName)) {
-            throw NoSuchDb(dbName);
-        }
-        if (tableName.empty()) {
-            LOGF_INFO("Empty table name passed.");
-            throw NoSuchTable("<empty>");
-        }
-        string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
-        bool ret =  (_map.find(p) != _map.end());
-        LOGF_INFO("*** containsTable returns: %1%" % ret);
-        return ret;
-    }
-    virtual bool tableIsChunked(std::string const& dbName,
-                                std::string const& tableName) const {
-        if (!containsTable(dbName, tableName)) {
-            throw NoSuchTable(dbName + "." + tableName);
-        }
-        string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
-               tableName + "/partitioning";
-        bool ret =  (_map.find(p) != _map.end());
-        LOGF_INFO("*** %1%.%2% %3% chunked."
-                  % dbName % tableName % (ret?"is":"is NOT"));
-        return ret;
-    }
-    virtual bool tableIsSubChunked(std::string const& dbName,
-                                   std::string const& tableName) const {
-        string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
-            tableName + "/partitioning/" + "subChunks";
-        StringMap::const_iterator m = _map.find(p);
-        bool ret = (m != _map.end()) && (m->second == "1");
-        LOGF_INFO("*** %1%.%2% %3% subChunked."
-                  % dbName % tableName % (ret ? "is" : "is NOT"));
-        return ret;
-    }
-    virtual bool isMatchTable(std::string const& dbName,
-                              std::string const& tableName) const {
-        LOGF_INFO("isMatchTable(%1%.%2%)" % dbName % tableName);
-        if (!containsTable(dbName, tableName)) {
-                throw NoSuchTable(dbName + "." + tableName);
-        }
-        string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
-        StringMap::const_iterator m = _map.find(p);
-        bool ret = (m != _map.end()) && (m->second == "1");
-        LOGF_INFO("%1%.%2% is %3% a match table"
-                  % dbName % tableName % (ret ? "" : "not "));
-            return ret;
-    }
-#if 0
-    virtual std::vector<std::string> getAllowedDbs() const {
-    };
-    virtual std::vector<std::string> getChunkedTables(std::string const& dbName) const;
-    virtual std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
-    virtual std::vector<std::string> getPartitionCols(std::string const& dbName,
-                                                      std::string const& tableName) const;
-    virtual int getChunkLevel(std::string const& dbName,
-                              std::string const& tableName) const;
-    virtual std::string getDirTable(std::string const& dbName,
-                                    std::string const& tableName) const;
-    virtual std::string getDirColName(std::string const& dbName,
-                                      std::string const& tableName) const;
-    virtual std::vector<std::string> getSecIndexColNames(std::string const& dbName,
-                                                         std::string const& tableName) const;
-    virtual StripingParams getDbStriping(std::string const& dbName) const;
-    virtual double getOverlap(std::string const& dbName) const;
-    virtual MatchTableParams getMatchTableParams(std::string const& dbName,
-                                                 std::string const& tableName) const;
-
-
-private:
-#endif
-};
 
 std::shared_ptr<Facade>
 FacadeFactory::createCacheFacade(std::shared_ptr<KvInterface> kv,

@@ -67,7 +67,7 @@ namespace qserv {
 namespace qproc {
 
 ///  QuerySession contains state and behavior for operating on user queries. It
-///  contains much of the query analysis-side responsibility, including the text 
+///  contains much of the query analysis-side responsibility, including the text
 ///  of the original query, a parsed query  tree, and other user state/context.
 class QuerySession {
 public:

@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -24,8 +24,8 @@
 #
 # The indexing module handles non-spatial column indexing. Non-spatial
 # column indexing allows qserv to convert non-spatial conditions in
-# WHERE clauses into spatial restrictions.  
-# 
+# WHERE clauses into spatial restrictions.
+#
 # The motivation for this feature is for efficiency in handling
 # queries for objects based on objectId. A narrow table is held on
 # the qserv frontend that is indexed on the non-spatial column.  Qserv
@@ -49,7 +49,7 @@ from db import Db
 class Indexer:
     def __init__(self):
         self.pmap = app.makePmap()
-        
+
     def setupIndexes(self):
         p = PartitionGroup()
         db = Db()
@@ -75,10 +75,10 @@ class Indexer:
     #    db = Db()
     #    db.activate()
     #    db.applySql("DROP TABLE IF EXISTS %s;" %(indexName)) #make room first.
-    #    a = app.HintedQueryAction(q, {"db" : metadata.getMetaDbName()}, 
-    #                              self.pmap, 
+    #    a = app.HintedQueryAction(q, {"db" : metadata.getMetaDbName()},
+    #                              self.pmap,
     #                              lambda e: None, indexName)
-    #    
+    #
     #    assert a.getIsValid()
     #    logger.inf("Gathering objectId/chunkId locality from workers")
     #    logger.inf(a.invoke())
@@ -94,7 +94,7 @@ class Indexer:
     #        del db
     #        logger.inf(cids)
     #pass
-    
+
 def makeQservIndexes():
     i = Indexer()
     i.setupIndexes()
@@ -102,10 +102,10 @@ def makeQservIndexes():
 class PartitionGroup:
     # Hardcode for now.  Should merge with parts of the configuration
     # or split out into a more general qserv metadata system.
-    def __init__(self): 
+    def __init__(self):
         self.partitionCols = ["x_chunkId","x_subChunkId"]
-        self.tables = {"LSST.Object" : {"index" : ["objectId", 
-                                                   "x_chunkId", 
+        self.tables = {"LSST.Object" : {"index" : ["objectId",
+                                                   "x_chunkId",
                                                    "x_subChunkId"],
                                         "partition" : ["x_chunkId",
                                                        "x_subChunkId"]},

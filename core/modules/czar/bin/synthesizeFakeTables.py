@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -37,7 +37,7 @@ import MySQLdb as sql
 import sys
 import time
 
-dropSourceSql = "DROP TABLE IF EXISTS %s.%s;"
+dropSourceSql = "DROP TABLE IF EXISTS %s.%s"
 createSourceSql = """CREATE TABLE IF NOT EXISTS %s.%s
 (
 	sourceId BIGINT NOT NULL,
@@ -111,7 +111,7 @@ createSourceSql = """CREATE TABLE IF NOT EXISTS %s.%s
 	INDEX movingObjectId (movingObjectId ASC),
 	INDEX objectId (objectId ASC),
 	INDEX procHistoryId (procHistoryId ASC)
-) ENGINE=MyISAM;"""
+) ENGINE=MyISAM"""
 
 class SourceGenerator:
     def __init__(self):
@@ -134,13 +134,13 @@ class SourceGenerator:
                              "instFluxErr",
                              "snr",
                              "chi2"]
-        self._fieldGens = map(lambda f: 
-                              (f, getattr(self, "_new" 
-                                          + f[0].capitalize() + f[1:])), 
+        self._fieldGens = map(lambda f:
+                              (f, getattr(self, "_new"
+                                          + f[0].capitalize() + f[1:])),
                               self._synthFields)
         self._insertSourceTmpl = "INSERT INTO %(db)s.%(table)s (" \
             + ",".join(self._synthFields) \
-            + ") VALUES %(values)s;"""
+            + ") VALUES %(values)s"""
         self._lastId=0;
         self._lastProcId = 1
         self._procsPerSrc = 0.01
@@ -161,7 +161,7 @@ class SourceGenerator:
                                         self._fieldGens)
                                    )
                               )+ ")"
-    
+
     ## Bogus data field synthesizers
     def _newSourceId(self, obj):
         self._lastId += 1
@@ -217,14 +217,14 @@ class PretendObject:
         self.id = id_
         self.ra = ra
         self.decl = decl
-        
+
 class App:
     ### public interface ###
     def __init__(self):
         self._objPrefix = "Object_"
         self._srcPrefix = "Source_"
         # Default mysql packet size limit = 1M.
-        #  size of source table value is ~ 226 bytes as a string.  
+        #  size of source table value is ~ 226 bytes as a string.
         # 4000*226 = 904,000
         # 3000*226 = 678,000
         self._rowBatchSize = 3000
@@ -234,7 +234,6 @@ class App:
     def run(self):
         self._processArgs()
         self._synthesize()
-    
         pass
 
     ### private ###
@@ -243,7 +242,7 @@ class App:
         parser = OptionParser()
         parser.add_option("-S", "--socket", dest="socketFile",
                           default="/u1/local/mysql.sock",
-                          help="Use socket file FILE to connect to mysql", 
+                          help="Use socket file FILE to connect to mysql",
                           metavar="FILE")
         parser.add_option("-u", "--user", dest="user",
                           default="qsmaster",
@@ -258,15 +257,15 @@ class App:
         parser.add_option("-q", "--quiet",
                           action="store_false", dest="verbose", default=True,
                           help="don't print status messages to stdout")
-        parser.add_option("--createTables", 
+        parser.add_option("--createTables",
                           action="store_true", dest="createTables",
-                          default=False, 
+                          default=False,
                           help="Create/overwrite destination tables before insert (default=%default)",
                           )
         parser.add_option("--multiply", dest="multiply",
                           action="store", type="int", default=1,
                           help="Set sources per object (default %default)")
-        parser.add_option("-w", "--write", 
+        parser.add_option("-w", "--write",
                           action="store_true", dest="write",
                           help="Write SQL to db rather than to console. (default=%default)",
                           default=False)
@@ -282,15 +281,15 @@ class App:
     def _synthesize(self):
         """Do everything."""
         try:
-            conn = sql.connect(unix_socket=self._options.socketFile, 
-                               user=self._options.user, 
+            conn = sql.connect(unix_socket=self._options.socketFile,
+                               user=self._options.user,
                                passwd=self._options.password)
         except Exception, e:
             print >>sys.stderr, e
             print >>sys.stderr, "Couldn't connect to db with socket"
             print >>sys.stderr, "Bailing out."
             return
-        
+
         self._getTableList(conn)
         srcStatements = self._computeSynthesizeCmds(conn)
         if self._options.write:
@@ -306,12 +305,11 @@ class App:
                 c.execute(s)
                 c.fetchall() # need to detect errors
         except Exception, e:
-            
             print "Error writing new Source tables.", e
         pass
     def _getTableList(self, connection):
         c = connection.cursor()
-        c.execute("show tables in %s;" % self._options.database)
+        c.execute("show tables in %s" % self._options.database)
 
         def isGood(t):
             return t[:len(self._objPrefix)] == self._objPrefix
@@ -343,10 +341,9 @@ class App:
                     "db" : self._options.database,
                     "values" : ",".join(values) })
             values = []
-            
 
-        stmt  = "SELECT * FROM %s.%s;" % (self._options.database, 
-                                        self._objPrefix + str(chunk))
+        stmt  = "SELECT * FROM %s.%s" % (self._options.database,
+                                         self._objPrefix + str(chunk))
         cursor.execute(stmt)
         values = []
         for s in cursor.fetchall():
@@ -358,19 +355,18 @@ class App:
             pass
         if values:
             flushStmt(output, values)
-        
         return output
 
 
     def _formObj(self, objtuple):
         # USNO-B object
-        #| id | ra | decl | pm_ra | pm_raErr | pm_decl 
+        #| id | ra | decl | pm_ra | pm_raErr | pm_decl
         #   0    1     2       3       4          5
-        #| pm_declErr | epoch  | bMag  | bMagF | rMag  | rMagF 
+        #| pm_declErr | epoch  | bMag  | bMagF | rMag  | rMagF
         #     6          7        8       9       10      11
-        #| bMag2 | bMagF2 | rMag2 | rMagF2 | chunkId | subChunkId 
+        #| bMag2 | bMagF2 | rMag2 | rMagF2 | chunkId | subChunkId
         #    12      13       14      15       16          17
-        
+
         # PT1 Object:
         # objectId | iauId | ra_PS | ra_PS_Sigma | decl_PS | decl_PS_Sigma
         #    0        1        2       3               4         5
@@ -378,19 +374,15 @@ class App:
         #    6              7        8              9         10
         # (using ra_PS and decl_PS, we would have [0,2,4] below.)
 
-        return PretendObject(*map(lambda x: x(objtuple), 
+        return PretendObject(*map(lambda x: x(objtuple),
                                   imap(operator.itemgetter, [0,1,2])))
-                        
+
     def _cleanupSrc(self):
-        template = "DROP TABLE IF EXISTS %s;"
-        stmt = template % ",".join(imap(lambda c: self._srcPrefix+str(c) % c, 
+        template = "DROP TABLE IF EXISTS %s"
+        stmt = template % ",".join(imap(lambda c: self._srcPrefix+str(c) % c,
                                         self._chunks))
-    
 
-
-        
 
 if __name__ == "__main__":
     a = App()
     a.run()
-

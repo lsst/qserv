@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # parseTimings.py extracts timing information from an xrootd server
@@ -35,7 +35,7 @@ def splitWord(w):
     elif f != -1:
         return (w[:f],w[f:])
     return
-    
+
 def writeCsv(timing):
     times = {}
     print timing
@@ -51,17 +51,17 @@ def writeCsv(timing):
         times[t] = entry
 
     items = times.items()
-    
+
     for(k,v) in times.items():
         print "%s,%f,%f" % (k, v[0]-mintime, v[1]-v[0])
-        
-    
+
+
 def doStuff():
     timings = filter(lambda x:"timing_" == x[:7], dir(timingVars))
     for t in timings:
         # Get only one query result
         (name,timing) = getattr(timingVars, t).items()[0]
-        
+
         writeCsv(timing)
         break
 
