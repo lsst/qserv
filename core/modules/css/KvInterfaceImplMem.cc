@@ -198,14 +198,6 @@ void KvInterfaceImplMem::_init(std::istream& mapStream) {
         }
         _kvMap[theKey] = theVal;
     }
-    //map<string, string>::const_iterator itrM;
-    //for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
-    //    string val = "\\N";
-    //    if (itrM->second != "") {
-    //        val = itrM->second;
-    //    }
-    //    LOGF_DEBUG("%1%\t%2%" % itrM->first % val);
-    //}
 }
 
 std::shared_ptr<KvInterfaceImplMem>
