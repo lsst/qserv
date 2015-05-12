@@ -51,4 +51,4 @@ emptyChunkListFile={{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 #mysqlclient=
 
 [log]
-logConfig = {{QSERV_RUN_DIR}}/etc/log4cxx.properties
+logConfig = {{QSERV_RUN_DIR}}/etc/log4cxx.czar.properties

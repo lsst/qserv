@@ -42,7 +42,7 @@ import os
 import sys
 
 # Package
-from lsst.qserv.czar import StringMap # C++ STL map<string,string>
+from lsst.qserv.czar import StringMap  # C++ STL map<string,string>
 
 
 # Defaults for the configuration itself
@@ -125,6 +125,15 @@ def load(filename=None):
 def printTo(outHandle):
     config.write(outHandle)
     pass
+
+def str():
+    """
+    Used to log Qserv configuration
+    @return: a string representation of Qserv configuration
+    """
+    output = StringIO()
+    config.write(output)
+    return output.getvalue()
 
 def getStringMap():
     m = StringMap()

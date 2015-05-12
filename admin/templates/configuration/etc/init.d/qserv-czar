@@ -36,7 +36,9 @@ start=startCzar.py
 config=${QSERV_RUN_DIR}/etc/${NAME}.cnf
 pidfile=${QSERV_PID_DIR}/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
-logfile=${QSERV_LOG_DIR}/${NAME}.log
+# TODO: remove it, indeed final goal is to send log to logfile,
+#       not to stdout/stderr
+logfile=${QSERV_LOG_DIR}/${NAME}-console.log
 starttimeout=1
 
 export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp

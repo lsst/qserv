@@ -29,6 +29,9 @@
 #include <memory>
 #include <mutex>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -85,6 +88,7 @@ private:
     WorkDeque _queue;
     bool _isDead;
     RunnerDeque _runners;
+
 };
 
 }}}  // namespace lsst::qserv::util

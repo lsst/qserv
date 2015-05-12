@@ -34,9 +34,23 @@
 #include <sstream>
 #include <thread>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+
+
+	LOG_LOGGER getLogger() {
+	        static const std::string LOGGER_NAME = "lsst.qserv.util.WorkQueue";
+		static const LOG_LOGGER _logger(LOG_GET(LOGGER_NAME));
+		return _logger;
+	}
+}
+
 namespace lsst {
 namespace qserv {
 namespace util {
+
 
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue::Runner
@@ -54,7 +68,7 @@ public:
             (*c)();
             _c = 0;
             c = _w.getNextCallable();
-            std::cerr << "Runner running job" << std::endl;
+            LOGF(::getLogger(), LOG_LVL_DEBUG, "Runner running job");
         } // Keep running until we get poisoned.
         _w.signalDeath(this);
     }
@@ -178,6 +192,8 @@ WorkQueue::_dropQueue(bool final) {
 //////////////////////////////////////////////////////////////////////
 
 namespace {
+
+/// MyCallable is only used by test function below, for debugging purpose
 class MyCallable : public lsst::qserv::util::WorkQueue::Callable {
 public:
     typedef std::shared_ptr<MyCallable> Ptr;
@@ -201,6 +217,7 @@ public:
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STOPPED spinning" << std::endl;
         std::cerr << ss.str();
+
     }
     int _myId;
     float _spinTime;
@@ -208,10 +225,6 @@ public:
 
 void test() {
     using namespace std;
-    //struct timespec ts;
-    //struct timespec rem;
-    //ts.tv_sec = 10;
-    //ts.tv_nsec=0;
     cout << "main started" << endl;
     lsst::qserv::util::WorkQueue wq(10);
     cout << "wq started " << endl;
@@ -219,7 +232,6 @@ void test() {
         wq.add(std::make_shared<MyCallable>(i, 0.2));
     }
     cout << "added items" << endl;
-    //nanosleep(&ts,&rem);
 }
 
 } // anonymous namespace

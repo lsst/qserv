@@ -50,7 +50,12 @@ export QSW_MYSQLDUMP=`which mysqldump`
 QSW_SCRATCHPATH="${QSERV_RUN_DIR}/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
-export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4xrootd.properties"
+
+# Log configuration file for worker nodes.
+# xrootd manager doesn't use it.
+# Indeed, log4cxx is only used by Qserv plugin
+# which only runs on xrootd server side (i.e. worker nodes)
+export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4cxx.worker.properties"
 
 # method to guess pid file name,
 # takes single argument - program name
