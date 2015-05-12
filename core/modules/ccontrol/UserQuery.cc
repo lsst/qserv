@@ -65,6 +65,7 @@
 
 // System headers
 #include <cassert>
+#include <memory>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -92,12 +93,13 @@ namespace qserv {
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
-class ProtoPrinter : public util::UnaryCallable<void, std::shared_ptr<proto::TaskMsg> > {
+class ProtoPrinter: public util::UnaryCallable<void, std::shared_ptr<proto::TaskMsg> > {
 public:
     ProtoPrinter() {}
     virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
         std::cout << "Got taskmsg ok";
     }
+    virtual ~ProtoPrinter() {}
 };
 
 /// Factory to create chunkid-specific MsgReceiver objs linked to the right

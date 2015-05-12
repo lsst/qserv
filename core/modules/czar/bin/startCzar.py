@@ -107,7 +107,7 @@ def main():
     else:
         log.configure()
 
-    log.debug("Configuration:\n%s", config.str())
+    log.debug("Configuration:\n%s", config.toString())
 
     if options.test == True:
         runParserTest()

@@ -39,7 +39,7 @@ A Qserv run directory can only run one Qserv instance at a time.
 
 """
 
-# --------------------------------
+# -------------------------------
 #  Imports of standard modules --
 # -------------------------------
 import argparse

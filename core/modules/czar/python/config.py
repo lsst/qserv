@@ -126,7 +126,7 @@ def printTo(outHandle):
     config.write(outHandle)
     pass
 
-def str():
+def toString():
     """
     Used to log Qserv configuration
     @return: a string representation of Qserv configuration

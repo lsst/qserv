@@ -40,11 +40,10 @@
 namespace {
 
 
-	LOG_LOGGER getLogger() {
-	        static const std::string LOGGER_NAME = "lsst.qserv.util.WorkQueue";
-		static const LOG_LOGGER _logger(LOG_GET(LOGGER_NAME));
-		return _logger;
-	}
+    LOG_LOGGER getLogger() {
+        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.util.WorkQueue"));
+        return _logger;
+    }
 }
 
 namespace lsst {
@@ -217,7 +216,6 @@ public:
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STOPPED spinning" << std::endl;
         std::cerr << ss.str();
-
     }
     int _myId;
     float _spinTime;

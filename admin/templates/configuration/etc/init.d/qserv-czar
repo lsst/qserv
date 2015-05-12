@@ -38,6 +38,7 @@ pidfile=${QSERV_PID_DIR}/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
 # TODO: remove it, indeed final goal is to send log to logfile,
 #       not to stdout/stderr
+# only xrdssi debug message are printed here for now
 logfile=${QSERV_LOG_DIR}/${NAME}-console.log
 starttimeout=1
 
