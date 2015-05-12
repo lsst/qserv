@@ -251,7 +251,7 @@ void UserQuery::discard() {
 /// Constructor. Most setup work done by the UserQueryFactory
 UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs)
     :  _messageStore(std::make_shared<qdisp::MessageStore>()),
-       _qSession(qs), _sequence(0) {
+       _qSession(qs), _killed(false), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
 /// @return a plaintext description of query execution progress
