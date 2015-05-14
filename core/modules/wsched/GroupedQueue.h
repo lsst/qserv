@@ -97,7 +97,7 @@ public:
                 if(_maxClique > 1) { // Clique restriction?
                     typename Deque::iterator j = i+1;
                     for(int space=_maxClique-1; space > 0; --space, ++j) {
-                        if(!_eq(t, *j)) { // No match; there is space
+                        if(j == e || !_eq(t, *j)) { // No match; there is space
                             _deque.insert(i, t);
                             return;
                         }

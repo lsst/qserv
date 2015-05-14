@@ -268,6 +268,9 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     char buf[20];
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString(false));
     qdisp::XrdSsiSessionMock xsMockFalse(buf);
+    r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
+            qdisp::Executive::newNotifier(ex, refNum),
+            retryTest, status);
     r->ProvisionDone(&xsMockFalse);
     BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::REQUEST_ERROR);
     BOOST_CHECK(retryTest->_retryCalled == true);

@@ -93,6 +93,9 @@ void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr, unsigned sho
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
     QueryResourceDebug::getStatus(*qr).report(ExecStatus::RESPONSE_DONE);
     QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()
+    // qr->ProvisionDone would normally cause qr to commit suicide, but that requires
+    // a session object. Instead, take care of deletion ourselves.
+    delete qr;
 }
 
 }}} // namespace

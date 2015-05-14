@@ -77,6 +77,13 @@ public:
         std::string s = getMockString(true);
         bool res = s.compare(sessName) == 0;
         LOGF_INFO("sessName=%1% res=%2%" % sessName % res);
+        // Normally, reqP->ProcessResponse() would be called, which invokes
+        // cleanup code that is necessary to avoid memory leaks. Instead,
+        // clean up the request manually.
+        QueryRequest * r = dynamic_cast<QueryRequest *>(reqP);
+        if (r) {
+            r->cleanup();
+        }
         return res;
     };
     virtual bool Unprovision(bool forced=false){return true;};

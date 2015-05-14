@@ -153,7 +153,6 @@ bool QueryRequest::_importStream() {
     bool retrieveInitiated = false;
     // Pass ResponseRequester's buffer directly.
     std::vector<char>& buffer = _requester->nextBuffer();
-    LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
@@ -239,7 +238,7 @@ bool QueryRequest::cancelled() {
     return _finishStatus == CANCELLED;
 }
 
-void QueryRequest::_cleanup() {
+void QueryRequest::cleanup() {
     _retryFunc.reset();
     _requester.reset();
 }
@@ -274,7 +273,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         (*finish)(false);
     }
     // canceller is responsible for deleting upon destruction
-    _cleanup(); // This causes the canceller to delete this.
+    cleanup(); // This causes the canceller to delete this.
 }
 
 /// Finalize under success conditions and report completion.
@@ -298,7 +297,7 @@ void QueryRequest::_finish() {
         (*finish)(true);
     }
     // canceller is responsible for deleting upon destruction
-    _cleanup(); // This causes the canceller to delete this.
+    cleanup(); // This causes the canceller to delete this.
 }
 
 /// Register a cancellation function with the query receiver in order to receive
