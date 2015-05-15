@@ -49,7 +49,6 @@
 #include "boost/format.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh"
 #include "XrdSsi/XrdSsiService.hh" // Resource
-#include "XrdOuc/XrdOucTrace.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -96,13 +95,6 @@ inline bool lockedRead(bool& var, std::mutex& m) {
 }
 
 } // anonymous namespace
-
-// Declare to allow force-on XrdSsi tracing
-#define TRACE_ALL       0xffff
-#define TRACE_Debug     0x0001
-namespace XrdSsi {
-extern XrdOucTrace     Trace;
-}
 
 namespace lsst {
 namespace qserv {
@@ -401,7 +393,6 @@ void Executive::_dispatchQuery(int refNum,
 }
 
 void Executive::_setup() {
-    XrdSsi::Trace.What = TRACE_ALL | TRACE_Debug;
 
     XrdSsiErrInfo eInfo;
     _empty.set(true);
