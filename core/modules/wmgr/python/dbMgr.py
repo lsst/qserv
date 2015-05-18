@@ -93,6 +93,10 @@ def _tblDict(dbName, tblName):
     """ Make table instance dict out of table name """
     return dict(name=tblName, uri=url_for('.deleteTable', dbName=dbName, tblName=tblName))
 
+def _columnDict(row):
+    """ Make column dict out of column row """
+    return dict(name=row[0], type=row[1], null=row[2], key=row[3], default=row[4])
+
 def _chunkDict(dbName, tblName, chunkId):
     """ Make table instance dict out of table name """
     uri = url_for('.deleteChunk', dbName=dbName, tblName=tblName, chunkId=chunkId)
@@ -228,12 +232,12 @@ def dropDb(dbName):
 
     # use non-privileged account
     dbConn = Config.instance().dbConn()
+    if not dbConn.dbExists(dbName):
+        raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
     try:
         dbConn.dropDb(dbName)
     except db.DbException as exc:
         _log.error('exception when dropping database %s: %s', dbName, exc)
-        if exc.errCode() == db.DbException.DB_DOES_NOT_EXIST:
-            raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
         raise
 
     _log.debug('successfully dropped database %s', dbName)
@@ -275,6 +279,10 @@ def createTable(dbName):
     schemaSource:   source for schema name, possible values: 'request', 'css',
                     (default: 'request')
     schema:         complete "CREATE TABLE ..." statement (optional)
+    chunkColumns:   boolean flag, false by default, accepted values:
+                    '0', '1', 'yes', 'no', 'false', 'true'. If set to true then
+                    delete columns "_chunkId", "_subChunkId" from table (if they
+                    exist) and add columns "chunkId", "subChunkId" (if they don't exist)
 
     If `schemaSource` is 'request' then request must include `schema` parameter
     which is an SQL DDL statement starting with 'CREATE TABLE TableName ...'.
@@ -296,6 +304,7 @@ def createTable(dbName):
     tblName = request.form.get('table', '').strip()
     schemaSource = request.form.get('schemaSource', 'request').strip().lower()
     schema = request.form.get('schema', '').strip()
+    chunkColumns = _getArgFlag(request.form, 'chunkColumns', False)
 
     if tblName:
         _validateTableName(tblName)
@@ -316,36 +325,20 @@ def createTable(dbName):
         raise ExceptionResponse(400, "InvalidArgument",
                                 "`schemaSource` parameter has unexpected value \"%s\"" % schemaSource)
 
+    dbConn = Config.instance().dbConn()
+
+    # create table
     if schemaSource == 'request':
 
-        # get table name from schema
-        match = _createTableRe.match(schema)
-        if match is None:
-            raise ExceptionResponse(400, "InvalidArgument",
-                                    "`schema` parameter is not a CREATE TABLE statement")
-        if match.group(1):
-            raise ExceptionResponse(400, "InvalidArgument",
-                                    "CREATE TABLE statement includes database name")
-        schemaTblName = match.group(2)
-        _log.debug('table name from schema in request: %s', schemaTblName)
-        if tblName:
-            if schemaTblName != tblName:
-                _log.error('table name does not match schema table name')
-                raise ExceptionResponse(400, "InvalidArgument",
-                                        "Table name in `schema` does not match `table`: %s vs %s" %
-                                        (schemaTblName, tblName))
-        else:
-            tblName = schemaTblName
-            _validateTableName(tblName)
-
-        # need to drop CREATE TABLE part, everything before (
-        idx = schema.find('(')
-        if idx < 0:
-            _log.error('schema is missing opening parenthesis: %s', schema)
-            raise ExceptionResponse(400, "InvalidArgument",
-                                    "CREATE TABLE statement has no open parenthesis")
-        schema = schema[idx:]
-        _log.debug('schema from request: %s', schema)
+        # assume that we have correct SQL already
+        try:
+            dbConn.useDb(dbName)
+            dbConn.execCommand0(schema)
+        except db.DbException as exc:
+            _log.error('Exception when creating table: %s', exc)
+            if exc.errCode() == db.DbException.TB_EXISTS:
+                raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
+            raise
 
     elif schemaSource == 'css':
 
@@ -359,18 +352,50 @@ def createTable(dbName):
             raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
 
         # schema in CSS is stored without CREATE TABLE, so we are already OK
-
-    # create table
-    dbConn = Config.instance().dbConn()
-    try:
-        dbConn.createTable(tblName, schema, dbName)
-    except db.DbException as exc:
-        _log.error('Exception when creating table: %s', exc)
-        if exc.errCode() == db.DbException.TB_EXISTS:
-            raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
-        raise
+        try:
+            dbConn.createTable(tblName, schema, dbName)
+        except db.DbException as exc:
+            _log.error('Exception when creating table: %s', exc)
+            if exc.errCode() == db.DbException.TB_EXISTS:
+                raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
+            raise
 
     _log.debug('table %s.%s created succesfully', dbName, tblName)
+
+    if chunkColumns:
+        # Change table schema, drop _chunkId, _subChunkId, add chunkId, subChunkId
+
+        cursor = dbConn._conn.cursor()
+
+        try:
+            table = '`{0}`.`{1}`'.format(dbName, tblName)
+
+            # get current column set
+            q = "SHOW COLUMNS FROM %s" % table
+            cursor.execute(q)
+            rows = cursor.fetchall()
+            columns = set(row[0] for row in rows)
+
+            # delete rows
+            toDelete = set(["_chunkId", "_subChunkId"]) & columns
+            mods = ['DROP COLUMN %s' % col for col in toDelete]
+
+            # create rows, want them in that order
+            toAdd = ["chunkId", "subChunkId"]
+            mods += ['ADD COLUMN %s INT(11) NOT NULL' % col for col in toAdd if col not in columns]
+
+            if mods:
+                _log.info('Altering schema for table %s', table)
+
+                q = 'ALTER TABLE %s ' % table
+                q += ', '.join(mods)
+
+                _log.debug('query: %s', q)
+                cursor.execute(q)
+                del cursor
+        except Exception as exc:
+            _log.error('Failed to alter database table: %s', exc)
+            raise ExceptionResponse(500, "DbError", "Failed to alter database table", str(exc))
 
     # return representation for new database, 201 code is for CREATED
     response = json.jsonify(result=_tblDict(dbName, tblName))
@@ -432,6 +457,51 @@ def deleteTable(dbName, tblName):
     return json.jsonify(result=_tblDict(dbName, tblName))
 
 
+@dbService.route('/<dbName>/tables/<tblName>/schema', methods=['GET'])
+def tableSchema(dbName, tblName):
+    """ Return result of SHOW CREATE TABLE statement for given table. """
+
+    _log.debug('request: %s', request)
+    _log.debug('GET => show create table')
+
+    # validate params
+    _validateDbName(dbName)
+    _validateTableName(tblName)
+
+    # check the db exists (listTables() does not fail on non-existing databases)
+    dbConn = Config.instance().dbConn()
+    if not dbConn.tableExists(tblName, dbName):
+        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+
+    query = "SHOW CREATE TABLE `%s`.`%s`" % (dbName, tblName)
+    row = dbConn.execCommand1(query)
+
+    return json.jsonify(result=row[1])
+
+
+@dbService.route('/<dbName>/tables/<tblName>/columns', methods=['GET'])
+def tableColumns(dbName, tblName):
+    """ Return result of SHOW COLUMNS statement for given table. """
+
+    _log.debug('request: %s', request)
+    _log.debug('GET => show columns')
+
+    # validate params
+    _validateDbName(dbName)
+    _validateTableName(tblName)
+
+    # check the db exists (listTables() does not fail on non-existing databases)
+    dbConn = Config.instance().dbConn()
+    if not dbConn.tableExists(tblName, dbName):
+        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+
+    query = "SHOW COLUMNS FROM `%s`.`%s`" % (dbName, tblName)
+    rows = dbConn.execCommandN(query)
+    columns = [_columnDict(row) for row in rows]
+
+    return json.jsonify(results=columns)
+
+
 @dbService.route('/<dbName>/tables/<tblName>/chunks', methods=['GET'])
 def listChunks(dbName, tblName):
     """ Return the list of chunks in a table. For non-chunked table empty list is returned. """
@@ -479,6 +549,8 @@ def createChunk(dbName, tblName):
     chunkId:        chunk ID, non-negative integer
     overlapFlag:    if true then create overlap table too (default is true),
                     accepted values: '0', '1', 'yes', 'no', 'false', 'true'
+
+    This method is supposed to handle both regular tables and views.
     """
 
     _log.debug('request: %s', request)
@@ -517,17 +589,42 @@ def createChunk(dbName, tblName):
     _log.debug('will create tables: %s', tables)
     for tblType, chunkTable in tables.items():
 
-        # make table using DDL from non-chunked one
-        query = "CREATE TABLE {2}.{0} LIKE {2}.{1}".format(chunkTable, tblName, dbName)
-        _log.debug('make chunk table: %s', chunkTable)
-        try:
+        # check if this table is actually a view
+        if dbConn.isView(tblName, dbName):
+            
+            # view needs more complicated algorithm to copy its definition, first copy
+            # its current definition, then rename existing view and then re-create it again
+
+            _log.debug('table %s is a view', tblName)
+
+            # get its current definition
+            query = "SHOW CREATE VIEW `{0}`.`{1}`".format(dbName, tblName)
+            row = dbConn.execCommand1(query)
+            viewDef = row[1]
+
+            # rename it
+            query = "RENAME TABLE `{0}`.`{1}` to `{0}`.`{2}`".format(dbName, tblName, chunkTable)
             dbConn.execCommand0(query)
-        except db.DbException as exc:
-            _log.error('Exception when creating table: %s', exc)
-            if exc.errCode() == db.DbException.TB_EXISTS:
-                raise ExceptionResponse(409, "TableExists",
-                                        "Table %s.%s already exists" % (dbName, chunkTable))
-            raise
+
+            # re-create it
+            dbConn.execCommand0(viewDef)
+
+        else:
+        
+            # make table using DDL from non-chunked one
+            query = "CREATE TABLE {2}.{0} LIKE {2}.{1}".format(chunkTable, tblName, dbName)
+            _log.debug('make chunk table: %s', chunkTable)
+            try:
+                dbConn.execCommand0(query)
+            except db.DbException as exc:
+                _log.error('Exception when creating table: %s', exc)
+                if exc.errCode() == db.DbException.TB_EXISTS:
+                    raise ExceptionResponse(409, "TableExists",
+                                            "Table %s.%s already exists" % (dbName, chunkTable))
+                raise
+    
+            if tblType == 'overlapTable':
+                _fixOverlapIndices(dbConn, dbName, chunkTable)
 
         chunkRepr[tblType] = True
 
@@ -535,6 +632,44 @@ def createChunk(dbName, tblName):
     response.status_code = 201
     return response
 
+def _fixOverlapIndices(dbConn, database, ctable):
+    """
+    Replaces unique indices on overlap table with non-unique
+    """
+
+    cursor = dbConn._conn.cursor()
+
+    # Query to fetch all unique indices with corresponding column names,
+    # this is not very portable.
+    query = "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS " \
+        "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND NON_UNIQUE = 0"
+    _log.debug('query: %s, data: %s', query, (database, ctable))
+    cursor.execute(query, (database, ctable))
+
+    # map index name to list of columns
+    indices = {}
+    for idx, seq, column in cursor.fetchall():
+        indices.setdefault(idx, []).append((seq, column))
+
+    # replace each index with non-unique one
+    for idx, columns in indices.items():
+
+        _log.info('Replacing index %s on table %s.%s', idx, database, ctable)
+
+        # drop existing index, PRIMARY is a keyword so it must be quoted
+        query = 'DROP INDEX `{0}` ON `{1}`.`{2}`'.format(idx, database, ctable)
+        _log.debug('query: %s', query)
+        cursor.execute(query)
+
+        # column names sorted by index sequence number
+        colNames = ', '.join([col[1] for col in sorted(columns)])
+
+        # create new index
+        if idx == 'PRIMARY':
+            idx = 'PRIMARY_NON_UNIQUE'
+        query = 'CREATE INDEX `{0}` ON `{1}`.`{2}` ({3})'.format(idx, database, ctable, colNames)
+        _log.debug('query: %s', query)
+        cursor.execute(query)
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>', methods=['DELETE'])
 def deleteChunk(dbName, tblName, chunkId):
@@ -735,7 +870,7 @@ def loadData(dbName, tblName, chunkId=None):
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>/index', methods=['GET'])
 def getIndex(dbName, tblName, chunkId=None):
     """
-    Return index data (array of [objectId, chunkId, subChunkId] arrays). This only works
+    Return index data (array of (objectId, chunkId, subChunkId) tuples). This only works
     on partitined tables and is only supposed to be used with director table (but there is
     no check currently that table is a director table.
 
@@ -810,7 +945,7 @@ def getIndex(dbName, tblName, chunkId=None):
             if not rows:
                 break
             for row in rows:
-                result.append(list(row))
+                result.append(tuple(row))
 
     _log.debug("retrieved %d index rows", len(result))
 

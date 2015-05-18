@@ -19,7 +19,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-Module defining nodePool class and related methods.
+Module defining NodePool class and related methods.
 
 NodePool is a class which allow to launch parallel ssh commands to
 a set of NodeAdmin instances. Each NodeAdmin instance can be a Qserv
@@ -36,7 +36,7 @@ It can be used to install Qserv on a cluster.
 import logging
 import multiprocessing
 import os
-from subprocess import Popen, list2cmdline
+from subprocess import Popen
 import time
 
 #-----------------------------
@@ -62,18 +62,17 @@ class NodePool(object):
     Use system ssh.
     """
 
-    def __init__(self, nodeAdmins, max_task=None):
+    def __init__(self, sshNodes, max_task=None):
         """
         Container of nodes which will be managed in parallel using ssh
 
-        @param nodeAdmins:  a list of NodeAdmin instances, each node has to be
-                            contactable via SSH
+        @param sshNodes:    a list of SSHCommand instances
         @param max_task:    number of parallel SSH command which will be run
                             concurrently, equal to the number of cpu of the local
                             machine by default
         """
 
-        self.nodes = nodeAdmins
+        self.nodes = sshNodes
 
         if max_task:
             self._max_task = max_task
@@ -117,7 +116,7 @@ class NodePool(object):
 
         _LOG.info("nb node %s, max task: %s", len(remaining_nodes), self._max_task)
         running_processes = []
-        process_id=0
+        process_id = 0
         nodes_failed = []
 
         _LOG.info("Run command %s, stdin redirected to: %s", command, stdin)
@@ -129,7 +128,7 @@ class NodePool(object):
                 process_id += 1
                 node = remaining_nodes.pop()
 
-                task = node.getSshCmd(command);
+                task = node.getCommand(command)
                 if _LOG.isEnabledFor(logging.DEBUG):
                     _LOG.debug("Run: %s", ' '.join(task))
 

@@ -93,6 +93,7 @@ class CommandParser(object):
         "createNode" : [
             "type",
             "host",
+            "port",
             "runDir",
             "mysqlConn",
             "state"],
@@ -127,7 +128,7 @@ class CommandParser(object):
     CREATE DATABASE <dbName> LIKE <dbName2>;
     CREATE TABLE <dbName>.<tableName> <configFile>;
     CREATE TABLE <dbName>.<tableName> LIKE <dbName2>.<tableName2>;
-    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn, state
+    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, port, state
     UPDATE NODE <nodeName> state=value;  # value: ACTIVE, INACTIVE
     DELETE NODE <nodeName>;
     DROP DATABASE <dbName>;
@@ -272,6 +273,12 @@ class CommandParser(object):
 
         # check that all required options are there
         self._checkExist(options, requiredKeys)
+
+        # check obsolete keys
+        for opt in ('runDir', 'mysqlConn'):
+            if opt in options:
+                self._logger.warning(opt + ' option is obsolete')
+                del options[opt]
 
         # call CSS to do the rest, remap options to argument names
         options['nodeType'] = options['type']

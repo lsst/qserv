@@ -48,8 +48,8 @@ import sys
 # -----------------------------
 # Imports for other modules  --
 # -----------------------------
-from lsst.qserv.admin.nodeAdmin import NodeAdmin
 from lsst.qserv.admin.nodePool import NodePool
+from lsst.qserv.admin.ssh import SSHCommand
 import lsst.qserv.admin.logger
 
 # ----------------------------------
@@ -152,10 +152,10 @@ class ParallelCmd(object):
                      for n in range(self.args.node_first,
                                     self.args.node_last+1)]
 
-        nodes = [NodeAdmin(host=h,
-                           runDir=self.args.run_dir,
-                           kerberos=self.args.kerberos,
-                           ssh_user=self.args.user)
+        nodes = [SSHCommand(host=h,
+                            cwd=self.args.run_dir,
+                            kerberos=self.args.kerberos,
+                            user=self.args.user)
                  for h in hosts]
 
         self.nodePool = NodePool(nodes)

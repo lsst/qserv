@@ -28,14 +28,10 @@ This is a unit test for nodePool module.
 """
 
 import logging
-import os
-import socket
-import tempfile
 import unittest
 
-import lsst.qserv.admin.nodeAdmin as nodeAdmin
-import lsst.qserv.admin.qservAdmin as qservAdmin
 import lsst.qserv.admin.nodePool as nodePool
+from lsst.qserv.admin.ssh import SSHCommand
 
 
 logging.basicConfig(level=logging.INFO)
@@ -49,8 +45,7 @@ class TestNodePool(unittest.TestCase):
         cls._nb_nodes = 3
         krb = False
 
-        nodeAdmins = [nodeAdmin.NodeAdmin(host=host,
-                                          kerberos=krb)
+        nodeAdmins = [SSHCommand(host=host, kerberos=krb)
                       for n in range(cls._nb_nodes)]
         cls._nodePool = nodePool.NodePool(nodeAdmins)
 

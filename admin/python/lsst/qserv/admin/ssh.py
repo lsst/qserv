@@ -79,6 +79,7 @@ class SSHCommand(object):
         args += [host]
         self.cmd = args
         self.cwd = cwd
+        self.host = host
 
     def getCommand(self, command):
         cmd = ""
