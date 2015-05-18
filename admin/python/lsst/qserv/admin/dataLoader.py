@@ -146,10 +146,6 @@ class DataLoader(object):
         # do we need to run partitioner?
         self.callPartitioner = self.partitioned and not self.skipPart
 
-        # do we ever need input files? They are needed as input for partitioner or loader
-        # if table is not partitioned
-        self.needInput = not self.partitioned or not self.skipPart
-
 
     def load(self, database, table, schema, data):
         """
@@ -192,7 +188,7 @@ class DataLoader(object):
         # uncompress data files that are compressed, this is only needed if
         # table is not partitioned or if we are not reusing existing chunks
         files = data
-        if self.needInput:
+        if not (self.partitioned and self.skipPart and not self.oneTable):
             files = self._gunzip(data)
 
         # run partitioner if necessary
