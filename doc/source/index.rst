@@ -14,6 +14,7 @@ Contents:
    install/index
    admin/index
    devel/index
+   HOW-TO/index
    acknowledgement
 
 Indices and tables

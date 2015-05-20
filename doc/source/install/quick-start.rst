@@ -43,7 +43,7 @@ First, log in with a **non-root user account**.
 .. code-block:: bash
 
    NEWINSTALL_URL=https://sw.lsstcorp.org/eupspkg/newinstall.sh
-   INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
+   INSTALL_DIR=/path/to/lsst/stack/
    # e.g. ~qserv, please note that $INSTALL_DIR must be empty
    cd $INSTALL_DIR
    curl -O ${NEWINSTALL_URL}

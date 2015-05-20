@@ -83,12 +83,13 @@ class Configurator(object):
             description="Qserv services configuration tool.",
             epilog="DESCRIPTION:\n"
                    "  - Create an execution directory (QSERV_RUN_DIR) which contains configuration and"
-                   "execution\n"
+                   " execution\n"
                    "    data for a given Qserv instance.\n"
-                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data.\n"
+                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data,\n"
+                   "    QSERV_RUN_DIR/var/lib symlink to QSERV_DATA_DIR if different\n"
                    "  - Use templates and meta-config file parameters (see QSERV_RUN_DIR/qserv-meta.conf) to"
-                   "generate\n"
-                   "    Qserv configuration files and databases.\n"
+                   " generate\n"
+                   "    Qserv configuration files and initialize databases.\n"
                    "  - Default behaviour will configure a mono-node instance in " +
                    default_qserv_run_dir + ".\n\n"
                                            "CAUTION:\n"
@@ -111,22 +112,20 @@ class Configurator(object):
         # Defining option of each configuration step
         init_group = parser.add_argument_group('Initialization',
                                                'Creation of QSERV_RUN_DIR and QSERV_DATA_DIR')
-        config_group = parser.add_argument_group('Configuration steps', 'General configuration steps')
-        nodb_component_group = parser.add_argument_group('Components configuration',
-                                                         'Configuration of external components')
-        db_component_group = parser.add_argument_group('Database components configuration',
-                                                       'Configuration of external components '
-                                                       'impacting data,\n'
-                                                       'launched if and only if QSERV_DATA_DIR is empty')
+        config_group = parser.add_argument_group('Configuration steps',
+                                                 'Configuration steps which can be run in standalone mode, '
+                                                 'if none is provided\nthen whole configuration procedure will'
+                                                 ' be launched')
+
         for step_name in configure.ALL_STEPS:
             if step_name in configure.INIT:
                 group = init_group
-            elif step_name in configure.DB_COMPONENTS:
-                group = db_component_group
-            elif step_name in configure.NODB_COMPONENTS:
-                group = nodb_component_group
-            else:
+            # complex steps are removed from options
+            elif step_name in configure.ETC + configure.CLIENT:
                 group = config_group
+            else:
+                continue
+
             group.add_argument(
                 '-' + configure.ALL_STEPS_SHORT[step_name],
                 '--' + step_name,
