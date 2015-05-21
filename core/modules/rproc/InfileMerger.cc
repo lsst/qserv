@@ -210,7 +210,7 @@ public:
 // InfileMerger::Mgr implementation
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
-    : _mysqlConn(config, true),
+    : _mysqlConn(config),
       _mergeTable(mergeTable),
       _workQueue(1),
       _numInflight(0) {

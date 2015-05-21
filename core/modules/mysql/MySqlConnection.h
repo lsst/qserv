@@ -49,7 +49,7 @@ class MySqlConfig;
 class MySqlConnection : boost::noncopyable {
 public:
     MySqlConnection();
-    MySqlConnection(MySqlConfig const& sqlConfig, bool useThreadMgmt=false);
+    MySqlConnection(MySqlConfig const& sqlConfig);
 
     ~MySqlConnection();
 
@@ -75,7 +75,6 @@ public:
     bool selectDb(std::string const& dbName);
 
 private:
-    bool _initMySql();
     MYSQL* _connectHelper();
     static std::mutex _mysqlShared;
     static bool _mysqlReady;
@@ -84,7 +83,6 @@ private:
     MYSQL_RES* _mysql_res;
     bool _isConnected;
     std::shared_ptr<MySqlConfig> _sqlConfig;
-    bool _useThreadMgmt;
     bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
     bool _interrupted; ///< true if cancellation requested
     std::mutex _interruptMutex;
