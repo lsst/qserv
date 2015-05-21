@@ -112,7 +112,7 @@ wbase::TaskQueuePtr
 BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
                            wbase::TaskQueuePtr running) {
     queueTaskAct(incoming);
-    assert(_integrityHelper());
+    assert(checkIntegrity());
     assert(running.get());
     return _getNextIfAvail(running);
 }
@@ -120,10 +120,10 @@ BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
                               wbase::TaskQueuePtr running) {
-    assert(_integrityHelper());
     wcontrol::Foreman::Scheduler* s = 0;
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
+        assert(_integrityHelper());
         Map::iterator i = _map.find(finished.get());
         if(i == _map.end()) {
             throw Bug("BlendScheduler::taskFinishAct: Finished untracked task");
@@ -178,7 +178,7 @@ BlendScheduler::lookup(wbase::Task::Ptr p) {
 }
 
 /// @return true if data is okay
-/// precondition: _mutex is locked.
+/// precondition: _mapMutex is locked.
 bool
 BlendScheduler::_integrityHelper() const {
     if(!_group) { return false; }
@@ -197,7 +197,6 @@ BlendScheduler::_integrityHelper() const {
     return true;
 }
 
-/// Precondition: _mutex is already locked.
 /// @return new tasks to run
 wbase::TaskQueuePtr
 BlendScheduler::_getNextIfAvail(wbase::TaskQueuePtr running) {
