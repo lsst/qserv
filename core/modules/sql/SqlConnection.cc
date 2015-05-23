@@ -91,7 +91,7 @@ bool
 SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
                       std::string const& query) {
     _columnCount = 0;
-    _connection = std::make_shared<mysql::MySqlConnection>(sqlConfig, true);
+    _connection = std::make_shared<mysql::MySqlConnection>(sqlConfig);
     if(!_connection->connect()) {
         populateErrorObject(*_connection, _errObj);
         return false;
@@ -110,17 +110,13 @@ SqlConnection::SqlConnection()
     : _connection() {
 }
 
-SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt)
-    : _connection(std::make_shared<mysql::MySqlConnection>(sc,
-                                                           useThreadMgmt
-                                                           )) {
+SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool)
+    : _connection(std::make_shared<mysql::MySqlConnection>(sc)) {
 }
 
 void
-SqlConnection::reset(mysql::MySqlConfig const& sc, bool useThreadMgmt) {
-    _connection = std::make_shared<mysql::MySqlConnection>(sc,
-                                                           useThreadMgmt
-                                                           );
+SqlConnection::reset(mysql::MySqlConfig const& sc, bool) {
+    _connection = std::make_shared<mysql::MySqlConnection>(sc);
 }
 
 SqlConnection::~SqlConnection() {

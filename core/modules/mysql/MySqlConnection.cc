@@ -30,51 +30,39 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
+#include "boost/thread/tss.hpp"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 
 
-namespace { // File-scope helpers
-inline void killMySql(MYSQL* mysql, bool useThreadMgmt) {
-    mysql_close(mysql);
-    // Dangerous to use mysql_thread_end(), because caller may belong to a
-    // different thread other than the one that called mysql_init(). Suggest
-    // using thread-local-storage to track users of mysql_init(), and to call
-    // mysql_thread_end() appropriately. Not an easy thing to do right now, and
-    // shouldn't be a big deal because we thread-pool anyway.
+namespace {
+    // A class that calls mysql_thread_end when an instance is destroyed.
+    struct MySqlThreadJanitor {
+        ~MySqlThreadJanitor() { mysql_thread_end(); }
+    };
 }
-} // anonymous namespace
 
 
 namespace lsst {
 namespace qserv {
 namespace mysql {
 
-// Statics
-bool MySqlConnection::_mysqlReady = false;
-std::mutex MySqlConnection::_mysqlShared;
-
-
 MySqlConnection::MySqlConnection()
     : _mysql(NULL),
       _mysql_res(NULL),
       _isConnected(false),
-      _useThreadMgmt(false),
       _isExecuting(false),
       _interrupted(false) {
-    _initMySql();
 }
 
-MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig,
-                                 bool useThreadMgmt)
-    : _mysql(NULL), _mysql_res(NULL),
+MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig)
+    : _mysql(NULL),
+      _mysql_res(NULL),
       _isConnected(false),
       _sqlConfig(std::make_shared<MySqlConfig>(sqlConfig)),
-      _useThreadMgmt(useThreadMgmt),
       _isExecuting(false),
       _interrupted(false) {
-    _initMySql();
 }
 
 MySqlConnection::~MySqlConnection() {
@@ -84,14 +72,14 @@ MySqlConnection::~MySqlConnection() {
             while((row = mysql_fetch_row(_mysql_res))); // Drain results.
             _mysql_res = NULL;
         }
-        killMySql(_mysql, _useThreadMgmt);
+        mysql_close(_mysql);
     }
 }
 
 bool
 MySqlConnection::connect() {
     // Cleanup garbage
-    if(_mysql) killMySql(_mysql, _useThreadMgmt);
+    if (_mysql) { mysql_close(_mysql); }
     _isConnected = false;
     // Make myself a thread
     _mysql = _connectHelper();
@@ -161,23 +149,44 @@ MySqlConnection::selectDb(std::string const& dbName) {
 // MySqlConnection
 // private:
 ////////////////////////////////////////////////////////////////////////
-bool
-MySqlConnection::_initMySql() {
-    _isConnected = false; // reset.
-    _mysql = NULL;
-    std::lock_guard<std::mutex> g(_mysqlShared);
-    if(!_mysqlReady) {
-        int rc = mysql_library_init(0, NULL, NULL);
-        assert(0 == rc);
-        _mysqlReady = true;
-    }
-    return true;
-}
 
 MYSQL* MySqlConnection::_connectHelper() {
+    // We must call mysql_library_init() exactly once before calling mysql_init
+    // because it is not thread safe. Both mysql_library_init and mysql_init
+    // call mysql_thread_init, and so we must arrange to call mysql_thread_end
+    // when the calling thread exists. We do this by allocating a thread
+    // local object that calls mysql_thread_end from its destructor.
+    //
+    // C++11 thread_local storage cannot be used until the baseline compiler is
+    // GCC 4.8, so we must fall back to boost. A significant caveat from the
+    // boost documentation is that "on some platforms, cleanup of thread-
+    // specific data is not performed for threads created with the platform's
+    // native API". Fortunately, even though we are creating threads via
+    // the STL and not boost, cleanup seems to be performed on POSIX systems.
+    // However, this likely does not work on Windows.
+    //
+    // TODO: Once full usage of C++11 is allowed, rewrite using thread_local.
+    static std::once_flag initialized;
+    static boost::thread_specific_ptr<MySqlThreadJanitor> janitor;
+
+    struct InitializeMysqlLibrary {
+        void operator()() {
+            int rc = mysql_library_init(0, NULL, NULL);
+            assert(0 == rc && "mysql_library_init() failed");
+            assert(mysql_thread_safe() != 0 &&
+                   "MySQL client library is not thread safe!");
+            assert(janitor.get() == 0 &&
+                   "thread janitor set before calling mysql_library_init()");
+            janitor.reset(new MySqlThreadJanitor);
+        }
+    };
+    std::call_once(initialized, InitializeMysqlLibrary());
     MYSQL* m = mysql_init(NULL);
     if (!m) {
         return m;
+    }
+    if (!janitor.get()) {
+        janitor.reset(new MySqlThreadJanitor);
     }
     unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
     MYSQL* c = mysql_real_connect(

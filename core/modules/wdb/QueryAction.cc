@@ -86,7 +86,7 @@ private:
     bool _initConnection() {
         mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
         sc.username = _user.c_str(); // Override with czar-passed username.
-        _mysqlConn.reset(new mysql::MySqlConnection(sc, true));
+        _mysqlConn.reset(new mysql::MySqlConnection(sc));
 
         if(!_mysqlConn->connect()) {
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
