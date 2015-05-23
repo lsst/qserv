@@ -41,6 +41,24 @@ namespace {
     struct MySqlThreadJanitor {
         ~MySqlThreadJanitor() { mysql_thread_end(); }
     };
+
+    // A functor that initializes the MySQL client library.
+    struct InitializeMysqlLibrary {
+        typedef boost::thread_specific_ptr<MySqlThreadJanitor> JanitorTsp;
+        JanitorTsp & janitor;
+
+        InitializeMysqlLibrary(JanitorTsp & j) : janitor(j) {}
+
+        void operator()() {
+            int rc = mysql_library_init(0, NULL, NULL);
+            assert(0 == rc && "mysql_library_init() failed");
+            assert(mysql_thread_safe() != 0 &&
+                   "MySQL client library is not thread safe!");
+            assert(janitor.get() == 0 &&
+                   "thread janitor set before calling mysql_library_init()");
+            janitor.reset(new MySqlThreadJanitor);
+        }
+    };
 }
 
 
@@ -169,18 +187,7 @@ MYSQL* MySqlConnection::_connectHelper() {
     static std::once_flag initialized;
     static boost::thread_specific_ptr<MySqlThreadJanitor> janitor;
 
-    struct InitializeMysqlLibrary {
-        void operator()() {
-            int rc = mysql_library_init(0, NULL, NULL);
-            assert(0 == rc && "mysql_library_init() failed");
-            assert(mysql_thread_safe() != 0 &&
-                   "MySQL client library is not thread safe!");
-            assert(janitor.get() == 0 &&
-                   "thread janitor set before calling mysql_library_init()");
-            janitor.reset(new MySqlThreadJanitor);
-        }
-    };
-    std::call_once(initialized, InitializeMysqlLibrary());
+    std::call_once(initialized, InitializeMysqlLibrary(janitor));
     MYSQL* m = mysql_init(NULL);
     if (!m) {
         return m;
