@@ -98,6 +98,7 @@ def main():
     config.printTo(sys.stdout)
 
     # Configure logging
+    newlog.MDCPutPid()
     logConfig = config.config.get('log', 'logConfig')
     if logConfig:
         newlog.configure(logConfig)
