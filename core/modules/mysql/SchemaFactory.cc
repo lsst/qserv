@@ -69,7 +69,7 @@ struct ColTypeFactory {
           case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
           case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
           case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
-          case MYSQL_TYPE_BIT: sqlType = "BIT?"; break; // length handling??
+          case MYSQL_TYPE_BIT: _setGeneric("BIT", f.length); break;
           case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
           case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
           case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
