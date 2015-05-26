@@ -166,6 +166,7 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
     case MYSQL_TYPE_LONG_BLOB:
     case MYSQL_TYPE_BLOB:
         cs.hasDefault = false;
+        break;
     default:
         break;
     }
