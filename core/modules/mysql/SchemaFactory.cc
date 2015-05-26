@@ -69,7 +69,7 @@ struct ColTypeFactory {
           case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
           case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
           case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
-          case MYSQL_TYPE_BIT: sqlType = "BIT?"; break; // length handling??
+          case MYSQL_TYPE_BIT: _setGeneric("BIT", f.length); break;
           case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
           case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
           case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
@@ -166,6 +166,7 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
     case MYSQL_TYPE_LONG_BLOB:
     case MYSQL_TYPE_BLOB:
         cs.hasDefault = false;
+        break;
     default:
         break;
     }
@@ -178,14 +179,6 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
 ////////////////////////////////////////////////////////////////////////
 // SchemaFactory implementation
 ////////////////////////////////////////////////////////////////////////
-
-/// Construct a ColType from a MYSQL_FIELD
-sql::ColType SchemaFactory::newColType(MYSQL_FIELD const& f) {
-    sql::ColType ct;
-    ColTypeFactory ctf(ct);
-    ctf.buildTo(f);
-    return ct;
-}
 
 /// Construct a ColSchema from a valid MYSQL_FIELD
 sql::ColSchema SchemaFactory::newColSchema(MYSQL_FIELD const& f) {

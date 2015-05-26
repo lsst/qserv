@@ -36,7 +36,6 @@ namespace qserv {
 namespace mysql {
 class SchemaFactory {
 public:
-    static sql::ColType newColType(MYSQL_FIELD const& f);
     static sql::ColSchema newColSchema(MYSQL_FIELD const& f);
     static sql::Schema newFromResult(MYSQL_RES* result);
 };

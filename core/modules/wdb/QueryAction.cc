@@ -127,7 +127,6 @@ private:
     std::shared_ptr<wbase::SendChannel> _sendChannel;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
-    uint _maxMsgBytes;
 
     util::MultiError _multiError; // Error log
 
@@ -163,8 +162,7 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
       _msg(a.task->msg),
       _poisoned(false),
       _sendChannel(a.task->sendChannel),
-      _user(a.task->user),
-      _maxMsgBytes(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
+      _user(a.task->user) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_msg);
@@ -242,7 +240,7 @@ void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
  */
 bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
     MYSQL_ROW row;
-    uint size = 0;
+    size_t size = 0;
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
@@ -263,7 +261,7 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
         std::cout << "\n";
 #endif
         // Each element needs to be mysql-sanitized
-        if (size > _maxMsgBytes) {
+        if (size > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
             if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                 LOGF_ERROR("Message single row too large to send using protobuffer");
                 return false;
