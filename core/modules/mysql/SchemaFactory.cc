@@ -180,14 +180,6 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
 // SchemaFactory implementation
 ////////////////////////////////////////////////////////////////////////
 
-/// Construct a ColType from a MYSQL_FIELD
-sql::ColType SchemaFactory::newColType(MYSQL_FIELD const& f) {
-    sql::ColType ct;
-    ColTypeFactory ctf(ct);
-    ctf.buildTo(f);
-    return ct;
-}
-
 /// Construct a ColSchema from a valid MYSQL_FIELD
 sql::ColSchema SchemaFactory::newColSchema(MYSQL_FIELD const& f) {
     sql::ColSchema cs;
