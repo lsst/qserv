@@ -198,9 +198,9 @@ specified (select more unique name for it).
 .. code-block:: bash
 
    TESTDATA=~/testdata-repo/datasets/case01/data
-   db_options="--socket=$QRUNDIR/var/lib/mysql/mysql.sock --user=qsmaster"
+   wmgr_options="--host=127.0.0.1 --port=5012 --secret=/path/to/wmgr.secret"
    
-   qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --tmp-dir=/tmp/data-loader-tmp \
+   qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --tmp-dir=/tmp/data-loader-tmp \
        qservTest_case01_qserv LeapSeconds $TESTDATA/LeapSeconds.schema $TESTDATA/LeapSeconds.tsv.gz
 
 
@@ -213,7 +213,7 @@ chunks then specify it with ``--chunks-dir`` options.
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --tmp-dir=/tmp/data-loader-tmp --chunks-dir=/tmp/data-loader-chunks \
         qservTest_case01_qserv Object $TESTDATA/Object.schema $TESTDATA/Object.tsv.gz
 
@@ -228,7 +228,7 @@ data will be taken from chunks directory.
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --chunks-dir=/tmp/data-loader-chunks --skip-partition \
         qservTest_case01_qserv Object $TESTDATA/Object.schema
 
@@ -252,7 +252,7 @@ To load data without partitioning use ``--skip-partition`` together with
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --tmp-dir=/tmp/data-loader-tmp --one-table --skip-partition \
         qservTest_case01_mysql Object $TESTDATA/Object.schema $TESTDATA/Object.tsv.gz
 
@@ -261,7 +261,7 @@ useful too in this case:
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --chunks-dir=/tmp/data-loader-chunks --tmp-dir=/tmp/data-loader-tmp --one-table \
         qservTest_case01_mysql Object $TESTDATA/Object.schema $TESTDATA/Object.tsv.gz
 
@@ -279,7 +279,7 @@ For first option specify ``--chunks-dir`` option but skip input files (and use
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --chunks-dir=/tmp/data-loader-chunks --one-table --skip-partition \
         qservTest_case01_mysql Object $TESTDATA/Object.schema
 
@@ -290,7 +290,7 @@ not compressed there is no need to specify ``--tmp-dir`` option in this case:
 
 .. code-block:: bash 
 
-    qserv-data-loader.py $db_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
+    qserv-data-loader.py $wmgr_options --config=$TESTDATA/common.cfg --config=$TESTDATA/Object.cfg \
         --one-table --skip-partition \
         qservTest_case01_mysql Object $TESTDATA/Object.schema /tmp/data-loader-chunks/chunk_????.txt
 
@@ -301,17 +301,17 @@ Summary of Options
 Here is a summary table of all possible option combinations from above use cases
 and their description, this only applies to partitioned tables:
 
-+-----------+----------------+-------------+---------------------------------------------------------------+
-| one-table | skip-partition | input files | description                                                   |
-+===========+================+=============+===============================================================+
-|   no      |     no         |     yes     | Partitions input files and loads into chunked tables          |
-+-----------+----------------+-------------+---------------------------------------------------------------+
-|   no      |     yes        |    ignored  | Loads pre-partitioned data from chunks-dir into chunked tables|
-+-----------+----------------+-------------+---------------------------------------------------------------+
-|   yes     |     no         |     yes     | Partitions input files and loads into one table               |
-+-----------+----------------+-------------+---------------------------------------------------------------+
-|   yes     |     yes        |     yes     | Loads input files into one table without partitioning         |
-+-----------+----------------+-------------+---------------------------------------------------------------+
-|   yes     |     yes        |     no      | Loads pre-partitioned data from chunks-dir into one table     |
-+-----------+----------------+-------------+---------------------------------------------------------------+
++-----------+----------------+-------------+----------------------------------------------------------------+
+| one-table | skip-partition | input files | description                                                    |
++===========+================+=============+================================================================+
+| no        | no             | yes         | Partitions input files and loads into chunked tables           |
++-----------+----------------+-------------+----------------------------------------------------------------+
+| no        | yes            | ignored     | Loads pre-partitioned data from chunks-dir into chunked tables |
++-----------+----------------+-------------+----------------------------------------------------------------+
+| yes       | no             | yes         | Partitions input files and loads into one table                |
++-----------+----------------+-------------+----------------------------------------------------------------+
+| yes       | yes            | yes         | Loads input files into one table without partitioning          |
++-----------+----------------+-------------+----------------------------------------------------------------+
+| yes       | yes            | no          | Loads pre-partitioned data from chunks-dir into one table      |
++-----------+----------------+-------------+----------------------------------------------------------------+
 
