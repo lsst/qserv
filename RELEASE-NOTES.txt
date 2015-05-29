@@ -1,3 +1,40 @@
+R E L E A S E   2015_05
+=======================
+
+Release highlights:
+ * Migration to C++ 11 (thread, shared_ptr)
+ * Improvements for gcc 4.9.2
+
+Code improvements:
+ * DM-1541: Add support for transmitting [VAR]BINARY column data
+ * DM-1540: Add support for BIT columns
+ * DM-1901: Re-implement data loading scripts based on new worker control service
+ * DM-2593: Client API for new worker management service
+ * DM-2711: Migrate boost:thread to std::thread
+ * DM-2712: Migrate boost::shared_ptr to std::shared_ptr
+ * DM-2730: Qserv code cleanup
+ * DM-2714: Make valgrind happier
+
+New features:
+ * DM-1716: Implement query killing through Ctrl-C
+ * DM-2341: Use parallel ssh to manage Qserv on IN2P3 cluster
+
+Bug fixes:
+ * DM-2698: Fix connection leak
+ * DM-2716: Fix connection leak (2nd iteration)
+ * DM-2710: Mutex use before creation
+ * DM-2708: Understand race condition in Executive::_dispatchQuery
+ * DM-2762: Avoid leaking memory allocated by mysql_thread_init
+ * DM-2682: Add missing empty-chunk-path on Ubuntu 14.04
+ * DM-2683: Fix case05 3009_countObjectInRegionWithZFlux freeze
+ * DM-2679: Fix default LOAD DATA options
+ * DM-2760: Data loader fails to decompress compressed data
+ * DM-1715: Add missing includes unistd.h for gcc 4.9.2
+ * DM-2729: Fix a few more g++ 4.9.2 compatos
+
+Documentation improvements:
+ * DM-2630: Document configuration tool main use cases
+
 R E L E A S E   2015_04
 =======================
 
