@@ -33,7 +33,7 @@ import unittest
 
 import lsst.qserv.admin.qservAdmin as qservAdmin
 from lsst.qserv.admin.qservAdminException import QservAdminException
-import lsst.qserv.admin.workerMgmt as workerMgmt
+import lsst.qserv.admin.nodeMgmt as nodeMgmt
 
 
 def _makeAdmin(data=None):
@@ -73,9 +73,9 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=qservAdmin.VERSION)
@@ -85,15 +85,13 @@ class TestCssNodes(unittest.TestCase):
         self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-1')
-        self.assertEqual(node['mysqlConn'], '3306')
+        self.assertEqual(node['port'], 5012)
 
         node = admin.getNode('worker-2')
         self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-2')
-        self.assertEqual(node['mysqlConn'], '3307')
+        self.assertEqual(node['port'], 5013)
 
         self.assertRaises(Exception, admin.getNode, 'worker-3')
 
@@ -110,13 +108,11 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-1\tACTIVE
 /NODES/worker-1/type\tworker
 /NODES/worker-1/host\tworker.domain
-/NODES/worker-1/runDir\t/tmp/worker-1
-/NODES/worker-1/mysqlConn\t3306
+/NODES/worker-1/port\t5012
 /NODES/worker-2\tINACTIVE
 /NODES/worker-2/type\tworker
 /NODES/worker-2/host\tworker.domain
-/NODES/worker-2/runDir\t/tmp/worker-2
-/NODES/worker-2/mysqlConn\t3307
+/NODES/worker-2/port\t5013
 """
 
         initData = initData.format(version=qservAdmin.VERSION)
@@ -126,15 +122,13 @@ class TestCssNodes(unittest.TestCase):
         self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-1')
-        self.assertEqual(node['mysqlConn'], '3306')
+        self.assertEqual(node['port'], '5012')
 
         node = admin.getNode('worker-2')
         self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-2')
-        self.assertEqual(node['mysqlConn'], '3307')
+        self.assertEqual(node['port'], '5013')
 
         self.assertRaises(Exception, admin.getNode, 'worker-3')
 
@@ -149,9 +143,9 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=qservAdmin.VERSION)
@@ -165,15 +159,13 @@ class TestCssNodes(unittest.TestCase):
         self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-1')
-        self.assertEqual(node['mysqlConn'], '3306')
+        self.assertEqual(node['port'], 5012)
 
         node = nodes['worker-2']
         self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-2')
-        self.assertEqual(node['mysqlConn'], '3307')
+        self.assertEqual(node['port'], 5013)
 
     def testAddNode(self):
         """ Test for creating new nodes """
@@ -191,31 +183,27 @@ class TestCssNodes(unittest.TestCase):
         nodeName = 'worker-1'
         nodeType = 'worker'
         host = 'worker.domain'
-        runDir = '/tmp/worker-1'
-        mysqlConn = '3306'
-        admin.addNode(nodeName, nodeType, host, runDir, mysqlConn)
+        port = 5012
+        admin.addNode(nodeName, nodeType, host, port)
 
         nodeName = 'worker-2'
         nodeType = 'worker'
         host = 'worker.domain'
-        runDir = '/tmp/worker-2'
-        mysqlConn = '3307'
+        port = 5013
         state = qservAdmin.NodeState.INACTIVE
-        admin.addNode(nodeName, nodeType, host, runDir, mysqlConn, state)
+        admin.addNode(nodeName, nodeType, host, port, state)
 
         node = admin.getNode('worker-1')
         self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-1')
-        self.assertEqual(node['mysqlConn'], '3306')
+        self.assertEqual(node['port'], 5012)
 
         node = admin.getNode('worker-2')
         self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
         self.assertEqual(node['type'], 'worker')
         self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['runDir'], '/tmp/worker-2')
-        self.assertEqual(node['mysqlConn'], '3307')
+        self.assertEqual(node['port'], 5013)
 
         self.assertRaises(Exception, admin.getNode, 'worker-3')
 
@@ -238,9 +226,9 @@ class TestCssNodes(unittest.TestCase):
 /DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS/001.json\t{{"nodeName": "worker-2"}}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=qservAdmin.VERSION)
@@ -278,16 +266,14 @@ class TestCssNodes(unittest.TestCase):
         nodeName = 'worker-1'
         nodeType = 'worker'
         host = 'worker.domain'
-        runDir = '/tmp/worker-1'
-        mysqlConn = '3306'
-        admin.addNode(nodeName, nodeType, host, runDir, mysqlConn)
+        port = 5012
+        admin.addNode(nodeName, nodeType, host, port)
 
         nodeName = 'worker-2'
         nodeType = 'worker'
         host = 'worker.domain'
-        runDir = '/tmp/worker-2'
-        mysqlConn = '3307'
-        admin.addNode(nodeName, nodeType, host, runDir, mysqlConn)
+        port = 5013
+        admin.addNode(nodeName, nodeType, host, port)
 
         node = admin.getNode('worker-1')
         self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
@@ -319,15 +305,15 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "backup", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+/NODES/worker-2.json\t{{"type": "backup", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=qservAdmin.VERSION)
         admin = _makeAdmin(initData)
 
-        mgr = workerMgmt.WorkerMgmt(admin)
+        mgr = nodeMgmt.NodeMgmt(admin)
 
         # should return all nodes
         nodes = mgr.selectDict()

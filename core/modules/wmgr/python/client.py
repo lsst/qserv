@@ -197,6 +197,7 @@ class ServerError(ClientException):
     """
     def __init__(self, code, body):
         ClientException.__init__(self, 'Server returned error: %s (body: "%s")' % (code, body))
+        self.code = code
 
 class ServerResponseError(ClientException):
     """
@@ -205,13 +206,6 @@ class ServerResponseError(ClientException):
     """
     def __init__(self, msg, *args):
         ClientException.__init__(self, 'Server response error: ' + msg, *args)
-
-class DataFileError(ClientException):
-    """
-    Exception raised for errors in data file operations
-    """
-    def __init__(self, fileName, *args):
-        ClientException.__init__(self, 'Data file error: ' + fileName, *args)
 
 #---------------------
 #  Class definition --
@@ -260,6 +254,8 @@ class WmgrClient(object):
             user, passwd = self.readSecret(secretFile)
 
         self.host = host
+        if self.host == 'localhost':
+            self.host = '127.0.0.1'
         self.port = port
         self.auth = None
         if user is not None or passwd is not None:
@@ -308,14 +304,20 @@ class WmgrClient(object):
         self._requestJSON('dbs', '', method='POST', data=dict(db=dbName))
 
 
-    def dropDb(self, dbName):
+    def dropDb(self, dbName, mustExist=True):
         """
-        Delete existing database.
+        Delete existing database. If mustExist is True and database does not exist then
+        exception is raised.
 
         @raise ClientException: in case of problems
         """
         _log.debug('drop database: %s', dbName)
-        self._requestJSON('dbs', dbName, method='DELETE')
+        try:
+            self._requestJSON('dbs', dbName, method='DELETE')
+        except ServerError as exc:
+            # if db does not exist then it's OK
+            if exc.code != 404 or mustExist:
+                raise
 
 
     def tables(self, dbName):
@@ -329,18 +331,20 @@ class WmgrClient(object):
         return self._getKey(result, 'name')
 
 
-    def createTable(self, dbName, tableName, schema=None):
+    def createTable(self, dbName, tableName, schema=None, chunkColumns=False):
         """
         Create new table.
 
         Table schema ("CREATE TABLE ...") may be specified in schema argument,
-        if schema is None then table schema will be loaded from CSS.
+        if schema is None then table schema will be loaded from CSS. If chunkColumns
+        is True then delete colums "_chunkId", "_subChunkId" from table (if they
+        exist) and add columns "chunkId", "subChunkId" (if they don't exist).
 
         @raise ClientException: in case of problems
         """
 
         _log.debug('create table: %s.%s', dbName, tableName)
-        data = dict(table=tableName)
+        data = dict(table=tableName, chunkColumns=str(int(chunkColumns)))
         if schema:
             data['schema'] = schema
         else:
@@ -348,14 +352,47 @@ class WmgrClient(object):
         self._requestJSON('dbs', dbName + '/tables', method='POST', data=data)
 
 
-    def dropTable(self, dbName, tableName):
+    def dropTable(self, dbName, tableName, dropChunks=True, mustExist=True):
         """
-        Delete existing table.
+        Delete existing table. If dropChunks is True then delete all chunks tables as well.
+        If mustExist is True and table does not exist then exception is raised.
 
         @raise ClientException: in case of problems
         """
         _log.debug('drop table: %s.%s', dbName, tableName)
-        self._requestJSON('dbs', dbName + '/tables/' + tableName, method='DELETE')
+        params = dict(dropChunks=str(int(dropChunks)))
+        try:
+            self._requestJSON('dbs', dbName + '/tables/' + tableName, method='DELETE', params=params)
+        except ServerError as exc:
+            # if db does not exist then it's OK
+            if exc.code != 404 or mustExist:
+                raise
+
+
+    def tableSchema(self, dbName, tableName):
+        """
+        Return result of SHOW CREATE TABLE statement for given table.
+
+        @return: string
+        @raise ClientException: in case of problems
+        """
+        _log.debug('get table schema, table: %s.%s', dbName, tableName)
+        resource = dbName + '/tables/' + tableName + '/schema'
+        result = self._requestJSON('dbs', resource)
+        return result
+
+
+    def tableColumns(self, dbName, tableName):
+        """
+        Return result of SHOW COLUMNS statement for given table.
+
+        @return: list of dicts
+        @raise ClientException: in case of problems
+        """
+        _log.debug('get table columns, table: %s.%s', dbName, tableName)
+        resource = dbName + '/tables/' + tableName + '/columns'
+        result = self._requestJSON('dbs', resource)
+        return result
 
 
     def chunks(self, dbName, tableName):
@@ -373,7 +410,7 @@ class WmgrClient(object):
 
     def createChunk(self, dbName, tableName, chunkId, overlap):
         """
-        Create new chunk.
+        Create new chunk, this should work with both tables and view.
 
         If overlap is True then create overlap table in addition to chunk table.
 
@@ -426,7 +463,7 @@ class WmgrClient(object):
         return self._getKey(result, 'rows')
 
 
-    def loadData(self, dbName, tableName, dataFile, chunkId=None, overlap=False,
+    def loadData(self, dbName, tableName, dataFile, fileName='table.data', chunkId=None, overlap=False,
                  compressed=None, delimiter=None, enclose=None, escape=None, terminate=None):
         """
         Upload data into a table or chunk using the file format supported by mysql
@@ -434,7 +471,9 @@ class WmgrClient(object):
 
         @param dbName:     Database name
         @param tableName:  Table name
-        @param dataFile:   Path name for file with data
+        @param dataFile:   File object for file with data
+        @param fileName:   File name to use, if data is compressed then pass name which
+                           ends with .gz or set compressed argument to True.
         @param chunkId:    Chunk ID, number, if None then table is not partitioned
         @param overlap:    If True then load data in overlap table, only meaningful if
                            chunkId is not None
@@ -476,29 +515,20 @@ class WmgrClient(object):
         # urlencode options
         options = urlencode(options)
 
-        try:
-            # try to open data file
-            with open(dataFile) as fobj:
+        # we have to encode data in multi-part container and we also want to
+        # stream the data from a file, this combination is not supported natively
+        # in requests so we want to do special "stream" to produce the data
+        data = []
+        if options:
+            data.append(dict(name='load-options', data=options,
+                             content_type='application/x-www-form-urlencoded'))
+        data.append(dict(name='table-data', data=dataFile, filename=fileName,
+                         content_type='application/octet-stream'))
+        stream = _MPEncoder(data)
 
-                # we have to encode data in multi-part container and we also want to
-                # stream the data from a file, this combination is not supported natively
-                # in requests so we want to do special "stream" to produce the data
-                data = []
-                if options:
-                    data.append(dict(name='load-options', data=options,
-                                     content_type='application/x-www-form-urlencoded'))
-                data.append(dict(name='table-data', data=fobj, filename=dataFile,
-                                 content_type='application/octet-stream'))
-                stream = _MPEncoder(data)
-
-                result = self._requestJSON('dbs', resource, method='POST', data=stream,
-                                           headers={'Content-Type': stream.content_type})
-                return self._getKey(result, 'count')
-
-        except IOError as exc:
-            # likely file is not there
-            raise DataFileError(dataFile, str(exc))
-
+        result = self._requestJSON('dbs', resource, method='POST', data=stream,
+                                   headers={'Content-Type': stream.content_type})
+        return self._getKey(result, 'count')
 
     def services(self):
         """
@@ -555,7 +585,7 @@ class WmgrClient(object):
         return self._getKey(result, 'name')
 
 
-    def xrootdRegisterDb(self, dbName, restart=True):
+    def xrootdRegisterDb(self, dbName, restart=True, allowDuplicate=False):
         """
         Register new database with xrootd.
 
@@ -566,7 +596,12 @@ class WmgrClient(object):
         """
         _log.debug('register database in xrootd: %s', dbName)
         data = dict(db=dbName, xrootdRestart=str(int(restart)))
-        self._requestJSON('xrootd', 'dbs', method='POST', data=data)
+        try:
+            self._requestJSON('xrootd', 'dbs', method='POST', data=data)
+        except ServerError as exc:
+            # may need to ignore 409 if db is registered already
+            if exc.code != 409 or not allowDuplicate:
+                raise
 
 
     def xrootdUnregisterDb(self, dbName, restart=True):
@@ -628,7 +663,7 @@ class WmgrClient(object):
             response.raise_for_status()
             return response
         except requests.HTTPError as exc:
-            raise ServerError(str(exc), exc.response.text)
+            raise ServerError(exc.response.status_code, exc.response.text)
         except requests.exceptions.RequestException as exc:
             # RequestException is a base class for all exceptions generated
             # by requests including HTTPError

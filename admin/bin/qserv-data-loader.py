@@ -46,7 +46,7 @@ Script can be run in two modes:
 
 Currently not supported is duplication mode when data from one sky segment
 is replicated multiple times to other segments to cover whole sky. This
-option will be added later.
+option may be added later.
 
 @author  Andy Salnikov, SLAC
 
@@ -55,12 +55,9 @@ option will be added later.
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
-import os
 import sys
 import argparse
 import logging
-import MySQLdb as mysql
-import warnings
 
 # ----------------------------
 # Imports for other modules --
@@ -69,6 +66,7 @@ from lsst.qserv.admin.dataLoader import DataLoader
 from lsst.qserv.admin.qservAdmin import QservAdmin
 from lsst.qserv.admin.nodeAdmin import NodeAdmin
 import lsst.qserv.admin.logger
+from lsst.qserv.wmgr.client import WmgrClient
 
 # ---------------------------------
 # Local non-exported definitions --
@@ -146,8 +144,10 @@ class Loader(object):
                            help='Disable CSS updates.')
 
         group = parser.add_argument_group('Database options', 'Options for database connection')
-        group.add_argument('-H', '--host', dest='mysqlHost', default='localhost', metavar='HOST',
-                           help='Host name for czar mysql server, def: %(default)s.')
+        group.add_argument('-H', '--host', dest='czarHost', default='localhost', metavar='HOST',
+                           help='Host name for czar wmgr service, def: %(default)s.')
+        group.add_argument('-P', '--port', dest='czarPort', default=5012, metavar='PORT_NUMBER', type=int,
+                           help='Port number to use for czar wmgr connection, def: %(default)s.')
         group.add_argument('-W', '--worker', dest='workerNodes', default=[], action='append',
                            metavar='STRING', help='Node name for worker server, may be specified '
                            'more than once. If missing then czar server is used to store worker '
@@ -156,14 +156,8 @@ class Loader(object):
                            'defined in CSS (using qserv-admin command "CREATE NODE ..."). If CSS '
                            'is disabled (with --no-css) then node name will be treated as a host '
                            'name.')
-        group.add_argument('-u', '--user', dest='user', default=None,
-                           help='User name to use when connecting to server.')
-        group.add_argument('-p', '--password', dest='password', default=None,
-                           help='Password to use when connecting to server.')
-        group.add_argument('-P', '--port', dest='mysqlPort', default=3306, metavar='PORT_NUMBER', type=int,
-                           help='Port number to use for connection, def: %(default)s.')
-        group.add_argument('-S', '--socket', dest='mysqlSocket', default=None, metavar='PATH',
-                           help='The socket file to use for connection.')
+        group.add_argument('-x', '--secret', dest='secret', default=None,
+                           help='Path name for the file with wmgr secret.')
 
         group = parser.add_argument_group('Control options', 'Options for controlling other operations')
         group.add_argument('-E', '--empty-chunks', dest='emptyChunks', default=None, metavar='PATH',
@@ -188,12 +182,6 @@ class Loader(object):
                             'Input can be empty, e.g. in case of defining SQL view instead of '
                             'regular table.')
 
-        # this will keep worker DB objects to control their lifetime
-        self._dbs = []
-
-        # suppress some warnings from mysql
-        warnings.filterwarnings('ignore', category=mysql.Warning)
-
         # parse all arguments
         self.args = parser.parse_args()
 
@@ -217,29 +205,30 @@ class Loader(object):
             logger.handlers = []
             logger.addHandler(handler)
 
-        # connect to czar mysql server
-        mysqlConn = self._czarDbConnect()
+        # connect to czar server
+        czarWmgr = WmgrClient(self.args.czarHost, self.args.czarPort, secretFile=self.args.secret)
 
         # instantiate CSS interface
-        qservAdmin = None
+        css = None
         if self.args.cssConn:
-            qservAdmin = QservAdmin(self.args.cssConn)
+            logger.debug('connecting to css: %s', self.args.cssConn)
+            css = QservAdmin(self.args.cssConn)
 
         # connect to all worker servers
-        workerConnMap = {}
+        workerWmgrMap = {}
         for worker in self.args.workerNodes:
-            workerConnMap[worker] = self._workerDbConnect(worker, qservAdmin)
+            workerWmgrMap[worker] = self._wmgrConnect(worker, css)
 
         # instantiate loader
         self.loader = DataLoader(self.args.configFiles,
-                                 mysqlConn,
-                                 workerConnMap=workerConnMap,
+                                 czarWmgr,
+                                 workerWmgrMap=workerWmgrMap,
                                  chunksDir=self.args.chunksDir,
                                  keepChunks=self.args.keepChunks,
                                  tmpDir=self.args.tmpDir,
                                  skipPart=self.args.skipPart,
                                  oneTable=self.args.oneTable,
-                                 qservAdmin=qservAdmin,
+                                 qservAdmin=css,
                                  cssClear=self.args.cssClear,
                                  indexDb=self.args.indexDb,
                                  emptyChunks=self.args.emptyChunks,
@@ -257,59 +246,17 @@ class Loader(object):
         return 0
 
 
-    def _czarDbConnect(self):
+    def _wmgrConnect(self, nodeName, css):
         """
-        Connect to czar mysql server, returns connection or throws exception.
+        Connect to wmgr server, returns NodeAdmin instance or throws exception.
         """
-        kws = dict(local_infile=1)
-        if self.args.mysqlHost:
-            kws['host'] = self.args.mysqlHost
-        if self.args.user:
-            kws['user'] = self.args.user
-        if self.args.password:
-            kws['passwd'] = self.args.password
-        if self.args.mysqlPort:
-            kws['port'] = self.args.mysqlPort
-        if self.args.mysqlSocket:
-            kws['unix_socket'] = self.args.mysqlSocket
-
-        try:
-            return mysql.Connection(**kws)
-        except Exception as exc:
-            logging.critical('Failed to connect to mysql database: %s', exc)
-            raise
-
-
-    def _workerDbConnect(self, nodeName, qservAdmin):
-        """
-        Connect to worker mysql server, returns connection or throws exception.
-        """
-
-        if qservAdmin:
+        if css:
             # will get node info from CSS
-            wAdmin = NodeAdmin(name=nodeName, qservAdmin=qservAdmin)
+            nodeAdmin = NodeAdmin(name=nodeName, qservAdmin=css, wmgrSecretFile=self.args.secret)
         else:
-            # no CSS, use node name as host name for direct mysql connection
-            mysqlConn = str(self.args.mysqlPort)
-            wAdmin = NodeAdmin(host=nodeName, mysqlConn=mysqlConn)
-
-        kws = dict(local_infile=1)
-        if self.args.user:
-            kws['user'] = self.args.user
-        if self.args.password:
-            kws['passwd'] = self.args.password
-
-        try:
-            # this will return db.Db instance
-            db = wAdmin.mysqlConn(**kws)
-            self._dbs.append(db)
-            db.connect()
-            # extract mysql connection object from Db, this is a hack to be used for now
-            # in the future we'll need to use Db API directly in data loader
-            return db._conn
-        except Exception as exc:
-            logging.critical('Failed to connect to mysql database: %s', exc)
-            raise
+            # no CSS, use node name as host name
+            nodeAdmin = NodeAdmin(host=nodeName, port=self.args.czarPort, wmgrSecretFile=self.args.secret)
+        return nodeAdmin.wmgrClient()
 
 
 if __name__ == "__main__":

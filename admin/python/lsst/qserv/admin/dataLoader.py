@@ -29,6 +29,8 @@ DataLoader class is used to simplify data loading procedure.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+from cStringIO import StringIO
+import io
 import logging
 import os
 import re
@@ -41,6 +43,7 @@ import tempfile
 #-----------------------------
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
+from lsst.qserv.wmgr import client
 import MySQLdb
 
 #----------------------------------
@@ -72,7 +75,7 @@ class DataLoader(object):
     files which are passed to constructor.
     """
 
-    def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
+    def __init__(self, configFiles, czarWmgr, workerWmgrMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  qservAdmin=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
                  emptyChunks=None, deleteTables=False, loggerName=None):
@@ -80,9 +83,9 @@ class DataLoader(object):
         Constructor parses all arguments and prepares for execution.
 
         @param configFiles:  Sequence of the files defining all partitioning options.
-        @param mysqlConn:    Mysql connection object for czar-side database.
-        @param workerConnMap: Dictionary mapping worker host name to corresponding
-                             mysql connection object. May be empty, in which case czar
+        @param czarWmgr:     WmgrClient instance for czar node.
+        @param workerWmgrMap: Dictionary mapping worker host name to corresponding
+                             WmgrClient instance. May be empty, in which case czar
                              server will be used for all data.
         @param chunksDir:    Temporary directory to store chunks files, will be created
                              if does not exist.
@@ -108,8 +111,8 @@ class DataLoader(object):
         self._log = logging.getLogger(loggerName)
 
         self.configFiles = configFiles
-        self.mysql = mysqlConn
-        self.workerConnMap = workerConnMap.copy()
+        self.czarWmgr = czarWmgr
+        self.workerWmgrMap = workerWmgrMap.copy()
         self.chunksDir = chunksDir
         self.tmpDir = tmpDir
         self.chunkPrefix = chunkPrefix
@@ -129,6 +132,7 @@ class DataLoader(object):
         self.schema = None     # "CREATE TABLE" statement
         self.chunks = set()    # set of chunks that were loaded
         self.chunkMap = None
+        self.createdChunks = set()
 
         # parse all config files, this can raise an exception
         self.partOptions = PartConfig(configFiles)
@@ -180,7 +184,7 @@ class DataLoader(object):
             self._checkCss(database, table)
 
         # make chunk mapper
-        self.chunkMap = ChunkMapping(self.workerConnMap.keys(), database, table, self.css)
+        self.chunkMap = ChunkMapping(self.workerWmgrMap.keys(), database, table, self.css)
 
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir(data)
@@ -454,7 +458,7 @@ class DataLoader(object):
 
     def _connections(self, useCzar, useWorkers):
         """
-        Returns a list of connections, for each conection there is a
+        Returns a list of wmgr "connections", for each conection there is a
         tuple (name, connection) where name is something like "czar" or
         "worker lsst-dbdev2". If czar connection is included then it
         is always first in the list.
@@ -464,10 +468,10 @@ class DataLoader(object):
         """
         res = []
         if useCzar:
-            res += [("czar", self.mysql)]
+            res += [("czar", self.czarWmgr)]
         if useWorkers:
-            for worker, conn in self.workerConnMap.items():
-                res += [('worker ' + worker, conn)]
+            for worker, wmgr in self.workerWmgrMap.items():
+                res += [('worker ' + worker, wmgr)]
         return res
 
 
@@ -478,25 +482,10 @@ class DataLoader(object):
 
         self._log.info('Deleting existing table %s (and chunks)', table)
 
-        # regexp matching all chunk table names
-        tblre = re.compile('^' + table + '((FullOverlap)?_[0-9]+)?$')
-
-        for name, conn in self._connections(useCzar=True, useWorkers=True):
-
+        for name, wmgr in self._connections(useCzar=True, useWorkers=True):
             self._log.info('Deleting table from %s', name)
+            wmgr.dropTable(database, table, dropChunks=True, mustExist=False)
 
-            cursor = conn.cursor()
-
-            q = 'SHOW TABLES FROM ' + database
-            cursor.execute(q)
-            tables = [row[0] for row in cursor.fetchall()]
-            for tbl in tables:
-                if tblre.match(tbl):
-                    q = 'DROP TABLE IF EXISTS {0}.{1}'.format(database, tbl)
-                    self._log.debug('query: %s', q)
-                    cursor.execute(q)
-
-            cursor.close()
 
     def _createTable(self, database, table, schema):
         """
@@ -512,64 +501,11 @@ class DataLoader(object):
             raise
 
         # create table on czar and every worker
-        for name, conn in self._connections(useCzar=True, useWorkers=True):
+        for name, wmgr in self._connections(useCzar=True, useWorkers=True):
+            self._log.info('Creating table %s in %s', table, name)
+            chunkColumns = bool(self.partitioned)
+            wmgr.createTable(database, table, schema=self.schema, chunkColumns=chunkColumns)
 
-            cursor = conn.cursor()
-
-            # create table
-            try:
-                # have to use "USE db" here
-                q = "USE %s" % database
-                self._log.debug('query: %s', q)
-                cursor.execute(q)
-                self._log.info('Creating table %s in %s', table, name)
-                self._log.debug('query: %s', self.schema)
-                cursor.execute(self.schema)
-            except Exception as exc:
-                self._log.critical('Failed to create mysql table: %s', exc)
-                raise
-
-            # finish with this session, otherwise ALTER TABLE will fail
-            del cursor
-
-            # add/remove chunk columns for partitioned tables only
-            if self.partitioned:
-                self._alterTable(table, conn)
-
-
-    def _alterTable(self, table, conn):
-        """
-        Change table schema, drop _chunkId, _subChunkId, add chunkId, subChunkId
-        """
-
-        cursor = conn.cursor()
-
-        try:
-            # get current column set
-            q = "SHOW COLUMNS FROM %s" % table
-            cursor.execute(q)
-            rows = cursor.fetchall()
-            columns = set(row[0] for row in rows)
-
-            # delete rows
-            toDelete = set(["_chunkId", "_subChunkId"]) & columns
-            mods = ['DROP COLUMN %s' % col for col in toDelete]
-
-            # create rows, want them in that order
-            toAdd = ["chunkId", "subChunkId"]
-            mods += ['ADD COLUMN %s INT(11) NOT NULL' % col for col in toAdd if col not in columns]
-
-            if mods:
-                self._log.info('Altering schema for table %s', table)
-
-                q = 'ALTER TABLE %s ' % table
-                q += ', '.join(mods)
-
-                self._log.debug('query: %s', q)
-                cursor.execute(q)
-        except Exception as exc:
-            self._log.critical('Failed to alter mysql table: %s', exc)
-            raise
 
     def _loadData(self, database, table, files):
         """
@@ -617,7 +553,7 @@ class DataLoader(object):
 
                 # just load everything into existing table, do not load overlaps
                 if not overlap:
-                    self._loadOneFile(self.mysql, database, table, path, csvPrefix)
+                    self._loadOneFile(self.czarWmgr, database, table, path, csvPrefix)
                 else:
                     self._log.info('Ignore overlap file %s', path)
 
@@ -633,25 +569,27 @@ class DataLoader(object):
                         raise RuntimeError('Found non-empty overlap file for non-subchunked table: ' + path)
                     else:
                         self._log.info('Ignore empty overlap file %s', path)
+                        continue
 
-                if self.workerConnMap:
+                if self.workerWmgrMap:
                     # find database for this chunk
                     worker = self.chunkMap.worker(chunkId)
-                    conn = self.workerConnMap.get(worker)
-                    if conn is None:
+                    wmgr = self.workerWmgrMap.get(worker)
+                    if wmgr is None:
                         raise RuntimeError('Existing chunk mapping is not in the list of workers: ' + worker)
                     self._log.info('load chunk %s to worker %s', chunkId, worker)
                 else:
                     # all goes to single node
                     self._log.info('load chunk %s to czar', chunkId)
-                    conn = self.mysql
+                    wmgr = self.czarWmgr
 
                 # make tables if needed
-                self._makeChunkAndOverlapTable(conn, database, table, chunkId)
+                if chunkId not in self.createdChunks:
+                    wmgr.createChunk(database, table, chunkId, overlap=self.partOptions.isSubChunked)
+                    self.createdChunks.add(chunkId)
 
                 # load data into chunk table
-                ctable = self._chunkTableName(table, chunkId, overlap)
-                self._loadOneFile(conn, database, ctable, path, csvPrefix)
+                self._loadOneFile(wmgr, database, table, path, csvPrefix, chunkId=chunkId, overlap=overlap)
 
 
     @staticmethod
@@ -681,101 +619,13 @@ class DataLoader(object):
         if not connections:
             connections = self._connections(useCzar=True, useWorkers=False)
 
-        for name, conn in connections:
+        for name, wmgr in connections:
 
             self._log.info('Make dummy chunk table for %s', name)
 
-            if not self.partOptions.isView:
-                # just make regular chunk with special ID, do not load any data
-                self._makeChunkAndOverlapTable(conn, database, table, 1234567890)
-            else:
-                # TODO: table is a actually a view, need something special. Old loader was
-                # creating new view just by renaming Table to Table_1234567890, I'm not sure
-                # this is a correct procedure. In any case here is the code that does it.
-                cursor = conn.cursor()
-                q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
+            # just make regular chunk with special ID, do not load any data
+            wmgr.createChunk(database, table, 1234567890, overlap=self.partOptions.isSubChunked)
 
-                self._log.debug('Rename view')
-                self._log.debug('query: %s', q)
-                cursor.execute(q)
-
-
-    def _makeChunkAndOverlapTable(self, conn, database, table, chunkId):
-        """
-        Create table for a chunk if it does not exist yet, both regular
-        and overlap tables are created.
-        """
-
-        ctable = self._chunkTableName(table, chunkId, False)
-        self._copyTableDDL(conn, database, table, ctable)
-
-        # only make overlap tables for sub-chunked tables
-        if self.partOptions.isSubChunked:
-            ctable = self._chunkTableName(table, chunkId, True)
-            self._copyTableDDL(conn, database, table, ctable)
-            # overlap tables may have duplicated entries which conflicts
-            # with unique indices, replace those indices
-            self._fixOverlapIndices(conn, database, ctable)
-
-
-    def _copyTableDDL(self, conn, database, table, ctable):
-        """
-        Create table using schema of the existing table, this is used
-        to make chunk/overlap tables from original table definition.
-        """
-
-        q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
-
-        self._log.info('Make chunk table: %s', ctable)
-        self._log.debug('query: %s', q)
-        try:
-            cursor = conn.cursor()
-            cursor.execute(q)
-        except MySQLdb.Warning as exc:
-            # Usually we suppress mysql warnings via warnings.filterwarnings(ignore, ..)
-            # but there may be other libraries that re-enable it and make exceptions.
-            # Just catch and ignore it
-            self._log.debug('warning: %s', exc)
-
-
-    def _fixOverlapIndices(self, conn, database, ctable):
-        """
-        Replaces unique indices on overlap table with non-unique
-        """
-
-        cursor = conn.cursor()
-
-        # Query to fetch all unique indices with corresponding column names,
-        # this is not very portable.
-        query = "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS " \
-            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND NON_UNIQUE = 0"
-        self._log.debug('query: %s, data: %s', query, (database, ctable))
-        cursor.execute(query, (database, ctable))
-
-        # map index name to list of columns
-        indices = {}
-        for idx, seq, column in cursor.fetchall():
-            indices.setdefault(idx, []).append((seq, column))
-
-        # replace each index with non-unique one
-        for idx, columns in indices.items():
-
-            self._log.info('Replacing index %s on table %s.%s', idx, database, ctable)
-
-            # drop existing index, PRIMARY is a keyword so it must be quoted
-            query = 'DROP INDEX `{0}` ON `{1}`.`{2}`'.format(idx, database, ctable)
-            self._log.debug('query: %s', query)
-            cursor.execute(query)
-
-            # column names sorted by index sequence number
-            colNames = ', '.join([col[1] for col in sorted(columns)])
-
-            # create new index
-            if idx == 'PRIMARY':
-                idx = 'PRIMARY_NON_UNIQUE'
-            query = 'CREATE INDEX `{0}` ON `{1}`.`{2}` ({3})'.format(idx, database, ctable, colNames)
-            self._log.debug('query: %s', query)
-            cursor.execute(query)
 
     def _loadNonChunkedData(self, database, table, files):
         """
@@ -792,18 +642,17 @@ class DataLoader(object):
         if not connections:
             connections = self._connections(useCzar=True, useWorkers=False)
 
-        for name, conn in connections:
+        for name, wmgr in connections:
             self._log.info('load non-chunked data to %s', name)
             for file in files:
-                self._loadOneFile(conn, database, table, file, csvPrefix)
+                self._loadOneFile(wmgr, database, table, file, csvPrefix)
 
 
-    def _loadOneFile(self, conn, database, table, file, csvPrefix):
+    def _loadOneFile(self, wmgr, database, table, path, csvPrefix, chunkId=None, overlap=None):
         """Load data from a single file into existing table"""
 
-        self._log.info('load table %s.%s from file %s', database, table, file)
+        self._log.info('load table %s.%s from file %s', database, table, path)
 
-        data = {'file': file}
         # need to know special characters used in csv
         # default delimiter is the same as in partitioner
         special_chars = {'delimiter': '\t',
@@ -811,25 +660,19 @@ class DataLoader(object):
                          'escape': '\\',
                          'newline': '\n'}
 
+        data = {}
         for name, default in special_chars.items():
             data[name] = self.partOptions.get(csvPrefix + '.' + name, default)
 
-        # mysql-python prevents table name from being a parameter
-        # TODO: check for correct user input for database and table
-        # other parameters are processed by mysql-python to prevent SQL-injection
-        sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(database, table)
-
-        sql += " FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s \
-                 ESCAPED BY %(escape)s LINES TERMINATED BY %(newline)s"
-
-        cursor = conn.cursor()
         try:
-            if self._log.isEnabledFor(logging.DEBUG):
-                self._log.debug("query: %s", sql % conn.literal(data))
-            cursor.execute(sql, data)
-        except Exception as exc:
-            self._log.critical('Failed to load data into non-partitioned table: %s', exc)
+            file = open(path)
+        except IOError as exc:
+            self._log.error('failed to open file %s', path)
             raise
+
+        wmgr.loadData(database, table, file, fileName=path, chunkId=chunkId, overlap=overlap,
+                      delimiter=data['delimiter'], enclose=data['enclose'],
+                      escape=data['escape'], terminate=data['newline'])
 
 
     def _updateCss(self, database, table):
@@ -860,17 +703,10 @@ class DataLoader(object):
         create table, only column definitions
         """
 
-        cursor = self.mysql.cursor()
-
-        # make table using DDL from non-chunked one
-        q = "SHOW CREATE TABLE {0}.{1}".format(database, table)
-        cursor.execute(q)
-        data = cursor.fetchone()[1]
-
-        # strip CREATE TABLE and all table options
-        i = data.find('(')
-        j = data.rfind(')')
-        return data[i:j + 1]
+        schema = self.czarWmgr.tableSchema(database, table)
+        # strip CREATE TABLE
+        i = schema.find('(')
+        return schema[i:]
 
 
     def _makeEmptyChunks(self):
@@ -915,40 +751,30 @@ class DataLoader(object):
         if not self.partitioned or not self.partOptions.isDirector(table) or not self.indexDb:
             return
 
-        metaTable = self.indexDb + '.' + database + '__' + table
-        self._log.info('Generating index %s', metaTable)
+        metaTable = database + '__' + table
+        self._log.info('Generating index %s.%s', self.indexDb, metaTable)
 
-        czarCursor = self.mysql.cursor()
-
-        if self.deleteTables:
-            q = "DROP TABLE IF EXISTS {0}".format(metaTable)
-            self._log.debug('query: %s', q)
-            czarCursor.execute(q)
+        # try to delete existing table first
+        self.czarWmgr.dropTable(self.indexDb, metaTable, mustExist=False)
 
         # index column
         idxCol = self.partOptions['id']
 
         # get index column type from original table
         idxColType = 'BIGINT'
-        q = "SHOW COLUMNS FROM {0}.{1}".format(database, table)
-        self._log.debug('query: %s', q)
-        czarCursor.execute(q)
-        for row in czarCursor.fetchall():
-            if row[0] == idxCol:
-                idxColType = row[1]
+        for col in self.czarWmgr.tableColumns(database, table):
+            if col['name'] == idxCol:
+                idxColType = col['type']
                 break
 
         # make a table, InnoDB engine is required for scalability
-        q = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
-        q += " ENGINE = INNODB"
-        q = q.format(table=metaTable, column=idxCol, type=idxColType)
-        self._log.debug('query: %s', q)
-        czarCursor.execute(q)
-
-        czarCursor.close()
+        schema = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
+        schema += " ENGINE = INNODB"
+        schema = schema.format(table=metaTable, column=idxCol, type=idxColType)
+        self.czarWmgr.createTable(self.indexDb, metaTable, schema=schema)
 
         # call one of the two methods
-        if self.workerConnMap:
+        if self.workerWmgrMap:
             self._makeIndexMultiNode(database, table, metaTable, idxCol)
         else:
             self._makeIndexSingleNode(database, table, metaTable, idxCol)
@@ -961,47 +787,45 @@ class DataLoader(object):
         may need special optimization or parameters.
         """
 
-        czarCursor = self.mysql.cursor()
-
         # load data from all chunks
         for chunk in self.chunks:
 
             # get worker name for this chunk
             wname = self.chunkMap.worker(chunk)
+            wmgr = self.workerWmgrMap[wname]
 
-            conn = self.workerConnMap[wname]
-            wCursor = conn.cursor()
+            # get index data
+            columns = (idxCol, 'chunkId', 'subChunkId')
+            indexData = wmgr.getIndex(database, table, chunkId=chunk, columns=columns)
 
-            q = "SELECT {0}, chunkId, subChunkId FROM {1}.{2}_{3}"
-            q = q.format(idxCol, database, table, chunk)
-            self._log.debug('query: %s', q)
-            wCursor.execute(q)
+            # dump it into a in-memory file
+            data = StringIO()
+            for row in indexData:
+                data.write("%d\t%d\t%d\n" % row)
+            data.seek(0)
 
-            q = "INSERT INTO {0} VALUES (%s, %s, %s)".format(metaTable)
-            while True:
-                seq = wCursor.fetchmany(1000000)
-                if not seq:
-                    break
-                czarCursor.executemany(q, seq)
-
-            wCursor.close()
-
-        self.mysql.commit()
-        czarCursor.close()
+            # send that file to czar
+            self.czarWmgr.loadData(self.indexDb, metaTable, data)
 
     def _makeIndexSingleNode(self, database, table, metaTable, idxCol):
         """
         Generate object index in czar meta database in case all chunks are also on czar.
         """
 
-        cursor = self.mysql.cursor()
+        # TODO: there is for sure more efficient method than copying data locally
 
         # load data from all chunks
         for chunk in self.chunks:
-            q = "INSERT INTO {0} SELECT {1}, chunkId, subChunkId FROM {2}.{3}_{4}"
-            q = q.format(metaTable, idxCol, database, table, chunk)
-            self._log.debug('query: %s', q)
-            cursor.execute(q)
 
-        self.mysql.commit()
-        cursor.close()
+            # get index data from czar
+            columns = (idxCol, 'chunkId', 'subChunkId')
+            indexData = self.czarWmgr.getIndex(database, table, chunkId=chunk, columns=columns)
+
+            # dump it into a in-memory file
+            data = StringIO()
+            for row in indexData:
+                data.write("%d\t%d\t%d\n" % tuple(row))
+            data.seek(0)
+
+            # send that file back to czar
+            self.czarWmgr.loadData(self.indexDb, metaTable, data)

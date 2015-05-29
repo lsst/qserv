@@ -590,7 +590,7 @@ class QservAdmin(object):
                     result[node] = data
         return result
 
-    def addNode(self, nodeName, nodeType, host, runDir, mysqlConn, state=NodeState.ACTIVE):
+    def addNode(self, nodeName, nodeType, host, port, state=NodeState.ACTIVE):
         """
         Create new node definition in CSS according to
         https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related
@@ -600,9 +600,7 @@ class QservAdmin(object):
                            node defined for the same host.
         @param nodeType:   String identifying node type, e.g. "worker".
         @param host:       String, host name or IP address.
-        @param runDir:     Run directory location for qserv instance.
-        @param mysqlConn:  String specifying comma-separated set of connection options,
-                           see above URL for definition.
+        @param port:       Port number for wmgr service running on the node.
         @param state:      State for newly created node.
         """
 
@@ -628,7 +626,7 @@ class QservAdmin(object):
                                               'Node: ' + nodeName, 'Existing key: ' + path)
 
             # make a node and set all options
-            options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
+            options = dict(type=nodeType, host=host, port=port)
             self._kvI.create(nodeKey, str(state))
             self._addPacked(nodeKey, options)
 

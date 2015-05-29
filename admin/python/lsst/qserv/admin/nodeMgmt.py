@@ -21,12 +21,10 @@
 #
 
 """
-Module defining WorkerMgmt class and related methods.
+Module defining NodeMgmt class and related methods.
 
-WorkerMgmt class responsibility is to support operations on a set of
-worker nodes, for example creating/deleting databases or tables.
-
-@version $Id$
+NodeMgmt class responsibility is to support operations on a set of
+qserv nodes, for example creating/deleting databases or tables.
 
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
@@ -59,30 +57,38 @@ _Exception = produceExceptionClass('WorkerMgmtException', [
 #  Class definition --
 #---------------------
 
-class WorkerMgmt(object):
+class NodeMgmt(object):
     """
-    WorkerMgmt class main purpose is to facilitate management operations on
-    a set of workers. It's two main responsibities are:
-      1. selecting a corresponding set of worker nodes
+    NodeMgmt class main purpose is to facilitate management operations on
+    a set of nodes. It's two main responsibities are:
+      1. selecting a corresponding set of nodes
       2. doing some operation on the selected set of nodes
 
-    For some operations latter responsibility can possibly be delegated to some
-    other entity, e.g. NodeAdmin class.
+    For most operations responsibility is delegated to NodeAdmin/WmgrClient
+    classes, e.g. one can do:
+
+        mgr = NodeMgmt(...)
+        for node in mgr.select(nodeType='worker', state='active'):
+            node.wmgrClient().dropTable(tableName)
     """
 
     #----------------
     #  Constructor --
     #----------------
-    def __init__(self, qservAdmin):
+    def __init__(self, qservAdmin, wmgrSecretFile=None):
         """
         Constructor needs an instance of QservAdmin type which provides access to
         CSS worker node information.
 
         @param qservAdmin:  QservAdmin instance.
+        @param wmgrSecretFile:  Path to a file with wmgr secret, this argument is
+                    only used when actual communication with remote nodes happen, but
+                    it's not required if you only use selectDict()
         """
 
         self.css = qservAdmin
-        self._log = logging.getLogger('WorkerMgmt')
+        self.wmgrSecretFile = wmgrSecretFile
+        self._log = logging.getLogger(__name__)
 
     #-------------------
     #  Public methods --
@@ -98,12 +104,15 @@ class WorkerMgmt(object):
                         are returned.
         @param nodeType: string or list of strings, if provided then only nodes that have the specified
                         node type are returned
+
+        @return: Sequence (list) of NodeAdmin objects.
         """
 
         nodes = self.selectDict(state, nodeType)
 
         # convert to instances
-        return [NodeAdmin(name=key, qservAdmin=self.css) for key, _ in nodes.items()]
+        return [NodeAdmin(name=key, qservAdmin=self.css, wmgrSecretFile=self.wmgrSecretFile)
+                for key, _ in nodes.items()]
 
 
     def selectDict(self, state=None, nodeType=None):
