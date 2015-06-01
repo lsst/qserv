@@ -35,7 +35,6 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
-#include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
@@ -76,57 +75,6 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-typedef proto::ProtoImporter<proto::TaskMsg> Importer;
-typedef std::shared_ptr<Importer> ImporterPtr;
-
-////////////////////////////////////////////////////////////////////////
-// class SsiProcessor
-////////////////////////////////////////////////////////////////////////
-
-/// Feed ProtoImporter results to msgprocessor by bundling the responder as a
-/// SendChannel
-class SsiProcessor : public Importer::Acceptor {
-public:
-    typedef std::shared_ptr<SsiProcessor> Ptr;
-
-    SsiProcessor(ResourceUnit const& ru,
-                 wbase::MsgProcessor::Ptr mp,
-                 std::shared_ptr<wbase::SendChannel> sc,
-                 SsiSession& ssiSession)
-        : _ru(ru),
-          _msgProcessor(mp),
-          _sendChannel(sc),
-          _ssiSession(ssiSession) {}
-
-    /// Accept a TaskMsg. Pass the msg to _msgProcessor, which returns a
-    /// cancellation function to be called if the _msgProcessor's async
-    /// operations (outputting through _sendChannel) should be cancelled
-    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
-        util::Timer t;
-        if(m->has_db() && m->has_chunkid()
-           && (_ru.db() == m->db()) && (_ru.chunk() == m->chunkid())) {
-            t.start();
-            SsiSession::CancelFuncPtr p = (*_msgProcessor)(m, _sendChannel);
-            _ssiSession._addCanceller(p);
-            t.stop();
-            LOGF_INFO("SsiProcessor msgProcessor call took %1% seconds" % t.getElapsed());
-        } else {
-            std::ostringstream os;
-            os << "Mismatched db/chunk in msg on resource db="
-               << _ru.db() << " chunkId=" << _ru.chunk();
-            _sendChannel->sendError(os.str().c_str(), EINVAL);
-        }
-    }
-private:
-    ResourceUnit const& _ru;
-    wbase::MsgProcessor::Ptr _msgProcessor;
-    std::shared_ptr<wbase::SendChannel> _sendChannel;
-    SsiSession& _ssiSession;
-};
-////////////////////////////////////////////////////////////////////////
-// class SsiSession
-////////////////////////////////////////////////////////////////////////
-
 // Step 4
 /// Called by XrdSsi to actually process a request.
 bool
@@ -159,8 +107,6 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         _enqueue(ru, reqData, reqSize);
         t.stop();
         LOGF_INFO("SsiSession::enqueue took %1% seconds" % t.getElapsed());
-
-        ReleaseRequestBuffer();
     } else {
         // Ignore this request.
         // Should send an error...
@@ -228,23 +174,43 @@ void SsiSession::_addCanceller(CancelFuncPtr p) {
     }
 }
 
-// Accept an incoming request addressed to a ResourceUnit, with the particulars
-/// defined in the reqData payload
+/// Accept an incoming request addressed to a ResourceUnit, with the particulars
+/// defined in the reqData payload.
 void SsiSession::_enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
-
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
-    ReplyChannel::Ptr rc(new ReplyChannel(*this));
-    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, *this));
+    auto replyChannel = std::make_shared<ReplyChannel>(*this);
 
-    LOGF_INFO("Importing TaskMsg of size %1%" % reqSize);
-    proto::ProtoImporter<proto::TaskMsg> pi(sp);
-
-    pi(reqData, reqSize);
-    if(pi.getNumAccepted() < 1) {
-        // TODO Report error.
+    LOGF_INFO("Decoding TaskMsg of size %1%" % reqSize);
+    auto task = std::make_shared<proto::TaskMsg>();
+    bool ok = task->ParseFromArray(reqData, reqSize) && task->IsInitialized();
+    // Now that the request is decoded (successfully or not), release the
+    // xrootd request buffer. To avoid data races, this must happen before
+    // the task is handed off to another thread for processing, as there is a
+    // reference to this SsiSession inside the reply channel for the task.
+    ReleaseRequestBuffer();
+    if (ok) {
+        if(task->has_db() && task->has_chunkid()
+           && (ru.db() == task->db()) && (ru.chunk() == task->chunkid())) {
+            util::Timer t;
+            t.start();
+            SsiSession::CancelFuncPtr p = (*_processor)(task, replyChannel);
+            _addCanceller(p);
+            t.stop();
+            LOGF_INFO("Enqueued TaskMsg for %1% in %2% seconds" % ru % t.getElapsed());
+        } else {
+            std::ostringstream os;
+            os << "Mismatched db/chunk in TaskMsg on resource db="
+               << ru.db() << " chunkId=" << ru.chunk();
+            LOGF_ERROR(os.str());
+            replyChannel->sendError(os.str().c_str(), EINVAL);
+        }
     } else {
-        LOGF_INFO("enqueued task ok: %1%" % ru);
+        std::ostringstream os;
+        os << "Failed to decode TaskMsg on resource db="
+           << ru.db() << " chunkId=" << ru.chunk();
+        LOGF_ERROR(os.str());
+        replyChannel->sendError(os.str().c_str(), EINVAL);
     }
 }
 
