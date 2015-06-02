@@ -267,7 +267,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     QueryTemplate qt;
     ValueExpr::render render(qt, false);
     render(ve);
-    os << qt.dbgStr();
+    os << qt.toString();
     return os;
 }
 

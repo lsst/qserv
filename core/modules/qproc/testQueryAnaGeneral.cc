@@ -841,23 +841,6 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
         "WHERE o.objectId=430209694171136";
     testAndCompare(qsTest, stmt, expected);
 }
-BOOST_AUTO_TEST_CASE(OrderBySort) {
-    std::string stmt = "SELECT objectId, taiMidPoint "
-        "FROM   Source "
-        "ORDER BY objectId, taiMidPoint ASC;"; // FIXME
-    std::string expected = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
-    // TODO: Should check the merge statement to ensure that the order by is handled properly.
-    testAndCompare(qsTest, stmt, expected);
-}
-
-BOOST_AUTO_TEST_CASE(LimitOrder) { // Test flipped syntax in DM-661
-    std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
-    std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
-    std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
-    // TODO: commented out test that is supposed to fail but it does not currently
-    // prepareTestQuerySession(qsTest, bad, "ParseException");
-    testAndCompare(qsTest, good, expected);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
 

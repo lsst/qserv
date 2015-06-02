@@ -112,7 +112,7 @@ public:
     void append(TableEntry const& t);
     void append(std::shared_ptr<Entry> const& e);
 
-    std::string dbgStr() const;
+    std::string toString() const;
     std::string generate() const;
     std::string generate(EntryMapping const& em) const;
     void clear();
@@ -122,7 +122,7 @@ public:
     static std::ostream& renderDbg(std::ostream& os, T const& t) {
         QueryTemplate qt;
         t.renderTo(qt);
-        return os << qt.dbgStr();
+        return os << qt.toString();
     }
 
 

@@ -112,9 +112,7 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _applyConcretePlugins();
 
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-            std::ostringstream stream;
-            _showFinal(stream);
-            LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % stream.str());
+            LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % toString());
         }
 
     } catch(QueryProcessingBug& b) {
@@ -136,7 +134,7 @@ void QuerySession::setQuery(std::string const& inputQuery) {
     }
 }
 
-bool QuerySession::hasAggregate() const {
+bool QuerySession::needsMerge() const {
     // Aggregate: having an aggregate fct spec in the select list.
     // Stmt itself knows whether aggregation is present. More
     // generally, aggregation is a separate pass. In computing a
@@ -251,7 +249,7 @@ QuerySession::getMergeStmt() const {
     if(_context->needsMerge) {
         return _stmtMerge;
     } else {
-        return std::shared_ptr<query::SelectStmt>();
+        return nullptr;
     }
 }
 
@@ -356,21 +354,25 @@ void QuerySession::_applyConcretePlugins() {
 }
 
 /// Some code useful for debugging.
-void QuerySession::_showFinal(std::ostream& os) {
-    // Print out the end result.
-    query::QueryTemplate par = _stmtParallel.front()->getTemplate();
-    query::QueryTemplate mer = _stmtMerge->getTemplate();
-
-    os << "\tQuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
-    os << "\tQuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
+std::string QuerySession::toString() {
+    std::ostringstream os;
+    query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
+    query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
+    os << "QuerySession description:" << std::endl;
+    os << "  original: " << this->_original << std::endl;
+    os << "  has chunks: " << this->hasChunks() << std::endl;
+    os << "  needs merge: " << this->needsMerge() << std::endl;
+    os << "  1st parallel statement: " << par.toString() << std::endl;
+    os << "  merge statement: " << mer.toString() << std::endl;
     if(!_context->scanTables.empty()) {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
-            os << "ScanTable: " << i->first << "." << i->second
-                       << std::endl;
+                os << "  ScanTable: " << i->first << "." << i->second
+                   << std::endl;
         }
     }
+    return os.str();
 }
 
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
@@ -392,7 +394,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     typedef query::SelectStmtPtrVector::const_iterator Iter;
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
         i != e; ++i) {
-        queryTemplates.push_back((**i).getTemplate());
+        queryTemplates.push_back((**i).getQueryTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
         LOGF_INFO("Non-subchunked");

@@ -97,7 +97,7 @@ std::ostream& operator<<(std::ostream& os, GroupByClause const& c) {
 std::string GroupByClause::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.dbgStr();
+    return qt.toString();
 }
 
 void GroupByClause::renderTo(QueryTemplate& qt) const {

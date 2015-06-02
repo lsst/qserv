@@ -95,7 +95,7 @@ std::string
 FromList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.dbgStr();
+    return qt.toString();
 }
 
 void
