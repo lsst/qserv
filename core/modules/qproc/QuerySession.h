@@ -80,7 +80,7 @@ public:
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
     void setQuery(std::string const& q);
-    bool hasAggregate() const;
+    bool needsMerge() const;
     bool hasChunks() const;
 
     std::shared_ptr<query::ConstraintVector> getConstraints() const;
@@ -133,7 +133,7 @@ private:
     void _applyLogicPlugins();
     void _generateConcrete();
     void _applyConcretePlugins();
-    void _showFinal(std::ostream& os); // Debug
+    std::string toString(); // Debug
 
     // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;

@@ -162,7 +162,7 @@ struct EntryMerger {
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
 std::string
-QueryTemplate::dbgStr() const {
+QueryTemplate::toString() const {
     return outputString(_entries);
 }
 

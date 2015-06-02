@@ -91,14 +91,8 @@ namespace query {
 SelectStmt::SelectStmt() {
 }
 
-std::string SelectStmt::diagnose() {
-    //_selectList->getColumnRefList()->printRefs();
-    //_selectList->dbgPrint(std::cout);
-    return _generateDbg();
-}
-
 QueryTemplate
-SelectStmt::getTemplate() const {
+SelectStmt::getQueryTemplate() const {
     QueryTemplate qt;
     std::string selectQuant = "SELECT";
     if(_hasDistinct) {
@@ -194,6 +188,7 @@ void SelectStmt::setFromListAsTable(std::string const& t) {
 // class SelectStmt (private)
 ////////////////////////////////////////////////////////////////////////
 namespace {
+
 template <typename OS, typename T>
 inline OS& print(OS& os, char const label[], std::shared_ptr<T> t) {
     if(t.get()) {
@@ -208,24 +203,41 @@ inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
     }
     return os;
 }
-} // anonymous
 
-void SelectStmt::_print() {
-    //_selectList->getColumnRefList()->printRefs();
-    LOGF_INFO("from %1%" % _fromList);
-    LOGF_INFO("select %1%" % _selectList);
-    if(_hasDistinct) { LOGF_INFO("distinct"); }
-    LOGF_INFO("where %1%" % _whereClause);
-    LOGF_INFO("groupby %1%" % _groupBy);
-    LOGF_INFO("having %1%" % _having);
-    LOGF_INFO("orderby %1%" % _orderBy);
-    if(_limit != -1) {
-        LOGF_INFO(" LIMIT %1%" % _limit);
-    }
+template<class T>
+void nil_string_helper(std::ostringstream& oss,
+					   const std::shared_ptr<T> &ptr) {
+	if (ptr != nullptr)
+		oss << *ptr << " ";
 }
 
-std::string SelectStmt::_generateDbg() {
-    return getTemplate().dbgStr();
+} // anonymous
+
+
+std::string SelectStmt::toString() {
+
+    //_selectList->getColumnRefList()->printRefs();
+    std::ostringstream oss;
+
+    nil_string_helper(oss, _selectList);
+    nil_string_helper(oss, _fromList);
+    if(_hasDistinct) {
+        oss << "DISTINCT ";
+    }
+    nil_string_helper(oss, _whereClause);
+    nil_string_helper(oss, _groupBy);
+    nil_string_helper(oss, _having);
+    nil_string_helper(oss, _orderBy);
+    if(_limit != -1) {
+        oss << " LIMIT " << _limit;
+    }
+    return oss.str();
+}
+
+std::string SelectStmt::toQueryTemplateString() {
+    //_selectList->getColumnRefList()->printRefs();
+    //_selectList->dbgPrint(std::cout);
+    return getQueryTemplate().toString();
 }
 
 }}} // namespace lsst::qserv::query
