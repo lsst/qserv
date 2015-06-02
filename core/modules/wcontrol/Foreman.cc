@@ -229,7 +229,10 @@ void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
 wbase::Task::Ptr
 ForemanImpl::RunnerMgr::getNextTask(Runner* r, wbase::Task::Ptr previous) {
     wbase::TaskQueuePtr tq;
-    tq = _f._scheduler->taskFinishAct(previous, _f._running);
+    {
+        std::lock_guard<std::mutex> lock(_f._runnersMutex);
+        tq = _f._scheduler->taskFinishAct(previous, _f._running);
+    }
     if(!tq.get()) {
         return wbase::Task::Ptr();
     }
@@ -381,7 +384,11 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
 void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
     // Pass to scheduler.
     assert(_scheduler);
-    wbase::TaskQueuePtr newReady = _scheduler->newTaskAct(task, _running);
+    wbase::TaskQueuePtr newReady;
+    {
+        std::lock_guard<std::mutex> lock(_runnersMutex);
+        newReady = _scheduler->newTaskAct(task, _running);
+    }
     // Perform only what the scheduler requests.
     if(newReady.get() && (newReady->size() > 0)) {
         wbase::TaskQueue::iterator i = newReady->begin();
