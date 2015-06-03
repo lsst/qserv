@@ -65,6 +65,7 @@ public:
 
     ~OrderByTerm() {}
 
+    std::string toString() const;
     std::shared_ptr<ValueExpr>& getExpr() { return _expr; }
     Order getOrder() const;
     std::string getCollate() const;
@@ -84,12 +85,12 @@ private:
 class OrderByClause {
 public:
     typedef std::shared_ptr<OrderByClause> Ptr;
-    typedef std::deque<OrderByTerm> List;
+    typedef std::vector<OrderByTerm> OrderByTermVector;
 
-    OrderByClause() : _terms(std::make_shared<List>()) {}
+    OrderByClause() : _terms(std::make_shared<OrderByTermVector>()) {}
     ~OrderByClause() {}
 
-    std::string getGenerated();
+    std::string toString() const;
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();
@@ -100,7 +101,7 @@ private:
     friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
-    std::shared_ptr<List> _terms;
+    std::shared_ptr<OrderByTermVector> _terms;
 };
 
 }}} // namespace lsst::qserv::query
