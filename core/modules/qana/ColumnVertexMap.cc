@@ -60,7 +60,7 @@ std::vector<Vertex*> const& ColumnVertexMap::find(
     } else if (p.first->isAmbiguous()) {
         query::QueryTemplate qt;
         c.renderTo(qt);
-        throw QueryNotEvaluableError("Column reference " + qt.generate() +
+        throw QueryNotEvaluableError("Column reference " + qt.toString() +
                                      " is ambiguous");
     }
     return p.first->vertices;

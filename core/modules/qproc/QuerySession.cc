@@ -233,9 +233,9 @@ QuerySession::makeMergeFixup() const {
     query::SelectList const& mergeSelect = _stmtMerge->getSelectList();
     query::QueryTemplate t;
     mergeSelect.renderTo(t);
-    std::string select = t.generate();
+    std::string select = t.toString();
     t = _stmtMerge->getPostTemplate();
-    std::string post = t.generate();
+    std::string post = t.toString();
     std::string orderBy; // TODO
     bool needsMerge = _context->needsMerge;
     return rproc::MergeFixup(select, post, orderBy,

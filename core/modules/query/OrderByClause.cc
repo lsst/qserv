@@ -38,6 +38,9 @@
 
 // Third-party headers
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
@@ -47,6 +50,7 @@ namespace qserv {
 namespace query {
 
 namespace {
+
 char const* getOrderStr(OrderByTerm::Order o) {
     switch(o) {
     case OrderByTerm::ASC: return "ASC";
@@ -55,14 +59,23 @@ char const* getOrderStr(OrderByTerm::Order o) {
     default: return "UNKNOWN_ORDER";
     }
 }
+
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.query.OrderByClause");
+    return logger;
+}
+
 }
 
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
-    void operator()(OrderByTerm const& t) {
-        if (_count++ > 0) { _qt.append(","); }
-        t.renderTo(_qt);
+    void operator()(OrderByTerm const& term) {
+        if (_count++ > 0) {
+                _qt.append(", ");
+        }
+        term.renderTo(_qt);
+        LOGF(getLogger(), LOG_LVL_TRACE, "Query Template: %1%" % _qt.toString());
     }
     QueryTemplate& _qt;
     int _count;
@@ -85,6 +98,12 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
     }
 }
 
+std::string OrderByTerm::toString() const {
+         std::ostringstream oss;
+         oss << *this;
+         return oss.str();
+}
+
 std::ostream&
 operator<<(std::ostream& os, OrderByTerm const& t) {
     os << *(t._expr);
@@ -95,6 +114,7 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
     }
     return os;
 }
+
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
@@ -108,27 +128,26 @@ operator<<(std::ostream& os, OrderByClause const& c) {
     return os;
 }
 
-std::string
-OrderByClause::getGenerated() {
-    QueryTemplate qt;
-    renderTo(qt);
-    return qt.toString();
+std::string OrderByClause::toString() const {
+         std::ostringstream oss;
+         oss << *this;
+         return oss.str();
 }
 
 void
 OrderByClause::renderTo(QueryTemplate& qt) const {
     if(_terms.get() && _terms->size() > 0) {
         bool first = true;
-        List::const_iterator i,e;
         OrderByTerm::render r(qt);
-        for(i=_terms->begin(), e=_terms->end(); i != e; ++i) {
+        for(OrderByTermVector::const_iterator term=_terms->begin(), e=_terms->end(); term != e; ++term) {
+            LOGF(getLogger(), LOG_LVL_TRACE, "term: %1%" % term->toString());
             if(!first) {
-                qt.append(",");
+                qt.append("  ,  ");
             }
             else {
                 first = false;
             }
-            r(*i);
+            r(*term);
         }
     }
 }
@@ -141,7 +160,7 @@ std::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
 }
 
 void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
-    for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
+    for (OrderByTermVector::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
         list.push_back(i->getExpr());
     }
 }

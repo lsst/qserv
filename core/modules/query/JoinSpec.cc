@@ -56,7 +56,7 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
     QueryTemplate qt;
     putTemplate(qt);
-    return os << qt.generate();
+    return os << qt.toString();
 }
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
     if(isInconsistent(*this)) {

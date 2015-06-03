@@ -34,7 +34,7 @@ std::ostream& JoinRef::putStream(std::ostream& os) const {
     QueryTemplate t;
     _putJoinTemplate(t);
     os << "Join(";
-    os << " " + t.generate() + " ";
+    os << " " + t.toString() + " ";
     if(_right) {_right->putStream(os); }
     else { os << "<BROKEN_JOIN>";}
     if(_spec) { _spec->putStream(os << " "); }

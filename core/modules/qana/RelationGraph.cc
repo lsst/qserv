@@ -349,7 +349,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
         QueryTemplate qt;
         if (a1.empty()) { c.first->renderTo(qt); }
         else { c.second->renderTo(qt); }
-        throw QueryNotEvaluableError("Column reference " + qt.generate() +
+        throw QueryNotEvaluableError("Column reference " + qt.toString() +
                                      " is ambiguous");
     }
     if ((a1.empty() && b1.empty()) || (a2.empty() && b2.empty())) {
