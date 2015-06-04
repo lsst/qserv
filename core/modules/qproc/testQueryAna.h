@@ -38,6 +38,7 @@
 #include <string>
 
 // Third-party headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "parser/SelectParser.h"
@@ -74,30 +75,30 @@ void testParse(SelectParser::Ptr p) {
 * list will be loaded
 *
 */
-std::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
-                                          std::string const& stmt,
-                                          std::string const& expectedErr="") {
+std::shared_ptr<QuerySession> buildQuerySession(QuerySession::Test& t,
+                                                std::string const& stmt, std::string const& expectedErr = "") {
     std::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    if(!expectedErr.empty()) {
-        // Error was expected, do not continue.
-        return qs;
-    }
-    ConstraintVec cv(qs->getConstraints());
-    std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
-    if(false && cvRaw) { // DEBUG
-        std::copy(cvRaw->begin(), cvRaw->end(),
-                  std::ostream_iterator<Constraint>(std::cout, ","));
-        typedef ConstraintVector::iterator Iter;
-        for(Iter i=cvRaw->begin(), e=cvRaw->end(); i != e; ++i) {
-            std::cout << *i << ",";
+
+    // DEBUG step
+    // FIXME handle log correctly
+    if (LOG_CHECK_DEBUG() && expectedErr.empty()) {
+        ConstraintVec cv(qs->getConstraints());
+        std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
+        if (cvRaw) {
+            std::copy(cvRaw->begin(), cvRaw->end(),
+                      std::ostream_iterator<Constraint>(std::cout, ","));
+            typedef ConstraintVector::iterator Iter;
+            for (Iter i = cvRaw->begin(), e = cvRaw->end(); i != e; ++i) {
+                std::cout << *i << ",";
+            }
         }
     }
     return qs;
 }
 
-std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
+std::string buildFirstParallelQuery(QuerySession& qs, bool withSubChunks=true) {
     qs.addChunk(ChunkSpec::makeFake(100, withSubChunks));
     QuerySession::Iter i = qs.cQueryBegin(), e = qs.cQueryEnd();
     BOOST_REQUIRE(i != e);
@@ -105,15 +106,26 @@ std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
     return first.queries[0];
 }
 
-std::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
-                                             std::string const& stmt,
-                                             std::string const& expected,
-                                             std::string const& expectedErr="") {
+std::shared_ptr<QuerySession> check(QuerySession::Test& t,
+                                    std::string const& stmt,
+                                    std::string const& expectedParallel,
+                                    std::string const& expectedErr = "",
+                                    std::string const& expectedMerge = "") {
 
-    std::shared_ptr<QuerySession> qs = prepareTestQuerySession(t, stmt, expectedErr);
-    if(qs->getError().empty()) {
-        std::string actual = computeFirstChunkQuery(*qs);
-        BOOST_CHECK_EQUAL(actual, expected);
+    bool testParallel = expectedErr.empty();
+    bool testMerge = testParallel && !expectedMerge.empty();
+
+
+    std::shared_ptr<QuerySession> qs = buildQuerySession(t, stmt, expectedErr);
+
+    std::string sql;
+    if(testParallel) {
+        sql = buildFirstParallelQuery(*qs);
+        BOOST_CHECK_EQUAL(sql, expectedParallel);
+    }
+    if (testMerge) {
+        sql = qs->getMergeStmt()->toQueryTemplateString();
+        BOOST_CHECK_EQUAL(sql, expectedMerge);
     }
     return qs;
 }

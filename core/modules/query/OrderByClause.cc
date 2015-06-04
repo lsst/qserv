@@ -137,16 +137,9 @@ std::string OrderByClause::toString() const {
 void
 OrderByClause::renderTo(QueryTemplate& qt) const {
     if(_terms.get() && _terms->size() > 0) {
-        bool first = true;
         OrderByTerm::render r(qt);
         for(OrderByTermVector::const_iterator term=_terms->begin(), e=_terms->end(); term != e; ++term) {
-            LOGF(getLogger(), LOG_LVL_TRACE, "term: %1%" % term->toString());
-            if(!first) {
-                qt.append("  ,  ");
-            }
-            else {
-                first = false;
-            }
+            LOGF(getLogger(), LOG_LVL_TRACE, "Rendering term: %1%" % term->toString());
             r(*term);
         }
     }
