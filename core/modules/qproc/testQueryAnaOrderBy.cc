@@ -97,18 +97,31 @@ using lsst::qserv::StringVector;
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(OrderBy, ParserFixture)
 
-BOOST_AUTO_TEST_CASE(OrderBySortMultipleField) {
+BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "SELECT objectId, taiMidPoint "
-        "FROM   Source "
-        "ORDER BY objectId, taiMidPoint ASC;"; // FIXME
-    std::string expected = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
-    // TODO: Should check the merge statement to ensure that the ORDER BY is handled properly.
-    auto querySession = testAndCompare(qsTest, stmt, expected);
+        "FROM Source "
+        "ORDER BY objectId ASC";
+    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
+    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+}
 
-    auto mergeStmt = querySession->getMergeStmt();
+BOOST_AUTO_TEST_CASE(OrderByTwoField) {
+    std::string stmt = "SELECT objectId, taiMidPoint "
+        "FROM Source "
+        "ORDER BY objectId, taiMidPoint ASC";
+    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
+    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId, taiMidPoint ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+}
 
-    LOGF_INFO("mergeStmt->toString() %1%" % mergeStmt->toString());
-    LOGF_INFO("mergeStmt->toQueryTemplateString() %1%" % mergeStmt->toQueryTemplateString());
+BOOST_AUTO_TEST_CASE(OrderByThreeField) {
+    std::string stmt = "SELECT * "
+        "FROM Source "
+        "ORDER BY objectId, taiMidPoint, xFlux DESC";
+    std::string expectedParallel = "SELECT * FROM LSST.Source_100 AS QST_1_";
+    std::string expectedMerge = "SELECT * ORDER BY objectId, taiMidPoint, xFlux DESC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByLimit) { // Test flipped syntax in DM-661
@@ -117,7 +130,7 @@ BOOST_AUTO_TEST_CASE(OrderByLimit) { // Test flipped syntax in DM-661
     std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
     // TODO: commented out test that is supposed to fail but it does not currently
     // prepareTestQuerySession(qsTest, bad, "ParseException");
-    auto querySession = testAndCompare(qsTest, good, expected);
+    auto querySession = check(qsTest, good, expected);
 
     auto mergeStmt = querySession->getMergeStmt();
     if (mergeStmt!=nullptr) {
