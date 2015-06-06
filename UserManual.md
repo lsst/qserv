@@ -228,6 +228,12 @@ Example of an invalid ORDER BY:
     FROM   Source
     ORDER BY ABS(x)
 
+However, one can bypass this by using an alias, for example:
+
+    SELECT id, ABS(x) as ax
+    FROM   Source
+    ORDER BY ax
+
 
 ### Sub-queries are NOT supported
 
