@@ -299,7 +299,7 @@ Facade::getSecIndexColNames(string const& dbName, string const& tableName) const
     _throwIfNotDbTbExists(dbName, tableName);
     // TODO: we don't actually support multiple secondary indexes yet. So
     // the list of secondary index columnns is either empty, or contains
-    // just the director column.
+    // just the director column. See DM-2916
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName +
                     "/partitioning/dirColName";
     string dc = _kvI->get(p, "");

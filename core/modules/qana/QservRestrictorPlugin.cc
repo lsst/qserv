@@ -41,6 +41,9 @@
 // Third-party headers
 #include "boost/pointer_cast.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "css/Facade.h"
 #include "global/stringTypes.h"
@@ -576,9 +579,45 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
     p->_name = "sIndex";
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...
-    p->_params.push_back(cr->db);
-    p->_params.push_back(cr->table);
-    p->_params.push_back(cr->column);
+
+    // Get the director column name
+    std::string dirCol = context.cssFacade->getDirColName(cr->db, cr->table);
+    if (cr->column == dirCol) {
+        // cr may be a column in a child table, in which case we must figure
+        // out the corresponding column in the child's director to properly
+        // generate a secondary index constraint.
+        std::string dirDb = context.cssFacade->getDirDb(cr->db, cr->table);
+        std::string dirTable = context.cssFacade->getDirTable(cr->db, cr->table);
+        if (dirTable.empty()) {
+            dirTable = cr->table;
+            if (!dirDb.empty() && dirDb != cr->db) {
+                LOGF_ERROR("dirTable missing, but dirDb is set inconsistently for %1%.%2%"
+                           % cr->db % cr->table);
+                return query::QsRestrictor::Ptr();
+            }
+            dirDb = cr->db;
+        } else if (dirDb.empty()) {
+            dirDb = cr->db;
+        }
+        if (dirDb != cr->db || dirTable != cr->table) {
+            // Lookup the name of the director column in the director table
+            dirCol = context.cssFacade->getDirColName(dirDb, dirTable);
+            if (dirCol.empty()) {
+                LOGF_ERROR("dirCol missing for %1%.%2%" % dirDb % dirTable);
+                return query::QsRestrictor::Ptr();
+            }
+        }
+        LOGF_DEBUG("Using dirDb %1%, dirTable %2%, dirCol %3% as sIndex for %4%.%5%.%6%" %
+                   dirDb % dirTable % dirCol % cr->db % cr->table % cr->column);
+        p->_params.push_back(dirDb);
+        p->_params.push_back(dirTable);
+        p->_params.push_back(dirCol);
+    } else {
+        LOGF_DEBUG("Using %1%, %2%, %3% as sIndex." % cr->db % cr->table % cr->column);
+        p->_params.push_back(cr->db);
+        p->_params.push_back(cr->table);
+        p->_params.push_back(cr->column);
+    }
     std::transform(vList.begin(), vList.end(),
                    std::back_inserter(p->_params), extractLiteral());
     return p;
