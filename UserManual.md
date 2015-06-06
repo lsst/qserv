@@ -134,7 +134,7 @@ This section covers restriction you need to be aware of when interacting with Qs
 
 ### Spatial constraints must be expressed through our qserv_areaspec_* functions
 
-Spatial constraints can only be expressed through qserv_areaspec_* functions (see Extensions section above for details). No other way of specifying spatial restrictions is allowed. For example, the form:
+Spatial constraints can only be expressed through qserv_areaspec_* functions (see Extensions section above for details). Other way of specifying spatial restrictions may be significantly slower (e.g., they might devolve to be full table scan). For example, the form:
 
     WHERE ra BETWEEN <ra1> AND <ra2>
       AND decl BETWEEN <decl1> AND <decl2>
@@ -189,7 +189,7 @@ is valid, but
     WHERE  qserv_areaspec_box(1, 35, 2, 38)
     OR     x > 3.5
 
-is not allowed.
+is not allowed. We expect to remove this restriction in the future, see [DM-2888](https://jira.lsstcorp.org/browse/DM-2888).
 
 
 ### objectId constraint must be expressed through "=" on "IN"
@@ -202,6 +202,7 @@ If the query has objectId constraint, it should be expressed in one of these two
 
 E.g., don't try to express it as "WHERE objectId BETWEEN 1 AND 2" etc.
 
+Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See [DM-2889](https://jira.lsstcorp.org/browse/DM-2889).
 
 ### objectId constraint must appear at the beginning of WHERE
 
