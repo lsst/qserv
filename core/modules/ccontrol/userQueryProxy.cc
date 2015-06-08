@@ -79,44 +79,77 @@ public:
 };
 static UserQueryManager uqManager;
 
-std::string const& UserQuery_getError(int session) {
-    return uqManager.get(session)->getError();
+std::string UserQuery_getError(int session) {
+    std::string s;
+    try {
+        s = uqManager.get(session)->getError();
+    } catch (std::exception& e) {
+        s = e.what();
+        LOGF_WARN(s);
+    }
+    return s;
 }
 
 /// @return a string describing the progress on the query at a chunk-by-chunk
 /// level. Userful for diagnosis when queries are squashed or return errors.
 std::string UserQuery_getExecDesc(int session) {
-    return uqManager.get(session)->getExecDesc();
+    try {
+        return uqManager.get(session)->getExecDesc();
+    } catch (const std::exception& e) {
+        LOGF_WARN(e.what());
+        return e.what();
+    }
 }
 
 /// Abort a running query
 void UserQuery_kill(int session) {
     LOGF_INFO("EXECUTING UserQuery_kill(%1%)" % session);
-    uqManager.get(session)->kill();
+    try {
+        uqManager.get(session)->kill();
+    } catch (const std::exception& e) {
+        LOGF_WARN(e.what());
+    }
 }
 
 /// Add a chunk spec for execution
 void UserQuery_addChunk(int session, qproc::ChunkSpec const& cs) {
-    uqManager.get(session)->addChunk(cs);
+    try {
+        uqManager.get(session)->addChunk(cs);
+    } catch (const std::exception& e) {
+        LOGF_WARN(e.what());
+    }
 }
 
 /// Dispatch all chunk queries for this query
 void UserQuery_submit(int session) {
     LOGF_DEBUG("EXECUTING UserQuery_submit(%1%)" % session);
-    uqManager.get(session)->submit();
+    try {
+        uqManager.get(session)->submit();
+    } catch (const std::exception& e) {
+        LOGF_ERROR(e.what());
+    }
 }
 
 /// Block until execution succeeds or fails completely
 QueryState UserQuery_join(int session) {
-    return uqManager.get(session)->join();
+    try {
+        return uqManager.get(session)->join();
+    } catch (const std::exception& e) {
+        LOGF_ERROR(e.what());
+        return QueryState::ERROR;
+    }
 }
 
 /// Discard the UserQuery by destroying it and forgetting about its id.
 void UserQuery_discard(int session) {
-    UserQuery::Ptr p = uqManager.get(session);
-    p->discard();
-    p.reset();
-    uqManager.discardSession(session);
+    try {
+        UserQuery::Ptr p = uqManager.get(session);
+        p->discard();
+        p.reset();
+        uqManager.discardSession(session);
+    } catch (const std::exception& e) {
+        LOGF_ERROR(e.what());
+    }
 }
 
 /// Take ownership of a UserQuery object and return a sessionId

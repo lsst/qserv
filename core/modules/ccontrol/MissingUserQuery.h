@@ -48,7 +48,7 @@ public:
              + boost::lexical_cast<std::string>(id) +  "]") {
     }
     virtual ~MissingUserQuery() throw() {}
-    virtual const char* what() throw() { return _s.c_str(); }
+    virtual const char* what() const throw() { return _s.c_str(); }
 private:
     std::string const _s;
 };

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,7 +47,7 @@ class UserQuery;
 
 
 /// @return error description
-std::string const& UserQuery_getError(int session);
+std::string UserQuery_getError(int session);
 
 /// @return a string describing the progress on the query at a chunk-by-chunk
 /// level. Userful for diagnosis when queries are squashed or return errors.
