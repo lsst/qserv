@@ -56,37 +56,38 @@ class KvInterfaceImplMem;
  */
 class Facade {
 public:
-virtual     ~Facade();
+    virtual ~Facade();
 
     // accessors
-virtual bool containsDb(std::string const& dbName) const;
-virtual     bool containsTable(std::string const& dbName,
-                       std::string const& tableName) const;
-virtual     bool tableIsChunked(std::string const& dbName,
-                        std::string const& tableName) const;
-virtual     bool tableIsSubChunked(std::string const& dbName,
-                           std::string const& tableName) const;
-virtual     bool isMatchTable(std::string const& dbName,
-                      std::string const& tableName) const;
-virtual     std::vector<std::string> getAllowedDbs() const;
-virtual     std::vector<std::string> getChunkedTables(std::string const& dbName) const;
-virtual     std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
-virtual     std::vector<std::string> getPartitionCols(std::string const& dbName,
-                                              std::string const& tableName) const;
-virtual     int getChunkLevel(std::string const& dbName,
-                      std::string const& tableName) const;
-virtual     std::string getDirDb(std::string const& dbName,
-                                 std::string const& tableName) const;
-virtual     std::string getDirTable(std::string const& dbName,
-                            std::string const& tableName) const;
-virtual     std::string getDirColName(std::string const& dbName,
+    virtual bool containsDb(std::string const& dbName) const;
+    virtual bool containsTable(std::string const& dbName,
+                               std::string const& tableName) const;
+    virtual bool tableIsChunked(std::string const& dbName,
+                                std::string const& tableName) const;
+    virtual bool tableIsSubChunked(std::string const& dbName,
+                                   std::string const& tableName) const;
+    virtual bool isMatchTable(std::string const& dbName,
                               std::string const& tableName) const;
-virtual     std::vector<std::string> getSecIndexColNames(std::string const& dbName,
+    virtual std::vector<std::string> getAllowedDbs() const;
+    virtual std::vector<std::string> getChunkedTables(std::string const& dbName) const;
+    virtual std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
+    virtual std::vector<std::string> getPartitionCols(std::string const& dbName,
+                                                      std::string const& tableName) const;
+    virtual int getChunkLevel(std::string const& dbName,
+                              std::string const& tableName) const;
+    virtual std::string getDirDb(std::string const& dbName,
+                                 std::string const& tableName) const;
+    virtual std::string getDirTable(std::string const& dbName,
+                                    std::string const& tableName) const;
+    virtual std::string getDirColName(std::string const& dbName,
+                                      std::string const& tableName) const;
+    virtual std::vector<std::string> getSecIndexColNames(
+                                      std::string const& dbName,
+                                      std::string const& tableName) const;
+    virtual StripingParams getDbStriping(std::string const& dbName) const;
+    virtual double getOverlap(std::string const& dbName) const;
+    virtual MatchTableParams getMatchTableParams(std::string const& dbName,
                                                  std::string const& tableName) const;
-virtual     StripingParams getDbStriping(std::string const& dbName) const;
-virtual     double getOverlap(std::string const& dbName) const;
-virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
-                                         std::string const& tableName) const;
 
     /**
      *  Returns current compiled-in version number of CSS data structures.
@@ -94,7 +95,7 @@ virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
      */
     static int cssVersion();
 
-virtual     EmptyChunks const& getEmptyChunks() const;
+    virtual EmptyChunks const& getEmptyChunks() const;
 
 
 private:
