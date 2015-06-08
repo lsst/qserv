@@ -245,6 +245,21 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
     return 0;
 }
 
+/** Returns the name of the director database name for the given table if there
+  * is one and an empty string otherwise. Throws an exception if the database
+  * or table does not exist.
+  */
+string
+Facade::getDirDb(string const& dbName, string const& tableName) const {
+    LOGF_DEBUG("getDirDb(%1%, %2%)" % dbName % tableName);
+    _throwIfNotDbTbExists(dbName, tableName);
+    string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName +
+        "/partitioning/dirDb";
+    string ret = _kvI->get(p, "");
+    LOGF_DEBUG("getDirDb returns %1%" % ret);
+    return ret;
+}
+
 /** Returns the name of the director table for the given table if there
   * is one and an empty string otherwise. Throws an exception if the database
   * or table does not exist.

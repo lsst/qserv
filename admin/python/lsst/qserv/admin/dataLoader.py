@@ -748,7 +748,9 @@ class DataLoader(object):
         """
 
         # only makes sense for director table
-        if not self.partitioned or not self.partOptions.isDirector(table) or not self.indexDb:
+        if not self.partitioned or \
+           not self.partOptions.isDirector(database, table) or \
+           not self.indexDb:
             return
 
         metaTable = database + '__' + table

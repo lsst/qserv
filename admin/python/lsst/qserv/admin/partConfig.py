@@ -62,7 +62,7 @@ class PartConfig(UserDict.UserDict):
     # keys that must be defined for partitioned non-refMatch tables
     requiredPartKeys = ['part.num-stripes', 'part.num-sub-stripes',
                         'part.default-overlap', 'part.overlap',
-                        'dirTable']
+                        'dirDb', 'dirTable']
 
     def __init__(self, files):
         """
@@ -133,13 +133,13 @@ class PartConfig(UserDict.UserDict):
         """Returns True if table is a view"""
         return bool(self.data.get('view', False))
 
-    def isDirector(self, tableName):
+    def isDirector(self, dbName, tableName):
         """
-        Returns True if table is a director table. Director table name
-        is determined by dirTable parameter, if dirTable is not set then
+        Returns True if dbName.tableName is a director table. Director table name
+        is determined by dirDb and dirTable parameters, if dirTable is not set then
         Object is assumed to be a director table.
         """
-        return tableName == self['dirTable']
+        return dbName == self['dirDb'] and tableName == self['dirTable']
 
     def cssDbOptions(self):
         """
@@ -180,6 +180,7 @@ class PartConfig(UserDict.UserDict):
             options['lonColName'] = raCol
             options['overlap'] = self['part.overlap']
             options['subChunks'] = self.get('part.subChunks', '1')
+            options['dirDb'] = self['dirDb']
             options['dirTable'] = self['dirTable']
             if 'dirColName' in self:
                 options['dirColName'] = self['dirColName']

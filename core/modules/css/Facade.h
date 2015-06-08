@@ -75,6 +75,8 @@ virtual     std::vector<std::string> getPartitionCols(std::string const& dbName,
                                               std::string const& tableName) const;
 virtual     int getChunkLevel(std::string const& dbName,
                       std::string const& tableName) const;
+virtual     std::string getDirDb(std::string const& dbName,
+                                 std::string const& tableName) const;
 virtual     std::string getDirTable(std::string const& dbName,
                             std::string const& tableName) const;
 virtual     std::string getDirColName(std::string const& dbName,

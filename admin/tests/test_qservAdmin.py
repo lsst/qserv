@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013-2014 LSST Corporation.
+# Copyright 2013-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -85,6 +85,47 @@ class TestQservAdmin(unittest.TestCase):
         self._impl.createTable("dbA", "Summer2012", dd)
         self._impl.dumpEverything()
         self._impl.dropDb("dbA")
+
+    def testDbDirector(self):
+        dd = {"storageClass": "L2",
+              "partitioning": "1",
+              "partitioningStrategy": "sphBox",
+              "nStripes": "10",
+              "nSubStripes": "23",
+              "overlap": "0.0001"}
+        self._impl.createDb("dbProd", dd)
+
+        print "=====>> create table Object"
+        s = "%s/tbSchema_Object.sql" % self._baseDir
+        dd = { "tableName":    "Object",
+               "compression":  "1",
+               "dirTable":     "Object",
+               "match":        "0",
+               "dirColName":   "ra_PS",
+               "lonColName":   "ra_PS",
+               "latColName":   "decl_PS",
+               "objIdColName": "objectId",
+               "schema":       "(objectId BIGINT, ra_PS DOUBLE, decl_PS DOUBLE)",
+               "subChunks":    "0" }
+
+        self._impl.createTable("dbProd", "Object", dd)
+
+        self._impl.createDbLike("MyDb", "dbProd")
+        print "=====>> create table Object"
+        s = "%s/tbSchema_Object.sql" % self._baseDir
+        ddL3 = { "tableName":    "Object",
+                 "compression":  "1",
+                 "dirDb":        "dbProd",
+                 "dirTable":     "Object",
+                 "match":        "0",
+                 "dirColName":   "ra_PS",
+                 "lonColName":   "ra_PS",
+                 "latColName":   "decl_PS",
+                 "objIdColName": "objectId",
+                 "schema":       "(objectId BIGINT, ra_PS DOUBLE, decl_PS DOUBLE)",
+                 "subChunks":    "0" }
+        self._impl.createTable("MyDb", "MyObjectTable", ddL3)
+
 
 ####################################################################################
 def setLogging():

@@ -62,7 +62,7 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
                 "match" : set(["dirTable1", "dirColName1",
                                "dirTable2", "dirColName2",
                                "flagColName"]),
-                "partition": set(["subChunks", "dirTable",
+                "partition": set(["subChunks", "dirDb", "dirTable",
                                   "lonColName", "latColName",
                                   "dirColName", "overlap"])
                 }
@@ -408,6 +408,7 @@ class QservAdmin(object):
           - flagColName:
           For partitioned tables:
           - subChunks:
+          - dirDb:
           - dirTable:
           - lonColName:
           - latColName:
