@@ -358,18 +358,18 @@ std::string QuerySession::toString() {
     std::ostringstream os;
     query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
     query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
-    os << "QuerySession description:" << std::endl;
-    os << "  original: " << this->_original << std::endl;
-    os << "  has chunks: " << this->hasChunks() << std::endl;
-    os << "  needs merge: " << this->needsMerge() << std::endl;
-    os << "  1st parallel statement: " << par.toString() << std::endl;
+    os << "QuerySession description:\n";
+    os << "  original: " << this->_original << "\n";
+    os << "  has chunks: " << this->hasChunks() << "\n";
+    os << "  needs merge: " << this->needsMerge() << "\n";
+    os << "  1st parallel statement: " << par.toString() << "\n";
     os << "  merge statement: " << mer.toString() << std::endl;
     if(!_context->scanTables.empty()) {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
-                os << "  ScanTable: " << i->first << "." << i->second
-                   << std::endl;
+            os << "  ScanTable: " << i->first << "." << i->second
+               << std::endl;
         }
     }
     return os.str();
