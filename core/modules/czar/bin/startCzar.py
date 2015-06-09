@@ -29,10 +29,16 @@
 # * Start up a qserv frontend for testing.  Does not include starting
 #   up the required xrootd/cmsd instances.
 
+# -------------------------------
+#  Imports of standard modules --
+# -------------------------------
 import unittest
 from optparse import OptionParser
-import sys
-import ConfigParser
+
+# ----------------------------
+# Imports for other modules --
+# ----------------------------
+import lsst.log as log
 
 from lsst.qserv.czar.appTest import TestAppFunctions
 from lsst.qserv.czar import server
@@ -40,7 +46,6 @@ from lsst.qserv.czar import app
 from lsst.qserv.czar import client
 from lsst.qserv.czar import config
 
-import lsst.log as newlog
 
 def runParserTest():
     """Invokes the test cases in the lsst.qserv.czar.testparser module
@@ -62,7 +67,7 @@ def resetTables():
     pass
 
 def makeIndexes():
-    newlog.wrn("makeIndexes() called, but not implemented")
+    log.warn("makeIndexes() called, but not implemented")
     pass
 
 def main():
@@ -94,15 +99,15 @@ def main():
         config.load(options.configFile)
     else:
         config.load()
-    print "Configuration:"
-    config.printTo(sys.stdout)
 
     # Configure logging
     logConfig = config.config.get('log', 'logConfig')
     if logConfig:
-        newlog.configure(logConfig)
+        log.configure(logConfig)
     else:
-        newlog.configure()
+        log.configure()
+
+    log.debug("Configuration:\n%s", config.toString())
 
     if options.test == True:
         runParserTest()

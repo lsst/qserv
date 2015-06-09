@@ -284,6 +284,7 @@ def init(src_dir):
 
     global env, opts
     env = Environment(tools=['default', 'textfile', 'pymod'])
+
     _initOptions()
     _initLog()
 

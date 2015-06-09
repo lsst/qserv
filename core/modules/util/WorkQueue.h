@@ -29,6 +29,8 @@
 #include <memory>
 #include <mutex>
 
+// LSST headers
+
 namespace lsst {
 namespace qserv {
 namespace util {

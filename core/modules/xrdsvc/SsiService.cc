@@ -43,7 +43,6 @@
 #include "wsched/BlendScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
-#include "wlog/XrootdAppender.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
 #include "xrdsvc/SsiSession.h"
