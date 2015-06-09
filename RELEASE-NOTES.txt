@@ -1,3 +1,21 @@
+R E L E A S E   2015_06
+=======================
+
+Release highlights:
+
+Code improvements:
+
+New features:
+
+Bug fixes:
+ * DM-2777: Fix races in BlendScheduler
+ * DM-2779: Fix race in Foreman
+ * DM-2854: Fix Qserv SsiSession worker race
+ * DM-2681: Fix race condition in userQueryProxy
+
+Documentation improvements:
+ * DM-2841: Add User Manual
+
 R E L E A S E   2015_05
 =======================
 
