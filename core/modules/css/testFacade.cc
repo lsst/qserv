@@ -120,6 +120,14 @@ struct FacadeFixture {
         p = "/DBS/dbB/TABLES";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Exposure", ""));
+        kv.push_back(make_pair(p + "/MyObject", ""));
+        kv.push_back(make_pair(p + "/MyObject/partitioning", ""));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/lonColName", "ra_PS"));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/latColName", "decl_PS"));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/subChunks", "1"));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/dirDb","dbA"));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/dirTable","Object"));
+        kv.push_back(make_pair(p + "/MyObject/partitioning/dirColName","objectId"));
 
         vector<std::pair<string, string> >::const_iterator itr;
         cout << "--------------" << endl;
@@ -223,9 +231,9 @@ BOOST_AUTO_TEST_CASE(getChunkedTables) {
     BOOST_CHECK_EQUAL(v[1], "Object");
     BOOST_CHECK_EQUAL(v[2], "Source");
 
-    // normal, no values
+    // normal, 1 value
     v = facade->getChunkedTables("dbB");
-    BOOST_CHECK_EQUAL(0U, v.size());
+    BOOST_CHECK_EQUAL(1U, v.size());
 
     // for non-existing db
     BOOST_CHECK_THROW(facade->getChunkedTables("Dummy"), NoSuchDb);
@@ -238,9 +246,9 @@ BOOST_AUTO_TEST_CASE(getSubChunkedTables) {
     //std::sort (v.begin(), v.end());
     BOOST_CHECK_EQUAL(v[0], "Object");
 
-    // normal, no values
+    // normal, 1 value
     v = facade->getSubChunkedTables("dbB");
-    BOOST_CHECK_EQUAL(0U, v.size());
+    BOOST_CHECK_EQUAL(1U, v.size());
 
     // for non-existing db
     BOOST_CHECK_THROW(facade->getSubChunkedTables("Dummy"), NoSuchDb);
@@ -285,6 +293,13 @@ BOOST_AUTO_TEST_CASE(getDbStriping) {
     StripingParams s = facade->getDbStriping("dbA");
     BOOST_CHECK_EQUAL(s.stripes, 60);
     BOOST_CHECK_EQUAL(s.subStripes, 18);
+}
+
+BOOST_AUTO_TEST_CASE(testDirectorDb) {
+    // Note, the director table is in a different database
+    BOOST_CHECK_EQUAL(facade->getDirDb("dbB", "MyObject"), "dbA");
+    BOOST_CHECK_EQUAL(facade->getDirTable("dbB", "MyObject"), "Object");
+    BOOST_CHECK_EQUAL(facade->getDirColName("dbB", "MyObject"), "objectId");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

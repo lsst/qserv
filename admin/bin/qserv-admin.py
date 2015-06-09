@@ -233,7 +233,7 @@ class CommandParser(object):
                    "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName)
             (dbName, tbName) = dbTbName.split('.')
             options = self._fetchOptionsFromConfigFile(configFile)
-            options = self._processTbOptions(options)
+            options = self._processTbOptions(dbName, options)
             self._impl.createTable(dbName, tbName, options)
         elif l == 3:
             (dbTbName, likeToken, dbTbName2) = tokens
@@ -496,7 +496,7 @@ class CommandParser(object):
                 QservAdminException.WRONG_PARAM,
                 "Got '%s' expected '%s'" % (opts[key], defaultValue))
 
-    def _processTbOptions(self, opts):
+    def _processTbOptions(self, dbName, opts):
         """
         Validate options used by createTable, add default values for missing
         parameters.
@@ -523,18 +523,21 @@ class CommandParser(object):
         # these are required options for createTable
         self._checkExist(opts, CommandParser.requiredOpts["createTable"])
         if opts["partitioning"] != "0":
-            self._processTbPartitionOpts(opts)
+            self._processTbPartitionOpts(dbName, opts)
         return opts
 
-    def _processTbPartitionOpts(self, opts):
+    def _processTbPartitionOpts(self, dbName, opts):
         # only sphBox allowed
         self._checkExist(opts,
                          CommandParser.requiredOpts["createTableSphBox"])
         if opts.get("match", "0") != "0":
             pass # Defer to qservAdmin to check opts
         else:
+            # Fill-in dirDb
+            if "dirDb" not in opts:
+                opts["dirDb"] = dbName
             # Fill-in dirTable
-            if not opts.get("dirTable"):
+            if "dirTable" not in opts:
                 opts["dirTable"] = opts["tableName"]
             if opts["tableName"] == opts["dirTable"]:
                 self._checkExist(opts, CommandParser.requiredOpts["createTableDir"])
