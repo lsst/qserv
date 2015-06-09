@@ -391,6 +391,9 @@ or
 Known Bugs
 ----------
 
+The list of all known / reported problems can be found at: [Data Access and Database Team User-facing Bugs](https://jira.lsstcorp.org/issues/?filter=13501)
+
+
 #### Selecting by objectId can miss a row
 
 Selecting rows using objectId sometimes does not return rows it should.
