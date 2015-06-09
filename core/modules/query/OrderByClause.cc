@@ -72,7 +72,7 @@ public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
     void operator()(OrderByTerm const& term) {
         if (_count++ > 0) {
-                _qt.append(", ");
+            _qt.append(", ");
         }
         term.renderTo(_qt);
         LOGF(getLogger(), LOG_LVL_TRACE, "Query Template: %1%" % _qt.toString());
@@ -99,9 +99,9 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
 }
 
 std::string OrderByTerm::toString() const {
-         std::ostringstream oss;
-         oss << *this;
-         return oss.str();
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
 }
 
 std::ostream&
@@ -129,16 +129,16 @@ operator<<(std::ostream& os, OrderByClause const& c) {
 }
 
 std::string OrderByClause::toString() const {
-         std::ostringstream oss;
-         oss << *this;
-         return oss.str();
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
 }
 
 void
 OrderByClause::renderTo(QueryTemplate& qt) const {
     if(_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
-        for(OrderByTermVector::const_iterator term=_terms->begin(), e=_terms->end(); term != e; ++term) {
+        for(OrderByTermVector::const_iterator term = _terms->begin(), e = _terms->end(); term != e; ++term) {
             LOGF(getLogger(), LOG_LVL_TRACE, "Rendering term: %1%" % term->toString());
             r(*term);
         }

@@ -77,11 +77,11 @@ public:
     std::shared_ptr<query::OrderByClause> _orderBy;
 
 private:
-	static LOG_LOGGER logger;
+	static LOG_LOGGER _logger;
 };
 
 
-LOG_LOGGER PostPlugin::logger = LOG_GET("lsst.qserv.qana.PostPlugin");
+LOG_LOGGER PostPlugin::_logger = LOG_GET("lsst.qserv.qana.PostPlugin");
 
 ////////////////////////////////////////////////////////////////////////
 // PostPluginFactory declaration+implementation
@@ -133,7 +133,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available) and turn on merge
     // fixup.
-	 LOGF(logger, LOG_LVL_DEBUG, "Apply physical");
+    LOGF(_logger, LOG_LVL_DEBUG, "Apply physical");
     if(context.hasChunks()) { // For chunked queries only.
         if((_limit != -1) || _orderBy) { // Aggregating LIMIT or ORDER BY
             // Prepare merge statment.
@@ -149,22 +149,22 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             }
             // Patch MergeFixup.
             context.needsMerge = true;
-            LOGF(logger, LOG_LVL_DEBUG, "Add merge operation");
+            LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
 
-			if(_orderBy) {
-				// Remove orderby from parallel
-				// (no need to sort until we have all the results)
-				SelectStmtPtrVector::iterator i, e;
-				for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-					(**i).setOrderBy(nullptr);
-				}
-				// Make sure the merge has an ORDER BY
-				LOGF(logger, LOG_LVL_DEBUG, "Add ORDER BY clause %1%" % _orderBy);
-				p.stmtMerge.setOrderBy(_orderBy);
-			}
+            if(_orderBy) {
+                // Remove orderby from parallel
+                // (no need to sort until we have all the results)
+                SelectStmtPtrVector::iterator i, e;
+                for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+                    (**i).setOrderBy(nullptr);
+                }
+                // Make sure the merge has an ORDER BY
+                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause %1%" % _orderBy);
+                p.stmtMerge.setOrderBy(_orderBy);
+            }
         }
     } else { // For non-chunked queries
-        LOGF(logger, LOG_LVL_INFO, "Query is non-chunked");
+        LOGF(_logger, LOG_LVL_INFO, "Query is non-chunked");
         // Make sure orderby is in the "parallel" section (which is not
         // really parallel). No merge is needed.
         SelectStmtPtrVector::iterator i, e;

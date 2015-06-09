@@ -145,7 +145,7 @@ public:
 
 
 std::string QueryTemplate::toString() const {
-	return stringify(_entries);
+    return stringify(_entries);
 }
 
 void
