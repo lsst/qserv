@@ -27,12 +27,11 @@
 
 // System headers
 #include <cassert>
+#include <memory>
 #include <stdexcept>
 #include <sys/time.h>
 #include <thread>
 
-// Third-party headers
-#include <boost/scoped_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
@@ -154,7 +153,7 @@ void DynamicWorkQueue::Runner::operator()() {
 
         q->numThreads += 1; // Increment the active thread count for q.
         // Remove a callable from q and take responsibility for deleting it.
-        boost::scoped_ptr<Callable> c(q->take());
+        std::unique_ptr<Callable> c(q->take());
         if (!q->empty()) {
             // Work remains in q, so make it available to other threads.
             wq._nonEmptyQueues.insert(q);
