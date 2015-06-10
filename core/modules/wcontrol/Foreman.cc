@@ -34,9 +34,6 @@
 #include <thread>
 #include <utility>
 
-// Third-party headers
-#include "boost/scoped_ptr.hpp"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -137,7 +134,7 @@ private:
     std::mutex _runnersMutex;
     Scheduler::Ptr _scheduler;
     RunnerDeque _runners;
-    boost::scoped_ptr<RunnerMgr> _rManager;
+    std::unique_ptr<RunnerMgr> _rManager;
     LOG_LOGGER _log;
 
     wbase::TaskQueuePtr _running;

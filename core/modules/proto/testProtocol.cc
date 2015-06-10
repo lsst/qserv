@@ -29,7 +29,6 @@
 #include <memory>
 
 // Third-party headers
-#include "boost/scoped_ptr.hpp"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 // Qserv headers
@@ -117,13 +116,13 @@ BOOST_FIXTURE_TEST_SUITE(ProtocolTestSuite, ProtocolFixture)
 BOOST_AUTO_TEST_CASE(TaskMsgMsgSanity) {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
+    std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
     BOOST_CHECK(t1.get());
     t1->SerializeToOstream(&ss);
 
     std::string blah = ss.str();
     std::stringstream ss2(blah);
-    boost::scoped_ptr<lsst::qserv::proto::TaskMsg> t2(new lsst::qserv::proto::TaskMsg());
+    std::unique_ptr<lsst::qserv::proto::TaskMsg> t2(new lsst::qserv::proto::TaskMsg());
     BOOST_CHECK(t1.get());
     t2->ParseFromIstream(&ss2);
     BOOST_CHECK(compareTaskMsgs(*t1, *t2));
@@ -131,13 +130,13 @@ BOOST_AUTO_TEST_CASE(TaskMsgMsgSanity) {
 
 BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
+    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
     BOOST_CHECK(r1.get());
     r1->SerializeToOstream(&ss);
 
     std::string blah = ss.str();
     std::stringstream ss2(blah);
-    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
+    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
     BOOST_CHECK(r1.get());
     r2->ParseFromIstream(&ss2);
     BOOST_CHECK(compareProtoHeaders(*r1, *r2));
@@ -145,7 +144,7 @@ BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
 
 BOOST_AUTO_TEST_CASE(MsgBuffer) {
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
+    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
     BOOST_CHECK(r1.get());
     r1->SerializeToOstream(&ss);
 
@@ -153,14 +152,14 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     gio::ArrayInputStream input(raw.data(),
                                 raw.size());
     gio::CodedInputStream coded(&input);
-    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
+    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
     BOOST_CHECK(r1.get());
     r2->MergePartialFromCodedStream(&coded);
     BOOST_CHECK(compareProtoHeaders(*r1, *r2));
 }
 
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
-    boost::scoped_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
+    std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
     std::string expected = "4c6e5ad217891467addaa0db015eef80";
     BOOST_CHECK_EQUAL(hash, expected);

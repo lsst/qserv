@@ -24,9 +24,6 @@
 // System headers
 #include <iostream>
 
-// Third-party headers
-#include "boost/scoped_ptr.hpp"
-
 // Qserv headers
 #include "obsolete/QservPath.h"
 
