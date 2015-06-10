@@ -249,7 +249,7 @@ QuerySession::getMergeStmt() const {
     if(_context->needsMerge) {
         return _stmtMerge;
     } else {
-        return nullptr;
+        return std::shared_ptr<query::SelectStmt>();
     }
 }
 
