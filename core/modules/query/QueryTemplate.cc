@@ -73,7 +73,7 @@ struct SpacedOutput {
         LOGF(getLogger(), LOG_LVL_TRACE, "entry: %1%" % entry_str);
         if(entry_str.empty()) return;
 
-        if(!last_entry.empty() && sql::sqlShouldSeparate(last_entry, last_entry.back(), entry_str.at(0)))  {
+        if(!last_entry.empty() && sql::sqlShouldSeparate(last_entry, *last_entry.rbegin(), entry_str.at(0)))  {
             os << sep;
         }
         os << entry_str;

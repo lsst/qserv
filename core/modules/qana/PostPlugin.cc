@@ -155,8 +155,9 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
                 // Remove orderby from parallel
                 // (no need to sort until we have all the results)
                 SelectStmtPtrVector::iterator i, e;
+                std::shared_ptr<query::OrderByClause> _nullptr;
                 for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-                    (**i).setOrderBy(nullptr);
+                    (**i).setOrderBy(_nullptr);
                 }
                 // Make sure the merge has an ORDER BY
                 LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause %1%" % _orderBy);
