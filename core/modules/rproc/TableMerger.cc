@@ -245,7 +245,7 @@ TableMerger::TableMerger(TableMergerConfig const& c)
       _isFinished(false) {
     _fixupTargetName();
     _loadCmd = (boost::format(_cmdBase)
-		% c.mySqlCmd % c.socket % c.user % c.targetDb).str();
+        % c.mySqlCmd % c.socket % c.user % c.targetDb).str();
 }
 
 bool TableMerger::merge(std::string const& dumpFile,
@@ -550,7 +550,7 @@ bool TableMerger::_slowImport(std::string const& dumpFile,
                            % tableName % _error.description);
                 --_tableCount; // We failed merging the table.
             }
-	    return isOk; // must happen first.
+            return isOk; // must happen first.
         }
     }
     // No locking needed if not first, after updating the counter.

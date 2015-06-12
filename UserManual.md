@@ -111,10 +111,10 @@ Spatial constraints in Qserv can be expressed using one of the functions we intr
 
     qserv_areaspec_poly(
         v1Lon                DOUBLE PRECISION,  # [deg]    Longitude angle of first polygon vertex
-        v1Lat                DOUBLE PRECISION,	# [deg]    Latitude angle of first polygon vertex
+        v1Lat                DOUBLE PRECISION,  # [deg]    Latitude angle of first polygon vertex
         v2Lon                DOUBLE PRECISION,  # [deg]    Longitude angle of second polygon vertex
-        v2Lat                DOUBLE PRECISION,	# [deg]    Latitude angle of second polygon vertex
- 	...
+        v2Lat                DOUBLE PRECISION,  # [deg]    Latitude angle of second polygon vertex
+     ...
     )
 
 Example:

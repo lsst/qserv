@@ -149,8 +149,8 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
         }
     } else {
         LOGF_DEBUG("no nextFragment");
-	for(unsigned int t=0;t<(s.queries).size();t++){
-	    LOGF_DEBUG("%1%" % (s.queries).at(t));
+        for(unsigned int t=0;t<(s.queries).size();t++){
+            LOGF_DEBUG("%1%" % (s.queries).at(t));
 	}
         addFragment(*_taskMsg, resultTable,
                     s.subChunkTables, s.subChunkIds, s.queries);

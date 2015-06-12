@@ -49,18 +49,18 @@ public:
 
 private:
     struct Item { //where subs are needed and how big the placeholders are.
-	std::string name;
-	int position;
-	int length;
+        std::string name;
+        int position;
+        int length;
     };
 
     template<typename Iter>
     inline unsigned _max(Iter begin, Iter end) {
-	unsigned m=0;
-	for(Iter i = begin; i != end; ++i) {
+        unsigned m=0;
+        for(Iter i = begin; i != end; ++i) {
 	    if(m < i->size()) m = i->size();
-	}
-	return m;
+        }
+        return m;
     }
 
     void _build(std::string const& delim);

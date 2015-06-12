@@ -58,8 +58,10 @@ namespace parser {
 template <typename AnAst>
 std::string tokenText(AnAst const& r) {
     if(r.get()) {
-	return r->getText();
-    } else return std::string();
+        return r->getText();
+    } else {
+        return std::string();
+    }
 }
 
 template <typename AnAst>
@@ -70,7 +72,7 @@ struct TrivialCheckTerm {
 template <typename AnAst>
 struct ParenCheckTerm {
     bool operator()(AnAst r, int depth) {
-	return (depth == 0) && (tokenText(r) == ")");
+        return (depth == 0) && (tokenText(r) == ")");
     }
 };
 
@@ -78,7 +80,7 @@ template <typename AnAst>
 struct SibCheckTerm {
     SibCheckTerm(AnAst lastSib_) : lastSib(lastSib_) {}
     bool operator()(AnAst r, int depth) {
-	return (depth == 0) && (r == lastSib);
+        return (depth == 0) && (r == lastSib);
     }
     AnAst lastSib;
 };
@@ -100,16 +102,16 @@ template <typename AnAst>
 struct CompactPrintVisitor {
 public:
     void operator()(AnAst a) {
-	std::string s = a->getText();
-	if(!s.empty() && !result.empty()) {
-	    int last = result[result.size()-1];
-	    int next = s[0];
-	    if(sql::sqlShouldSeparate(lastToken, last,next)) {
-		result += " ";
-	    }
-	}
+        std::string s = a->getText();
+        if(!s.empty() && !result.empty()) {
+            int last = result[result.size()-1];
+            int next = s[0];
+            if(sql::sqlShouldSeparate(lastToken, last,next)) {
+                result += " ";
+            }
+        }
         lastToken = s;
-	result += s;
+        result += s;
     }
     std::string lastToken;
     std::string result;
@@ -132,7 +134,7 @@ public:
     }
 
     void operator()(AnAst a) {
-	std::string s = a->getText();
+    std::string s = a->getText();
         if(substituteWithMap(s, m, minMatch)) a->setText(s);
     }
     StringMap const& m;
@@ -146,17 +148,16 @@ std::string walkTree(AnAst r) {
     std::string result;
     antlr::RefAST c = r->getFirstChild();
     if(c.get()) {
-	result = walkTree(c);
+        result = walkTree(c);
     }
     // Now print sibling(s)
     antlr::RefAST s = r->getNextSibling();
     if(s.get()) {
-	if(!result.empty()) result += " ";
-	result += walkTree(s);
+        if(!result.empty()) result += " ";
+        result += walkTree(s);
     }
     if(!result.empty()) result = " " + result;
     return r->getText() + result;
-
 }
 
 template <typename AnAst, typename Visitor, typename CheckTerm>
@@ -218,7 +219,6 @@ std::string walkIndentedString(AnAst r) {
     return ss.str();
 }
 
-
 template <typename AnAst, typename Visitor>
 void walkTreeVisit(AnAst r, Visitor& v) {
     TrivialCheckTerm<AnAst> t;
@@ -251,14 +251,12 @@ std::string walkSiblingString(AnAst r) {
     return p.result;
 }
 
-
 template <typename AnAst>
 void walkTreeSubstitute(AnAst r,
                         std::map<std::string, std::string> const& m) {
     SubstituteVisitor<AnAst> s(m);
     walkTreeVisit(r, s);
 }
-
 
 template <typename AnAst, typename Check>
 AnAst findSibling(AnAst r, Check& c) {
@@ -268,7 +266,6 @@ AnAst findSibling(AnAst r, Check& c) {
     }
     return r;
 }
-
 
 template <typename AnAst>
 std::string getFuncString(AnAst r) {
@@ -282,7 +279,7 @@ template <typename AnAst>
 AnAst getLastSibling(AnAst r) {
     AnAst last;
     do {
-	last = r;
+        last = r;
 	r = r->getNextSibling();
     } while(r.get());
     return last;
@@ -292,25 +289,21 @@ template <typename AnAst>
 AnAst getSiblingBefore(AnAst r, AnAst b) {
     AnAst last;
     do {
-
-	last = r;
-	r = r->getNextSibling();
-
+        last = r;
+        r = r->getNextSibling();
     } while(r != b);
     return last;
 }
-
 
 template <typename AnAst>
 int countLength(AnAst r, AnAst b) {
     int i = 0;
     while(r.get() && (r != b)) {
         ++i;
-	r = r->getNextSibling();
+        r = r->getNextSibling();
     }
     return i;
 }
-
 
 template <typename AnAst>
 AnAst collapseNodeRange(AnAst start, AnAst bound) {

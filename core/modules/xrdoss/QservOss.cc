@@ -139,7 +139,7 @@ void QservOss::_fillQueryFileStat(struct stat &buf) {
     // The following stat is an example of something acceptable.
     //  File: `1234567890'
     //  Size: 0    Blocks: 0          IO Block: 4096   regular empty file
-    // Device: 801h/2049d	Inode: 24100997    Links: 1
+    // Device: 801h/2049d    Inode: 24100997    Links: 1
     //Access: (0644/-rw-r--r--)  Uid: ( 7238/ danielw)   Gid: ( 1051/ sf)
     //Access: 2012-12-06 10:53:05.000000000 -0800
     //Modify: 2012-06-20 15:52:32.000000000 -0700

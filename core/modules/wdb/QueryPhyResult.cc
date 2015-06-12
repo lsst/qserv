@@ -153,7 +153,7 @@ bool QueryPhyResult::performMysqldump(LOG_LOGGER const& log,
     std::string cmd = wconfig::getConfig().getString("mysqlDump") +
         (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
-	    " --socket=%1%"
+            " --socket=%1%"
             " -u %2%"
             " --result-file=%3% %4% %5%")
          % wconfig::getConfig().getString("mysqlSocket")

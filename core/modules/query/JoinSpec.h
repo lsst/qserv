@@ -45,17 +45,17 @@ class ColumnRef;
 
 /// JoinSpec is a parsed join spec.
 /// join_spec :
-///	  join_condition
+///      join_condition
 ///       | named_columns_join
 /// ;
 /// join_condition :
-///	"on" search_condition
+///    "on" search_condition
 /// ;
 /// named_columns_join :
-///	"using" LEFT_PAREN column_name_list/*join_column_list*/ RIGHT_PAREN
+///    "using" LEFT_PAREN column_name_list/*join_column_list*/ RIGHT_PAREN
 /// ;
 /// search_condition :
-///	boolean_term (boolean_term_op boolean_term)*
+///    boolean_term (boolean_term_op boolean_term)*
 /// ;
 /// search_condition is used for WHERE conditions as well.
 class JoinSpec {

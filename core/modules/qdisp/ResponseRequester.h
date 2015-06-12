@@ -102,7 +102,7 @@ public:
 protected:
     /// Call _cancelFunc.
     void _callCancel() {
-    	// Ensure _cancelFunc is only called once.
+        // Ensure _cancelFunc is only called once.
         std::shared_ptr<CancelFunc> f;
         {
             std::lock_guard<std::mutex> lock(_cancelMutex);

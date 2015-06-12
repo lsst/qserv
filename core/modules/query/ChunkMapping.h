@@ -74,7 +74,7 @@ private:
 
     template <typename T>
     std::string _toString(T const& t) {
-	std::ostringstream oss;
+        std::ostringstream oss;
 	oss << t;
 	return oss.str();
     }
