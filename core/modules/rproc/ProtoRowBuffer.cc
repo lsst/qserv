@@ -53,14 +53,14 @@ namespace rproc {
 /// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
 /// https://dev.mysql.com/doc/refman/5.1/en/load-data.html
 /// This is limited to:
-/// Character	Escape Sequence
-/// \0 	An ASCII NUL (0x00) character
-/// \b 	A backspace character
-/// \n 	A newline (linefeed) character
-/// \r 	A carriage return character
-/// \t 	A tab character.
-/// \Z 	ASCII 26 (Control+Z)
-/// \N 	NULL
+/// Character    Escape Sequence
+/// \0     An ASCII NUL (0x00) character
+/// \b     A backspace character
+/// \n     A newline (linefeed) character
+/// \r     A carriage return character
+/// \t     A tab character.
+/// \Z     ASCII 26 (Control+Z)
+/// \N     NULL
 ///
 /// @return the number of bytes written to dest
 template <typename Iter, typename CIter>

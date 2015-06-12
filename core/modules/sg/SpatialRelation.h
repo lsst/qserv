@@ -51,9 +51,9 @@ inline int invertSpatialRelations(int relations) {
     // The DISJOINT and INTERSECTS relations commute, so leave the
     // corresponding bits unchanged. If A CONTAINS B, then B is WITHIN A,
     // so the bits corresponding to CONTAINS and WITHIN must be swapped.
-	return (relations & (DISJOINT | INTERSECTS)) |
-	       ((relations & CONTAINS) << 3) |
-	       ((relations & WITHIN) >> 3);
+    return (relations & (DISJOINT | INTERSECTS)) |
+           ((relations & CONTAINS) << 3) |
+           ((relations & WITHIN) >> 3);
 }
 
 }} // namespace lsst::sg
