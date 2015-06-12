@@ -48,43 +48,56 @@
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
-
 namespace lsst {
 namespace qserv {
 namespace query {
 
-struct SpacedOutput {
-    SpacedOutput(std::ostream& os_, std::string sep_=" ")
-        : os(os_), sep(sep_), count(0) {}
-    void operator()(std::string const& s) {
-        if(s.empty()) return;
+namespace {
 
-        if(!last.empty() && sql::sqlShouldSeparate(last, *(last.end()-1), s[0]))  {
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.query.QueryTemplate");
+    return logger;
+}
+
+
+struct SpacedOutput {
+
+    SpacedOutput(std::ostream& os_, std::string sep_=" ")
+        : os(os_), sep(sep_) {}
+
+    void operator()(std::shared_ptr<QueryTemplate::Entry> entry) {
+        if(!entry) { throw std::invalid_argument("NULL QueryTemplate::Entry"); }
+        //if(e->isDynamic()) { os << "(" << count << ")"; }
+
+        std::string const& entry_str = entry->getValue();
+        LOGF(getLogger(), LOG_LVL_TRACE, "entry: %1%" % entry_str);
+        if(entry_str.empty()) return;
+
+        if(!last_entry.empty() && sql::sqlShouldSeparate(last_entry, *last_entry.rbegin(), entry_str.at(0)))  {
             os << sep;
         }
-        os << s;
-        last = s;
-    }
-    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
-        if(!e) { throw std::invalid_argument("NULL QueryTemplate::Entry"); }
-        //if(e->isDynamic()) { os << "(" << count << ")"; }
-        (*this)(e->getValue());
-        ++count;
+        os << entry_str;
+        last_entry = entry_str;
     }
 
     std::ostream& os;
-    std::string last;
+    std::string last_entry;
     std::string sep;
-    int count;
 };
 
-template <typename C>
-std::string outputString(C& c) {
+
+std::string stringify(QueryTemplate::EntryPtrVector const& v) {
     std::stringstream ss;
+    std::string str;
     SpacedOutput so(ss, " ");
-    std::for_each(c.begin(), c.end(), so);
-    return ss.str();
+    std::for_each(v.begin(), v.end(), so);
+    str = ss.str();
+    LOGF(getLogger(), LOG_LVL_TRACE, "EntryPtrVector: %1%" % str);
+    return str;
 }
+
+}
+
 struct MappingWrapper {
     MappingWrapper(QueryTemplate::EntryMapping const& em_,
                    QueryTemplate& qt_)
@@ -124,46 +137,15 @@ public:
     std::string table;
     std::string column;
 };
-struct EntryMerger {
-    EntryMerger() {}
 
-    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
-        if(!_candidates.empty()) {
-            if(!_checkMergeable(_candidates.back(), e)) {
-                _mergeCurrent();
-            }
-        }
-        _candidates.push_back(e);
-    }
-    void pack() { _mergeCurrent(); }
-    bool _checkMergeable(std::shared_ptr<QueryTemplate::Entry> left,
-                         std::shared_ptr<QueryTemplate::Entry> right) {
-        return !((left->isDynamic() || right->isDynamic()));
-    }
-    void _mergeCurrent() {
-        if(_candidates.size() > 1) {
-            std::shared_ptr<QueryTemplate::Entry> e;
-            e = std::make_shared<QueryTemplate::StringEntry>(
-                                                   outputString(_candidates)
-                                                             );
-            _entries.push_back(e);
-            _candidates.clear();
-        } else if(!_candidates.empty()) {
-            // Only one entry.
-            _entries.push_back(_candidates.back());
-            _candidates.pop_back();
-        }
-    }
-    QueryTemplate::EntryPtrVector _candidates;
-    QueryTemplate::EntryPtrVector _entries;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
-std::string
-QueryTemplate::dbgStr() const {
-    return outputString(_entries);
+
+
+std::string QueryTemplate::toString() const {
+    return stringify(_entries);
 }
 
 void
@@ -190,15 +172,10 @@ QueryTemplate::append(std::shared_ptr<QueryTemplate::Entry> const& e) {
 }
 
 std::string
-QueryTemplate::generate() const {
-    return outputString(_entries);
-}
-
-std::string
 QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
     std::for_each(_entries.begin(), _entries.end(), MappingWrapper(em, newQt));
-    return outputString(newQt._entries);
+    return newQt.toString();
 }
 
 void
@@ -206,24 +183,5 @@ QueryTemplate::clear() {
     _entries.clear();
 }
 
-////////////////////////////////////////////////////////////////////////
-// QueryTemplate (private)
-////////////////////////////////////////////////////////////////////////
-void
-QueryTemplate::optimize() {
-
-    typedef EntryPtrVector::const_iterator Iter;
-
-    EntryMerger em;
-    for(Iter i=_entries.begin(); i != _entries.end(); ++i) {
-        em(*i);
-    }
-    em.pack();
-    _entries.swap(em._entries);
-    //LOGF_DEBUG("merged %1% entries to %2%"
-    //           % _entries.size() % em._entries.size());
-    //LOGF_DEBUG("was: %1%" % outputString(_elements));
-    //LOGF_DEBUG("now: %1%" % outputString(em._entries));
-}
 
 }}} // namespace lsst::qserv::query

@@ -59,7 +59,7 @@ std::string
 HavingClause::getGenerated() const {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.dbgStr();
+    return qt.toString();
 }
 void
 HavingClause::renderTo(QueryTemplate& qt) const {

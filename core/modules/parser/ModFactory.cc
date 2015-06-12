@@ -58,6 +58,15 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+namespace {
+
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.parser.ModFactory");
+    return logger;
+}
+
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::LimitH
 ////////////////////////////////////////////////////////////////////////
@@ -128,7 +137,7 @@ void ModFactory::attachTo(SqlSQL2Parser& p) {
 
 void ModFactory::_importLimit(antlr::RefAST a) {
     // Limit always has an int.
-    LOGF_INFO("Limit got %1%" % walkTreeString(a));
+    LOGF(getLogger(), LOG_LVL_INFO, "Limit got %1%" % walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importLimit(NULL)");
     }
@@ -137,19 +146,19 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 }
 
 void ModFactory::_importOrderBy(antlr::RefAST a) {
-    _orderBy = std::make_shared<query::OrderByClause>();
-    // ORDER BY takes a column ref (expression)
-    //LOGF_INFO("orderby got %1%" % walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
+    _orderBy = std::make_shared<query::OrderByClause>();
+    // ORDER BY takes a column ref (expression)
+    LOGF(getLogger(), LOG_LVL_DEBUG, "ORDER BY got %1%" % walkTreeString(a));
     while(a.get()) {
         if(a->getType() == SqlSQL2TokenTypes::COMMA) {
             a = a->getNextSibling();
             continue;
         }
         if(a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
-            LOGF_ERROR("Orderby expected sort spec and got %1%" % a->getText());
+            LOGF(getLogger(), LOG_LVL_ERROR, "ORDER BY expected sort spec and got %1%" % a->getText());
             throw std::logic_error("Expected SORT_SPEC token)");
         }
         RefAST key = a->getFirstChild();
@@ -187,6 +196,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         }
         a = a->getNextSibling();
     }
+    LOGF(getLogger(), LOG_LVL_DEBUG, "ORDER BY AST branch processed: %1%" % _orderBy->toString());
 }
 
 void ModFactory::_importGroupBy(antlr::RefAST a) {
@@ -254,7 +264,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     _having->_tree.reset(); // NULL-out. Unhandled syntax.
 
     // FIXME: Log this at the WARNING level
-    LOGF_WARN("Parse warning: HAVING clause unhandled.");
+    LOGF(getLogger(), LOG_LVL_WARN, "Parse warning: HAVING clause unhandled.");
 }
 
 }}} // namespace lsst::qserv::parser

@@ -68,10 +68,8 @@ public:
 
     SelectStmt();
 
-    std::string diagnose(); // for debugging
-
     std::shared_ptr<WhereClause const> getWhere() const;
-    QueryTemplate getTemplate() const;
+    QueryTemplate getQueryTemplate() const;
     QueryTemplate getPostTemplate() const;
     std::shared_ptr<SelectStmt> clone() const;
     std::shared_ptr<SelectStmt> copyMerge() const;
@@ -112,13 +110,28 @@ public:
     HavingClause& getHaving() { return *_having; }
     void setHaving(std::shared_ptr<HavingClause> h) { _having = h; }
 
+    // Helpers, for debugging
+
+    /** Return a string representation of the object
+     *
+     * Can be used for logging, of debugging
+     *
+     * @return a string representation of the object
+     */
+    std::string toString();
+
+    /** Return a string representation of the query::QueryTemplate
+     * object build from current object
+     *
+     * Can be used for logging, of debugging
+     *
+     * @return a string representation of the object
+     */
+    std::string toQueryTemplateString();
+
  private:
     // Declarations
     friend class parser::SelectFactory;
-
-    // Helpers
-    void _print();
-    std::string _generateDbg();
 
     // Fields
     std::shared_ptr<FromList> _fromList; // Data sources
