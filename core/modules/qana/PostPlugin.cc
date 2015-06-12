@@ -77,7 +77,7 @@ public:
     std::shared_ptr<query::OrderByClause> _orderBy;
 
 private:
-	static LOG_LOGGER _logger;
+    static LOG_LOGGER _logger;
 };
 
 

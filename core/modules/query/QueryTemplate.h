@@ -123,7 +123,6 @@ public:
         return os << qt.toString();
     }
 
-
 private:
     EntryPtrVector _entries;
 };

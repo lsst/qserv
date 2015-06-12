@@ -50,45 +50,17 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/Facade.h"
-#include "global/stringTypes.h"
-#include "parser/ParseException.h"
-#include "parser/parseExceptions.h"
-#include "parser/SelectParser.h"
-#include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
-#include "qdisp/ChunkMeta.h"
-#include "qproc/QuerySession.h"
-#include "query/Constraint.h"
-#include "query/QsRestrictor.h"
+#include "qproc/testQueryAna.h"
 #include "query/QueryContext.h"
-#include "query/SelectList.h"
-#include "query/SelectStmt.h"
-#include "query/typedefs.h"
-#include "testQueryAna.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
 
 
-using lsst::qserv::parser::SelectParser;
-using lsst::qserv::parser::UnknownAntlrError;
 using lsst::qserv::qana::DuplSelectExprPlugin;
-using lsst::qserv::qdisp::ChunkMeta;
-using lsst::qserv::qproc::ChunkQuerySpec;
-using lsst::qserv::qproc::ChunkSpec;
-using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVec;
-using lsst::qserv::query::ConstraintVector;
-using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
-using lsst::qserv::query::SelectList;
-using lsst::qserv::query::SelectStmt;
-using lsst::qserv::query::ValueExprPtrVector;
 using lsst::qserv::util::Error;
 using lsst::qserv::util::MultiError;
-using lsst::qserv::StringPair;
-using lsst::qserv::StringVector;
 
 /**
  * Reproduce exception message caused by a duplicated select field
