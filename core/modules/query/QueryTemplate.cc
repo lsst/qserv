@@ -66,22 +66,23 @@ struct SpacedOutput {
         : os(os_), sep(sep_) {}
 
     void operator()(std::shared_ptr<QueryTemplate::Entry> entry) {
-        if(!entry) { throw std::invalid_argument("NULL QueryTemplate::Entry"); }
-        //if(e->isDynamic()) { os << "(" << count << ")"; }
-
-        std::string const& entry_str = entry->getValue();
-        LOGF(getLogger(), LOG_LVL_TRACE, "entry: %1%" % entry_str);
-        if(entry_str.empty()) return;
-
-        if(!last_entry.empty() && sql::sqlShouldSeparate(last_entry, *last_entry.rbegin(), entry_str.at(0)))  {
+        if(!entry) {
+            throw std::invalid_argument("NULL QueryTemplate::Entry");
+        }
+        std::string const& entryStr = entry->getValue();
+        LOGF(getLogger(), LOG_LVL_TRACE, "entry: %1%" % entryStr);
+        if(entryStr.empty()) {
+            return;
+        }
+        if(!lastEntry.empty() && sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
             os << sep;
         }
-        os << entry_str;
-        last_entry = entry_str;
+        os << entryStr;
+        lastEntry = entryStr;
     }
 
     std::ostream& os;
-    std::string last_entry;
+    std::string lastEntry;
     std::string sep;
 };
 
@@ -96,15 +97,15 @@ std::string stringify(QueryTemplate::EntryPtrVector const& v) {
     return str;
 }
 
-}
+} // annonymous namespace
 
 struct MappingWrapper {
     MappingWrapper(QueryTemplate::EntryMapping const& em_,
                    QueryTemplate& qt_)
         : em(em_), qt(qt_) {}
     void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
-            qt.append(em.mapEntry(*e));
-        }
+        qt.append(em.mapEntry(*e));
+    }
     QueryTemplate::EntryMapping const& em;
     QueryTemplate& qt;
 };
@@ -182,6 +183,5 @@ void
 QueryTemplate::clear() {
     _entries.clear();
 }
-
 
 }}} // namespace lsst::qserv::query

@@ -50,8 +50,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qproc/testQueryAna.h"
 #include "query/SelectStmt.h"
-#include "testQueryAna.h"
 
 using lsst::qserv::query::SelectStmt;
 
@@ -98,10 +98,9 @@ BOOST_AUTO_TEST_CASE(OrderByLimit) { // Test flipped syntax in DM-661
     auto mergeStmt = querySession->getMergeStmt();
     if (mergeStmt) {
         LOGF_INFO("mergeStmt->toString() %1%" % mergeStmt->toString());
-        //LOGF_INFO("mergeStmt->toQueryTemplateString() %1%" % mergeStmt->toQueryTemplateString());
     }
     else {
-         LOGF_INFO("No merge stmt");
+        LOGF_INFO("No merge stmt");
     }
 }
 

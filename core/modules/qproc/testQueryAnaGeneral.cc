@@ -48,35 +48,24 @@
 #include "boost/test/included/unit_test.hpp"
 
 // Qserv headers
-#include "css/Facade.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
-#include "qana/DuplSelectExprPlugin.h"
-#include "query/Constraint.h"
+#include "qproc/testQueryAna.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
-#include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/typedefs.h"
-#include "testQueryAna.h" // BOOST_TEST_MODULE must be defined prior to this include
+
 
 using lsst::qserv::parser::SelectParser;
-using lsst::qserv::parser::UnknownAntlrError;
-using lsst::qserv::qdisp::ChunkMeta;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVec;
-using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
-using lsst::qserv::query::SelectList;
 using lsst::qserv::query::SelectStmt;
-using lsst::qserv::query::ValueExprPtrVector;
 using lsst::qserv::StringPair;
 
 namespace {

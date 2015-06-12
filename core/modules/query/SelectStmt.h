@@ -145,7 +145,7 @@ public:
 
     int  _limit; // result limit
     StringVector OutputMods; // Output modifiers (order, grouping,
-                           // sort, limit
+                             // sort, limit
 };
 
 }}} // namespace lsst::qserv::query
