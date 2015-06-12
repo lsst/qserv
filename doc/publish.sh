@@ -27,9 +27,46 @@
 
 # @author  Fabrice Jammes, IN2P3
 
-# eval `ssh-agent -s`
-# ssh-add ~/.ssh/id_rsa_lsst
-USER=fjammes
+set -e
+
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options]
+
+  Available options:
+    -h          this message
+    -H          hostname of server containing documentation
+    -p path     full path to the documentation on hostname
+    -u name     the user to log in as on the remote machine
+
+  Generate Qserv documentation and upload it via ssh to remote server
+  (Default to http://www.slac.stanford.edu/exp/lsst/qserv/)
+  A valid user account on remote server is required.
+
+EOD
+}
+
+USER=$(whoami)
+HOST=lsst-db2.slac.stanford.edu
+DOC_ROOT_PATH=/afs/slac/www/exp/lsst/qserv
+
+# get the options
+while getopts hH:p:u: c ; do
+    case $c in
+        h) usage ; exit 0 ;;
+        H) HOST="${OPTARG}" ;;
+        p) DOC_ROOT_PATH="${OPTARG}" ;;
+        u) USER="${OPTARG}" ;;
+        \?) usage ; exit 2 ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+if [ $# -gt 0 ] ; then
+    usage
+    exit 2
+fi
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 cd $DIR/..
@@ -37,9 +74,7 @@ cd $DIR/..
 echo "Generating documentation"
 scons doc
 )
-REMOTE_HOST=lsst-db2.slac.stanford.edu
-DOC_ROOT_PATH=/afs/slac/www/exp/lsst/qserv
 VERSION=`${DIR}/../admin/bin/qserv-version.sh`
-echo "Uploading documentation from $PWD to $REMOTE_HOST"
-rsync -ave ssh  doc/build/html/* ${USER}@${REMOTE_HOST}:${DOC_ROOT_PATH}/${VERSION}
-ssh ${USER}@${REMOTE_HOST} "ln -sf ${DOC_ROOT_PATH}/${VERSION}/toplevel.html ${DOC_ROOT_PATH}/index.html; ln -sf ${DOC_ROOT_PATH}/${VERSION}/_static ${DOC_ROOT_PATH}/_static"
+echo "Uploading documentation from $PWD to $HOST"
+rsync -ave ssh  doc/build/html/* ${USER}@${HOST}:${DOC_ROOT_PATH}/${VERSION}
+ssh ${USER}@${HOST} "ln -sf ${DOC_ROOT_PATH}/${VERSION}/toplevel.html ${DOC_ROOT_PATH}/index.html; ln -sf ${DOC_ROOT_PATH}/${VERSION}/_static ${DOC_ROOT_PATH}/_static"
