@@ -340,7 +340,8 @@ class InbandQueryAction:
         pass
 
     def _reportError(self, chunkId, code, message):
-        logger.dbg("reporting", chunkId, code, message)
+        # TODO remove lsst/log wrapper
+        logger.dbg("Reporting:\n\tchunkId=[%s]\n\tcode=[%s]\n\tmessage=[%s]\n" % (chunkId, code, message))
         queryMsgAddMsg(self.sessionId, chunkId, code, message)
 
     def invoke(self):

@@ -66,6 +66,12 @@
 extern XrdSsiProvider *XrdSsiProviderClient;
 
 namespace {
+
+LOG_LOGGER getLogger() {
+        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.qdisp.Executive"));
+        return _logger;
+}
+
 std::string getErrorText(XrdSsiErrInfo & e) {
     std::ostringstream os;
     int errCode;
@@ -497,6 +503,9 @@ void Executive::_reportStatuses() {
     for(i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
         ExecStatus::Info info = i->second->getInfo();
         std::ostringstream os;
+        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
+                LOGF(getLogger(), LOG_LVL_TRACE, "%1%" % info.state);
+        }
         os << ExecStatus::stateText(info.state)
            << " " << info.stateCode;
         if(!info.stateDesc.empty()) {

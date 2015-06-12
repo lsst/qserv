@@ -227,7 +227,6 @@ bool MergingRequester::_merge() {
 }
 
 void MergingRequester::_setError(int code, std::string const& msg) {
-    LOGF_INFO("setError");
     LOGF_INFO("setError %1% %2%" % code % msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error.code = code;

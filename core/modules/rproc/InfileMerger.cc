@@ -278,10 +278,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%)"
+    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errorCode=%4%, errorMsg=%5%)"
                % static_cast<short>(response->headerSize)
                % response->protoHeader.size()
-               % response->result.row_size());
+               % response->result.row_size()
+               % response->result.has_errorcode()
+               % response->result.has_errormsg());
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
         _error.status = InfileMergerError::MYSQLEXEC;
