@@ -90,7 +90,7 @@ private:
 
         if(!_mysqlConn->connect()) {
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
-                        % wconfig::getConfig().getString("mysqlSocket") % _user);
+                 % wconfig::getConfig().getString("mysqlSocket") % _user);
             util::Error error(-1, "Unable to connect to MySQL as " + _user);
             _multiError.push_back(error);
             return false;

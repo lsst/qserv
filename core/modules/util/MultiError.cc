@@ -37,7 +37,6 @@ std::string const MultiError::HEADER_MSG = "Error(s):\n";
 
 std::string MultiError::toString() const {
     std::ostringstream oss;
-
     oss << *this;
     return oss.str();
 }
@@ -45,11 +44,11 @@ std::string MultiError::toString() const {
 std::string MultiError::toOneLineString() const {
     std::ostringstream oss;
     if (!this->empty()) {
-          if (this->size()>1) {
-              std::ostream_iterator<Error> string_it(oss, ", ");
-              std::copy(this->begin(), this->end()-1, string_it);
-          }
-          oss << this->back();
+        if (this->size()>1) {
+            std::ostream_iterator<Error> string_it(oss, ", ");
+            std::copy(this->begin(), this->end()-1, string_it);
+        }
+        oss << this->back();
     }
     return oss.str();
 }
@@ -80,13 +79,13 @@ void MultiError::push_back (const std::vector<Error>::value_type& val) {
 
 std::ostream& operator<<(std::ostream &out, MultiError const& multiError) {
     if (!multiError.empty()) {
-          out << MultiError::HEADER_MSG << "\t";
-          if (multiError.size()>1) {
-              std::ostream_iterator<Error> string_it(out, "\n\t");
-              std::copy(multiError.begin(), multiError.end()-1, string_it);
-          }
-          out << multiError.back();
-      }
+        out << MultiError::HEADER_MSG << "\t";
+        if (multiError.size()>1) {
+            std::ostream_iterator<Error> string_it(out, "\n\t");
+            std::copy(multiError.begin(), multiError.end()-1, string_it);
+        }
+        out << multiError.back();
+    }
     return out;
 }
 

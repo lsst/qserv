@@ -83,7 +83,7 @@ public:
      * @return an output stream, with no newline at the end
      */
     friend std::ostream& operator<<(std::ostream &out,
-            MultiError const& multiError);
+                                    MultiError const& multiError);
 
     bool empty() const;
 
@@ -99,7 +99,6 @@ public:
 
 private:
     std::vector<Error> errorVector;
-
 };
 
 }}} // namespace lsst::qserv::util
