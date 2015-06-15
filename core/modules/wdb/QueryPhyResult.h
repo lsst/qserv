@@ -29,7 +29,7 @@
 #include <set>
 #include <string>
 
-// Local headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Forward declarations

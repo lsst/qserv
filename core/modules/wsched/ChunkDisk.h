@@ -36,11 +36,13 @@
 #include <set>
 #include <vector>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "proto/worker.pb.h"
-#include "wsched/ChunkState.h"
 #include "wbase/Task.h"
+#include "wsched/ChunkState.h"
 
 
 namespace lsst {

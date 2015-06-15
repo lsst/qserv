@@ -25,16 +25,18 @@
 #include "xrdsvc/SsiSession.h"
 
 // System headers
+#include <cctype>
 #include <iostream>
 #include <string>
-#include <cctype>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiRequest.hh"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/ResourceUnit.h"
-#include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"

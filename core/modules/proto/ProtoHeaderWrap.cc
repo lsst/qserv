@@ -23,7 +23,7 @@
 
 // System headers
 
-// Third-party headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers

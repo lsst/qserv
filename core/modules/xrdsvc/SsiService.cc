@@ -20,6 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/SsiService.h"
 
 // System headers
@@ -30,9 +32,11 @@
 #include <unistd.h>
 
 // Third-party headers
-#include "lsst/log/Log.h"
 #include "XProtocol/XProtocol.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "sql/SqlConnection.h"
@@ -40,13 +44,12 @@
 #include "wconfig/Config.h"
 #include "wconfig/ConfigError.h"
 #include "wcontrol/Foreman.h"
+#include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
-#include "wpublish/ChunkInventory.h"
-#include "xrdsvc/XrdName.h"
 #include "xrdsvc/SsiSession.h"
-
+#include "xrdsvc/XrdName.h"
 
 
 class XrdPosixCallBack; // Forward.
