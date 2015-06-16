@@ -126,7 +126,7 @@ private:
     /// more implementation.
     PacketBuffer operator++(int);
 
-    std::auto_ptr<Source> _source;
+    std::unique_ptr<Source> _source;
     Pos _pos;
     Value _current;
 };

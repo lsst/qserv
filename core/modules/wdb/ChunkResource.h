@@ -87,7 +87,7 @@ private:
     ChunkResource(ChunkResourceMgr& mgr, Info* info);
 
     ChunkResourceMgr& _mgr;
-    std::auto_ptr<Info> _info;
+    std::unique_ptr<Info> _info;
 };
 
 /// ChunkResourceMgr is a lightweight manager for holding reservations on

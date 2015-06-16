@@ -269,7 +269,7 @@ void DynamicWorkQueue::add(void const * session,
         _nonEmptyQueues.insert(q);
     } else {
         // Create a Queue for session and put callable on it.
-        std::auto_ptr<Queue> qp(new Queue(session));
+        std::unique_ptr<Queue> qp(new Queue(session));
         q = qp.get();
         _sessions.insert(std::make_pair(session, q));
         try {

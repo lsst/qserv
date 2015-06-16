@@ -168,7 +168,7 @@ private:
     std::mutex _sqlMutex; ///< Protection for SQL connection
 
     class Mgr;
-    std::auto_ptr<Mgr> _mgr; ///< Delegate merging action object
+    std::unique_ptr<Mgr> _mgr; ///< Delegate merging action object
 
     bool _needCreateTable; ///< Does the target table need creating?
 };

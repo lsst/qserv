@@ -59,6 +59,9 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
+
+Facade::Facade() = default;    
+
 /** Creates a new Facade over metadata in an in-memory key-value store.
   *
   * @param mapStream An input stream to data dumped using
@@ -89,8 +92,7 @@ Facade::Facade(std::shared_ptr<KvInterface> kv,
     } // empty str: no empty chunks available.
 }
 
-Facade::~Facade() {
-}
+Facade::~Facade() = default;    
 
 /** Returns true if the given database exists.
   */

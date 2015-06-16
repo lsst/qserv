@@ -64,7 +64,7 @@ public:
      */
     std::string toString() const;
 
-    /** Return a minimalist string representation of the object
+    /** Return a minimalistic string representation of the object
      *
      * Can be used to print error messages to the
      * command-line interface
