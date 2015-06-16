@@ -39,6 +39,7 @@ import types
 # Imports for other modules --
 #-----------------------------
 from lsst.db.exception import produceExceptionClass
+from lsst.qserv.wmgr.client import ServerError
 from .nodeAdmin import NodeAdmin
 
 #----------------------------------
@@ -143,7 +144,7 @@ class NodeMgmt(object):
         return dict(nodes)
 
 
-    def createDb(self, dbName, grantUser=None, state=None, nodeType=None, **kwargs):
+    def createDb(self, dbName, state=None, nodeType=None):
         """
         Create database on a set of nodes.
 
@@ -155,12 +156,8 @@ class NodeMgmt(object):
         If database already exists on some nodes it will not be re-created.
 
         @param dbName:    database name to be created
-        @param grantUser: optional user name, if specified then this user is granted
-                          "ALL" privileges on created database
         @param state:     same as in select() method
         @param nodeType:  same as in select() method
-        @param kwargs:    optional keyword arguments passed to NodeAdmin.mysqlConn()
-                          method
         @return: tuple of two integers, first integer is the number of workers selected,
                  second is the number of workers where database did not exist and was created
         @raise DbException: when database operations fail (e.g. failed to connect to database)
@@ -172,36 +169,27 @@ class NodeMgmt(object):
         # make database on each of them if does not exist
         nCreated = 0
         for worker in nodes:
-            db = worker.mysqlConn(**kwargs)
-            if not db.dbExists(dbName):
 
-                self._log.debug('Creating database %s on node %s', dbName, worker.name())
-
-                # race condition here obviously, so we set mayExist=True to suppress
-                # exception in case someone else managed to create database at this instant
-                db.createDb(dbName, mayExist=True)
-                nCreated += 1
-
-                if grantUser:
-                    self._log.debug('Granting permissions to user %s', grantUser)
-                    grant = "GRANT ALL ON {0}.* to '{1}'@'{2}'"
-                    # TODO: grant ALL to user@localhost, we may also want to extend this
-                    # with user@127.0.0.1, or user@%, need to look at his again when I
-                    # have better understanding of deployment model
-                    hostmatch = ['localhost']
-                    for host in hostmatch:
-                        query = grant.format(dbName, grantUser, host)
-                        self._log.debug('query: %s', query)
-                        db.execCommand0(grant.format(dbName, grantUser, host))
-
-            else:
+            wmgr = worker.wmgrClient()
+            if dbName in wmgr.databases():
                 self._log.debug('Database %s already exists on node %s', dbName, worker.name())
+            else:
+                try:
+                    self._log.debug('Creating database %s on node %s', dbName, worker.name())
+                    wmgr.createDb(dbName)
+                except ServerError as exc:
+                    if exc.code == 409:
+                        self._log.debug('Database %s already exists on node %s', dbName, worker.name())
+                    else:
+                        raise
+
+                nCreated += 1
 
         self._log.debug('Created databases on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated
 
 
-    def createTable(self, dbName, tableName, state=None, nodeType=None, **kwargs):
+    def createTable(self, dbName, tableName, state=None, nodeType=None):
         """
         Create table on a set of nodes. Table schema must already be defined
         in CSS.
@@ -217,26 +205,11 @@ class NodeMgmt(object):
         @param tableName: table name to be created
         @param state:     same as in select() method
         @param nodeType:  same as in select() method
-        @param kwargs:    optional keyword arguments passed to NodeAdmin.mysqlConn()
-                          method
         @return: tuple of two integers, first integer is the number of workers selected,
                  second is the number of workers where table did not exist and was created
         @raise DbException: when database operations fail (e.g. failed to connect to database)
         @raise Exception: when table schema is invalid.
         """
-
-        # get schema from CSS
-        tableSchema = self.css.getTableSchema(dbName, tableName)
-
-        # some pre-validation, check that schema does not include "CREATE ..."
-        # and only starts with opening parenthesis
-        schemaWords = tableSchema.lower().split()
-        if not schemaWords:
-            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "schema is empty")
-        if schemaWords[0] == 'create':
-            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "CREATE TABLE present in schema")
-        if schemaWords[0][0] != '(':
-            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "schema does not start with parenthesis")
 
         # get a bunch of nodes to work with
         nodes = self.select(state, nodeType)
@@ -244,18 +217,22 @@ class NodeMgmt(object):
         # make database on each of them if does not exist
         nCreated = 0
         for worker in nodes:
-            dbi = worker.mysqlConn(**kwargs)
-            if not dbi.tableExists(tableName, dbName):
 
-                self._log.debug('Creating table %s.%s on node %s', dbName, tableName, worker.name())
-
-                # race condition here obviously, so we set mayExist=True to suppress
-                # exception in case someone else managed to create table at this instant
-                dbi.createTable(tableName, tableSchema, dbName, mayExist=True)
-                nCreated += 1
-
-            else:
+            wmgr = worker.wmgrClient()
+            if tableName in wmgr.tables(dbName):
                 self._log.debug('Table %s.%s already exists on node %s', dbName, tableName, worker.name())
+            else:
+                try:
+                    self._log.debug('Creating table %s.%s on node %s', dbName, tableName, worker.name())
+                    wmgr.createTable(dbName, tableName)
+                except ServerError as exc:
+                    if exc.code == 409:
+                        self._log.debug('Table %s.%s already exists on node %s',
+                                        dbName, tableName, worker.name())
+                    else:
+                        raise
+
+                nCreated += 1
 
         self._log.debug('Created tables on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated

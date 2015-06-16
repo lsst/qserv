@@ -94,8 +94,6 @@ class CommandParser(object):
             "type",
             "host",
             "port",
-            "runDir",
-            "mysqlConn",
             "state"],
         "updateNode" : [
             "state"],
@@ -273,12 +271,6 @@ class CommandParser(object):
 
         # check that all required options are there
         self._checkExist(options, requiredKeys)
-
-        # check obsolete keys
-        for opt in ('runDir', 'mysqlConn'):
-            if opt in options:
-                self._logger.warning(opt + ' option is obsolete')
-                del options[opt]
 
         # call CSS to do the rest, remap options to argument names
         options['nodeType'] = options['type']
