@@ -33,8 +33,6 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-std::string const MultiError::HEADER_MSG = "Error(s):\n";
-
 std::string MultiError::toString() const {
     std::ostringstream oss;
     oss << *this;
@@ -79,9 +77,8 @@ void MultiError::push_back (const std::vector<Error>::value_type& val) {
 
 std::ostream& operator<<(std::ostream &out, MultiError const& multiError) {
     if (!multiError.empty()) {
-        out << MultiError::HEADER_MSG << "\t";
         if (multiError.size()>1) {
-            std::ostream_iterator<Error> string_it(out, "\n\t");
+            std::ostream_iterator<Error> string_it(out, "\n");
             std::copy(multiError.begin(), multiError.end()-1, string_it);
         }
         out << multiError.back();

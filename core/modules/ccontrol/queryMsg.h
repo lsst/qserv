@@ -37,9 +37,10 @@ int queryMsgGetCount(int session);
 
 // Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
 // int* chunkId, int* code, time_t* timestamp matches with %apply directive to help SWIG
-std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp);
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, std::string* severity, time_t* timestamp);
 
-void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message);
+void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message,
+		            std::string const& severity = "INFO");
 
 }}} // namespace lsst::qserv::ccontrol
 

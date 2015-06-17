@@ -257,7 +257,7 @@ void Executive::markCompleted(int jobId, bool success) {
         }
         {
             std::lock_guard<std::mutex> lock(_statusesMutex);
-            _statuses[jobId]->report(JobStatus::RESULT_ERROR, 1);
+            _statuses[jobId]->report(JobStatus::RESULT_ERROR, e.code, e.msg);
         }
         {
                         std::lock_guard<std::mutex> lock(_errorsMutex);

@@ -100,7 +100,7 @@ namespace std {
   }
 }
 
-// This cleans up the char ** array we malloc'd before the function call
+// This cleans up the char ** array we malloc-ed before the function call
 %typemap(freearg) char ** {
   free((char *) $1);
 }
@@ -119,6 +119,7 @@ namespace std {
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
+%apply std::string *OUTPUT { std::string* severity };
 
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"

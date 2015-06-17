@@ -243,6 +243,13 @@ BOOST_AUTO_TEST_CASE(MessageStore) {
     LOGF_INFO("MessageStore test end");
 }
 
+BOOST_AUTO_TEST_CASE(Severity) {
+    LOGF_INFO("Message severity test start");
+    std::string out = qdisp::to_string(qdisp::INFO);
+    BOOST_CHECK(out == "INFO");
+    LOGF_INFO("Message severity test end");
+}
+
 BOOST_AUTO_TEST_CASE(QueryResource) {
     LOGF_INFO("QueryResource test 1");
     std::string str = qdisp::Executive::Config::getMockStr();

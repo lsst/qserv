@@ -113,7 +113,7 @@ function errors ()
             errcode  = e,
             sqlstate = 'Proxy',
         }
-        print ("ERROR "..e..": "..__errMsg__)
+        print ("ERROR errNo: "..e..": errMsg: "..__errMsg__)
         return proxy.PROXY_SEND_RESULT
     end
 
@@ -544,7 +544,7 @@ function queryProcessing()
         qservError = res[3]
 
         if resultTableName == "error" then
-           return err.set(ERR_QSERV_PARSE, "Qserv error: " .. qservError)
+           return err.set(ERR_QSERV_PARSE, "Query processing error: " .. qservError)
         end
 
         return SUCCESS
@@ -709,12 +709,12 @@ function read_query_result(inj)
     if (inj.type == 1) then
         print("q1 - ignoring")
         for row in inj.resultset.rows do
-           print("   " .. row[1] .. " " .. row[2] .. " " .. tostring(row[3]) .. " " .. row[4])
+           print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[4])
            if (tonumber(row[2]) < 0) then -- errors have code < 0
               queryErrorCount  = queryErrorCount + 1
               return err.setAndSend(ERR_QSERV_RUNTIME,
-                                    "Error during execution:\n"..
-                                        row[2] .. " " .. tostring(row[3]) .. " (" .. row[1] .. ")")
+                                    "Execution error:\ncode:"..
+                                        row[2] .. " " .. tostring(row[3]) .. " (chunkId:" .. row[1] .. ")")
            end
         end
         return proxy.PROXY_IGNORE_RESULT

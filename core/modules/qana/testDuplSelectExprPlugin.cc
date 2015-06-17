@@ -95,12 +95,12 @@ BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
     util::MultiError errors = testPlugin.getDuplicateAndPosition(v);
 
     std::stringstream sstm;
-    sstm << "\t[" << util::Error::DUPLICATE_SELECT_EXPR << "] " << DuplSelectExprPlugin::ERR_MSG;
+    sstm << "[" << util::Error::DUPLICATE_SELECT_EXPR << "] " << DuplSelectExprPlugin::ERR_MSG;
     std::string err_msg_template = sstm.str();
 
     boost::format dupl_field_err_msg = boost::format(err_msg_template) %
                             "f1" % " 2 3";
-    std::string expected_err_msg = util::MultiError::HEADER_MSG +dupl_field_err_msg.str();
+    std::string expected_err_msg = dupl_field_err_msg.str();
 
     BOOST_CHECK_EQUAL(errors.toString(), expected_err_msg);
 }

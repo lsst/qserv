@@ -34,6 +34,7 @@
 
 // System headers
 #include <ctime>
+#include <iostream>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -43,26 +44,61 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+/** Allow to classify messages
+ *
+ * In mysql-proxy INFO message will go to logfile,
+ * whereas ERROR message will be logged to console
+ */
+enum Severity { UNKNOWN, INFO, ERROR } ;
+
+/** Output operator for Severity
+ *
+ * @param os
+ * @param severity
+ * @return an output stream, with no newline at the end
+ */
+std::ostream& operator<<(std::ostream& os, const Severity& severity);
+
+/** Convert Severity to std::string
+ *
+ * @param severity
+ * @return a string, with no newline at the end
+ */
+std::string to_string(Severity const & severity);
+
+/** Convert Severity to std::string
+ *
+ * @param severity
+ * @return a string, with no newline at the end
+ */
+Severity to_severity(std::string severity_);
+
 struct QueryMessage {
+
     QueryMessage(int chunkId_,
                  int code_,
                  std::string description_,
-                 std::time_t timestamp_)
+                 std::time_t timestamp_,
+                 Severity severity_
+                 )
         :  chunkId(chunkId_),
            code(code_),
            description(description_),
-           timestamp(timestamp_) {
+           timestamp(timestamp_),
+           severity(severity_) {
     }
 
     int chunkId;
     int code;
     std::string description;
     std::time_t timestamp;
+    Severity severity;
 };
 
 class MessageStore {
 public:
-    void addMessage(int chunkId, int code, std::string const& description);
+    void addMessage(int chunkId, int code, std::string const& description, Severity severity_ = INFO);
     const QueryMessage getMessage(int idx);
     const int messageCount();
     const int messageCount(int code);

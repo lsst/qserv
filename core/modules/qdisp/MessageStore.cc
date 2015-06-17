@@ -43,7 +43,36 @@ namespace qdisp {
 // public
 ////////////////////////////////////////////////////////////////////////
 
-void MessageStore::addMessage(int chunkId, int code, std::string const& description) {
+/** Output operator for Severity */
+std::ostream& operator<<(std::ostream& os, Severity const& severity) {
+	switch (severity) {
+	case INFO:
+		os << "INFO";
+		break;
+	case ERROR:
+		os << "ERROR";
+		break;
+	default:
+		os << "UNKNOWN";
+	}
+	return os;
+}
+
+/** Convert Severity to std::string */
+std::string to_string(Severity const& severity) {
+	std::ostringstream out;
+	out << severity;
+	return out.str();
+}
+
+/** Convert std::string to Severity */
+Severity to_severity(std::string str) {
+    if (str == "INFO") return INFO;
+    else if (str == "ERROR") return ERROR;
+    else return UNKNOWN;
+}
+
+void MessageStore::addMessage(int chunkId, int code, std::string const& description, Severity severity /* = INFO */) {
     if (code < 0) {
         LOGF_ERROR("Msg: %1% %2% %3%" % chunkId % code % description);
     } else {
@@ -52,7 +81,7 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
     {
         std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),
-            QueryMessage(chunkId, code, description, std::time(0)));
+            QueryMessage(chunkId, code, description, std::time(0), severity));
     }
 }
 

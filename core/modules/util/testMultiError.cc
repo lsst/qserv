@@ -64,8 +64,7 @@ BOOST_AUTO_TEST_CASE(MonoError) {
     test::output_test_stream output;
     util::MultiError multiError;
 
-    std::string expected_err_msg = util::MultiError::HEADER_MSG +
-            "\t[1] Stupid error message";
+    std::string expected_err_msg = "[1] Stupid error message";
 
     int errCode = 1;
     std::string errMsg = "Stupid error message";
@@ -85,10 +84,9 @@ BOOST_AUTO_TEST_CASE(MultiError) {
     test::output_test_stream output;
     util::MultiError multiError;
 
-    std::string expected_err_msg = util::MultiError::HEADER_MSG+"\t"
-            "[10] Error code is: 10\n\t"
-            "[11] Error code is: 11\n\t"
-            "[12] Error code is: 12";
+    std::string expected_err_msg = "[10] Error code is: 10\n"
+        "[11] Error code is: 11\n"
+        "[12] Error code is: 12";
 
     for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
         std::stringstream ss;
