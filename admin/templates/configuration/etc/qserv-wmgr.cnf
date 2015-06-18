@@ -2,11 +2,9 @@
 # configuration file for wmgrService, production version
 #
 
-# port number is determined by this
-SERVER_NAME = '127.0.0.1:{{WMGR_PORT}}'
-
 # interface to listen to, defaults to 127.0.0.1
 WMGR_INTERFACE = '0.0.0.0'
+WMGR_PORT = {{WMGR_PORT}}
 
 # for production set both to 0
 DEBUG = 0
