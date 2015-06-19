@@ -796,18 +796,8 @@ class DataLoader(object):
             wname = self.chunkMap.worker(chunk)
             wmgr = self.workerWmgrMap[wname]
 
-            # get index data
-            columns = (idxCol, 'chunkId', 'subChunkId')
-            indexData = wmgr.getIndex(database, table, chunkId=chunk, columns=columns)
+            self._loadChunkIndex(wmgr, database, table, chunk, metaTable, idxCol)
 
-            # dump it into a in-memory file
-            data = StringIO()
-            for row in indexData:
-                data.write("%d\t%d\t%d\n" % row)
-            data.seek(0)
-
-            # send that file to czar
-            self.czarWmgr.loadData(self.indexDb, metaTable, data)
 
     def _makeIndexSingleNode(self, database, table, metaTable, idxCol):
         """
@@ -819,15 +809,23 @@ class DataLoader(object):
         # load data from all chunks
         for chunk in self.chunks:
 
-            # get index data from czar
-            columns = (idxCol, 'chunkId', 'subChunkId')
-            indexData = self.czarWmgr.getIndex(database, table, chunkId=chunk, columns=columns)
+            self._loadChunkIndex(self.czarWmgr, database, table, chunk, metaTable, idxCol)
 
-            # dump it into a in-memory file
-            data = StringIO()
-            for row in indexData:
-                data.write("%d\t%d\t%d\n" % tuple(row))
-            data.seek(0)
 
-            # send that file back to czar
-            self.czarWmgr.loadData(self.indexDb, metaTable, data)
+    def _loadChunkIndex(self, wmgr, database, table, chunk, metaTable, idxCol):
+        """
+        Load secondary index with data from a single chunk.
+        """
+
+        # get index data from worker (or czar)
+        columns = (idxCol, 'chunkId', 'subChunkId')
+        indexData = wmgr.getIndex(database, table, chunkId=chunk, columns=columns)
+
+        # dump it into a in-memory file
+        data = StringIO()
+        for row in indexData:
+            data.write("%d\t%d\t%d\n" % tuple(row))
+        data.seek(0)
+
+        # send that file to czar
+        self.czarWmgr.loadData(self.indexDb, metaTable, data)
