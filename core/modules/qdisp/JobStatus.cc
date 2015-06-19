@@ -39,28 +39,34 @@ JobStatus::Info::Info(ResourceUnit const& resourceUnit_)
     stateTime = ::time(NULL);
 }
 
-/// @Return a C-string describing the State
-char const* JobStatus::stateText(JobStatus::State s) {
-    switch(s) {
-    case UNKNOWN: return "Unknown";
-    case PROVISION: return "Accessing resource";
-    case PROVISION_NACK: return "Error accessing resource";
-    case REQUEST: return "Sending request to resource";
-    case REQUEST_ERROR: return "Error sending request";
-    case RESPONSE_READY: return "Response ready";
-    case RESPONSE_ERROR: return "Response error";
-    case RESPONSE_DATA: return "Retrieving response data";
-    case RESPONSE_DATA_ERROR: return "Error retrieving response";
-    case RESPONSE_DATA_ERROR_OK: return "Error retrieving response session is OK";
-    case RESPONSE_DATA_ERROR_CORRUPT: return "Error retrieving response session is corrupt";
-    case RESPONSE_DATA_NACK: return "Error in response data";
-    case RESPONSE_DONE: return "Finished retrieving result";
-    case RESULT_ERROR: return "Error in result data.";
-    case MERGE_OK: return "Merge complete";
-    case MERGE_ERROR: return "Error merging result";
-    case COMPLETE: return "Complete (success)";
-    default: return "State error (unrecognized)";
-    }
+std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
+
+	std::map<JobStatus::State, std::string> state_message;
+
+	state_message[JobStatus::UNKNOWN] = "Unknown";
+	state_message[JobStatus::PROVISION] = "Accessing resource";
+	state_message[JobStatus::PROVISION_NACK] =  "Error accessing resource (delayed)";
+	state_message[JobStatus::REQUEST] = "Sending request to resource";
+	state_message[JobStatus::REQUEST_ERROR] = "Error sending request";
+	state_message[JobStatus::RESPONSE_READY] = "Response ready";
+	state_message[JobStatus::RESPONSE_ERROR] = "Response error";
+	state_message[JobStatus::RESPONSE_DATA] = "Retrieving response data";
+	state_message[JobStatus::RESPONSE_DATA_ERROR] = "Error retrieving response data";
+	state_message[JobStatus::RESPONSE_DATA_ERROR_OK] = "Error retrieving response, session is OK";
+	state_message[JobStatus::RESPONSE_DATA_ERROR_CORRUPT] =  "Error retrieving response session is corrupt";
+	state_message[JobStatus::RESPONSE_DATA_NACK] = "Error in response data";
+	state_message[JobStatus::RESPONSE_DONE] = "Finished retrieving result";
+	state_message[JobStatus::RESULT_ERROR] = "Error in result data.";
+	state_message[JobStatus::MERGE_OK] = "Merge complete";
+	state_message[JobStatus::MERGE_ERROR] = "Error merging result";
+	state_message[JobStatus::COMPLETE] = "Complete (success)";
+
+	auto it = state_message.find(state);
+	if (it != state_message.end()) {
+		os << it->second;
+	} else
+		os << "State error (unrecognized)";
+	return os;
 }
 
 std::ostream& operator<<(std::ostream& os, JobStatus const& es) {
@@ -79,7 +85,7 @@ std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
     std::string ts(buffer, tsLen);
 
     os << info.resourceUnit << ": " << ts << ", "
-       << JobStatus::stateText(info.state)
+       << info.state
        << ", " << info.stateCode << ", " << info.stateDesc;
     return os;
 }

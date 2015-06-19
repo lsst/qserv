@@ -30,8 +30,6 @@ Access to the classes from the qserv_czar library
 %ignore lsst::qserv::query::operator<<;
 %ignore lsst::qserv::qproc::operator<<;
 
-%ignore lsst::qserv::qdisp::TransactionSpec::Reader;
-
 //%feature("autodoc", "1");
 //%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
 %module("threads"=1, package="lsst.qserv.czar") czarLib
@@ -45,9 +43,7 @@ Access to the classes from the qserv_czar library
 #include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
 #include "global/constants.h"
-#include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
-#include "qdisp/TransactionSpec.h"
 #include "rproc/mergeTypes.h"
 #include "util/common.h"
 #include "util/Substitution.h"
@@ -129,9 +125,7 @@ namespace std {
 %include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
 %include "global/constants.h"
-%include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
-%include "qdisp/TransactionSpec.h"
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
 %include "util/Substitution.h"

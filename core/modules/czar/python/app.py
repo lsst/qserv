@@ -76,7 +76,7 @@ from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
 from lsst.qserv.czar import UserQuery_getExecutionError
-from lsst.qserv.czar import UserQuery_getError
+from lsst.qserv.czar import UserQuery_getQueryProcessingError
 from lsst.qserv.czar import UserQuery_submit
 from lsst.qserv.czar import UserQuery_join
 from lsst.qserv.czar import UserQuery_kill
@@ -390,7 +390,7 @@ class InbandQueryAction:
         self.sessionId = self.context.uqFactory.newUserQuery(self.queryStr,
                                                              dbContext,
                                                              self._resultName)
-        errorMsg = UserQuery_getError(self.sessionId)
+        errorMsg = UserQuery_getQueryProcessingError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
         pass
 

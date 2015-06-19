@@ -195,7 +195,7 @@ void Executive::add(int jobId, Executive::JobDescription const& jobDescription) 
 
     if (_empty.get()) {
         _empty.set(false);
-        LOGF(getLogger(), LOG_LVL_TRACE, "Flag \"Empty\" set to false by job jobId %1%" % jobId);
+        LOGF(getLogger(), LOG_LVL_TRACE, "Flag \"Empty\" set to false by jobId %1%" % jobId);
     }
 
     ++_requestCount;
@@ -214,7 +214,7 @@ bool Executive::join() {
     _waitAllUntilEmpty();
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
-        static bool f(Executive::StatusMap::value_type const& entry) {
+        static bool f(Executive::JobStatusPtrMap::value_type const& entry) {
             JobStatus::Info const& esI = entry.second->getInfo();
             LOGF_INFO("entry state:%1% %2%)" % (void*)entry.second.get() % esI);
             return (esI.state == JobStatus::RESPONSE_DONE)
@@ -228,7 +228,7 @@ bool Executive::join() {
     }
 
     LOGF_INFO("Query exec finish. %1% dispatched." % _requestCount);
-    _reportStatuses();
+    _logStatusesToMessages();
     if(sCount != _requestCount) {
         LOGF_INFO("Query exec:. %1% != %2%" % _requestCount % sCount);
     }
@@ -239,14 +239,14 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
-    ResponseRequester::Error e;
-    LOGF_INFO("Executive::markCompleted(%1%,%2%)" % jobId % success);
+    ResponseRequester::Error err;
+    LOGF(getLogger(), LOG_LVL_INFO, "Executive::markCompleted(%1%,%2%)" % jobId % success);
     if(!success) {
         {
             std::lock_guard<std::mutex> lock(_requestersMutex);
             RequesterMap::iterator i = _requesters.find(jobId);
             if(i != _requesters.end()) {
-                e = i->second->getError();
+                err = i->second->getError();
             } else {
                 std::string msg =
                     (boost::format("Executive::markCompleted(%1%) "
@@ -255,20 +255,22 @@ void Executive::markCompleted(int jobId, bool success) {
                 throw Bug(msg);
             }
         }
+        LOGF(getLogger(), LOG_LVL_ERROR,
+             "Executive: error executing jobId=%1%: %2%" % jobId % err);
         {
             std::lock_guard<std::mutex> lock(_statusesMutex);
-            _statuses[jobId]->report(JobStatus::RESULT_ERROR, e.code, e.msg);
+            _statuses[jobId]->updateInfo(JobStatus::RESULT_ERROR, err.code, err.msg);
         }
         {
-                        std::lock_guard<std::mutex> lock(_errorsMutex);
-                        _multiError.push_back(e);
+            std::lock_guard<std::mutex> lock(_errorsMutex);
+            _multiError.push_back(err);
+            LOGF(getLogger(), LOG_LVL_TRACE, "Currently %2% registered errors: %1%" % _multiError % _multiError.size());
         }
-        LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
-                   jobId % e.code % e.msg);
     }
     _unTrack(jobId);
     if(!success) {
-        LOGF_ERROR("Executive: requesting squash (cause refnum=%1% with code=%2% %3%)" % jobId % e.code % e.msg);
+        LOGF(getLogger(), LOG_LVL_ERROR,
+                 "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)" % jobId % err.code % err.msg);
         squash(); // ask to squash
     }
 }
@@ -341,7 +343,7 @@ void Executive::squash() {
 struct printMapEntry {
     printMapEntry(std::ostream& os_, std::string const& sep_)
         : os(os_), sep(sep_), first(true) {}
-    void operator()(Executive::StatusMap::value_type const& entry) {
+    void operator()(Executive::JobStatusPtrMap::value_type const& entry) {
         if(!first) { os << sep; }
         os << "Ref=" << entry.first << " ";
         JobStatus const& es = *entry.second;
@@ -397,7 +399,7 @@ void Executive::_dispatchQuery(int jobId,
         NotifyExecutive::newInstance(*this, jobId),
         retryFunc,
         *jobStatus));
-    jobStatus->report(JobStatus::PROVISION);
+    jobStatus->updateInfo(JobStatus::PROVISION);
     _service->Provision(r.get());
     // XrdSsiService will call ProvisionDone() on r in any case, and we clean up r there.
     // FIXME: For squashing, need to hold ptr to QueryResource, so we can
@@ -444,7 +446,7 @@ JobStatus::Ptr Executive::_insertNewStatus(int jobId,
                                             ResourceUnit const& r) {
     JobStatus::Ptr es = std::make_shared<JobStatus>(r);
     std::lock_guard<std::mutex> lock(_statusesMutex);
-    _statuses.insert(StatusMap::value_type(jobId, es));
+    _statuses.insert(JobStatusPtrMap::value_type(jobId, es));
     return es;
 }
 
@@ -518,17 +520,15 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     }
 }
 
-void Executive::_reportStatuses() {
+void Executive::_logStatusesToMessages() {
     std::lock_guard<std::mutex> lock(_statusesMutex);
-    StatusMap::const_iterator i,e;
-    for(i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
+    for(auto i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
         JobStatus::Info info = i->second->getInfo();
         std::ostringstream os;
         if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
                 LOGF(getLogger(), LOG_LVL_TRACE, "%1%" % info.state);
         }
-        os << JobStatus::stateText(info.state)
-           << " " << info.stateCode;
+        os << info.state << " " << info.stateCode;
         if(!info.stateDesc.empty()) {
             os << " (" << info.stateDesc << ")";
         }
@@ -573,7 +573,7 @@ void Executive::_waitAllUntilEmpty() {
 }
 
 std::ostream& operator<<(std::ostream& os,
-                         Executive::StatusMap::value_type const& v) {
+                         Executive::JobStatusPtrMap::value_type const& v) {
     JobStatus const& es = *(v.second);
     os << v.first << ": " << es;
     return os;

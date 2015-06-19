@@ -33,7 +33,6 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
-#include "qdisp/TransactionSpec.h"
 #include "qdisp/JobStatus.h"
 #include "util/Callable.h"
 #include "util/MultiError.h"
@@ -54,7 +53,7 @@ class ResponseRequester;
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, JobStatus::Ptr> StatusMap;
+    typedef std::map<int, JobStatus::Ptr> JobStatusPtrMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -139,7 +138,10 @@ private:
     void _unTrack(int refNum);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
-    void _reportStatuses();
+
+    /** For this executive, store all JobStatus in the MessageStore
+     */
+    void _logStatusesToMessages();
 
     void _waitAllUntilEmpty();
 
@@ -151,7 +153,7 @@ private:
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _service; ///< RPC interface
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
-    StatusMap _statuses; ///< Statuses of submitted tasks
+    JobStatusPtrMap _statuses; ///< Statuses of submitted tasks
 
     /** Execution errors */
     util::MultiError _multiError;

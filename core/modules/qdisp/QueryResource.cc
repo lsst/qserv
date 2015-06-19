@@ -59,7 +59,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         int code = 0;
         std::string msg = eInfoGet(code);
         LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
-        _status.report(JobStatus::PROVISION_NACK, code, msg);
+        _status.updateInfo(JobStatus::PROVISION_NACK, code, msg);
         // FIXME code may be wrong.
         _requester->errorFlush(msg, code);
         delete this;
@@ -78,7 +78,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
                                               _status);
 
     // Hand off the request.
-    _status.report(JobStatus::REQUEST);
+    _status.updateInfo(JobStatus::REQUEST);
     _session->ProcessRequest(request);
 
     // If we are not doing anything else with the session,

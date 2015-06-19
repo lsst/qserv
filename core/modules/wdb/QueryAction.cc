@@ -284,7 +284,7 @@ void QueryAction::Impl::_transmit(bool last) {
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
-        std::string msg = _multiError.toString();
+        std::string msg = "Error(s) in Qserv worker result: " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_ERROR, msg);
     }
@@ -342,12 +342,6 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-/// Construct util::Error based on sql::SqlErrorObject. Consider making
-/// sql::SqlErrorObject inherit from util::Error.
-util::Error makeError(sql::SqlErrorObject const& e) {
-    return util::Error(e.errNo(), e.errMsg());
-}
-
 bool QueryAction::Impl::_dispatchChannel() {
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
@@ -389,7 +383,8 @@ bool QueryAction::Impl::_dispatchChannel() {
             } // Each query in a fragment
         } // Each fragment in a msg.
     } catch(sql::SqlErrorObject const& e) {
-        _multiError.push_back(makeError(e));
+        util::Error worker_err(e.errNo(), e.errMsg());
+        _multiError.push_back(worker_err);
     }
     if(!_poisoned.get()) {
         // Send results.

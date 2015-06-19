@@ -376,10 +376,6 @@ BOOST_AUTO_TEST_CASE(ResponseRequester) {
     BOOST_CHECK(cancelTest->_count == 1);
 }
 
-BOOST_AUTO_TEST_CASE(TransactionSpec) {
-    // TransactionSpec is obsolete, it and this block should probably go away.
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(Squash)

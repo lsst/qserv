@@ -47,7 +47,7 @@ class UserQuery;
 
 
 /// @return error description
-std::string UserQuery_getError(int session);
+std::string UserQuery_getQueryProcessingError(int session);
 
 /** In case a query fails at execution, return the final error message
  *

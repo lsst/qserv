@@ -78,6 +78,11 @@ using lsst::qserv::proto::WorkerResponse;
 using lsst::qserv::rproc::InfileMergerConfig;
 using lsst::qserv::rproc::InfileMergerError;
 
+LOG_LOGGER getLogger() {
+        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
+        return _logger;
+}
+
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
@@ -272,17 +277,19 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errorCode=%4%, errorMsg=%5%)"
-               % static_cast<short>(response->headerSize)
-               % response->protoHeader.size()
-               % response->result.row_size()
-               % response->result.has_errorcode()
-               % response->result.has_errormsg());
+    LOGF(getLogger(), LOG_LVL_DEBUG,
+         "Executing InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errorCode=%4%, hasErrorMsg=%5%)"
+         % static_cast<short>(response->headerSize)
+         % response->protoHeader.size()
+         % response->result.row_size()
+         % response->result.has_errorcode()
+         % response->result.has_errormsg());
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
         _error.status = InfileMergerError::MYSQLEXEC;
         _error.code = response->result.errorcode();
         _error.msg = response->result.errormsg();
+        LOGF(getLogger(), LOG_LVL_ERROR, "Error in response data: %1%" % _error);
         return false;
     }
     if(_needCreateTable) {

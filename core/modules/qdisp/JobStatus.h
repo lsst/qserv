@@ -68,8 +68,15 @@ public:
                  MERGE_OK, // ???
                  MERGE_ERROR,
                  CANCEL, COMPLETE=2000};
-    /// Report a state transition. Past state history is not currently saved.
-    void report(State s, int code=0, std::string const& desc=_empty) {
+    /** Report a state transition.
+     *
+     *	Useful for logging and error reporting
+     *
+     * TODO: Save past state history:
+     *  - resourceUnit should be extracted from Info (beware of mutex)
+     *  - Info should be put in a vector
+     */
+    void updateInfo(State s, int code=0, std::string const& desc=_empty) {
         std::lock_guard<std::mutex> lock(_mutex);
 #if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
@@ -81,7 +88,6 @@ public:
         _info.stateDesc = desc;
     }
 
-    static char const* stateText(State s);
     struct Info {
         Info(ResourceUnit const& resourceUnit_);
         ResourceUnit const resourceUnit; ///< Reference id for status
@@ -92,7 +98,6 @@ public:
         int stateCode; ///< Code associated with state (e.g. xrd or mysql error code)
         std::string stateDesc; ///< Textual description
     };
-    ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
 
     Info getInfo() const {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -109,6 +114,7 @@ private:
 };
 std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
+std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
 }}} // namespace lsst::qserv::qdisp
 
