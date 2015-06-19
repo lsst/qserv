@@ -206,15 +206,14 @@ inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
 
 template<class T>
 void nil_string_helper(std::ostringstream& oss,
-		       const std::shared_ptr<T> &ptr) {
-	if (ptr) oss << *ptr << " ";
+                       const std::shared_ptr<T> &ptr) {
+    if (ptr) oss << *ptr << " ";
 }
 
 } // anonymous
 
 
 std::string SelectStmt::toString() {
-
     //_selectList->getColumnRefList()->printRefs();
     std::ostringstream oss;
 

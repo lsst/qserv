@@ -48,13 +48,13 @@ class Executive;
 class XrdSsiServiceMock : public XrdSsiService
 {
 public:
-    virtual bool Provision(Resource *resP, unsigned short  timeOut=0);
+    virtual bool Provision(Resource *resP, unsigned short timeOut=0);
     XrdSsiServiceMock(Executive *executive) : _executive(executive) {};
     void setGo(bool go) {
         _go.set(go);
     }
 protected:
-    void mockProvisionTest(qdisp::QueryResource *resP, unsigned short  timeOut);
+    void mockProvisionTest(qdisp::QueryResource *resP, unsigned short timeOut);
 public:
     virtual ~XrdSsiServiceMock() {}
     static util::FlagNotify<bool> _go;

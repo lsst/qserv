@@ -82,7 +82,7 @@ void forEachSibs(antlr::RefAST a, F& f) {
         tagPrint(std::ostream& os_, std::string const& tag_)
             : os(os_), tag(tag_) {}
         void operator()(antlr::RefAST a) {
-            os << tag << ": " << tokenText(a) << std::endl;
+            os << tag << ": " << tokenText(a) << "\n";
         }
         std::ostream& os;
         std::string tag;
@@ -157,7 +157,7 @@ query::BoolTerm::Ptr
 BoolTermFactory::newBoolTerm(antlr::RefAST a) {
     query::BoolTerm::Ptr b;
     antlr::RefAST child = a->getFirstChild();
-    //std::cout << "New bool term token: " << a->getType() << std::endl;
+    //std::cout << "New bool term token: " << a->getType() << "\n";
     switch(a->getType()) {
     case SqlSQL2TokenTypes::OR_OP: b = newOrTerm(child); break;
     case SqlSQL2TokenTypes::AND_OP: b = newAndTerm(child); break;

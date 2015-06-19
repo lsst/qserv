@@ -75,8 +75,8 @@ private:
     template <typename T>
     std::string _toString(T const& t) {
         std::ostringstream oss;
-	oss << t;
-	return oss.str();
+        oss << t;
+        return oss.str();
     }
 
     ModeMap _map;

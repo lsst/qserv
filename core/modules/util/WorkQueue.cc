@@ -62,7 +62,7 @@ public:
         _w.registerRunner(this);
         std::shared_ptr<Callable> c = _w.getNextCallable();
         _c = c.get();
-        //std::cerr << "got first job" << std::endl;
+        //std::cerr << "got first job\n";
         while(!_w.isPoison(c.get())) {
             (*c)();
             _c = 0;
@@ -101,7 +101,7 @@ WorkQueue::~WorkQueue() {
     while(_runners.size() > 0) {
         _runnersEmpty.wait(lock);
         // std::cerr << "signalled... " << _runners.size()
-        //           << " remain" << std::endl;
+        //           << " remain\n";
     }
 }
 
@@ -109,7 +109,7 @@ void
 WorkQueue::add(std::shared_ptr<WorkQueue::Callable> c) {
     std::lock_guard<std::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
-        //std::cerr << "Queue refusing work: dead" << std::endl;
+        //std::cerr << "Queue refusing work: dead\n";
     } else {
         _queue.push_back(c);
         _queueNonEmpty.notify_all();
@@ -160,7 +160,7 @@ WorkQueue::signalDeath(Runner* r) {
             return;
         }
     }
-    //std::cerr << "couldn't find self to remove" << std::endl;
+    //std::cerr << "couldn't find self to remove\n";
 }
 
 void
@@ -204,17 +204,17 @@ public:
         struct timespec rem;
 
         ss << "MyCallable " << _myId << " (" << _spinTime
-           << ") STARTED spinning" << std::endl;
+           << ") STARTED spinning\n";
         std::cerr << ss.str();
         ss.str() = "";
         ts.tv_sec = (long)_spinTime;
         ts.tv_nsec = (long)((1e9)*(_spinTime - ts.tv_sec));
         if(-1 == nanosleep(&ts, &rem)) {
-            ss << "Interrupted " ;
+            ss << "Interrupted ";
         }
 
         ss << "MyCallable " << _myId << " (" << _spinTime
-           << ") STOPPED spinning" << std::endl;
+           << ") STOPPED spinning\n";
         std::cerr << ss.str();
     }
     int _myId;
@@ -223,13 +223,10 @@ public:
 
 void test() {
     using namespace std;
-    cout << "main started" << endl;
     lsst::qserv::util::WorkQueue wq(10);
-    cout << "wq started " << endl;
     for(int i=0; i < 50; ++i) {
         wq.add(std::make_shared<MyCallable>(i, 0.2));
     }
-    cout << "added items" << endl;
 }
 
 } // anonymous namespace

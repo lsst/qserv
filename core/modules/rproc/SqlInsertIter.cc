@@ -74,12 +74,13 @@ void printInserts(char const* buf, off_t bufSize,
         !i.isDone();
         ++i) {
         std::cout << "Sql[" << tableName << "]: "
-                   << (void*)i->first << "  --->  "
-                   << (void*)i->second << "  "
-                   << *i;
+                  << (void*)i->first << "  --->  "
+                  << (void*)i->second << "  "
+                  << *i;
         if(i.isNullInsert()) {
-            std::cout << "Null match" << std::endl;
-        } else { std::cout << std::endl; }
+            std::cout << "Null match";
+        }
+        std::cout << "\n";
     }
 }
 

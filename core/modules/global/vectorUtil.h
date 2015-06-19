@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_VECTORUTIL_H
-#define  LSST_QSERV_VECTORUTIL_H
+#define LSST_QSERV_VECTORUTIL_H
  /**
   * @file
   *

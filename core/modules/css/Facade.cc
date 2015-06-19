@@ -50,7 +50,6 @@
 #include "css/KvInterfaceImplMem.h"
 #include "global/stringTypes.h"
 
-using std::endl;
 using std::map;
 using std::string;
 using std::vector;
@@ -69,7 +68,7 @@ Facade::Facade() = default;
   * @param emptyChunkPath Path to a directory containing: empty_<dbname>.txt
   */
 Facade::Facade(std::istream& mapStream,
-               std::string const& emptyChunkPath)
+               string const& emptyChunkPath)
     : _kvI(new KvInterfaceImplMem(mapStream)) {
     _versionCheck();
     if (!emptyChunkPath.empty()) {
@@ -84,7 +83,7 @@ Facade::Facade(std::istream& mapStream,
   * @param emptyChunkPath Path to a directory containing: empty_<dbname>.txt
   */
 Facade::Facade(std::shared_ptr<KvInterface> kv,
-               std::string const& emptyChunkPath)
+               string const& emptyChunkPath)
     : _kvI(kv) {
     if (_kvI) _versionCheck();
     if (!emptyChunkPath.empty()) {
@@ -148,8 +147,8 @@ Facade::tableIsSubChunked(string const& dbName,
   * its database does not exist.
   */
 bool
-Facade::isMatchTable(std::string const& dbName,
-                     std::string const& tableName) const {
+Facade::isMatchTable(string const& dbName,
+                     string const& tableName) const {
     LOGF_DEBUG("isMatchTable(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     string k = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
@@ -358,8 +357,8 @@ Facade::getOverlap(string const& dbName) const {
   * table is not a match table.
   */
 MatchTableParams
-Facade::getMatchTableParams(std::string const& dbName,
-                            std::string const& tableName) const {
+Facade::getMatchTableParams(string const& dbName,
+                            string const& tableName) const {
     LOGF_DEBUG("getMatchTableParams(%1%.%2%)" % dbName % tableName);
     _throwIfNotDbTbExists(dbName, tableName);
     MatchTableParams p;
@@ -483,7 +482,7 @@ Facade::_tableIsSubChunked(string const& dbName,
 
 std::shared_ptr<Facade>
 FacadeFactory::createMemFacade(string const& mapPath,
-                               std::string const& emptyChunkPath) {
+                               string const& emptyChunkPath) {
     std::ifstream f(mapPath.c_str());
     if(f.fail()) {
         throw ConnError();
@@ -493,7 +492,7 @@ FacadeFactory::createMemFacade(string const& mapPath,
 
 std::shared_ptr<Facade>
 FacadeFactory::createMemFacade(std::istream& mapStream,
-                               std::string const& emptyChunkPath) {
+                               string const& emptyChunkPath) {
     std::shared_ptr<css::Facade> cssFPtr(new css::Facade(
                                            mapStream, emptyChunkPath));
     return cssFPtr;
@@ -501,7 +500,7 @@ FacadeFactory::createMemFacade(std::istream& mapStream,
 
 std::shared_ptr<Facade>
 FacadeFactory::createCacheFacade(std::shared_ptr<KvInterface> kv,
-                                 std::string const& emptyChunkPath) {
+                                 string const& emptyChunkPath) {
     std::shared_ptr<css::Facade> facade(new Facade(kv, emptyChunkPath));
     return facade;
 }

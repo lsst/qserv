@@ -368,8 +368,7 @@ std::string QuerySession::toString() {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
-            os << "  ScanTable: " << i->first << "." << i->second
-               << std::endl;
+            os << "  ScanTable: " << i->first << "." << i->second << std::endl;
         }
     }
     return os.str();
@@ -417,7 +416,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
             }
         }
     }
-    LOGF_DEBUG("returning  queries: ");
+    LOGF_DEBUG("returning queries: ");
     for(unsigned int t=0;t<q.size();t++){
         LOGF_DEBUG("%1%" % q.at(t));
     }

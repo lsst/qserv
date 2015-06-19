@@ -94,7 +94,7 @@ std::string formLoadInfile(std::string const& table,
 
     // Output should look something like this:
     // "LOAD DATA INFILE 'path.txt'
-    // INTO  TABLE mytable (column1, column2, @hexColumn3)
+    // INTO TABLE mytable (column1, column2, @hexColumn3)
     // SET column3=UNHEX(@hexColumn3);"
 
     // Check icv to see if we need to hex/unhex
@@ -102,8 +102,7 @@ std::string formLoadInfile(std::string const& table,
         return formLoadInfile(table, virtFile); // Use simpler version
     }
     std::ostringstream os;
-    os << formLoadInfile(table, virtFile)
-       << " (";
+    os << formLoadInfile(table, virtFile) << " (";
     // Input column list
     InsertColumnVector setColumns;
     InsertColumnVector::const_iterator i, b, e;
@@ -130,4 +129,5 @@ std::string formLoadInfile(std::string const& table,
     }
     return os.str();
 }
+
 }}} // namespace lsst::qserv::sql

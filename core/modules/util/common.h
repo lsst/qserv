@@ -102,9 +102,8 @@ std::string prettyCharList(C const& c) {
     os << "[";
     for(auto i = c.begin(); i != c.end();) {
         int val = *i;
-        os << val ;
-        ++i;
-        if (i == c.end()) {
+        os << val;
+        if (++i == c.end()) {
             break;
         }
         os << ", ";

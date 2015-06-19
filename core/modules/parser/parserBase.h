@@ -35,13 +35,13 @@ class VoidFourRefFunc {
 public:
     virtual ~VoidFourRefFunc() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
-			    antlr::RefAST c, antlr::RefAST d) = 0;
+                            antlr::RefAST c, antlr::RefAST d) = 0;
 };
 class VoidThreeRefFunc {
 public:
     virtual ~VoidThreeRefFunc() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
-			    antlr::RefAST c) = 0;
+                            antlr::RefAST c) = 0;
 };
 class VoidTwoRefFunc {
 public:

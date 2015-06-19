@@ -249,7 +249,7 @@ public:
         : _cursor(firstRef),
           _aliases(aliases),
           _bFactory(bFactory) {
-        //std::cout << *_aliases << std::endl;
+        //std::cout << *_aliases << "\n";
     }
     query::TableRef::Ptr get() const {
         if(_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
@@ -425,7 +425,7 @@ private:
     std::shared_ptr<query::JoinSpec>  _processJoinSpec(RefAST specToken) const {
         std::shared_ptr<query::JoinSpec> js;
         // std::cout << "remaining join spec: " << walkIndentedString(specToken)
-        // << std::endl;
+        // << "\n";
         if(!specToken.get()) {
             throw ParseException("Null join spec", specToken);
         }
@@ -476,8 +476,7 @@ private:
         return std::shared_ptr<query::JoinSpec>(); // should never reach
     }
     void  _processJoinCondition(RefAST joinCondition) const {
-        std::cout << "Join condition: " << walkIndentedString(joinCondition)
-                  << std::endl;
+        std::cout << "Join condition: " << walkIndentedString(joinCondition) << "\n";
     }
 
     query::JoinRef::Type _convertToJoinType(RefAST joinSequence) const {
@@ -568,20 +567,20 @@ FromFactory::_import(antlr::RefAST a) {
     _list = std::make_shared<query::FromList>(r);
 
     // LOGF_INFO("FROM starts with: %1% (%2%)" % a->getText() % a->getType());
-    std::stringstream ss;
+    // std::stringstream ss;
     // LOGF_INFO("FROM indented: %1%" % walkIndentedString(a));
     assert(_bFactory);
     for(RefGenerator refGen(a, _aliases, *_bFactory);
         !refGen.isDone();
         refGen.next()) {
         query::TableRef::Ptr p = refGen.get();
-        //ss << "Found ref:" << *p << std::endl;
+        //ss << "Found ref:" << *p << "\n";
         _list->_tableRefs->push_back(p);
     }
-    std::string s(ss.str());
-    if(s.size() > 0) {
-        LOGF_INFO("%1%" % s);
-    }
+    // std::string s(ss.str());
+    // if(s.size() > 0) {
+    //    LOGF_INFO("%1%" % s);
+    //}
 }
 
 }}} // namespace lsst::qserv::parser

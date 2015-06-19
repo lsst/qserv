@@ -213,7 +213,7 @@ ForemanImpl::RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
 void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
     std::lock_guard<std::mutex> lock(_f._runnersMutex);
     RunnerDeque::iterator end = _f._runners.end();
-    // std::cout << (void*) r << " dying" << std::endl;
+    // std::cout << (void*) r << " dying\n";
     for(RunnerDeque::iterator i = _f._runners.begin(); i != end; ++i) {
         if(*i == r) {
             _f._runners.erase(i);

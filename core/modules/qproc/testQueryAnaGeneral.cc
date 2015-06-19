@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
     BOOST_CHECK(!context->restrictors);
     if(context->restrictors) {
         QsRestrictor& r = *context->restrictors->front();
-        std::cout << "front restr is " << r << std::endl;
+        std::cout << "front restr is " << r << "\n";
     }
 
     BOOST_CHECK_EQUAL(ss.getLimit(), 2);
@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     hintedCfg["query.hints"] = "circle,1,1,1.3;box,5,2,6,3";
     SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
     testStmt2(spr);
-    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    //std::cout << "Parse result: " << spr->getParseResult() << "\n";
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
@@ -635,7 +635,7 @@ BOOST_AUTO_TEST_CASE(NewParser) {
     };
     for(int i=0; i < 8; ++i) {
         std::string stmt = stmts[i];
-        //std::cout << "----" << stmt << "----" << std::endl;
+        //std::cout << "----" << stmt << "----" << "\n";
         SelectParser::Ptr p = getParser(stmt);
         testParse(p);
     }
@@ -972,7 +972,7 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
     BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 #endif
-    // std::cout << "Parse output:" << spr->getParseResult() << std::endl;
+    // std::cout << "Parse output:" << spr->getParseResult() << "\n";
     // But should have a check for ordering-type fixups.
     // "JOIN" syntax, "ORDER BY" with "ASC"
 }
@@ -1102,7 +1102,7 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
 #endif
-    //std::cout << "--SAMPLING--" << spr->getParseResult() << std::endl;
+    //std::cout << "--SAMPLING--" << spr->getParseResult() << "\n";
     // % op in WHERE clause
 }
 

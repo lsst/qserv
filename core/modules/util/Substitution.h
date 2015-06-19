@@ -58,7 +58,7 @@ private:
     inline unsigned _max(Iter begin, Iter end) {
         unsigned m=0;
         for(Iter i = begin; i != end; ++i) {
-	    if(m < i->size()) m = i->size();
+            if(m < i->size()) m = i->size();
         }
         return m;
     }
