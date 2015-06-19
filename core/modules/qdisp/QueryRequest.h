@@ -38,7 +38,7 @@
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class ExecStatus;
+class JobStatus;
 class ResponseRequester;
 
 /// Bad response received from xrootd API
@@ -95,7 +95,7 @@ public:
         std::shared_ptr<ResponseRequester> const requester,
         std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
         std::shared_ptr<util::VoidCallable<void> > const retryFunc,
-        ExecStatus& status);
+        JobStatus& status);
 
     virtual ~QueryRequest();
 
@@ -136,7 +136,7 @@ private:
     /// To be called to retry a failed request
     std::shared_ptr<util::VoidCallable<void> > _retryFunc;
     /// Reference to an updatable Status
-    ExecStatus& _status;
+    JobStatus& _status;
 
     std::mutex _finishStatusMutex;
     enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus;

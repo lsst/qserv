@@ -39,7 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qdisp/ExecStatus.h"
+#include "qdisp/JobStatus.h"
 #include "qdisp/ResponseRequester.h"
 
 namespace lsst {
@@ -81,7 +81,7 @@ QueryRequest::QueryRequest(
     std::shared_ptr<ResponseRequester> const requester,
     std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
     std::shared_ptr<util::VoidCallable<void> > const retryFunc,
-    ExecStatus& status)
+    JobStatus& status)
     : _session(session),
       _payload(payload),
       _requester(requester),
@@ -121,7 +121,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     }
     if(!isOk) {
         _requester->errorFlush(std::string("Request failed"), -1);
-        _status.report(ExecStatus::RESPONSE_ERROR);
+        _status.report(JobStatus::RESPONSE_ERROR);
         _errorFinish(); // deletes this
         return true;
     }
@@ -133,14 +133,14 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isData";
         break;
     case XrdSsiRespInfo::isError: // isOk == true
-        _status.report(ExecStatus::RESPONSE_ERROR, rInfo.eNum,
+        _status.report(JobStatus::RESPONSE_ERROR, rInfo.eNum,
                        std::string(rInfo.eMsg));
         return _importError(std::string(rInfo.eMsg), rInfo.eNum);
     case XrdSsiRespInfo::isFile: // Local-only
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
         break;
     case XrdSsiRespInfo::isStream: // All remote requests
-        _status.report(ExecStatus::RESPONSE_READY);
+        _status.report(JobStatus::RESPONSE_READY);
         return _importStream();
     default:
         errorDesc += "Out of range XrdSsiRespInfo.rType";
@@ -156,11 +156,11 @@ bool QueryRequest::_importStream() {
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
-        _status.report(ExecStatus::RESPONSE_DATA_ERROR);
+        _status.report(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
-            _status.report(ExecStatus::RESPONSE_DATA_ERROR_OK);
+            _status.report(JobStatus::RESPONSE_DATA_ERROR_OK);
         } else {
-            _status.report(ExecStatus::RESPONSE_DATA_ERROR_CORRUPT);
+            _status.report(JobStatus::RESPONSE_DATA_ERROR_CORRUPT);
         }
         if(_retryFunc) { // Retry.
             (*_retryFunc)();
@@ -185,13 +185,13 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         int eCode;
         const char* chs = eInfo.Get(eCode);
         std::string reason = (chs == NULL) ? "Null" : chs;
-        _status.report(ExecStatus::RESPONSE_DATA_NACK, eCode, reason);
+        _status.report(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
         _requester->errorFlush("Couldn't retrieve response data:" + reason, eCode);
         _errorFinish();
         return;
     }
-    _status.report(ExecStatus::RESPONSE_DATA);
+    _status.report(JobStatus::RESPONSE_DATA);
     bool flushOk = _requester->flush(blen, last);
     if(flushOk) {
         if (last) {
@@ -199,7 +199,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             if (last && sz != 0) {
                 LOGF_WARN("Connection closed when more information expected sz=%1%" % sz);
             }
-            _status.report(ExecStatus::COMPLETE);
+            _status.report(JobStatus::COMPLETE);
             _finish();
         } else {
             LOGF_INFO("ProcessResponse waiting for more data");
@@ -212,7 +212,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     } else {
         LOGF_INFO("ProcessResponse data flush failed");
         ResponseRequester::Error err = _requester->getError();
-        _status.report(ExecStatus::MERGE_ERROR, err.code, err.msg);
+        _status.report(JobStatus::MERGE_ERROR, err.code, err.msg);
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
         _retryFunc.reset();
@@ -229,7 +229,7 @@ void QueryRequest::cancel() {
         _finishStatus = CANCELLED;
         _retryFunc.reset(); // Prevent retries.
     }
-    _status.report(ExecStatus::CANCEL);
+    _status.report(JobStatus::CANCEL);
     _errorFinish(true);
 }
 

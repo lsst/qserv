@@ -139,7 +139,7 @@ public:
 void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string const& millisecs, RequesterVector& rv) {
     ResourceUnit ru;
     int copies = rv.size();
-    std::vector<qdisp::Executive::Spec> s(copies);
+    std::vector<qdisp::Executive::JobDescription> s(copies);
     for(int j=0; j < copies; ++j) {
         s[j].resource = ru; // dummy
         s[j].request = millisecs; // Request = stringified milliseconds
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
     qdisp::Executive ex(conf, ms);
-    int refNum = 93;
+    int jobId = 93;
     int chunkId = 14;
     ResourceUnit ru;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -257,25 +257,25 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ccontrol::MergingRequester::Ptr mr =
             std::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
-    qdisp::Executive::Spec s;
+    qdisp::Executive::JobDescription s;
     s.resource = ru;
     s.request = "a message";
     s.requester = mr;
-    qdisp::ExecStatus status(ru);
+    qdisp::JobStatus status(ru);
     std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
     qdisp::QueryResource* r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
-            qdisp::Executive::newNotifier(ex, refNum),
+            qdisp::Executive::newNotifier(ex, jobId),
             retryTest, status);
     r->ProvisionDone(NULL);
-    BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::PROVISION_NACK);
+    BOOST_CHECK(status.getInfo().state  == qdisp::JobStatus::PROVISION_NACK);
     char buf[20];
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
     qdisp::XrdSsiSessionMock xsMock(buf);
     r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
-            qdisp::Executive::newNotifier(ex, refNum),
+            qdisp::Executive::newNotifier(ex, jobId),
             retryTest, status);
     r->ProvisionDone(&xsMock);
-    BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::REQUEST);
+    BOOST_CHECK(status.getInfo().state  == qdisp::JobStatus::REQUEST);
     BOOST_CHECK(retryTest->_retryCalled == false);
     // At this point, r has been deleted by QueryResource::ProvisionDone
 }
@@ -288,8 +288,8 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     qdisp::XrdSsiSessionMock sessionMock(buf);
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
     std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
-    //        std::make_shared<RetryTest>(std::ref(ex), refNum, std::ref(s), std::ref(status));
-    qdisp::ExecStatus status(ru);
+    //        std::make_shared<RetryTest>(std::ref(ex), jobId, std::ref(s), std::ref(status));
+    qdisp::JobStatus status(ru);
     std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
     std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
     respReq->registerCancel(cancelTest);
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     rInfo.eMsg = "test_msg";
     qrq->ProcessResponse(rInfo, false); // this causes qrq to delete itself.
     BOOST_CHECK(respReq->_code == -1);
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::RESPONSE_ERROR);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::RESPONSE_ERROR);
     BOOST_CHECK(retryTest->_retryCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 2");
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     finishTest->_finishCalled = false;
     qrq->ProcessResponse(rInfo, true); // this causes qrq to delete itself.
     LOGF_INFO("respReq->_code=%1%" % respReq->_code);
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::RESPONSE_ERROR);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::RESPONSE_ERROR);
     BOOST_CHECK(respReq->_code == magicErrNum);
     BOOST_CHECK(finishTest->_finishCalled);
 
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     rInfo.rType = XrdSsiRespInfo::isStream;
     finishTest->_finishCalled = false;
     qrq->ProcessResponse(rInfo, true); // this causes qrq to delete itself.
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::RESPONSE_DATA_ERROR_CORRUPT);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::RESPONSE_DATA_ERROR_CORRUPT);
     BOOST_CHECK(finishTest->_finishCalled);
     // The success case for ProcessResponse is probably best tested with integration testing.
     // Getting it work in a unit test requires replacing inline bool XrdSsiRequest::GetResponseData
@@ -336,14 +336,14 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     char dataBuf[50];
     strcpy(dataBuf, ts);
     qrq->ProcessResponseData(dataBuf, -7, true); // qrq deleted
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::RESPONSE_DATA_NACK);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::RESPONSE_DATA_NACK);
     BOOST_CHECK(finishTest->_finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponseData test 2");
     finishTest->_finishCalled = false;
     qrq = new qdisp::QueryRequest(&sessionMock, "mock", respReq, finishTest, retryNull, status);
     qrq->ProcessResponseData(dataBuf, ResponseRequesterTest::magic()+1, true); // qrq deleted
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::MERGE_ERROR);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::MERGE_ERROR);
     BOOST_CHECK(finishTest->_finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponseData test 3");
@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     retryTest->_retryCalled = false;
     qrq = new qdisp::QueryRequest(&sessionMock, "mock", respReq, finishTest, retryTest, status);
     qrq->ProcessResponseData(dataBuf, ResponseRequesterTest::magic(), true); // qrq deleted
-    BOOST_CHECK(status.getInfo().state == qdisp::ExecStatus::COMPLETE);
+    BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::COMPLETE);
     BOOST_CHECK(finishTest->_finishCalled);
     BOOST_CHECK(!retryTest->_retryCalled);
 }

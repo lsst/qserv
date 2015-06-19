@@ -34,7 +34,7 @@
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/TransactionSpec.h"
-#include "qdisp/ExecStatus.h"
+#include "qdisp/JobStatus.h"
 #include "util/Callable.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
@@ -54,7 +54,7 @@ class ResponseRequester;
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, ExecStatus::Ptr> StatusMap;
+    typedef std::map<int, JobStatus::Ptr> StatusMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -66,8 +66,13 @@ public:
         static std::string getMockStr() {return "Mock";};
     };
 
-    /// Specification for something executable by the Executive
-    struct Spec {
+    /** Description of a job managed by the executive
+     *
+     * Launch a chunk query against a xrootd ressource and
+     * retrieve the result
+     *
+     */
+    struct JobDescription {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
         std::shared_ptr<ResponseRequester> requester;
@@ -81,7 +86,7 @@ public:
     ~Executive();
 
     /// Add an item with a reference number (not necessarily a chunk number)
-    void add(int refNum, Spec const& s);
+    void add(int refNum, JobDescription const& s);
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -123,12 +128,12 @@ private:
     class DispatchAction;
     friend class DispatchAction;
     void _dispatchQuery(int refNum,
-                        Spec const& spec,
-                        ExecStatus::Ptr execStatus);
+                        JobDescription const& spec,
+                        JobStatus::Ptr execStatus);
 
     void _setup();
     bool _shouldRetry(int refNum);
-    ExecStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
+    JobStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);

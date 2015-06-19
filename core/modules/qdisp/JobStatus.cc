@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "qdisp/ExecStatus.h"
+#include "qdisp/JobStatus.h"
 
 // System headers
 #include <iostream>
@@ -30,9 +30,9 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 // Static fields
-std::string const ExecStatus::_empty;
+std::string const JobStatus::_empty;
 
-ExecStatus::Info::Info(ResourceUnit const& resourceUnit_)
+JobStatus::Info::Info(ResourceUnit const& resourceUnit_)
     : resourceUnit(resourceUnit_),
       state(UNKNOWN),
       stateCode(0) {
@@ -40,7 +40,7 @@ ExecStatus::Info::Info(ResourceUnit const& resourceUnit_)
 }
 
 /// @Return a C-string describing the State
-char const* ExecStatus::stateText(ExecStatus::State s) {
+char const* JobStatus::stateText(JobStatus::State s) {
     switch(s) {
     case UNKNOWN: return "Unknown";
     case PROVISION: return "Accessing resource";
@@ -63,12 +63,12 @@ char const* ExecStatus::stateText(ExecStatus::State s) {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, ExecStatus const& es) {
-    ExecStatus::Info info = es.getInfo();
+std::ostream& operator<<(std::ostream& os, JobStatus const& es) {
+    JobStatus::Info info = es.getInfo();
     return os << info;
 }
 
-std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& info) {
+std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
     // At least 26 byes, according to "man ctime", but might be too small.
     const int BLEN=64;
     char buffer[BLEN];
@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& info) {
     std::string ts(buffer, tsLen);
 
     os << info.resourceUnit << ": " << ts << ", "
-       << ExecStatus::stateText(info.state)
+       << JobStatus::stateText(info.state)
        << ", " << info.stateCode << ", " << info.stateDesc;
     return os;
 }

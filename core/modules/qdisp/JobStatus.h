@@ -37,15 +37,21 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-/// ExecStatus instances receive timestamped reports of execution State. This
-/// allows a manager object to receive updates on status without exposing its
-/// existence to a delegate class. The ExecStatus class could be extended to
-/// save all received reports to provide a timeline of state changes, but this
-/// is not currently implemented.
-class ExecStatus {
+/** Monitor execution of a chunk query against a xrootd ressource
+ *
+ *  JobStatus instances receive timestamped reports of execution State. This
+ *  allows a manager object to receive updates on status without exposing its
+ *  existence to a delegate class.
+ *
+ *  TODO: The JobStatus class could be extended to
+ *  save all received reports to provide a timeline of state changes.
+ *
+ *  @see qdisp::JobDescription
+ */
+class JobStatus {
 public:
-    typedef std::shared_ptr<ExecStatus> Ptr;
-    ExecStatus(ResourceUnit const& r) : _info(r) {}
+    typedef std::shared_ptr<JobStatus> Ptr;
+    JobStatus(ResourceUnit const& r) : _info(r) {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -83,7 +89,7 @@ public:
         // with each invocation of report().
         State state; ///< Actual state
         time_t stateTime; ///< Last modified timestamp
-        int stateCode; ///< Code associated with state (e.g. xrd error code)
+        int stateCode; ///< Code associated with state (e.g. xrd or mysql error code)
         std::string stateDesc; ///< Textual description
     };
     ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
@@ -94,15 +100,15 @@ public:
     }
 
 private:
-    friend std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
+    friend std::ostream& operator<<(std::ostream& os, JobStatus const& es);
     Info _info;
 
 private:
     mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
     static std::string const _empty;
 };
-std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
-std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& inf);
+std::ostream& operator<<(std::ostream& os, JobStatus const& es);
+std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
 
 }}} // namespace lsst::qserv::qdisp
 

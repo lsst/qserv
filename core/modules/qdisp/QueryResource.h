@@ -40,7 +40,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 // Local forward declarations
-class ExecStatus;
+class JobStatus;
 class QueryRequest;
 class ResponseRequester;
 
@@ -58,7 +58,7 @@ public:
                   std::shared_ptr<ResponseRequester> requester,
                   std::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                   std::shared_ptr<util::VoidCallable<void> > retryFunc,
-                  ExecStatus& status)
+                  JobStatus& status)
         : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
           _session(NULL),
           _payload(payload),
@@ -91,7 +91,7 @@ private:
     std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     /// Called to retry the transaction
     std::shared_ptr<util::VoidCallable<void> > _retryFunc;
-    ExecStatus& _status;
+    JobStatus& _status;
 };
 
 }}} // namespace lsst::qserv::qdisp
