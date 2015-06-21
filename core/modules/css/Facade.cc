@@ -102,7 +102,7 @@ Facade::containsDb(string const& dbName) const {
         return false;
     }
     string p = _prefix + "/DBS/" + dbName;
-    bool ret =  _kvI->exists(p);
+    bool ret = _kvI->exists(p);
     LOGF_DEBUG("containsDb(%1%): %2%" % dbName % ret);
     return ret;
 }

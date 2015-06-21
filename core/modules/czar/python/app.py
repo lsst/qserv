@@ -254,10 +254,8 @@ class Context:
         """
         if not Context._uqFactory:
             Context._initFactory()
-
         self.uqFactory = Context._uqFactory
         self.conditions = conditions
-
 
     @classmethod
     def destroyShared(cls):

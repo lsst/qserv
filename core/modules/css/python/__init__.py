@@ -26,14 +26,6 @@ Top level Central State System (CSS) module
 
 """
 
-# standard library imports
-# import logging
-# import sys
-# import time
-
-# third-party software imports
-# from kazoo.client import KazooClient
-# from kazoo.exceptions import NodeExistsError, NoNodeError
 
 # local imports
 import cssLib
@@ -42,11 +34,8 @@ from cssLib import *
 import snapshot
 import kvInterface
 
-
 def getSnapshot(kvi):
     s = snapshot.Snapshot(kvi)
     return s.snapshot
 
 getKvi = kvInterface.KvInterface.newImpl
-
-

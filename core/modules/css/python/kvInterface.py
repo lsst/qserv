@@ -110,7 +110,7 @@ class KvInterface(object):
             raise KvException(KvException.MISSING_PARAM, "<None>")
 
     @property
-    def lastUpdated(self):
+    def lastModified(self):
         """Return time of last update to the css cluster for a node.
         If the value is different from previous invocations, the
         caller may invoke refresh() to update the snapshot.
@@ -320,7 +320,7 @@ class KvInterfaceZoo(KvInterface):
         self._zk.start()
 
     @property
-    def lastUpdated(self):
+    def lastModified(self):
         """Return time of last update to the css cluster for a node.
         If the value is different from previous invocations, the
         caller may invoke refresh() to update the snapshot.
@@ -516,7 +516,6 @@ class KvInterfaceMem(KvInterface):
     key-value store for Qserv CSS.
 
     """
-
     def __init__(self, filename):
         """
         Initialize the interface.
@@ -535,9 +534,8 @@ class KvInterfaceMem(KvInterface):
         self._filename = filename
         self._kvi = KvInterfaceImplMem(self._filename)
 
-
     @property
-    def lastUpdated(self):
+    def lastModified(self):
         """Return time of last update to the css cluster for a node.
         If the value is different from previous invocations, the
         caller may invoke refresh() to update the snapshot.
@@ -605,8 +603,6 @@ class KvInterfaceMem(KvInterface):
         try:
             self._logger.info("GETCHILDREN '%s'" % (k))
             c = self._kvi.getChildren(k)
-#            if c.length > 0: return list(c)
-            print "children", c
             return self._kvi.getChildren(k)
         except NoNodeError:
             self._logger.error("in getChildren(), key %s does not exist" % k)

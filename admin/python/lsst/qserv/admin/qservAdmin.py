@@ -283,7 +283,7 @@ class QservAdmin(object):
         """
         Create database using an existing database as a template.
 
-        @param dbName    Database name (of the database to create)
+        @param dbName           Database name (of the database to create)
         @param templateDbName   Database name (of the template database)
         """
         self._logger.info("Creating db '%s' like '%s'", dbName, templateDbName)
@@ -314,7 +314,7 @@ class QservAdmin(object):
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create database '%s' like '%s', error was: %s",
+            self._logger.error("Failed to create db '%s' like '%s', error was: %s",
                                dbName, templateDbName, e)
             self._deletePacked(dbP)
             raise
@@ -333,8 +333,7 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
             dbP = "/DBS/%s" % dbName
             if not self._kvI.exists(dbP):
-                self._logger.info("dropDb database '%s' gone, aborting..",
-                                  dbName)
+                self._logger.info("Db '%s' gone, nothing to drop.", dbName)
                 return
             self._deletePacked(dbP)
 
@@ -528,7 +527,7 @@ class QservAdmin(object):
             raise
         self._logger.debug("Create table '%s.%s' succeeded.", dbName, tableName)
 
-    #### NODES ####################################################################
+    #### NODES #####################################################################
 
     def getNode(self, nodeName):
         """
@@ -839,7 +838,7 @@ class QservAdmin(object):
         """
         self._kvI.create(VERSION_KEY, str(VERSION))
 
-    ##### convenience ##########################################################
+    ##### convenience ##############################################################
     def _cssGet(self, key, default=None):
         "Returns key value or default if key does not exist"
         if self._kvI.exists(key):
