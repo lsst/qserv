@@ -108,15 +108,6 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
-    /** In case a query fails at execution, return the final error message
-     *
-     * Can be used to print error messages to the
-     * mysql command-line interface
-     *
-     * @return an error message
-     */
-    std::string getExecutionError() const;
-
     static std::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
 
 
@@ -139,9 +130,14 @@ private:
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
 
-    /** For this executive, store all JobStatus in the MessageStore
+    /** Store job status and execution errors in the current user query message store
+     *
+     * messageStore will be inserted in message table at the end of czar code
+     * and is used to log/report error in mysql-proxy.
+     *
+     * @see python module lsst.qserv.czar.proxy.unlock()
      */
-    void _logStatusesToMessages();
+    void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
 

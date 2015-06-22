@@ -39,6 +39,10 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+namespace {
+	const int NOTSET = -1;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // public
 ////////////////////////////////////////////////////////////////////////
@@ -83,6 +87,10 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
         _queryMessages.insert(_queryMessages.end(),
             QueryMessage(chunkId, code, description, std::time(0), severity));
     }
+}
+
+void MessageStore::addErrorMessage(std::string const& description) {
+	addMessage(NOTSET, NOTSET, description, Severity::ERROR);
 }
 
 const QueryMessage MessageStore::getMessage(int idx) {

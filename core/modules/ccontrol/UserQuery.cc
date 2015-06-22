@@ -255,11 +255,6 @@ UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs)
     // Some configuration done by factory: See UserQueryFactory
 }
 
-/** In case a query fails at execution, return the final error message */
-std::string UserQuery::getExecutionError() const {
-    return _executive->getExecutionError();
-}
-
 /// Setup merger (for results handling and aggregation)
 void UserQuery::_setupMerger() {
     LOGF_INFO("UserQuery::_setupMerger()");

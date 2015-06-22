@@ -75,7 +75,6 @@ from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
-from lsst.qserv.czar import UserQuery_getExecutionError
 from lsst.qserv.czar import UserQuery_getQueryProcessingError
 from lsst.qserv.czar import UserQuery_submit
 from lsst.qserv.czar import UserQuery_join
@@ -408,9 +407,6 @@ class InbandQueryAction:
         elapsed = time.time() - lastTime
         logger.inf("Query exec (%s) took %f seconds" % (self.sessionId, elapsed))
 
-        if s != QueryState_SUCCESS:
-            self._reportError(-1, -1,
-                               UserQuery_getExecutionError(self.sessionId))
         logger.inf("Final state of all queries", getQueryStateString(s))
         # session should really be discarded here unconditionally,
         # but in the current design it is used in proxy.py, so it is

@@ -90,16 +90,6 @@ std::string UserQuery_getQueryProcessingError(int session) {
     return s;
 }
 
-/** In case a query fails at execution, return the final error message */
-std::string UserQuery_getExecutionError(int session) {
-    try {
-        return uqManager.get(session)->getExecutionError();
-    } catch (const std::exception& e) {
-        LOGF_WARN(e.what());
-        return e.what();
-    }
-}
-
 /// Abort a running query
 void UserQuery_kill(int session) {
     LOGF_INFO("EXECUTING UserQuery_kill(%1%)" % session);

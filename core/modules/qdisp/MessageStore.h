@@ -99,6 +99,15 @@ struct QueryMessage {
 class MessageStore {
 public:
     void addMessage(int chunkId, int code, std::string const& description, Severity severity_ = INFO);
+
+    /** Add an error message
+     *
+     * This message will be sent to proxy via message table, in order to be displayed to mysql client
+     * console. chunkId and code are equal to NOTSET because this message can aggregate multiple
+     * error messages in multiple files.
+     *
+     */
+    void addErrorMessage(std::string const& description);
     const QueryMessage getMessage(int idx);
     const int messageCount();
     const int messageCount(int code);

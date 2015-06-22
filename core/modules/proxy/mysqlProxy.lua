@@ -624,11 +624,11 @@ function queryProcessing()
         q2 = "SELECT * FROM " .. resultTableName
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
-	q3 = "DROP TABLE " .. msgTableName
+        q3 = "DROP TABLE " .. msgTableName
         proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
                              {resultset_is_needed = true})
 
-	q4 = "DROP TABLE " .. resultTableName
+        q4 = "DROP TABLE " .. resultTableName
         proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
                              {resultset_is_needed = true})
 
@@ -708,23 +708,31 @@ function read_query_result(inj)
     -- we injected query with the id=1 (for messaging and locking purposes)
     if (inj.type == 1) then
         print("q1 - ignoring")
+        local error_msg = ""
         for row in inj.resultset.rows do
-           print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[4])
-           if (tonumber(row[2]) < 0) then -- errors have code < 0
+           if (row[4] == "ERROR") then
               queryErrorCount  = queryErrorCount + 1
-              return err.setAndSend(ERR_QSERV_RUNTIME,
-                                    "Execution error:\ncode:"..
-                                        row[2] .. " " .. tostring(row[3]) .. " (chunkId:" .. row[1] .. ")")
+              error_msg = error_msg .. "\n" .. tostring(row[3])
+              -- WARN czar never returns multiple errors for now
+              if (queryErrorCount > 1) then
+                  error_msg = "\n-- WARN multiple errors"
+              end
+           else
+              print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
            end
+        end
+        if (queryErrorCount > 0) then
+            error_msg = "Unable to return query results:" .. error_msg
+            return err.setAndSend(ERR_QSERV_RUNTIME, error_msg)
         end
         return proxy.PROXY_IGNORE_RESULT
      elseif (inj.type == 3) or
             (inj.type == 4) then
-	-- Proxy will complain if we try to touch 'inj' for these:
-	-- (critical) (read_query_result) ...attempt to call a nil value
-	-- (critical) proxy-plugin.c.303: got asked to send a resultset,
-	--            but ignoring it as we already have sent 1 resultset(s).
-	--            injection-id: 3
+        -- Proxy will complain if we try to touch 'inj' for these:
+        -- (critical) (read_query_result) ...attempt to call a nil value
+        -- (critical) proxy-plugin.c.303: got asked to send a resultset,
+        --            but ignoring it as we already have sent 1 resultset(s).
+        --            injection-id: 3
         print("cleanup q(3,4) - ignoring")
         return proxy.PROXY_IGNORE_RESULT
      elseif (queryErrorCount > 0) then

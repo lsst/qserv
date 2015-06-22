@@ -56,7 +56,7 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
 	state_message[JobStatus::RESPONSE_DATA_ERROR_CORRUPT] =  "Error retrieving response session is corrupt";
 	state_message[JobStatus::RESPONSE_DATA_NACK] = "Error in response data";
 	state_message[JobStatus::RESPONSE_DONE] = "Finished retrieving result";
-	state_message[JobStatus::RESULT_ERROR] = "Error in result data.";
+	state_message[JobStatus::RESULT_ERROR] = "Error in worker result data.";
 	state_message[JobStatus::MERGE_OK] = "Merge complete";
 	state_message[JobStatus::MERGE_ERROR] = "Error merging result";
 	state_message[JobStatus::COMPLETE] = "Complete (success)";

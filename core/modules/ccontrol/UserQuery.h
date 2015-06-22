@@ -80,14 +80,6 @@ public:
     /// Returns an empty string if no errors have been detected.
     std::string const& getError() const;
 
-    /** In case a query fails at execution, return the final error message
-     *
-     * Exported to python and logged to mysql client console
-     *
-     * @return an error message
-     */
-    std::string getExecutionError() const;
-
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
 

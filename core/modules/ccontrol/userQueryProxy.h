@@ -49,14 +49,6 @@ class UserQuery;
 /// @return error description
 std::string UserQuery_getQueryProcessingError(int session);
 
-/** In case a query fails at execution, return the final error message
- *
- * Exported to python and logged to mysql client console
- *
- * @return an error message
- */
-std::string UserQuery_getExecutionError(int session);
-
 /// Add a chunk spec for execution
 void UserQuery_addChunk(int session, lsst::qserv::qproc::ChunkSpec const& cs);
 
