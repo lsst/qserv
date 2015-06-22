@@ -24,6 +24,7 @@
  */
 
 // System headers
+#include <cstddef>
 #include <string>
 #include <stdlib.h>
 #include <thread>
@@ -61,13 +62,13 @@ util::Sequential<int> XrdSsiServiceMock::_count(0);
 /** Class to fake being a request to xrootd.
  * Fire up thread that sleeps for a bit and then indicates it was successful.
  */
-void XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
-    if (resP == NULL) {
+void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut){
+    if (resP == nullptr) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
         return;
     }
     QueryResource *qr = dynamic_cast<QueryResource*>(resP);
-    if (qr == NULL) {
+    if (qr == nullptr) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() unexpected resource type.");
         return;
     }

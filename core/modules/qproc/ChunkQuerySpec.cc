@@ -34,6 +34,7 @@
 
 // System headers
 #include <algorithm>
+#include <cstddef>
 #include <iostream>
 #include <iterator>
 
@@ -50,7 +51,7 @@ namespace qproc {
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
 
     for(ChunkQuerySpec const* frag = &c;
-        frag != NULL;
+        frag != nullptr;
         frag = frag->nextFragment.get()) {
         os << "ChunkQuerySpec(db=" << frag->db << ", chunkId=" << frag->chunkId << ", ";
         os << "sTables=" << util::printable(frag->subChunkTables) << ", ";

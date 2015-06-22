@@ -33,6 +33,7 @@
 #include "wdb/ChunkResource.h"
 
 // System headers
+#include <cstddef>
 #include <iostream>
 #include <mutex>
 
@@ -186,7 +187,7 @@ public:
             memLockRequireOwnership();
             for(ScTableVector::const_iterator i=v.begin(), e=v.end();
                 i != e; ++i) {
-                std::string const* createScript = 0;
+                std::string const* createScript = nullptr;
                 if(i->chunkId == DUMMY_CHUNK) {
                     createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
                 } else {

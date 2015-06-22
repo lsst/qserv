@@ -32,6 +32,7 @@
 // System headers
 #include <algorithm>
 #include <cstdarg>
+#include <cstddef>
 #include <deque>
 #include <iostream>
 #include <map>
@@ -130,10 +131,10 @@ QservOss::QservOss() {
     struct timeval now;
     const size_t tvsize = sizeof(now.tv_sec);
     void* res;
-    ::gettimeofday(&now, NULL); //
+    ::gettimeofday(&now, nullptr);
     res = memcpy(&_initTime, &(now.tv_sec), tvsize);
     assert(res == &_initTime);
-    Init(NULL, NULL);
+    Init(nullptr, nullptr);
 }
 
 void QservOss::_fillQueryFileStat(struct stat &buf) {

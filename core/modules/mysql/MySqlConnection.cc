@@ -28,6 +28,9 @@
 // Class header
 #include "mysql/MySqlConnection.h"
 
+// System headers
+#include <cstddef>
+
 // Third-party headers
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
@@ -51,7 +54,7 @@ namespace {
         InitializeMysqlLibrary(JanitorTsp & j) : janitor(j) {}
 
         void operator()() {
-            int rc = mysql_library_init(0, NULL, NULL);
+            int rc = mysql_library_init(0, nullptr, nullptr);
             assert(0 == rc && "mysql_library_init() failed");
             assert(mysql_thread_safe() != 0 &&
                    "MySQL client library is not thread safe!");
@@ -68,16 +71,16 @@ namespace qserv {
 namespace mysql {
 
 MySqlConnection::MySqlConnection()
-    : _mysql(NULL),
-      _mysql_res(NULL),
+    : _mysql(nullptr),
+      _mysql_res(nullptr),
       _isConnected(false),
       _isExecuting(false),
       _interrupted(false) {
 }
 
 MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig)
-    : _mysql(NULL),
-      _mysql_res(NULL),
+    : _mysql(nullptr),
+      _mysql_res(nullptr),
       _isConnected(false),
       _sqlConfig(std::make_shared<MySqlConfig>(sqlConfig)),
       _isExecuting(false),
@@ -89,7 +92,7 @@ MySqlConnection::~MySqlConnection() {
         if(_mysql_res) {
             MYSQL_ROW row;
             while((row = mysql_fetch_row(_mysql_res))); // Drain results.
-            _mysql_res = NULL;
+            _mysql_res = nullptr;
         }
         mysql_close(_mysql);
     }
@@ -102,7 +105,7 @@ MySqlConnection::connect() {
     _isConnected = false;
     // Make myself a thread
     _mysql = _connectHelper();
-    _isConnected = (_mysql != NULL);
+    _isConnected = (_mysql != nullptr);
     return _isConnected;
 }
 
@@ -189,7 +192,7 @@ MYSQL* MySqlConnection::_connectHelper() {
     static boost::thread_specific_ptr<MySqlThreadJanitor> janitor;
 
     std::call_once(initialized, InitializeMysqlLibrary(janitor));
-    MYSQL* m = mysql_init(NULL);
+    MYSQL* m = mysql_init(nullptr);
     if (!m) {
         return m;
     }

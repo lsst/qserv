@@ -39,6 +39,7 @@
 #include "rproc/InfileMerger.h"
 
 // System headers
+#include <cstddef>
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
@@ -83,7 +84,7 @@ LOG_LOGGER getLogger() {
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
-    int rc = gettimeofday(&now, NULL);
+    int rc = gettimeofday(&now, nullptr);
     if (rc != 0) {
         throw InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
     }

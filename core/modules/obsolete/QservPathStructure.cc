@@ -25,6 +25,7 @@
 #include "obsolete/QservPathStructure.h"
 
 // System headers
+#include <cstddef>
 #include <dirent.h>
 #include <errno.h>
 #include <fstream>
@@ -262,11 +263,11 @@ QservPathStructure::listDir(const std::string& dir,
                             std::vector<std::string>& files) {
     DIR *dp;
     struct dirent *dirp;
-    if((dp = opendir(dir.c_str())) == NULL) {
+    if((dp = opendir(dir.c_str())) == nullptr) {
         std::cout << "Error(" << errno << ") opening " << dir << std::endl;
         return false;
     }
-    while ((dirp = readdir(dp)) != NULL) {
+    while ((dirp = readdir(dp)) != nullptr) {
         if (0!=strcmp(dirp->d_name, ".") && 0!=strcmp(dirp->d_name, "..") ) {
             files.push_back(string(dirp->d_name));
         }

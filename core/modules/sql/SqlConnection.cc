@@ -26,6 +26,7 @@
 
 // System headers
 #include <cstdio>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -33,7 +34,6 @@
 // Qserv headers
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlResults.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -43,7 +43,7 @@ namespace {
 void
 populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
-    if(mysql == NULL) {
+    if(mysql == nullptr) {
         o.setErrNo(-999);
         o.addErrMsg("Error connecting to mysql with config:"
                     + m.getConfig().asString());

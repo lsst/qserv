@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 #define LSST_QSERV_UTIL_TIMER_H
 
 // System headers
+#include <cstddef>
 #include <ostream>
 #include <sys/time.h>
 #include <time.h>
@@ -40,8 +41,8 @@ struct Timer {
         stopTime.tv_sec = 0; stopTime.tv_usec = 0;
     }
 
-    void start() { ::gettimeofday(&startTime, NULL); }
-    void stop() { ::gettimeofday(&stopTime, NULL); }
+    void start() { ::gettimeofday(&startTime, nullptr); }
+    void stop() { ::gettimeofday(&stopTime, nullptr); }
 
     /// Return the difference in wall clock time between the most recent
     /// calls to start() and stop() in seconds.

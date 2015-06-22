@@ -35,6 +35,7 @@
 #include "qana/QueryPlugin.h"
 
 // System headers
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 
@@ -135,7 +136,6 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     // merge statement (if one is not available)
     LOGF(_logger, LOG_LVL_DEBUG, "Apply physical");
 
-
     if (_limit != NOTSET) {
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
         if (context.hasChunks()) {
@@ -145,13 +145,12 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     } else if (_orderBy) {
         // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
         // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
-        std::shared_ptr<query::OrderByClause> nullptr_;
         LOGF(_logger, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"%1%\"" % *_orderBy);
         for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
-            (**i).setOrderBy(nullptr_);
+            (**i).setOrderBy(nullptr);
         }
         if (context.needsMerge) {
-            plan.stmtMerge.setOrderBy(nullptr_);
+            plan.stmtMerge.setOrderBy(nullptr);
         }
     }
 

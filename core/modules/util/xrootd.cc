@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 #include "util/xrootd.h"
 
 // System headers
+#include <cstddef>
 #include <sstream>
 
 // Third-party headers
@@ -46,16 +47,16 @@ makeUrl(char const* hostport, char const* typeStr, int chunk) {
 
 std::string
 makeUrl(char const* hostport, std::string const& path) {
-    return makeUrl(hostport, NULL, path);
+    return makeUrl(hostport, nullptr, path);
 }
 
 std::string
 makeUrl(char const* hostport, char const* typeStr,
         std::string const& s, char mode) {
     // typeStr is either "query" or "result"
-    if(hostport == NULL) {
+    if(!hostport) {
         hostport = ::getenv("QSERV_XRD");
-        if(hostport == NULL) {
+        if(!hostport) {
             // use local host name if nothing is specified
             hostport = "localhost:1094";
         }
@@ -70,7 +71,7 @@ makeUrl(char const* hostport, char const* typeStr,
     std::string user("qsmaster");
     std::string tstr;
     std::string ret;
-    if(typeStr != NULL) tstr = typeStr;
+    if(typeStr) tstr = typeStr;
 
     if(mode != '\0') {
         user += ".";
@@ -83,7 +84,7 @@ makeUrl(char const* hostport, char const* typeStr,
     ret += "@";
     ret += hostport;
     ret += "/";
-    if(typeStr != NULL) {
+    if(typeStr) {
         ret += "/";
         ret += typeStr;
         ret += "/";

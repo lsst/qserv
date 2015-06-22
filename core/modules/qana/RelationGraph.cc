@@ -29,6 +29,7 @@
 
 // System headers
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -265,7 +266,7 @@ double getNumericConst(ValueExprPtr const& ve) {
     if (!vf || vf->getType() != ValueFactor::CONST) {
         return std::numeric_limits<double>::quiet_NaN();
     }
-    char *e = NULL;
+    char *e = nullptr;
     double a = std::strtod(vf->getTableStar().c_str(), &e);
     if (e == vf->getTableStar().c_str()) {
         // conversion error - non-numeric constant

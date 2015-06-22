@@ -37,6 +37,7 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -422,7 +423,7 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 }
 
 void QuerySession::Iter::_buildCache() const {
-    assert(_qs != NULL);
+    assert(_qs != nullptr);
     _cache.db = _qs->_context->dominantDb;
     // LOGF_INFO("scantables %1% empty"
     //           % (_qs->_context->scanTables.empty() ? "is" : "is not"));

@@ -33,6 +33,7 @@
 #include "wsched/BlendScheduler.h"
 
 // System headers
+#include <cstddef>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -52,7 +53,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-BlendScheduler* dbgBlendScheduler=0; ///< A symbol for gdb
+BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
@@ -75,7 +76,7 @@ BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     }
     assert(_group);
     assert(_scan);
-    wcontrol::Foreman::Scheduler* s = 0;
+    wcontrol::Foreman::Scheduler* s = nullptr;
     if(incoming->msg->scantables_size() > 0) {
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
@@ -120,7 +121,7 @@ BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
                               wbase::TaskQueuePtr running) {
-    wcontrol::Foreman::Scheduler* s = 0;
+    wcontrol::Foreman::Scheduler* s = nullptr;
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
         assert(_integrityHelper());

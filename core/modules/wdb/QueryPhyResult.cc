@@ -27,6 +27,7 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <fcntl.h>
 #include <iterator>
 #include <sys/stat.h>
@@ -162,10 +163,10 @@ bool QueryPhyResult::performMysqldump(LOG_LOGGER const& log,
          % _getSpaceResultTables()).str();
     LOGF(log, LOG_LVL_INFO, "dump cmdline: %1%" % cmd);
 
-    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpStart,%1%" % ::time(NULL));
+    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpStart,%1%" % ::time(nullptr));
     int cmdResult = system(cmd.c_str());
 
-    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpFinish,%1%" % ::time(NULL));
+    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpFinish,%1%" % ::time(nullptr));
 
     if (cmdResult != 0) {
         errObj.setErrNo(errno);

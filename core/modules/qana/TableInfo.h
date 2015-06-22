@@ -61,6 +61,7 @@
 /// chunk containing `b` (and vice versa).
 
 // System headers
+#include <cstddef>
 #include <memory>
 #include <stdint.h>
 #include <string>
@@ -267,7 +268,7 @@ struct MatchTableInfo : TableInfo {
 
     MatchTableInfo(std::string const& db, std::string const& t) :
         TableInfo(db, t, MATCH),
-        director(static_cast<DirTableInfo*>(NULL), static_cast<DirTableInfo*>(NULL)) {}
+        director(static_cast<DirTableInfo*>(nullptr), static_cast<DirTableInfo*>(nullptr)) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;

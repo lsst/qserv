@@ -26,6 +26,7 @@
 
 // System headers
 #include <cctype>
+#include <cstddef>
 #include <iostream>
 #include <string>
 
@@ -60,7 +61,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     t.stop();
     LOGF_INFO("BindRequest took %1% seconds" % t.getElapsed());
 
-    char *reqData = 0;
+    char *reqData = nullptr;
     int reqSize;
     t.start();
     reqData = req->GetRequest(reqSize);

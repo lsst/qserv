@@ -29,6 +29,7 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <sstream>
 #include <unistd.h>
 
@@ -123,7 +124,7 @@ MySqlConfig const& Config::getSqlConfig() const {
 char const* Config::_getEnvDefault(char const* varName,
                                    char const* defVal) {
     char const* s = ::getenv(varName);
-    if(s != (char const*)0) {
+    if(s != nullptr) {
         return s;
     } else {
         return defVal;

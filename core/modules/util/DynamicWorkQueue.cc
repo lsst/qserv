@@ -27,11 +27,11 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <sys/time.h>
 #include <thread>
-
 
 namespace lsst {
 namespace qserv {
@@ -50,16 +50,16 @@ struct DynamicWorkQueue::Queue {
     DynamicWorkQueue::Callable * tail;
 
     Queue(void const * handle) :
-        numThreads(0), session(handle), head(0), tail(0)
+        numThreads(0), session(handle), head(nullptr), tail(nullptr)
     {
         struct ::timeval t;
-        ::gettimeofday(&t, NULL);
+        ::gettimeofday(&t, nullptr);
         createTime = t.tv_sec + 0.000001 * t.tv_usec;
     }
 
     ~Queue() {
         Callable * c = head;
-        head = tail = 0;
+        head = tail = nullptr;
         while (c) {
             Callable * next = c->_next;
             delete c;
@@ -67,7 +67,7 @@ struct DynamicWorkQueue::Queue {
         }
     }
 
-    bool empty() const { return head == 0; }
+    bool empty() const { return head == nullptr; }
 
     // Take ownership of a Callable and add it to the end of the queue.
     void put(Callable * c) {
@@ -82,14 +82,14 @@ struct DynamicWorkQueue::Queue {
     }
 
     // Remove a Callable from the beginning of the queue and relinquish
-    // ownership of it. If the queue is empty, NULL is returned.
+    // ownership of it. If the queue is empty, nullptr is returned.
     Callable * take() {
         Callable * c = head;
         if (c) {
             Callable * next = c->_next;
             head = next;
-            if (next == 0) {
-                tail = 0;
+            if (next == nullptr) {
+                tail = nullptr;
             }
         }
         return c;
@@ -98,7 +98,7 @@ struct DynamicWorkQueue::Queue {
     // Remove and relinquish ownership for all Callable objects in the queue.
     Callable * takeAll() {
         Callable * c = head;
-        head = tail = 0;
+        head = tail = nullptr;
         return c;
     }
 };
@@ -121,7 +121,6 @@ bool DynamicWorkQueue::QueuePtrCmp::operator()(
     }
     return false;
 }
-
 
 // Wraps a DynamicWorkQueue reference and implements the work scheduling loop.
 struct DynamicWorkQueue::Runner {
@@ -261,7 +260,7 @@ void DynamicWorkQueue::add(void const * session,
         // thread is created, and Runner decrements it before exiting.
         _numThreads += 1;
     }
-    Queue * q = 0;
+    Queue * q = nullptr;
     SessionQueueMap::iterator i = _sessions.find(session);
     if (i != _sessions.end()) {
         // There is an existing queue for session.
@@ -288,7 +287,7 @@ void DynamicWorkQueue::add(void const * session,
 
 void DynamicWorkQueue::cancelQueued(void const * session)
 {
-    Callable * c = 0;
+    Callable * c = nullptr;
     {
         std::lock_guard<std::mutex> lock(_mutex);
         SessionQueueMap::iterator i = _sessions.find(session);

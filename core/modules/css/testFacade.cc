@@ -33,6 +33,7 @@
 
 // System headers
 #include <algorithm> // sort
+#include <cstddef>   // nullptr
 #include <cstdlib>   // rand, srand
 #include <iostream>
 #include <memory>
@@ -64,7 +65,7 @@ namespace css {
 
 struct InitRand {
     InitRand() {
-        srand(time(NULL));
+        srand(time(nullptr));
     }
 };
 InitRand _initRand;
