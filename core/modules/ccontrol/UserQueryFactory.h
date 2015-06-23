@@ -37,6 +37,9 @@
 // Third-party headers
 #include "boost/utility.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "global/stringTypes.h"
 
@@ -69,6 +72,7 @@ public:
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;
+    static LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv:control

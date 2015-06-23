@@ -51,6 +51,8 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+LOG_LOGGER UserQueryFactory::_log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
+
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
@@ -101,19 +103,19 @@ UserQueryFactory::newUserQuery(std::string const& query,
         qs->setQuery(query);
     } catch (...) {
         errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
-        LOGF_ERROR(errorExtra);
+        LOGF(_log, LOG_LVL_ERROR, errorExtra);
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
-        LOGF_ERROR("Invalid query: %s" % qs->getError());
+        LOGF(_log, LOG_LVL_ERROR, "Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
-        LOGF_INFO("Invalid query: %s" % qs->getError());
+        LOGF(_log, LOG_LVL_INFO, "Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
-        LOGF_INFO("Invalid query: %s" % qs->getError());
+        LOGF(_log, LOG_LVL_INFO, "Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
     UserQuery* uq = new UserQuery(qs);
@@ -198,10 +200,10 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
                                         int timeout_msec,
                                         std::string const& emptyChunkPath) {
     if (cssTech == "mem") {
-        LOGF_INFO("Initializing memory-based css, with %1%" % cssConn);
+        LOGF(_log, LOG_LVL_INFO, "Initializing memory-based css, with %1%" % cssConn);
         facade = css::FacadeFactory::createMemFacade(cssConn, emptyChunkPath);
     } else {
-        LOGF_ERROR("Unable to determine css technology, check config file.");
+        LOGF(_log, LOG_LVL_ERROR, "Unable to determine css technology, check config file.");
         throw ConfigError("Invalid css technology, check config file.");
     }
 }
@@ -210,7 +212,7 @@ void UserQueryFactory::Impl::initFacade(
     std::shared_ptr<css::KvInterface> kvi,
     std::string const& emptyChunkPath) {
     facade = css::FacadeFactory::createCacheFacade(kvi, emptyChunkPath);
-    LOGF_INFO("Initializing cache-based css facade");
+    LOGF(_log, LOG_LVL_INFO, "Initializing cache-based css facade");
 }
 
 }}} // lsst::qserv::ccontrol
