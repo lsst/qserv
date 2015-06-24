@@ -330,6 +330,11 @@ class KvInterfaceZoo(KvInterface):
         if self._filename:
             stat = os.stat(self._filename)
             return stat.st_mtime
+        # raising exception because the code below is wrong.
+        # The last_modified for node "/" reflects modification time
+        # of that node *only*, and not the underlying children nodes.
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
         # use zk
         data, stat = self._zk.get("/")
         return stat.last_modified
