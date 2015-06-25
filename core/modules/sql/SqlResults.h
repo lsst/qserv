@@ -30,6 +30,7 @@
 #define LSST_QSERV_SQL_SQLRESULTS_H
 
 // System headers
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -45,13 +46,57 @@ namespace lsst {
 namespace qserv {
 namespace sql {
 
+namespace detail {
+
+/**
+ *  Iterator for going over the rows in the result set. Value type for iterator
+ *  is the sequence of strings (pointers) and their lengths. Pointer may be NULL
+ *  if the column value is NONE.
+ */
+class SqlResults_Iterator : public std::iterator<std::input_iterator_tag,
+                                   std::vector<std::pair<char const*, unsigned long> > > {
+public:
+    SqlResults_Iterator();
+    SqlResults_Iterator(std::vector<MYSQL_RES*> const& results);
+
+    pointer operator->() { return &_value; }
+    reference operator*() { return _value; }
+
+    SqlResults_Iterator& operator++();
+    SqlResults_Iterator operator++(int);
+
+    bool operator==(SqlResults_Iterator const& other) const;
+    bool operator!=(SqlResults_Iterator const& other) const { return not operator==(other); }
+
+private:
+    void _newRow(bool newResult);
+
+    std::vector<MYSQL_RES*> _results;
+    value_type _value;
+};
+}
+
 class SqlResults : boost::noncopyable {
 public:
+
+    typedef detail::SqlResults_Iterator iterator;
+    typedef detail::SqlResults_Iterator const_iterator;
+    typedef iterator::value_type value_type;
+
     SqlResults(bool discardImmediately=false)
-        :_discardImmediately(discardImmediately) {};
-    ~SqlResults() {freeResults();};
+        :_discardImmediately(discardImmediately)
+        , _affectedRows(0) {}
+    ~SqlResults() {freeResults();}
 
     void addResult(MYSQL_RES* r);
+    void setAffectedRows(unsigned long long count) {
+        _affectedRows = count;
+    }
+    // Get number of affected rows for UPDATE/DELETE/INSERT,
+    // do not use it for SELECT
+    unsigned long long getAffectedRows() const {
+        return _affectedRows;
+    }
     bool extractFirstValue(std::string&, SqlErrorObject&);
     bool extractFirstColumn(std::vector<std::string>&,
                             SqlErrorObject&);
@@ -69,9 +114,14 @@ public:
                               SqlErrorObject&);
     void freeResults();
 
+    /// Return row iterator
+    iterator begin() { return iterator(_results); }
+    iterator end() { return iterator(); }
+
 private:
     std::vector<MYSQL_RES*> _results;
     bool _discardImmediately;
+    unsigned long long _affectedRows;
 };
 
 }}} // namespace lsst::qserv:: sql

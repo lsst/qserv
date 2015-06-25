@@ -167,6 +167,7 @@ SqlConnection::runQuery(char const* query,
         //    + "\nQuery = " + std::string(query, qSize);
         return _setErrorObject(errObj, msg);
     }
+    results.setAffectedRows(mysql_affected_rows(_connection->getMySql()));
     int status = 0;
     do {
         MYSQL_RES* result = mysql_store_result(_connection->getMySql());
@@ -373,6 +374,31 @@ std::string
 SqlConnection::getActiveDbName() const {
     return _connection->getConfig().dbName;
 }
+
+// Returns the value generated for an AUTO_INCREMENT column
+// by the previous INSERT or UPDATE statement.
+unsigned long long
+SqlConnection::getInsertId() const
+{
+    return mysql_insert_id(_connection->getMySql());
+}
+
+// Escape string for use inside SQL statements.
+std::string
+SqlConnection::escapeString(std::string const& rawString) const
+{
+    std::string result;
+    // mysql doc says output buffer must be inputLength*2+1
+    result.resize(rawString.size()*2+1);
+    unsigned long resultSize = mysql_real_escape_string(_connection->getMySql(),
+                                                        &result[0],
+                                                        rawString.data(),
+                                                        rawString.size());
+    // resize again
+    result.resize(resultSize);
+    return result;
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // private

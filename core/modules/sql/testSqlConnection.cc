@@ -31,6 +31,9 @@
 
 // Third-party headers
 
+// Qserv headers
+#include "SqlResults.h"
+
 // Boost unit test header
 #define BOOST_TEST_MODULE SqlConnection_1
 #include "boost/test/included/unit_test.hpp"
@@ -41,6 +44,7 @@ using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
+using lsst::qserv::sql::SqlResults;
 
 
 namespace {
@@ -250,6 +254,73 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
         BOOST_CHECK(i < tListLen);
     }
     BOOST_CHECK_EQUAL(i, tListLen);
+
+    // drop db
+    if ( !sqlConn->dropDb(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(RowIter) {
+    sqlConn = std::make_shared<SqlConnection>(sqlConfig, true);
+    std::string dbN = "one_xysdfed34d";
+
+    SqlErrorObject errObj;
+    SqlResults results;
+
+    // create db and select it as default
+    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
+    // create table
+    std::string query = "CREATE TABLE one_xysdfed34d (x INT NULL, y INT NULL)";
+    if (!sqlConn->runQuery(query, errObj)) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
+    // fill with some data
+    const char* queries[] = {
+            "INSERT INTO one_xysdfed34d (x, y) VALUES (1, 1)",
+            "INSERT INTO one_xysdfed34d (x, y) VALUES (3, NULL)",
+            "INSERT INTO one_xysdfed34d (x, y) VALUES (NULL, 999)",
+            "INSERT INTO one_xysdfed34d (x, y) VALUES (2, 3)"
+    };
+    unsigned nRows = sizeof queries / sizeof queries[0];
+    for (unsigned i = 0; i != nRows; ++ i) {
+        if (!sqlConn->runQuery(queries[i], errObj)) {
+            BOOST_FAIL(errObj.printErrMsg());
+        }
+    }
+
+    // select all of it
+    query = "SELECT x, y FROM one_xysdfed34d";
+    if (!sqlConn->runQuery(query, results, errObj)) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
+    std::vector<std::pair<std::string, std::string> > output;
+    for (SqlResults::iterator itr = results.begin(); itr != results.end(); ++ itr) {
+        SqlResults::value_type const& row = *itr;
+        BOOST_CHECK_EQUAL(row.size(), 2U);
+        std::string x(row[0].first ? row[0].first : "_NULL_");
+        std::string y(row[1].first ? row[1].first : "_NULL_");
+        output.push_back(std::make_pair(x, y));
+    }
+    BOOST_CHECK_EQUAL(output.size(), nRows);
+
+    // make it ordered
+    std::sort(output.begin(), output.end());
+
+    // check data
+    BOOST_CHECK_EQUAL(output[0].first, "1");
+    BOOST_CHECK_EQUAL(output[0].second, "1");
+    BOOST_CHECK_EQUAL(output[1].first, "2");
+    BOOST_CHECK_EQUAL(output[1].second, "3");
+    BOOST_CHECK_EQUAL(output[2].first, "3");
+    BOOST_CHECK_EQUAL(output[2].second, "_NULL_");
+    BOOST_CHECK_EQUAL(output[3].first, "_NULL_");
+    BOOST_CHECK_EQUAL(output[3].second, "999");
 
     // drop db
     if ( !sqlConn->dropDb(dbN, errObj) ) {
