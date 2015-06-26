@@ -254,6 +254,10 @@ void Executive::markCompleted(int refNum, bool success) {
             std::lock_guard<std::mutex> lock(_statusesMutex);
             _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         }
+        {
+			std::lock_guard<std::mutex> lock(_errorsMutex);
+			_multiError.push_back(e);
+        }
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
                    refNum % e.code % e.msg);
     }
@@ -350,10 +354,22 @@ int Executive::getNumInflight() {
 }
 
 std::string Executive::getProgressDesc() const {
-    std::lock_guard<std::mutex> lock(_statusesMutex);
     std::ostringstream os;
-    std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
-    LOGF_ERROR("%1%" % os.str());
+    {
+    	std::lock_guard<std::mutex> lock(_statusesMutex);
+    	std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
+    }
+    LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % os.str());
+    return os.str();
+}
+
+std::string Executive::getExecutionError() const {
+    std::ostringstream os;
+    {
+    	std::lock_guard<std::mutex> lock(_errorsMutex);
+    	os << _multiError;
+    }
+    LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % os.str());
     return os.str();
 }
 

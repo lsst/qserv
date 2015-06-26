@@ -49,9 +49,13 @@ class UserQuery;
 /// @return error description
 std::string UserQuery_getError(int session);
 
-/// @return a string describing the progress on the query at a chunk-by-chunk
-/// level. Userful for diagnosis when queries are squashed or return errors.
-std::string UserQuery_getExecDesc(int session);
+/** In case a query fails at execution, return the final error message
+ *
+ * Exported to python and logged to mysql client console
+ *
+ * @return an error message
+ */
+std::string UserQuery_getExecutionError(int session);
 
 /// Add a chunk spec for execution
 void UserQuery_addChunk(int session, lsst::qserv::qproc::ChunkSpec const& cs);

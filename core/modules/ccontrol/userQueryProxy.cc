@@ -90,11 +90,10 @@ std::string UserQuery_getError(int session) {
     return s;
 }
 
-/// @return a string describing the progress on the query at a chunk-by-chunk
-/// level. Userful for diagnosis when queries are squashed or return errors.
-std::string UserQuery_getExecDesc(int session) {
+/** In case a query fails at execution, return the final error message */
+std::string UserQuery_getExecutionError(int session) {
     try {
-        return uqManager.get(session)->getExecDesc();
+        return uqManager.get(session)->getExecutionError();
     } catch (const std::exception& e) {
         LOGF_WARN(e.what());
         return e.what();

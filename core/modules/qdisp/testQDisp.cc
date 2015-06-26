@@ -121,6 +121,9 @@ public:
     virtual bool reset() {
         return true;
     }
+    virtual qdisp::ResponseRequester::Error getError() const {
+        return qdisp::ResponseRequester::Error(-1, "testQDisp Error");
+    }
     virtual std::ostream& print(std::ostream& os) const {
         return os;
     }

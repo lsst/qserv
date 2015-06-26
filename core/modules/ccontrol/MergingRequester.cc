@@ -219,7 +219,7 @@ bool MergingRequester::_merge() {
     bool success = _infileMerger->merge(_response);
     if(!success) {
         rproc::InfileMergerError const& err = _infileMerger->getError();
-        _setError(log::MSG_RESULT_ERROR, err.description);
+        _setError(log::MSG_RESULT_ERROR, err.msg);
         _state = MsgState::RESULT_ERR;
     }
     _response.reset();

@@ -53,10 +53,23 @@ public:
      * List of known Qserv errors
      * TODO: centralize all error code (here?) see: DM-2416
      */
-    static enum {NONE=0, DUPLICATE_SELECT_EXPR} status;
+    enum {
+        NONE=0,
+        // Query plugin errors:
+        DUPLICATE_SELECT_EXPR,
+        // InfileMerger errors:
+        HEADER_IMPORT, HEADER_OVERFLOW,
+        RESULT_IMPORT, RESULT_MD5, MYSQLOPEN, MERGEWRITE, TERMINATE,
+        CREATE_TABLE,
+        MYSQLCONNECT, MYSQLEXEC, INTERNAL
+    } status;
 
-    Error(int code, std::string const& msg) :
-            code(code), msg(msg) {
+    Error() :
+        status(NONE) {
+    }
+
+    Error(int code, std::string const& msg = "") :
+        status(NONE), code(code), msg(msg) {
     }
 
     virtual ~Error() {

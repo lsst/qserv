@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "util/Callable.h"
+#include "util/Error.h"
 
 namespace lsst {
 namespace qserv {
@@ -46,11 +47,8 @@ namespace qdisp {
 /// bytes are desired.
 class ResponseRequester {
 public:
-    struct Error {
-        Error() : code(0) {}
-        std::string msg;
-        int code;
-    };
+
+    typedef util::Error Error;
 
     typedef util::VoidCallable<void> CancelFunc;
 
@@ -80,7 +78,7 @@ public:
     virtual std::ostream& print(std::ostream& os) const = 0;
 
     /// @return an error code and description
-    virtual Error getError() const { return Error(); };
+    virtual Error getError() const = 0;
 
     /// Set a function to be called that forcibly cancels the ResponseRequester
     /// process. The buffer filler should call this function so that it can be

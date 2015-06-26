@@ -83,8 +83,8 @@ std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, NULL);
     if (rc != 0) {
-        throw InfileMergerError(InfileMergerError::INTERNAL,
-                                "Failed to get timestamp.");
+        std::string msg = "Failed to get timestamp.";
+        throw InfileMergerError(InfileMergerError::INTERNAL, msg);
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -108,12 +108,6 @@ std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
 namespace lsst {
 namespace qserv {
 namespace rproc {
-
-// InfileMergerError
-/// @return true if the error represents a results-too-big condition
-bool InfileMergerError::resultTooBig() const {
-    return (status == MYSQLEXEC) && (errorCode == 1114);
-}
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
@@ -260,7 +254,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _isFinished(false),
       _needCreateTable(true) {
     //LOGF_INFO("InfileMerger construct +++++++ ()%1%" % (void*) this");
-    _error.errorCode = InfileMergerError::NONE;
+    _error.code = InfileMergerError::NONE;
     _fixupTargetName();
     if(_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
@@ -287,8 +281,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
         _error.status = InfileMergerError::MYSQLEXEC;
-        _error.errorCode = response->result.errorcode();
-        _error.description = response->result.errormsg();
+        _error.code = response->result.errorcode();
+        _error.msg = response->result.errormsg();
         return false;
     }
     if(_needCreateTable) {
@@ -349,8 +343,8 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
         _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
         if(!_sqlConn->connectToDb(errObj)) {
             _error.status = InfileMergerError::MYSQLCONNECT;
-            _error.errorCode = errObj.errNo();
-            _error.description = "Error connecting to db. " + errObj.printErrMsg();
+            _error.code = errObj.errNo();
+            _error.msg = "Error connecting to db. " + errObj.printErrMsg();
             _sqlConn.reset();
             return false;
         } else {
@@ -359,10 +353,10 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
     }
     if(!_sqlConn->runQuery(sql, errObj)) {
         _error.status = InfileMergerError::MYSQLEXEC;
-        _error.errorCode = errObj.errNo();
-        _error.description = "Error applying sql. " + errObj.printErrMsg();
+        _error.code = errObj.errNo();
+        _error.msg = "Error applying sql. " + errObj.printErrMsg();
 
-        LOGF_ERROR("InfileMerger sql error: %1%" % _error.description);
+        LOGF_ERROR("InfileMerger sql error: %1%" % _error.msg);
         return false;
     }
     LOGF_DEBUG("InfileMerger query success: %1%" % sql);
@@ -373,8 +367,8 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
 /// consumed.
 int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int length) {
     if(!ProtoImporter<ProtoHeader>::setMsgFrom(header, buffer, length)) {
-        _error.errorCode = InfileMergerError::HEADER_IMPORT;
-        _error.description = "Error decoding proto header";
+        _error.code = InfileMergerError::HEADER_IMPORT;
+        _error.msg = "Error decoding proto header";
         // This is only a real error if there are no more bytes.
         return 0;
     }
@@ -384,8 +378,8 @@ int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int lengt
 /// Read a Result message and return the number of bytes consumed.
 int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
     if(!ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
-        _error.errorCode = InfileMergerError::RESULT_IMPORT;
-        _error.description = "Error decoding result msg";
+        _error.code = InfileMergerError::RESULT_IMPORT;
+        _error.msg = "Error decoding result msg";
         throw _error;
     }
     // result.PrintDebugString();
@@ -398,8 +392,8 @@ int InfileMerger::_readResult(proto::Result& result, char const* buffer, int len
 /// TODO: this is incomplete.
 bool InfileMerger::_verifySession(int sessionId) {
     if(false) {
-        _error.errorCode = InfileMergerError::RESULT_IMPORT;
-        _error.description = "session id mismatch";
+        _error.code = InfileMergerError::RESULT_IMPORT;
+        _error.msg = "session id mismatch";
     }
     return true; // TODO: for better message integrity
 }
@@ -445,10 +439,10 @@ bool InfileMerger::_setupTable(WorkerResponse const& response) {
         LOGF_DEBUG("InfileMerger query prepared: %1%" % createStmt);
 
         if(!_applySqlLocal(createStmt)) {
-            _error.errorCode = InfileMergerError::CREATE_TABLE;
-            _error.description = "Error creating table (" + _mergeTable + ")";
+            _error.code = InfileMergerError::CREATE_TABLE;
+            _error.msg = "Error creating table (" + _mergeTable + ")";
             _isFinished = true; // Cannot continue.
-            LOGF_ERROR("InfileMerger sql error: %1%" % _error.description);
+            LOGF_ERROR("InfileMerger sql error: %1%" % _error.msg);
             return false;
         }
         _needCreateTable = false;

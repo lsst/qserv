@@ -36,6 +36,7 @@
 #include "qdisp/TransactionSpec.h"
 #include "qdisp/ExecStatus.h"
 #include "util/Callable.h"
+#include "util/MultiError.h"
 #include "util/threadSafe.h"
 
 // Forward declarations
@@ -103,6 +104,15 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
+    /** In case a query fails at execution, return the final error message
+     *
+     * Can be used to print error messages to the
+     * mysql command-line interface
+     *
+     * @return an error message
+     */
+    std::string getExecutionError() const;
+
     static std::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
 
 
@@ -137,11 +147,19 @@ private:
     XrdSsiService* _service; ///< RPC interface
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
     StatusMap _statuses; ///< Statuses of submitted tasks
+
+    /** Execution errors */
+    util::MultiError _multiError;
+
     int _requestCount; ///< Count of submitted tasks
     bool _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
     std::mutex _requestersMutex;
+
+    /** Used to record execution errors */
+    mutable std::mutex _errorsMutex;
+
     std::condition_variable _requestersEmpty;
     mutable std::mutex _statusesMutex;
     std::mutex _retryMutex;
