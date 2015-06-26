@@ -657,7 +657,7 @@ class QservAdmin(object):
                     raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
                                               'Node: ' + node, 'Key: ' + nodeKey)
                 # update its state
-                self._kvI.set(nodeKey, state)
+                self._kvI.set(nodeKey, str(state))
 
     def deleteNode(self, nodeName):
         """
