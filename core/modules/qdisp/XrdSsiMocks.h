@@ -48,7 +48,7 @@ class Executive;
 class XrdSsiServiceMock : public XrdSsiService
 {
 public:
-    virtual bool Provision(Resource *resP, unsigned short timeOut=0);
+    virtual void Provision(Resource *resP, unsigned short timeOut=0);
     XrdSsiServiceMock(Executive *executive) : _executive(executive) {};
     void setGo(bool go) {
         _go.set(go);
@@ -70,11 +70,11 @@ class XrdSsiSessionMock : public XrdSsiSession
 public:
     XrdSsiSessionMock(char *sname, char *sloc=0) : XrdSsiSession(sname, sloc) {}
     virtual ~XrdSsiSessionMock() {}
-    static const char* getMockString(bool tf) {
-        return (tf) ? "MockTrue" : "MockFalse";
+    static const char* getMockString() {
+        return "MockTrue";
     }
-    virtual bool ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut){
-        std::string s = getMockString(true);
+    virtual void ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut){
+        std::string s = getMockString();
         bool res = s.compare(sessName) == 0;
         LOGF_INFO("sessName=%1% res=%2%" % sessName % res);
         // Normally, reqP->ProcessResponse() would be called, which invokes
@@ -84,7 +84,6 @@ public:
         if (r) {
             r->cleanup();
         }
-        return res;
     };
     virtual bool Unprovision(bool forced=false){return true;};
 

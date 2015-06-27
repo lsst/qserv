@@ -79,20 +79,8 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
 
     // Hand off the request.
     _status.report(ExecStatus::REQUEST);
-    bool requestSent = _session->ProcessRequest(request);
-    if(!requestSent) {
-        int code = 0;
-        std::string msg = eInfoGet(code);
-        _status.report(ExecStatus::REQUEST_ERROR, code, msg);
-        // It is unclear whether it is safe to refer to request here, say for
-        // better log messages. It may have been deleted by another thread.
-        LOGF_ERROR("Failed to send request");
-        // Retry the request.
-        // TODO: should be more selective about retrying a query.
-        if(_retryFunc) {
-            (*_retryFunc)();
-        }
-    }
+    _session->ProcessRequest(request);
+
     // If we are not doing anything else with the session,
     // we can stop it after our requests are complete.
     delete this; // Delete ourselves, nobody needs this resource anymore.

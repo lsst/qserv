@@ -91,17 +91,15 @@ SsiService::~SsiService() {
     LOG_INFO("SsiService dying.");
 }
 
-bool
+void
 SsiService::Provision(XrdSsiService::Resource* r,
                       unsigned short timeOut) { // Step 2
     LOGF_INFO("Got provision call where rName is: %1%" % r->rName);
-
     XrdSsiSession* session = new SsiSession(
         r->rName,
         _chunkInventory->newValidator(),
         _foreman->getProcessor());
     r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
-    return true;
 }
 
 void SsiService::_initInventory() {

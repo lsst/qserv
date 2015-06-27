@@ -61,15 +61,15 @@ util::Sequential<int> XrdSsiServiceMock::_count(0);
 /** Class to fake being a request to xrootd.
  * Fire up thread that sleeps for a bit and then indicates it was successful.
  */
-bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
+void XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
     if (resP == NULL) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
-        return false;
+        return;
     }
     lsst::qserv::qdisp::QueryResource *qr = dynamic_cast<lsst::qserv::qdisp::QueryResource*>(resP);
     if (qr == NULL) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() unexpected resource type.");
-        return false;
+        return;
     }
     _count.incr();
 
@@ -77,7 +77,6 @@ bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
     // Thread must live past the end of this function, and the calling body
     // is not really dealing with threads, and this is for testing only.
     t.detach();
-    return true;
 }
 
 /** Mock class for testing Executive.
