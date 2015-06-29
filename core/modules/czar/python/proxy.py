@@ -65,9 +65,10 @@ class Lock:
     single-threaded black-box."""
     createTmpl = "CREATE TABLE IF NOT EXISTS %s " \
                  "(chunkId INT, code SMALLINT, message CHAR(255), " \
-                 "severity ENUM ('DEBUG', 'INFO', 'ERROR'), timeStamp FLOAT) ENGINE=MEMORY;"
+                 "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO {0} VALUES (%s, %s, %s, %s, %s);"
+    writeTmpl = "INSERT INTO {0} (chunkId, code, message, severity, timeStamp) " \
+                 "VALUES (%s, %s, %s, %s, %s);"
     unlockTmpl = "UNLOCK TABLES;"
 
     def __init__(self, tablename):
@@ -113,6 +114,9 @@ class Lock:
             lsst.log.log(_LOGGER, lsst.log.DEBUG,
                          "Insert in message table: [%s, %s, %s, %s, %s]",
                          msg, chunkId, code, severity, timestamp)
+            lsst.log.log(_LOGGER, lsst.log.DEBUG,
+                         "Severity type is: %s",
+                         type(severity))
             self.db.applySql(Lock.writeTmpl.format(self._tableName),
                              (chunkId, code, msg, severity, timestamp))
 

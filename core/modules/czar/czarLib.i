@@ -115,7 +115,7 @@ namespace std {
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
-%apply std::string *OUTPUT { std::string* severity };
+%apply int *OUTPUT { lsst::qserv::MessageSeverity* severity };
 
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"

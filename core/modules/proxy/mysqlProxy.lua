@@ -35,6 +35,8 @@ require ("xmlrpc.http")
 local DEBUG = os.getenv('DEBUG') or 0
 DEBUG = DEBUG + 0
 
+local MSG_ERROR = 2
+
 function print_debug(msg, level)
  level = level or 1
  if DEBUG >= level then
@@ -617,7 +619,8 @@ function queryProcessing()
 
         print ("got via rpc " .. resultTableName .. " message " .. msgTableName)
 
-        q1 = "SELECT * FROM " .. msgTableName
+        -- Severity is stored in a MySQL enum
+        q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. msgTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
@@ -710,24 +713,25 @@ function read_query_result(inj)
         print("q1 - ignoring")
         local error_msg = ""
         for row in inj.resultset.rows do
-           if (row[4] == "ERROR") then
-              queryErrorCount  = queryErrorCount + 1
-              error_msg = error_msg .. "\n" .. tostring(row[3])
-              -- WARN czar never returns multiple errors for now
-              if (queryErrorCount > 1) then
-                  error_msg = "\n-- WARN multiple errors"
-              end
-           else
-              print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
-           end
+            severity = tonumber(row[4])
+            if (severity == MSG_ERROR) then
+                queryErrorCount  = queryErrorCount + 1
+                error_msg = error_msg .. "\n" .. tostring(row[3])
+                -- WARN czar never returns multiple errors for now
+                if (queryErrorCount > 1) then
+                    error_msg = "\n-- WARN multiple errors"
+                end
+            else
+                print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
+            end
         end
         if (queryErrorCount > 0) then
             error_msg = "Unable to return query results:" .. error_msg
             return err.setAndSend(ERR_QSERV_RUNTIME, error_msg)
         end
         return proxy.PROXY_IGNORE_RESULT
-     elseif (inj.type == 3) or
-            (inj.type == 4) then
+    elseif (inj.type == 3) or
+        (inj.type == 4) then
         -- Proxy will complain if we try to touch 'inj' for these:
         -- (critical) (read_query_result) ...attempt to call a nil value
         -- (critical) proxy-plugin.c.303: got asked to send a resultset,
@@ -735,17 +739,17 @@ function read_query_result(inj)
         --            injection-id: 3
         print("cleanup q(3,4) - ignoring")
         return proxy.PROXY_IGNORE_RESULT
-     elseif (queryErrorCount > 0) then
+    elseif (queryErrorCount > 0) then
         print("q2 - already have errors, ignoring")
         return proxy.PROXY_IGNORE_RESULT
-     elseif (inj.resultset.rows == nil) then
+    elseif (inj.resultset.rows == nil) then
         print("q2 - no resultset.")
         return err.setAndSend(ERR_QSERV_RUNTIME,
-                              "Error executing query using qserv.")
-     else
+        "Error executing query using qserv.")
+    else
         print("q2 - passing")
         for row in inj.resultset.rows do
             print("   " .. row[1])
         end
     end
- end
+end

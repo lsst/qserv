@@ -34,6 +34,9 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+// Qserv headers
+#include "global/constants.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -47,36 +50,7 @@ namespace {
 // public
 ////////////////////////////////////////////////////////////////////////
 
-/** Output operator for Severity */
-std::ostream& operator<<(std::ostream& os, Severity const& severity) {
-	switch (severity) {
-	case INFO:
-		os << "INFO";
-		break;
-	case ERROR:
-		os << "ERROR";
-		break;
-	default:
-		os << "UNKNOWN";
-	}
-	return os;
-}
-
-/** Convert Severity to std::string */
-std::string to_string(Severity const& severity) {
-	std::ostringstream out;
-	out << severity;
-	return out.str();
-}
-
-/** Convert std::string to Severity */
-Severity to_severity(std::string str) {
-    if (str == "INFO") return INFO;
-    else if (str == "ERROR") return ERROR;
-    else return UNKNOWN;
-}
-
-void MessageStore::addMessage(int chunkId, int code, std::string const& description, Severity severity /* = INFO */) {
+void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity /* = INFO */) {
     if (code < 0) {
         LOGF_ERROR("Msg: %1% %2% %3%" % chunkId % code % description);
     } else {
@@ -90,7 +64,7 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
 }
 
 void MessageStore::addErrorMessage(std::string const& description) {
-	addMessage(NOTSET, NOTSET, description, Severity::ERROR);
+	addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
 const QueryMessage MessageStore::getMessage(int idx) {

@@ -32,6 +32,7 @@
 // Qserv headers
 #include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQuery.h"
+#include "global/constants.h"
 #include "qdisp/MessageStore.h"
 
 namespace lsst {
@@ -43,23 +44,23 @@ int queryMsgGetCount(int session) {
 }
 
 // Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
-std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, std::string* severity, time_t* timestamp) {
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, lsst::qserv::MessageSeverity* severity, time_t* timestamp) {
 
     qdisp::QueryMessage msg = UserQuery_get(session).getMessageStore()->getMessage(idx);
     *chunkId = msg.chunkId;
     *code = msg.code;
     *timestamp = msg.timestamp;
-    *severity = qdisp::to_string(msg.severity);
+    *severity = msg.severity;
     return msg.description;
 }
 
 void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message,
-					std::string const& severity /* = "INFO" */) {
+                    lsst::qserv::MessageSeverity const& severity /* = "INFO" */) {
 
     UserQuery_get(session).getMessageStore()->addMessage(chunkId,
                                                          code,
                                                          message,
-                                                         qdisp::to_severity(severity));
+                                                         severity);
 }
 
 }}} // namespace lsst::qserv::ccontrol

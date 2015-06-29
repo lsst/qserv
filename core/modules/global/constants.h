@@ -41,5 +41,15 @@ const char ENV_XRDID[] = "XRDNAME";
 
 const char SUBCHUNKDB_PREFIX[] = "Subchunks_";
 const char SCISQLDB_PREFIX[] = "scisql_";
+
+/** Allow to classify messages stored in qdisp::MessageStore
+ *
+ * In mysql-proxy MSG_INFO message will go to logfile,
+ * whereas MSG_ERROR message will be logged to console
+ *
+ * @warning mysql enum index start from 1
+ */
+enum MessageSeverity { MSG_INFO=1, MSG_ERROR } ;
+
 }}
 #endif // LSST_QSERV_CONSTANTS_H
