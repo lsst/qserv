@@ -82,7 +82,7 @@ If you want to modify tests datasets, please clone Qserv test data repository :
 
    cd ~/src/
    # authenticated access (require a ssh key) :
-   git clone ssh://git@git.lsstcorp.org/LSST/DMS/testdata/qserv_testdata.git
+   git clone ssh://git@github.com/LSST/qserv_testdata
 
 In order to test it with your Qserv version :
 
