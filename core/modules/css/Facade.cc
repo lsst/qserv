@@ -59,7 +59,7 @@ namespace qserv {
 namespace css {
 
 
-Facade::Facade() = default;    
+Facade::Facade() = default;
 
 /** Creates a new Facade over metadata in an in-memory key-value store.
   *
@@ -91,7 +91,7 @@ Facade::Facade(std::shared_ptr<KvInterface> kv,
     } // empty str: no empty chunks available.
 }
 
-Facade::~Facade() = default;    
+Facade::~Facade() = default;
 
 /** Returns true if the given database exists.
   */
