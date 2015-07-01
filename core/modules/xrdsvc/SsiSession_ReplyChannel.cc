@@ -20,9 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "xrdsvc/SsiSession_ReplyChannel.h"
 
-// Third-party headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers

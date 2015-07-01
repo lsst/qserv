@@ -68,8 +68,7 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
 #if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
-        of << "Reporting " << (void*)this
-                << " state " << stateText(s) << std::endl;
+        of << "Reporting " << (void*)this << " state " << stateText(s) << "\n";
 #endif
         _info.stateTime = ::time(NULL);
         _info.state = s;

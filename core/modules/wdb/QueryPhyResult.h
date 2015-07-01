@@ -29,7 +29,7 @@
 #include <set>
 #include <string>
 
-// Local headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Forward declarations
@@ -53,12 +53,11 @@ public:
     typedef std::set<std::string> StringSet;
 
     std::string const& getDb() const { return _outDb; }
-    void setDb(std::string const& d) { _outDb = d; }
+    std::string getCommaResultTables();
 
+    void setDb(std::string const& d) { _outDb = d; }
     void addResultTable(std::string const& t);
     bool hasResultTable(std::string const& t) const;
-    std::string getCommaResultTables() ;
-
     void reset();
 
     /// Dump results to a file

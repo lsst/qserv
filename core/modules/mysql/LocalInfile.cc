@@ -127,7 +127,7 @@ int LocalInfile::getError(char* buf, unsigned int bufLen) {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// LocalInfile::Mgr
+// LocalInfile::Mgr::Impl
 ////////////////////////////////////////////////////////////////////////
 class LocalInfile::Mgr::Impl {
 public:
@@ -176,13 +176,14 @@ private:
     std::mutex _mapMutex;
 };
 
-
 ////////////////////////////////////////////////////////////////////////
 // LocalInfile::Mgr
 ////////////////////////////////////////////////////////////////////////
 LocalInfile::Mgr::Mgr()
     : _impl(new Impl) {
 }
+
+LocalInfile::Mgr::~Mgr() = default;
 
 void LocalInfile::Mgr::attach(MYSQL* mysql) {
     mysql_set_local_infile_handler(mysql,

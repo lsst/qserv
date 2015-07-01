@@ -81,9 +81,11 @@ bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
 }
 
 /** Mock class for testing Executive.
- * The payload of qr should contain the number of milliseconds this function will sleep before returning.
+ * The payload of qr should contain the number of milliseconds this function will
+ * sleep before returning.
  */
-void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr, unsigned short  timeOut){
+void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr,
+                                          unsigned short timeOut) {
     string payload = QueryResourceDebug::getPayload(*qr);
     int millisecs = atoi(payload.c_str());
     // barrier for all threads when _go is false.

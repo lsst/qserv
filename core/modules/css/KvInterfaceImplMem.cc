@@ -46,7 +46,6 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include <string.h> // for memset
 
 // Third-party headers
 #include "boost/algorithm/string.hpp"
@@ -58,9 +57,7 @@
 // Qserv headers
 #include "css/CssError.h"
 
-using std::endl;
 using std::map;
-using std::ostringstream;
 using std::string;
 using std::vector;
 
@@ -87,7 +84,7 @@ KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
     _init(mapStream);
 }
 
-KvInterfaceImplMem::KvInterfaceImplMem(std::string const& filename) {
+KvInterfaceImplMem::KvInterfaceImplMem(string const& filename) {
     std::ifstream f(filename.c_str());
     _init(f);
 }
@@ -107,7 +104,7 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
         parent = parent.substr(0, p);
         if (parent.empty()) break;
         if (_kvMap.find(parent) != _kvMap.end()) break;
-        _kvMap.insert(std::make_pair(parent, std::string()));
+        _kvMap.insert(std::make_pair(parent, string()));
     }
     // store the key with value
     _kvMap[key] = value;
@@ -149,7 +146,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
-    const std::string pfx(key == "/" ? key : key + "/");
+    const string pfx(key == "/" ? key : key + "/");
     vector<string> retV;
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {

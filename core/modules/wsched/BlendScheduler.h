@@ -23,8 +23,10 @@
 #ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "wcontrol/Foreman.h"
 
 // Forward declarations

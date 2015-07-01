@@ -88,8 +88,7 @@ std::string const CREATE_SUBCHUNK_SCRIPT =
     "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
     "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;"
-    ;
+    "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;";
 
 // Parameters:
 // %1% database (e.g., LSST)
@@ -99,8 +98,7 @@ std::string const CREATE_SUBCHUNK_SCRIPT =
 std::string const CLEANUP_SUBCHUNK_SCRIPT =
     "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%_%3%_%4%;"
 //    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%SelfOverlap_%3%_%4%;"
-    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;"
-    ;
+    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;";
 
 // Parameters:
 // %1% database (e.g., LSST)
@@ -114,8 +112,7 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
     "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
     "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
-    ;
+    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;";
 
 // Note:
 // Not all Object partitions will have overlap tables created by the

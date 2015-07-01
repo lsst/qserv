@@ -39,27 +39,27 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "global/Bug.h"
 #include "global/UnsupportedError.h"
-#include "lsst/log/Log.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "mysql/SchemaFactory.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
-#include "sql/SqlErrorObject.h"
 #include "sql/Schema.h"
-#include "wbase/SendChannel.h"
+#include "sql/SqlErrorObject.h"
 #include "util/common.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
+#include "wbase/SendChannel.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
-
 #include "wdb/QueryAction.h"
 
 namespace lsst {
@@ -90,7 +90,7 @@ private:
 
         if(!_mysqlConn->connect()) {
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
-                        % wconfig::getConfig().getString("mysqlSocket") % _user);
+                 % wconfig::getConfig().getString("mysqlSocket") % _user);
             util::Error error(-1, "Unable to connect to MySQL as " + _user);
             _multiError.push_back(error);
             return false;

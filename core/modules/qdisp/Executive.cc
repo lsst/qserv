@@ -542,7 +542,7 @@ void Executive::_waitAllUntilEmpty() {
                 std::ostringstream os;
                 if(complainCount > moreDetailThreshold) {
                     _printState(os);
-                    os << std::endl;
+                    os << "\n";
                 }
                 os << "Still " << count << " in flight.";
                 complainCount = 0;
@@ -566,7 +566,7 @@ std::ostream& operator<<(std::ostream& os,
 void Executive::_printState(std::ostream& os) {
     std::for_each(_requesters.begin(), _requesters.end(),
                   printMapSecond<RequesterMap::value_type>(os, "\n"));
-    os << std::endl << getProgressDesc() << std::endl;
+    os << "\n" << getProgressDesc() << "\n";
 }
 
 }}} // namespace lsst::qserv::qdisp

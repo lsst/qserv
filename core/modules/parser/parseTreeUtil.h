@@ -178,7 +178,7 @@ class IndentPrinter {
 public:
     IndentPrinter(std::ostream& o_) : o(o_) {}
     void operator()(AnAst const& a, C const& p) const {
-        o << p.size() << std::string(p.size(), ' ') << tokenText(a) << std::endl;
+        o << p.size() << std::string(p.size(), ' ') << tokenText(a) << "\n";
     }
     std::ostream& o;
 };
@@ -280,7 +280,7 @@ AnAst getLastSibling(AnAst r) {
     AnAst last;
     do {
         last = r;
-	r = r->getNextSibling();
+        r = r->getNextSibling();
     } while(r.get());
     return last;
 }

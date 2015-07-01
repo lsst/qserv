@@ -27,7 +27,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers

@@ -131,6 +131,7 @@ ChunkResource::~ChunkResource() {
         _mgr.release(*_info);
     }
 }
+
 std::string const& ChunkResource::getDb() const {
     return _info->db;
 }
@@ -408,7 +409,6 @@ public:
             // Actually acquire
             ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
         }
-
     }
 
 private:

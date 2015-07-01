@@ -34,9 +34,11 @@
 // Third-party headers
 #include "boost/regex.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/constants.h"
-#include "lsst/log/Log.h"
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 

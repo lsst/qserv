@@ -64,7 +64,7 @@ public:
      */
     std::string toString() const;
 
-    /** Return a minimalist string representation of the object
+    /** Return a minimalistic string representation of the object
      *
      * Can be used to print error messages to the
      * command-line interface
@@ -83,7 +83,7 @@ public:
      * @return an output stream, with no newline at the end
      */
     friend std::ostream& operator<<(std::ostream &out,
-            MultiError const& multiError);
+                                    MultiError const& multiError);
 
     bool empty() const;
 
@@ -99,7 +99,6 @@ public:
 
 private:
     std::vector<Error> errorVector;
-
 };
 
 }}} // namespace lsst::qserv::util

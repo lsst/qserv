@@ -40,7 +40,7 @@ enum SpatialRelation {
     /// A intersects B  ⇔  A ⋂ B ≠ ∅
     INTERSECTS = 4,
     /// A is within B  ⇔  A ⋂ B = A
-    WITHIN = 8,
+    WITHIN = 8
 };
 
 /// Given a bitfield describing the spatial relations between two regions

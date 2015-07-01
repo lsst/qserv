@@ -93,6 +93,7 @@ private:
 class LocalInfile::Mgr : boost::noncopyable {
 public:
     Mgr();
+    ~Mgr();
 
     // User interface //////////////////////////////////////////////////
     /// Attach the handler to a mysql client connection
@@ -127,7 +128,7 @@ public:
 
 private:
     class Impl;
-    std::auto_ptr<Impl> _impl; // PIMPL implementation class.
+    std::unique_ptr<Impl> _impl; // PIMPL implementation class.
 };
 
 }}} // namespace lsst::qserv::mysql

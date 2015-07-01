@@ -81,7 +81,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
     // match table
     if (f.isMatchTable(db_, table)) {
         css::MatchTableParams m = f.getMatchTableParams(db_, table);
-        std::auto_ptr<MatchTableInfo> p(new MatchTableInfo(db_, table));
+        std::unique_ptr<MatchTableInfo> p(new MatchTableInfo(db_, table));
         p->director.first = dynamic_cast<DirTableInfo const*>(
             get(ctx, db_, m.dirTable1));
         p->director.second = dynamic_cast<DirTableInfo const*>(
@@ -114,7 +114,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
             throw InvalidTableError(db_ + "." + table + " is a director "
                                     "table, but cannot be sub-chunked!");
         }
-        std::auto_ptr<DirTableInfo> p(new DirTableInfo(db_, table));
+        std::unique_ptr<DirTableInfo> p(new DirTableInfo(db_, table));
         std::vector<std::string> v = f.getPartitionCols(db, table);
         if (v.size() != 3 ||
             v[0].empty() || v[1].empty() || v[2].empty() ||
@@ -136,7 +136,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
         throw InvalidTableError(db_ + "." + table + " is a child"
                                 " table, but can be sub-chunked!");
     }
-    std::auto_ptr<ChildTableInfo> p(new ChildTableInfo(db_, table));
+    std::unique_ptr<ChildTableInfo> p(new ChildTableInfo(db_, table));
     p->director = dynamic_cast<DirTableInfo const*>(
         get(ctx, db_, f.getDirTable(db_, table)));
     if (!p->director) {

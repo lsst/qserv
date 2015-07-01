@@ -49,12 +49,6 @@
 #define BOOST_TEST_MODULE MyTest
 #include "boost/test/included/unit_test.hpp"
 
-using std::cout;
-using std::endl;
-using std::ostringstream;
-using std::string;
-using std::vector;
-
 struct KvInterfaceFixture {
     KvInterfaceFixture(void) {
         srand(time(NULL));
@@ -78,7 +72,7 @@ struct KvInterfaceFixture {
         BOOST_CHECK(kvI->exists(k1));
         BOOST_CHECK(!kvI->exists(k3));
 
-        vector<string> v = kvI->getChildren(prefix);
+        std::vector<std::string> v = kvI->getChildren(prefix);
         BOOST_CHECK(2 == v.size());
         std::sort (v.begin(), v.end());
         BOOST_CHECK(v[0]=="xyzA");
@@ -96,13 +90,13 @@ struct KvInterfaceFixture {
         delete kvI;
     }
 
-    string prefix, k1, k2, k3, v1, v2;
+    std::string prefix, k1, k2, k3, v1, v2;
 };
 
 BOOST_FIXTURE_TEST_SUITE(KvInterfaceTest, KvInterfaceFixture)
 
 BOOST_AUTO_TEST_CASE(testMem) {
-    std::cout << "========== Testing MEM ==========" << std::endl;
+    std::cout << "========== Testing MEM ==========\n";
     doIt(new lsst::qserv::css::KvInterfaceImplMem());
 }
 

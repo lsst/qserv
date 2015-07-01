@@ -117,7 +117,7 @@ inline void
 ColumnRefH::_process(antlr::RefAST d, antlr::RefAST t, antlr::RefAST c) {
     // std::cout << "columnref: db:" << tokenText(d)
     //           << " table:" << tokenText(t)
-    //           << " column:" << tokenText(c) << std::endl;
+    //           << " column:" << tokenText(c) << "\n";
     if(_listener.get()) { _listener->acceptColumnRef(d, t, c); }
 }
 

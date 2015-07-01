@@ -97,7 +97,6 @@ public:
 
     virtual EmptyChunks const& getEmptyChunks() const;
 
-
 private:
     Facade(std::istream& mapStream,
            std::string const& emptyChunkPath="");
@@ -122,10 +121,10 @@ private:
 
 private:
     std::shared_ptr<KvInterface> _kvI;
-    std::auto_ptr<EmptyChunks> _emptyChunks;
+    std::unique_ptr<EmptyChunks> _emptyChunks;
 
 protected:
-    Facade() {}
+    Facade();
     std::string _prefix; // optional prefix, for isolating tests from production
 };
 
