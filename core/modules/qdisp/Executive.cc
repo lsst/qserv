@@ -68,8 +68,8 @@ extern XrdSsiProvider *XrdSsiProviderClient;
 namespace {
 
 LOG_LOGGER getLogger() {
-        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.qdisp.Executive"));
-        return _logger;
+    static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.qdisp.Executive"));
+    return _logger;
 }
 
 std::string getErrorText(XrdSsiErrInfo & e) {
@@ -178,7 +178,6 @@ private:
 };
 
 /* Add a new job to executive queue, if not already in. Not thread-safe.
- *
  */
 void Executive::add(int jobId, Executive::JobDescription const& jobDescription) {
     bool alreadyCancelled = lockedRead(_cancelled, _cancelledMutex);
@@ -199,7 +198,7 @@ void Executive::add(int jobId, Executive::JobDescription const& jobDescription) 
     }
 
     ++_requestCount;
-    std::string msg = "Executive: Add job with path=" + jobDescription.resource.path() + "";
+    std::string msg = "Executive: Add job with path=" + jobDescription.resource.path();
     LOGF(getLogger(), LOG_LVL_INFO, "%1%" % msg);
     _messageStore->addMessage(jobDescription.resource.chunk(), log::MSG_MGR_ADD, msg);
 
@@ -227,9 +226,8 @@ bool Executive::join() {
         sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
     }
     if(sCount == _requestCount) {
-        LOGF_INFO("Query execution succeed: %1% jobs dispatched and completed." % _requestCount);
-    }
-    else {
+        LOGF_INFO("Query execution succeeded: %1% jobs dispatched and completed." % _requestCount);
+    } else {
         LOGF_ERROR("Query execution failed: %1% jobs dispatched, but only %2% jobs completed" % _requestCount % sCount);
     }
     _updateProxyMessages();
@@ -257,7 +255,7 @@ void Executive::markCompleted(int jobId, bool success) {
             }
         }
         LOGF(getLogger(), LOG_LVL_ERROR,
-             "Executive: error executing jobId=%1%: %2% (status: %3%)" % jobId % err % err.status);
+             "Executive: error executing jobId=%1%: %2% (status: %3%)" % jobId % err % err.getStatus());
         {
             std::lock_guard<std::mutex> lock(_statusesMutex);
             _statuses[jobId]->updateInfo(JobStatus::RESULT_ERROR, err.code, err.msg);
@@ -271,7 +269,7 @@ void Executive::markCompleted(int jobId, bool success) {
     _unTrack(jobId);
     if(!success) {
         LOGF(getLogger(), LOG_LVL_ERROR,
-                 "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)" % jobId % err.code % err.msg);
+                 "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)" % jobId % err.getCode() % err.getMsg());
         squash(); // ask to squash
     }
 }
@@ -296,11 +294,12 @@ void Executive::requestSquash(int jobId) {
                 toSquash = i->second; // Remember which one to squash
             }
         } else {
-            throw Bug("Executive::requestSquash() with invalid jobId");
+            throw Bug("Executive::requestSquash() with invalid jobId ("+jobId+")");
         }
     }
     if(needToWarn) {
-        LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % jobId % jobId % e.code % e.msg);
+        LOGF_WARN("Warning, requestSquash(jobId=%1%), but this job has already failed (%3%, %4%)."
+                  % jobId % e.code % e.msg);
     }
 
     if(toSquash) { // Squash outside of the mutex
@@ -367,8 +366,9 @@ std::string Executive::getProgressDesc() const {
         std::lock_guard<std::mutex> lock(_statusesMutex);
         std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
     }
-    LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % os.str());
-    return os.str();
+    auto const & msg_progress = os.str();
+    LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % msg_progress);
+    return std::move(msg_progress);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -423,39 +423,22 @@ bool Executive::_shouldRetry(int jobId) {
     const int MAX_RETRY = 5;
     std::lock_guard<std::mutex> lock(_retryMutex);
     IntIntMap::iterator i = _retryMap.find(jobId);
+    bool should_retry = true;
     if(i == _retryMap.end()) {
         _retryMap[jobId] = 1;
     } else if(i->second < MAX_RETRY) {
-        _retryMap[jobId] = 1 + i->second;
+        _retryMap[jobId] = i->second + 1;
     } else {
-        return false;
+        should_retry = false;
     }
-    return true;
+    return should_retry;
 }
 
-JobStatus::Ptr Executive::_insertNewStatus(int jobId,
-                                            ResourceUnit const& r) {
+JobStatus::Ptr Executive::_insertNewStatus(int jobId, ResourceUnit const& r) {
     JobStatus::Ptr es = std::make_shared<JobStatus>(r);
     std::lock_guard<std::mutex> lock(_statusesMutex);
     _statuses.insert(JobStatusPtrMap::value_type(jobId, es));
     return es;
-}
-
-template <typename Map, typename Ptr>
-bool trackHelper(void* caller, Map& m, typename Map::key_type key,
-                 Ptr ptr,
-                 std::mutex& mutex) {
-    assert(ptr);
-    {
-        LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)caller % key);
-        std::lock_guard<std::mutex> lock(mutex);
-        if(m.find(key) == m.end()) {
-            m[key] = ptr;
-        } else {
-            return false;
-        }
-    }
-    return true;
 }
 
 bool Executive::_track(int jobId, RequesterPtr r) {
@@ -512,29 +495,26 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
 }
 
 void Executive::_updateProxyMessages() {
-	{
-    std::lock_guard<std::mutex> lock(_statusesMutex);
-    for(auto i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
-        JobStatus::Info info = i->second->getInfo();
-        std::ostringstream os;
-        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
-                LOGF(getLogger(), LOG_LVL_TRACE, "%1%" % info.state);
+    {
+        std::lock_guard<std::mutex> lock(_statusesMutex);
+        for(auto i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
+            auto const & info = i->second->getInfo();
+            std::ostringstream os;
+            os << info.state << " " << info.stateCode;
+            if(!info.stateDesc.empty()) {
+                os << " (" << info.stateDesc << ")";
+            }
+            os << " " << info.stateTime;
+            _messageStore->addMessage(info.resourceUnit.chunk(),
+                                      info.state, os.str());
         }
-        os << info.state << " " << info.stateCode;
-        if(!info.stateDesc.empty()) {
-            os << " (" << info.stateDesc << ")";
-        }
-        os << " " << info.stateTime;
-        _messageStore->addMessage(info.resourceUnit.chunk(),
-                                  info.state, os.str());
     }
-	}
-	{
-		std::lock_guard<std::mutex> lock(_errorsMutex);
-		if (_multiError.size()>0) {
-			_messageStore->addErrorMessage(_multiError.toString());
-		}
-	}
+    {
+        std::lock_guard<std::mutex> lock(_errorsMutex);
+        if (_multiError.size()>0) {
+            _messageStore->addErrorMessage(_multiError.toString());
+        }
+    }
 }
 
 /// This function blocks until it has reaped all the requesters.
@@ -573,8 +553,7 @@ void Executive::_waitAllUntilEmpty() {
 
 std::ostream& operator<<(std::ostream& os,
                          Executive::JobStatusPtrMap::value_type const& v) {
-    JobStatus const& es = *(v.second);
-    os << v.first << ": " << es;
+    os << v.first << ": " << *(v.second);
     return os;
 }
 

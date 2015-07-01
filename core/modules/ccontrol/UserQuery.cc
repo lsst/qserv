@@ -192,7 +192,7 @@ void UserQuery::submit() {
         std::shared_ptr<MergingRequester> mr
             = std::make_shared<MergingRequester>(cmr, _infileMerger,
                                                  chunkResultName);
-        qdisp::Executive::JobDescription jobDesc = { ru, ss.str(), mr};
+        qdisp::Executive::JobDescription jobDesc = {ru, ss.str(), mr};
 
         int refNum = ++_sequence;
         _executive->add(refNum, jobDesc);

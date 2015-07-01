@@ -68,25 +68,21 @@ public:
                  MERGE_OK, // ???
                  MERGE_ERROR,
                  CANCEL, COMPLETE=2000};
-    /** Report a state transition.
+
+    /** Report a state transition by updating JobStatus::Info attributes
+     *  with its input parameters values
      *
      *	Useful for logging and error reporting
+     *
+     *  @param s state value
+     *  @param code code value
+     *  @param desc message
      *
      * TODO: Save past state history:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(State s, int code=0, std::string const& desc=_empty) {
-        std::lock_guard<std::mutex> lock(_mutex);
-#if 0
-        std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
-        of << "Reporting " << (void*)this << " state " << stateText(s) << "\n";
-#endif
-        _info.stateTime = ::time(NULL);
-        _info.state = s;
-        _info.stateCode = code;
-        _info.stateDesc = desc;
-    }
+    void updateInfo(State s, int code=0, std::string const& desc=_empty);
 
     struct Info {
         Info(ResourceUnit const& resourceUnit_);

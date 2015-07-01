@@ -67,9 +67,8 @@ public:
 
     /** Description of a job managed by the executive
      *
-     * Launch a chunk query against a xrootd ressource and
+     * Launch a chunk query against a xrootd resource and
      * retrieve the result
-     *
      */
     struct JobDescription {
         ResourceUnit resource; // path, e.g. /q/LSST/23125

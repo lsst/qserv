@@ -79,8 +79,8 @@ using lsst::qserv::rproc::InfileMergerConfig;
 using lsst::qserv::rproc::InfileMergerError;
 
 LOG_LOGGER getLogger() {
-        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
-        return _logger;
+    static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
+    return _logger;
 }
 
 /// @return a timestamp id for use in generating temporary result table names.

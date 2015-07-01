@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2008-2014 AURA/LSST.
+# Copyright 2008-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -63,15 +63,13 @@ import logger
 import lsst.qserv.css
 import lsst.qserv.czar.config
 from lsst.qserv.czar.db import TaskDb as Persistence
-from lsst.qserv.czar.db import Db
 
-# SWIG'd functions
-
-from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
+# czar global constants
+from lsst.qserv.czar import MSG_INFO
 
 # ccontrol
 from lsst.qserv.czar import getQueryStateString
-from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
+
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
@@ -291,7 +289,7 @@ class InbandQueryAction:
         @param context a user context object containing conditions and a user query factory
         @param setSessionId - unary function. a callback so this object can provide
                           a handle (sessionId) for the caller to access query
-                          messages.
+                           messages.
         @param resultName name of result table for query results."""
 
         # Set logging severity threshold.
@@ -328,7 +326,7 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
-            self._reportError(-1,
+            self._addProxyMessage(-1,
                               msgCode.MSG_QUERY_INIT,
                               "Initialize Query: " + self.queryStr);
         finally:
@@ -338,10 +336,10 @@ class InbandQueryAction:
                 setSessionId(self.sessionId)
         pass
 
-    def _reportError(self, chunkId, code, message):
-        # TODO remove lsst/log wrapper
-        logger.dbg("Reporting:\n\tchunkId=[%s]\n\tcode=[%s]\n\tmessage=[%s]\n" % (chunkId, code, message))
-        queryMsgAddMsg(self.sessionId, chunkId, code, message)
+    def _addProxyMessage(self, chunkId, code, message, severity=MSG_INFO):
+        # TODO remove lsst/log wrapper: see DM-3037
+        logger.dbg("Reporting error: chunkId=[%s], code=[%s], message=[%s]" % (chunkId, code, message))
+        queryMsgAddMsg(self.sessionId, chunkId, code, message, MSG_INFO)
 
     def invoke(self):
         """Begin execution of the query"""
@@ -398,7 +396,7 @@ class InbandQueryAction:
         logger.threshold_dbg()
 
         lastTime = time.time()
-        self._reportError(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
+        self._addProxyMessage(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
         UserQuery_submit(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query dispatch (%s) took %f seconds" % (self.sessionId, elapsed))

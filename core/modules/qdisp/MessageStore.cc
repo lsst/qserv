@@ -43,7 +43,7 @@ namespace qserv {
 namespace qdisp {
 
 namespace {
-	const int NOTSET = -1;
+    const int NOTSET = -1;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -52,19 +52,19 @@ namespace {
 
 void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity /* = INFO */) {
     if (code < 0) {
-        LOGF_ERROR("Msg: %1% %2% %3%" % chunkId % code % description);
+        LOGF_ERROR("Add msg: %1% %2% %3%" % chunkId % code % description);
     } else {
-        LOGF_DEBUG("Msg: %1% %2% %3%" % chunkId % code % description);
+        LOGF_DEBUG("Add msg: %1% %2% %3%" % chunkId % code % description);
     }
     {
         std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),
-            QueryMessage(chunkId, code, description, std::time(0), severity));
+                              QueryMessage(chunkId, code, description, std::time(0), severity));
     }
 }
 
 void MessageStore::addErrorMessage(std::string const& description) {
-	addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
+    addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
 const QueryMessage MessageStore::getMessage(int idx) {

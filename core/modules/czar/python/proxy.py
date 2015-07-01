@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
+# Copyright 2008-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -51,7 +51,6 @@ import lsst.log
 _LOGGER = __name__
 
 
-
 class Lock:
     """The Lock class manages the table locking mechanism used to
     allow the mysql-proxy to effectively wait for a query's completion
@@ -62,14 +61,19 @@ class Lock:
     acquiring a lock on the table. mysql-proxy can service other
     requests when it is waiting on mysql queries that it knowingly
     initiates in its C-layer, whereas it treats its Lua plugin code as a
-    single-threaded black-box."""
-    createTmpl = "CREATE TABLE IF NOT EXISTS %s " \
-                 "(chunkId INT, code SMALLINT, message CHAR(255), " \
-                 "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT) ENGINE=MEMORY;"
-    lockTmpl = "LOCK TABLES %s WRITE;"
+    single-threaded black-box.
+    """
+
+    createAndLockTmpl = "CREATE TABLE IF NOT EXISTS {0} " \
+        "(chunkId INT, code SMALLINT, message CHAR(255), " \
+        "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)" \
+        "ENGINE=MEMORY; LOCK TABLES {0} WRITE;"
+    """SQL query template to create czar and lock message table,
+       WARN: mysql-proxy is sensitive to column positions."""
+
     writeTmpl = "INSERT INTO {0} (chunkId, code, message, severity, timeStamp) " \
-                 "VALUES (%s, %s, %s, %s, %s);"
-    unlockTmpl = "UNLOCK TABLES;"
+                "VALUES (%s, %s, %s, %s, %s)"
+    unlockTmpl = "UNLOCK TABLES"
 
     def __init__(self, tablename):
         self._tableName = tablename
@@ -78,10 +82,9 @@ class Lock:
 
     def lock(self):
         self.db = lsst.qserv.czar.db.Db()
-        if not self.db.check(): # Can't lock.
+        if not self.db.check():  # Can't lock.
             return False
-        self.db.applySql((Lock.createTmpl % self._tableName)
-                         + (Lock.lockTmpl % self._tableName))
+        self.db.applySql(Lock.createAndLockTmpl.format(self._tableName))
         return True
 
     def setSessionId(self, sessionId):
