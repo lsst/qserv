@@ -9,9 +9,11 @@ MYSQLD_PASS="{{MYSQLD_PASS}}"
 SQL_DIR="${QSERV_RUN_DIR}/tmp/configure/sql"
 
 "${QSERV_RUN_DIR}"/etc/init.d/mysqld start &&
-echo "-- Loading ${SQL_FILE} in MySQL"
-"${MYSQL_DIR}"/bin/mysql --no-defaults -vvv --user="${MYSQLD_USER}" \
---password="${MYSQLD_PASS}" --sock="${MYSQLD_SOCK}" < "${SQL_DIR}/${SQL_FILE}" &&
+for file_name in ${SQL_FILE}; do
+    echo "-- Loading ${file_name} in MySQL"
+    "${MYSQL_DIR}"/bin/mysql --no-defaults -vvv --user="${MYSQLD_USER}" \
+    --password="${MYSQLD_PASS}" --sock="${MYSQLD_SOCK}" < "${SQL_DIR}/${file_name}"
+done &&
 "${QSERV_RUN_DIR}"/etc/init.d/mysqld stop ||
 {
     >&2 echo "ERROR: unable to load ${SQL_FILE}"

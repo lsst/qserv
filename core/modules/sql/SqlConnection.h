@@ -117,6 +117,17 @@ public:
 
     virtual std::string getActiveDbName() const;
 
+    /**
+     *  Returns the value generated for an AUTO_INCREMENT column
+     *  by the previous INSERT or UPDATE statement.
+     */
+    unsigned long long getInsertId() const;
+
+    /**
+     *  Escape string for use inside SQL statements.
+     */
+    std::string escapeString(std::string const& rawString) const;
+
 private:
     friend class SqlResultIter;
     bool _init(SqlErrorObject&);

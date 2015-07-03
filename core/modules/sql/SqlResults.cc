@@ -32,6 +32,75 @@ namespace lsst {
 namespace qserv {
 namespace sql {
 
+namespace detail {
+
+SqlResults_Iterator::SqlResults_Iterator()
+    : _results(), _value() {
+}
+
+SqlResults_Iterator::SqlResults_Iterator(std::vector<MYSQL_RES*> const& results)
+    : _results(results), _value() {
+    _newRow(true);
+}
+
+SqlResults_Iterator&
+SqlResults_Iterator::operator++() {
+    _newRow(false);
+    return *this;
+}
+
+SqlResults_Iterator
+SqlResults_Iterator::operator++(int) {
+    SqlResults_Iterator tmp = *this;
+    operator++();
+    return tmp;
+}
+
+bool
+SqlResults_Iterator::operator==(SqlResults_Iterator const& other) const {
+    // the only iterators that we want to compare are "end" iterators,
+    return _results.empty() and other._results.empty();
+}
+
+void
+SqlResults_Iterator::_newRow(bool newResult) {
+    while (not _results.empty()) {
+
+        MYSQL_RES* res = _results.front();
+
+        // get number of columns
+        unsigned ncols = 0;
+        if (newResult) {
+            ncols = mysql_num_fields(res);
+            _value.resize(ncols);
+        } else {
+            ncols = _value.size();
+        }
+
+        // get next row and store
+        if (MYSQL_ROW row = mysql_fetch_row(res)) {
+            unsigned long* lengths = mysql_fetch_lengths(res);
+            for (unsigned i = 0; i != ncols; ++ i) {
+                _value[i].first = row[i];
+                _value[i].second = lengths[i];
+            }
+            return;
+        } else {
+            // nothing left in this result, switch to next
+            _results.erase(_results.begin());
+            // may need to update column count
+            newResult = true;
+        }
+    }
+
+    // no results left, reset
+    _value.clear();
+    return;
+}
+
+}
+
+
 void
 SqlResults::freeResults() {
     int i, s = _results.size();
