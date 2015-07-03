@@ -37,6 +37,7 @@
 #include <memory>
 
 // Third-party headers
+#include <boost/lexical_cast.hpp>
 #include <mysql/mysql.h>
 
 // LSST headers
@@ -285,7 +286,7 @@ void QueryAction::Impl::_transmit(bool last) {
     _result->set_continues(!last);
     if (!_multiError.empty()) {
 
-        std::string chunkId = std::to_string((*_msg).chunkid());
+        std::string chunkId = boost::lexical_cast<std::string>((*_msg).chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_ERROR, msg);
