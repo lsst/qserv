@@ -266,24 +266,12 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     r->ProvisionDone(NULL);
     BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::PROVISION_NACK);
     char buf[20];
-    strcpy(buf, qdisp::XrdSsiSessionMock::getMockString(false));
-    qdisp::XrdSsiSessionMock xsMockFalse(buf);
+    strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
+    qdisp::XrdSsiSessionMock xsMock(buf);
     r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
             qdisp::Executive::newNotifier(ex, refNum),
             retryTest, status);
-    r->ProvisionDone(&xsMockFalse);
-    BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::REQUEST_ERROR);
-    BOOST_CHECK(retryTest->_retryCalled == true);
-    // At this point, r has been deleted by QueryResource::ProvisionDone
-
-    LOGF_INFO("QueryResource test 2");
-    retryTest->_retryCalled = false;
-    r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
-            qdisp::Executive::newNotifier(ex, refNum),
-            retryTest, status);
-    strcpy(buf, qdisp::XrdSsiSessionMock::getMockString(true));
-    qdisp::XrdSsiSessionMock xsMockTrue(buf);
-    r->ProvisionDone(&xsMockTrue);
+    r->ProvisionDone(&xsMock);
     BOOST_CHECK(status.getInfo().state  == qdisp::ExecStatus::REQUEST);
     BOOST_CHECK(retryTest->_retryCalled == false);
     // At this point, r has been deleted by QueryResource::ProvisionDone

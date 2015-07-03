@@ -48,6 +48,7 @@
 // Third-party headers
 #include "boost/format.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh"
+#include "XrdSsi/XrdSsiProvider.hh"
 #include "XrdSsi/XrdSsiService.hh" // Resource
 
 // LSST headers
@@ -61,6 +62,8 @@
 #include "qdisp/QueryResource.h"
 #include "qdisp/ResponseRequester.h"
 #include "qdisp/XrdSsiMocks.h"
+
+extern XrdSsiProvider *XrdSsiProviderClient;
 
 namespace {
 std::string getErrorText(XrdSsiErrInfo & e) {
@@ -376,20 +379,12 @@ void Executive::_dispatchQuery(int refNum,
         retryFunc,
         *execStatus));
     execStatus->report(ExecStatus::PROVISION);
-    if (_service->Provision(r.get())) {
-        // Provisioning has started, so XrdSsiService will call
-        // ProvisionDone() on r, causing r to commit suicide.
-        r.release();
-        LOGF_DEBUG("Provision was ok");
-    } else {
-        // handle error
-        LOGF_ERROR("Resource provision error %1%" % spec.resource.path());
-        populateState(*execStatus, ExecStatus::PROVISION_ERROR, r->eInfo);
-        _unTrack(refNum);
-    }
+    _service->Provision(r.get());
+    // XrdSsiService will call ProvisionDone() on r in any case, and we clean up r there.
     // FIXME: For squashing, need to hold ptr to QueryResource, so we can
     // instruct it to call XrdSsiRequest::Finished(cancel=true). Also, can send
     // cancellation into requester.
+    r.release();
 }
 
 void Executive::_setup() {
@@ -401,7 +396,7 @@ void Executive::_setup() {
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
         _service = new XrdSsiServiceMock(this);
     } else {
-        _service = XrdSsiGetClientService(eInfo, _config.serviceUrl.c_str()); // Step 1
+        _service = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
     }
     if(!_service) {
         LOGF_ERROR("Error obtaining XrdSsiService in Executive: "

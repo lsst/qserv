@@ -52,8 +52,7 @@ public:
     // with msgCode.h. 1201-1289 (inclusive) are free and MSG_FINALIZED==2000
     enum State { UNKNOWN=0,
                  PROVISION=1201,
-                 PROVISION_ERROR, PROVISION_NACK,
-                 PROVISION_OK, // ???
+                 PROVISION_NACK,
                  REQUEST, REQUEST_ERROR,
                  RESPONSE_READY, RESPONSE_ERROR,
                  RESPONSE_DATA, RESPONSE_DATA_NACK, RESPONSE_DATA_ERROR,

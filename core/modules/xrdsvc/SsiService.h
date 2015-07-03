@@ -58,7 +58,7 @@ public:
     virtual ~SsiService();
 
     /// Called by xrootd daemon to handle new resource requests
-    virtual bool Provision(XrdSsiService::Resource* r,
+    virtual void Provision(XrdSsiService::Resource* r,
                            unsigned short timeOut=0);
 
 private:

@@ -44,9 +44,7 @@ char const* ExecStatus::stateText(ExecStatus::State s) {
     switch(s) {
     case UNKNOWN: return "Unknown";
     case PROVISION: return "Accessing resource";
-    case PROVISION_OK: return "Provisioned ok";
-    case PROVISION_ERROR: return "Error accessing resource";
-    case PROVISION_NACK: return "Error accessing resource (delayed)";
+    case PROVISION_NACK: return "Error accessing resource";
     case REQUEST: return "Sending request to resource";
     case REQUEST_ERROR: return "Error sending request";
     case RESPONSE_READY: return "Response ready";

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,30 +20,49 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// Implement XrdSsiGetServerService() to provide Qserv's SsiService
+/// Implement XrdSsiProviderServer to provide Qserv's SsiService
 /// implementation. Link this file when building a plugin to be used as
-/// ssi.svclib .
-
+/// ssi.svclib.
 
 // System headers
-#include <iostream>
+#include <memory>
 
 // Third-party headers
-#include "XrdSsi/XrdSsiLogger.hh"
-#include "XrdSsi/XrdSsiService.hh"
+#include "XrdSsi/XrdSsiProvider.hh"
 
 // Qserv headers
-#include "xrdsvc/SsiService.h"
+#include "SsiService.h"
 
-class XrdSsiLogger;
-class XrdSsiCluster;
+namespace lsst {
+namespace qserv {
+namespace xrdsvc {
 
-extern "C" {
-XrdSsiService *XrdSsiGetServerService(XrdSsiLogger  *logP,
-                                      XrdSsiCluster *clsP,
-                                      const char    *cfgFn,
-                                      const char    *parms)
+class SsiProviderServer : public XrdSsiProvider
 {
-    return new lsst::qserv::xrdsvc::SsiService(logP);
-}
-} // extern "C"
+public:
+
+    virtual XrdSsiService *GetService(XrdSsiErrInfo& eInfo, char const* contact, int oHold=256) {
+        return _service.get();
+    }
+
+    virtual bool Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, char const* cfgFn,
+            char const* parms, int argc, char **argv) {
+        _service = std::unique_ptr<SsiService>(new SsiService(logP));
+        return true;
+    }
+
+    virtual rStat QueryResource(char const*rName, char const* contact=0) {
+        // Not called on this object but part of pure virtual interface,
+        // so we need to provide at least this dummy implementation.
+        return isPresent;
+    }
+
+private:
+
+    std::unique_ptr<SsiService> _service;
+
+};
+
+}}} // lsst::qserv::xrdsvc
+
+XrdSsiProvider *XrdSsiProviderServer = new lsst::qserv::xrdsvc::SsiProviderServer;

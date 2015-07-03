@@ -76,15 +76,14 @@ public:
     }
 
     // XrdSsiSession and XrdSsiResponder interfaces
-    virtual bool ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
+    virtual void ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
     virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
                                  bool cancel=false);
 
     virtual bool Unprovision(bool forced);
 
 private:
-    /// Admit a new task for execution addressed to a resource unit
-    void _enqueue(ResourceUnit const& ru, char* reqData, int reqSize);
+
     void _addCanceller(CancelFuncPtr p);
 
     class ReplyChannel;
