@@ -258,7 +258,7 @@ void Executive::markCompleted(int jobId, bool success) {
              "Executive: error executing jobId=%1%: %2% (status: %3%)" % jobId % err % err.getStatus());
         {
             std::lock_guard<std::mutex> lock(_statusesMutex);
-            _statuses[jobId]->updateInfo(JobStatus::RESULT_ERROR, err.code, err.msg);
+            _statuses[jobId]->updateInfo(JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
         }
         {
             std::lock_guard<std::mutex> lock(_errorsMutex);
@@ -287,19 +287,19 @@ void Executive::requestSquash(int jobId) {
         std::lock_guard<std::mutex> lock(_requestersMutex);
         RequesterMap::iterator i = _requesters.find(jobId);
         if(i != _requesters.end()) {
-            ResponseRequester::Error e = i->second->getError();
-            if(e.code) {
-                needToWarn = true;
-            } else {
+            e = i->second->getError();
+            if(e.isNone()) {
                 toSquash = i->second; // Remember which one to squash
+            } else {
+                needToWarn = true;
             }
         } else {
-            throw Bug("Executive::requestSquash() with invalid jobId ("+jobId+")");
+            throw Bug("Executive::requestSquash() with invalid jobId");
         }
     }
-    if(needToWarn) {
+    if(needToWarn) { // Log outside the mutex
         LOGF_WARN("Warning, requestSquash(jobId=%1%), but this job has already failed (%3%, %4%)."
-                  % jobId % e.code % e.msg);
+                  % jobId % e.getCode() % e.getMsg());
     }
 
     if(toSquash) { // Squash outside of the mutex
@@ -479,9 +479,9 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     while(true) {
         bool reaped = false;
         for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
-            if(!i->second->getError().msg.empty()) {
+            if(!i->second->getError().isNone()) {
                 // Requester should have logged the error to the messageStore
-                LOGF_INFO("Executive (%1%) REAPED id=%2%"
+                LOGF_INFO("Executive (%1%) reaped requester for jobId=%2%"
                           % (void*)this % i->first);
                 _requesters.erase(i);
                 reaped = true;

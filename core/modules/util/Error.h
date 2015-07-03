@@ -30,8 +30,8 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-#ifndef UTIL_ERROR_H_
-#define UTIL_ERROR_H_
+#ifndef LSST_QSERV_UTIL_ERROR_H_
+#define LSST_QSERV_UTIL_ERROR_H_
 
 // System headers
 #include <string>
@@ -40,8 +40,34 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-/** @class
- * @brief Store a Qserv error
+
+/**
+ * List of known Qserv errors
+ *
+ * TODO: fix confusion between status and code see: DM-2996
+ * TODO: centralize all error code (here?) see: DM-2416
+ */
+struct ErrorCode {
+    enum errCode {
+        NONE = 0,
+        // Query plugin errors:
+        DUPLICATE_SELECT_EXPR,
+        // InfileMerger errors:
+        HEADER_IMPORT,
+        HEADER_OVERFLOW,
+        RESULT_IMPORT,
+        RESULT_MD5,
+        MYSQLOPEN,
+        MERGEWRITE,
+        TERMINATE,
+        CREATE_TABLE,
+        MYSQLCONNECT,
+        MYSQLEXEC,
+        INTERNAL
+    };
+};
+
+/** @brief Store a Qserv error
  *
  * To be used with util::MultiError
  *
@@ -49,36 +75,11 @@ namespace util {
 class Error {
 public:
 
-    /**
-     * List of known Qserv errors
-     * TODO: centralize all error code (here?) see: DM-2416
-     */
-    enum {
-        NONE=0,
-        // Query plugin errors:
-        DUPLICATE_SELECT_EXPR,
-        // InfileMerger errors:
-        HEADER_IMPORT, HEADER_OVERFLOW,
-        RESULT_IMPORT, RESULT_MD5, MYSQLOPEN, MERGEWRITE, TERMINATE,
-        CREATE_TABLE,
-        MYSQLCONNECT, MYSQLEXEC, INTERNAL
-    } status;
-
-    Error() :
-        status(NONE) {
-    }
-
-    Error(int code, std::string const& msg = "") :
-        status(NONE), code(code), msg(msg) {
-    }
-
-    virtual ~Error() {
+    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE) :
+        _code(code), _msg(msg), _status(status) {
     }
 
     std::string toString() const;
-
-    int code;
-    std::string msg;
 
     /** Overload output operator for current class
      *
@@ -87,8 +88,31 @@ public:
      * @return an output stream
      */
     friend std::ostream& operator<<(std::ostream &out, Error const& error);
+
+    int getCode() const { return _code; }
+
+    const std::string& getMsg() const { return _msg; }
+
+    int getStatus() const { return _status; }
+
+    /** Check if current Object contains an actual error
+     *
+     *  By convention, code==util::ErrorCode::NONE
+     *  means that no error has been detected
+     *
+     * @return true if current object doesn't contain an actual error
+     */
+    bool isNone() {
+        return (_code==util::ErrorCode::NONE);
+    }
+
+private:
+
+    int _code;
+    std::string _msg;
+    int _status;
 };
 
 }}} // namespace lsst::qserv::util
 
-#endif /* UTIL_ERROR_H_ */
+#endif /* LSST_QSERV_UTIL_ERROR_H_ */

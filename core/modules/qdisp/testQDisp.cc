@@ -397,8 +397,7 @@ public:
         return true;
     }
     virtual void errorFlush(std::string const& msg, int code) {
-        _lastError.msg = msg;
-        _lastError.code = code;
+        _lastError = Error(code, msg);
     }
 
     virtual bool finished() const { return false; }

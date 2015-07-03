@@ -212,7 +212,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     } else {
         LOGF_INFO("ProcessResponse data flush failed");
         ResponseRequester::Error err = _requester->getError();
-        _status.updateInfo(JobStatus::MERGE_ERROR, err.code, err.msg);
+        _status.updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
         _retryFunc.reset();

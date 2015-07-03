@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
     util::MultiError errors = testPlugin.getDuplicateAndPosition(v);
 
     std::stringstream sstm;
-    sstm << "[" << util::Error::DUPLICATE_SELECT_EXPR << "] " << DuplSelectExprPlugin::ERR_MSG;
+    sstm << "[" << util::ErrorCode::DUPLICATE_SELECT_EXPR << "] " << DuplSelectExprPlugin::ERR_MSG;
     std::string err_msg_template = sstm.str();
 
     boost::format dupl_field_err_msg = boost::format(err_msg_template) %
