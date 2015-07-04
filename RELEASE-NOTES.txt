@@ -2,19 +2,39 @@ R E L E A S E   2015_06
 =======================
 
 Release highlights:
+ * Multi-node integration tests
+ * Basic query metatdata framework
+ * Many valgrind/helgrind fixes
+ * More C++11 migration (std::scoped_ptr, unique_ptr)
 
 Code improvements:
+ * DM-2720: Migrate boost::scoped_ptr to std
+ * DM-2953: Migrate auto_ptr --> unique_ptr
+ * DM-2803: Adapt multi-node tests to latest version of qserv / loader
+ * DM-2643: Migrate Qserv to ssi v2
+ * DM-2892: Keep track of database of the director table
+ * DM-3091: Remove unused function populateState
 
 New features:
+ * DM-2627: Add support for configuring multi-node integration tests
+ * DM-2804: Implement query metadata skeleton
+ * DM-2858: Add support for "ORDER BY f1, f2" for has-chunks query
 
 Bug fixes:
  * DM-2777: Fix races in BlendScheduler
  * DM-2779: Fix race in Foreman
  * DM-2854: Fix Qserv SsiSession worker race
  * DM-2681: Fix race condition in userQueryProxy
+ * DM-2935: Fix qserv-admin CREATE NODE failure
+ * DM-2982: Fix qserv-admin node status INACTIVE failure
+ * DM-2864: Fix selection of rows by objectId from non-director table
+ * DM-2945: Fix wmgr service on remote interfaces
+ * DM-2947: Fix data load of secondary index in multi-node case
 
 Documentation improvements:
  * DM-2841: Add User Manual
+ * DM-3018: Update dev quick-start guide for new qserv_testdata repo
+ * DM-2846: Remove hardcoded username from doc/publish.sh
 
 R E L E A S E   2015_05
 =======================
