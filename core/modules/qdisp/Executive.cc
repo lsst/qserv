@@ -74,14 +74,6 @@ std::string getErrorText(XrdSsiErrInfo & e) {
     return os.str();
 }
 
-void populateState(lsst::qserv::qdisp::ExecStatus& es,
-                   lsst::qserv::qdisp::ExecStatus::State s,
-                   XrdSsiErrInfo& e) {
-    int code;
-    std::string desc(e.Get(code));
-    es.report(s, code, desc);
-}
-
 /// Atomically set var to value.
 /// @param m the mutex protecting var.
 /// @return previous value of var.
