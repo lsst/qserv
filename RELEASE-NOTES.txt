@@ -1,3 +1,16 @@
+R E L E A S E   2015_07
+=======================
+
+Release highlights:
+
+Code improvements:
+
+New features:
+
+Bug fixes:
+
+Documentation improvements:
+
 R E L E A S E   2015_06
 =======================
 
