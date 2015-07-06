@@ -38,8 +38,8 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
-#ifndef QANA_CHECKAGGREGATION_H_
-#define QANA_CHECKAGGREGATION_H_
+#ifndef LSST_QSERV_QANA_CHECKAGGREGATION_H_
+#define LSST_QSERV_QANA_CHECKAGGREGATION_H_
 
 namespace lsst {
 namespace qserv {
@@ -77,4 +77,4 @@ public:
 
 }}} /* namespace lsst::qserv::qana */
 
-#endif /* QANA_CHECKAGGREGATION_H_ */
+#endif /* LSST_QSERV_QANA_CHECKAGGREGATION_H_ */

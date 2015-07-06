@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef QMETA_QMETA_H
-#define QMETA_QMETA_H
+#ifndef LSST_QSERV_QMETA_QMETA_H
+#define LSST_QSERV_QMETA_QMETA_H
 
 // System headers
 #include <string>
@@ -198,4 +198,4 @@ protected:
 
 }}} // namespace lsst::qserv::qmeta
 
-#endif // QMETA_QMETA_H
+#endif // LSST_QSERV_QMETA_QMETA_H

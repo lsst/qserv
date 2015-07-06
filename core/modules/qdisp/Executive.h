@@ -124,6 +124,15 @@ private:
     bool _shouldRetry(int refNum);
     JobStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
+    /** Add (jobId,r) entry to _requesters map if not here yet
+     *  else leave _requesters untouched.
+     *
+     *  @param jobId id of the job related to current chunk query
+     *  @param r pointer to requester which will store chunk query result
+     *
+     *  @return true if (jobId,r) was added to _requesters
+     *          false if this entry was previously in the map
+     */
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
 

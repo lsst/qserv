@@ -263,13 +263,14 @@ void Executive::markCompleted(int jobId, bool success) {
         {
             std::lock_guard<std::mutex> lock(_errorsMutex);
             _multiError.push_back(err);
-            LOGF(getLogger(), LOG_LVL_TRACE, "Currently %2% registered errors: %1%" % _multiError % _multiError.size());
+            LOGF(getLogger(), LOG_LVL_TRACE, "Currently %2% registered errors: %1%" %
+                 _multiError % _multiError.size());
         }
     }
     _unTrack(jobId);
     if(!success) {
-        LOGF(getLogger(), LOG_LVL_ERROR,
-                 "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)" % jobId % err.getCode() % err.getMsg());
+        LOGF(getLogger(), LOG_LVL_ERROR, "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)"
+             % jobId % err.getCode() % err.getMsg());
         squash(); // ask to squash
     }
 }
@@ -366,9 +367,9 @@ std::string Executive::getProgressDesc() const {
         std::lock_guard<std::mutex> lock(_statusesMutex);
         std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
     }
-    auto const & msg_progress = os.str();
+    std::string msg_progress = os.str();
     LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % msg_progress);
-    return std::move(msg_progress);
+    return msg_progress;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -441,17 +442,20 @@ JobStatus::Ptr Executive::_insertNewStatus(int jobId, ResourceUnit const& r) {
     return es;
 }
 
+/** Add (jobId,r) entry to _requesters map if not here yet
+ *  else leave _requesters untouched.
+ */
 bool Executive::_track(int jobId, RequesterPtr r) {
     assert(r);
+    LOGF(getLogger(), LOG_LVL_TRACE, "Attempt to add jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
     {
-        LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)this % jobId);
         std::lock_guard<std::mutex> lock(_requestersMutex);
-        if(_requesters.find(jobId) == _requesters.end()) {
-            _requesters[jobId] = r;
-        } else {
+        if(_requesters.find(jobId) != _requesters.end()) {
             return false;
         }
+        _requesters[jobId] = r;
     }
+    LOGF(getLogger(), LOG_LVL_TRACE, "Success in adding jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
     return true;
 }
 
@@ -498,7 +502,7 @@ void Executive::_updateProxyMessages() {
     {
         std::lock_guard<std::mutex> lock(_statusesMutex);
         for(auto i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
-            auto const & info = i->second->getInfo();
+            auto const& info = i->second->getInfo();
             std::ostringstream os;
             os << info.state << " " << info.stateCode;
             if(!info.stateDesc.empty()) {
@@ -511,7 +515,7 @@ void Executive::_updateProxyMessages() {
     }
     {
         std::lock_guard<std::mutex> lock(_errorsMutex);
-        if (_multiError.size()>0) {
+        if (not _multiError.empty()) {
             _messageStore->addErrorMessage(_multiError.toString());
         }
     }

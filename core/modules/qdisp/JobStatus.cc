@@ -56,9 +56,6 @@ LOG_LOGGER getLogger() {
 
 }
 
-// Static fields
-std::string const JobStatus::_empty;
-
 JobStatus::Info::Info(ResourceUnit const& resourceUnit_)
     : resourceUnit(resourceUnit_),
       state(UNKNOWN),
@@ -66,7 +63,7 @@ JobStatus::Info::Info(ResourceUnit const& resourceUnit_)
     stateTime = ::time(NULL);
 }
 
-void JobStatus::updateInfo(JobStatus::State s, int code /* =0 */, std::string const& desc /* =_empty */) {
+void JobStatus::updateInfo(JobStatus::State s, int code, std::string const& desc) {
     std::lock_guard<std::mutex> lock(_mutex);
 
     LOGF(getLogger(), LOG_LVL_TRACE, "Updating %1% state to: %2%" % (void*)this % s);
@@ -77,62 +74,64 @@ void JobStatus::updateInfo(JobStatus::State s, int code /* =0 */, std::string co
 }
 
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
+    char const* msg = 0;
     switch(state)
     {
     case JobStatus::UNKNOWN:
-        os << "Unknown";
+         msg = "Unknown";
         break;
     case JobStatus::PROVISION:
-        os << "Accessing resource";
+         msg = "Accessing resource";
         break;
     case JobStatus::PROVISION_NACK:
-        os << "Error accessing resource (delayed)";
+         msg = "Error accessing resource (delayed)";
         break;
     case JobStatus::REQUEST:
-        os << "Sending request to resource";
+         msg = "Sending request to resource";
         break;
     case JobStatus::REQUEST_ERROR:
-        os << "Error sending request";
+         msg = "Error sending request";
         break;
     case JobStatus::RESPONSE_READY:
-        os << "Response ready";
+         msg = "Response ready";
         break;
     case JobStatus::RESPONSE_ERROR:
-        os << "Response error";
+         msg = "Response error";
         break;
     case JobStatus::RESPONSE_DATA:
-        os << "Retrieving response data";
+         msg = "Retrieving response data";
         break;
     case JobStatus::RESPONSE_DATA_ERROR:
-        os << "Error retrieving response data";
+         msg = "Error retrieving response data";
         break;
     case JobStatus::RESPONSE_DATA_ERROR_OK:
-        os << "Error retrieving response, session is OK";
+         msg = "Error retrieving response, session is OK";
         break;
     case JobStatus::RESPONSE_DATA_ERROR_CORRUPT:
-        os << "Error retrieving response session is corrupt";
+         msg = "Error retrieving response session is corrupt";
         break;
     case JobStatus::RESPONSE_DATA_NACK:
-        os << "Error in response data";
+         msg = "Error in response data";
         break;
     case JobStatus::RESPONSE_DONE:
-        os << "Finished retrieving result";
+         msg = "Finished retrieving result";
         break;
     case JobStatus::RESULT_ERROR:
-        os << "Error in worker result data";
+         msg = "Error in worker result data";
         break;
     case JobStatus::MERGE_OK:
-        os << "Merge complete";
+         msg = "Merge complete";
         break;
     case JobStatus::MERGE_ERROR:
-        os << "Error merging result";
+         msg = "Error merging result";
         break;
     case JobStatus::COMPLETE:
-        os << "Complete (success)";
+         msg = "Complete (success)";
         break;
     default:
-        os << "State error (unrecognized)";
+         msg = "State error (unrecognized)";
     }
+    os << msg;
     return os;
 }
 

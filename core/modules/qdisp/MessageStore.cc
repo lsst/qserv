@@ -50,7 +50,7 @@ namespace {
 // public
 ////////////////////////////////////////////////////////////////////////
 
-void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity /* = INFO */) {
+void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity) {
     if (code < 0) {
         LOGF_ERROR("Add msg: %1% %2% %3%" % chunkId % code % description);
     } else {

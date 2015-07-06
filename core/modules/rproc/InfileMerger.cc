@@ -69,15 +69,11 @@
 #include "util/WorkQueue.h"
 
 
-namespace { // File-scope helpers
+namespace lsst {
+namespace qserv {
+namespace rproc {
 
-using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::proto::ProtoHeader;
-using lsst::qserv::proto::ProtoImporter;
-using lsst::qserv::proto::WorkerResponse;
-using lsst::qserv::rproc::InfileMergerConfig;
-using lsst::qserv::rproc::InfileMergerError;
-using lsst::qserv::util::ErrorCode;
+namespace { // File-scope helpers
 
 LOG_LOGGER getLogger() {
     static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
@@ -89,7 +85,7 @@ std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, NULL);
     if (rc != 0) {
-        throw InfileMergerError(ErrorCode::INTERNAL, "Failed to get timestamp.");
+        throw InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -99,8 +95,8 @@ std::string getTimeStampId() {
     // guaranteed to be unique.
 }
 
-std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
-    std::shared_ptr<MySqlConfig> sc = std::make_shared<MySqlConfig>();
+std::shared_ptr<mysql::MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
+    std::shared_ptr<mysql::MySqlConfig> sc = std::make_shared<mysql::MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -110,9 +106,6 @@ std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
 
 } // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace rproc {
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
@@ -130,13 +123,13 @@ public:
     class ActionMerge;
     friend class ActionMerge;
 
-    Mgr(MySqlConfig const& config, std::string const& mergeTable);
+    Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable);
 
     ~Mgr() {}
 
     /// Enqueue an bundle of result rows to be inserted, as represented by the
     /// Protobufs message bundle
-    void queMerge(std::shared_ptr<WorkerResponse> response);
+    void queMerge(std::shared_ptr<proto::WorkerResponse> response);
 
     /// Wait until work queue is empty.
     /// @return true on success
@@ -163,7 +156,7 @@ public:
     }
 
 private:
-    bool _doMerge(std::shared_ptr<WorkerResponse>& response);
+    bool _doMerge(std::shared_ptr<proto::WorkerResponse>& response);
 
     void _incrementInflight() {
         std::lock_guard<std::mutex> lock(_inflightMutex);
@@ -192,7 +185,7 @@ private:
 
 class InfileMerger::Mgr::ActionMerge : public util::WorkQueue::Callable {
 public:
-    ActionMerge(Mgr& mgr, std::shared_ptr<WorkerResponse> response) : _mgr(mgr), _response(response) {
+    ActionMerge(Mgr& mgr, std::shared_ptr<proto::WorkerResponse> response) : _mgr(mgr), _response(response) {
         _mgr._incrementInflight();
         // Delay preparing the virtual file until just before it is needed.
     }
@@ -202,13 +195,13 @@ public:
         _mgr.signalDone(result, *this);
     }
     Mgr& _mgr;
-    std::shared_ptr<WorkerResponse> _response;
+    std::shared_ptr<proto::WorkerResponse> _response;
 };
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr implementation
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
+InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable)
     : _mysqlConn(config),
       _mergeTable(mergeTable),
       _workQueue(1),
@@ -220,14 +213,14 @@ InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
 
 /** Queue merging the rows encoded in the 'response'.
  */
-void InfileMerger::Mgr::queMerge(std::shared_ptr<WorkerResponse> response) {
+void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
     std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
     _workQueue.add(a);
 }
 
 /** Load data from the 'response' into the 'table'. Return true if successful.
  */
-bool InfileMerger::Mgr::_doMerge(std::shared_ptr<WorkerResponse>& response) {
+bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
     std::string virtFile = _infileMgr.prepareSrc(rproc::newProtoRowBuffer(response->result));
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     return applyMysql(infileStatement);
@@ -366,8 +359,8 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
 
 /// Read a ProtoHeader message from a buffer and return the number of bytes
 /// consumed.
-int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int length) {
-    if(not ProtoImporter<ProtoHeader>::setMsgFrom(header, buffer, length)) {
+int InfileMerger::_readHeader(proto::ProtoHeader& header, char const* buffer, int length) {
+    if(not proto::ProtoImporter<proto::ProtoHeader>::setMsgFrom(header, buffer, length)) {
         // This is only a real error if there are no more bytes.
         _error = InfileMergerError(util::ErrorCode::HEADER_IMPORT, "Error decoding protobuf header");
         return 0;
@@ -377,7 +370,7 @@ int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int lengt
 
 /// Read a Result message and return the number of bytes consumed.
 int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
-    if(not ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
+    if(not proto::ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
         _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Error decoding result message");
         throw _error;
     }
@@ -396,7 +389,7 @@ bool InfileMerger::_verifySession(int sessionId) {
     return true; // TODO: for better message integrity
 }
 
-bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
+bool InfileMerger::_importResponse(std::shared_ptr<proto::WorkerResponse> response) {
     // Check for the no-row condition
     if(response->result.row_size() == 0) {
         // Nothing further, don't bother importing
@@ -409,7 +402,7 @@ bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
 
 /// Create a table with the appropriate schema according to the
 /// supplied Protobufs message
-bool InfileMerger::_setupTable(WorkerResponse const& response) {
+bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     // Create table, using schema
     std::lock_guard<std::mutex> lock(_createTableMutex);
     if(_needCreateTable) {

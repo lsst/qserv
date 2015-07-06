@@ -289,7 +289,7 @@ class InbandQueryAction:
         @param context a user context object containing conditions and a user query factory
         @param setSessionId - unary function. a callback so this object can provide
                           a handle (sessionId) for the caller to access query
-                           messages.
+                          messages.
         @param resultName name of result table for query results."""
 
         # Set logging severity threshold.
@@ -326,9 +326,8 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
-            self._addProxyMessage(-1,
-                              msgCode.MSG_QUERY_INIT,
-                              "Initialize Query: " + self.queryStr);
+            self._addProxyMessage(-1, msgCode.MSG_QUERY_INIT,
+                                  "Initialize Query: " + self.queryStr);
         finally:
             # Pass up the sessionId for query messages access.
             # more serious errors won't even have a sessionId
@@ -338,8 +337,9 @@ class InbandQueryAction:
 
     def _addProxyMessage(self, chunkId, code, message, severity=MSG_INFO):
         # TODO remove lsst/log wrapper: see DM-3037
-        logger.dbg("Reporting error: chunkId=[%s], code=[%s], message=[%s]" % (chunkId, code, message))
-        queryMsgAddMsg(self.sessionId, chunkId, code, message, MSG_INFO)
+        logger.dbg("Reporting message: chunkId=[%s], code=[%s], message=[%s], severity=[%s]"
+                   % (chunkId, code, message, severity))
+        queryMsgAddMsg(self.sessionId, chunkId, code, message, severity)
 
     def invoke(self):
         """Begin execution of the query"""

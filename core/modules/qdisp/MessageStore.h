@@ -34,7 +34,6 @@
 
 // System headers
 #include <ctime>
-#include <iostream>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -69,15 +68,37 @@ struct QueryMessage {
     MessageSeverity severity;
 };
 
+/** Store messages issued by Qserv workers and czar
+ *
+ * For each SQL query, these messages are stored in a MySQL message table
+ * so that mysql-proxy can retrieve it and log it or send error messages
+ * to client.
+ */
 class MessageStore {
 public:
-    void addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity_ = MessageSeverity::MSG_INFO);
 
-    /** Add an error message
+    /** Add a message to this MessageStore
      *
-     * This message will be sent to proxy via message table, in order to be displayed to mysql client
-     * console. chunkId and code are equal to NOTSET because this message can aggregate multiple
-     * error messages in multiple files.
+     * This message will be sent to proxy via message table, in order to be
+     * displayed in mysql-proxy logs.
+     *
+     * @param chunkId chunkId related to the message, -1 if not available
+     * @param code code of the message
+     * @param description text of the message
+     * @param severity_ message severity level, default to MSG_INFO
+     */
+    void addMessage(int chunkId, int code, std::string const& description,
+                    MessageSeverity severity_ = MessageSeverity::MSG_INFO);
+
+    /** Add an error message to this MessageStore
+     *
+     * This message will be sent to mysql-proxy via message table, in order
+     * display an error in mysql client console. chunkId and code are set
+     * to NOTSET because this message may aggregate multiple error messages
+     * in multiple files. Indeed, mysql-client can only display
+     * one error message per query.
+     *
+     * @param description text of the message
      */
     void addErrorMessage(std::string const& description);
     const QueryMessage getMessage(int idx);

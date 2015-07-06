@@ -20,8 +20,18 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// queryMsg.h declares an interface for the query messaging mechanism for exporting
-/// via SWIG to the python layer of Qserv.
+/**
+ * @file
+ *
+ * @ingroup ccontrol
+ *
+ * @brief Declare an interface for the query messaging mechanism for exporting
+ * via SWIG to the python layer of Qserv.
+ *
+ * @author Daniel Wang, SLAC
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
+
 
 #ifndef LSST_QSERV_CCONTROL_QUERYMSG_H
 #define LSST_QSERV_CCONTROL_QUERYMSG_H
@@ -36,14 +46,49 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+using lsst::qserv::MessageSeverity;
+
+/** Return the number of messages in the message store
+ *
+ * @param session session which owns the message store
+ *
+ * @return number of messages in the message store
+ */
 int queryMsgGetCount(int session);
 
-// Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
-// int* chunkId, int* code, time_t* timestamp matches with %apply directive to help SWIG
-std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, lsst::qserv::MessageSeverity* severity, time_t* timestamp);
 
+/** Get a message from the message store
+ *
+ *  Messages are used for error reporting or logging
+ *  Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
+ *  int* chunkId, int* code, time_t* timestamp matches with %apply directive to help SWIG
+ *
+ *  @param session which owns the message store
+ *  @param idx position of the message in the message store vector
+ *  @param chunkId returns the chunkId related to the message, -1 if not available
+ *  @param code returns the code of the message
+ *  @param message returns the text of the message
+ *  @param severity returns the message severity level, default to MSG_INFO
+ *  @param timestamp returns the timestamp of the message
+ *  @return text of the message
+ *
+ */
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, MessageSeverity* severity,
+                           time_t* timestamp);
+
+/** Add a message to the message store
+ *
+ *  Messages are used for error reporting or logging
+ *
+ *  @param session which owns the message store
+ *  @param chunkId chunkId related to the message, -1 if not available
+ *  @param code code of the message
+ *  @param message text of the message
+ *  @param severity message severity level, default to MSG_INFO
+ *
+ */
 void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message,
-                    lsst::qserv::MessageSeverity const& severity = MessageSeverity::MSG_INFO);
+                    MessageSeverity const& severity = MessageSeverity::MSG_INFO);
 
 }}} // namespace lsst::qserv::ccontrol
 

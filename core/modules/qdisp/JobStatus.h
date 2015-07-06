@@ -75,14 +75,14 @@ public:
      *	Useful for logging and error reporting
      *
      *  @param s state value
-     *  @param code code value
-     *  @param desc message
+     *  @param code code value, default to 0
+     *  @param desc message, default to ""
      *
      * TODO: Save past state history:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(State s, int code=0, std::string const& desc=_empty);
+    void updateInfo(State s, int code=0, std::string const& desc="");
 
     struct Info {
         Info(ResourceUnit const& resourceUnit_);
@@ -106,7 +106,6 @@ private:
 
 private:
     mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
-    static std::string const _empty;
 };
 std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
