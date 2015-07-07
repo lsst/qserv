@@ -219,7 +219,7 @@ bool MergingRequester::_merge() {
     bool success = _infileMerger->merge(_response);
     if(!success) {
         rproc::InfileMergerError const& err = _infileMerger->getError();
-        _setError(log::MSG_RESULT_ERROR, err.description);
+        _setError(log::MSG_RESULT_ERROR, err.getMsg());
         _state = MsgState::RESULT_ERR;
     }
     _response.reset();
@@ -227,11 +227,9 @@ bool MergingRequester::_merge() {
 }
 
 void MergingRequester::_setError(int code, std::string const& msg) {
-    LOGF_INFO("setError");
-    LOGF_INFO("setError %1% %2%" % code % msg);
+    LOGF_INFO("setError: code: %1%, message: %2%" % code % msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
-    _error.code = code;
-    _error.msg = msg;
+    _error = Error(code, msg);
 }
 
 bool MergingRequester::_setResult() {

@@ -33,9 +33,9 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
-#include "qdisp/TransactionSpec.h"
-#include "qdisp/ExecStatus.h"
+#include "qdisp/JobStatus.h"
 #include "util/Callable.h"
+#include "util/MultiError.h"
 #include "util/threadSafe.h"
 
 // Forward declarations
@@ -53,7 +53,7 @@ class ResponseRequester;
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, ExecStatus::Ptr> StatusMap;
+    typedef std::map<int, JobStatus::Ptr> JobStatusPtrMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -65,8 +65,12 @@ public:
         static std::string getMockStr() {return "Mock";};
     };
 
-    /// Specification for something executable by the Executive
-    struct Spec {
+    /** Description of a job managed by the executive
+     *
+     * Launch a chunk query against a xrootd resource and
+     * retrieve the result
+     */
+    struct JobDescription {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
         std::shared_ptr<ResponseRequester> requester;
@@ -80,7 +84,7 @@ public:
     ~Executive();
 
     /// Add an item with a reference number (not necessarily a chunk number)
-    void add(int refNum, Spec const& s);
+    void add(int refNum, JobDescription const& s);
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -113,18 +117,35 @@ private:
     class DispatchAction;
     friend class DispatchAction;
     void _dispatchQuery(int refNum,
-                        Spec const& spec,
-                        ExecStatus::Ptr execStatus);
+                        JobDescription const& spec,
+                        JobStatus::Ptr execStatus);
 
     void _setup();
     bool _shouldRetry(int refNum);
-    ExecStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
+    JobStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
+    /** Add (jobId,r) entry to _requesters map if not here yet
+     *  else leave _requesters untouched.
+     *
+     *  @param jobId id of the job related to current chunk query
+     *  @param r pointer to requester which will store chunk query result
+     *
+     *  @return true if (jobId,r) was added to _requesters
+     *          false if this entry was previously in the map
+     */
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
-    void _reportStatuses();
+
+    /** Store job status and execution errors in the current user query message store
+     *
+     * messageStore will be inserted in message table at the end of czar code
+     * and is used to log/report error in mysql-proxy.
+     *
+     * @see python module lsst.qserv.czar.proxy.unlock()
+     */
+    void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
 
@@ -136,12 +157,20 @@ private:
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _service; ///< RPC interface
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
-    StatusMap _statuses; ///< Statuses of submitted tasks
+    JobStatusPtrMap _statuses; ///< Statuses of submitted tasks
+
+    /** Execution errors */
+    util::MultiError _multiError;
+
     int _requestCount; ///< Count of submitted tasks
     bool _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
     std::mutex _requestersMutex;
+
+    /** Used to record execution errors */
+    mutable std::mutex _errorsMutex;
+
     std::condition_variable _requestersEmpty;
     mutable std::mutex _statusesMutex;
     std::mutex _retryMutex;

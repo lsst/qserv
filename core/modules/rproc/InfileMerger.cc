@@ -69,22 +69,23 @@
 #include "util/WorkQueue.h"
 
 
+namespace lsst {
+namespace qserv {
+namespace rproc {
+
 namespace { // File-scope helpers
 
-using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::proto::ProtoHeader;
-using lsst::qserv::proto::ProtoImporter;
-using lsst::qserv::proto::WorkerResponse;
-using lsst::qserv::rproc::InfileMergerConfig;
-using lsst::qserv::rproc::InfileMergerError;
+LOG_LOGGER getLogger() {
+    static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
+    return _logger;
+}
 
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, NULL);
     if (rc != 0) {
-        throw InfileMergerError(InfileMergerError::INTERNAL,
-                                "Failed to get timestamp.");
+        throw InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -94,8 +95,8 @@ std::string getTimeStampId() {
     // guaranteed to be unique.
 }
 
-std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
-    std::shared_ptr<MySqlConfig> sc = std::make_shared<MySqlConfig>();
+std::shared_ptr<mysql::MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
+    std::shared_ptr<mysql::MySqlConfig> sc = std::make_shared<mysql::MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -105,15 +106,6 @@ std::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
 
 } // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace rproc {
-
-// InfileMergerError
-/// @return true if the error represents a results-too-big condition
-bool InfileMergerError::resultTooBig() const {
-    return (status == MYSQLEXEC) && (errorCode == 1114);
-}
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
@@ -131,13 +123,13 @@ public:
     class ActionMerge;
     friend class ActionMerge;
 
-    Mgr(MySqlConfig const& config, std::string const& mergeTable);
+    Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable);
 
     ~Mgr() {}
 
     /// Enqueue an bundle of result rows to be inserted, as represented by the
     /// Protobufs message bundle
-    void queMerge(std::shared_ptr<WorkerResponse> response);
+    void queMerge(std::shared_ptr<proto::WorkerResponse> response);
 
     /// Wait until work queue is empty.
     /// @return true on success
@@ -164,7 +156,7 @@ public:
     }
 
 private:
-    bool _doMerge(std::shared_ptr<WorkerResponse>& response);
+    bool _doMerge(std::shared_ptr<proto::WorkerResponse>& response);
 
     void _incrementInflight() {
         std::lock_guard<std::mutex> lock(_inflightMutex);
@@ -193,7 +185,7 @@ private:
 
 class InfileMerger::Mgr::ActionMerge : public util::WorkQueue::Callable {
 public:
-    ActionMerge(Mgr& mgr, std::shared_ptr<WorkerResponse> response) : _mgr(mgr), _response(response) {
+    ActionMerge(Mgr& mgr, std::shared_ptr<proto::WorkerResponse> response) : _mgr(mgr), _response(response) {
         _mgr._incrementInflight();
         // Delay preparing the virtual file until just before it is needed.
     }
@@ -203,32 +195,32 @@ public:
         _mgr.signalDone(result, *this);
     }
     Mgr& _mgr;
-    std::shared_ptr<WorkerResponse> _response;
+    std::shared_ptr<proto::WorkerResponse> _response;
 };
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr implementation
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
+InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable)
     : _mysqlConn(config),
       _mergeTable(mergeTable),
       _workQueue(1),
       _numInflight(0) {
     if(!_setupConnection()) {
-        throw InfileMergerError(InfileMergerError::MYSQLCONNECT);
+        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT);
     }
 }
 
 /** Queue merging the rows encoded in the 'response'.
  */
-void InfileMerger::Mgr::queMerge(std::shared_ptr<WorkerResponse> response) {
+void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
     std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
     _workQueue.add(a);
 }
 
 /** Load data from the 'response' into the 'table'. Return true if successful.
  */
-bool InfileMerger::Mgr::_doMerge(std::shared_ptr<WorkerResponse>& response) {
+bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
     std::string virtFile = _infileMgr.prepareSrc(rproc::newProtoRowBuffer(response->result));
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     return applyMysql(infileStatement);
@@ -260,7 +252,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _isFinished(false),
       _needCreateTable(true) {
     //LOGF_INFO("InfileMerger construct +++++++ ()%1%" % (void*) this");
-    _error.errorCode = InfileMergerError::NONE;
     _fixupTargetName();
     if(_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
@@ -278,15 +269,17 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%)"
-               % static_cast<short>(response->headerSize)
-               % response->protoHeader.size()
-               % response->result.row_size());
+    LOGF(getLogger(), LOG_LVL_DEBUG,
+         "Executing InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errorCode=%4%, hasErrorMsg=%5%)"
+         % static_cast<short>(response->headerSize)
+         % response->protoHeader.size()
+         % response->result.row_size()
+         % response->result.has_errorcode()
+         % response->result.has_errormsg());
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
-        _error.status = InfileMergerError::MYSQLEXEC;
-        _error.errorCode = response->result.errorcode();
-        _error.description = response->result.errormsg();
+        _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
+        LOGF(getLogger(), LOG_LVL_ERROR, "Error in response data: %1%" % _error);
         return false;
     }
     if(_needCreateTable) {
@@ -343,24 +336,21 @@ bool InfileMerger::isFinished() const {
 bool InfileMerger::_applySqlLocal(std::string const& sql) {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
-    if(!_sqlConn.get()) {
+    if(not _sqlConn.get()) {
         _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
-        if(!_sqlConn->connectToDb(errObj)) {
-            _error.status = InfileMergerError::MYSQLCONNECT;
-            _error.errorCode = errObj.errNo();
-            _error.description = "Error connecting to db. " + errObj.printErrMsg();
+        if(not _sqlConn->connectToDb(errObj)) {
+            _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
+                           util::ErrorCode::MYSQLCONNECT);
             _sqlConn.reset();
+            LOGF_ERROR("InfileMerger error: %1%" % _error.getMsg());
             return false;
-        } else {
-            LOGF_INFO("InfileMerger %1% connected to db." % (void*) this);
         }
+        LOGF_INFO("InfileMerger %1% connected to db." % (void*) this);
     }
-    if(!_sqlConn->runQuery(sql, errObj)) {
-        _error.status = InfileMergerError::MYSQLEXEC;
-        _error.errorCode = errObj.errNo();
-        _error.description = "Error applying sql. " + errObj.printErrMsg();
-
-        LOGF_ERROR("InfileMerger sql error: %1%" % _error.description);
+    if(not _sqlConn->runQuery(sql, errObj)) {
+        _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
+                       util::ErrorCode::MYSQLEXEC);
+        LOGF_ERROR("InfileMerger error: %1%" % _error.getMsg());
         return false;
     }
     LOGF_DEBUG("InfileMerger query success: %1%" % sql);
@@ -369,11 +359,10 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
 
 /// Read a ProtoHeader message from a buffer and return the number of bytes
 /// consumed.
-int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int length) {
-    if(!ProtoImporter<ProtoHeader>::setMsgFrom(header, buffer, length)) {
-        _error.errorCode = InfileMergerError::HEADER_IMPORT;
-        _error.description = "Error decoding proto header";
+int InfileMerger::_readHeader(proto::ProtoHeader& header, char const* buffer, int length) {
+    if(not proto::ProtoImporter<proto::ProtoHeader>::setMsgFrom(header, buffer, length)) {
         // This is only a real error if there are no more bytes.
+        _error = InfileMergerError(util::ErrorCode::HEADER_IMPORT, "Error decoding protobuf header");
         return 0;
     }
     return length;
@@ -381,9 +370,8 @@ int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int lengt
 
 /// Read a Result message and return the number of bytes consumed.
 int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
-    if(!ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
-        _error.errorCode = InfileMergerError::RESULT_IMPORT;
-        _error.description = "Error decoding result msg";
+    if(not proto::ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
+        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Error decoding result message");
         throw _error;
     }
     // result.PrintDebugString();
@@ -396,13 +384,12 @@ int InfileMerger::_readResult(proto::Result& result, char const* buffer, int len
 /// TODO: this is incomplete.
 bool InfileMerger::_verifySession(int sessionId) {
     if(false) {
-        _error.errorCode = InfileMergerError::RESULT_IMPORT;
-        _error.description = "session id mismatch";
+        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Session id mismatch");
     }
     return true; // TODO: for better message integrity
 }
 
-bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
+bool InfileMerger::_importResponse(std::shared_ptr<proto::WorkerResponse> response) {
     // Check for the no-row condition
     if(response->result.row_size() == 0) {
         // Nothing further, don't bother importing
@@ -415,7 +402,7 @@ bool InfileMerger::_importResponse(std::shared_ptr<WorkerResponse> response) {
 
 /// Create a table with the appropriate schema according to the
 /// supplied Protobufs message
-bool InfileMerger::_setupTable(WorkerResponse const& response) {
+bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     // Create table, using schema
     std::lock_guard<std::mutex> lock(_createTableMutex);
     if(_needCreateTable) {
@@ -442,11 +429,10 @@ bool InfileMerger::_setupTable(WorkerResponse const& response) {
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
         LOGF_DEBUG("InfileMerger query prepared: %1%" % createStmt);
 
-        if(!_applySqlLocal(createStmt)) {
-            _error.errorCode = InfileMergerError::CREATE_TABLE;
-            _error.description = "Error creating table (" + _mergeTable + ")";
+        if(not _applySqlLocal(createStmt)) {
+            _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table (" + _mergeTable + ")");
             _isFinished = true; // Cannot continue.
-            LOGF_ERROR("InfileMerger sql error: %1%" % _error.description);
+            LOGF_ERROR("InfileMerger sql error: %1%" % _error.getMsg());
             return false;
         }
         _needCreateTable = false;

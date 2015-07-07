@@ -9,12 +9,6 @@ srcDir = Dir('.').srcnode().abspath
 state.init(srcDir)
 env = state.env
 
-
-# Uncomment to force use of gcc-4.4
-# env['CC'] = 'gcc-4.4'
-# env['CXX'] = 'g++-4.4'
-
-
 #########################
 #
 # Defining dependencies

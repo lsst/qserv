@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2008-2014 AURA/LSST.
+# Copyright 2008-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -63,20 +63,17 @@ import logger
 import lsst.qserv.css
 import lsst.qserv.czar.config
 from lsst.qserv.czar.db import TaskDb as Persistence
-from lsst.qserv.czar.db import Db
 
-# SWIG'd functions
-
-from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
+# czar global constants
+from lsst.qserv.czar import MSG_INFO
 
 # ccontrol
 from lsst.qserv.czar import getQueryStateString
-from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
+
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
-from lsst.qserv.czar import UserQuery_getExecDesc
-from lsst.qserv.czar import UserQuery_getError
+from lsst.qserv.czar import UserQuery_getQueryProcessingError
 from lsst.qserv.czar import UserQuery_submit
 from lsst.qserv.czar import UserQuery_join
 from lsst.qserv.czar import UserQuery_kill
@@ -329,9 +326,8 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
-            self._reportError(-1,
-                              msgCode.MSG_QUERY_INIT,
-                              "Initialize Query: " + self.queryStr);
+            self._addProxyMessage(-1, msgCode.MSG_QUERY_INIT,
+                                  "Initialize Query: " + self.queryStr);
         finally:
             # Pass up the sessionId for query messages access.
             # more serious errors won't even have a sessionId
@@ -339,9 +335,11 @@ class InbandQueryAction:
                 setSessionId(self.sessionId)
         pass
 
-    def _reportError(self, chunkId, code, message):
-        logger.dbg("reporting", chunkId, code, message)
-        queryMsgAddMsg(self.sessionId, chunkId, code, message)
+    def _addProxyMessage(self, chunkId, code, message, severity=MSG_INFO):
+        # TODO remove lsst/log wrapper: see DM-3037
+        logger.dbg("Reporting message: chunkId=[%s], code=[%s], message=[%s], severity=[%s]"
+                   % (chunkId, code, message, severity))
+        queryMsgAddMsg(self.sessionId, chunkId, code, message, severity)
 
     def invoke(self):
         """Begin execution of the query"""
@@ -389,7 +387,7 @@ class InbandQueryAction:
         self.sessionId = self.context.uqFactory.newUserQuery(self.queryStr,
                                                              dbContext,
                                                              self._resultName)
-        errorMsg = UserQuery_getError(self.sessionId)
+        errorMsg = UserQuery_getQueryProcessingError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
         pass
 
@@ -398,7 +396,7 @@ class InbandQueryAction:
         logger.threshold_dbg()
 
         lastTime = time.time()
-        self._reportError(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
+        self._addProxyMessage(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
         UserQuery_submit(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query dispatch (%s) took %f seconds" % (self.sessionId, elapsed))
@@ -407,9 +405,6 @@ class InbandQueryAction:
         elapsed = time.time() - lastTime
         logger.inf("Query exec (%s) took %f seconds" % (self.sessionId, elapsed))
 
-        if s != QueryState_SUCCESS:
-            self._reportError(-1, -1,
-                               UserQuery_getExecDesc(self.sessionId))
         logger.inf("Final state of all queries", getQueryStateString(s))
         # session should really be discarded here unconditionally,
         # but in the current design it is used in proxy.py, so it is

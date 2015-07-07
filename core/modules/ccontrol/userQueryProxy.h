@@ -47,11 +47,7 @@ class UserQuery;
 
 
 /// @return error description
-std::string UserQuery_getError(int session);
-
-/// @return a string describing the progress on the query at a chunk-by-chunk
-/// level. Userful for diagnosis when queries are squashed or return errors.
-std::string UserQuery_getExecDesc(int session);
+std::string UserQuery_getQueryProcessingError(int session);
 
 /// Add a chunk spec for execution
 void UserQuery_addChunk(int session, lsst::qserv::qproc::ChunkSpec const& cs);

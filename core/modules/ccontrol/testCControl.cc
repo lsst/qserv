@@ -44,8 +44,7 @@ BOOST_AUTO_TEST_CASE(UserQueryException) {
     LOGF_INFO("UserQuery exception catching");
     // Test that invalid session values do not crash the program.
     int session = 1000;
-    ccontrol::UserQuery_getError(session++);
-    ccontrol::UserQuery_getExecDesc(session++);
+    ccontrol::UserQuery_getQueryProcessingError(session++);
     ccontrol::UserQuery_kill(session++);
     qproc::ChunkSpec chunkSpec;
     ccontrol::UserQuery_addChunk(session++, chunkSpec);

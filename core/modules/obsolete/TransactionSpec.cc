@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "qdisp/TransactionSpec.h"
+#include "obsolete/TransactionSpec.h"
 
 // System headers
 #include <cassert>

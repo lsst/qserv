@@ -32,30 +32,41 @@
 // Qserv headers
 #include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQuery.h"
+#include "global/constants.h"
 #include "qdisp/MessageStore.h"
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/** Return the number of messages in the message store
+ */
 int queryMsgGetCount(int session) {
     return UserQuery_get(session).getMessageStore()->messageCount();
 }
 
-// Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
-std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp) {
+/** Get a message from the message store
+ */
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, MessageSeverity* severity,
+                           time_t* timestamp) {
 
     qdisp::QueryMessage msg = UserQuery_get(session).getMessageStore()->getMessage(idx);
     *chunkId = msg.chunkId;
     *code = msg.code;
     *timestamp = msg.timestamp;
+    *severity = msg.severity;
     return msg.description;
 }
 
-void queryMsgAddMsg(int session, int chunkId, int code,
-                            std::string const& message) {
+/** Add a message to the message store
+ */
+void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message,
+                    MessageSeverity const& severity) {
+
     UserQuery_get(session).getMessageStore()->addMessage(chunkId,
-                                                         code, message);
+                                                         code,
+                                                         message,
+                                                         severity);
 }
 
 }}} // namespace lsst::qserv::ccontrol

@@ -48,7 +48,7 @@ std::string Error::toString() const {
  * @return an output stream
  */
 std::ostream& operator<<(std::ostream &out, Error const& error) {
-    out << "[" << error.code << "] " << error.msg;
+    out << "[" << error._code << "] " << error._msg;
     return out;
 }
 

@@ -38,31 +38,69 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "global/constants.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
 struct QueryMessage {
+
     QueryMessage(int chunkId_,
                  int code_,
                  std::string description_,
-                 std::time_t timestamp_)
+                 std::time_t timestamp_,
+                 MessageSeverity severity_
+                 )
         :  chunkId(chunkId_),
            code(code_),
            description(description_),
-           timestamp(timestamp_) {
+           timestamp(timestamp_),
+           severity(severity_) {
     }
 
     int chunkId;
     int code;
     std::string description;
     std::time_t timestamp;
+    MessageSeverity severity;
 };
 
+/** Store messages issued by Qserv workers and czar
+ *
+ * For each SQL query, these messages are stored in a MySQL message table
+ * so that mysql-proxy can retrieve it and log it or send error messages
+ * to client.
+ */
 class MessageStore {
 public:
-    void addMessage(int chunkId, int code, std::string const& description);
+
+    /** Add a message to this MessageStore
+     *
+     * This message will be sent to proxy via message table, in order to be
+     * displayed in mysql-proxy logs.
+     *
+     * @param chunkId chunkId related to the message, -1 if not available
+     * @param code code of the message
+     * @param description text of the message
+     * @param severity_ message severity level, default to MSG_INFO
+     */
+    void addMessage(int chunkId, int code, std::string const& description,
+                    MessageSeverity severity_ = MessageSeverity::MSG_INFO);
+
+    /** Add an error message to this MessageStore
+     *
+     * This message will be sent to mysql-proxy via message table, in order
+     * display an error in mysql client console. chunkId and code are set
+     * to NOTSET because this message may aggregate multiple error messages
+     * in multiple files. Indeed, mysql-client can only display
+     * one error message per query.
+     *
+     * @param description text of the message
+     */
+    void addErrorMessage(std::string const& description);
     const QueryMessage getMessage(int idx);
     const int messageCount();
     const int messageCount(int code);

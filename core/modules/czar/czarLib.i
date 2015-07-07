@@ -30,8 +30,6 @@ Access to the classes from the qserv_czar library
 %ignore lsst::qserv::query::operator<<;
 %ignore lsst::qserv::qproc::operator<<;
 
-%ignore lsst::qserv::qdisp::TransactionSpec::Reader;
-
 //%feature("autodoc", "1");
 //%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
 %module("threads"=1, package="lsst.qserv.czar") czarLib
@@ -45,9 +43,7 @@ Access to the classes from the qserv_czar library
 #include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
 #include "global/constants.h"
-#include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
-#include "qdisp/TransactionSpec.h"
 #include "rproc/mergeTypes.h"
 #include "util/common.h"
 #include "util/Substitution.h"
@@ -100,7 +96,7 @@ namespace std {
   }
 }
 
-// This cleans up the char ** array we malloc'd before the function call
+// This cleans up the char ** array we malloc-ed before the function call
 %typemap(freearg) char ** {
   free((char *) $1);
 }
@@ -119,6 +115,7 @@ namespace std {
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
+%apply int *OUTPUT { lsst::qserv::MessageSeverity* severity };
 
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"
@@ -128,9 +125,7 @@ namespace std {
 %include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
 %include "global/constants.h"
-%include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
-%include "qdisp/TransactionSpec.h"
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
 %include "util/Substitution.h"

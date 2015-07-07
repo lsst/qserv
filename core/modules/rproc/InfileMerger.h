@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "rproc/mergeTypes.h"
+#include "util/Error.h"
 
 // Forward declarations
 namespace lsst {
@@ -72,21 +73,14 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-/// struct InfileMergerError - value class for InfileMerger error code.
-struct InfileMergerError {
-public:
-    enum {NONE=0, HEADER_IMPORT, HEADER_OVERFLOW,
-          RESULT_IMPORT, RESULT_MD5, MYSQLOPEN, MERGEWRITE, TERMINATE,
-          CREATE_TABLE,
-          MYSQLCONNECT, MYSQLEXEC, INTERNAL} status;
-    InfileMergerError() {}
-    explicit InfileMergerError(int code) : errorCode(code) {}
-    InfileMergerError(int code, char const* desc)
-        : errorCode(code), description(desc) {}
-    int errorCode;
-    std::string description;
-    bool resultTooBig() const;
-};
+/** \typedef InfileMergerError Store InfileMerger error code.
+ *
+ * \note:
+ * Keep this indirection to util::Error in case
+ * InfileMergerError::resultTooBig() method might is needed in the future
+ *
+ * */
+typedef util::Error InfileMergerError;
 
 /// class InfileMergerConfig - value class for configuring a InfileMerger
 class InfileMergerConfig {

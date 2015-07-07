@@ -291,16 +291,13 @@ def init(src_dir):
     log.info("Adding general build information to scons environment")
     opts = SCons.Script.Variables("custom.py")
     opts.AddVariables(
-            (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir, 'build'), PathVariable.PathIsDirCreate)),
-            ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
+            PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir, 'build'), PathVariable.PathIsDirCreate),
+            ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH")),
+            # Default to in-place install
+            PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate),
+            ('CXX', 'Choose the C++ compiler to use', env['CXX'])
     )
 
-    opts.Update(env)
-
-    # Default to in-place install
-    opts.AddVariables(
-            (PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate))
-    )
     opts.Update(env)
 
 #    _saveState()

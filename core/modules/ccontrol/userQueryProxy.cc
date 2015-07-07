@@ -31,7 +31,7 @@
   * execution as much as possible, without knowing partition coverage.
   *
   *
-  * UserQuery_getError(int session) // See if there are errors
+  * UserQuery_getQueryProcessingError(int session) // See if there are errors
   *
   * UserQuery_getConstraints(int session)  // Retrieve the detected
   * constraints so that we can apply them to see which chunks we
@@ -79,7 +79,7 @@ public:
 };
 static UserQueryManager uqManager;
 
-std::string UserQuery_getError(int session) {
+std::string UserQuery_getQueryProcessingError(int session) {
     std::string s;
     try {
         s = uqManager.get(session)->getError();
@@ -88,17 +88,6 @@ std::string UserQuery_getError(int session) {
         LOGF_WARN(s);
     }
     return s;
-}
-
-/// @return a string describing the progress on the query at a chunk-by-chunk
-/// level. Userful for diagnosis when queries are squashed or return errors.
-std::string UserQuery_getExecDesc(int session) {
-    try {
-        return uqManager.get(session)->getExecDesc();
-    } catch (const std::exception& e) {
-        LOGF_WARN(e.what());
-        return e.what();
-    }
 }
 
 /// Abort a running query

@@ -37,8 +37,8 @@
 
 // Qserv headers
 
-#ifndef QUERY_TYPES_H_
-#define QUERY_TYPES_H_
+#ifndef LSST_QSERV_QUERY_TYPES_H_
+#define LSST_QSERV_QUERY_TYPES_H_
 
 namespace lsst {
 namespace qserv {
@@ -55,4 +55,4 @@ typedef std::vector<std::shared_ptr<SelectStmt> > SelectStmtPtrVector;
 
 }}} // namespace lsst::qserv::query
 
-#endif /* QUERY_TYPES_H_ */
+#endif /* LSST_QSERV_QUERY_TYPES_H_ */

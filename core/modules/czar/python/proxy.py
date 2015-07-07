@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
+# Copyright 2008-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -32,11 +32,23 @@
 # instance is single-threaded.
 #
 
-import lsst.qserv.czar.db
+# --------------------------------
+#  Imports of standard modules --
+# -------------------------------
 import time
 import thread
 
+# ----------------------------
+# Imports for other modules --
+# ----------------------------
 from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, UserQuery_discard
+import lsst.qserv.czar.db
+import lsst.log
+
+# ---------------------------------
+# Local non-exported definitions --
+# ---------------------------------
+_LOGGER = __name__
 
 
 class Lock:
@@ -49,11 +61,19 @@ class Lock:
     acquiring a lock on the table. mysql-proxy can service other
     requests when it is waiting on mysql queries that it knowingly
     initiates in its C-layer, whereas it treats its Lua plugin code as a
-    single-threaded black-box."""
-    createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId INT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
-    lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO {0} VALUES (%s, %s, %s, %s);"
-    unlockTmpl = "UNLOCK TABLES;"
+    single-threaded black-box.
+    """
+
+    createAndLockTmpl = "CREATE TABLE IF NOT EXISTS {0} " \
+        "(chunkId INT, code SMALLINT, message CHAR(255), " \
+        "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)" \
+        "ENGINE=MEMORY; LOCK TABLES {0} WRITE;"
+    """SQL query template to create czar and lock message table,
+       WARN: mysql-proxy is sensitive to column positions."""
+
+    writeTmpl = "INSERT INTO {0} (chunkId, code, message, severity, timeStamp) " \
+                "VALUES (%s, %s, %s, %s, %s)"
+    unlockTmpl = "UNLOCK TABLES"
 
     def __init__(self, tablename):
         self._tableName = tablename
@@ -62,10 +82,9 @@ class Lock:
 
     def lock(self):
         self.db = lsst.qserv.czar.db.Db()
-        if not self.db.check(): # Can't lock.
+        if not self.db.check():  # Can't lock.
             return False
-        self.db.applySql((Lock.createTmpl % self._tableName)
-                         + (Lock.lockTmpl % self._tableName))
+        self.db.applySql(Lock.createAndLockTmpl.format(self._tableName))
         return True
 
     def setSessionId(self, sessionId):
@@ -94,8 +113,15 @@ class Lock:
             return
         msgCount = queryMsgGetCount(self._sessionId)
         for i in range(msgCount):
-            msg, chunkId, code, timestamp = queryMsgGetMsg(self._sessionId, i)
-            self.db.applySql(Lock.writeTmpl.format(self._tableName), (chunkId, code, msg, timestamp))
+            msg, chunkId, code, severity, timestamp = queryMsgGetMsg(self._sessionId, i)
+            lsst.log.log(_LOGGER, lsst.log.DEBUG,
+                         "Insert in message table: [%s, %s, %s, %s, %s]",
+                         msg, chunkId, code, severity, timestamp)
+            lsst.log.log(_LOGGER, lsst.log.DEBUG,
+                         "Severity type is: %s",
+                         type(severity))
+            self.db.applySql(Lock.writeTmpl.format(self._tableName),
+                             (chunkId, code, msg, severity, timestamp))
 
 
 def clearLocks():

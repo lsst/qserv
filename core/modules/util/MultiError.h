@@ -98,7 +98,7 @@ public:
     void push_back (const std::vector<Error>::value_type& val);
 
 private:
-    std::vector<Error> errorVector;
+    std::vector<Error> _errorVector;
 };
 
 }}} // namespace lsst::qserv::util

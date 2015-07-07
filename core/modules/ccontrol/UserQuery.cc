@@ -192,12 +192,10 @@ void UserQuery::submit() {
         std::shared_ptr<MergingRequester> mr
             = std::make_shared<MergingRequester>(cmr, _infileMerger,
                                                  chunkResultName);
-        qdisp::Executive::Spec s = { ru,
-                                     ss.str(),
-                                     mr};
+        qdisp::Executive::JobDescription jobDesc = {ru, ss.str(), mr};
 
         int refNum = ++_sequence;
-        _executive->add(refNum, s);
+        _executive->add(refNum, jobDesc);
         ss.str(""); // reset stream
     }
 }
@@ -256,10 +254,7 @@ UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs)
        _qSession(qs), _killed(false), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
-/// @return a plaintext description of query execution progress
-std::string UserQuery::getExecDesc() const {
-    return _executive->getProgressDesc();
-}
+
 /// Setup merger (for results handling and aggregation)
 void UserQuery::_setupMerger() {
     LOGF_INFO("UserQuery::_setupMerger()");

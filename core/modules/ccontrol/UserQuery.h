@@ -80,9 +80,6 @@ public:
     /// Returns an empty string if no errors have been detected.
     std::string const& getError() const;
 
-    /// @return a description of the current execution state.
-    std::string getExecDesc() const;
-
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
 
