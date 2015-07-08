@@ -79,11 +79,11 @@ public:
     /// Destructor aborts transaction if it has not been committed
     ~SqlTransaction();
 
-    /// Explicitly commit transaction
-    void commit(SqlErrorObject& errObj);
+    /// Explicitly commit transaction. Return false if operation fails.
+    bool commit(SqlErrorObject& errObj);
 
-    /// Explicitly abort transaction
-    void abort(SqlErrorObject& errObj);
+    /// Explicitly abort transaction. Return false if operation fails.
+    bool abort(SqlErrorObject& errObj);
 
     /// Returns true if transaction is active (no explicit commit/abort was called).
     bool isActive() const { return _doCleanup; }

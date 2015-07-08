@@ -20,4 +20,8 @@ p = env.Program(['testSqlConnection.cc'] + deps,
                 LIBS=findLibs(extDeps))
 programs.append(p)
 
+p = env.Program(['testSqlTransaction.cc'] + deps,
+                LIBS=findLibs(extDeps))
+programs.append(p)
+
 Return('programs')

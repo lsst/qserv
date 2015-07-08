@@ -49,17 +49,17 @@ SqlTransaction::~SqlTransaction() {
 }
 
 // Explicitly commit transaction
-void
-SqlTransaction::commit(SqlErrorObject& errObj) {
+bool SqlTransaction::commit(SqlErrorObject& errObj) {
     _conn.runQuery("COMMIT", errObj);
     _doCleanup = false;
+    return not errObj.isSet();
 }
 
 // Explicitly abort transaction
-void
-SqlTransaction::abort(SqlErrorObject& errObj) {
+bool SqlTransaction::abort(SqlErrorObject& errObj) {
     _conn.runQuery("ROLLBACK", errObj);
     _doCleanup = false;
+    return not errObj.isSet();
 }
 
 }}} // namespace lsst::qserv::sql
