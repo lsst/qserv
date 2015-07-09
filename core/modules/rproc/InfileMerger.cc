@@ -221,7 +221,7 @@ void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response
 /** Load data from the 'response' into the 'table'. Return true if successful.
  */
 bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
-    std::string virtFile = _infileMgr.prepareSrc(rproc::newProtoRowBuffer(response->result));
+    std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     return applyMysql(infileStatement);
 }

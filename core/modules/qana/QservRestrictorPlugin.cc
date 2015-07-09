@@ -92,9 +92,8 @@ lookupSecIndex(query::QueryContext& context,
     if((!cr) || !context.cssFacade) { return false; }
     if(!context.cssFacade->containsDb(cr->db)
        || !context.cssFacade->containsTable(cr->db, cr->table)) {
-        throw qana::AnalysisError("Invalid db/table:"
-                                  + cr->db + "." + cr->table);
-        }
+        throw AnalysisError("Invalid db/table:" + cr->db + "." + cr->table);
+    }
     if (cr->column.empty()) {
         return false;
     }
@@ -182,7 +181,7 @@ public:
     void operator()(query::TableRef::Ptr t) {
         // FIXME: Modify so we can use TableRef::apply()
         if(!t) {
-            throw qana::AnalysisBug("NULL TableRefN::Ptr");
+            throw AnalysisBug("NULL TableRefN::Ptr");
         }
         (*this)(*t);
     }
@@ -193,7 +192,7 @@ public:
         if(db.empty()
            || !_cssFacade.containsDb(db)
            || !_cssFacade.containsTable(db, table)) {
-            throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
+            throw AnalysisError("Invalid db/table:" + db + "." + table);
         }
         // Is table chunked?
         if(!_cssFacade.tableIsChunked(db, table)) {
@@ -204,7 +203,7 @@ public:
         if(alias.empty()) {
             // For now, only accept aliased tablerefs (should have
             // been done earlier)
-            throw qana::AnalysisBug("Unexpected unaliased table reference");
+            throw AnalysisBug("Unexpected unaliased table reference");
         }
         std::vector<std::string> pCols = _cssFacade.getPartitionCols(db, table);
         RestrictorEntry se(alias,
@@ -362,7 +361,7 @@ private:
         } else if(_name == "qserv_objectId") {
             _generator = std::make_shared<ObjectIdGenerator>(r._params);
         } else {
-            throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
+            throw AnalysisBug("Unmatched restriction spec: " + _name);
         }
     }
     std::string _name;
@@ -416,7 +415,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     query::TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
     if(!context.cssFacade) {
-        throw qana::AnalysisBug("Missing metadata in context");
+        throw AnalysisBug("Missing metadata in context");
     }
     getTable gt(*context.cssFacade, entries);
     std::for_each(tList.begin(), tList.end(), gt);
@@ -669,8 +668,8 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
     if(!context.cssFacade->containsDb(context.dominantDb)
        || !context.cssFacade->containsTable(context.dominantDb,
                                             context.anonymousTable) ) {
-        throw qana::AnalysisError("Invalid db/table: " + context.dominantDb
-                                  + "." + context.anonymousTable);
+        throw AnalysisError("Invalid db/table: " + context.dominantDb
+                            + "." + context.anonymousTable);
     }
     // TODO: The qserv_objectId hint/restrictor should be removed.
     // For now, assume that "objectId" refers to the director column.

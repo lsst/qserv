@@ -31,8 +31,6 @@
 #include "util/common.h"
 
 
-
-
 namespace lsst {
 namespace qserv {
 namespace proto {
@@ -55,9 +53,9 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
     return msgBuf;
 }
 
-bool ProtoHeaderWrap::unwrap(std::shared_ptr<proto::WorkerResponse>& response, std::vector<char>& buffer) {
+bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
     response->headerSize = static_cast<unsigned char const>(buffer[0]);
-    if(!proto::ProtoImporter<proto::ProtoHeader>::setMsgFrom(
+    if(!ProtoImporter<ProtoHeader>::setMsgFrom(
             response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }

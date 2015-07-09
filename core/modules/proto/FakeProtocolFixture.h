@@ -42,16 +42,15 @@ class FakeProtocolFixture {
 public:
     FakeProtocolFixture() : _counter(0) {}
 
-    lsst::qserv::proto::TaskMsg* makeTaskMsg() {
-        lsst::qserv::proto::TaskMsg* t;
-        t = new lsst::qserv::proto::TaskMsg();
+    TaskMsg* makeTaskMsg() {
+        TaskMsg* t(new TaskMsg());
         t->set_session(123456);
         t->set_chunkid(20 + _counter);
         t->set_db("elephant");
         t->add_scantables("orange");
         t->add_scantables("plum");
         for(int i=0; i < 3; ++i) {
-            lsst::qserv::proto::TaskMsg::Fragment* f = t->add_fragment();
+            TaskMsg::Fragment* f = t->add_fragment();
             f->add_query("Hello, this is a query.");
             addSubChunk(*f, 100+i);
             f->set_resulttable("r_341");
@@ -60,10 +59,10 @@ public:
         return t;
     }
 
-    void addSubChunk(lsst::qserv::proto::TaskMsg_Fragment& f, int scId) {
-        lsst::qserv::proto::TaskMsg_Subchunk* s;
+    void addSubChunk(TaskMsg_Fragment& f, int scId) {
+        TaskMsg_Subchunk* s;
         if(!f.has_subchunks()) {
-            lsst::qserv::proto::TaskMsg_Subchunk subc;
+            TaskMsg_Subchunk subc;
             // f.add_scgroup(); // How do I add optional objects?
             subc.set_database("subdatabase");
             subc.add_table("subtable");
@@ -74,8 +73,8 @@ public:
         }
         s->add_id(scId);
     }
-    lsst::qserv::proto::ProtoHeader* makeProtoHeader() {
-        lsst::qserv::proto::ProtoHeader* p(new lsst::qserv::proto::ProtoHeader());
+    ProtoHeader* makeProtoHeader() {
+        ProtoHeader* p(new ProtoHeader());
         p->set_protocol(2);
         p->set_size(500);
         p->set_md5(std::string("1234567890abcdef0"));
@@ -84,6 +83,7 @@ public:
 private:
     int _counter;
 };
+
 }}} // lsst::qserv::proto
 
 #endif // #define LSST_QSERV_PROTO_FAKEPROTOCOLFIXTURE_H

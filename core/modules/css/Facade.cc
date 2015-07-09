@@ -389,7 +389,7 @@ Facade::getMatchTableParams(string const& dbName,
  */
 int
 Facade::cssVersion() {
-    return lsst::qserv::css::VERSION;
+    return VERSION;
 }
 
 EmptyChunks const&
@@ -400,12 +400,12 @@ Facade::getEmptyChunks() const {
 
 void
 Facade::_versionCheck() const {
-    const string& vstr = _kvI->get(lsst::qserv::css::VERSION_KEY, string());
+    const string& vstr = _kvI->get(VERSION_KEY, string());
     if (vstr.empty()) {
-        throw VersionMissingError(lsst::qserv::css::VERSION_KEY);
+        throw VersionMissingError(VERSION_KEY);
     }
-    if (vstr != lsst::qserv::css::VERSION_STR) {
-        throw VersionMismatchError(lsst::qserv::css::VERSION_STR, vstr);
+    if (vstr != VERSION_STR) {
+        throw VersionMismatchError(VERSION_STR, vstr);
     }
 }
 

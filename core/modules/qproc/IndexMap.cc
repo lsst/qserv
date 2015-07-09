@@ -252,7 +252,6 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     }
 }
 
-
 }}} // namespace lsst::qserv::qproc
 
 

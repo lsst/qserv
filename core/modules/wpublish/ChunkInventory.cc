@@ -298,5 +298,6 @@ void ChunkInventory::_fillDbChunks(ChunkInventory::StringSet& s) {
         //std::cout << "loaded chunks for " << dbName << std::endl;
     }
 }
+
 }}} // lsst::qserv::wpublish
 

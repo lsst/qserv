@@ -60,7 +60,7 @@ namespace ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-    typedef std::shared_ptr<lsst::qserv::css::KvInterface> KviPtr;
+    typedef std::shared_ptr<css::KvInterface> KviPtr;
     UserQueryFactory(std::map<std::string,std::string> const& m,
                      KviPtr kvi=KviPtr());
 

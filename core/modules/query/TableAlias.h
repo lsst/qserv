@@ -48,17 +48,17 @@ namespace query {
 class TableAlias {
 public:
 
-    query::DbTablePair get(std::string const& alias) {
+    DbTablePair get(std::string const& alias) {
         Map::const_iterator i = _map.find(alias);
         if(i != _map.end()) { return i->second; }
-        return query::DbTablePair();
+        return DbTablePair();
     }
     void set(std::string const& db, std::string const& table,
              std::string const& alias) {
-        _map[alias] = query::DbTablePair(db, table);
+        _map[alias] = DbTablePair(db, table);
     }
 private:
-    typedef std::map<std::string, query::DbTablePair> Map;
+    typedef std::map<std::string, DbTablePair> Map;
     Map _map;
 };
 
@@ -66,16 +66,16 @@ private:
 class TableAliasReverse {
 public:
     struct AmbiguousReference : public std::runtime_error {
-        AmbiguousReference(query::DbTablePair const& p)
+        AmbiguousReference(DbTablePair const& p)
             : std::runtime_error("Ambiguous reference to " +
                                  p.db + "." + p.table)
             {}
     };
 
     std::string const& get(std::string db, std::string table) {
-        return get(query::DbTablePair(db, table));
+        return get(DbTablePair(db, table));
     }
-    inline std::string const& get(query::DbTablePair const& p) const {
+    inline std::string const& get(DbTablePair const& p) const {
         static std::string const empty;
         typedef Map::const_iterator Iter;
         Iter found = _map.find(p);
@@ -106,10 +106,10 @@ public:
         if(alias.empty()) {
             throw std::invalid_argument("Empty mapping");
         }
-        _map[query::DbTablePair(db, table)] = alias;
+        _map[DbTablePair(db, table)] = alias;
     }
 private:
-    typedef std::map<query::DbTablePair, std::string> Map;
+    typedef std::map<DbTablePair, std::string> Map;
     Map _map;
 };
 

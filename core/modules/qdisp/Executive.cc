@@ -122,18 +122,18 @@ class NotifyExecutive : public util::UnaryCallable<void, bool> {
 public:
     typedef std::shared_ptr<NotifyExecutive> Ptr;
 
-    NotifyExecutive(qdisp::Executive& e, int jobId)
+    NotifyExecutive(Executive& e, int jobId)
         : _executive(e), _jobId(jobId) {}
 
     virtual void operator()(bool success) {
         _executive.markCompleted(_jobId, success);
     }
 
-    static Ptr newInstance(qdisp::Executive& e, int jobId) {
+    static Ptr newInstance(Executive& e, int jobId) {
         return std::make_shared<NotifyExecutive>(std::ref(e), jobId);;
     }
 private:
-    qdisp::Executive& _executive;
+    Executive& _executive;
     int _jobId;
 };
 

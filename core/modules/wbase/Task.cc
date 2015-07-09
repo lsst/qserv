@@ -125,7 +125,7 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 std::string const
 Task::defaultUser = "qsmaster";
 
-Task::Task(Task::TaskMsgPtr t, std::shared_ptr<wbase::SendChannel> sc) {
+Task::Task(Task::TaskMsgPtr t, std::shared_ptr<SendChannel> sc) {
     // Make msg copy.
     msg = std::make_shared<proto::TaskMsg>(*t);
     sendChannel = sc;

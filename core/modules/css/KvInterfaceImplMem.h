@@ -47,7 +47,7 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-class KvInterfaceImplMem : public lsst::qserv::css::KvInterface {
+class KvInterfaceImplMem : public KvInterface {
 public:
     KvInterfaceImplMem() {}
     KvInterfaceImplMem(std::istream& mapStream);

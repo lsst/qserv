@@ -157,7 +157,7 @@ void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
 
     if (!dupSelectErrors.empty()) {
         std::string msg = DuplSelectExprPlugin::EXCEPTION_MSG + dupSelectErrors.toOneLineString();
-        throw qana::AnalysisError(msg);
+        throw AnalysisError(msg);
     }
 }
 

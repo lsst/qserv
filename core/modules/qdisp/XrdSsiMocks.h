@@ -54,7 +54,7 @@ public:
         _go.set(go);
     }
 protected:
-    void mockProvisionTest(qdisp::QueryResource *resP, unsigned short timeOut);
+    void mockProvisionTest(QueryResource *resP, unsigned short timeOut);
 public:
     virtual ~XrdSsiServiceMock() {}
     static util::FlagNotify<bool> _go;
