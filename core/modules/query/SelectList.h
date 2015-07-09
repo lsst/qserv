@@ -74,7 +74,7 @@ public:
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    std::shared_ptr<SelectList> clone();
+    std::shared_ptr<SelectList> clone() const;
     std::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.

@@ -160,7 +160,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
                     (**i).setOrderBy(_nullptr);
                 }
                 // Make sure the merge has an ORDER BY
-                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause %1%" % _orderBy);
+                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause: \"%1%\"" % *_orderBy);
                 p.stmtMerge.setOrderBy(_orderBy);
             }
         }
