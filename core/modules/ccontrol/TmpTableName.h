@@ -41,7 +41,7 @@ public:
     TmpTableName(int sessionId, std::string const& query) {
         std::stringstream ss;
         ss << "r_" << sessionId
-           << lsst::qserv::util::StringHash::getMd5Hex(query.data(), query.size())
+           << util::StringHash::getMd5Hex(query.data(), query.size())
            << "_";
         _prefix = ss.str();
     }

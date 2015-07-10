@@ -114,12 +114,12 @@ class NodePool(object):
         def success(p):
             return p.returncode == 0
 
-        _LOG.info("nb node %s, max task: %s", len(remaining_nodes), self._max_task)
+        _LOG.info("nb node %r, max task: %r", len(remaining_nodes), self._max_task)
         running_processes = []
         process_id = 0
         nodes_failed = []
 
-        _LOG.info("Run command %s, stdin redirected to: %s", command, stdin)
+        _LOG.info("Run command %r, stdin redirected to: %r", command, stdin)
 
         while running_processes or remaining_nodes:
 
@@ -130,7 +130,7 @@ class NodePool(object):
 
                 task = node.getCommand(command)
                 if _LOG.isEnabledFor(logging.DEBUG):
-                    _LOG.debug("Run: %s", ' '.join(task))
+                    _LOG.debug("Run: %r", ' '.join(task))
 
                 with open(stdin) as _in, open(logfile('stdout'), "wb") as _out, open(logfile('stderr'), "wb") as _err:
                     running_processes.append([Popen(task, stdin=_in, stdout=_out, stderr=_err), node.host, process_id])
@@ -143,15 +143,15 @@ class NodePool(object):
                 if done(process):
                     running_processes.remove(p)
                     if success(process):
-                        _LOG.info("Success on %s (#%s)", host, p_id)
+                        _LOG.info("Success on %r (#%r)", host, p_id)
                     else:
-                        _LOG.error("Failure on %s (#%s)", host, p_id)
+                        _LOG.error("Failure on %r (#%r)", host, p_id)
                         nodes_failed.append((host, p_id))
 
 
         if nodes_failed:
             nb_failed = len(nodes_failed)
-            _LOG.error("%s failure(s): %s", nb_failed, nodes_failed)
+            _LOG.error("%r failure(r): %r", nb_failed, nodes_failed)
             return nb_failed
         else:
             _LOG.info("Success on all hosts")

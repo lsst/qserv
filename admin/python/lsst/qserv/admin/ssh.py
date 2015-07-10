@@ -100,7 +100,7 @@ class SSHCommand(object):
                         command is captured and returned as string
         """
         args = self.getCommand(command)
-        _LOG.debug("ssh command: '%s'", args)
+        _LOG.debug("ssh command: %r", args)
         if capture:
             result = subprocess.check_output(args, subprocess.STDOUT, close_fds=True)
             return result
@@ -156,7 +156,7 @@ class SSHTunnel(object):
             args += ['-o', option]
         args += [host]
 
-        _LOG.debug('ssh tunnel: executing %s', args)
+        _LOG.debug('ssh tunnel: executing %r', args)
         subprocess.check_call(args, close_fds=True)
 
     def __del__(self):
@@ -166,10 +166,10 @@ class SSHTunnel(object):
         # use control socket to stop ssh
         args = ['ssh', '-S', self.controlSocket, '-O', 'exit', 'localhost']
         try:
-            _LOG.debug('ssh tunnel: signaling process to exit: %s', args)
+            _LOG.debug('ssh tunnel: signaling process to exit: %r', args)
             subprocess.check_call(args, stderr=open('/dev/null', 'w'), close_fds=True)
         except Exception as exc:
-            _LOG.warning('Exception while trying to shutdown ssh tunnel: %s', exc)
+            _LOG.warning('Exception while trying to shutdown ssh tunnel: %r', exc)
 
 
 def _getFreePort():

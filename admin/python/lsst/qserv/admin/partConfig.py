@@ -85,7 +85,7 @@ class PartConfig(UserDict.UserDict):
                 cfgParser = ConfigParser(open(config))
                 options = cfgParser.parse()
             except Exception as ex:
-                logging.error('Failed to parse configuration file: %s', ex)
+                logging.error('Failed to parse configuration file: %r', ex)
                 raise
 
             # options are returned as a list of (key, value) pairs, there will be
@@ -107,7 +107,8 @@ class PartConfig(UserDict.UserDict):
         elif self.partitioned:
             missing += [key for key in self.requiredPartKeys if key not in self.data]
         if missing:
-            logging.error('Required options are missing from configuration files: %s', ' '.join(missing))
+            logging.error('Required options are missing from configuration files: %r',
+                          ' '.join(missing))
             raise KeyError('required options are missing: ' + ' '.join(missing))
 
     @property

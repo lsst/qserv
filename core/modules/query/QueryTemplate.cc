@@ -122,7 +122,7 @@ std::string QueryTemplate::TableEntry::getValue() const {
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(query::ColumnRef const& cr)
+    ColumnEntry(ColumnRef const& cr)
         : db(cr.db), table(cr.table), column(cr.column) {
     }
     virtual std::string getValue() const {
@@ -156,7 +156,7 @@ QueryTemplate::append(std::string const& s) {
 }
 
 void
-QueryTemplate::append(query::ColumnRef const& cr) {
+QueryTemplate::append(ColumnRef const& cr) {
     std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr);
     _entries.push_back(e);
 }

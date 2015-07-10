@@ -45,14 +45,14 @@ struct AggRecord {
 public:
     typedef std::shared_ptr<AggRecord> Ptr;
     /// Original ValueFactor representing the call (e.g., COUNT(ra_PS))
-    query::ValueFactorPtr orig;
+    ValueFactorPtr orig;
     /// List of expressions to pass for parallel execution.
     /// Some aggregations need more than one aggregation to be computed (per
     /// chunk) in order to compute the final aggregation value (e.g., AVG)
-    query::ValueExprPtrVector parallel;
+    ValueExprPtrVector parallel;
     /// ValueFactor representing merge step. Not a list, because the original
     /// wasn't a list and we want the final result to correspond.
-    query::ValueFactorPtr merge;
+    ValueFactorPtr merge;
     std::ostream& printTo(std::ostream& os);
 };
 

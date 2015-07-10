@@ -8,12 +8,12 @@ def is_readable(dir):
     """
     logger = logging.getLogger()
 
-    logger.debug("Checking read access for : %s", dir)
+    logger.debug("Checking read access for : %r", dir)
     try:
         os.listdir(dir)
         return True
     except Exception as e:
-        logger.debug("No read access to dir %s : %s" % (dir,e))
+        logger.debug("No read access to dir %r : %r" % (dir,e))
         return False
 
 def is_writable(dir):
@@ -34,5 +34,5 @@ def is_writable(dir):
         os.remove(filename)
         return True
     except Exception as e:
-        logger.info("No write access to dir %s : %s" % (dir,e))
+        logger.info("No write access to dir %r : %r" % (dir,e))
         return False

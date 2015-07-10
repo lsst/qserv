@@ -68,13 +68,13 @@ public:
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
-    std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
+    std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
     StringPairVector scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
-    query::TableAlias tableAliases;
-    query::TableAliasReverse tableAliasReverses;
+    TableAlias tableAliases;
+    TableAliasReverse tableAliasReverses;
 
     // Owned QueryMapping and query restrictors
     std::shared_ptr<qana::QueryMapping> queryMapping;
@@ -84,7 +84,7 @@ public:
 
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
-    lsst::qserv::css::StripingParams getDbStriping() {
+    css::StripingParams getDbStriping() {
         return cssFacade->getDbStriping(dominantDb); }
     bool containsDb(std::string const& dbName) {
         return cssFacade->containsDb(dbName); }

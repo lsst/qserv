@@ -172,14 +172,14 @@ class NodeMgmt(object):
 
             wmgr = worker.wmgrClient()
             if dbName in wmgr.databases():
-                self._log.debug('Database %s already exists on node %s', dbName, worker.name())
+                self._log.debug('Database %r already exists on node %r', dbName, worker.name())
             else:
                 try:
-                    self._log.debug('Creating database %s on node %s', dbName, worker.name())
+                    self._log.debug('Creating database %r on node %r', dbName, worker.name())
                     wmgr.createDb(dbName)
                 except ServerError as exc:
                     if exc.code == 409:
-                        self._log.debug('Database %s already exists on node %s', dbName, worker.name())
+                        self._log.debug('Database %r already exists on node %r', dbName, worker.name())
                     else:
                         raise
 
@@ -220,14 +220,14 @@ class NodeMgmt(object):
 
             wmgr = worker.wmgrClient()
             if tableName in wmgr.tables(dbName):
-                self._log.debug('Table %s.%s already exists on node %s', dbName, tableName, worker.name())
+                self._log.debug('Table %r.%r already exists on node %r', dbName, tableName, worker.name())
             else:
                 try:
-                    self._log.debug('Creating table %s.%s on node %s', dbName, tableName, worker.name())
+                    self._log.debug('Creating table %r.%r on node %r', dbName, tableName, worker.name())
                     wmgr.createTable(dbName, tableName)
                 except ServerError as exc:
                     if exc.code == 409:
-                        self._log.debug('Table %s.%s already exists on node %s',
+                        self._log.debug('Table %r.%r already exists on node %r',
                                         dbName, tableName, worker.name())
                     else:
                         raise

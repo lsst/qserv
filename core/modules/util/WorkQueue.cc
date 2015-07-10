@@ -38,8 +38,6 @@
 #include "lsst/log/Log.h"
 
 namespace {
-
-
     LOG_LOGGER getLogger() {
         static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.util.WorkQueue"));
         return _logger;

@@ -66,7 +66,7 @@ void XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
         LOGF_ERROR("XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
         return;
     }
-    lsst::qserv::qdisp::QueryResource *qr = dynamic_cast<lsst::qserv::qdisp::QueryResource*>(resP);
+    QueryResource *qr = dynamic_cast<QueryResource*>(resP);
     if (qr == NULL) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() unexpected resource type.");
         return;
@@ -83,7 +83,7 @@ void XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
  * The payload of qr should contain the number of milliseconds this function will
  * sleep before returning.
  */
-void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr,
+void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
                                           unsigned short timeOut) {
     string payload = QueryResourceDebug::getPayload(*qr);
     int millisecs = atoi(payload.c_str());

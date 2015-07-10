@@ -120,7 +120,7 @@ public:
      */
     std::string toString();
 
-    /** Return a string representation of the query::QueryTemplate
+    /** Return a string representation of the QueryTemplate
      * object build from current object
      *
      * Can be used for logging, of debugging

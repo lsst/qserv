@@ -76,12 +76,12 @@ public:
     };
 
     explicit Task() : _poisoned{false} {}
-    explicit Task(TaskMsgPtr t, std::shared_ptr<wbase::SendChannel> sc);
+    explicit Task(TaskMsgPtr t, std::shared_ptr<SendChannel> sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
 
     TaskMsgPtr msg; ///< Protobufs Task spec
-    std::shared_ptr<wbase::SendChannel> sendChannel; ///< For result reporting
+    std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
     std::string hash; ///< hash of TaskMsg
     std::string dbName; ///< dominant db
     std::string user; ///< Incoming username

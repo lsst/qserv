@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # LSST Data Management System
 # Copyright 2013-2014 AURA/LSST.
 #
@@ -63,16 +61,16 @@ class CssCacheFactory(object):
     """
     @brief Constructs CssCache objects that contain snapshots of the
     Central State Service CSS).
-    Maintains own current snapshot (modifiable) and a copy(Read-only,
+    Maintains own current snapshot (modifiable) and a copy (Read-only,
     shared among clients).
     """
     def __init__(self, **kwargs):
         """
         Initialize the interface.
 
-        @param connInfo  Connection information for zk mode
-        or @param config  Config containing css config (technology,
-        connection, timeout keys)
+        @param connInfo  Connection information for zk mode, or
+        @param config    Config containing css config (technology, connection,
+                         timeout keys)
 
         self._filename : filename for css info.
         self._zk : a KazooClient object, valid "if not self._filename:"
@@ -86,8 +84,7 @@ class CssCacheFactory(object):
                           "timeout" : 10000 }
         elif "config" in kwargs:
             self._cfg = kwargs["config"]
-            #raise KvException(KvException.MISSING_PARAM, str(self._cfg))
-            self._logger.info("Using css config: %s" %  str(self._cfg))
+            self._logger.info("Using css config: %s" %  self._cfg)
             pass
         else:
             raise KvException(KvException.MISSING_PARAM, "<None>")
@@ -134,19 +131,16 @@ class CssCacheFactory(object):
         return self.refreshZk()
 
     def refreshFile(self):
-        """Refresh using self._file . Rereads full state from
-        self._filename . There isn't a clear way to avoid reading the
-        whole file, so we won't, seeing as this mode is primarily
-        (exclusively?) for debugging.
-        entire tree.
+        """Refresh using self._file. Rereads full state from self._filename.
+        There isn't a clear way to avoid reading the whole file, so we won't,
+        seeing as this mode is primarily (exclusively?) for debugging.
         """
         self.snapshot = KvInterfaceImplMem(self._file)
 
     def refreshZk(self):
-        """Refresh using self._zk .Currently, pulls completely new
-        state. In the future, it should check modification/creation
-        times against previous state in order to avoid visiting the
-        entire tree.
+        """Refresh using self._zk. Currently, pulls completely new state. In the
+        future, it should check modification/creation times against previous state
+        in order to avoid visiting the entire tree.
         """
         self.snapshot = self.getKvInterfaceZoo()
 

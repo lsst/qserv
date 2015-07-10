@@ -71,7 +71,7 @@ class DataDuplicator(object):
             if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg'))==False:
                 self.logger.error("Path to indexing config file not found")
 
-            self.logger.info("Running indexer with output for %s to %s" % (table, self._outDirname))
+            self.logger.info("Running indexer with output for %r to %r" % (table, self._outDirname))
             run_index = commons.run_command(["sph-htm-index",
                                              "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
                                              "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
@@ -88,7 +88,7 @@ class DataDuplicator(object):
             if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg'))==False:
                 self.logger.error("Path to duplicator config file not found")
 
-            self.logger.info("Running duplicator for table %s" % table)
+            self.logger.info("Running duplicator for table %r" % table)
             run_dupl = commons.run_command(["sph-duplicate",
                                             "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
                                             "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),

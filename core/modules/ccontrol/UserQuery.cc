@@ -276,7 +276,7 @@ void UserQuery::_setupChunking() {
         eSet = _qSession->getEmptyChunks();
         if(!eSet) {
             eSet = std::make_shared<IntSet>();
-            LOGF_WARN("Missing empty chunks info for %s" % dominantDb);
+            LOGF_WARN("Missing empty chunks info for %1%" % dominantDb);
         }
     }
     if (_qSession->hasChunks()) {

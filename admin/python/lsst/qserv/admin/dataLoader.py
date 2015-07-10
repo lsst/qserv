@@ -230,18 +230,18 @@ class DataLoader(object):
         # remove tmp files
         for fName in self.cleanupFiles:
             try:
-                self._log.debug('Deleting temporary file: %s', fName)
+                self._log.debug('Deleting temporary file: %r', fName)
                 os.unlink(fName)
             except Exception as exc:
-                self._log.error('Failed to remove temporary file: %s', exc)
+                self._log.error('Failed to remove temporary file: %r', exc)
 
         # remove directories
         for dirName in self.cleanupDirs:
             try:
-                self._log.debug('Deleting directory: %s', dirName)
+                self._log.debug('Deleting directory: %r', dirName)
                 shutil.rmtree(dirName)
             except Exception as exc:
-                self._log.error('Failed to remove directory: %s', exc)
+                self._log.error('Failed to remove directory: %r', exc)
 
 
     def _checkCss(self, database, table):
@@ -250,11 +250,11 @@ class DataLoader(object):
         Throws exception if any irregularities are observed.
         """
 
-        self._log.info('Verifying CSS info for table %s', table)
+        self._log.info('Verifying CSS info for table %r', table)
 
         # get database config
         dbConfig = self.css.getDbInfo(database)
-        self._log.debug('CSS database info: %s', dbConfig)
+        self._log.debug('CSS database info: %r', dbConfig)
         if dbConfig is None:
             return
 
@@ -266,7 +266,7 @@ class DataLoader(object):
 
         # get partitioning config
         partConfig = self.css.getPartInfo(partId)
-        self._log.debug('CSS partitioning info: %s', partConfig)
+        self._log.debug('CSS partitioning info: %r', partConfig)
 
         # check parameters
         self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
@@ -292,7 +292,7 @@ class DataLoader(object):
         optValue = optType(partOptions[partKey])
         cssValue = optType(cssOptions[cssKey])
         if optValue != cssValue:
-            raise ValueError('Option "%s" does not match CSS "%s": %s != %s' % \
+            raise ValueError('Option %r does not match CSS %r: %r != %r' % \
                              (partKey, cssKey, optValue, cssValue))
 
     def _makeOrCheckChunksDir(self, data):
@@ -314,13 +314,13 @@ class DataLoader(object):
         if os.path.exists(chunks_dir):
             exists = True
             if not os.path.isdir(chunks_dir):
-                self._log.error('Path for chunks exists but is not a directory: %s', chunks_dir)
+                self._log.error('Path for chunks exists but is not a directory: %r', chunks_dir)
                 raise IOError('chunk path is not directory: ' + chunks_dir)
 
         if self.skipPart:
             # directory must exist and have some files (chunk_index.bin at least)
             if not exists:
-                self._log.error('Chunks directory does not exist: %s', chunks_dir)
+                self._log.error('Chunks directory does not exist: %r', chunks_dir)
                 raise RuntimeError('chunk directory is missing')
             path = os.path.join(chunks_dir, 'chunk_index.bin')
             if not os.path.exists(path):
@@ -330,17 +330,17 @@ class DataLoader(object):
             if exists:
                 # must be empty, we do not want any extraneous stuff there
                 if os.listdir(chunks_dir):
-                    self._log.error('Chunks directory is not empty: %s', chunks_dir)
+                    self._log.error('Chunks directory is not empty: %r', chunks_dir)
                     raise RuntimeError('chunks directory is not empty: ' + chunks_dir)
             else:
                 try:
-                    self._log.debug('Creating chunks directory %s', chunks_dir)
+                    self._log.debug('Creating chunks directory %r', chunks_dir)
                     os.makedirs(chunks_dir)
                     # will remove it later
                     if not self.keepChunks:
                         self.cleanupDirs.append(chunks_dir)
                 except Exception as exc:
-                    self._log.error('Failed to create chunks directory: %s', exc)
+                    self._log.error('Failed to create chunks directory: %r', exc)
                     raise
 
 
@@ -363,11 +363,11 @@ class DataLoader(object):
 
         try:
             # run partitioner
-            self._log.info('run partitioner on files: %s', ' '.join(files))
-            self._log.debug('Run shell command: %s', ' '.join(args))
+            self._log.info('run partitioner on files: %r', ' '.join(files))
+            self._log.debug('Run shell command: %r', ' '.join(args))
             subprocess.check_output(args=args)
         except Exception as exc:
-            self._log.error('Failed to run partitioner: %s', exc)
+            self._log.error('Failed to run partitioner: %r', exc)
             raise
         finally:
             # some chunk files may have been created, add them to cleanup list
@@ -394,11 +394,11 @@ class DataLoader(object):
                     # use chunks directory for that
                     if os.path.exists(self.chunksDir):
                         if not os.path.isdir(self.chunksDir):
-                            self._log.error('Path for chunks is not a directory: %s', self.chunksDir)
+                            self._log.error('Path for chunks is not a directory: %r', self.chunksDir)
                             raise IOError('chunk path is not directory: ' + self.chunksDir)
                     else:
                         # create it, but don't forget to delete it later
-                        self._log.debug('Creating chunks directory %s', self.chunksDir)
+                        self._log.debug('Creating chunks directory %r', self.chunksDir)
                         os.makedirs(self.chunksDir)
                         if not self.keepChunks:
                             self.cleanupDirs.append(self.chunksDir)
@@ -408,23 +408,23 @@ class DataLoader(object):
                         # need to remove it later, before chunks dir
                         self.cleanupDirs.insert(0, self.tmpDir)
                     except Exception as exc:
-                        self._log.critical('Failed to create temp directory for uncompressed files: %s', exc)
+                        self._log.critical('Failed to create temp directory for uncompressed files: %r', exc)
                         raise
-                    self._log.debug('Created temporary directory %s', self.tmpDir)
+                    self._log.debug('Created temporary directory %r', self.tmpDir)
                 else:
                     # check and create if needed
                     if os.path.exists(self.tmpDir):
                         if not os.path.isdir(self.tmpDir):
-                            self._log.critical('Temporary location is not a directory: %s', self.tmpDir)
+                            self._log.critical('Temporary location is not a directory: %r', self.tmpDir)
                             raise IOError('Temporary location is not a directory: ' + self.tmpDir)
                     else:
                         try:
                             os.mkdir(self.tmpDir)
-                            self._log.debug('Created temporary directory %s', self.tmpDir)
+                            self._log.debug('Created temporary directory %r', self.tmpDir)
                             # need to remove it later
                             self.cleanupDirs.append(self.tmpDir)
                         except Exception as exc:
-                            self._log.critical('Failed to create temp directory: %s', exc)
+                            self._log.critical('Failed to create temp directory: %r', exc)
                             raise
 
                 # construct output file name
@@ -435,20 +435,20 @@ class DataLoader(object):
                 # will cleanup it later
                 self.cleanupFiles.append(outfile)
 
-                self._log.info('Uncompressing %s to %s', infile, outfile)
+                self._log.info('Uncompressing %r to %r', infile, outfile)
                 try:
                     finput = open(infile)
                     foutput = open(outfile, 'wb')
                     cmd = ['gzip', '-d', '-c']
                     subprocess.check_call(args=cmd, stdin=finput, stdout=foutput)
                 except Exception as exc:
-                    self._log.critical('Failed to uncompress data file: %s', exc)
+                    self._log.critical('Failed to uncompress data file: %r', exc)
                     raise
 
             else:
 
                 # file is already uncompressed
-                self._log.debug('Using input file which is not compressed: %s', infile)
+                self._log.debug('Using input file which is not compressed: %r', infile)
                 outfile = infile
 
             result.append(outfile)
@@ -480,10 +480,10 @@ class DataLoader(object):
         Drop existing table and all chunks.
         """
 
-        self._log.info('Deleting existing table %s (and chunks)', table)
+        self._log.info('Deleting existing table %r (and chunks)', table)
 
         for name, wmgr in self._connections(useCzar=True, useWorkers=True):
-            self._log.info('Deleting table from %s', name)
+            self._log.info('Deleting table from %r', name)
             wmgr.dropTable(database, table, dropChunks=True, mustExist=False)
 
 
@@ -497,12 +497,12 @@ class DataLoader(object):
         try:
             self.schema = open(schema).read()
         except Exception as exc:
-            self._log.critical('Failed to read table schema file: %s', exc)
+            self._log.critical('Failed to read table schema file: %r', exc)
             raise
 
         # create table on czar and every worker
         for name, wmgr in self._connections(useCzar=True, useWorkers=True):
-            self._log.info('Creating table %s in %s', table, name)
+            self._log.info('Creating table %r in %r', table, name)
             chunkColumns = bool(self.partitioned)
             wmgr.createTable(database, table, schema=self.schema, chunkColumns=chunkColumns)
 
@@ -555,7 +555,7 @@ class DataLoader(object):
                 if not overlap:
                     self._loadOneFile(self.czarWmgr, database, table, path, csvPrefix)
                 else:
-                    self._log.info('Ignore overlap file %s', path)
+                    self._log.info('Ignore overlap file %r', path)
 
             else:
 
@@ -568,7 +568,7 @@ class DataLoader(object):
                     if data:
                         raise RuntimeError('Found non-empty overlap file for non-subchunked table: ' + path)
                     else:
-                        self._log.info('Ignore empty overlap file %s', path)
+                        self._log.info('Ignore empty overlap file %r', path)
                         continue
 
                 if self.workerWmgrMap:
@@ -577,10 +577,10 @@ class DataLoader(object):
                     wmgr = self.workerWmgrMap.get(worker)
                     if wmgr is None:
                         raise RuntimeError('Existing chunk mapping is not in the list of workers: ' + worker)
-                    self._log.info('load chunk %s to worker %s', chunkId, worker)
+                    self._log.info('load chunk %r to worker %r', chunkId, worker)
                 else:
                     # all goes to single node
-                    self._log.info('load chunk %s to czar', chunkId)
+                    self._log.info('load chunk %r to czar', chunkId)
                     wmgr = self.czarWmgr
 
                 # make tables if needed
@@ -621,7 +621,7 @@ class DataLoader(object):
 
         for name, wmgr in connections:
 
-            self._log.info('Make dummy chunk table for %s', name)
+            self._log.info('Make dummy chunk table for %r', name)
 
             # just make regular chunk with special ID, do not load any data
             wmgr.createChunk(database, table, 1234567890, overlap=self.partOptions.isSubChunked)
@@ -643,7 +643,7 @@ class DataLoader(object):
             connections = self._connections(useCzar=True, useWorkers=False)
 
         for name, wmgr in connections:
-            self._log.info('load non-chunked data to %s', name)
+            self._log.info('load non-chunked data to %r', name)
             for file in files:
                 self._loadOneFile(wmgr, database, table, file, csvPrefix)
 
@@ -651,7 +651,7 @@ class DataLoader(object):
     def _loadOneFile(self, wmgr, database, table, path, csvPrefix, chunkId=None, overlap=None):
         """Load data from a single file into existing table"""
 
-        self._log.info('load table %s.%s from file %s', database, table, path)
+        self._log.info('load table %r.%r from file %r', database, table, path)
 
         # need to know special characters used in csv
         # default delimiter is the same as in partitioner
@@ -667,7 +667,7 @@ class DataLoader(object):
         try:
             file = open(path)
         except IOError as exc:
-            self._log.error('failed to open file %s', path)
+            self._log.error('failed to open file %r', path)
             raise
 
         wmgr.loadData(database, table, file, fileName=path, chunkId=chunkId, overlap=overlap,
@@ -720,14 +720,14 @@ class DataLoader(object):
 
         # only makes sense for true partitioned tables
         if not self.partitioned:
-            self._log.info('Table is not partitioned, will not make empty chunks file %s', self.emptyChunks)
+            self._log.info('Table is not partitioned, will not make empty chunks file %r', self.emptyChunks)
             return
 
         # max possible number of chunks
         nStripes = int(self.partOptions['part.num-stripes'])
         maxChunks = 2 * nStripes ** 2
 
-        self._log.info('Making empty chunk list (max.chunk=%d) %s', maxChunks, self.emptyChunks)
+        self._log.info('Making empty chunk list (max.chunk=%d) %r', maxChunks, self.emptyChunks)
 
         emptyChunkDir = os.path.dirname(self.emptyChunks)
         try:
@@ -754,7 +754,7 @@ class DataLoader(object):
             return
 
         metaTable = database + '__' + table
-        self._log.info('Generating index %s.%s', self.indexDb, metaTable)
+        self._log.info('Generating index %r.%r', self.indexDb, metaTable)
 
         # try to delete existing table first
         self.czarWmgr.dropTable(self.indexDb, metaTable, mustExist=False)

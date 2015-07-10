@@ -60,7 +60,7 @@ public:
     TableRefList const& getTableRefList() const { return *_tableRefs; }
 
     bool isJoin() const;
-    std::vector<query::DbTablePair> computeResolverTables() const;
+    std::vector<DbTablePair> computeResolverTables() const;
 
     /// @return a flattened string representation.
     std::string getGenerated();

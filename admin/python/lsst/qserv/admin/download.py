@@ -10,8 +10,8 @@ def download(file_name, url_str):
 
     logger = logging.getLogger()
 
-    logger.debug("Target %s :" % file_name)
-    logger.debug("Source %s :" % url_str)
+    logger.debug("Target %r :" % file_name)
+    logger.debug("Source %r :" % url_str)
 
     url = Request(url_str)
 
@@ -22,12 +22,12 @@ def download(file_name, url_str):
 
     try:
 
-        logger.debug("Opening %s :" % url_str)
+        logger.debug("Opening %r :" % url_str)
         u = urlopen(url_str)
         f = open(file_name, 'wb')
         meta = u.info()
         file_size = int(meta.getheaders("Content-Length")[0])
-        logger.info("Downloading: %s Bytes: %s" % (file_name, file_size))
+        logger.info("Downloading: %r Bytes: %r" % (file_name, file_size))
 
         file_size_dl = 0
         block_sz = 64 * 256
@@ -49,14 +49,14 @@ def download(file_name, url_str):
 
     #handle errors
     except HTTPError, e:
-        logger.fatal("HTTP Error: %s %s" % (e, url_str))
+        logger.fatal("HTTP Error: %r %r" % (e, url_str))
         success = False
     except URLError, e:
-        logger.fatal("URL Error: %s %s " % (e, url_str))
+        logger.fatal("URL Error: %r %r" % (e, url_str))
         success = False
 
     if file_size_dl != file_size:
-        logger.fatal("Download of file %s failed" % url_str)
+        logger.fatal("Download of file %r failed" % url_str)
         success = False
 
     if not success:

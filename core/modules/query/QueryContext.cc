@@ -34,8 +34,6 @@
 // Qserv headers
 #include "query/ColumnRef.h"
 
-using lsst::qserv::query::DbTablePair;
-using lsst::qserv::query::DbTableVector;
 
 namespace lsst {
 namespace qserv {
@@ -43,13 +41,13 @@ namespace query {
 
 /// Resolve a column ref to a concrete (db,table)
 /// @return the concrete (db,table), based on current context.
-query::DbTablePair
+DbTablePair
 QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
-    if(!cr) { return query::DbTablePair(); }
+    if(!cr) { return DbTablePair(); }
 
     // If alias, retrieve real reference.
     if(cr->db.empty() && !cr->table.empty()) {
-        query::DbTablePair concrete = tableAliases.get(cr->table);
+        DbTablePair concrete = tableAliases.get(cr->table);
         if(!concrete.empty()) {
             if(concrete.db.empty()) {
                 concrete.db = defaultDb;

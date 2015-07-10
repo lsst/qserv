@@ -108,14 +108,14 @@ ValueExpr::ValueExpr() {
  * @return void
  */
 void ValueExpr::dbgPrint(std::ostream& os) {
-    query::ColumnRef::Vector cList;
+    ColumnRef::Vector cList;
     os << "ValueExpr:\t\"" << *this << "\"\n";
     os << "\tAlias:\t\"" << this->_alias << "\"\n";
     os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
     os << "\tIsFactor:\t" << this->isFactor() << "\n";
     os << "\tIsStar:\t" << this->isStar() << "\n";
     this->findColumnRefs(cList);
-    typedef query::ColumnRef::Vector::const_iterator ColIter;
+    typedef ColumnRef::Vector::const_iterator ColIter;
     for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
         os << "\tColumnRef:\t" << *i << "\n";
     }
