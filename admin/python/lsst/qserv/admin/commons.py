@@ -59,16 +59,16 @@ config = dict()
 
 def read_user_config():
     config_file = os.path.join(os.getenv("HOME"), ".lsst", "qserv.conf")
-    _LOG.debug("Read user config file: %s", config_file)
+    _LOG.debug("Read user config file: %r", config_file)
     config = read_config(config_file)
     return config
 
 
 def read_config(config_file):
 
-    _LOG.debug('Reading config file %s' % config_file)
+    _LOG.debug('Reading config file %r' % config_file)
     if not os.path.isfile(config_file):
-        _LOG.fatal("qserv configuration file not found : %s" % config_file)
+        _LOG.fatal("qserv configuration file not found: %r" % config_file)
         exit(1)
 
     parser = ConfigParser.SafeConfigParser()
@@ -78,11 +78,11 @@ def read_config(config_file):
     _LOG.debug("Build configuration : ")
     for section in parser.sections():
         _LOG.debug("===")
-        _LOG.debug("[%s]" % section)
+        _LOG.debug("[%r]" % section)
         _LOG.debug("===")
         config[section] = dict()
         for option in parser.options(section):
-            _LOG.debug("'%s' = '%s'" % (option, parser.get(section, option)))
+            _LOG.debug("%r = %r" % (option, parser.get(section, option)))
             config[section][option] = parser.get(section, option)
 
     # normalize directories names
@@ -92,7 +92,7 @@ def read_config(config_file):
                 config[section][option] = os.path.normpath(
                     config[section][option])
     # computable configuration parameters
-    config['qserv']['scratch_dir'] = os.path.join("/dev", "shm", "qserv-%s-%s" %
+    config['qserv']['scratch_dir'] = os.path.join("/dev", "shm", "qserv-%r-%r" %
                                                   (getpass.getuser(),
                                                    hashlib.sha224(config['qserv']['qserv_run_dir']).hexdigest())
                                                   )
@@ -117,8 +117,8 @@ def restart(service_name):
         raise RuntimeError("Qserv configuration is empty")
     initd_path = os.path.join(config['qserv']['qserv_run_dir'], 'etc', 'init.d')
     daemon_script = os.path.join(initd_path, service_name)
-    out = os.system("%s stop" % daemon_script)
-    out = os.system("%s start" % daemon_script)
+    out = os.system("%r stop" % daemon_script)
+    out = os.system("%r start" % daemon_script)
 
 def status(qserv_run_dir):
     """
@@ -155,14 +155,14 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
 
     sin = None
     if stdin_file:
-        _LOG.log(loglevel, "stdin file : %s" % stdin_file)
+        _LOG.log(loglevel, "stdin file: %r" % stdin_file)
         sin = open(stdin_file, "r")
 
     sout = None
     if stdout==sys.stdout:
         sout=sys.stdout
     elif stdout:
-        _LOG.log(loglevel, "stdout file : %s" % stdout)
+        _LOG.log(loglevel, "stdout file: %r" % stdout)
         sout = open(stdout, "w")
     else:
         sout = subprocess.PIPE
@@ -171,7 +171,7 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     if stderr==sys.stderr:
         serr=sys.stderr
     elif stderr:
-        _LOG.log(loglevel, "stderr file : %s" % stderr)
+        _LOG.log(loglevel, "stderr file: %r" % stderr)
         serr = open(stderr, "w")
     else:
         serr = subprocess.PIPE
@@ -184,9 +184,9 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
         (stdoutdata, stderrdata) = process.communicate()
 
         if stdoutdata != None and len(stdoutdata) > 0:
-            _LOG.info("\tstdout :\n--\n%s--" % stdoutdata)
+            _LOG.info("\tstdout :\n--\n%r--" % stdoutdata)
         if stderrdata != None and len(stderrdata) > 0:
-            _LOG.info("\tstderr :\n--\n%s--" % stderrdata)
+            _LOG.info("\tstderr :\n--\n%r--" % stderrdata)
 
         if process.returncode != 0:
             _LOG.fatal(
@@ -194,10 +194,10 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
             sys.exit(1)
 
     except OSError as e:
-        _LOG.fatal("Error : %s while running command : %s" %
-                     (e, cmd_str))
+        _LOG.fatal("Error: %r while running command: %r" %
+                   (e, cmd_str))
         sys.exit(1)
     except ValueError as e:
-        _LOG.fatal("Invalid parameter : '%s' for command : %s " %
-                     (e, cmd_str))
+        _LOG.fatal("Invalid parameter: %r for command: %r" %
+                   (e, cmd_str))
         sys.exit(1)

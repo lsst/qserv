@@ -224,8 +224,7 @@ class QservAdmin(object):
         @param dbName    Database name
         @param options   Dictionary with options (key/value)
         """
-        self._logger.debug("Create database '%s', options: %s",
-                           dbName, options)
+        self._logger.debug("Create database %r, options: %r", dbName, options)
         validateDbNameOrThrow(dbName)
         # client should guarantee existence of "partitioning" option
         if "partitioning" not in options:
@@ -236,7 +235,7 @@ class QservAdmin(object):
             # double check if all required options are specified
             for x in ["nStripes", "nSubStripes", "storageClass"]:
                 if x not in options:
-                    self._logger.error("Required option '%s' missing", x)
+                    self._logger.error("Required option %r missing", x)
                     raise KvException(KvException.MISSING_PARAM, x)
 
         # first check version or store it
@@ -251,7 +250,7 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
             try:
                 if self._kvI.exists(dbP):
-                    self._logger.info("createDb database '%s' exists, aborting.",
+                    self._logger.info("createDb database %r exists, aborting.",
                                       dbName)
                     return
                 self._kvI.create(dbP, "PENDING")
@@ -272,12 +271,12 @@ class QservAdmin(object):
                 self._createDbLockSection(dbP)
                 self._kvI.set(dbP, "READY")
             except KvException as e:
-                self._logger.error("Failed to create database '%s', error was: %s",
+                self._logger.error("Failed to create database %r, error was: %r",
                                    dbName, e)
                 self._deletePacked(dbP)
                 if ptP is not None: self._deletePacked(ptP)
                 raise
-        self._logger.debug("Create database '%s' succeeded.", dbName)
+        self._logger.debug("Create database %r succeeded.", dbName)
 
     def createDbLike(self, dbName, templateDbName):
         """
@@ -286,7 +285,7 @@ class QservAdmin(object):
         @param dbName           Database name (of the database to create)
         @param templateDbName   Database name (of the template database)
         """
-        self._logger.info("Creating db '%s' like '%s'", dbName, templateDbName)
+        self._logger.info("Creating db %r like %r", dbName, templateDbName)
 
         # first check version
         self._versionCheck()
@@ -314,7 +313,7 @@ class QservAdmin(object):
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create db '%s' like '%s', error was: %s",
+            self._logger.error("Failed to create db %r like %r, error was: %r",
                                dbName, templateDbName, e)
             self._deletePacked(dbP)
             raise
@@ -325,7 +324,7 @@ class QservAdmin(object):
 
         @param dbName    Database name.
         """
-        self._logger.info("Drop database '%s'", dbName)
+        self._logger.info("Drop database %r", dbName)
 
         # first check version
         self._versionCheck()
@@ -333,7 +332,7 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
             dbP = "/DBS/%s" % dbName
             if not self._kvI.exists(dbP):
-                self._logger.info("Db '%s' gone, nothing to drop.", dbName)
+                self._logger.info("Db %r gone, nothing to drop.", dbName)
                 return
             self._deletePacked(dbP)
 
@@ -379,7 +378,7 @@ class QservAdmin(object):
         @raise Exception: if table schema is not defined in CSS
         """
 
-        self._logger.debug("Get table schema '%s.%s'", dbName, tableName)
+        self._logger.debug("Get table schema %r.%r", dbName, tableName)
 
         tableKey = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         tableData = self._getMaybePacked(tableKey, ['schema'])
@@ -418,7 +417,7 @@ class QservAdmin(object):
         @param tableName Table name
         @param options   Dictionary with options (key/value)
         """
-        self._logger.debug("Create table '%s.%s', options: %s",
+        self._logger.debug("Create table %r.%r, options: %r",
                            dbName, tableName, options)
 
         validateDbNameOrThrow(dbName)
@@ -429,7 +428,7 @@ class QservAdmin(object):
 
         with self._getDbLock(dbName):
             if not self._kvI.exists("/DBS/%s" % dbName):
-                self._logger.info("createTable: database '%s' missing, aborting.",
+                self._logger.info("createTable: database %r missing, aborting.",
                                   dbName)
                 return
             self._createTable(options, dbName, tableName)
@@ -447,7 +446,7 @@ class QservAdmin(object):
         @param dbName    Database name
         @param tableName Table name
         """
-        self._logger.debug("Drop table '%s.%s'", dbName, tableName)
+        self._logger.debug("Drop table %r.%r", dbName, tableName)
 
         with self._getDbLock(dbName):
             tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
@@ -471,7 +470,7 @@ class QservAdmin(object):
             elif k in defaults:
                 opts[k] = defaults[k]
             else:
-                self._logger.debug("Missing '%s', no default value" % (k))
+                self._logger.debug("Missing %r, no default value" % (k))
         return
 
     def _normalizeTableOpts(self, tbOpts, matchOpts, partitionOpts, defaults):
@@ -479,11 +478,11 @@ class QservAdmin(object):
         def check(d, possible):
             for k in possible:
                 if k not in d:
-                    self._logger.info("'%s' not provided", k)
+                    self._logger.info("%r not provided", k)
         def checkFail(d, required):
             for k in required:
                 if k not in d:
-                    self._logger.error("'%s' not provided", k)
+                    self._logger.error("%r not provided", k)
                     raise QservAdminException(
                         QservAdminException.MISSING_PARAM, k)
         check(tbOpts, possibleOpts["table"])
@@ -509,8 +508,9 @@ class QservAdmin(object):
             defaults = self._getDefaults(dbName, tableName)
             self._normalizeTableOpts(tbOpts, matchOpts, partitionOpts, defaults)
         except QservAdminException as e:
-            self._logger.error("Failed to normalize opts for table '%s.%s', error was: %s",
-                                dbName, tableName, e)
+            self._logger.error(
+                "Failed to normalize opts for table %r.%r, error was: %r",
+                dbName, tableName, e)
             raise
         try:
             self._kvI.create(tbP, "PENDING")
@@ -521,11 +521,11 @@ class QservAdmin(object):
                 self._addPacked(tbP+"/partitioning", partitionOpts)
             self._kvI.set(tbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create table '%s.%s', error was: %s",
-                                dbName, tableName, e)
+            self._logger.error("Failed to create table %r.%r, error was: %r",
+                               dbName, tableName, e)
             self._kvI.delete(tbP, recursive=True)
             raise
-        self._logger.debug("Create table '%s.%s' succeeded.", dbName, tableName)
+        self._logger.debug("Create table %r.%r succeeded.", dbName, tableName)
 
     #### NODES #####################################################################
 
@@ -731,7 +731,7 @@ class QservAdmin(object):
         @param hosts:       list of host names for specified chunk
         """
 
-        self._logger.debug("Add chunk replicas '%s.%s', chunk: %s hosts: %s",
+        self._logger.debug("Add chunk replicas r%r.%r, chunk: %r hosts: %r",
                            dbName, tableName, chunk, hosts)
 
         # protect against concurrent modifications
@@ -744,7 +744,7 @@ class QservAdmin(object):
 
                 for host in hosts:
                     path = self._kvI.create(key + '/', sequence=True)
-                    self._logger.debug("New chunk replica key: %s", path)
+                    self._logger.debug("New chunk replica key: %r", path)
                     self._addPacked(path, dict(nodeName=host))
 
     ################################################################################

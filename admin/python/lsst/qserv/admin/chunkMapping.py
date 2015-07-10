@@ -90,7 +90,7 @@ class ChunkMapping(object):
             chunks = self.css.chunks(self.database, table)
 
             if chunks:
-                self._log.debug('Loading mapping for table %s', table)
+                self._log.debug('Loading mapping for table %r', table)
 
             for chunk, hosts in chunks.items():
                 self.allChunks.setdefault(chunk, set()).update(hosts)
@@ -107,7 +107,7 @@ class ChunkMapping(object):
         method.
         """
 
-        self._log.debug('Find worker for chunk %s', chunk)
+        self._log.debug('Find worker for chunk %r', chunk)
 
         # try newly-created mapping first
         worker = self.newChunks.get(chunk)
