@@ -144,6 +144,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             if(!vlist) {
                 throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
             }
+            // FIXME: is it really useful to add star if select clause is empty?
             if(vlist->size() == 0) {
                 mList.addStar(std::string());
             }
@@ -154,13 +155,16 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             if(_orderBy) {
                 // Remove orderby from parallel
                 // (no need to sort until we have all the results)
-                SelectStmtPtrVector::iterator i, e;
                 std::shared_ptr<query::OrderByClause> _nullptr;
-                for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-                    (**i).setOrderBy(_nullptr);
+                // FIXME: order by should be kept in case of ORDER BY LIMIT?
+                if (_limit == -1) {
+                    for(auto i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+                        (**i).setOrderBy(_nullptr);
+                    }
                 }
+
                 // Make sure the merge has an ORDER BY
-                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause: \"%1%\"" % *_orderBy);
+                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause to merge query: \"%1%\"" % *_orderBy);
                 p.stmtMerge.setOrderBy(_orderBy);
             }
         }

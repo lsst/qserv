@@ -87,21 +87,26 @@ BOOST_AUTO_TEST_CASE(OrderByThreeField) {
     auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
 }
 
-BOOST_AUTO_TEST_CASE(OrderByLimit) { // Test flipped syntax in DM-661
+BOOST_AUTO_TEST_CASE(OrderByLimit) {
+    std::string stmt = "SELECT objectId, taiMidPoint "
+        "FROM Source "
+        "ORDER BY objectId ASC LIMIT 5";
+    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_ ORDER BY objectId ASC LIMIT 5";
+    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId ASC LIMIT 5";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+}
+
+
+BOOST_AUTO_TEST_CASE(OrderByLimitNotChunked) { // Test flipped syntax in DM-661
     std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
     std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
-    std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
+    std::string expectedParallel = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
     // TODO: commented out test that is supposed to fail but it does not currently
-    // prepareTestQuerySession(qsTest, bad, "ParseException");
-    auto querySession = check(qsTest, good, expected);
+    // auto querySession = check(qsTest, bad, "ParseException");
+    auto querySession = check(qsTest, good, expectedParallel);
 
     auto mergeStmt = querySession->getMergeStmt();
-    if (mergeStmt) {
-        LOGF_INFO("mergeStmt->toString() %1%" % mergeStmt->toString());
-    }
-    else {
-        LOGF_INFO("No merge stmt");
-    }
+    BOOST_CHECK(mergeStmt == NULL);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
