@@ -107,15 +107,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
-        LOGF(_log, LOG_LVL_ERROR, "Invalid query: %s" % qs->getError());
-        sessionValid = false;
-    }
-    if(!qs->getError().empty()) {
-        LOGF(_log, LOG_LVL_INFO, "Invalid query: %s" % qs->getError());
-        sessionValid = false;
-    }
-    if(!qs->getError().empty()) {
-        LOGF(_log, LOG_LVL_INFO, "Invalid query: %s" % qs->getError());
+        LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
         sessionValid = false;
     }
     UserQuery* uq = new UserQuery(qs);

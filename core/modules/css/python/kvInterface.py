@@ -607,7 +607,6 @@ class KvInterfaceMem(KvInterface):
         """
         try:
             self._logger.info("GETCHILDREN '%s'" % (k))
-            c = self._kvi.getChildren(k)
             return self._kvi.getChildren(k)
         except NoNodeError:
             self._logger.error("in getChildren(), key %s does not exist" % k)

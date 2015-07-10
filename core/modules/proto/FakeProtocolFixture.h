@@ -68,11 +68,11 @@ public:
             subc.add_table("subtable");
             f.mutable_subchunks()->CopyFrom(subc);
             s = f.mutable_subchunks();
-        } else {
-            s = f.mutable_subchunks();
         }
+        s = f.mutable_subchunks();
         s->add_id(scId);
     }
+
     ProtoHeader* makeProtoHeader() {
         ProtoHeader* p(new ProtoHeader());
         p->set_protocol(2);

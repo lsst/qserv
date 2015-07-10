@@ -252,7 +252,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     if (r != "sIndex" && r != "qserv_objectId") {
         std::transform(r.begin(), r.end(), r.begin(), ::tolower);
         if (LOG_CHECK_DEBUG()) {
-            LOGF_DEBUG("Qserv restrictor changed to lower-case %s:"% r);
+            LOGF_DEBUG("Qserv restrictor changed to lower-case %1%:"% r);
         }
     }
     restr->_name = r;
