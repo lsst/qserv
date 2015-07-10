@@ -205,7 +205,9 @@ def registerDb():
         _restartXrootd()
 
     # return representation for new database
-    return json.jsonify(result=_dbDict(dbName))
+    response = json.jsonify(result=_dbDict(dbName))
+    response.status_code = 201
+    return response
 
 
 @xrdService.route('/dbs/<dbName>', methods=['DELETE'])
