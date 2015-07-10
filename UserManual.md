@@ -204,10 +204,6 @@ E.g., don't try to express it as "WHERE objectId BETWEEN 1 AND 2" etc.
 
 Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See [DM-2889](https://jira.lsstcorp.org/browse/DM-2889).
 
-### objectId constraint must appear at the beginning of WHERE
-
-objectId related constraints have to appear at the beginning of WHERE clause (before or after the spatial constraint, if there is any).
-
 
 ### Column(s) used in ORDER BY must appear in SELECT
 
