@@ -117,8 +117,8 @@ def restart(service_name):
         raise RuntimeError("Qserv configuration is empty")
     initd_path = os.path.join(config['qserv']['qserv_run_dir'], 'etc', 'init.d')
     daemon_script = os.path.join(initd_path, service_name)
-    out = os.system("%r stop" % daemon_script)
-    out = os.system("%r start" % daemon_script)
+    out = os.system("%s stop" % daemon_script)
+    out = os.system("%s start" % daemon_script)
 
 def status(qserv_run_dir):
     """
