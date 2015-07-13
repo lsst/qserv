@@ -54,6 +54,7 @@ Access to the classes from the qserv_czar library
 %include cstring.i
 %include carrays.i
 %include "std_map.i"
+%include "std_pair.i"
 %include "std_string.i"
 %include "std_vector.i"
 %include "stdint.i"
@@ -65,9 +66,8 @@ Access to the classes from the qserv_czar library
 // %import "lsst/pex/exceptions/exceptionsLib.i"
 
 // Instantiate the map we need
-namespace std {
-    %template(StringMap) map<std::string, std::string>;
-};
+%template(StringMap) std::map<std::string, std::string>;
+%template(IntStringPair) std::pair<int,std::string>;
 
 // ------------------------------------------------------------------------
 // Copied from http://www.swig.org/Doc1.3/Python.html#Python_nn59

@@ -382,9 +382,9 @@ class InbandQueryAction:
         dbContext = self.hints.get("db", "")
 
         logger.dbg("Setting sessionId")
-        self.sessionId = self.context.uqFactory.newUserQuery(self.queryStr,
-                                                             dbContext,
-                                                             self._resultName)
+        self.sessionId, self.proxyOrderBy = self.context.uqFactory.newUserQuery(self.queryStr,
+                                                                                dbContext,
+                                                                                self._resultName)
         errorMsg = UserQuery_getQueryProcessingError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
         pass

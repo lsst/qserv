@@ -88,8 +88,10 @@ public:
      * merge queries) and check for errors
      *
      * @param sql: the sql query
+     * @return: the "ORDER BY" clause to run on mysql-proxy during result retrieval
+     *          indeed, MySQL results order is undefined with simple "SELECT *" clause.
      */
-    void analyzeQuery(std::string const& sql);
+    std::string analyzeQuery(std::string const& sql);
     bool needsMerge() const;
     bool hasChunks() const;
 

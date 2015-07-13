@@ -119,13 +119,19 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
-operator<<(std::ostream& os, OrderByClause const& c) {
-    if(c._terms.get()) {
-        os << "ORDER BY ";
-        std::copy(c._terms->begin(),c._terms->end(),
-                  std::ostream_iterator<OrderByTerm>(os,", "));
+operator<<(std::ostream& out, OrderByClause const& clause) {
+    if (clause._terms) {
+        auto const& terms = *(clause._terms);
+        if (not terms.empty()) {
+            out << "ORDER BY ";
+            if (terms.size()>1) {
+                std::ostream_iterator<OrderByTerm> string_it(out, ", ");
+                std::copy(terms.begin(), terms.end()-1, string_it);
+            }
+            out << terms.back();
+        }
     }
-    return os;
+    return out;
 }
 
 std::string OrderByClause::toString() const {

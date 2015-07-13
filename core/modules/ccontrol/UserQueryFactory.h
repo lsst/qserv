@@ -66,9 +66,9 @@ public:
 
     /// @return a handle to the new UserQuery object to be used with the
     /// userQueryProxy interface.
-    int newUserQuery(std::string const& query,
-                     std::string const& defaultDb,
-                     std::string const& resultTable);
+    std::pair <int,std::string> newUserQuery(std::string const& query,
+                                             std::string const& defaultDb,
+                                             std::string const& resultTable);
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;

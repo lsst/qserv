@@ -35,6 +35,7 @@
 // Local headers
 #include "global/stringTypes.h"
 #include "query/QueryTemplate.h"
+#include "query/OrderByClause.h"
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -47,11 +48,9 @@ namespace query {
     class SelectList;
     class FromList;
     class WhereClause;
-    class OrderByClause;
     class GroupByClause;
     class HavingClause;
 }}} // End of forward declarations
-
 
 namespace lsst {
 namespace qserv {

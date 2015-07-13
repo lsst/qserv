@@ -96,11 +96,13 @@ void QuerySession::setDefaultDb(std::string const& defaultDb) {
 }
 
 // Analyze SQL query issued by user
-void QuerySession::analyzeQuery(std::string const& sql) {
+std::string QuerySession::analyzeQuery(std::string const& sql) {
     _original = sql;
     _isFinal = false;
     _initContext();
     assert(_context.get());
+
+    std::string order_by = "";
 
     parser::SelectParser::Ptr p;
     try {
@@ -114,6 +116,11 @@ void QuerySession::analyzeQuery(std::string const& sql) {
 
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % toString());
+        }
+
+        if (_stmt->hasOrderBy()) {
+            order_by = _stmt->getOrderBy().toString();
+            LOGF(_logger, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % order_by);
         }
 
     } catch(QueryProcessingBug& b) {
@@ -133,6 +140,8 @@ void QuerySession::analyzeQuery(std::string const& sql) {
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     }
+
+    return order_by;
 }
 
 bool QuerySession::needsMerge() const {
