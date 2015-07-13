@@ -79,7 +79,17 @@ public:
 
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
-    void setQuery(std::string const& q);
+
+    /**
+     * @brief Analyze SQL query issued by user
+     *
+     * This query comes from user through mysql-client and mysql-proxy
+     * This function will parse it, apply query plugins (i.e. build parallel and
+     * merge queries) and check for errors
+     *
+     * @param sql: the sql query
+     */
+    void analyzeQuery(std::string const& sql);
     bool needsMerge() const;
     bool hasChunks() const;
 

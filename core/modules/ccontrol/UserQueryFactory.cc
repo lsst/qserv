@@ -100,7 +100,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
-        qs->setQuery(query);
+        qs->analyzeQuery(query);
     } catch (...) {
         errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
         LOGF(_log, LOG_LVL_ERROR, errorExtra);

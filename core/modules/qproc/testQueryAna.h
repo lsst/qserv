@@ -81,7 +81,7 @@ std::shared_ptr<QuerySession> buildQuerySession(QuerySession::Test& t,
                                                 std::string const& stmt,
                                                 std::string const& expectedErr="") {
     std::shared_ptr<QuerySession> qs(new QuerySession(t));
-    qs->setQuery(stmt);
+    qs->analyzeQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 
     // DEBUG step

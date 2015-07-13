@@ -95,15 +95,16 @@ void QuerySession::setDefaultDb(std::string const& defaultDb) {
     _defaultDb = defaultDb;
 }
 
-void QuerySession::setQuery(std::string const& inputQuery) {
-    _original = inputQuery;
+// Analyze SQL query issued by user
+void QuerySession::analyzeQuery(std::string const& sql) {
+    _original = sql;
     _isFinal = false;
     _initContext();
     assert(_context.get());
 
     parser::SelectParser::Ptr p;
     try {
-        p = parser::SelectParser::newInstance(inputQuery);
+        p = parser::SelectParser::newInstance(sql);
         p->setup();
         _stmt = p->getSelectStmt();
         _preparePlugins();
