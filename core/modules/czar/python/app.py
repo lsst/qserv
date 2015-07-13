@@ -379,14 +379,14 @@ class InbandQueryAction:
     def _prepareForExec(self):
         """Prepare data structures and objects for query execution"""
         self.hints = self.context.conditions.copy() # make a copy
-        dbContext = self.hints.get("db", "")
+        db_context = self.hints.get("db", "")
 
         logger.dbg("Setting sessionId")
         self.sessionId, self.proxyOrderBy = self.context.uqFactory.newUserQuery(self.queryStr,
-                                                                                dbContext,
+                                                                                db_context,
                                                                                 self._resultName)
-        errorMsg = UserQuery_getQueryProcessingError(self.sessionId)
-        if errorMsg: raise ParseError(errorMsg)
+        error_msg = UserQuery_getQueryProcessingError(self.sessionId)
+        if error_msg: raise ParseError(error_msg)
         pass
 
     def _execAndJoin(self):

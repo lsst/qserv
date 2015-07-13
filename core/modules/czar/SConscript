@@ -26,8 +26,6 @@ depends = ['css/StripingParams.h',
            'query/Constraint.h',
            'qdisp/ChunkMeta.h',
            'qproc/ChunkSpec.h',
-           'rproc/TableMerger.h',
-           'rproc/mergeTypes.h',
            'util/Substitution.h']
 depends = map(lambda f: env.File("../"+f), depends)
 

@@ -81,8 +81,7 @@ shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
                "_czarLib" : {'mods' : """czar ccontrol global
                                          log rproc mysql
                                          parser query qmeta
-                                         sql util sg
-                                         obsolete proto
+                                         sql util sg proto
                                          qana qdisp qproc""".split(),
                              'shmods' : ['css'],
                              'libs' : """ssl crypto antlr log

@@ -44,7 +44,6 @@ Access to the classes from the qserv_czar library
 #include "css/StripingParams.h"
 #include "global/constants.h"
 #include "qdisp/ChunkMeta.h"
-#include "rproc/mergeTypes.h"
 #include "util/common.h"
 #include "util/Substitution.h"
 %}
@@ -127,7 +126,6 @@ Access to the classes from the qserv_czar library
 %include "global/constants.h"
 %include "qdisp/ChunkMeta.h"
 %include "query/Constraint.h"
-%include "rproc/mergeTypes.h"
 %include "util/Substitution.h"
 
 // Instantiate any templates here:

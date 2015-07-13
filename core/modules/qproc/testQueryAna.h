@@ -114,20 +114,17 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
                                     std::string const& expectedErr = "",
                                     std::string const& expectedMerge = "") {
 
-    bool testParallel = expectedErr.empty();
-    bool testMerge = testParallel && !expectedMerge.empty();
-
-
     std::shared_ptr<QuerySession> qs = buildQuerySession(t, stmt, expectedErr);
 
-    std::string sql;
-    if(testParallel) {
+    if (expectedErr.empty()) {
+        std::string sql;
         sql = buildFirstParallelQuery(*qs);
         BOOST_CHECK_EQUAL(sql, expectedParallel);
-    }
-    if (testMerge) {
-        sql = qs->getMergeStmt()->toQueryTemplateString();
-        BOOST_CHECK_EQUAL(sql, expectedMerge);
+
+        if (not expectedMerge.empty()) {
+            sql = qs->getMergeStmt()->getQueryTemplate().toString();
+            BOOST_CHECK_EQUAL(sql, expectedMerge);
+        }
     }
     return qs;
 }

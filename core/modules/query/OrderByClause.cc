@@ -110,7 +110,7 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
     if(!t._collate.empty()) os << " COLLATE " << t._collate;
     char const* orderStr = getOrderStr(t._order);
     if(orderStr && orderStr[0] != '\0') {
-        os << " " << orderStr << " ";
+        os << " " << orderStr;
     }
     return os;
 }

@@ -12,7 +12,7 @@ programs = []
 # extDeps
 extDeps = "boost_regex boost_thread boost_system mysqlclient_r ssl log log4cxx XrdSsi".split()
 
-modDeps = 'mysql obsolete sql wconfig wlog'.split() # deps on other modules
+modDeps = 'mysql sql wconfig wlog'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 #pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss']))
 #deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain

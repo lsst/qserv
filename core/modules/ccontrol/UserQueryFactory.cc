@@ -45,7 +45,6 @@
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "rproc/InfileMerger.h"
-#include "rproc/TableMerger.h"
 
 namespace lsst {
 namespace qserv {

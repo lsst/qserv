@@ -47,7 +47,6 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 #include "query/typedefs.h"
-#include "rproc/mergeTypes.h"
 
 
 // Forward declarations
@@ -118,7 +117,6 @@ public:
     std::shared_ptr<IntSet const> getEmptyChunks();
     std::string const& getError() const { return _error; }
 
-    rproc::MergeFixup makeMergeFixup() const; ///< as obsolete as TableMerger
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
     /// Finalize a query after chunk coverage has been updated

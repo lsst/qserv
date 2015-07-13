@@ -119,24 +119,6 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     BOOST_CHECK_EQUAL(goodRes, parallel);
 }
 
-BOOST_AUTO_TEST_CASE(Aggregate) {
-    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-    std::string expPar = "SELECT sum(pm_declErr) AS QS1_SUM,chunkId,COUNT(bMagF2) AS QS2_COUNT,SUM(bMagF2) AS QS3_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId";
-
-    std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
-
-    BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
-    BOOST_CHECK(context->hasChunks());
-    BOOST_CHECK(!context->hasSubChunks());
-    BOOST_REQUIRE(ss.hasGroupBy());
-
-    std::string parallel = buildFirstParallelQuery(*qs);
-    BOOST_CHECK_EQUAL(expPar, parallel);
-}
-
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
 

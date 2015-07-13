@@ -71,8 +71,17 @@ public:
     QueryTemplate getQueryTemplate() const;
     QueryTemplate getPostTemplate() const;
     std::shared_ptr<SelectStmt> clone() const;
+
+    /**
+     *  @brief Create a merge statement for current object
+     *
+     *  Starting from a shallow copy, copy only the pieces that matter for the merge clause.
+     *  SQL doesn't garantee result order so ORDER BY clause must be executed on mysql-proxy
+     *  during result retrieval and not during merging
+     *
+     * @return: A proposal for merge statement, which will be finalized by query plugins
+     */
     std::shared_ptr<SelectStmt> copyMerge() const;
-    std::shared_ptr<SelectStmt> copySyntax() const;
 
     bool getDistinct() const { return _hasDistinct; }
     void setDistinct(bool d) { _hasDistinct = d; }
@@ -91,8 +100,15 @@ public:
     WhereClause& getWhereClause() { return *_whereClause; }
     void setWhereClause(std::shared_ptr<WhereClause> w) { _whereClause = w; }
 
+    /**
+     * @brief Get LIMIT value in LIMIT clause for a SQL query
+     *
+     * @return LIMIT value, lsst::qserv::NOTSET if not specified
+     *
+     * @see lsst::qserv::parser::ModFactory::getLimit()
+     *
+     */
     int getLimit() const { return _limit; }
-    void setLimit(int limit) { _limit = limit; }
 
     bool hasOrderBy() const { return static_cast<bool>(_orderBy); }
     OrderByClause const& getOrderBy() const { return *_orderBy; }
@@ -113,20 +129,26 @@ public:
 
     /** Return a string representation of the object
      *
-     * Can be used for logging, of debugging
+     * Used only for debugging, or logging
+     * Use getQueryTemplate().toString() to get the actual SQL query
      *
      * @return a string representation of the object
      */
     std::string toString();
 
-    /** Return a string representation of the QueryTemplate
-     * object build from current object
+    /** Output operator for SelectStmt
      *
-     * Can be used for logging, of debugging
+     *  Used only for debugging, or logging
+     *  Use getQueryTemplate() output operator to get the actual SQL query
      *
-     * @return a string representation of the object
+     *  @param os: std::ostream which will contain object output
+     *  @param selectStmt: SelectStmt to output
+     *
+     *  @return std::ostream containing selectStmt output
+     *
+     *  @warning this function always add a trailing whitespace
      */
-    std::string toQueryTemplateString();
+    friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
  private:
     // Declarations

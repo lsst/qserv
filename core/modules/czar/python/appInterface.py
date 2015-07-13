@@ -83,17 +83,34 @@ class AppInterface:
             return False
         pass
 
-    def submitQuery(self, query, conditions):
-        """Issue a query.  Params: query, conditions.
-        @returns (result table name, lock/message table name, error)
+    def submitQuery(self, userquery, conditions):
+        """
+        Entry point for query processing
 
-        Does not block for query completion."""
+        Parse the query and prepare its execution context (i.e. result/message table, parallel and merge
+        queries), launch a thread for query execution (does not block for query completion as mysql-proxy is
+        mono-threaded), and returns to mysql-proxy.
+
+        @param userquery:   SQL Query sent by mysql-proxy
+        @param conditions:
+        @return             A list of value for mysql-proxy (result, message, orderby, error) where:
+                            - result: name of MySQL table containing query result for proxy
+                            - message: name of  MySQL table containing error/log messages, this table will
+                              be locked during query execution, and mysql-proxy will wait for the lock to be
+                              removed in order to get messages and results
+                            - orderby: if userquery contains an ORDER BY clause then mysql-proxy has to
+                              re-order query results. Indeed MySQL doesn't garantee result order for simple
+                              "SELECT *" clause
+                            - error: False, unless an error has been detected during this step, then all other
+                              fields will be set to False.
+
+        """
         # FIXME: Need to fix task tracker, and return taskID for tracking
 
         # Short-circuit the standard proxy/client queries.
-        quickResult = app.computeShortCircuitQuery(query, conditions)
+        quickResult = app.computeShortCircuitQuery(userquery, conditions)
         if quickResult: return quickResult
-        taskId = self._idCounter # RAW hazard, but this part is single-threaded
+        taskId = self._idCounter  # RAW hazard, but this part is single-threaded
         self._idCounter += 1
 
         logger.dbg("taskId", taskId)
@@ -108,7 +125,7 @@ class AppInterface:
             return ("error", "error",
                     "error locking result, check qserv/db config.")
         context = app.Context(conditions)
-        a = app.InbandQueryAction(query, context,
+        a = app.InbandQueryAction(userquery, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
             self._maybeCallWithThread(a.invoke)

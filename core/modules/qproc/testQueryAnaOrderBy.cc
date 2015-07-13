@@ -25,6 +25,7 @@
   * @file
   *
   * @brief Test C++ parsing and query analysis logic for select expressions
+  * with an "ORDER BY" clause.
   *
   *
   * @author Fabrice Jammes, IN2P3/SLAC

@@ -232,26 +232,6 @@ QuerySession::getEmptyChunks() {
     return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
 }
 
-rproc::MergeFixup
-QuerySession::makeMergeFixup() const {
-    // Make MergeFixup to adapt new query parser/generation framework
-    // to older merging code (TableMerger).
-    // This is unused by InfileMerger.
-    if(!_stmt) {
-        throw QueryProcessingBug("Cannot makeMergeFixup() with NULL _stmt");
-    }
-    query::SelectList const& mergeSelect = _stmtMerge->getSelectList();
-    query::QueryTemplate t;
-    mergeSelect.renderTo(t);
-    std::string select = t.toString();
-    t = _stmtMerge->getPostTemplate();
-    std::string post = t.toString();
-    std::string orderBy; // TODO
-    bool needsMerge = _context->needsMerge;
-    return rproc::MergeFixup(select, post, orderBy,
-                              _stmtMerge->getLimit(), needsMerge);
-}
-
 /// Returns the merge statment, if appropriate.
 /// If a post-execution merge fixup is not needed, return a NULL pointer.
 std::shared_ptr<query::SelectStmt>
