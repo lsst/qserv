@@ -37,10 +37,48 @@
 #include "QMetaTransaction.h"
 #include "sql/SqlResults.h"
 
+
 namespace {
 
 // logger instance for this module
 LOG_LOGGER _logger = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
+
+using lsst::qserv::qmeta::QInfo;
+
+char const* status2string(QInfo::QStatus qStatus) {
+    switch (qStatus) {
+    case QInfo::EXECUTING:
+        return "'EXECUTING'";
+    case QInfo::COMPLETED:
+        return "'COMPLETED'";
+    case QInfo::FAILED:
+        return "'FAILED'";
+    case QInfo::ABORTED:
+        return "'ABORTED'";
+    default:
+        return "NULL";
+    }
+}
+
+QInfo::QStatus string2status(char const* statusStr) {
+    if (not statusStr) {
+        // we do not have enum for that (and it should not really happen),
+        // just pretend we are executing
+        return QInfo::EXECUTING;
+    } else if (strcmp(statusStr, "EXECUTING") == 0) {
+        return QInfo::EXECUTING;
+    } else if (strcmp(statusStr, "COMPLETED") == 0) {
+        return QInfo::COMPLETED;
+    } else if (strcmp(statusStr, "FAILED") == 0) {
+        return QInfo::FAILED;
+    } else if (strcmp(statusStr, "ABORTED") == 0) {
+        return QInfo::ABORTED;
+    } else {
+        // some unexpected string, say we are still executing
+        return QInfo::EXECUTING;
+    }
+}
+
 
 }
 
@@ -59,15 +97,8 @@ QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf)
 QMetaMysql::~QMetaMysql() {
 }
 
-/**
- *  @brief Return czar ID given czar "name".
- *
- *  Negative number is returned if czar does not exist.
- *
- *  @param name:  Czar name, arbitrary string.
- *  @return: Car ID, negative if czar does not exist.
- */
-int
+// Return czar ID given czar "name".
+CzarId
 QMetaMysql::getCzarID(std::string const& name) {
 
     QMetaTransaction trans(_conn);
@@ -75,7 +106,7 @@ QMetaMysql::getCzarID(std::string const& name) {
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string const query = "SELECT cid from QCzar where czar = '" + name +"'";
+    std::string const query = "SELECT czarId FROM QCzar WHERE czar = '" + name +"'";
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -93,17 +124,19 @@ QMetaMysql::getCzarID(std::string const& name) {
 
     // check number of results and convert to integer
     if (ids.empty()) {
-        return -1;
+        LOGF(_logger, LOG_LVL_DEBUG, "Result set is empty");
+        return 0;
     } else if (ids.size() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name +
                                ": " + boost::lexical_cast<std::string>(ids.size()));
     } else {
-        return boost::lexical_cast<int>(ids[0]);
+        LOGF(_logger, LOG_LVL_DEBUG, "Found czar ID: %1%" % ids[0]);
+        return boost::lexical_cast<CzarId>(ids[0]);
     }
 }
 
 // Register new czar, return czar ID.
-int
+CzarId
 QMetaMysql::registerCzar(std::string const& name) {
 
     QMetaTransaction trans(_conn);
@@ -111,7 +144,7 @@ QMetaMysql::registerCzar(std::string const& name) {
     // check if czar is already defined
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT cid from QCzar where czar = '" + name +"'";
+    std::string query = "SELECT czarId FROM QCzar WHERE czar = '" + name +"'";
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -126,7 +159,7 @@ QMetaMysql::registerCzar(std::string const& name) {
     }
 
     // check number of results and convert to integer
-    int cid = -1;
+    CzarId czarId = 0;
     if (ids.size() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name +
                                ": " + boost::lexical_cast<std::string>(ids.size()));
@@ -141,17 +174,19 @@ QMetaMysql::registerCzar(std::string const& name) {
             LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
             throw SqlError(ERR_LOC, errObj);
         }
-        cid = _conn.getInsertId();
+        auto newId = _conn.getInsertId();
+        LOGF(_logger, LOG_LVL_DEBUG, "Created czar ID: %1%" % newId);
+        czarId = static_cast<CzarId>(newId);
 
     } else {
 
         // its exists, get its ID
-        cid = boost::lexical_cast<int>(ids[0]);
-        LOGF(_logger, LOG_LVL_DEBUG, "Use existing czar with ID: %1%" % cid);
+        czarId = boost::lexical_cast<CzarId>(ids[0]);
+        LOGF(_logger, LOG_LVL_DEBUG, "Use existing czar with ID: %1%" % czarId);
 
         // make sure it's active
         results.freeResults();
-        query = "UPDATE QCzar SET active = b'1' WHERE cid = " + ids[0];
+        query = "UPDATE QCzar SET active = b'1' WHERE czarId = " + ids[0];
         LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
         if (not _conn.runQuery(query, results, errObj)) {
             LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -161,12 +196,12 @@ QMetaMysql::registerCzar(std::string const& name) {
 
     trans.commit();
 
-    return cid;
+    return czarId;
 }
 
 // Mark specified czar as active or inactive.
 void
-QMetaMysql::setCzarActive(int czarId, bool active) {
+QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 
     QMetaTransaction trans(_conn);
 
@@ -175,7 +210,7 @@ QMetaMysql::setCzarActive(int czarId, bool active) {
     sql::SqlResults results;
     std::string const query = "UPDATE QCzar SET active = b'" +
             std::string(active ? "1" : "0") +
-            "' WHERE cid = " + boost::lexical_cast<std::string>(czarId);
+            "' WHERE czarId = " + boost::lexical_cast<std::string>(czarId);
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -195,7 +230,7 @@ QMetaMysql::setCzarActive(int czarId, bool active) {
 }
 
 // Register new query.
-int
+QueryId
 QMetaMysql::registerQuery(QInfo const& qInfo,
                           TableNames const& tables) {
 
@@ -203,12 +238,12 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     // build query
     sql::SqlErrorObject errObj;
-    std::string const qType(qInfo.queryType() == QInfo::INTERACTIVE ? "INTER" : "LONG");
+    std::string const qType(qInfo.queryType() == QInfo::SYNC ? "SYNC" : "ASYNC");
     std::string qResult = "NULL";
     if (not qInfo.resultQuery().empty()) {
         qResult = "'" + qInfo.resultQuery() + "'";
     }
-    std::string query = "INSERT INTO QInfo (qtype, cid, user, query, qtemplate, qresult) VALUES ('";
+    std::string query = "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qResult, status) VALUES ('";
     query += qType;
     query += "', ";
     query += boost::lexical_cast<std::string>(qInfo.czarId());
@@ -220,7 +255,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     query += _conn.escapeString(qInfo.queryTemplate());
     query += "', ";
     query += qResult;
-    query += ")";
+    query += ", 'EXECUTING')";
 
     // run query
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
@@ -230,12 +265,12 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     }
 
     // return value of the auto-increment column
-    unsigned long long qid = _conn.getInsertId();
+    QueryId queryId = static_cast<QueryId>(_conn.getInsertId());
 
     // register all tables
     for (TableNames::const_iterator itr = tables.begin(); itr != tables.end(); ++ itr) {
-        query = "INSERT INTO QTable (qid, dbname, tblname) VALUES (";
-        query += boost::lexical_cast<std::string>(qid);
+        query = "INSERT INTO QTable (queryId, dbName, tblName) VALUES (";
+        query += boost::lexical_cast<std::string>(queryId);
         query += ", '";
         query += _conn.escapeString(itr->first);
         query += "', '";
@@ -251,19 +286,19 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     trans.commit();
 
-    return qid;
+    return queryId;
 }
 
 // Add list of chunks to query.
 void
-QMetaMysql::addChunks(int queryId, std::vector<int> const& chunks) {
+QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
 
     QMetaTransaction trans(_conn);
 
     // register all tables
     sql::SqlErrorObject errObj;
     for (std::vector<int>::const_iterator itr = chunks.begin(); itr != chunks.end(); ++ itr) {
-        std::string query = "INSERT INTO QWorker (qid, chunk) VALUES (";
+        std::string query = "INSERT INTO QWorker (queryId, chunk) VALUES (";
         query += boost::lexical_cast<std::string>(queryId);
         query += ", ";
         query += boost::lexical_cast<std::string>(*itr);
@@ -281,7 +316,7 @@ QMetaMysql::addChunks(int queryId, std::vector<int> const& chunks) {
 
 // Assign or re-assign chunk to a worker.
 void
-QMetaMysql::assignChunk(int queryId,
+QMetaMysql::assignChunk(QueryId queryId,
                         int chunk,
                         std::string const& xrdEndpoint) {
     QMetaTransaction trans(_conn);
@@ -290,7 +325,7 @@ QMetaMysql::assignChunk(int queryId,
     sql::SqlErrorObject errObj;
     std::string query = "UPDATE QWorker SET wxrd = '";
     query += _conn.escapeString(xrdEndpoint);
-    query += "', submitted = NOW() WHERE qid = ";
+    query += "', submitted = NOW() WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
     query += " AND chunk = ";
     query += boost::lexical_cast<std::string>(chunk);
@@ -317,13 +352,13 @@ QMetaMysql::assignChunk(int queryId,
 
 // Mark chunk as completed.
 void
-QMetaMysql::finishChunk(int queryId, int chunk) {
+QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 
     QMetaTransaction trans(_conn);
 
     // find and update query info
     sql::SqlErrorObject errObj;
-    std::string query = "UPDATE QWorker SET completed = NOW() WHERE qid = ";
+    std::string query = "UPDATE QWorker SET completed = NOW() WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
     query += " AND chunk = ";
     query += boost::lexical_cast<std::string>(chunk);
@@ -348,14 +383,16 @@ QMetaMysql::finishChunk(int queryId, int chunk) {
     trans.commit();
 }
 
-// Mark query as collected.
+// Mark query as completed or failed.
 void
-QMetaMysql::markQueryCollected(int queryId) {
+QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
 
     QMetaTransaction trans(_conn);
 
     // find and update query info
-    std::string query = "UPDATE QInfo SET collected = NOW() WHERE qid = ";
+    std::string query = "UPDATE QInfo SET completed = NOW(), status = ";
+    query += ::status2string(qStatus);
+    query += " WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
 
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
@@ -378,14 +415,14 @@ QMetaMysql::markQueryCollected(int queryId) {
     trans.commit();
 }
 
-// Mark query as completed.
+// Mark query as finished and returned to client.
 void
-QMetaMysql::finishQuery(int queryId) {
+QMetaMysql::finishQuery(QueryId queryId) {
 
     QMetaTransaction trans(_conn);
 
     // find and update chunk info
-    std::string query = "UPDATE QInfo SET completed = NOW() WHERE qid = ";
+    std::string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
 
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
@@ -408,20 +445,59 @@ QMetaMysql::finishQuery(int queryId) {
     trans.commit();
 }
 
-// Find all queries currently executing.
-std::vector<int>
-QMetaMysql::getExecutingQueries(int czarId) {
+// Generic interface for finding queries.
+std::vector<QueryId>
+QMetaMysql::findQueries(CzarId czarId,
+                        QInfo::QType qType,
+                        std::string const& user,
+                        std::vector<QInfo::QStatus> status,
+                        int completed,
+                        int returned) {
 
-    std::vector<int> result;
+    std::vector<QueryId> result;
 
     QMetaTransaction trans(_conn);
+
+    // all conditions for query
+    std::vector<std::string> cond;
+    if (czarId != 0) {
+        cond.push_back("czarId = " + boost::lexical_cast<std::string>(czarId));
+    }
+    if (qType != QInfo::ANY) {
+        std::string const qTypeStr(qType == QInfo::SYNC ? "SYNC" : "ASYNC");
+        cond.push_back("qType = '" + qTypeStr + "'");
+    }
+    if (not user.empty()) {
+        cond.push_back("user = '" + _conn.escapeString(user) + "'");
+    }
+    if (not status.empty()) {
+        std::string condStr = "status IN (";
+        for (auto itr = status.begin(), end = status.end(); itr != end; ++ itr) {
+            if (itr != status.begin()) condStr += ", ";
+            condStr += status2string(*itr);
+        }
+        condStr += ")";
+        cond.push_back(condStr);
+    }
+    if (completed >= 0) {
+        cond.push_back(completed ? "completed IS NOT NULL" : "completed IS NULL");
+    }
+    if (returned >= 0) {
+        cond.push_back(returned ? "returned IS NOT NULL" : "returned IS NULL");
+    }
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT qid from QInfo where cid = ";
-    query += boost::lexical_cast<std::string>(czarId);
-    query += " AND completed IS NULL";
+    std::string query = "SELECT queryId FROM QInfo";
+    for (auto itr = cond.begin(), end = cond.end(); itr != end; ++ itr) {
+        if (itr == cond.begin()) {
+            query += " WHERE ";
+        } else {
+            query += " AND ";
+        }
+        query += *itr;
+    }
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -440,23 +516,60 @@ QMetaMysql::getExecutingQueries(int czarId) {
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<int, std::string>);
+                   boost::lexical_cast<QueryId, std::string>);
 
     return result;
 }
 
-// Get full query information.
-QInfo
-QMetaMysql::getQueryInfo(int queryId) {
+// Find all pending queries.
+std::vector<QueryId>
+QMetaMysql::getPendingQueries(CzarId czarId) {
+
+    std::vector<QueryId> result;
 
     QMetaTransaction trans(_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT qtype, cid, user, query, qtemplate, qresult,"
-            " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(collected), UNIX_TIMESTAMP(completed)"
-            " FROM QInfo WHERE qid = ";
+    std::string query = "SELECT queryId FROM QInfo WHERE czarId = ";
+    query += boost::lexical_cast<std::string>(czarId);
+    query += " AND returned IS NULL";
+    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    // get results of the query
+    std::vector<std::string> ids;
+    if (not results.extractFirstColumn(ids, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans.commit();
+
+    // convert strings to numbers
+    result.reserve(ids.size());
+    std::transform(ids.begin(), ids.end(), std::back_inserter(result),
+                   boost::lexical_cast<QueryId, std::string>);
+
+    return result;
+}
+
+// Get full query information.
+QInfo
+QMetaMysql::getQueryInfo(QueryId queryId) {
+
+    QMetaTransaction trans(_conn);
+
+    // run query
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "SELECT qType, czarId, user, query, qTemplate, qResult, status,"
+            " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned)"
+            " FROM QInfo WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
@@ -474,16 +587,17 @@ QMetaMysql::getQueryInfo(int queryId) {
     sql::SqlResults::value_type const& row = *rowIter;
 
     // convert query result into QInfo instance
-    QInfo::QType qType = QInfo::INTERACTIVE;
-    if (strcmp(row[0].first, "LONG") == 0) qType = QInfo::LONG_RUNNING;
-    int cid = boost::lexical_cast<int>(row[1].first);
+    QInfo::QType qType = QInfo::SYNC;
+    if (strcmp(row[0].first, "ASYNC") == 0) qType = QInfo::ASYNC;
+    CzarId czarId = boost::lexical_cast<CzarId>(row[1].first);
     std::string user(row[2].first);
     std::string rQuery(row[3].first);
-    std::string qtemplate(row[4].first);
-    std::string qresult(row[5].first ? row[5].first : "");
-    std::time_t submitted(row[6].first ? boost::lexical_cast<std::time_t>(row[6].first) : std::time_t(0));
-    std::time_t collected(row[7].first ? boost::lexical_cast<std::time_t>(row[7].first) : std::time_t(0));
+    std::string qTemplate(row[4].first);
+    std::string qResult(row[5].first ? row[5].first : "");
+    QInfo::QStatus qStatus = ::string2status(row[6].first);
+    std::time_t submitted(row[7].first ? boost::lexical_cast<std::time_t>(row[7].first) : std::time_t(0));
     std::time_t completed(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
+    std::time_t returned(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
 
     if (++ rowIter != results.end()) {
         // something else found
@@ -493,26 +607,26 @@ QMetaMysql::getQueryInfo(int queryId) {
 
     trans.commit();
 
-    return QInfo(qType, cid, user, rQuery, qtemplate, qresult, submitted, collected, completed);
+    return QInfo(qType, czarId, user, rQuery, qTemplate, qResult, qStatus, submitted, completed, returned);
 }
 
 // Get queries which use specified table.
-std::vector<int>
+std::vector<QueryId>
 QMetaMysql::getQueriesForTable(std::string const& dbName,
                                std::string const& tableName) {
 
-    std::vector<int> result;
+    std::vector<QueryId> result;
 
     QMetaTransaction trans(_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT QInfo.qid from QInfo NATURAL JOIN QTable WHERE QTable.dbname = '";
+    std::string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
     query += _conn.escapeString(dbName);
-    query += "' AND QTable.tblname = '";
+    query += "' AND QTable.tblName = '";
     query += _conn.escapeString(tableName);
-    query += "' and QInfo.completed IS NULL";
+    query += "' AND QInfo.completed IS NULL";
     LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
     if (not _conn.runQuery(query, results, errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
@@ -531,7 +645,7 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<int, std::string>);
+                   boost::lexical_cast<QueryId, std::string>);
 
     return result;
 }
