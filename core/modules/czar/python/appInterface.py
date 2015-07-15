@@ -115,14 +115,18 @@ class AppInterface:
             lock.unlockAfter(self._threadFunc, a.getResult)
         else:
             lock.unlock()
-            return ("error","error",a.getError())
+            error = (a.getError(), False, False, False)
+            logger.err("Returning error to proxy: {0}".format(error))
+            return error
 
         # Remember client context for kill-operations
         proxyName = conditions["client_dst_name"]
         proxyThread = conditions["server_thread_id"]
         self._clientToServerId[(proxyThread, proxyName)] = a.sessionId
 
-        return (resultName, lockName, "")
+        result = (False, resultName, lockName, a.proxyOrderBy)
+        logger.dbg("Returning tuple to proxy: {0}".format(result))
+        return result
 
     def killQuery(self, sessionId):
         """Process a kill query command (experimental).
