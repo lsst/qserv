@@ -121,9 +121,15 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
         sql = buildFirstParallelQuery(*qs);
         BOOST_CHECK_EQUAL(sql, expectedParallel);
 
-        if (not expectedMerge.empty()) {
+        if (qs->needsMerge()) {
             sql = qs->getMergeStmt()->getQueryTemplate().toString();
             BOOST_CHECK_EQUAL(sql, expectedMerge);
+        }
+        else {
+            auto mergeStmt = qs->getMergeStmt();
+            BOOST_CHECK(mergeStmt == NULL);
+            // check that expectedMerge is empty if no merge is required
+            BOOST_CHECK(expectedMerge.empty());
         }
     }
     return qs;

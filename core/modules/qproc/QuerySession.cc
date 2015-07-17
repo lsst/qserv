@@ -331,6 +331,7 @@ void QuerySession::_generateConcrete() {
     // WHERE(???). Conceptually, we want to copy the parts that are
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
+    LOGF(_logger, LOG_LVL_TRACE, "Merge statement initialized with: \"%1%\"" % _stmtMerge->getQueryTemplate().toString());
 
     // TableMerger needs to be integrated into this design.
 }

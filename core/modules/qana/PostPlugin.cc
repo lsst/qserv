@@ -44,6 +44,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
 #include "query/OrderByClause.h"
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
@@ -71,7 +72,7 @@ public:
     virtual void applyLogical(query::SelectStmt&, query::QueryContext&);
 
     /// Apply the plugins's actions to the concrete query plan.
-    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&);
+    virtual void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&);
 
     int _limit;
     std::shared_ptr<query::OrderByClause> _orderBy;
@@ -128,53 +129,46 @@ PostPlugin::applyLogical(query::SelectStmt& stmt,
 }
 
 void
-PostPlugin::applyPhysical(QueryPlugin::Plan& p,
+PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                           query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
-    // merge statement (if one is not available) and turn on merge
-    // fixup.
+    // merge statement (if one is not available)
     LOGF(_logger, LOG_LVL_DEBUG, "Apply physical");
-    if(context.hasChunks()) { // For chunked queries only.
-        if((_limit != -1) || _orderBy) { // Aggregating LIMIT or ORDER BY
-            // Prepare merge statment.
-            // If empty select in merger, create one with *
-            query::SelectList& mList = p.stmtMerge.getSelectList();
-            std::shared_ptr<query::ValueExprPtrVector> vlist;
-            vlist = mList.getValueExprList();
-            if(!vlist) {
-                throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
-            }
-            // FIXME: is it really useful to add star if select clause is empty?
-            if(vlist->size() == 0) {
-                mList.addStar(std::string());
-            }
-            // Patch MergeFixup.
-            context.needsMerge = true;
-            LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
 
-            if(_orderBy) {
-                // Remove orderby from parallel
-                // (no need to sort until we have all the results)
-                std::shared_ptr<query::OrderByClause> _nullptr;
-                // FIXME: order by should be kept in case of ORDER BY LIMIT?
-                if (_limit == -1) {
-                    for(auto i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-                        (**i).setOrderBy(_nullptr);
-                    }
-                }
 
-                // Make sure the merge has an ORDER BY
-                LOGF(_logger, LOG_LVL_DEBUG, "Add ORDER BY clause to merge query: \"%1%\"" % *_orderBy);
-                p.stmtMerge.setOrderBy(_orderBy);
-            }
+    if (_limit!=NOTSET) {
+        // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
+        if (context.hasChunks()) {
+             LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
+             context.needsMerge = true;
+         }
+    }
+    else if (_orderBy) {
+        // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
+        // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
+        std::shared_ptr<query::OrderByClause> _nullptr;
+        LOGF(_logger, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"%1%\"" % *_orderBy);
+        for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end();
+                i != e; ++i) {
+            (**i).setOrderBy(_nullptr);
         }
-    } else { // For non-chunked queries
-        LOGF(_logger, LOG_LVL_INFO, "Query is non-chunked");
-        // Make sure orderby is in the "parallel" section (which is not
-        // really parallel). No merge is needed.
-        SelectStmtPtrVector::iterator i, e;
-        for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-            (**i).setOrderBy(_orderBy);
+        if (context.needsMerge) {
+            plan.stmtMerge.setOrderBy(_nullptr);
+        }
+    }
+
+    if (context.needsMerge) {
+        // Prepare merge statement.
+        // If empty select in merger, create one with *
+        query::SelectList& mList = plan.stmtMerge.getSelectList();
+        std::shared_ptr<query::ValueExprPtrVector> vlist;
+        vlist = mList.getValueExprList();
+        if (!vlist) {
+            throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
+        }
+        // FIXME: is it really useful to add star if select clause is empty?
+        if (vlist->size() == 0) {
+            mList.addStar(std::string());
         }
     }
 }

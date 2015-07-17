@@ -147,12 +147,15 @@ SelectStmt::clone() const {
     return newS;
 }
 
+// reate a merge statement for current object
 std::shared_ptr<SelectStmt>
 SelectStmt::copyMerge() const {
     std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
-    // Starting from a shallow copy, copy only the pieces that matter
-    // for the merge clause.
     copySyntaxIf(newS->_selectList, _selectList);
+    // Final sort has to be performed by final query on result table, launch by mysql-proxy.
+    // This technique insures final result order (indeed simple SELECT * isn't enough for this)
+    // That's why ORDER BY is only required in merge query if there a LIMIT clause.
+    // This optimization is handled in qana::PostPlugin for now.
     copySyntaxIf(newS->_orderBy, _orderBy);
     copySyntaxIf(newS->_groupBy, _groupBy);
     copySyntaxIf(newS->_having, _having);

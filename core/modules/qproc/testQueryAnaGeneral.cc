@@ -679,12 +679,18 @@ BOOST_AUTO_TEST_CASE(Expression) {
 }
 
 BOOST_AUTO_TEST_CASE(dm646) {
+    // non-chunked query
     std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
     std::string expected = "SELECT DISTINCT foo FROM LSST.Filter AS f";
-    check(qsTest, stmt, expected);
+    // FIXME: non-chunked query shouldn't require merge operation, see DM-3165
+    std::string expectedMerge = "SELECT DISTINCT foo";
+    check(qsTest, stmt, expected, "", expectedMerge);
+
+    // chunked query
     stmt = "SELECT DISTINCT zNumObs FROM Object;";
     expected = "SELECT DISTINCT zNumObs FROM LSST.Object_100 AS QST_1_";
-    check(qsTest, stmt, expected);
+    expectedMerge = "SELECT DISTINCT zNumObs";
+    check(qsTest, stmt, expected, "", expectedMerge);
 }
 
 BOOST_AUTO_TEST_CASE(dm681) {

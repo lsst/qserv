@@ -559,10 +559,10 @@ function queryProcessing()
             orderByClause = ""
         end
 
-        print ("Czar returns:")
-        print ("  Result table:       " .. resultTableName)
-        print ("  Lock/message table: " .. msgTableName)
-        print ("  'order by' clause:  " .. orderByClause)
+        print ("Czar RPC response: [result: " .. resultTableName ..
+               ", message: " .. msgTableName ..
+               ", order_by: " .. orderByClause)
+
 
         return SUCCESS
      end
@@ -632,16 +632,12 @@ function queryProcessing()
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name ")
         end
 
-        print ("czar rpc response: [result: " .. resultTableName ..
-               ", message: " .. msgTableName ..
-               ", order_by: " .. orderByClause)
-
         -- Severity is stored in a MySQL enum
         q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. msgTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
-        q2 = "SELECT * FROM " .. resultTableName
+        q2 = "SELECT * FROM " .. resultTableName .. " " .. orderByClause
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
         q3 = "DROP TABLE " .. msgTableName

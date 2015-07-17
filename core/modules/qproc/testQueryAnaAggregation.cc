@@ -44,7 +44,7 @@
 #include "boost/format.hpp"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE QueryAnaDuplicateSelectExpr
+#define BOOST_TEST_MODULE QueryAnaAggregation
 #include "boost/test/included/unit_test.hpp"
 
 // LSST headers
