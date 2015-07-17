@@ -878,7 +878,7 @@ publishing database via xrootd.
             * Content-Type: ``application/json``
 
         Status Codes:
-            * 200 - for success
+            * 201 - if database was successfully registered
             * 400 - if parameters are missing or have invalid
               format
             * 409 - if database is already registered
