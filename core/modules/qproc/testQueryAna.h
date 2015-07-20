@@ -108,11 +108,19 @@ std::string buildFirstParallelQuery(QuerySession& qs, bool withSubChunks=true) {
     return first.queries[0];
 }
 
+/** @brief control consistency of Qserv internal queries
+ *
+ *  These queries are generated during query analysis
+ *
+ * If a user SQL query requires
+ *
+ */
 std::shared_ptr<QuerySession> check(QuerySession::Test& t,
                                     std::string const& stmt,
                                     std::string const& expectedParallel,
                                     std::string const& expectedErr = "",
-                                    std::string const& expectedMerge = "") {
+                                    std::string const& expectedMerge = "",
+                                    std::string const& expectedProxyOrderBy = "") {
 
     std::shared_ptr<QuerySession> qs = buildQuerySession(t, stmt, expectedErr);
 
@@ -130,6 +138,14 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
             BOOST_CHECK(mergeStmt == NULL);
             // check that expectedMerge is empty if no merge is required
             BOOST_CHECK(expectedMerge.empty());
+        }
+
+        std::string proxyOrderBy = qs->getProxyOrderBy();
+        if (not proxyOrderBy.empty()) {
+            BOOST_CHECK_EQUAL(proxyOrderBy, expectedProxyOrderBy);
+        }else {
+            // check that expectedProxyOrderBy is empty if no ORDER BY is required
+            BOOST_CHECK(expectedProxyOrderBy.empty());
         }
     }
     return qs;

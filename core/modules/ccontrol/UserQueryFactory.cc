@@ -94,13 +94,12 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& resultTable) {
     bool sessionValid = true;
     std::string errorExtra;
-    std::string order_by;
     qproc::QuerySession::Ptr qs =
             std::make_shared<qproc::QuerySession>(_impl->facade);
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
-        order_by = qs->analyzeQuery(query);
+        qs->analyzeQuery(query);
     } catch (...) {
         errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
         LOGF(_log, LOG_LVL_ERROR, errorExtra);
@@ -126,7 +125,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     } else {
         uq->_errorExtra += errorExtra;
     }
-    return std::make_pair(sessionId,order_by);
+    return std::make_pair(sessionId,qs->getProxyOrderBy());
 }
 
 void UserQueryFactory::Impl::readConfig(StringMap const& m) {

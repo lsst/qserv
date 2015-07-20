@@ -87,10 +87,8 @@ public:
      * merge queries) and check for errors
      *
      * @param sql: the sql query
-     * @return: the "ORDER BY" clause to run on mysql-proxy during result retrieval
-     *          indeed, MySQL results order is undefined with simple "SELECT *" clause.
      */
-    std::string analyzeQuery(std::string const& sql);
+    void analyzeQuery(std::string const& sql);
     bool needsMerge() const;
     bool hasChunks() const;
 
@@ -106,6 +104,16 @@ public:
     // obsolete).
     void setResultTable(std::string const& resultTable);
     std::string const& getResultTable() const { return _resultTable; }
+
+    /** @brief return the ORDER BY clause to run on mysql-proxy at result retrieval
+     *
+     *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.
+     *  This parameter is set during query analysis.
+     *
+     *  @return: a string containing a SQL "ORDER BY" clause, or an empty string if this clause doesn't exists
+     *  @see QuerySession::analyzeQuery()
+     */
+    std::string getProxyOrderBy() const;
 
     /// Dominant database is the database that will be used for query
     /// dispatch. This is distinct from the default database, which is what is

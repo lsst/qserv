@@ -96,7 +96,7 @@ void QuerySession::setDefaultDb(std::string const& defaultDb) {
 }
 
 // Analyze SQL query issued by user
-std::string QuerySession::analyzeQuery(std::string const& sql) {
+void QuerySession::analyzeQuery(std::string const& sql) {
     _original = sql;
     _isFinal = false;
     _initContext();
@@ -117,10 +117,8 @@ std::string QuerySession::analyzeQuery(std::string const& sql) {
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % toString());
         }
-
-        if (_stmt->hasOrderBy()) {
-            order_by = _stmt->getOrderBy().toString();
-            LOGF(_logger, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % order_by);
+        if (LOG_CHECK_LVL(_logger, LOG_LVL_TRACE)) {
+            LOGF(_logger, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
         }
 
     } catch(QueryProcessingBug& b) {
@@ -140,8 +138,6 @@ std::string QuerySession::analyzeQuery(std::string const& sql) {
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     }
-
-    return order_by;
 }
 
 bool QuerySession::needsMerge() const {
@@ -183,6 +179,15 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
         // LOGF_INFO("No constraints.");
     }
     return cv;
+}
+
+// return the ORDER BY clause to run on mysql-proxy at result retrieval
+std::string QuerySession::getProxyOrderBy() const {
+    std::string order_by = "";
+    if (_stmt->hasOrderBy()) {
+        order_by = _stmt->getOrderBy().toString();
+    }
+    return order_by;
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
