@@ -66,7 +66,7 @@ public:
 
     /// @return a handle to the new UserQuery object to be used with the
     /// userQueryProxy interface.
-    std::pair <int,std::string> newUserQuery(std::string const& query,
+    std::pair<int,std::string> newUserQuery(std::string const& query,
                                              std::string const& defaultDb,
                                              std::string const& resultTable);
 private:

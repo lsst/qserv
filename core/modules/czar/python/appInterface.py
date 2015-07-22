@@ -83,32 +83,34 @@ class AppInterface:
             return False
         pass
 
-    def submitQuery(self, userquery, conditions):
+    def submitQuery(self, userQuery, conditions):
         """
         Entry point for query processing
 
         Parse the query and prepare its execution context (i.e. result/message table, parallel and merge
         queries), launch a thread for query execution (does not block for query completion as mysql-proxy is
-        mono-threaded), and returns to mysql-proxy.
+        single-threaded), and returns to mysql-proxy. This method is called by client using xmlrpc, that's
+        why null return values are replaced with False.
 
-        @param userquery:   SQL Query sent by mysql-proxy
-        @param conditions:
-        @return             A list of value for mysql-proxy (result, message, orderby, error) where:
-                            - result: name of MySQL table containing query result for proxy
-                            - message: name of  MySQL table containing error/log messages, this table will
-                              be locked during query execution, and mysql-proxy will wait for the lock to be
-                              removed in order to get messages and results
-                            - orderby: if userquery contains an ORDER BY clause then mysql-proxy has to
-                              re-order query results. Indeed MySQL doesn't garantee result order for simple
-                              "SELECT *" clause
-                            - error: False, unless an error has been detected during this step, then all other
-                              fields will be set to False.
-
+        @param userQuery:   SQL Query sent by client (i.e. mysql-proxy)
+        @param conditions:  Array containing meta-data/hints related to query execution
+                            For example, database, mysql-proxy thread id, use of boxing UDF,
+        @return             tuple of values for mysql-proxy (result, message, orderby, error) where:
+                            - error:  Error message if an error has been detected during this step (all other
+                                      fields are then set to False) else False
+                            - result:  name of MySQL table containing query result for proxy
+                            - message: name of MySQL table containing error/log messages, this table is
+                                       locked during query execution, and client waits for the lock to be
+                                       removed in order to get messages and results
+                            - orderby: ORDER BY clause to be executed by the client, might be empty string.
+                                       If userQuery contains an ORDER BY clause then client has to
+                                       re-order query results. Indeed MySQL doesn't garantee result order
+                                       for simple "SELECT *" clause
         """
         # FIXME: Need to fix task tracker, and return taskID for tracking
 
         # Short-circuit the standard proxy/client queries.
-        quickResult = app.computeShortCircuitQuery(userquery, conditions)
+        quickResult = app.computeShortCircuitQuery(userQuery, conditions)
         if quickResult: return quickResult
         taskId = self._idCounter  # RAW hazard, but this part is single-threaded
         self._idCounter += 1
@@ -122,10 +124,9 @@ class AppInterface:
         lockName = "%s.message_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
         if not lock.lock():
-            return ("error", "error",
-                    "error locking result, check qserv/db config.")
+            return ("error locking result, check qserv/db config.", False, False, False)
         context = app.Context(conditions)
-        a = app.InbandQueryAction(userquery, context,
+        a = app.InbandQueryAction(userQuery, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
             self._maybeCallWithThread(a.invoke)

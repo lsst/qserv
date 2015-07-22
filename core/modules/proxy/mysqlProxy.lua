@@ -56,7 +56,7 @@ if (rpcPort == nil) then
    rpcPort = defaultRpcPort
 end
 czarRpcUrl = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
-print_debug("RPC url "..czarRpcUrl,1)
+print_debug("RPC url "..czarRpcUrl, 1)
 
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
@@ -532,17 +532,17 @@ function queryProcessing()
         local queryToPassProtect = "<![CDATA[" .. queryToPassStr .. "]]>"
         -- Wrap this in a pcall so that a meaningful error can
         -- be returned to the caller
-        local pcall_status, xmlrpc_status, res =
-           pcall(xmlrpc.http.call,
-                 czarRpcUrl, "submitQuery", queryToPassProtect, hintsToPassArr)
+        local pcallStatus, xmlrpcStatus, res =
+           pcall(xmlrpc.http.call, czarRpcUrl,
+                 "submitQuery", queryToPassProtect, hintsToPassArr)
 
-        -- if pcall failed then xmlrpc_status contains the related error message
-        -- if pcall succeed then xmlrpc_status contains the return code of
+        -- if pcall failed then xmlrpcStatus contains the related error message
+        -- if pcall succeed then xmlrpcStatus contains the return code of
         -- xmlrpc.http.call
-        if (not pcall_status) then
-            err_msg = xmlrpc_status
-            return err.set(ERR_RPC_CALL, "Unable to run lua xmlrpc client, message: " .. xmlrpc_status)
-        elseif (not xmlrpc_status) then
+        if (not pcallStatus) then
+            err_msg = xmlrpcStatus
+            return err.set(ERR_RPC_CALL, "Unable to run lua xmlrpc client, message: " .. xmlrpcStatus)
+        elseif (not xmlrpcStatus) then
             return err.set(ERR_RPC_CALL, "mysql-proxy RPC call failed for czar url: " .. czarRpcUrl)
         end
 
@@ -562,7 +562,6 @@ function queryProcessing()
         print ("Czar RPC response: [result: " .. resultTableName ..
                ", message: " .. msgTableName ..
                ", order_by: " .. orderByClause)
-
 
         return SUCCESS
      end

@@ -127,7 +127,7 @@ SelectList::renderTo(QueryTemplate& qt) const {
 }
 std::shared_ptr<SelectList> SelectList::clone() const {
     std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
-    newS->_valueExprList  = std::make_shared<ValueExprPtrVector>();
+    newS->_valueExprList = std::make_shared<ValueExprPtrVector>();
     cloneValueExprPtrVector(*(newS->_valueExprList), *_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;

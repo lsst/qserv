@@ -88,7 +88,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     _impl->readConfigFacade(m, kvi);
 }
 
-std::pair <int,std::string>
+std::pair<int,std::string>
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
@@ -125,7 +125,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     } else {
         uq->_errorExtra += errorExtra;
     }
-    return std::make_pair(sessionId,qs->getProxyOrderBy());
+    return std::make_pair(sessionId, qs->getProxyOrderBy());
 }
 
 void UserQueryFactory::Impl::readConfig(StringMap const& m) {

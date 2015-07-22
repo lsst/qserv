@@ -260,7 +260,6 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
         if(parallel_query != first) {
             (*parallel_query)->setSelectList(pList.clone());
         }
-
     }
 }
 

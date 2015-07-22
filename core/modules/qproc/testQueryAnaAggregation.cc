@@ -51,8 +51,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qproc/testQueryAna.h"
 #include "qproc/QuerySession.h"
+#include "qproc/testQueryAna.h"
 #include "query/QueryContext.h"
 
 using lsst::qserv::query::SelectStmt;

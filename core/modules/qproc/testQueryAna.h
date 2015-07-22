@@ -132,8 +132,7 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
         if (qs->needsMerge()) {
             sql = qs->getMergeStmt()->getQueryTemplate().toString();
             BOOST_CHECK_EQUAL(sql, expectedMerge);
-        }
-        else {
+        } else {
             auto mergeStmt = qs->getMergeStmt();
             BOOST_CHECK(mergeStmt == NULL);
             // check that expectedMerge is empty if no merge is required
@@ -143,7 +142,7 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
         std::string proxyOrderBy = qs->getProxyOrderBy();
         if (not proxyOrderBy.empty()) {
             BOOST_CHECK_EQUAL(proxyOrderBy, expectedProxyOrderBy);
-        }else {
+        } else {
             // check that expectedProxyOrderBy is empty if no ORDER BY is required
             BOOST_CHECK(expectedProxyOrderBy.empty());
         }

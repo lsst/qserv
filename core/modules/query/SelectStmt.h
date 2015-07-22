@@ -34,8 +34,8 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "query/QueryTemplate.h"
 #include "query/OrderByClause.h"
+#include "query/QueryTemplate.h"
 
 // Forward declarations
 class SqlSQL2Parser;
@@ -76,7 +76,7 @@ public:
      *  @brief Create a merge statement for current object
      *
      *  Starting from a shallow copy, copy only the pieces that matter for the merge clause.
-     *  SQL doesn't garantee result order so ORDER BY clause must be executed on mysql-proxy
+     *  SQL doesn't guarantee result order so ORDER BY clause must be executed on mysql-proxy
      *  during result retrieval and not during merging
      *
      * @return: A proposal for merge statement, which will be finalized by query plugins

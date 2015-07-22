@@ -1,5 +1,5 @@
 -- LSST Data Management System
--- Copyright 2014-2015 AURA/LSST.
+-- Copyright 2015 AURA/LSST.
 --
 -- This product includes software developed by the
 -- LSST Project (http://www.lsst.org/).
@@ -20,7 +20,7 @@
 
 
 -- Script that launch a SQL query on Qserv czar
--- can be used to debu mysql-proxy lua plugin
+-- can be used to debug mysql-proxy lua plugin
 -- @author  Fabrice Jammes, IN2P3
 
 require ("xmlrpc.http")
@@ -29,12 +29,12 @@ rpcHost = "127.0.0.1"
 defaultRpcPort = 7080
 local rpcPort = os.getenv("QSERV_RPC_PORT")
 if (rpcPort == nil) then
-       rpcPort = defaultRpcPort
+    rpcPort = defaultRpcPort
 end
 
 czarRpcUrl = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
 
-queryToPassStr = "SELECT * FROM   Object WHERE  objectId = 430213989000"
+queryToPassStr = "SELECT * FROM Object WHERE objectId=430213989000"
 
 hintsToPassArr = {}
 hintsToPassArr["db"] = "qservTest_case01_qserv"

@@ -102,8 +102,6 @@ void QuerySession::analyzeQuery(std::string const& sql) {
     _initContext();
     assert(_context.get());
 
-    std::string order_by = "";
-
     parser::SelectParser::Ptr p;
     try {
         p = parser::SelectParser::newInstance(sql);
@@ -183,11 +181,11 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 
 // return the ORDER BY clause to run on mysql-proxy at result retrieval
 std::string QuerySession::getProxyOrderBy() const {
-    std::string order_by = "";
+    std::string orderBy;
     if (_stmt->hasOrderBy()) {
-        order_by = _stmt->getOrderBy().toString();
+        orderBy = _stmt->getOrderBy().toString();
     }
-    return order_by;
+    return orderBy;
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {

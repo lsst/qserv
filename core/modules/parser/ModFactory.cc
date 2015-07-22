@@ -44,7 +44,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/constants.h" // Clauses
+#include "global/constants.h"
 #include "parser/BoolTermFactory.h"
 #include "parser/parserBase.h"   // Handler base classes
 #include "parser/parseTreeUtil.h"

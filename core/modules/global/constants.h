@@ -42,6 +42,7 @@ const char ENV_XRDID[] = "XRDNAME";
 const char SUBCHUNKDB_PREFIX[] = "Subchunks_";
 const char SCISQLDB_PREFIX[] = "scisql_";
 
+/// Used for undefined variable which should contains positive integer
 const int NOTSET = -1;
 
 /** Allow to classify messages stored in qdisp::MessageStore

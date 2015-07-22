@@ -152,9 +152,10 @@ std::shared_ptr<SelectStmt>
 SelectStmt::copyMerge() const {
     std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     copySyntaxIf(newS->_selectList, _selectList);
-    // Final sort has to be performed by final query on result table, launch by mysql-proxy.
-    // This technique insures final result order (indeed simple SELECT * isn't enough for this)
-    // That's why ORDER BY is only required in merge query if there a LIMIT clause.
+    // Final sort has to be performed by final query on result table, launched by mysql-proxy.
+    // This forces the final result to be in the right order (simple SELECT *
+    // does not guarantee the order.
+    // That's why ORDER BY is only required in merge query if there is a LIMIT clause.
     // This optimization is handled in qana::PostPlugin for now.
     copySyntaxIf(newS->_orderBy, _orderBy);
     copySyntaxIf(newS->_groupBy, _groupBy);

@@ -66,7 +66,7 @@ Access to the classes from the qserv_czar library
 
 // Instantiate the map we need
 %template(StringMap) std::map<std::string, std::string>;
-%template(IntStringPair) std::pair<int,std::string>;
+%template(IntStringPair) std::pair<int, std::string>;
 
 // ------------------------------------------------------------------------
 // Copied from http://www.swig.org/Doc1.3/Python.html#Python_nn59

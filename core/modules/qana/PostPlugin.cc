@@ -142,14 +142,12 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
              LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
              context.needsMerge = true;
          }
-    }
-    else if (_orderBy) {
+    } else if (_orderBy) {
         // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
         // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
         std::shared_ptr<query::OrderByClause> _nullptr;
         LOGF(_logger, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"%1%\"" % *_orderBy);
-        for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end();
-                i != e; ++i) {
+        for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
             (**i).setOrderBy(_nullptr);
         }
         if (context.needsMerge) {
@@ -167,7 +165,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
             throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
         }
         // FIXME: is it really useful to add star if select clause is empty?
-        if (vlist->size() == 0) {
+        if (vlist->empty()) {
             mList.addStar(std::string());
         }
     }
