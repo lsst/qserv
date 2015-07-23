@@ -140,12 +140,8 @@ std::shared_ptr<QuerySession> check(QuerySession::Test& t,
         }
 
         std::string proxyOrderBy = qs->getProxyOrderBy();
-        if (not proxyOrderBy.empty()) {
-            BOOST_CHECK_EQUAL(proxyOrderBy, expectedProxyOrderBy);
-        } else {
-            // check that expectedProxyOrderBy is empty if no ORDER BY is required
-            BOOST_CHECK(expectedProxyOrderBy.empty());
-        }
+        // check covers that expectedProxyOrderBy is empty if no ORDER BY is required
+        BOOST_CHECK_EQUAL(proxyOrderBy, expectedProxyOrderBy);
     }
     return qs;
 }

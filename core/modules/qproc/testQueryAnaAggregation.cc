@@ -32,23 +32,15 @@
   */
 
 // System headers
-#include <algorithm>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <sstream>
 #include <string>
 
 // Third-party headers
-#include "boost/algorithm/string.hpp"
-#include "boost/format.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaAggregation
 #include "boost/test/included/unit_test.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "qproc/QuerySession.h"
