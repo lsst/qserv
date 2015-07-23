@@ -136,7 +136,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     LOGF(_logger, LOG_LVL_DEBUG, "Apply physical");
 
 
-    if (_limit!=NOTSET) {
+    if (_limit != NOTSET) {
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
         if (context.hasChunks()) {
              LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
@@ -145,13 +145,13 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     } else if (_orderBy) {
         // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
         // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
-        std::shared_ptr<query::OrderByClause> _nullptr;
+        std::shared_ptr<query::OrderByClause> nullptr_;
         LOGF(_logger, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"%1%\"" % *_orderBy);
         for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
-            (**i).setOrderBy(_nullptr);
+            (**i).setOrderBy(nullptr_);
         }
         if (context.needsMerge) {
-            plan.stmtMerge.setOrderBy(_nullptr);
+            plan.stmtMerge.setOrderBy(nullptr_);
         }
     }
 
@@ -159,9 +159,8 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         // Prepare merge statement.
         // If empty select in merger, create one with *
         query::SelectList& mList = plan.stmtMerge.getSelectList();
-        std::shared_ptr<query::ValueExprPtrVector> vlist;
-        vlist = mList.getValueExprList();
-        if (!vlist) {
+        auto vlist = mList.getValueExprList();
+        if (not vlist) {
             throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
         }
         // FIXME: is it really useful to add star if select clause is empty?

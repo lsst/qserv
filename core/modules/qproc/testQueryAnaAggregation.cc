@@ -79,7 +79,6 @@ BOOST_AUTO_TEST_CASE(Avg) {
 
     std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
 
     BOOST_CHECK(context);
     BOOST_CHECK(!context->restrictors);

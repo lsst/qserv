@@ -124,7 +124,7 @@ operator<<(std::ostream& out, OrderByClause const& clause) {
         auto const& terms = *(clause._terms);
         if (not terms.empty()) {
             out << "ORDER BY ";
-            if (terms.size()>1) {
+            if (terms.size() > 1) {
                 std::ostream_iterator<OrderByTerm> string_it(out, ", ");
                 std::copy(terms.begin(), terms.end()-1, string_it);
             }

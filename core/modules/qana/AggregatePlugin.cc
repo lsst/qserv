@@ -215,7 +215,6 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     // not necessarily true, unless the plugin is placed early enough
     // to ensure that other fragmenting activity has not taken place yet.
     query::SelectList& pList = plan.stmtParallel.front()->getSelectList();
-    bool hasLimit = plan.stmtOriginal.getLimit() != -1;
     query::SelectList& mList = plan.stmtMerge.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
@@ -250,7 +249,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
         parallel_query != end; ++parallel_query) {
 
         // Strip ORDER BY from parallel queries if merging.
-        if(context.needsMerge && !hasLimit) {
+        if(context.needsMerge && not plan.stmtOriginal.hasLimit()) {
             (*parallel_query)->setOrderBy(_nullptr);
         }
 

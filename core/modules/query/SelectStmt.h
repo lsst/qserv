@@ -33,6 +33,7 @@
 #include <memory>
 
 // Local headers
+#include "global/constants.h"
 #include "global/stringTypes.h"
 #include "query/OrderByClause.h"
 #include "query/QueryTemplate.h"
@@ -106,9 +107,15 @@ public:
      * @return LIMIT value, lsst::qserv::NOTSET if not specified
      *
      * @see lsst::qserv::parser::ModFactory::getLimit()
-     *
      */
     int getLimit() const { return _limit; }
+
+    /**
+     * @brief Indicate existence of a LIMIT clause
+     *
+     * @return: true if LIMIT clause exists, else false
+     */
+    bool hasLimit() const { return _limit != lsst::qserv::NOTSET; }
 
     bool hasOrderBy() const { return static_cast<bool>(_orderBy); }
     OrderByClause const& getOrderBy() const { return *_orderBy; }
