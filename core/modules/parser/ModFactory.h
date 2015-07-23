@@ -72,7 +72,13 @@ public:
 
     ModFactory(std::shared_ptr<ValueExprFactory> vf);
 
-    int getLimit() { return _limit; } // -1: not specified.
+    /**
+     * @brief Get LIMIT value in LIMIT clause for a SQL query
+     *
+     * @return LIMIT value, lsst::qserv::NOTSET if not specified
+     *
+     */
+    int getLimit() { return _limit; }
     std::shared_ptr<query::OrderByClause> getOrderBy() { return _orderBy; }
     std::shared_ptr<query::GroupByClause> getGroupBy() { return _groupBy; }
     std::shared_ptr<query::HavingClause> getHaving() { return _having; }
@@ -86,7 +92,8 @@ private:
 
     // Fields
     std::shared_ptr<ValueExprFactory> _vFactory;
-    int _limit;
+    int _limit;                                     // LIMIT value in LIMIT clause,
+                                                    // equal to lsst::qserv::NOTSET if not specified
     std::shared_ptr<query::OrderByClause> _orderBy;
     std::shared_ptr<query::GroupByClause> _groupBy;
     std::shared_ptr<query::HavingClause> _having;

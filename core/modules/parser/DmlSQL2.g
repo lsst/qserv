@@ -1672,7 +1672,7 @@ time_precision :
 //{ Rule #576 <table_name>
 table_name : 
       qualified_name 
-	| qualified_local_table_name 
+	| qualified_local_table_name 
 ;
 //}
 

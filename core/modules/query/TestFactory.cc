@@ -59,7 +59,7 @@ TestFactory::newContext(std::shared_ptr<css::Facade> cssFacade) {
 }
 
 void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields) {
-    SelectList::Ptr sl = std::make_shared<SelectList>();
+    std::shared_ptr<SelectList> sl = std::make_shared<SelectList>();
 
     typedef StringVector::const_iterator It;
     for (It i = fields.begin(), e = fields.end(); i != e; ++i) {

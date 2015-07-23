@@ -35,7 +35,6 @@
 #include <string>
 
 // Qserv headers
-#include "rproc/mergeTypes.h"
 #include "util/Error.h"
 
 // Forward declarations

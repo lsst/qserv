@@ -147,12 +147,16 @@ SelectStmt::clone() const {
     return newS;
 }
 
+// reate a merge statement for current object
 std::shared_ptr<SelectStmt>
 SelectStmt::copyMerge() const {
     std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
-    // Starting from a shallow copy, copy only the pieces that matter
-    // for the merge clause.
     copySyntaxIf(newS->_selectList, _selectList);
+    // Final sort has to be performed by final query on result table, launched by mysql-proxy.
+    // This forces the final result to be in the right order (simple SELECT *
+    // does not guarantee the order.
+    // That's why ORDER BY is only required in merge query if there is a LIMIT clause.
+    // This optimization is handled in qana::PostPlugin for now.
     copySyntaxIf(newS->_orderBy, _orderBy);
     copySyntaxIf(newS->_groupBy, _groupBy);
     copySyntaxIf(newS->_having, _having);
@@ -160,21 +164,6 @@ SelectStmt::copyMerge() const {
     newS->_whereClause.reset();
     newS->_fromList.reset();
     assert(_hasDistinct == newS->_hasDistinct);
-    return newS;
-}
-
-std::shared_ptr<SelectStmt>
-SelectStmt::copySyntax() const {
-    std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
-    // Starting from a shallow copy, make a copy of the syntax portion.
-    copySyntaxIf(newS->_fromList, _fromList);
-    copySyntaxIf(newS->_selectList, _selectList);
-    copySyntaxIf(newS->_whereClause, _whereClause);
-    copySyntaxIf(newS->_orderBy, _orderBy);
-    copySyntaxIf(newS->_groupBy, _groupBy);
-    copySyntaxIf(newS->_having, _having);
-    assert(_hasDistinct == newS->_hasDistinct);
-    // For the other fields, default-copied versions are okay.
     return newS;
 }
 
@@ -205,37 +194,37 @@ inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
 }
 
 template<class T>
-void nil_string_helper(std::ostringstream& oss,
+void nil_string_helper(std::ostream& oss,
                        const std::shared_ptr<T> &ptr) {
     if (ptr) oss << *ptr << " ";
 }
 
 } // anonymous
 
-
+// Return a string representation of the object
 std::string SelectStmt::toString() {
-    //_selectList->getColumnRefList()->printRefs();
     std::ostringstream oss;
-
-    nil_string_helper(oss, _selectList);
-    nil_string_helper(oss, _fromList);
-    if(_hasDistinct) {
-        oss << "DISTINCT ";
-    }
-    nil_string_helper(oss, _whereClause);
-    nil_string_helper(oss, _groupBy);
-    nil_string_helper(oss, _having);
-    nil_string_helper(oss, _orderBy);
-    if(_limit != -1) {
-        oss << " LIMIT " << _limit;
-    }
+    oss << *this;
     return oss.str();
 }
 
-std::string SelectStmt::toQueryTemplateString() {
+// Output operator for SelectStmt
+std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     //_selectList->getColumnRefList()->printRefs();
-    //_selectList->dbgPrint(std::cout);
-    return getQueryTemplate().toString();
+
+    nil_string_helper(os, selectStmt._selectList);
+    nil_string_helper(os, selectStmt._fromList);
+    if(selectStmt._hasDistinct) {
+        os << "DISTINCT ";
+    }
+    nil_string_helper(os, selectStmt._whereClause);
+    nil_string_helper(os, selectStmt._groupBy);
+    nil_string_helper(os, selectStmt._having);
+    nil_string_helper(os, selectStmt._orderBy);
+    if(selectStmt._limit != -1) {
+        os << "LIMIT " << selectStmt._limit;
+    }
+    return os;
 }
 
 }}} // namespace lsst::qserv::query

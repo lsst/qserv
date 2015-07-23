@@ -55,8 +55,8 @@ local rpcPort = os.getenv("QSERV_RPC_PORT")
 if (rpcPort == nil) then
    rpcPort = defaultRpcPort
 end
-rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
-print_debug("RPC url "..rpcHP,1)
+czarRpcUrl = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
+print_debug("RPC url "..czarRpcUrl, 1)
 
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
@@ -499,7 +499,10 @@ qType = queryType()
 
 function queryProcessing()
 
-    local self = { msgTableName = nil, resultTableName = nil, qservError = "" }
+    local self = { msgTableName = nil,
+                   resultTableName = nil,
+                   orderByClause = nil,
+                   qservError = nil }
 
     ---------------------------------------------------------------------------
 
@@ -529,25 +532,36 @@ function queryProcessing()
         local queryToPassProtect = "<![CDATA[" .. queryToPassStr .. "]]>"
         -- Wrap this in a pcall so that a meaningful error can
         -- be returned to the caller
-        -- xmlrpc.http.call(rpcHP, "submitQuery",
-        --                 queryToPassProtect, hintsToPassArr)
-        local callError, ok, res =
-           pcall(xmlrpc.http.call,
-                 rpcHP, "submitQuery", queryToPassProtect, hintsToPassArr)
-        if (not callError) then
-           return err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
-                          .. "Exception in RPC call: " .. ok)
-        elseif (not ok) then
-           return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+        local pcallStatus, xmlrpcStatus, res =
+           pcall(xmlrpc.http.call, czarRpcUrl,
+                 "submitQuery", queryToPassProtect, hintsToPassArr)
+
+        -- if pcall failed then xmlrpcStatus contains the related error message
+        -- if pcall succeed then xmlrpcStatus contains the return code of
+        -- xmlrpc.http.call
+        if (not pcallStatus) then
+            err_msg = xmlrpcStatus
+            return err.set(ERR_RPC_CALL, "Unable to run lua xmlrpc client, message: " .. xmlrpcStatus)
+        elseif (not xmlrpcStatus) then
+            return err.set(ERR_RPC_CALL, "mysql-proxy RPC call failed for czar url: " .. czarRpcUrl)
         end
 
-        resultTableName = res[1]
-        msgTableName = res[2]
-        qservError = res[3]
-
-        if resultTableName == "error" then
+        qservError = res[1]
+        if qservError then
            return err.set(ERR_QSERV_PARSE, "Query processing error: " .. qservError)
         end
+
+        resultTableName = res[2]
+        msgTableName = res[3]
+        if res[4] then
+            orderByClause = res[4]
+        else
+            orderByClause = ""
+        end
+
+        print ("Czar RPC response: [result: " .. resultTableName ..
+               ", message: " .. msgTableName ..
+               ", order_by: " .. orderByClause)
 
         return SUCCESS
      end
@@ -586,7 +600,7 @@ function queryProcessing()
         proxy.response.type = proxy.MYSQLD_PACKET_OK
         local callError, ok, res =
            pcall(xmlrpc.http.call,
-                 rpcHP, "killQueryUgly", qU, proxy.connection.client.dst.name)
+                 czarRpcUrl, "killQueryUgly", qU, proxy.connection.client.dst.name)
 
         if (not callError) then
            err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
@@ -594,7 +608,7 @@ function queryProcessing()
            return err.send()
         elseif (not ok) then
            print("\nKill query RPC failure: " .. res .. "---" .. proxy.connection.client.dst.name)
-           err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+           err.set(ERR_RPC_CALL, "rpc call failed for " .. czarRpcUrl)
            return err.send()
         end
         -- Assemble result
@@ -613,18 +627,16 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     local prepForFetchingResults = function(proxy)
-        if resultTableName == nil then
+        if not resultTableName then
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name ")
         end
-
-        print ("got via rpc " .. resultTableName .. " message " .. msgTableName)
 
         -- Severity is stored in a MySQL enum
         q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. msgTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
-        q2 = "SELECT * FROM " .. resultTableName
+        q2 = "SELECT * FROM " .. resultTableName .. " " .. orderByClause
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
         q3 = "DROP TABLE " .. msgTableName

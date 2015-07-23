@@ -25,6 +25,7 @@
   * @file
   *
   * @brief Test C++ parsing and query analysis logic for select expressions
+  * with an "ORDER BY" clause.
   *
   *
   * @author Fabrice Jammes, IN2P3/SLAC
@@ -43,7 +44,7 @@
 #include "boost/format.hpp"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE QueryAnaDuplicateSelectExpr
+#define BOOST_TEST_MODULE QueryAnaOrderBy
 #include "boost/test/included/unit_test.hpp"
 
 // LSST headers
@@ -65,8 +66,15 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
         "FROM Source "
         "ORDER BY objectId ASC";
     std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
-    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId ASC";
-    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", "", expectedProxyOrderBy);
+}
+
+BOOST_AUTO_TEST_CASE(OrderByNotChunked) {
+    std::string stmt = "SELECT * FROM Filter ORDER BY filterId";
+    std::string expectedParallel = "SELECT * FROM LSST.Filter AS QST_1_";
+    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", "", expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByTwoField) {
@@ -74,8 +82,8 @@ BOOST_AUTO_TEST_CASE(OrderByTwoField) {
         "FROM Source "
         "ORDER BY objectId, taiMidPoint ASC";
     std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
-    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId, taiMidPoint ASC";
-    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+    std::string expectedProxyOrderBy = "ORDER BY objectId, taiMidPoint ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", "", expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByThreeField) {
@@ -83,25 +91,76 @@ BOOST_AUTO_TEST_CASE(OrderByThreeField) {
         "FROM Source "
         "ORDER BY objectId, taiMidPoint, xFlux DESC";
     std::string expectedParallel = "SELECT * FROM LSST.Source_100 AS QST_1_";
-    std::string expectedMerge = "SELECT * ORDER BY objectId, taiMidPoint, xFlux DESC";
-    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
+    std::string expectedProxyOrderBy = "ORDER BY objectId, taiMidPoint, xFlux DESC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", "", expectedProxyOrderBy);
 }
 
-BOOST_AUTO_TEST_CASE(OrderByLimit) { // Test flipped syntax in DM-661
+BOOST_AUTO_TEST_CASE(OrderByAggregate) {
+    std::string stmt = "SELECT objectId, AVG(taiMidPoint) "
+        "FROM Source "
+        "GROUP BY objectId "
+        "ORDER BY objectId ASC";
+    std::string expectedParallel = "SELECT objectId,COUNT(taiMidPoint) AS QS1_COUNT,SUM(taiMidPoint) AS QS2_SUM "
+                                   "FROM LSST.Source_100 AS QST_1_ "
+                                   "GROUP BY objectId";
+    std::string expectedMerge = "SELECT objectId,(SUM(QS2_SUM)/SUM(QS1_COUNT)) GROUP BY objectId";
+    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge, expectedProxyOrderBy);
+}
+
+BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunked) {
+    std::string stmt = "SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId";
+    std::string expectedParallel = "SELECT filterId,SUM(photClam) AS QS1_SUM FROM LSST.Filter AS QST_1_ GROUP BY filterId";
+    // FIXME merge query is not useful here, see DM-3166
+    std::string expectedMerge = "SELECT filterId,SUM(QS1_SUM) GROUP BY filterId";
+    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge, expectedProxyOrderBy);
+}
+
+BOOST_AUTO_TEST_CASE(OrderByLimit) {
+    std::string stmt = "SELECT objectId, taiMidPoint "
+        "FROM Source "
+        "ORDER BY objectId ASC LIMIT 5";
+    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_ ORDER BY objectId ASC LIMIT 5";
+    std::string expectedMerge = "SELECT objectId,taiMidPoint ORDER BY objectId ASC LIMIT 5";
+    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge, expectedProxyOrderBy);
+}
+
+BOOST_AUTO_TEST_CASE(OrderByLimitNotChunked) { // Test flipped syntax in DM-661
     std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
     std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
-    std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
+    std::string expectedParallel = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
+    std::string expectedProxyOrderBy = "ORDER BY field";
     // TODO: commented out test that is supposed to fail but it does not currently
-    // prepareTestQuerySession(qsTest, bad, "ParseException");
-    auto querySession = check(qsTest, good, expected);
+    // auto querySession = check(qsTest, bad, "ParseException");
+    auto querySession = check(qsTest, good, expectedParallel, "", "", expectedProxyOrderBy);
+}
 
-    auto mergeStmt = querySession->getMergeStmt();
-    if (mergeStmt) {
-        LOGF_INFO("mergeStmt->toString() %1%" % mergeStmt->toString());
-    }
-    else {
-        LOGF_INFO("No merge stmt");
-    }
+BOOST_AUTO_TEST_CASE(OrderByAggregateLimit) {
+    std::string stmt = "SELECT objectId, AVG(taiMidPoint) "
+        "FROM Source "
+        "GROUP BY objectId "
+        "ORDER BY objectId ASC LIMIT 2";
+    std::string expectedParallel = "SELECT objectId,COUNT(taiMidPoint) AS QS1_COUNT,SUM(taiMidPoint) AS QS2_SUM "
+                                   "FROM LSST.Source_100 AS QST_1_ "
+                                   "GROUP BY objectId "
+                                   "ORDER BY objectId ASC LIMIT 2";
+    std::string expectedMerge = "SELECT objectId,(SUM(QS2_SUM)/SUM(QS1_COUNT)) GROUP BY objectId "
+                                "ORDER BY objectId ASC LIMIT 2";
+    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge, expectedProxyOrderBy);
+}
+
+BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunkedLimit) {
+    std::string stmt = "SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId LIMIT 3";
+    std::string expectedParallel = "SELECT filterId,SUM(photClam) AS QS1_SUM FROM LSST.Filter AS QST_1_ "
+                                   "GROUP BY filterId "
+                                   "ORDER BY filterId LIMIT 3";
+    // FIXME merge query is not useful here, see DM-3166
+    std::string expectedMerge = "SELECT filterId,SUM(QS1_SUM) GROUP BY filterId ORDER BY filterId LIMIT 3";
+    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge, expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

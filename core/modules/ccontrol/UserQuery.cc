@@ -85,7 +85,6 @@
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
 #include "rproc/InfileMerger.h"
-#include "rproc/TableMerger.h"
 #include "util/Callable.h"
 
 namespace lsst {

@@ -81,7 +81,7 @@ std::shared_ptr<QuerySession> buildQuerySession(QuerySession::Test& t,
                                                 std::string const& stmt,
                                                 std::string const& expectedErr="") {
     std::shared_ptr<QuerySession> qs(new QuerySession(t));
-    qs->setQuery(stmt);
+    qs->analyzeQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 
     // DEBUG step
@@ -108,26 +108,40 @@ std::string buildFirstParallelQuery(QuerySession& qs, bool withSubChunks=true) {
     return first.queries[0];
 }
 
+/** @brief control consistency of Qserv internal queries
+ *
+ *  These queries are generated during query analysis
+ *
+ * If a user SQL query requires
+ *
+ */
 std::shared_ptr<QuerySession> check(QuerySession::Test& t,
                                     std::string const& stmt,
                                     std::string const& expectedParallel,
                                     std::string const& expectedErr = "",
-                                    std::string const& expectedMerge = "") {
-
-    bool testParallel = expectedErr.empty();
-    bool testMerge = testParallel && !expectedMerge.empty();
-
+                                    std::string const& expectedMerge = "",
+                                    std::string const& expectedProxyOrderBy = "") {
 
     std::shared_ptr<QuerySession> qs = buildQuerySession(t, stmt, expectedErr);
 
-    std::string sql;
-    if(testParallel) {
+    if (expectedErr.empty()) {
+        std::string sql;
         sql = buildFirstParallelQuery(*qs);
         BOOST_CHECK_EQUAL(sql, expectedParallel);
-    }
-    if (testMerge) {
-        sql = qs->getMergeStmt()->toQueryTemplateString();
-        BOOST_CHECK_EQUAL(sql, expectedMerge);
+
+        if (qs->needsMerge()) {
+            sql = qs->getMergeStmt()->getQueryTemplate().toString();
+            BOOST_CHECK_EQUAL(sql, expectedMerge);
+        } else {
+            auto mergeStmt = qs->getMergeStmt();
+            BOOST_CHECK(mergeStmt == NULL);
+            // check that expectedMerge is empty if no merge is required
+            BOOST_CHECK(expectedMerge.empty());
+        }
+
+        std::string proxyOrderBy = qs->getProxyOrderBy();
+        // check covers that expectedProxyOrderBy is empty if no ORDER BY is required
+        BOOST_CHECK_EQUAL(proxyOrderBy, expectedProxyOrderBy);
     }
     return qs;
 }

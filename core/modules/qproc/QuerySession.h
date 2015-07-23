@@ -47,7 +47,6 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 #include "query/typedefs.h"
-#include "rproc/mergeTypes.h"
 
 
 // Forward declarations
@@ -79,7 +78,17 @@ public:
 
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
-    void setQuery(std::string const& q);
+
+    /**
+     * @brief Analyze SQL query issued by user
+     *
+     * This query comes from user through mysql-client and mysql-proxy
+     * This function will parse it, apply query plugins (i.e. build parallel and
+     * merge queries) and check for errors
+     *
+     * @param sql: the sql query
+     */
+    void analyzeQuery(std::string const& sql);
     bool needsMerge() const;
     bool hasChunks() const;
 
@@ -96,6 +105,16 @@ public:
     void setResultTable(std::string const& resultTable);
     std::string const& getResultTable() const { return _resultTable; }
 
+    /** @brief Return the ORDER BY clause to run on mysql-proxy at result retrieval.
+     *
+     *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.
+     *  This parameter is set during query analysis.
+     *
+     *  @return: a string containing a SQL "ORDER BY" clause, or an empty string if this clause doesn't exists
+     *  @see QuerySession::analyzeQuery()
+     */
+    std::string getProxyOrderBy() const;
+
     /// Dominant database is the database that will be used for query
     /// dispatch. This is distinct from the default database, which is what is
     /// used for unqualified table and column references
@@ -106,7 +125,6 @@ public:
     std::shared_ptr<IntSet const> getEmptyChunks();
     std::string const& getError() const { return _error; }
 
-    rproc::MergeFixup makeMergeFixup() const; ///< as obsolete as TableMerger
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
     /// Finalize a query after chunk coverage has been updated

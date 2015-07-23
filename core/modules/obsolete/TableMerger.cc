@@ -36,7 +36,7 @@
   */
 
 // Class header
-#include "rproc/TableMerger.h"
+#include "obsolete/TableMerger.h"
 
 // System headers
 #include <cassert>

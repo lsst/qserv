@@ -112,7 +112,25 @@ public:
     void append(TableEntry const& t);
     void append(std::shared_ptr<Entry> const& e);
 
+    /** Return a string representation of the object
+     *
+     * Used to generate Qserv internal queries (i.e. chunk queries, parallel queries, ...)
+     *
+     * @return a string representation of the object.
+     *
+     */
     std::string toString() const;
+
+    /** Output operator for QueryTemplate
+     *
+     *  Can be used for logging, of debugging
+     *
+     *  @param os: std::ostream which will contain object output.
+     *  @param queryTemplate: QueryTemplate to output.
+     *  @return std::ostream containing output.
+     */
+    friend std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate);
+
     std::string generate(EntryMapping const& em) const;
     void clear();
 

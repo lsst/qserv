@@ -86,17 +86,6 @@ struct SpacedOutput {
     std::string sep;
 };
 
-
-std::string stringify(QueryTemplate::EntryPtrVector const& v) {
-    std::stringstream ss;
-    std::string str;
-    SpacedOutput so(ss, " ");
-    std::for_each(v.begin(), v.end(), so);
-    str = ss.str();
-    LOGF(getLogger(), LOG_LVL_TRACE, "EntryPtrVector: %1%" % str);
-    return str;
-}
-
 } // annonymous namespace
 
 struct MappingWrapper {
@@ -144,9 +133,18 @@ public:
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
 
-
+// Return a string representation of the object
 std::string QueryTemplate::toString() const {
-    return stringify(_entries);
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
+}
+
+// Output operator for QueryTemplate
+std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
+    SpacedOutput so(os);
+    std::for_each(queryTemplate._entries.begin(), queryTemplate._entries.end(), so);
+    return os;
 }
 
 void

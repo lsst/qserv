@@ -45,7 +45,6 @@
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "rproc/InfileMerger.h"
-#include "rproc/TableMerger.h"
 
 namespace lsst {
 namespace qserv {
@@ -89,7 +88,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     _impl->readConfigFacade(m, kvi);
 }
 
-int
+std::pair<int,std::string>
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
@@ -100,7 +99,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
-        qs->setQuery(query);
+        qs->analyzeQuery(query);
     } catch (...) {
         errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
         LOGF(_log, LOG_LVL_ERROR, errorExtra);
@@ -126,7 +125,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     } else {
         uq->_errorExtra += errorExtra;
     }
-    return sessionId;
+    return std::make_pair(sessionId, qs->getProxyOrderBy());
 }
 
 void UserQueryFactory::Impl::readConfig(StringMap const& m) {

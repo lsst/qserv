@@ -162,7 +162,7 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyPhysical(QueryPlugin::Plan& p,
+    virtual void applyPhysical(QueryPlugin::Plan& plan,
                                query::QueryContext&);
 private:
     query::AggOp::Mgr _aMgr;
@@ -203,20 +203,19 @@ registerPlugin registerAggregatePlugin;
 // AggregatePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
+AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
                                query::QueryContext&  context) {
     // For each entry in original's SelectList, modify the SelectList
     // for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
-    query::SelectList& oList = p.stmtOriginal.getSelectList();
+    query::SelectList& oList = plan.stmtOriginal.getSelectList();
 
     // Get the first out of the parallel statement select list. Assume
     // that the select lists are the same for all statements. This is
     // not necessarily true, unless the plugin is placed early enough
     // to ensure that other fragmenting activity has not taken place yet.
-    query::SelectList& pList = p.stmtParallel.front()->getSelectList();
-    bool hasLimit = p.stmtOriginal.getLimit() != -1;
-    query::SelectList& mList = p.stmtMerge.getSelectList();
+    query::SelectList& pList = plan.stmtParallel.front()->getSelectList();
+    query::SelectList& mList = plan.stmtMerge.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
     if(!vlist) {
@@ -240,29 +239,25 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     // LOGF_INFO("fixup: %1%" % qt.dbgStr());
     // Also need to operate on GROUP BY.
     // update context.
-    if(p.stmtOriginal.getDistinct() || m.hasAggregate()) {
+    if(plan.stmtOriginal.getDistinct() || m.hasAggregate()) {
         context.needsMerge = true;
     }
 
-    // Make the select lists of other statements in the parallel
-    // portion the same.
-    typedef SelectStmtPtrVector::iterator Iter;
-    typedef query::ValueExprPtrVector::iterator Viter;
-    std::shared_ptr<query::ValueExprPtrVector> veList = pList.getValueExprList();
-    for(Iter b=p.stmtParallel.begin(), i=b, e=p.stmtParallel.end();
-        i != e;
-        ++i) {
-        // Strip ORDER BY from parallel if merging.
-        if(context.needsMerge && !hasLimit) {
-            (*i)->setOrderBy(std::shared_ptr<query::OrderByClause>());
+    std::shared_ptr<query::OrderByClause> _nullptr;
+
+    for(auto first=plan.stmtParallel.begin(), parallel_query=first, end=plan.stmtParallel.end();
+        parallel_query != end; ++parallel_query) {
+
+        // Strip ORDER BY from parallel queries if merging.
+        if(context.needsMerge && not plan.stmtOriginal.hasLimit()) {
+            (*parallel_query)->setOrderBy(_nullptr);
         }
 
-        if(i == b) continue;
-        query::SelectList& pList2 = (*i)->getSelectList();
-        std::shared_ptr<query::ValueExprPtrVector> veList2 = pList2.getValueExprList();
-        veList2->clear();
-        for(Viter j=veList->begin(), je=veList->end(); j != je; ++j) {
-            veList2->push_back((**j).clone());
+        // Deep-copy select list of first parallel query to all other parallel queries
+        // i.e. make the select lists of other statements in the parallel
+        // portion the same.
+        if(parallel_query != first) {
+            (*parallel_query)->setSelectList(pList.clone());
         }
     }
 }

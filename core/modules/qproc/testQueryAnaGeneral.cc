@@ -119,24 +119,6 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     BOOST_CHECK_EQUAL(goodRes, parallel);
 }
 
-BOOST_AUTO_TEST_CASE(Aggregate) {
-    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-    std::string expPar = "SELECT sum(pm_declErr) AS QS1_SUM,chunkId,COUNT(bMagF2) AS QS2_COUNT,SUM(bMagF2) AS QS3_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId";
-
-    std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
-
-    BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
-    BOOST_CHECK(context->hasChunks());
-    BOOST_CHECK(!context->hasSubChunks());
-    BOOST_REQUIRE(ss.hasGroupBy());
-
-    std::string parallel = buildFirstParallelQuery(*qs);
-    BOOST_CHECK_EQUAL(expPar, parallel);
-}
-
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
 
@@ -697,12 +679,18 @@ BOOST_AUTO_TEST_CASE(Expression) {
 }
 
 BOOST_AUTO_TEST_CASE(dm646) {
+    // non-chunked query
     std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
     std::string expected = "SELECT DISTINCT foo FROM LSST.Filter AS f";
-    check(qsTest, stmt, expected);
+    // FIXME: non-chunked query shouldn't require merge operation, see DM-3165
+    std::string expectedMerge = "SELECT DISTINCT foo";
+    check(qsTest, stmt, expected, "", expectedMerge);
+
+    // chunked query
     stmt = "SELECT DISTINCT zNumObs FROM Object;";
     expected = "SELECT DISTINCT zNumObs FROM LSST.Object_100 AS QST_1_";
-    check(qsTest, stmt, expected);
+    expectedMerge = "SELECT DISTINCT zNumObs";
+    check(qsTest, stmt, expected, "", expectedMerge);
 }
 
 BOOST_AUTO_TEST_CASE(dm681) {

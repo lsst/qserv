@@ -54,7 +54,6 @@ namespace util {
  */
 class MultiError: public std::exception {
 public:
-    static std::string const HEADER_MSG;
 
     /** Return a string representation of the object
      *

@@ -95,15 +95,16 @@ void QuerySession::setDefaultDb(std::string const& defaultDb) {
     _defaultDb = defaultDb;
 }
 
-void QuerySession::setQuery(std::string const& inputQuery) {
-    _original = inputQuery;
+// Analyze SQL query issued by user
+void QuerySession::analyzeQuery(std::string const& sql) {
+    _original = sql;
     _isFinal = false;
     _initContext();
     assert(_context.get());
 
     parser::SelectParser::Ptr p;
     try {
-        p = parser::SelectParser::newInstance(inputQuery);
+        p = parser::SelectParser::newInstance(sql);
         p->setup();
         _stmt = p->getSelectStmt();
         _preparePlugins();
@@ -113,6 +114,9 @@ void QuerySession::setQuery(std::string const& inputQuery) {
 
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % toString());
+        }
+        if (LOG_CHECK_LVL(_logger, LOG_LVL_TRACE)) {
+            LOGF(_logger, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
         }
 
     } catch(QueryProcessingBug& b) {
@@ -175,6 +179,15 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
     return cv;
 }
 
+// return the ORDER BY clause to run on mysql-proxy at result retrieval
+std::string QuerySession::getProxyOrderBy() const {
+    std::string orderBy;
+    if (_stmt->hasOrderBy()) {
+        orderBy = _stmt->getOrderBy().toString();
+    }
+    return orderBy;
+}
+
 void QuerySession::addChunk(ChunkSpec const& cs) {
     _context->chunkCount += 1;
     _chunks.push_back(cs);
@@ -220,26 +233,6 @@ std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
     // FIXME: do we need to catch an exception here?
     return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
-}
-
-rproc::MergeFixup
-QuerySession::makeMergeFixup() const {
-    // Make MergeFixup to adapt new query parser/generation framework
-    // to older merging code (TableMerger).
-    // This is unused by InfileMerger.
-    if(!_stmt) {
-        throw QueryProcessingBug("Cannot makeMergeFixup() with NULL _stmt");
-    }
-    query::SelectList const& mergeSelect = _stmtMerge->getSelectList();
-    query::QueryTemplate t;
-    mergeSelect.renderTo(t);
-    std::string select = t.toString();
-    t = _stmtMerge->getPostTemplate();
-    std::string post = t.toString();
-    std::string orderBy; // TODO
-    bool needsMerge = _context->needsMerge;
-    return rproc::MergeFixup(select, post, orderBy,
-                              _stmtMerge->getLimit(), needsMerge);
 }
 
 /// Returns the merge statment, if appropriate.
@@ -341,6 +334,7 @@ void QuerySession::_generateConcrete() {
     // WHERE(???). Conceptually, we want to copy the parts that are
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
+    LOGF(_logger, LOG_LVL_TRACE, "Merge statement initialized with: \"%1%\"" % _stmtMerge->getQueryTemplate().toString());
 
     // TableMerger needs to be integrated into this design.
 }

@@ -41,7 +41,7 @@
 #include <string>
 
 // Qserv headers
-#include "rproc/mergeTypes.h"
+#include "obsolete/mergeTypes.h"
 
 // Forward declarations
 namespace lsst {
