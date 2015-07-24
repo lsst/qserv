@@ -8,16 +8,21 @@ Qserv is also available as a Docker image (see https://www.docker.com/).
 Basic use cases
 ***************
 
-Once you have run Qserv image in Docker container, see
-:ref:`quick-start-configuration` in order to configure Qserv as a mono-node
-instance.
+Create a docker image containing a Qserv mono-node instance and run integration tests:
 
-.. literalinclude:: ../../../admin/tools/docker/cmd.example.sh
+.. code-block:: bash
+
+   . /path/to/lsst/stack/loadLSST.bash
+   cd ${SRC_DIR}/qserv/admin/tools/docker
+   ./build-docker-img.sh centos_7
+
+Dockerfile example for centos7:
+.. literalinclude:: ../../../admin/tools/docker/centos_7/Dockerfile
    :language: bash
    :linenos:
 
-File below allows to create a Qserv image for Docker from scratch.
-
-.. literalinclude:: ../../../admin/tools/docker/Dockerfile
+Useful Docker commands:
+.. literalinclude:: ../../../admin/tools/docker/useful-cmd.sh
    :language: bash
    :linenos:
+

@@ -21,18 +21,23 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 #
-# Run mono-node test against latest installed Qserv release
+# Install eups stack and Qserv
 #
 
 # @author  Fabrice Jammes, IN2P3
 
 set -e
-set -x
 
-. /qserv/stack/loadLSST.bash
-setup qserv_distrib -t qserv
-QSERV_RUN_DIR=/qserv/run-$(qserv-version.sh)
-qserv-configure.py --all --force -R $QSERV_RUN_DIR
-$QSERV_RUN_DIR/bin/qserv-start.sh
-qserv-test-integration.py
-$QSERV_RUN_DIR/bin/qserv-stop.sh
+STACK_DIR="/qserv/stack"
+mkdir -p $STACK_DIR
+cd $STACK_DIR
+
+curl -O "https://sw.lsstcorp.org/eupspkg/newinstall.sh"
+GIT=yes; ANACONDA=no; printf "$GIT\n$ANACONDA\n" > /tmp/answers.txt
+
+# LSST stack require bash
+bash newinstall.sh < /tmp/answers.txt
+rm /tmp/answers.txt
+
+. ./loadLSST.bash
+eups distrib install qserv_distrib -t qserv

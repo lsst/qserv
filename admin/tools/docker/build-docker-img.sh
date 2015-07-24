@@ -27,7 +27,6 @@
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
-
 set -e
 
 usage() {
@@ -53,9 +52,9 @@ EOD
 # get the options
 while getopts hd: c ; do
     case $c in
-	    h) usage ; exit 0 ;;
-	    d) DEPDIR="$OPTARG" ;;
-	    \?) usage ; exit 2 ;;
+            h) usage ; exit 0 ;;
+            d) DEPS_DIR="$OPTARG" ;;
+            \?) usage ; exit 2 ;;
     esac
 done
 shift `expr $OPTIND - 1`
@@ -65,37 +64,65 @@ if [ $# -lt 1 ] ; then
     exit 2
 fi
 
-if [ -z "$DEPDIR" -a -z "$QSERV_DIR" ] ; then
-    printf "ERROR: directory containing dependency scripts not specified" 
+if [ -z "$DEPS_DIR" -a -z "$QSERV_DIR" ] ; then
+    printf "ERROR: directory containing dependency scripts not specified"
     usage
     exit 3
 fi
-test "$DEPDIR" || DEPDIR=$QSERV_DIR/admin/bootstrap
+test "$DEPS_DIR" || DEPS_DIR=$QSERV_DIR/admin/bootstrap
 
 DOCKERDIR=$1
 shift
 
 # strip trailing slash
 DOCKERDIR=$(echo $DOCKERDIR | sed 's%\(.*[^/]\)/*%\1%')
-DEPDIR=$(echo $DEPDIR | sed 's%\(.*[^/]\)/*%\1%')
+DEPS_DIR=$(echo $DEPS_DIR | sed 's%\(.*[^/]\)/*%\1%')
 
-cd "$DOCKERDIR"
+# WARN:
+# Scripts used by Dockerfile:
+# - must be located under the same root path than the Dockerfile,
+# - must not be symlinks
+# - git can't store physical links
+# So, copy it from templates to SCRIPT_DIR directory
+SCRIPT_DIR="$DOCKERDIR/scripts"
 
-VERSION=$(basename "$DOCKERDIR")
-. ./dep.sh
-DEPFILE="$DEPDIR/qserv-install-deps-"$DEPS".sh"
+. "$SCRIPT_DIR/dist.sh"
+TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-"$DIST".sh"
 
-printf "Loading dependencies from %s\n" "$DEPFILE" 
+printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIPT"
+ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 
-[ -e install-deps.sh ] || ln "$DEPFILE" "install-deps.sh" 
-mkdir -p scripts
+INSTALL_SCRIPT="install-stack.sh"
+TPL_INSTALL_SCRIPT="$DOCKERDIR/../common/$INSTALL_SCRIPT"
+ln -f "$TPL_INSTALL_SCRIPT" "$SCRIPT_DIR/$INSTALL_SCRIPT"
 
-TESTFILE="mono-node-test.sh"
-[ -e "scripts/$TESTFILE" ] || ln "../common/$TESTFILE" "scripts/$TESTFILE"
+TEST_SCRIPT="mono-node-test.sh"
+TPL_TEST_SCRIPT="$DOCKERDIR/../common/$TEST_SCRIPT"
+ln -f "$TPL_TEST_SCRIPT" "$SCRIPT_DIR/$TEST_SCRIPT"
 
 # Build the image
-docker build --tag="fjammes/qserv:$VERSION" .
+VERSION=$(basename "$DOCKERDIR")
+TAG="fjammes/qserv-sysdeps:$VERSION"
+printf "\n-- Building image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
+
+# Install eups stack
+# Performed outside of Dockerfile to ease debugging,
+# furthermore, it need to be re-executed for each monthly release,
+# (and Dockerfile doesn't do this)
+MSG="Install eups stack for Qserv"
+printf "\n-- $MSG\n"
+printf "   Using image tagged: %s\n" "$TAG"
+CID_FILE="$DOCKERDIR/docker.cid"
+# Create image even if install failed to ease diagnose
+docker run -it --cidfile="$CID_FILE" "$TAG" /bin/su qserv -c "/bin/sh $INSTALL_SCRIPT || echo 'INSTALL FAILED' > ERROR_LOG"
+
+CONTAINER_ID=$(cat $CID_FILE)
+rm $CID_FILE
+TAG="fjammes/qserv:$VERSION"
+docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$TAG"
 
 # Run the integration test
 # a hostname is required by xrootd
-docker run -i --hostname="qserv-host" -t "fjammes/qserv:$VERSION"
+printf "\n-- Running mono-node integration test\n"
+docker run -it  --hostname="qserv-host" -t "$TAG" /bin/su qserv -c "/bin/sh $TEST_SCRIPT"
