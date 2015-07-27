@@ -57,8 +57,7 @@ QMetaTransaction::~QMetaTransaction() {
     // instead of just destroying SqlTransaction instance we call abort and see
     // if error happens. We cannot throw here but we can print a message.
     if (_trans.isActive()) {
-        _trans.abort(_errObj);
-        if (_errObj.isSet()) {
+        if (not _trans.abort(_errObj)) {
             LOGF(_logger, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: (%1%) %2%" %
                  _errObj.errNo() % _errObj.errMsg());
         }
@@ -68,8 +67,7 @@ QMetaTransaction::~QMetaTransaction() {
 /// Explicitly commit transaction, throws SqlError for errors.
 void
 QMetaTransaction::commit() {
-    _trans.commit(_errObj);
-    if (_errObj.isSet()) {
+    if (not _trans.commit(_errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: (%1%) %2%" %
              _errObj.errNo() % _errObj.errMsg());
         throw SqlError(ERR_LOC, _errObj);
@@ -79,8 +77,7 @@ QMetaTransaction::commit() {
 /// Explicitly abort transaction, throws SqlError for errors.
 void
 QMetaTransaction::abort() {
-    _trans.abort(_errObj);
-    if (_errObj.isSet()) {
+    if (not _trans.abort(_errObj)) {
         LOGF(_logger, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: (%1%) %2%" %
              _errObj.errNo() % _errObj.errMsg());
         throw SqlError(ERR_LOC, _errObj);
