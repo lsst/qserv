@@ -63,6 +63,8 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
 
+#define MAX_NAME_LENGTH 50
+
 namespace lsst {
 namespace qserv {
 namespace wdb {
@@ -123,6 +125,7 @@ private:
     wbase::Task::Ptr _task;
     std::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
     std::string _dbName;
+    std::string _hostName;
     std::shared_ptr<proto::TaskMsg> _msg;
     util::Flag<bool> _poisoned;
     std::shared_ptr<wbase::SendChannel> _sendChannel;
@@ -164,6 +167,9 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
       _poisoned(false),
       _sendChannel(a.task->sendChannel),
       _user(a.task->user) {
+    char buf[MAX_NAME_LENGTH];
+    gethostname(buf, MAX_NAME_LENGTH);
+    _hostName = buf;
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_msg);
@@ -305,6 +311,7 @@ void QueryAction::Impl::_transmitHeader(std::string& msg) {
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
     _protoHeader->set_size(msg.size());
     _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
+    _protoHeader->set_wname(_hostName);
     std::string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 

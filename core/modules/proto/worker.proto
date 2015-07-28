@@ -68,6 +68,7 @@ message ProtoHeader {
     optional fixed32 protocol = 1;
     required sfixed32 size = 2; // protobufs discourages messages > megabytes
     optional bytes md5 = 3;
+    optional string wname = 4; 
 }
 
 message ColumnSchema {

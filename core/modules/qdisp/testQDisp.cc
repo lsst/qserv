@@ -108,7 +108,7 @@ public:
     virtual std::vector<char>& nextBuffer() {
         return _vect;
     }
-    virtual bool flush(int bLen, bool last) {
+    virtual bool flush(int bLen, bool& last) {
         return bLen == magic();
     }
     virtual void errorFlush(std::string const& msg, int code) {
@@ -388,7 +388,7 @@ public:
         return _buffer;
     }
 
-    virtual bool flush(int bLen, bool last) {
+    virtual bool flush(int bLen, bool& last) {
         _flushedBytes += bLen;
         if(_receivedLast) {
             throw std::runtime_error("Duplicate last");

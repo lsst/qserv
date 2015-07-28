@@ -62,7 +62,8 @@ MergingRequester::MergingRequester(
       _tableName(tableName),
       _response{new WorkerResponse()},
       _flushed{false},
-      _cancelled{false} {
+      _cancelled{false},
+      _wName{"~"}  {
     _initState();
 }
 
@@ -73,15 +74,15 @@ const char* MergingRequester::getStateStr(MsgState const& state) {
     case MsgState::RESULT_WAIT:      return "RESULT_WAIT";
     case MsgState::RESULT_RECV:      return "RESULT_RECV";
     case MsgState::RESULT_EXTRA:     return "RESULT_EXTRA";
-    case MsgState::BUFFER_DRAIN:     return "BUFFER_DRAIN";
     case MsgState::HEADER_ERR:       return "HEADER_ERR";
     case MsgState::RESULT_ERR:       return "RESULT_ERR";
     }
     return "unknown";
 }
 
-bool MergingRequester::flush(int bLen, bool last) {
-    LOGF_INFO("flush state=%1% blen=%2% last=%3%" % getStateStr(_state) % bLen % last);
+bool MergingRequester::flush(int bLen, bool& last) {
+    LOGF_INFO("From:%4% flush state=%1% blen=%2% last=%3%" %
+              getStateStr(_state) % bLen % last % _wName);
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
         if(_state != MsgState::RESULT_EXTRA) {
             LOGF_ERROR("MergingRequester size mismatch: expected %1% got %2%"
@@ -93,12 +94,16 @@ bool MergingRequester::flush(int bLen, bool last) {
     case MsgState::HEADER_SIZE_WAIT:
         _response->headerSize = static_cast<unsigned char>(_buffer[0]);
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
-            _setError(log::MSG_RESULT_DECODE,
-                std::string("Error decoding proto header for ") + getStateStr(_state));
+             std::ostringstream os;
+            os << "From:" << _wName << "Error decoding proto header for " << getStateStr(_state);
+            _setError(log::MSG_RESULT_DECODE, os.str());
             _state = MsgState::HEADER_ERR;
             return false;
         }
-        LOGF_DEBUG("HEADER_SIZE_WAIT: Resizing buffer to %1%" % _response->protoHeader.size());
+        if (_wName.compare("~") == 0) {
+            _wName = _response->protoHeader.wname();
+        }
+        LOGF_DEBUG("HEADER_SIZE_WAIT: From:%1% Resizing buffer to %2%" % _wName % _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
@@ -106,7 +111,7 @@ bool MergingRequester::flush(int bLen, bool last) {
     case MsgState::RESULT_WAIT:
         if(!_verifyResult()) { return false; }
         if(!_setResult()) { return false; }
-        LOGF_INFO("_buffer %1%" % util::prettyCharList(_buffer, 5));
+        LOGF_INFO("From:%1% _buffer %2%" % _wName % util::prettyCharList(_buffer, 5));
         {
             bool msgContinues = _response->result.continues();
             _buffer.resize(0); // Nothing further needed
@@ -115,6 +120,9 @@ bool MergingRequester::flush(int bLen, bool last) {
                 LOGF_INFO("Messages continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
                 _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+            } else {
+              LOGF_INFO("Messages ends, setting last=true");
+              last = true;
             }
             LOGF_INFO("Flushed msgContinues=%1% last=%2% for tableName=%3%" %
                     msgContinues % last % _tableName);
@@ -137,22 +145,16 @@ bool MergingRequester::flush(int bLen, bool last) {
         _state = MsgState::RESULT_WAIT;
         return true;
     case MsgState::RESULT_RECV:
-        LOGF_DEBUG("RESULT_RECV last = %1%" % last);
-        if (!last) {
-            _state = MsgState::BUFFER_DRAIN;
-            _buffer.resize(1);
-        }
-        return true;
-    case MsgState::BUFFER_DRAIN:
-        // The buffer should always be empty, but last is not always set to true by xrootd
-        // unless we ask xrootd to read at least one character.
-        LOGF_INFO("BUFFER_DRAIN last=%1% bLen=%2% buffer=%3%" %
-                last % bLen % util::prettyCharList(_buffer));
-        _buffer.resize(1);
-        return true;
+        // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
+        // fall-through
     case MsgState::HEADER_ERR:
     case MsgState::RESULT_ERR:
-        _setError(log::MSG_RESULT_ERROR, "Unexpected message");
+         {
+            std::ostringstream eos;
+            eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state) << " last=" << last;
+            LOGF_ERROR(eos.str().c_str());
+            _setError(log::MSG_RESULT_ERROR, eos.str().c_str());
+         }
         return false;
     default:
         break;
