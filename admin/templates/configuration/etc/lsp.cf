@@ -17,6 +17,9 @@
 # Use manager mode
 {{COMMENT_MONO_NODE}}all.role manager
 
+# Enable support for multiple writable file copies
+{{COMMENT_MONO_NODE}}cms.space mwfiles linger 0
+
 # Use standard filesystem plugin
 # Newer xrootd uses embedded plugin by default, uncomment for older xrootd
 #{{COMMENT_MONO_NODE}}xrootd.fslib libXrdOfs.so
