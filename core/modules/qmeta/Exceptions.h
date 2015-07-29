@@ -28,6 +28,7 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
+#include "qmeta/types.h"
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
@@ -61,7 +62,7 @@ public:
 /// Exception thrown when czar ID is not known.
 class CzarIdError : public Exception {
 public:
-    CzarIdError(util::Issue::Context const& ctx, int id)
+    CzarIdError(util::Issue::Context const& ctx, CzarId id)
         : Exception(ctx, "Czar ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
     {}
 };
@@ -69,7 +70,7 @@ public:
 /// Exception thrown when query ID is not known.
 class QueryIdError : public Exception {
 public:
-    QueryIdError(util::Issue::Context const& ctx, int id)
+    QueryIdError(util::Issue::Context const& ctx, QueryId id)
         : Exception(ctx, "Query ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
     {}
 };
@@ -77,7 +78,7 @@ public:
 /// Exception thrown when chunk ID is not known.
 class ChunkIdError : public Exception {
 public:
-    ChunkIdError(util::Issue::Context const& ctx, int queryId, int chunkId)
+    ChunkIdError(util::Issue::Context const& ctx, QueryId queryId, int chunkId)
         : Exception(ctx, "Chunk ID is not registered in metadata: " +
                     boost::lexical_cast<std::string>(chunkId) + " query id:" +
                     boost::lexical_cast<std::string>(queryId))
