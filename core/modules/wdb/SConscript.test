@@ -13,7 +13,7 @@ programs = []
 # extDeps
 extDeps = "boost_regex boost_signals boost_thread boost_system mysqlclient_r protobuf log log4cxx pthread ssl crypto".split()
 
-modDeps = 'mysql sql util wbase wconfig wdb'.split() # deps on other modules
+modDeps = 'global mysql sql util wbase wconfig wdb'.split() # deps on other modules
 #modDeps = 'wbase wconfig wdb'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 pDeps = itertools.chain(*map(lambda m: libProducts[m], ["proto"]))

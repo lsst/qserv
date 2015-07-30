@@ -41,4 +41,16 @@ makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen) {
     return os.str();
 }
 
+std::string initHostName() {
+        char buf[_SC_HOST_NAME_MAX+1];
+        buf[_SC_HOST_NAME_MAX] = '\0';
+        gethostname(buf, sizeof buf - 1);
+        return std::string(buf);
+}
+
+std::string const& getHostname() {
+    static std::string const cachedHostname = initHostName();
+    return cachedHostname;
+}
+
 }} // namespace lsst::qserv

@@ -45,6 +45,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/debugUtil.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
@@ -62,6 +63,8 @@
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
+
+#define MAX_NAME_LENGTH 50
 
 namespace lsst {
 namespace qserv {
@@ -305,6 +308,7 @@ void QueryAction::Impl::_transmitHeader(std::string& msg) {
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
     _protoHeader->set_size(msg.size());
     _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
+    _protoHeader->set_wname(getHostname());
     std::string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 

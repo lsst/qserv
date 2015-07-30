@@ -41,6 +41,7 @@
 // Qserv headers
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseRequester.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -153,6 +154,10 @@ bool QueryRequest::_importStream() {
     bool retrieveInitiated = false;
     // Pass ResponseRequester's buffer directly.
     std::vector<char>& buffer = _requester->nextBuffer();
+    LOGF_DEBUG("QueryRequest::_importStream buffer.size=%1%" % buffer.size());
+    const void* pbuf = (void*)(&buffer[0]);
+    LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
+              buffer.size() % pbuf % util::prettyCharList(buffer, 5));
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
@@ -180,7 +185,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" % blen % (last ? "(last)" : "(more)"));
+    LOGF_INFO("ProcessResponseData with buflen=%1% %2%" % blen % (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         const char* chs = eInfo.Get(eCode);
@@ -202,8 +207,10 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             _status.updateInfo(JobStatus::COMPLETE);
             _finish();
         } else {
-            LOGF_INFO("ProcessResponse waiting for more data");
             std::vector<char>& buffer = _requester->nextBuffer();
+            const void* pbuf = (void*)(&buffer[0]);
+            LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
+                      buffer.size() % pbuf % util::prettyCharList(buffer, 5));
             if(!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
                 return;
