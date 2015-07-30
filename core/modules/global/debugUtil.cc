@@ -26,6 +26,7 @@
 
 // System headers
 #include <sstream>
+#include <unistd.h>
 
 namespace lsst {
 namespace qserv {
