@@ -35,5 +35,7 @@ namespace qserv {
 
 std::string makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen);
 
+std::string const& getHostname();
+
 }}
 #endif //  LSST_QSERV_DEBUGUTIL_H

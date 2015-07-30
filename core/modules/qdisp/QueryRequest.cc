@@ -155,12 +155,9 @@ bool QueryRequest::_importStream() {
     // Pass ResponseRequester's buffer directly.
     std::vector<char>& buffer = _requester->nextBuffer();
     LOGF_DEBUG("QueryRequest::_importStream buffer.size=%1%" % buffer.size());
-    for(auto iter=buffer.begin(); iter != buffer.end(); iter++) *iter=8;
-    std::ostringstream dbg;
     const void* pbuf = (void*)(&buffer[0]);
-    dbg << "_importStream->GetResponseData size=" << buffer.size();
-    dbg << ' ' << pbuf << ' ' <<  util::prettyCharList(buffer, 25);
-    LOGF_INFO(dbg.str().c_str());
+    LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
+              buffer.size() % pbuf % util::prettyCharList(buffer, 5));
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
@@ -211,12 +208,9 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             _finish();
         } else {
             std::vector<char>& buffer = _requester->nextBuffer();
-            for(auto iter=buffer.begin(); iter != buffer.end(); iter++) *iter=9;
-            std::ostringstream dbg;
             const void* pbuf = (void*)(&buffer[0]);
-            dbg << "ProcessResponseData->GetResponseData size=" << buffer.size();
-            dbg << ' '<< pbuf << ' ' <<  util::prettyCharList(buffer, 25);
-            LOGF_INFO(dbg.str().c_str());
+            LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
+                      buffer.size() % pbuf % util::prettyCharList(buffer, 5));
             if(!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
                 return;

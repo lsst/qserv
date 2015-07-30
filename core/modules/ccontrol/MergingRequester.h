@@ -123,7 +123,7 @@ private:
     bool _flushed; ///< flushed to InfileMerger?
     std::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
     bool _cancelled; ///< Cancelled?
-    std::string _wName; // worker name
+    std::string _wName; /// worker name
 };
 
 }}} // namespace lsst::qserv::qdisp

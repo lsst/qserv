@@ -94,13 +94,12 @@ bool MergingRequester::flush(int bLen, bool& last) {
     case MsgState::HEADER_SIZE_WAIT:
         _response->headerSize = static_cast<unsigned char>(_buffer[0]);
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
-             std::ostringstream os;
-            os << "From:" << _wName << "Error decoding proto header for " << getStateStr(_state);
-            _setError(log::MSG_RESULT_DECODE, os.str());
+            std::string s = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
+            _setError(log::MSG_RESULT_DECODE, s);
             _state = MsgState::HEADER_ERR;
             return false;
         }
-        if (_wName.compare("~") == 0) {
+        if (_wName == "~") {
             _wName = _response->protoHeader.wname();
         }
         LOGF_DEBUG("HEADER_SIZE_WAIT: From:%1% Resizing buffer to %2%" % _wName % _response->protoHeader.size());
@@ -121,8 +120,8 @@ bool MergingRequester::flush(int bLen, bool& last) {
                 _state = MsgState::RESULT_EXTRA;
                 _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
-              LOGF_INFO("Messages ends, setting last=true");
-              last = true;
+                LOGF_INFO("Messages ends, setting last=true");
+                last = true;
             }
             LOGF_INFO("Flushed msgContinues=%1% last=%2% for tableName=%3%" %
                     msgContinues % last % _tableName);
@@ -152,8 +151,8 @@ bool MergingRequester::flush(int bLen, bool& last) {
          {
             std::ostringstream eos;
             eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state) << " last=" << last;
-            LOGF_ERROR(eos.str().c_str());
-            _setError(log::MSG_RESULT_ERROR, eos.str().c_str());
+            LOGF_ERROR("%1%" % eos.str());
+            _setError(log::MSG_RESULT_ERROR, eos.str());
          }
         return false;
     default:
