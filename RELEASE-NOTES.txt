@@ -2,14 +2,34 @@ R E L E A S E   2015_07
 =======================
 
 Release highlights:
+ * Reliability in multi-node environment greatly improved:
+   critical bug fixes related to problems at scale.
+ * Added support for ORDER BY
+ * Completed query metadata
+ * Miscelaneous code cleanup
 
 Code improvements:
+ * DM-3104: Add "ORDER BY" clause to lua SQL query on result table
+ * DM-1709: Implement result sorting for integration tests
+ * DM-2885: Improve confusing error message
+ * DM-3223: Improve czar-worker communication debugging
+ * DM-3090: Implement test suite for new class SqlTransaction
+ * DM-3110: qserv code cleanup
+ * DM-3235: qserv missing direct dependencies
+ * DM-3091: Remove unused function populateState()
+ * DM-3238: Add qserv-restart.sh
 
 New features:
+ * DM-2805: Complete Query Metadata Implementation
+ * DM-2966: Design CSS that supports updates
 
 Bug fixes:
+ * DM-3261: Fix problems in xrootd discovered in multi-node qserv tests
+ * DM-3237: Fix problems with no-result queries on multi-node setup
 
 Documentation improvements:
+ * DM-2420: Document API for worker management service
+ * DM-3224: Document setting up multi-node Qserv and running integration test
 
 R E L E A S E   2015_06
 =======================
