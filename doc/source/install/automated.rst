@@ -1,8 +1,8 @@
 ##########################
-Automatizing the procedure
+Automating the procedure
 ##########################
 
-Script below allow to automates Qserv install, configuration and tests. It is mostly provided for developers who which to set up quickly a new development machine, or for system administrators who which to create an automated install scripts dedicated to a cluster.
+Script below allows to automate Qserv install, configuration and tests. It is mostly provided for developers who wish to set up quickly a new development machine, or for system administrators who wish to create an automated install script dedicated to a cluster.
 
 **************
 Pre-requisites
