@@ -134,7 +134,7 @@ This section covers restriction you need to be aware of when interacting with Qs
 
 ### Spatial constraints should be expressed through our qserv_areaspec_* functions
 
-Spatial constraints should beexpressed through qserv_areaspec_* functions (see Extensions section above for details). Any other way of specifying spatial restrictions may be significantly slower (e.g., they might devolve to be full table scan). For example, the form:
+Spatial constraints should be expressed through qserv_areaspec_* functions (see Extensions section above for details). Any other way of specifying spatial restrictions may be significantly slower (e.g., they might devolve to be full table scan). For example, the form:
 
     WHERE ra BETWEEN <ra1> AND <ra2>
       AND decl BETWEEN <decl1> AND <decl2>
