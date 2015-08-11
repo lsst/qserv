@@ -89,7 +89,7 @@ shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
 
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
-                            'libs' : "log boost_thread zookeeper_mt".split(),
+                            'libs' : "log boost_thread mysqlclient_r zookeeper_mt".split(),
                             'extraSrcs' : ['css'],
                             'SHLIBPREFIX' : '',
                             'distDir' : pyDistRelative(env, "css")},
