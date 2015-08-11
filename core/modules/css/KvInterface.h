@@ -45,16 +45,19 @@ public:
     virtual ~KvInterface() {};
 
     /**
-     * Create a key/value pair.
-     * Throws KeyExistsError if the key already exists (or if any other problem,
-     * e.g., a connection error is detected).
+     * Create a slash-delimited key-value pair.
+     * Key must be shorter than MAX_KEY_LENGTH.
+     * If the parent key does not exist it will be created with an empty value.
+     * @throws KeyExistsError if the key already exists
+     * @throws CssError for other problems (e.g., a connection error is detected).
      */
     virtual void create(std::string const& key, std::string const& value) = 0;
 
     /**
      * Set a key/value pair. If the key already exists, its value is
      * overwritten.
-     * Throws CssError when unable to set the pair (error with the underlying
+     * key must be shorter than MAX_KEY_LENGTH
+     * @throws CssError when unable to set the pair (error with the underlying
      * persistence).
      */
     virtual void set(std::string const& key, std::string const& value) = 0;
@@ -66,9 +69,9 @@ public:
 
     /**
      * Returns value for a given key.
-     * Throws CssRunTimeError if there are any other problems, e.g., a connection
+     * @throws NoSuchKey if the key is not found.
+     * @throws CssError if there are any other problems, e.g., a connection
      * error is detected).
-     * Throws CssNoSuchKey if the key is not found.
      */
     std::string get(std::string const& key) {
         return _get(key, std::string(), true);
@@ -76,7 +79,8 @@ public:
 
     /**
      * Returns value for a given key, defaultValue if the key does not exist.
-     * Throws CssRunTimeError if there are any other problems, e.g., a connection
+     * @throws NoSuchKey if the key is not found.
+     * @throws CssError if there are any other problems, e.g., a connection
      * error is detected).
      */
     std::string get(std::string const& key,
@@ -86,14 +90,15 @@ public:
 
     /**
      * Returns children (vector of strings) for a given key.
-     * Throws CssRunTimeError if the key does not exist (or if any other problem,
-     * e.g., a connection error is detected)
+     * @throws NoSuchKey if the key does not exist
+     * @throws CssError for other problems (e.g., a connection error is detected).
      */
     virtual std::vector<std::string> getChildren(std::string const& key) = 0;
 
     /**
-     * Delete a key.
-     * Throws CssRunTimeError on failure.
+     * Delete a key, and all of it's children (if they exist)
+     * @throws NoSuchKey on failure.
+     * @throws CssError for other problems.
      */
     virtual void deleteKey(std::string const& key) = 0;
 
