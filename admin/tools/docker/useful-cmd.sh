@@ -1,11 +1,11 @@
 # These commands require Docker on your machine and that you belong to 'docker' group
 
 ##
-## Download and run a docker image containing qserv 2014_10
+## Download and run a docker image containing qserv latest release
 ##
 
 # -v command will mount host $CWD on vm /some/path
-docker run --hostname="qserv-host" --interactive=true --tty -v `pwd`:/some/path "fjammes/qserv:2014_10" /bin/bash
+docker run --hostname="qserv-host" -it --rm -v `pwd`:/some/path "fjammes/qserv:latest" /bin/bash
 
 # Below, we assume your Docker username is jdoe, create it here: https://hub.docker.com
 
