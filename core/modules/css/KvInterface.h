@@ -96,7 +96,7 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key) = 0;
 
     /**
-     * Delete a key, and all of it's children (if they exist)
+     * Delete a key, and all of its children (if they exist)
      * @throws NoSuchKey on failure.
      * @throws CssError for other problems.
      */

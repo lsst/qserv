@@ -125,8 +125,18 @@ public:
 
     /**
      *  Escape string for use inside SQL statements.
+     *  @return an escaped string, or an empty string if the connection can not be established
+     *  @note the connection MUST be connected before using this method
      */
     std::string escapeString(std::string const& rawString) const;
+
+    /**
+     * Escape string for use inside SQL statements.
+     * @return true if the escaped string could be created.
+     * @note this method will attempt to connect if the connection is not already estabilshed.
+     */
+    bool escapeString(std::string const& rawString, std::string& escapedString,
+            SqlErrorObject& errObj);
 
 private:
     friend class SqlResultIter;
