@@ -21,28 +21,15 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# Stop Qserv on current node
 
-# @author  Fabrice JAMMES, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
+set -e
 
-check_qserv_run_dir
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. $DIR/params.sh
 
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
-done
+QSERV_RUN_DIR=$(check_path $QSERV_RUN_DIR)
 
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
-fi
+$QSERV_RUN_DIR/bin/qserv-stop.sh

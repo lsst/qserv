@@ -21,28 +21,22 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# Replicate Qserv install/configuration scripts to a number of servers.
 
-# @author  Fabrice JAMMES, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
+set -e
+set -x
 
-check_qserv_run_dir
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
-done
+. "$DIR"/scripts/params.sh
 
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
-fi
+SRC_LOC="$USER@ccqservbuild.in2p3.fr:$DIR/scripts"
+
+# each server rsync scripts using current AFS user account in order to use krb token for ssh connection
+sh "$DIR"/hosts.sh | /opt/shmux/bin/shmux -c "sh -c \"rsync --delete -avz -e ssh $SRC_LOC /tmp\"" -
+
+# on each server, copy scripts to qserv account workspace
+sh "$DIR"/hosts.sh | /opt/shmux/bin/shmux -c \
+    "sudo -u qserv sh -c \"rsync --delete -av /tmp/scripts $INSTALL_BASE\"" -

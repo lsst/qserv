@@ -1,7 +1,8 @@
 #!/bin/sh
 
+
 # LSST Data Management System
-# Copyright 2014-2015 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,29 +21,30 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+#
+# Dependencies for Debian8.x-based distributions
+# Tested on jessie
+#
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# @author  Fabrice Jammes, IN2P3
 
-# @author  Fabrice JAMMES, IN2P3
-
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
-
-check_qserv_run_dir
-
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
-done
-
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
-fi
+apt-get --yes install bash \
+    bison \
+    bzip2 \
+    cmake \
+    curl \
+    flex \
+    g++ \
+    gettext \
+    libbz2-dev \
+    libglib2.0-dev \
+    libpthread-workqueue-dev \
+    libreadline-dev \
+    make \
+    numpy \
+    ncurses-dev \
+    openjdk-7-jre-headless \
+    openssl \
+    python-dev \
+    python-setuptools \
+    zlib1g-dev

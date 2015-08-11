@@ -24,8 +24,8 @@ Please run next script under **root account**:
 
 * For Fedora 19: :download:`qserv-install-deps-fedora19.sh <../../../admin/bootstrap/qserv-install-deps-fedora19.sh>`.
 * For Scientific Linux 6: :download:`qserv-install-deps-sl6.sh <../../../admin/bootstrap/qserv-install-deps-sl6.sh>`.
-* For Scientific Linux 7: :download:`qserv-install-deps-sl7.sh <../../../admin/bootstrap/qserv-install-deps-sl7.sh>`.
-* For Debian Wheezy: :download:`qserv-install-deps-debian-wheezy.sh <../../../admin/bootstrap/qserv-install-deps-debian-wheezy.sh>`.
+* For RedHat7-based distributions: :download:`qserv-install-deps-rhel7.sh <../../../admin/bootstrap/qserv-install-deps-rhel7.sh>`.
+* For Debian8-based distribution: :download:`qserv-install-deps-debian8.sh <../../../admin/bootstrap/qserv-install-deps-debian8.sh>`.
 * For Ubuntu 12.04: :download:`qserv-install-deps-ubuntu-12.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-12.04.sh>`.
 * For Ubuntu 14.04: :download:`qserv-install-deps-ubuntu-14.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-14.04.sh>`.
 
@@ -64,7 +64,7 @@ Then below, please set ``RELEASE`` to "|release|" to install explicitly this rel
    # First, define RELEASE, here we install current Qserv release
    RELEASE="qserv"
    # loadLSST.bash must have been sourced before running this (see above)
-   eups distrib install --current-all --tag $RELEASE qserv_distrib
+   eups distrib install --tag $RELEASE qserv_distrib
    setup qserv_distrib
 
 .. _quick-start-configuration:

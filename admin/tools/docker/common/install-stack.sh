@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014-2015 LSST Corporation.
+# Copyright 2014 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,29 +20,24 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+#
+# Install eups stack and Qserv
+#
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# @author  Fabrice Jammes, IN2P3
 
-# @author  Fabrice JAMMES, IN2P3
+set -e
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
+STACK_DIR="/qserv/stack"
+mkdir -p $STACK_DIR
+cd $STACK_DIR
 
-check_qserv_run_dir
+curl -O "https://sw.lsstcorp.org/eupspkg/newinstall.sh"
+GIT=yes; ANACONDA=no; printf "$GIT\n$ANACONDA\n" > /tmp/answers.txt
 
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
-done
+# LSST stack require bash
+bash newinstall.sh < /tmp/answers.txt
+rm /tmp/answers.txt
 
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
-fi
+. ./loadLSST.bash
+eups distrib install qserv_distrib -t qserv

@@ -26,6 +26,9 @@ Each developer can than build and install its own Qserv version in shared LSST s
    # Path to stack must be the same on all nodes
    source /path/to/lsst/stack/loadLSST.bash
 
+   # Enable a recent git version
+   setup git
+
    # Clone Qserv repository
    SRC_DIR=${HOME}/src
    mkdir ${SRC_DIR}
@@ -33,9 +36,12 @@ Each developer can than build and install its own Qserv version in shared LSST s
    # authenticated access (require a ssh key) :
    git clone ssh://git@github.com/LSST/qserv
 
+   # Update dependencies to latest Qserv release
+   eups distrib install qserv -t qserv --onlydepend
+
    # Install Qserv in the stack
    cd qserv/
-   setup -r .
+   setup -r . -t qserv
    eupspkg -erd install
 
    # 'latestbuild' is a global eups tag used to tag latest Qserv version available on the cluster
@@ -48,25 +54,5 @@ Each developer can than build and install its own Qserv version in shared LSST s
 Deploy on the cluster
 =====================
 
-Adapt this example:
+You can use and adapt CC-IN2P3 example (see ${SRC_DIR}/qserv/admin/tools/cluster/cc-in2p3/shmux).
 
-* Script for installing a cluster node :download:`install-node.sh <../../../admin/tools/cluster/cc-in2p3/install-node.sh>`. In this example, a shared file system is used to retrieve binaries on all nodes.
-* Aliases for parallel management via ssh :download:`parallel-ssh-command.aliases <../../../admin/tools/cluster/cc-in2p3/parallel-ssh-command.aliases>`.
-
-  .. code-block:: bash
-
-   source ~/src/qserv/admin/tools/cluster/cc-in2p3/parallel-ssh-command.aliases
-
-   # Command below are launched on parallel on each node
-
-   # Stop Qserv
-   qserv-stop
-
-   # Install Qserv
-   qserv-install
-
-   # Start Qserv
-   qserv-start
-
-   # Check Qserv status
-   qserv-status

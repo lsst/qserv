@@ -21,28 +21,50 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# Run Qserv install and configuration scripts on all cluster nodes
+# These script sneeds to be previously installed on all nodes.
 
-# @author  Fabrice JAMMES, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
+set -e
 
-check_qserv_run_dir
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
+. "$DIR"/scripts/params.sh
+
+SCRIPTS_DIR="$INSTALL_BASE"/scripts
+
+SCRIPTS=$(ls -I params.sh -m "$DIR"/scripts/)
+
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options] script
+
+  script is the script to be runned,
+  must be in [$SCRIPTS]
+
+  Available options:
+    -h                this message
+
+  Run $SCRIPTS_DIR/<script> on all cluster nodes.
+
+EOD
+}
+
+while getopts h: c ; do
+    case $c in
+            h) usage ; exit 0 ;;
+            \?) usage ; exit 2 ;;
+    esac
 done
+shift `expr $OPTIND - 1`
 
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
+if [ $# -ne 1 ] ; then
+    usage
+    exit 2
 fi
+
+SCRIPT=$1
+
+sh "$DIR"/hosts.sh | /opt/shmux/bin/shmux -c "sudo -u qserv sh $SCRIPTS_DIR/$SCRIPT" -

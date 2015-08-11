@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014-2015 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,29 +20,42 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+#
+# Dependencies for RedHat7-based distributions
+# Tested on SL7
+#
 
-# Start Qserv services
-# returns:
-#   * if all Qserv services are up:   0
-#   * if all Qserv services are down: 127
-#   * else the number of non-started Qserv services
+# @author  Fabrice Jammes, IN2P3
 
-# @author  Fabrice JAMMES, IN2P3
+# eups
+yum install --assumeyes patch bzip2 bzip2-devel
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-. ${QSERV_RUN_DIR}/bin/env.sh
+# kazoo
+yum install --assumeyes python-setuptools
 
-check_qserv_run_dir
+# lua
+yum install --assumeyes readline-devel
 
-service_nb=0
-service_failed_nb=0
-for service in ${SERVICES}; do
-    service_nb=$((service_nb+1))
-    ${QSERV_RUN_DIR}/etc/init.d/$service start || service_failed_nb=$((service_failed_nb+1))
-done
+# numpy
+yum install --assumeyes numpy
 
-if [ $service_failed_nb -eq $service_nb ]; then
-    exit 127
-else
-    exit $service_failed_nb
-fi
+# mysql
+yum install --assumeyes ncurses-devel glibc-devel
+
+# mysql-proxy
+yum install --assumeyes glib2-devel
+
+# newinstall.sh
+yum install --assumeyes bash git tar make
+
+# qserv
+yum install --assumeyes openssl-devel java redhat-lsb initscripts
+
+# sconsUtils
+yum install --assumeyes gettext flex bison
+
+# xrootd
+yum install --assumeyes gcc gcc-c++ zlib-devel cmake
+
+# zope_interface
+yum install --assumeyes python-devel

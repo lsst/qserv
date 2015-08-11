@@ -1,11 +1,10 @@
 #!/usr/bin/env sh
 #
-# xrootd/cmsd	This shell script takes care of starting and stopping
-#		Qserv xrootd/cmsd instances.
+# xrootd/cmsd   This shell script takes care of starting and stopping
+#               Qserv xrootd/cmsd instances.
 # description: xrootd is the filesystem which allow Qserv master to \
 # communicate with Qserv workers.\
 # It is composed of two services : xrootd and cmsd
-# Note
 
 ### BEGIN INIT INFO
 # Provides: xrootd cmsd
@@ -67,119 +66,120 @@ pid_file_name() {
 
 start_service() {
 
-        local prog
+    local prog
 
-	prog=${1##*/}
+    prog=${1##*/}
 
-	pidfile=$(pid_file_name $prog)
-	lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
-	BINARY=${XROOTD_DIR}/bin/${prog}
-	logfile=${LOG_DIR}/${prog}.log
-	[ -x ${BINARY} ] || exit 5
-	[ -f ${XROOTD_CONFIG} ] || exit 6
+    pidfile=$(pid_file_name $prog)
+    lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
+    BINARY=${XROOTD_DIR}/bin/${prog}
+    logfile=${LOG_DIR}/${prog}.log
+    [ -x ${BINARY} ] || exit 5
+    [ -f ${XROOTD_CONFIG} ] || exit 6
 
-	cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  >/dev/null 2>&1 &"
-	start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
-        ret=$?
-        # xrootd modifies log file path, try to guess it here too for logging
-        # purpose
-	real_logfile=${LOG_DIR}/${XROOTD_INSTANCE_NAME}/${prog}.log
-        [ $ret -eq 0 ] || echo "See startup logfile : ${real_logfile}"
-        return $ret
+    console_logfile="${LOG_DIR}/xrootd-console.log"
+    cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  >>${console_logfile} 2>&1 &"
+    start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
+    ret=$?
+    # xrootd modifies log file path, try to guess it here too for logging
+    # purpose
+    real_logfile=${LOG_DIR}/${XROOTD_INSTANCE_NAME}/${prog}.log
+    [ $ret -eq 0 ] || echo "See startup logfiles : ${console_logfile}, ${real_logfile}"
+    return $ret
 }
 
 stop_service() {
 
-        local prog
+    local prog
 
-        prog=${1##*/}
+    prog=${1##*/}
 
-        pidfile=$(pid_file_name $prog)
-        lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
+    pidfile=$(pid_file_name $prog)
+    lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
 
-        stop -p $pidfile -l $lockfile $prog
+    stop -p $pidfile -l $lockfile $prog
 }
 
 start_all() {
-        local xrootd_started cmsd_started=0 retval=1
-        mkdir -p ${QSW_RESULTPATH} || {
-           log_failure_msg "Failed to create ${QSW_RESULTPATH}"
-           return 1
-        }
-         mkdir -p ${PID_DIR} || {
-           log_failure_msg "Failed to create ${PID_DIR}"
-           return 1
-        }
+    local xrootd_started cmsd_started=0 retval=1
+    mkdir -p ${QSW_RESULTPATH} || {
+        log_failure_msg "Failed to create ${QSW_RESULTPATH}"
+        return 1
+    }
+    mkdir -p ${PID_DIR} || {
+        log_failure_msg "Failed to create ${PID_DIR}"
+        return 1
+    }
 
-        start_service "xrootd"
-        xrootd_started=$?
+    start_service "xrootd"
+    xrootd_started=$?
 
-        if [ ${NODE_TYPE} != "mono" ]; then
-            start_service "cmsd"
-            cmsd_started=$?
-        fi
+    if [ ${NODE_TYPE} != "mono" ]; then
+        start_service "cmsd"
+        cmsd_started=$?
+    fi
 
-        test $xrootd_started -eq 0 -a $cmsd_started -eq 0
+    test $xrootd_started -eq 0 -a $cmsd_started -eq 0
 }
 
 stop_all() {
-        local xrootd_stopped cmsd_stopped=0 retval=1
+    local xrootd_stopped cmsd_stopped=0 retval=1
 
-        stop_service "xrootd"
-        xrootd_stopped=$?
+    stop_service "xrootd"
+    xrootd_stopped=$?
 
-        if [ ${NODE_TYPE} != "mono" ]; then
-            stop_service "cmsd"
-            cmsd_stopped=$?
-        fi
+    if [ ${NODE_TYPE} != "mono" ]; then
+        stop_service "cmsd"
+        cmsd_stopped=$?
+    fi
 
-        test $xrootd_stopped -eq 0 -a $cmsd_stopped -eq 0
+    test $xrootd_stopped -eq 0 -a $cmsd_stopped -eq 0
 }
 
 status_all () {
-        local xrootd_status cmsd_status=0 retval=1
+    local xrootd_status cmsd_status=0 retval=1
 
-        NAME="xrootd"
-       	DAEMON=${XROOTD_DIR}/bin/${NAME}
+    NAME="xrootd"
+    DAEMON=${XROOTD_DIR}/bin/${NAME}
+    pidfile=$(pid_file_name $NAME)
+    status_of_proc -p $pidfile "$DAEMON" "$NAME"
+    xrootd_status=$?
+
+    if [ ${NODE_TYPE} != "mono" ]; then
+        NAME="cmsd"
+        DAEMON=${XROOTD_DIR}/bin/${NAME}
         pidfile=$(pid_file_name $NAME)
         status_of_proc -p $pidfile "$DAEMON" "$NAME"
-       	xrootd_status=$?
+        cmsd_status=$?
+    fi
 
-        if [ ${NODE_TYPE} != "mono" ]; then
-            NAME="cmsd"
-            DAEMON=${XROOTD_DIR}/bin/${NAME}
-            pidfile=$(pid_file_name $NAME)
-            status_of_proc -p $pidfile "$DAEMON" "$NAME"
-            cmsd_status=$?
-        fi
-
-        test $xrootd_status -eq 0 -a $cmsd_status -eq 0
+    test $xrootd_status -eq 0 -a $cmsd_status -eq 0
 }
 
 
 
 # See how we were called.
 case "$1" in
-  start)
-	start_all
-	;;
-  stop)
-	stop_all
-	;;
-  status)
-	status_all
-	;;
-  restart)
-	stop_all
-	start_all
-	;;
-  try-restart|condrestart)
-	if status_all > /dev/null; then
-	    stop_all
-	    start_all
-	fi
-	;;
-  *)
-	echo $"Usage: $0 {start|stop|status|restart|try-restart}"
-	exit 2
+    start)
+        start_all
+        ;;
+    stop)
+        stop_all
+        ;;
+    status)
+        status_all
+        ;;
+    restart)
+        stop_all
+        start_all
+        ;;
+    try-restart|condrestart)
+        if status_all > /dev/null; then
+            stop_all
+            start_all
+        fi
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|try-restart}"
+        exit 2
 esac
