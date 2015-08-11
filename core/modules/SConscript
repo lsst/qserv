@@ -79,10 +79,10 @@ shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
                            },
 
                "_czarLib" : {'mods' : """ccontrol czar global
-                                         log mysql
+                                         log
                                          parser proto
                                          qana qdisp qmeta qproc query
-                                         rproc sql sg util""".split(),
+                                         rproc sg util""".split(),
                              'shmods' : ['css'],
                              'libs' : """ssl crypto antlr log
                                       mysqlclient_r protobuf
@@ -103,13 +103,21 @@ shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
 
 # external libs for shmods
 shmodLibs = {
-  'css': ['log', 'boost_system']
+  'css': ['log', 'boost_system', 'boost_thread', 'mysqlclient_r']
 }
 
-# modules used in shProducts
-modList = [m for m in chain(*map(lambda d: d['mods'],
-                                shProducts.values()))]
-libProducts = dict(izip(modList, repeat(None)))
+# extra modules to include into shmod
+shmodExtraMods = {
+  'css': ['sql', 'mysql']
+}
+
+# per-module set of products which will be used in building libraries
+# this is usually a set of all C++ files in a module
+libProducts = dict((m, None) for m in
+                   chain(*[d['mods'] for d in shProducts.values()]))
+
+# per-module set of targets for modules that use default rules
+# (those modules which do not define their own SConscript)
 defaultTgts = dict()
 
 def getSrcs(mName):
@@ -206,7 +214,15 @@ shmods = set(chain(*[product.get('shmods', [])
                      for product in shProducts.values()]))
 # Compute shared lib targets used by products
 for m in shmods:
-    out = env.SharedLibrary("libqserv_"+m, libProducts[m], LIBS=shmodLibs[m])
+    shmodSources = libProducts[m][:]
+    for extra in shmodExtraMods[m]:
+        if extra in defaultTgts:
+            shmodSources.extend(defaultTgts[extra])
+        else:
+            prods = libProducts[extra]
+            if prods:
+                shmodSources.extend(prods)
+    out = env.SharedLibrary("libqserv_" + m, shmodSources, LIBS=shmodLibs[m])
     shlibs[m] = out
     for f in out:
         extraTgts['dist'].append(('lib', f))

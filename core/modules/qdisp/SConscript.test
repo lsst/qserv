@@ -28,7 +28,7 @@ deps = cacheObjs(env, deps, ".o")
 myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
 myDeps = map(env.Object, myDeps)
 ubuntuDeps = ["pthread", "boost_regex"]
-extDeps = ubuntuDeps + "antlr boost_chrono boost_thread boost_system crypto mysqlclient_r log log4cxx protobuf XrdPosix XrdClient XrdPosixPreload XrdSsi XrdUtils".split()
+extDeps = ubuntuDeps + "antlr boost_chrono boost_filesystem boost_thread boost_system crypto mysqlclient_r log log4cxx protobuf XrdPosix XrdClient XrdPosixPreload XrdSsi XrdUtils".split()
 p = env.Program(["testQDisp.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
 #env.Depends(p, header)
 programs.append(p)

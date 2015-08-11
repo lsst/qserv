@@ -42,6 +42,14 @@ namespace css {
 
 class KvInterface {
 public:
+
+    /**
+     * Sets a max length for kvKey.
+     * If it is changed it must also be changed in the
+     * CssData SQL Schema as well.
+     */
+    static const unsigned int MAX_KEY_LENGTH = 255;
+
     virtual ~KvInterface() {};
 
     /**

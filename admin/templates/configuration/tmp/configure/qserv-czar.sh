@@ -6,7 +6,7 @@ set -e
 EMPTY_CHUNK_PATH={{QSERV_DATA_DIR}}/qserv
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 SQL_LOADER=${DIR}/tools/sql-loader.sh
-SQL_FILE="qserv-czar.sql QueryMetadata.sql"
+SQL_FILE="qserv-czar.sql QueryMetadata.sql CssData.sql"
 
 mkdir -p $EMPTY_CHUNK_PATH
 

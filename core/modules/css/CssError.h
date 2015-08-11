@@ -33,9 +33,12 @@
 #define LSST_QSERV_CSSERROR_H
 
 // System headers
-#include <map>
 #include <stdexcept>
 #include <string>
+#include <boost/lexical_cast.hpp>
+
+// Qserv headers
+#include "sql/SqlErrorObject.h"
 
 namespace lsst {
 namespace qserv {
@@ -48,6 +51,12 @@ class CssError : public std::runtime_error {
 public:
     explicit CssError(std::string const& msg)
         : std::runtime_error(msg) {}
+
+    explicit CssError(sql::SqlErrorObject const& sqlErr)
+        : std::runtime_error("Error from mysql: ("
+                + boost::lexical_cast<std::string>(sqlErr.errNo())
+                + ") "
+                + sqlErr.errMsg()) {}
 };
 
 /**
@@ -55,7 +64,7 @@ public:
  */
 class NoSuchDb : public CssError {
 public:
-    NoSuchDb(std::string const& dbName)
+    explicit NoSuchDb(std::string const& dbName)
         : CssError("Database '" + dbName + "' does not exist.") {}
 };
 
@@ -64,8 +73,11 @@ public:
  */
 class NoSuchKey : public CssError {
 public:
-    NoSuchKey(std::string const& keyName)
+    explicit NoSuchKey(std::string const& keyName)
         : CssError("Key '" + keyName + "' does not exist.") {}
+
+    explicit NoSuchKey(sql::SqlErrorObject const& sqlErr)
+        : CssError(sqlErr) {}
 };
 
 /**
@@ -73,7 +85,7 @@ public:
  */
 class NoSuchTable : public CssError {
 public:
-    NoSuchTable(std::string const& tableName)
+    explicit NoSuchTable(std::string const& tableName)
         : CssError("Table '" + tableName + "' does not exist.") {}
 };
 
@@ -93,7 +105,7 @@ class ConnError : public CssError {
 public:
     ConnError()
         : CssError("Failed to connect to persistent store.") {}
-    ConnError(std::string const& reason)
+    explicit ConnError(std::string const& reason)
         : CssError("Failed to connect to persistent store. (" + reason + ")") {}
 };
 
@@ -102,8 +114,11 @@ public:
  */
 class KeyExistsError : public CssError {
 public:
-    KeyExistsError(std::string const& key)
+    explicit KeyExistsError(std::string const& key)
         : CssError("Key '" + key +"' already exists.") {}
+
+    explicit KeyExistsError(sql::SqlErrorObject const& sqlErr)
+        : CssError(sqlErr) {}
 };
 
 /**
@@ -121,7 +136,7 @@ public:
  */
 class VersionMissingError : public CssError {
 public:
-    VersionMissingError(std::string const& key)
+    explicit VersionMissingError(std::string const& key)
         : CssError("Key for CSS version is not defined: '" + key +"'") {}
 };
 
@@ -133,6 +148,7 @@ public:
     VersionMismatchError(std::string const& expected, std::string const& actual)
         : CssError("CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
 };
+
 
 }}} // namespace lsst::qserv::css
 
