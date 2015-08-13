@@ -420,6 +420,7 @@ function queryType()
             string.find(qU, "^SET ") or
             string.find(qU, "^DESCRIBE ") or
             string.find(qU, "^DESC ") or
+            string.find(qU, "^ROLLBACK") or
             string.find(qU, "^SELECT CURRENT_USER()") then
             return true
         end
