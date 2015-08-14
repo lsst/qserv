@@ -71,20 +71,23 @@ public:
      *  @param user:   User name for user who issued the query.
      *  @param qText:  Original query text as given by user.
      *  @param qTemplate:  Query template used to build per-chunk queries.
-     *  @param qResult: Aggregate query to be executed on results table, possibly empty.
+     *  @param qMerge: Aggregate query to be executed on results table, possibly empty.
+     *  @param qProxyOrderBy: ORDER BY clause for proxy-side SELECT statement, possibly empty.
      *  @param submitted: Time when query was submitted (seconds since epoch).
      *  @param completed: Time when query finished execution, 0 if not finished.
      *  @param returned: Time when query result was sent to client, 0 if not sent yet.
      */
     QInfo(QType qType, int czarId, std::string const& user,
           std::string const& qText, std::string const& qTemplate,
-          std::string const& qResult, QStatus qStatus = EXECUTING,
+          std::string const& qMerge, std::string const& qProxyOrderBy,
+          QStatus qStatus = EXECUTING,
           std::time_t submitted = std::time_t(0),
           std::time_t completed = std::time_t(0),
           std::time_t returned = std::time_t(0))
         : _qType(qType), _qStatus(qStatus), _czarId(czarId), _user(user),
-          _qText(qText), _qTemplate(qTemplate), _qResult(qResult),
-          _submitted(submitted), _completed(completed), _returned(returned)
+          _qText(qText), _qTemplate(qTemplate), _qMerge(qMerge),
+          _qProxyOrderBy(qProxyOrderBy), _submitted(submitted),
+          _completed(completed), _returned(returned)
     {}
 
     /// Returns query type
@@ -106,7 +109,10 @@ public:
     std::string const& queryTemplate() const { return _qTemplate; }
 
     /// Returns query for result (aggregate) which may be empty
-    std::string const& resultQuery() const { return _qResult; }
+    std::string const& mergeQuery() const { return _qMerge; }
+
+    /// Returns query executed by proxy (which may be empty)
+    std::string const& proxyOrderBy() const { return _qProxyOrderBy; }
 
     /// Return time when query was submitted
     std::time_t submitted() const { return _submitted; }
@@ -130,7 +136,8 @@ private:
     std::string _user;      // User name for user who issued the query.
     std::string _qText;     // Original query text as given by user.
     std::string _qTemplate; // Query template used to build per-chunk queries.
-    std::string _qResult;   // Aggregate query to be executed on results table, possibly empty.
+    std::string _qMerge;    // Aggregate query to be executed on results table, possibly empty.
+    std::string _qProxyOrderBy; // ORDER BY clause for proxy-side SELECT statement, possibly empty.
     std::time_t _submitted; // Time when query was submitted (seconds since epoch).
     std::time_t _completed; // Time when query finished execution, 0 if not finished.
     std::time_t _returned;  // Time when query result was sent to client, 0 if not sent yet.
