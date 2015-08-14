@@ -364,11 +364,8 @@ class Configurator(object):
                 if config['qserv']['node_type'] in ['master']:
                     _LOG.info(
                         "Master instance: not configuring " +
-                        "%s and %s",
-                        configure.SCISQL,
-                        configure.WORKER
+                        "{0}".format(configure.WORKER)
                     )
-                    component_cfg_steps.remove(configure.SCISQL)
                     component_cfg_steps.remove(configure.WORKER)
                 elif config['qserv']['node_type'] in ['worker']:
                     _LOG.info(

@@ -200,13 +200,10 @@ def _get_template_params():
 
         testdata_dir = os.getenv('QSERV_TESTDATA_DIR', "NOT-AVAILABLE # please set environment variable QSERV_TESTDATA_DIR if needed")
 
-        if config['qserv']['node_type'] in ['mono', 'worker']:
-            scisql_dir = os.environ.get('SCISQL_DIR')
-            if scisql_dir is None:
-                _LOG.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
-                sys.exit(1)
-        else:
-            scisql_dir = "NOT-AVAILABLE # please set environment variable SCISQL_DIR if needed"
+        scisql_dir = os.environ.get('SCISQL_DIR')
+        if scisql_dir is None:
+            _LOG.fatal("sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+            sys.exit(1)
 
         python_bin_list = which("python")
         if python_bin_list:

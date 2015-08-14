@@ -39,6 +39,7 @@ Configure master and worker nodes
    *Note: secret file is read when qserv-wmgr client starts*
 
    :code:`scp <qserv-run directory>/etc/wmgr.secret <worker1 hostName>:<qserv-run directory>/etc/wmgr.secret`
+
    :code:`scp <qserv-run directory>/etc/wmgr.secret <worker2 hostName>:<qserv-run directory>/etc/wmgr.secret`
 
 4. Start services on master and every worker:
@@ -49,7 +50,7 @@ Configure master and worker nodes
 
    :code:`mysql -S <qserv-run directory>/var/lib/mysql/mysql.sock -uroot -p`
 
-   .. code-block::
+   .. code-block:: sql
 
      GRANT USAGE ON *.* TO 'qsmaster'@'<master hostName>';
      GRANT SELECT ON `mysql`.* TO 'qsmaster'@'<master hostName>';
@@ -60,7 +61,7 @@ Configure master and worker nodes
 
    :code:`qserv-admin.py`
 
-   .. code-block::
+   .. code-block:: none
 
      CREATE NODE worker1 type=worker port=5012 host=<worker1 hostName>;
      CREATE NODE worker2 type=worker port=5012 host=<worker2 hostName>;
@@ -70,6 +71,12 @@ Run Integration Test
 
 .. code-block:: bash
 
-  qserv-check-integration.py --case=01 --load -M --mode=qserv
-  qserv-check-integration.py --case=02 --load -M --mode=qserv
+  qserv-test-integration.py
+
+Or for individual test cases:
+
+.. code-block:: bash
+
+  qserv-check-integration.py --case=01 --load
+  qserv-check-integration.py --case=02 --load
   ...
