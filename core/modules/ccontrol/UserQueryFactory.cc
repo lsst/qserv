@@ -42,6 +42,7 @@
 #include "css/KvInterfaceImplMem.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
+#include "qmeta/QMetaMysql.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "rproc/InfileMerger.h"
@@ -76,16 +77,23 @@ public:
     std::shared_ptr<css::Facade> facade;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
+    std::shared_ptr<qmeta::QMeta> queryMetadata;
+    qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
 };
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(StringMap const& m,
+                                   std::string const& czarName,
                                    std::shared_ptr<css::KvInterface> kvi)
     :  _impl(std::make_shared<Impl>()) {
     ::putenv((char*)"XRDDEBUG=1");
     assert(_impl);
     _impl->readConfig(m);
     _impl->readConfigFacade(m, kvi);
+
+    // register czar in QMeta
+    // TODO: check that czar with the same name is not active already?
+    _impl->qMetaCzarId = _impl->queryMetadata->registerCzar(czarName);
 }
 
 std::pair<int,std::string>
@@ -109,10 +117,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
         LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
         sessionValid = false;
     }
-    UserQuery* uq = new UserQuery(qs);
+    UserQuery* uq = new UserQuery(qs, _impl->qMetaCzarId);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
     uq->_secondaryIndex = _impl->secondaryIndex;
+    uq->_queryMetadata = _impl->queryMetadata;
     if(sessionValid) {
         uq->_executive = std::make_shared<qdisp::Executive>(
                 _impl->executiveConfig, uq->_messageStore);
@@ -155,6 +164,34 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
     mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
     mc.socket = infileMergerConfigTemplate.socket;
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mc);
+
+    // get config parameters for qmeta db
+    mysql::MySqlConfig qmetaConfig;
+    qmetaConfig.hostname = cm.get(
+        "qmeta.host",
+        "Error, qmeta.host not found. Using empty host name.",
+        "");
+    qmetaConfig.port = cm.getTyped<unsigned>(
+        "qmeta.port",
+        "Error, qmeta.port not found. Using 0 for port.",
+        0U);
+    qmetaConfig.username = cm.get(
+        "qmeta.user",
+        "Error, qmeta.user not found. Using qsmaster.",
+        "qsmaster");
+    qmetaConfig.password = cm.get(
+        "qmeta.passwd",
+        "Error, qmeta.passwd not found. Using empty string.",
+        "");
+    qmetaConfig.socket = cm.get(
+        "qmeta.unix_socket",
+        "Error, qmeta.unix_socket not found. Using empty string.",
+        "");
+    qmetaConfig.dbName = cm.get(
+        "qmeta.db",
+        "Error, qmeta.db not found. Using qservMeta.",
+        "qservMeta");
+    queryMetadata = std::make_shared<qmeta::QMetaMysql>(qmetaConfig);
 }
 
 void UserQueryFactory::Impl::readConfigFacade(

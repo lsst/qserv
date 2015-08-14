@@ -92,6 +92,9 @@ def main():
     parser.add_option("-c", "--config", dest="configFile", default=None,
                       help="Use config file. Can also be specified with\n" +
                       "%s as an environment variable." % config.envFilenameVar)
+    parser.add_option("-n", "--name", dest="czarName", default=None,
+                      help="Czar name, used for registration in query metadata database, "
+                      "by default host name and port number are used for czar name.")
     (options, args) = parser.parse_args()
 
     # Modifying options
@@ -122,7 +125,7 @@ def main():
         makeIndexes()
         return
     else:
-        server.runServer()
+        server.runServer(options.czarName)
     return
 
 if __name__ == '__main__':

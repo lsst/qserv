@@ -61,8 +61,9 @@ def parseKillId(killQuery):
 # czar daemon. It is unclear whether this still works.
 class AppInterface:
     """An implemented interface to the Qserv czar application logic. """
-    def __init__(self, threadFunc=None):
+    def __init__(self, threadFunc=None, czarName=None):
         self._threadFunc = threadFunc
+        self._czarName = czarName
         self.tracker = app.TaskTracker()
         # set id counter to milliseconds since the epoch, mod 1 year.
         self._idCounter = int((time.time() % (60*60*24*365)) * 1000)
@@ -125,7 +126,7 @@ class AppInterface:
         lock = proxy.Lock(lockName)
         if not lock.lock():
             return ("error locking result, check qserv/db config.", False, False, False)
-        context = app.Context(conditions)
+        context = app.Context(conditions, self._czarName)
         a = app.InbandQueryAction(userQuery, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():

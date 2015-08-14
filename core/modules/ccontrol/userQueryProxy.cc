@@ -121,6 +121,7 @@ void UserQuery_submit(int session) {
 
 /// Block until execution succeeds or fails completely
 QueryState UserQuery_join(int session) {
+    LOGF_DEBUG("EXECUTING UserQuery_join(%1%)" % session);
     try {
         return uqManager.get(session)->join();
     } catch (const std::exception& e) {

@@ -41,6 +41,8 @@
 // Qserv headers
 #include "ccontrol/QueryState.h"
 #include "css/StripingParams.h"
+#include "qmeta/QInfo.h"
+#include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 
@@ -50,6 +52,9 @@ namespace qserv {
 namespace qdisp {
 class Executive;
 class MessageStore;
+}
+namespace qmeta {
+class QMeta;
 }
 namespace qproc {
 class QuerySession;
@@ -103,11 +108,14 @@ public:
         return _messageStore; }
 
 private:
-    explicit UserQuery(std::shared_ptr<qproc::QuerySession> qs);
+    explicit UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId);
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
     void _discardMerger();
     void _setupChunking();
+    void _qMetaRegister();
+    void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
+    void _qMetaAddChunks(std::vector<int> const& chunks);
 
     // Delegate classes
     std::shared_ptr<qdisp::Executive> _executive;
@@ -116,7 +124,10 @@ private:
     std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
     std::shared_ptr<rproc::InfileMerger> _infileMerger;
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
+    std::shared_ptr<qmeta::QMeta> _queryMetadata;
 
+    qmeta::CzarId _qMetaCzarId;   ///< Czar ID in QMeta database
+    qmeta::QueryId _qMetaQueryId;   ///< Query ID in QMeta database
     bool _killed;
     std::mutex _killMutex;
     int _sessionId; ///< External reference number

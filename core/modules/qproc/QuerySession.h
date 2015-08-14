@@ -99,6 +99,8 @@ public:
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
+    query::SelectStmtPtrVector const& getStmtParallel() const { return _stmtParallel; }
+
     // Resulttable concept will be obsolete after we implement query result
     // marshalling/transfer (at which point, table dump and restore will also be
     // obsolete).
