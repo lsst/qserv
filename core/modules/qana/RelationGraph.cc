@@ -50,6 +50,14 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
+namespace lsst {
+
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.RelationGraph");
+    return logger;
+}
+
+}
 
 namespace lsst {
 namespace qserv {
@@ -951,11 +959,15 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         return;
     }
     if (empty()) {
+        LOGF(getLogger(), LOG_LVL_TRACE, "Input query only involves unpartitioned tables");
         // The input query only involves unpartitioned tables -
         // there is nothing to do.
         outputs.push_back(_query->clone());
         return;
     }
+
+
+    LOGF(getLogger(), LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
     mapping.insertChunkEntry(TableInfo::CHUNK_TAG);
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.

@@ -181,21 +181,6 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
                                   params, params+6);
 
 }
-BOOST_AUTO_TEST_CASE(SecondaryIndex) {
-    std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
-}
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
