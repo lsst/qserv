@@ -220,6 +220,10 @@ bool QuerySession::containsDb(std::string const& dbName) const {
     return _context->containsDb(dbName);
 }
 
+bool QuerySession::containsTable(std::string const& dbName, std::string const& tableName) const {
+    return _context->containsTable(dbName, tableName);
+}
+
 bool QuerySession::validateDominantDb() const {
     return _context->containsDb(_context->dominantDb);
 }
@@ -259,8 +263,6 @@ void QuerySession::finalize() {
     if(_chunks.empty()) {
         setDummy();
     }
-    _cssFacade.reset(); // Release handle on cssFacade so it can be reclaimed.
-    _context->cssFacade.reset();
 }
 
 QuerySession::Iter QuerySession::cQueryBegin() {

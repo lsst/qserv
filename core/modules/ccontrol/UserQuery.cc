@@ -166,7 +166,7 @@ void UserQuery::submit() {
     _qSession->finalize();
     _setupMerger();
 
-    // register query in qmeta
+    // register query in qmeta, this may throw
     _qMetaRegister();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
@@ -209,6 +209,8 @@ void UserQuery::submit() {
         ss.str(""); // reset stream
     }
 
+    _submitted = true;
+
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.
     qmeta::QInfo::QType const qType = qmeta::QInfo::SYNC;
@@ -223,7 +225,11 @@ QueryState UserQuery::join() {
     bool successful = _executive->join(); // Wait for all data
     _infileMerger->finalize(); // Wait for all data to get merged
     _discardMerger();
-    if(successful) {
+    if (not _submitted) {
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+        LOGF_ERROR("Not fully submitted (failure!)");
+        return ERROR;
+    } else if(successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGF_INFO("Joined everything (success)");
         return SUCCESS;
@@ -271,7 +277,7 @@ void UserQuery::discard() {
 UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId)
     :  _messageStore(std::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _sequence(0) {
+       _killed(false), _submitted(false), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
 
@@ -371,6 +377,23 @@ void UserQuery::_qMetaRegister()
 
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
+
+    // Note that ordering is important here, this check must happen after
+    // query is registered in qmeta
+    for (auto itr = tableNames.begin(); itr != tableNames.end(); ++ itr) {
+        if (not _qSession->containsTable(itr->first, itr->second)) {
+            // table either does not exist or it is being deleted, we must stop
+            // here but we must mark query as failed
+            _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+
+            // Throwing exception stops submit() but it does not set any
+            // error condition, only prints error message to the log. To communicate
+            // error message to caller we need to set _errorExtra
+            std::string const msg = "Table '" + itr->first + "." + itr->second + "' does not exist";
+            _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+            throw UserQueryError(_errorExtra);
+        }
+    }
 }
 
 // update query status in QMeta

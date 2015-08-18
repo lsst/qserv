@@ -129,6 +129,7 @@ private:
     qmeta::CzarId _qMetaCzarId;   ///< Czar ID in QMeta database
     qmeta::QueryId _qMetaQueryId;   ///< Query ID in QMeta database
     bool _killed;
+    bool _submitted;                ///< True after submit() is completed
     std::mutex _killMutex;
     int _sessionId; ///< External reference number
     int _sequence; ///< Sequence number for subtask ids

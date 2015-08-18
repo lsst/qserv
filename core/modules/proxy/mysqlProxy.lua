@@ -84,6 +84,9 @@ queryErrorCount = 0
 --                             error handling                                --
 -------------------------------------------------------------------------------
 
+-- use line buffering to make it easier to read logs in case of errors
+io.stdout:setvbuf("line")
+
 function errors ()
     local self = { __errNo__ = 0, __errMsg__ = "" }
 
@@ -562,7 +565,7 @@ function queryProcessing()
 
         print ("Czar RPC response: [result: " .. resultTableName ..
                ", message: " .. msgTableName ..
-               ", order_by: " .. orderByClause)
+               ", order_by: \"" .. orderByClause .. "\"]")
 
         return SUCCESS
      end

@@ -88,6 +88,8 @@ public:
         return cssFacade->getDbStriping(dominantDb); }
     bool containsDb(std::string const& dbName) {
         return cssFacade->containsDb(dbName); }
+    bool containsTable(std::string const& dbName, std::string const& tableName) {
+        return cssFacade->containsTable(dbName, tableName); }
     bool hasChunks() const {
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {

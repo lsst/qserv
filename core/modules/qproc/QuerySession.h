@@ -122,6 +122,7 @@ public:
     /// used for unqualified table and column references
     std::string const& getDominantDb() const;
     bool containsDb(std::string const& dbName) const;
+    bool containsTable(std::string const& dbName, std::string const& tableName) const;
     bool validateDominantDb() const;
     css::StripingParams getDbStriping();
     std::shared_ptr<IntSet const> getEmptyChunks();

@@ -395,6 +395,9 @@ class InbandQueryAction:
         """Signal dispatch to C++ layer and block until execution completes"""
         logger.threshold_dbg()
 
+        # The code below seem to imply that UserQuery_submit() never fails, or
+        # that any error handling and cleanup must happen in UserQuery_join().
+        # With that approach it's not clear that these two methods should be separate.
         lastTime = time.time()
         self._addProxyMessage(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
         UserQuery_submit(self.sessionId)
