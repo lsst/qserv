@@ -14,13 +14,13 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 -- -----------------------------------------------------
 -- Schema qservCssData
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `qservCssData` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE SCHEMA `qservCssData` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 USE `qservCssData`;
 
 -- -----------------------------------------------------
 -- Table `qservCssData`.`kvData`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qservCssData`.`kvData` (
+CREATE TABLE `qservCssData`.`kvData` (
   PRIMARY KEY (`kvId`),
   FOREIGN KEY (parentKvId) 
     REFERENCES qservCssData.kvData(kvId),
