@@ -42,6 +42,7 @@ public:
     std::string dbName;
     unsigned int port;
     std::string socket;
+
     bool isValid() const { return !username.empty(); }
     void throwIfNotSet(std::string const&) const;
     void initFromFile(std::string const&, std::string const&,
