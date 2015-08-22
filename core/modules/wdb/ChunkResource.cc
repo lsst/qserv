@@ -325,8 +325,8 @@ public:
                 if(si->second == 0) {
                     discardable.push_back(ScTable(db, _chunkId,
                                                   ti->first,
-                                                  si->second));
-                    mapDiscardable.push_back(si->second);
+                                                  si->first));
+                    mapDiscardable.push_back(si->first);
                 } else if(si->second < 0) {
                     throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
                 }
