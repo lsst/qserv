@@ -85,7 +85,11 @@ BOOST_AUTO_TEST_CASE(CountIn) {
                                    "WHERE objectId IN(386950783579546,386942193651348)";
     std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS N";
     auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
-    printChunkQuerySpecs(querySession);
+    for(QuerySession::Iter i = querySession->cQueryBegin(),  e = querySession->cQueryEnd();
+        i != e; ++i) {
+        lsst::qserv::qproc::ChunkQuerySpec& cs = *i;
+        LOGF_INFO("Chunk spec: %1%" % cs );
+    }
     querySession->cQueryBegin();
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);

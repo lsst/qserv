@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "util/IterableFormatter.h"
 
 namespace { // File-scope helpers
 /// A "good" number of subchunks to include in a chunk query.  This is
@@ -51,12 +52,10 @@ namespace qserv {
 namespace qproc {
 
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
-    os << "ChunkSpec["
-       << "chunkId=" << c.chunkId
-       << " subChunks:";
-    std::copy(c.subChunks.begin(), c.subChunks.end(),
-              std::ostream_iterator<int>(os, ","));
-    os << "]";
+    os << "ChunkSpec("
+       << "chunkId=" << c.chunkId << ", "
+       << "subChunks=" << util::formatable(c.subChunks);
+    os << ")";
     return os;
 }
 

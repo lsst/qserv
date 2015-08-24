@@ -54,10 +54,10 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
-#include "global/vectorUtil.h"
 #include "qana/AnalysisError.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {

@@ -144,6 +144,16 @@ public:
     explicit QuerySession(Test& t); ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
+    /**
+     *  Print query session to strem
+     *
+     *  Used for debugging purpose
+     *
+     *  @params out:    stream to update
+     *  @return:        out
+     */
+    std::ostream& print(std::ostream& out) const;
+
 private:
     typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
 
@@ -153,7 +163,6 @@ private:
     void _applyLogicPlugins();
     void _generateConcrete();
     void _applyConcretePlugins();
-    std::string toString(); // Debug
 
     // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
@@ -205,8 +214,16 @@ private:
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
 
-    static LOG_LOGGER _logger;
 };
+
+/**
+ *  Output operator for QuerySession
+ *
+ *  @param out
+ *  @param querySession
+ *  @return an output stream, with no newline at the end
+ */
+std::ostream& operator<<(std::ostream& out, const QuerySession querySession);
 
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
 class QuerySession::Iter : public boost::iterator_facade <

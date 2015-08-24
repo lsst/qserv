@@ -66,21 +66,26 @@
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
 #include "query/typedefs.h"
+#include "util/IterableFormatter.h"
 
 #define DEBUG 0
+
+namespace {
+
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.QuerySession");
+    return logger;
+}
+
+}
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
-LOG_LOGGER QuerySession::_logger = LOG_GET("lsst.qserv.qproc.QuerySession");
-
-void printConstraints(query::ConstraintVector const& cv) {
-    if (LOG_CHECK_INFO()) {
-        std::stringstream ss;
-        std::copy(cv.begin(), cv.end(),
-                  std::ostream_iterator<query::Constraint>(ss, ","));
-        LOGF_INFO("%1%" % ss.str());
+void traceConstraints(query::ConstraintVector const& cv) {
+    if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
+        LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::formatable(cv));
     }
 }
 
@@ -112,11 +117,11 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _generateConcrete();
         _applyConcretePlugins();
 
-        if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-            LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % toString());
+        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_DEBUG)) {
+            LOGF(getLogger(), LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % *this);
         }
-        if (LOG_CHECK_LVL(_logger, LOG_LVL_TRACE)) {
-            LOGF(_logger, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
+        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
+            LOGF(getLogger(), LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
         }
 
     } catch(QueryProcessingBug& b) {
@@ -158,6 +163,7 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 
     if(p.get()) {
         cv = std::make_shared<query::ConstraintVector>(p->size());
+        LOGF(getLogger(), LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: %1%" % p->size());
         int i=0;
         query::QsRestrictor::PtrVector::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
@@ -171,10 +177,10 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
             (*cv)[i] = c;
             ++i;
         }
-        //printConstraints(*cv);
-        return cv;
+        // FIXME doesn't work
+        traceConstraints(*cv);
     } else {
-        // LOGF_INFO("No constraints.");
+        LOG(getLogger(), LOG_LVL_TRACE, "No constraints.");
     }
     return cv;
 }
@@ -189,6 +195,7 @@ std::string QuerySession::getProxyOrderBy() const {
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
+    LOGF(getLogger(), LOG_LVL_TRACE, "Add chunk: %s" % cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }
@@ -331,7 +338,7 @@ void QuerySession::_generateConcrete() {
     // WHERE(???). Conceptually, we want to copy the parts that are
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
-    LOGF(_logger, LOG_LVL_TRACE, "Merge statement initialized with: \"%1%\"" % _stmtMerge->getQueryTemplate().toString());
+    LOGF(getLogger(), LOG_LVL_TRACE, "Merge statement initialized with: \"%1%\"" % _stmtMerge->getQueryTemplate().toString());
 
     // TableMerger needs to be integrated into this design.
 }
@@ -345,13 +352,13 @@ void QuerySession::_applyConcretePlugins() {
 }
 
 /// Some code useful for debugging.
-std::string QuerySession::toString() {
-    std::ostringstream os;
+std::ostream& QuerySession::print(std::ostream& os) const {
     query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
     query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
     os << "QuerySession description:\n";
     os << "  original: " << this->_original << "\n";
     os << "  has chunks: " << this->hasChunks() << "\n";
+    os << "  chunks: " << util::formatable(this->_chunks) << "\n";
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par.toString() << "\n";
     os << "  merge statement: " << mer.toString() << std::endl;
@@ -362,7 +369,7 @@ std::string QuerySession::toString() {
             os << "  ScanTable: " << i->first << "." << i->second << std::endl;
         }
     }
-    return os.str();
+    return os;
 }
 
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
@@ -387,7 +394,8 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         queryTemplates.push_back((**i).getQueryTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        LOGF_INFO("Non-subchunked");
+        LOG(getLogger(), LOG_LVL_INFO, "Non-subchunked");
+
         for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
@@ -397,21 +405,26 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
             std::stringstream ss;
             std::copy(sVector.begin(), sVector.end(),
                       std::ostream_iterator<ChunkSpecSingle>(ss, ","));
-            LOGF_INFO("subchunks: %1%" % ss.str());
+            LOGF(getLogger(), LOG_LVL_INFO, "subchunks: %1%" % ss.str());
         }
         typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
         for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
             for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
-                LOGF_DEBUG("adding query %1%" % _context->queryMapping->apply(*i, *j));
+                LOGF(getLogger(), LOG_LVL_DEBUG, "adding query %1%" % _context->queryMapping->apply(*i, *j));
                 q.push_back(_context->queryMapping->apply(*i, *j));
             }
         }
     }
-    LOGF_DEBUG("Returning chunk queries: ");
+    LOG(getLogger(), LOG_LVL_DEBUG, "Returning chunk queries: ");
     for(unsigned int t=0;t<q.size();t++){
-        LOGF_DEBUG("%1%" % q.at(t));
+        LOGF(getLogger(), LOG_LVL_DEBUG, "%1%" % q.at(t));
     }
     return q;
+}
+
+
+std::ostream& operator<<(std::ostream& out, const QuerySession querySession) {
+    return querySession.print(out);
 }
 
 ////////////////////////////////////////////////////////////////////////

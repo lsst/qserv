@@ -44,7 +44,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/vectorUtil.h"
 #include "qana/AnalysisError.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -52,6 +51,7 @@
 #include "query/typedefs.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -71,7 +71,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
     util::MultiError multiError;
 
     if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % toString(v));
+        LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % util::formatable(v));
     }
 
     MultiMap mm;
