@@ -28,6 +28,9 @@
 #include <sstream>
 #include <unistd.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 namespace lsst {
 namespace qserv {
 
@@ -45,7 +48,10 @@ makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen) {
 std::string initHostName() {
         char buf[_SC_HOST_NAME_MAX+1];
         buf[_SC_HOST_NAME_MAX] = '\0';
-        gethostname(buf, sizeof buf - 1);
+        if (gethostname(buf, sizeof buf - 1) != 0) {
+            LOGF_ERROR("gethostname failed errno=%1%" % errno);
+            return std::string("");
+        }
         return std::string(buf);
 }
 

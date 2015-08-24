@@ -64,8 +64,6 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
 
-#define MAX_NAME_LENGTH 50
-
 namespace lsst {
 namespace qserv {
 namespace wdb {
