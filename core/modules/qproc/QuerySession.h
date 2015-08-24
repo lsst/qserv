@@ -219,10 +219,10 @@ private:
     friend class QuerySession;
     friend class boost::iterator_core_access;
 
-    void increment() { ++_pos; _dirty = true; }
+    void increment() { ++_chunkSpecsIter; _dirty = true; }
 
     bool equal(Iter const& other) const {
-        return (this->_qs == other._qs) && (this->_pos == other._pos);
+        return (this->_qs == other._qs) && (this->_chunkSpecsIter == other._chunkSpecsIter);
     }
 
     ChunkQuerySpec& dereference() const;
@@ -237,7 +237,7 @@ private:
     std::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
 
     QuerySession* _qs;
-    ChunkSpecVector::const_iterator _pos;
+    ChunkSpecVector::const_iterator _chunkSpecsIter;
     bool _hasChunks;
     bool _hasSubChunks;
     mutable ChunkQuerySpec _cache; ///< Query generation cache

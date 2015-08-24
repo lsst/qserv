@@ -412,7 +412,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
             }
         }
     }
-    LOGF_DEBUG("returning queries: ");
+    LOGF_DEBUG("Returning chunk queries: ");
     for(unsigned int t=0;t<q.size();t++){
         LOGF_DEBUG("%1%" % q.at(t));
     }
@@ -423,7 +423,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
 // QuerySession::Iter
 ////////////////////////////////////////////////////////////////////////
 QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecVector::iterator i)
-    : _qs(&qs), _pos(i), _dirty(true) {
+    : _qs(&qs), _chunkSpecsIter(i), _dirty(true) {
     if(!qs._context) {
         throw QueryProcessingBug("NULL QuerySession");
     }
@@ -442,7 +442,7 @@ void QuerySession::Iter::_buildCache() const {
     // LOGF_INFO("scantables %1% empty"
     //           % (_qs->_context->scanTables.empty() ? "is" : "is not"));
     _cache.scanTables = _qs->_context->scanTables;
-    _cache.chunkId = _pos->chunkId;
+    _cache.chunkId = _chunkSpecsIter->chunkId;
     _cache.nextFragment.reset();
     // Reset subChunkTables
     _cache.subChunkTables.clear();
@@ -452,19 +452,19 @@ void QuerySession::Iter::_buildCache() const {
                                  sTables.begin(), sTables.end());
     // Build queries.
     if(!_hasSubChunks) {
-        _cache.queries = _qs->_buildChunkQueries(*_pos);
+        _cache.queries = _qs->_buildChunkQueries(*_chunkSpecsIter);
     } else {
-        if(_pos->shouldSplit()) {
-            ChunkSpecFragmenter frag(*_pos);
+        if(_chunkSpecsIter->shouldSplit()) {
+            ChunkSpecFragmenter frag(*_chunkSpecsIter);
             ChunkSpec s = frag.get();
             _cache.queries = _qs->_buildChunkQueries(s);
             _cache.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
             frag.next();
             _cache.nextFragment = _buildFragment(frag);
         } else {
-            _cache.queries = _qs->_buildChunkQueries(*_pos);
-            _cache.subChunkIds.assign(_pos->subChunks.begin(),
-                                      _pos->subChunks.end());
+            _cache.queries = _qs->_buildChunkQueries(*_chunkSpecsIter);
+            _cache.subChunkIds.assign(_chunkSpecsIter->subChunks.begin(),
+                                      _chunkSpecsIter->subChunks.end());
         }
     }
 }
