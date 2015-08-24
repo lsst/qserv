@@ -94,7 +94,6 @@ public:
 
     std::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
-    void addChunk(ChunkSpecVector const& cs);
     void setDummy();
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
@@ -158,6 +157,7 @@ private:
 
     // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
+    void addChunk(const ChunkSpecVector& cs);
 
     // Fields
     std::shared_ptr<css::Facade> _cssFacade; ///< Metadata access facade

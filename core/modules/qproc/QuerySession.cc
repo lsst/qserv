@@ -193,11 +193,6 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
-void QuerySession::addChunk(ChunkSpecVector const& csv) {
-    std::copy(csv.begin(), csv.end(), std::back_inserter(_chunks));
-    _context->chunkCount += csv.size();
-}
-
 void QuerySession::setDummy() {
     _isDummy = true;
     // Clear out chunk counts and _chunks, and replace with dummy chunk.
