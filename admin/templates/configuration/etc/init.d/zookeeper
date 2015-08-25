@@ -43,6 +43,9 @@ export ZOO_LOG4J_PROP="DEBUG, ROLLINGFILE"
 
 DAEMON=$(which zkServer.sh)
 
+# Make sure core file is not discarded
+ulimit -c unlimited
+
 RETVAL=0
 PIDFILE="${ZOOPIDFILE}"
 desc="ZooKeeper daemon"
