@@ -238,23 +238,33 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     // build query
     sql::SqlErrorObject errObj;
-    std::string const qType(qInfo.queryType() == QInfo::SYNC ? "SYNC" : "ASYNC");
-    std::string qResult = "NULL";
-    if (not qInfo.resultQuery().empty()) {
-        qResult = "'" + qInfo.resultQuery() + "'";
+    std::string const qType(qInfo.queryType() == QInfo::SYNC ? "'SYNC'" : "'ASYNC'");
+    std::string const user = "'" + _conn.escapeString(qInfo.user()) + "'";
+    std::string const queryText = "'" + _conn.escapeString(qInfo.queryText()) + "'";
+    std::string const queryTemplate = "'" + _conn.escapeString(qInfo.queryTemplate()) + "'";
+    std::string qMerge = "NULL";
+    if (not qInfo.mergeQuery().empty()) {
+        qMerge = "'" + _conn.escapeString(qInfo.mergeQuery()) + "'";
     }
-    std::string query = "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qResult, status) VALUES ('";
+    std::string proxyOrderBy = "NULL";
+    if (not qInfo.proxyOrderBy().empty()) {
+        proxyOrderBy = "'" + _conn.escapeString(qInfo.proxyOrderBy()) + "'";
+    }
+    std::string query = "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
+                        "proxyOrderBy, status) VALUES (";
     query += qType;
-    query += "', ";
+    query += ", ";
     query += boost::lexical_cast<std::string>(qInfo.czarId());
-    query += ", '";
-    query += _conn.escapeString(qInfo.user());
-    query += "', '";
-    query += _conn.escapeString(qInfo.queryText());
-    query += "', '";
-    query += _conn.escapeString(qInfo.queryTemplate());
-    query += "', ";
-    query += qResult;
+    query += ", ";
+    query += user;
+    query += ", ";
+    query += queryText;
+    query += ", ";
+    query += queryTemplate;
+    query += ", ";
+    query += qMerge;
+    query += ", ";
+    query += proxyOrderBy;
     query += ", 'EXECUTING')";
 
     // run query
@@ -267,8 +277,10 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     // return value of the auto-increment column
     QueryId queryId = static_cast<QueryId>(_conn.getInsertId());
 
-    // register all tables
-    for (TableNames::const_iterator itr = tables.begin(); itr != tables.end(); ++ itr) {
+    // register all tables, first remove all duplicates from a list
+    TableNames uniqueTables = tables;
+    auto end = std::unique(uniqueTables.begin(), uniqueTables.end());
+    for (auto itr = uniqueTables.begin(); itr != end; ++ itr) {
         query = "INSERT INTO QTable (queryId, dbName, tblName) VALUES (";
         query += boost::lexical_cast<std::string>(queryId);
         query += ", '";
@@ -567,7 +579,7 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT qType, czarId, user, query, qTemplate, qResult, status,"
+    std::string query = "SELECT qType, czarId, user, query, qTemplate, qMerge, proxyOrderBy, status,"
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned)"
             " FROM QInfo WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
@@ -593,11 +605,12 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     std::string user(row[2].first);
     std::string rQuery(row[3].first);
     std::string qTemplate(row[4].first);
-    std::string qResult(row[5].first ? row[5].first : "");
-    QInfo::QStatus qStatus = ::string2status(row[6].first);
-    std::time_t submitted(row[7].first ? boost::lexical_cast<std::time_t>(row[7].first) : std::time_t(0));
-    std::time_t completed(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
-    std::time_t returned(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
+    std::string qMerge(row[5].first ? row[5].first : "");
+    std::string proxyOrderBy(row[6].first ? row[6].first : "");
+    QInfo::QStatus qStatus = ::string2status(row[7].first);
+    std::time_t submitted(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
+    std::time_t completed(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
+    std::time_t returned(row[10].first ? boost::lexical_cast<std::time_t>(row[10].first) : std::time_t(0));
 
     if (++ rowIter != results.end()) {
         // something else found
@@ -607,7 +620,8 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
 
     trans.commit();
 
-    return QInfo(qType, czarId, user, rQuery, qTemplate, qResult, qStatus, submitted, completed, returned);
+    return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge, proxyOrderBy, qStatus,
+                 submitted, completed, returned);
 }
 
 // Get queries which use specified table.

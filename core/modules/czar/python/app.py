@@ -246,14 +246,15 @@ class Context:
 
     _uqFactory = None # Shared UserQueryFactory object
 
-    def __init__(self, conditions):
+    def __init__(self, conditions, czarName):
         """Construct a context to pass bulk user conditions to InbandQueryAction.
         Constructs a UserQueryFactory if one is not available.
 
         @param conditions dict containing query hints and context
+        @param czarName   czar name, used for registration in query metadata database
         """
         if not Context._uqFactory:
-            Context._initFactory()
+            Context._initFactory(czarName)
         self.uqFactory = Context._uqFactory
         self.conditions = conditions
 
@@ -264,13 +265,13 @@ class Context:
         cls._uqFactory = None
 
     @classmethod
-    def _initFactory(cls):
+    def _initFactory(cls, czarName):
         """Initialize the UserQueryFactory instance from our configuration"""
         cfg = lsst.qserv.czar.config.getStringMap()
         cssItems = dict(lsst.qserv.czar.config.config.items("css"))
         kvi = lsst.qserv.css.getKvi(config=cssItems)
         snap = lsst.qserv.css.getSnapshot(kvi)
-        cls._uqFactory = UserQueryFactory(cfg, snap.clone())
+        cls._uqFactory = UserQueryFactory(cfg, czarName, snap.clone())
         cls._cssKvi = kvi
 
 
@@ -394,6 +395,9 @@ class InbandQueryAction:
         """Signal dispatch to C++ layer and block until execution completes"""
         logger.threshold_dbg()
 
+        # The code below seem to imply that UserQuery_submit() never fails, or
+        # that any error handling and cleanup must happen in UserQuery_join().
+        # With that approach it's not clear that these two methods should be separate.
         lastTime = time.time()
         self._addProxyMessage(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
         UserQuery_submit(self.sessionId)

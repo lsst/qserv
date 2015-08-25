@@ -29,8 +29,9 @@
 from itertools import ifilter, imap
 import inspect
 import os
-import sys
+import socket
 import string
+import sys
 import time
 
 # Twisted imports
@@ -98,7 +99,11 @@ class HttpInterface(twisted.web.resource.Resource):
 
 
 class Czar:
-    def __init__(self):
+    def __init__(self, name=None):
+        """
+        @param name:  Czar name, used for registration in query metadata database,
+            if name is None then host name and port number are used for czar name.
+        """
         try:
             cfg = config.config
             self.port = cfg.getint("frontend", "port")
@@ -106,8 +111,12 @@ class Czar:
             logger.wrn("Bad or missing port for server. Using", defaultPort)
             self.port = defaultPort
 
+        self.czarName = name
+        if self.czarName is None:
+            self.czarName = socket.getfqdn() + ':' + str(self.port)
+
     def listen(self):
-        self.ai = AppInterface(reactor.callInThread)
+        self.ai = AppInterface(reactor.callInThread, self.czarName)
         endpoints = self.endpoints()
         root = twisted.web.resource.Resource()
         root.putChild(defaultXmlPath, XmlRpcInterface(endpoints))
@@ -145,8 +154,12 @@ class Czar:
         logger.err("Reset failed:", sys.executable, str(args))
 
 
-def runServer():
-    cz = Czar()
+def runServer(czarName=None):
+    """
+    @param czarName:  Czar name, used for registration in query metadata database,
+            if name is None then host name and port number are used for czar name.
+    """
+    cz = Czar(czarName)
     cz.listen()
 
 

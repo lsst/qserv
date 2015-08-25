@@ -20,7 +20,7 @@ def charArrayGenerator(filename):
             yield ",".join(map(lambda s: hex(ord(s)), block))
 
 # deps on other modules
-modDeps = """ccontrol css global log rproc qana qproc query parser proto mysql sql util sg""".split()
+modDeps = """ccontrol css global log rproc qana qmeta qproc query parser proto mysql sql util sg""".split()
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = map(lambda i:i, deps) # un-chain
 deps = cacheObjs(env, deps, ".o")

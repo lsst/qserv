@@ -33,6 +33,15 @@ host=
 user=qsmaster
 port=0
 
+# database connection for QMeta database
+[qmeta]
+passwd =
+db=qservMeta
+unix_socket={{MYSQLD_SOCK}}
+host=
+user=qsmaster
+port=0
+
 [partitioner]
 # emptyChunkPath is used to check existence of empty_$DBNAME.txt
 emptyChunkPath={{QSERV_DATA_DIR}}/qserv

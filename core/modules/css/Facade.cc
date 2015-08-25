@@ -451,9 +451,12 @@ Facade::_throwIfNotDbTbExists(string const& dbName, string const& tableName) con
 bool
 Facade::_containsTable(string const& dbName, string const& tableName) const {
     string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
-    bool ret = _kvI->exists(p);
-    LOGF(_log, LOG_LVL_DEBUG, "containsTable returns: %1%" % ret);
-    return ret;
+    // If key is not there pretend that its value is not "READY"
+    std::string const val = _kvI->get(p, "DOES_NOT_EXIST");
+    LOGF(_log, LOG_LVL_DEBUG, "containsTable key value: %1%" % val);
+    // if key value is not "READY" it likely means table is in the process
+    // of being deleted, which is the same as if it does not exist
+    return val == "READY";
 }
 
 /** Returns true if the given table is chunked.

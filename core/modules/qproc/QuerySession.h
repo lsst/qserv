@@ -99,6 +99,8 @@ public:
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
+    query::SelectStmtPtrVector const& getStmtParallel() const { return _stmtParallel; }
+
     // Resulttable concept will be obsolete after we implement query result
     // marshalling/transfer (at which point, table dump and restore will also be
     // obsolete).
@@ -120,6 +122,7 @@ public:
     /// used for unqualified table and column references
     std::string const& getDominantDb() const;
     bool containsDb(std::string const& dbName) const;
+    bool containsTable(std::string const& dbName, std::string const& tableName) const;
     bool validateDominantDb() const;
     css::StripingParams getDbStriping();
     std::shared_ptr<IntSet const> getEmptyChunks();
