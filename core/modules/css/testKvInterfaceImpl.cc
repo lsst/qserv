@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "css/KvInterfaceImplMem.h"
+#include "css/KvInterfaceImplMySql.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE MyTest

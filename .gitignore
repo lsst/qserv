@@ -20,3 +20,8 @@ config.log
 qserv_client_error.log
 qserv_client_info.log
 /parallel-cmd-log/
+.cproject
+.metadata/
+.project
+RemoteSystemTempFiles/
+\#*\#

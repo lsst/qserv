@@ -399,6 +399,30 @@ SqlConnection::escapeString(std::string const& rawString) const
     return result;
 }
 
+// Escape string for use inside SQL statements. Will connect if needed.
+bool
+SqlConnection::escapeString(std::string const& rawString, std::string& escapedString, SqlErrorObject& errObj) {
+    if (not connectToDb(errObj)) {
+        return false;
+    }
+
+    // mysql doc says output buffer must be inputLength*2+1
+    escapedString.resize(rawString.size()*2+1);
+    unsigned long resultSize = mysql_real_escape_string(_connection->getMySql(),
+                                                        &escapedString[0],
+                                                        rawString.data(),
+                                                        rawString.size());
+    // check for error:
+    if ((unsigned long)-1 == resultSize) {
+        _setErrorObject(errObj);
+        return false;
+    }
+
+    // resize again
+    escapedString.resize(resultSize);
+    return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // private
