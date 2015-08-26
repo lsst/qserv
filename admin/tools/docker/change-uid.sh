@@ -73,7 +73,7 @@ TMP_DIR=$(mktemp -d -t docker_qserv_uid.XXXXXX)
 CID_FILE="$TMP_DIR"/cid
 
 set -x
-docker run --cidfile="$CID_FILE" "$IMAGE" $SCRIPT $_UID $GID
+docker run --cidfile="$CID_FILE" -u root "$IMAGE" $SCRIPT $_UID $GID
 set +x
 CONTAINER_ID=$(cat $CID_FILE)
 rm $CID_FILE

@@ -61,5 +61,6 @@ fi
 setup qserv
 echo "Build and install Qserv from source (QSERV_DIR: $QSERV_DIR)"
 cd $QSERV_DIR
+scons -c
 scons install -j $(nproc)
 
