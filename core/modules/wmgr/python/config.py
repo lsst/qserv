@@ -37,7 +37,7 @@ import warnings
 # Imports for other modules --
 #-----------------------------
 from .errors import ExceptionResponse
-from lsst.db import db
+from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv.admin.qservAdmin import QservAdmin
 import MySQLdb
 
@@ -94,30 +94,30 @@ class Config(object):
         self._db = None
         self._dbPriv = None
 
-    def dbConn(self):
-        """ Return database connection, instance of db.Db type """
+    def dbEngine(self):
+        """ Return database engine """
         kwargs = {}
         if self.dbHost: kwargs['host'] = self.dbHost
         if self.dbPort: kwargs['port'] = self.dbPort
-        if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
-        if self.dbUser: kwargs['user'] = self.dbUser
+        if self.dbSocket: kwargs['query'] = {"unix_socket": self.dbSocket}
+        if self.dbUser: kwargs['username'] = self.dbUser
         _log.debug('creating new connection %s', kwargs)
-        if self.dbPasswd: kwargs['passwd'] = self.dbPasswd
-        inst = db.Db(**kwargs)
+        if self.dbPasswd: kwargs['password'] = self.dbPasswd
+        inst = getEngineFromArgs(**kwargs)
         # ignore mysql warnings
         warnings.filterwarnings("ignore", category=MySQLdb.Warning)
         return inst
 
-    def privDbConn(self):
-        """ Return database connection for priviledged account """
+    def privDbEngine(self):
+        """ Return database engine for priviledged account """
         kwargs = {}
         if self.dbHost: kwargs['host'] = self.dbHost
         if self.dbPort: kwargs['port'] = self.dbPort
-        if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
-        if self.dbUserPriv: kwargs['user'] = self.dbUserPriv
+        if self.dbSocket: kwargs['query'] = {"unix_socket": self.dbSocket}
+        if self.dbUserPriv: kwargs['username'] = self.dbUserPriv
         _log.debug('creating new connection %s', kwargs)
-        if self.dbPasswdPriv: kwargs['passwd'] = self.dbPasswdPriv
-        inst = db.Db(**kwargs)
+        if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
+        inst = getEngineFromArgs(**kwargs)
         # ignore mysql warnings
         warnings.filterwarnings("ignore", category=MySQLdb.Warning)
         return inst
