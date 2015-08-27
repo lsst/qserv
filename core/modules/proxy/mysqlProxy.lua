@@ -418,13 +418,14 @@ function queryType()
     -- Detects if query can be handled locally without sending it to qserv
     local isLocal = function(qU)
         if string.find(qU, "^SELECT @@VERSION_COMMENT LIMIT") or
-            string.find(qU, "^SELECT @@SESSION.AUTO_INCREMENT_INCREMENT") or
-            string.find(qU, "^SHOW ") or
-            string.find(qU, "^SET ") or
-            string.find(qU, "^DESCRIBE ") or
-            string.find(qU, "^DESC ") or
-            string.find(qU, "^ROLLBACK") or
-            string.find(qU, "^SELECT CURRENT_USER()") then
+           string.find(qU, "^SELECT @@SESSION.AUTO_INCREMENT_INCREMENT") or
+           string.find(qU, "^SELECT @@TX_ISOLATION") or
+           string.find(qU, "^SHOW ") or
+           string.find(qU, "^SET ") or
+           string.find(qU, "^DESCRIBE ") or
+           string.find(qU, "^DESC ") or
+           string.find(qU, "^ROLLBACK") or
+           string.find(qU, "^SELECT CURRENT_USER()") then
             return true
         end
         return false
