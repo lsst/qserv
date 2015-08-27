@@ -42,6 +42,9 @@ const char ENV_XRDID[] = "XRDNAME";
 const char SUBCHUNKDB_PREFIX[] = "Subchunks_";
 const char SCISQLDB_PREFIX[] = "scisql_";
 
+const char MEMLOCKDB[] = "q_memoryLockDb";
+const char MEMLOCKTBL[] = "memoryLockTbl";
+
 /// Used for undefined variable which should contains positive integer
 const int NOTSET = -1;
 
