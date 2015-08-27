@@ -83,12 +83,6 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-void traceConstraints(query::ConstraintVector const& cv) {
-    if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
-        LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::formatable(cv));
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
@@ -177,8 +171,9 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
             (*cv)[i] = c;
             ++i;
         }
-        // FIXME doesn't work
-        traceConstraints(*cv);
+        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
+            LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::formatable(*cv));
+        }
     } else {
         LOG(getLogger(), LOG_LVL_TRACE, "No constraints.");
     }

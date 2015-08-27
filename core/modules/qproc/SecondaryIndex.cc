@@ -34,7 +34,11 @@
 // System headers
 #include <algorithm>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Third-party headers
+#include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
@@ -45,11 +49,18 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 #include "sql/SqlConnection.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
-char const lookupSqlTemplate[] = "SELECT chunkId, subChunkId FROM %s WHERE %s IN (%s);";
+
+namespace {
+
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
+    return logger;
+}
 
 std::string makeIndexTableName(
     std::string const& db,
@@ -60,19 +71,28 @@ std::string makeIndexTableName(
 }
 
 std::string makeLookupSql(
-    std::string const& db,
-    std::string const& table,
-    std::string const& keyColumn,
-    std::string const& stringValues
+    std::vector<std::string> const& params
 ) {
-    // Template: "SELECT chunkId, subChunkId FROM %s WHERE %s IN (%s);";
-    std::string s;
-    s += std::string("SELECT ") + CHUNK_COLUMN + "," + SUB_CHUNK_COLUMN
-        + " FROM " + makeIndexTableName(db, table) + " WHERE "
-        + keyColumn + " IN " + "(";
-    s += stringValues + ")";
-    return s;
+
+    char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s);";
+    LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::formatable(params));
+
+    std::string const& db = params[0];
+    std::string const& table = params[1];
+    std::string const& keyColumn = params[2];
+
+    char const *const empty_bracket = "";
+    auto idsFormatter = util::formatable(params, 3, empty_bracket, empty_bracket);
+    std::string sql = (boost::format(LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
+                                                          % SUB_CHUNK_COLUMN
+                                                          % makeIndexTableName(db, table)
+                                                          % keyColumn
+                                                          % idsFormatter).str();
+    LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
+    return sql;
 }
+
+} // anonymous namespace 
 
 class SecondaryIndex::Backend {
 public:
@@ -111,8 +131,7 @@ public:
         if (c.name != "sIndex") {
             throw Bug("Unexpected non-index constraint");
         }
-        std::string lookupSql = makeLookupSql(c.params[0], c.params[1],
-                                              c.params[2], c.params[3]);
+        std::string lookupSql = makeLookupSql(c.params);
         ChunkSpecMap m;
         for(std::shared_ptr<sql::SqlResultIter> results
                 = _sqlConnection.getQueryIter(lookupSql);

@@ -60,26 +60,29 @@ template <typename Iterable>
 class IterableFormatter
 {
 public:
-    explicit IterableFormatter(const Iterable& x) :
-            ref(x)
-    { }
+    explicit IterableFormatter(const Iterable& x, int first, char const *const open, char const *const close,
+                               char const *const sep) :
+            _ref(x), _first(first), _open(open), _close(close), _sep(sep) {
+    }
 
     friend std::ostream& operator<<(std::ostream& os,
-                                    const IterableFormatter<Iterable>& self
-                                   )
-    {
-        os << "[";
-        size_t last = self.ref.size() - 1;
-        for(size_t i=0; i<self.ref.size(); ++i) {
-            os <<  " " << self.ref[i];
+                                    const IterableFormatter<Iterable>& self) {
+        os << self._open;
+        size_t last = self._ref.size() - 1;
+        for(size_t i=self._first; i<self._ref.size(); ++i) {
+            os <<  " " << self._ref[i];
             if (i != last)
-                os << ",";
+                os << self._sep;
         }
-        os << "]";
+        os << self._close;
         return os;
     }
 private:
-    const Iterable& ref;
+    Iterable const& _ref;
+    int const _first;
+    char const *const _open;
+    char const *const _close;
+    char const *const _sep;
 };
 
 /**
@@ -89,9 +92,10 @@ private:
  *  @return:    a printable wrapper for x
  */
 template <typename Iterable>
-IterableFormatter<Iterable> formatable(const Iterable& x)
+IterableFormatter<Iterable> formatable(Iterable const& x, int first = 0, char const *const open = "[", char const *const close = "]",
+        char const *const sep = ",")
 {
-    return IterableFormatter<Iterable>(x);
+    return IterableFormatter<Iterable>(x, first, open, close, sep);
 }
 
 }}} // namespace lsst::qserv::util
