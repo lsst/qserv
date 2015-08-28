@@ -143,32 +143,54 @@ private:
         return sql;
     }
 
-    void _sqlLookup(ChunkSpecVector& output, query::Constraint const& c) {
+    /**
+     *  Add results from secondary index sql query to existing ChunkSpec vector
+     *
+     *  @param constraint:  a secondary index constraint issued from query analysis
+     *  @param output:      existing ChunkSpec vector
+     *  @result:            void
+     */
+    void _sqlLookup(ChunkSpecVector& output, query::Constraint const& constraint) {
             IntVector ids;
-            if (c.name != "sIndex") {
+            if (constraint.name != "sIndex") {
                 throw Bug("Unexpected non-index constraint");
             }
-            std::string sql = _buildLookupQuery(c.params);
-            ChunkSpecMap m;
+
+
+            std::string sql = _buildLookupQuery(constraint.params);
+            std::map<int, Int32Vector> tmp;
+
+            // Insert sql query result:
+            //   chunkId_x1, subChunkId_y1
+            //   chunkId_x1, subChunkId_y2
+            //   ...
+            //   chunkId_xi, subChunkId_yj
+            //   ...
+            //   chunkId_xm, subChunkId_yn
+            //
+            // in a std::map<int, Int32Vector>:
+            // key       , value
+            // chunkId_x1, [subChunkId_y1, subChunkId_y2, ...]
+            // chunkId_xi, [subChunkId_yj, ..., subChunkId_yk]
+            // chunkId_xm, [subChunkId_yl, ..., subChunkId_yn]
             for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection.getQueryIter(sql);
                 not results->done();
                 ++(*results)) {
                 StringVector const& row = **results;
                 int chunkId = std::stoi(row[0]);
                 int subChunkId = std::stoi(row[1]);
-                ChunkSpecMap::iterator e = m.find(chunkId);
-                if (e == m.end()) {
-                    ChunkSpec& cs = m[chunkId];
-                    cs.chunkId = chunkId;
-                    cs.subChunks.push_back(subChunkId);
+                auto elem = tmp.find(chunkId);
+                if (elem == tmp.end()) {
+                    tmp.emplace(chunkId, Int32Vector(1,subChunkId));
                 } else {
-                    ChunkSpec& cs = e->second;
-                    cs.subChunks.push_back(subChunkId);
+                    elem->second.push_back(subChunkId);
                 }
             }
-            for(ChunkSpecMap::const_iterator i=m.begin(), e=m.end();
+
+            // Add results to output
+            for(auto i=tmp.begin(), e=tmp.end();
                 i != e; ++i) {
-                output.push_back(i->second);
+                output.push_back(ChunkSpec(i->first, i->second));
             }
     }
 
