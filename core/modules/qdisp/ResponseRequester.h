@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_RESPONSEREQUESTER_H
-#define LSST_QSERV_QDISP_RESPONSEREQUESTER_H
+#ifndef LSST_QSERV_QDISP_RESPONSEHANDLER_H
+#define LSST_QSERV_QDISP_RESPONSEHANDLER_H
 
 // System headers
 #include <memory>
@@ -37,7 +37,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-/// ResponseRequester is an interface that handles result bytes. Tasks are
+/// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
 /// required), a request string (task payload), and a requester (handler for
 /// returning bytes). The requester implements logic to process incoming results
@@ -45,16 +45,16 @@ namespace qdisp {
 /// segment of results. The requester instance functions as a handle object that
 /// allows the original task owner to cancel the task, indicating that no further
 /// bytes are desired.
-class ResponseRequester {
+class ResponseHandler {
 public:
 
     typedef util::Error Error;
 
     typedef util::VoidCallable<void> CancelFunc;
 
-    typedef std::shared_ptr<ResponseRequester> Ptr;
-    ResponseRequester() : _cancelled(false) {}
-    virtual ~ResponseRequester() {}
+    typedef std::shared_ptr<ResponseHandler> Ptr;
+    ResponseHandler() : _cancelled(false) {}
+    virtual ~ResponseHandler() {}
 
     /// @return a char vector to receive the next message. The vector
     /// should be sized to the request size. The buffer will be filled
@@ -80,7 +80,7 @@ public:
     /// @return an error code and description
     virtual Error getError() const = 0;
 
-    /// Set a function to be called that forcibly cancels the ResponseRequester
+    /// Set a function to be called that forcibly cancels the ResponseHandler
     /// process. The buffer filler should call this function so that it can be
     /// notified when the receiver no longer cares about being filled.
     virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
@@ -118,11 +118,11 @@ protected:
     std::mutex _cancelMutex;
 };
 
-inline std::ostream& operator<<(std::ostream& os, ResponseRequester const& r) {
+inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) {
     return r.print(os);
 }
 
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_RESPONSEREQUESTER_H
+#endif // LSST_QSERV_QDISP_RESPONSEHANDLER_H

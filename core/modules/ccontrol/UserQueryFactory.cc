@@ -103,8 +103,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& resultTable) {
     bool sessionValid = true;
     std::string errorExtra;
-    qproc::QuerySession::Ptr qs =
-            std::make_shared<qproc::QuerySession>(_impl->facade);
+    qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->facade);
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
@@ -124,11 +123,8 @@ UserQueryFactory::newUserQuery(std::string const& query,
     uq->_secondaryIndex = _impl->secondaryIndex;
     uq->_queryMetadata = _impl->queryMetadata;
     if(sessionValid) {
-        uq->_executive = std::make_shared<qdisp::Executive>(
-                _impl->executiveConfig, uq->_messageStore);
-
-        rproc::InfileMergerConfig* ict
-            = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
+        uq->_executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, uq->_messageStore);
+        rproc::InfileMergerConfig* ict = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
         ict->targetTable = resultTable;
         uq->_infileMergerConfig.reset(ict);
         uq->_setupChunking();

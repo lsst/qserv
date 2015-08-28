@@ -34,6 +34,7 @@
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/JobStatus.h"
+#include "qdisp/ResponseRequester.h"
 #include "util/Callable.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
@@ -46,7 +47,6 @@ namespace qserv {
 namespace qdisp {
 class MessageStore;
 class QueryResource;
-class ResponseRequester;
 
 /// class Executive manages the execution of tasks for a UserQuery, while
 /// maintaining minimal information about the tasks themselves.
@@ -73,7 +73,7 @@ public:
     struct JobDescription {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
-        std::shared_ptr<ResponseRequester> requester;
+        std::shared_ptr<ResponseHandler> respHandler;
     };
 
     /// Construct an Executive.
@@ -107,15 +107,11 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
-    static std::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
-
-
 private:
-    typedef std::shared_ptr<ResponseRequester> RequesterPtr;
-    typedef std::map<int, RequesterPtr> RequesterMap;
+    typedef std::shared_ptr<ResponseHandler> ResponseHandlerPtr;
+    typedef std::map<int, ResponseHandlerPtr> RespHandlerMap;
 
-    class DispatchAction;
-    friend class DispatchAction;
+    friend class RetryQueryFunc;
     void _dispatchQuery(int refNum,
                         JobDescription const& spec,
                         JobStatus::Ptr execStatus);
@@ -133,7 +129,7 @@ private:
      *  @return true if (jobId,r) was added to _requesters
      *          false if this entry was previously in the map
      */
-    bool _track(int refNum, RequesterPtr r);
+    bool _track(int refNum, ResponseHandlerPtr r);
     void _unTrack(int refNum);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
@@ -155,8 +151,8 @@ private:
     Config _config; ///< Personal copy of config
     util::Flag<bool> _empty;
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
-    XrdSsiService* _service; ///< RPC interface
-    RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
+    XrdSsiService* _xrdSsiService; ///< RPC interface
+    RespHandlerMap _respHandlers; ///< RequesterMap for results from submitted tasks
     JobStatusPtrMap _statuses; ///< Statuses of submitted tasks
 
     /** Execution errors */
@@ -166,7 +162,7 @@ private:
     bool _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
-    std::mutex _requestersMutex;
+    std::mutex _respHandlersMutex;
 
     /** Used to record execution errors */
     mutable std::mutex _errorsMutex;
@@ -179,7 +175,50 @@ private:
     typedef std::map<int,int> IntIntMap;
     IntIntMap _retryMap; ///< Counter for task retries.
 
-}; // class Executive
+};
+
+class MarkCompleteFunc {
+public:
+    typedef std::shared_ptr<MarkCompleteFunc> Ptr;
+
+    MarkCompleteFunc(Executive* e, int jobId) : _executive(e), _jobId(jobId) {}
+
+    virtual void operator()(bool success) {
+        if (_executive) {
+            _executive->markCompleted(_jobId, success);
+        }
+    }
+
+    static Ptr newInstance(Executive* e, int jobId) {
+        return std::make_shared<MarkCompleteFunc>(e, jobId);;
+    }
+private:
+    Executive* _executive;
+    int _jobId;
+};
+
+class RetryQueryFunc {
+public:
+    typedef std::shared_ptr<RetryQueryFunc> Ptr;
+    RetryQueryFunc() : _executive(0),_jobId(-1) {
+    }
+    RetryQueryFunc(Executive* executive, int jobId,
+                  Executive::JobDescription const& jobDescription, JobStatus::Ptr jobStatus)
+        : _executive(executive), _jobId(jobId), _jobDescription(jobDescription), _jobStatus(jobStatus) {
+    }
+    virtual ~RetryQueryFunc() {}
+    virtual void operator()() {
+        if(_executive && _jobDescription.respHandler->reset()) { // Must be able to reset state
+            _executive->_dispatchQuery(_jobId, _jobDescription, _jobStatus);
+        }
+        // If the reset fails, do nothing-- can't retry.
+    }
+private:
+    Executive* _executive;
+    int _jobId;
+    Executive::JobDescription _jobDescription;
+    JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
+};
 
 }}} // namespace lsst::qserv::qdisp
 

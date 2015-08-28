@@ -45,7 +45,7 @@ namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
 typedef util::Sequential<int> SequentialInt;
-typedef std::vector<qdisp::ResponseRequester::Ptr> RequesterVector;
+typedef std::vector<qdisp::ResponseHandler::Ptr> RequesterVector;
 
 class ChunkMsgReceiverMock : public MsgReceiver {
 public:
@@ -63,7 +63,7 @@ public:
 
 /** Simple functor for testing that _retryfunc has been called.
  */
-class RetryTest : public util::VoidCallable<void> {
+class RetryTest : public qdisp::RetryQueryFunc {
 public:
     typedef std::shared_ptr<RetryTest> Ptr;
     RetryTest() : _retryCalled(false) {}
@@ -77,10 +77,10 @@ public:
 
 /** Simple functor for testing _finishfunc.
  */
-class FinishTest : public util::UnaryCallable<void, bool> {
+class FinishTest : public qdisp::MarkCompleteFunc {
 public:
     typedef std::shared_ptr<FinishTest> Ptr;
-    FinishTest() : _finishCalled(false) {}
+    FinishTest() : MarkCompleteFunc(0, -1), _finishCalled(false) {}
     virtual ~FinishTest() {}
     virtual void operator()(bool val) {
         _finishCalled = true;
@@ -91,7 +91,7 @@ public:
 
 /** Class for testing how many times CancelFunc is called.
  */
-class CancelTest : public qdisp::ResponseRequester::CancelFunc {
+class CancelTest : public qdisp::ResponseHandler::CancelFunc {
 public:
     CancelTest() : _count(0) {}
     virtual void operator()() {
@@ -100,11 +100,11 @@ public:
     int _count;
 };
 
-/** Simple ResponseRequester for testing.
+/** Simple ResponseHandler for testing.
  */
-class ResponseRequesterTest : public qdisp::ResponseRequester {
+class ResponseHandlerTest : public qdisp::ResponseHandler {
 public:
-    ResponseRequesterTest() : _code(0), _finished(false) {}
+    ResponseHandlerTest() : _code(0), _finished(false) {}
     virtual std::vector<char>& nextBuffer() {
         return _vect;
     }
@@ -121,8 +121,8 @@ public:
     virtual bool reset() {
         return true;
     }
-    virtual qdisp::ResponseRequester::Error getError() const {
-        return qdisp::ResponseRequester::Error(-1, "testQDisp Error");
+    virtual qdisp::ResponseHandler::Error getError() const {
+        return qdisp::ResponseHandler::Error(-1, "testQDisp Error");
     }
     virtual std::ostream& print(std::ostream& os) const {
         return os;
@@ -143,7 +143,7 @@ void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string 
     for(int j=0; j < copies; ++j) {
         s[j].resource = ru; // dummy
         s[j].request = millisecs; // Request = stringified milliseconds
-        s[j].requester = rv[j];
+        s[j].respHandler = rv[j];
         ex.add(sequence.incr(), s[j]); // ex.add() is not thread safe.
     }
 }
@@ -249,6 +249,7 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
     qdisp::Executive ex(conf, ms);
+    qdisp::Executive::JobDescription jobDesc;
     int jobId = 93;
     int chunkId = 14;
     ResourceUnit ru;
@@ -260,19 +261,19 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     qdisp::Executive::JobDescription s;
     s.resource = ru;
     s.request = "a message";
-    s.requester = mr;
+    s.respHandler = mr;
     qdisp::JobStatus status(ru);
     std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
-    qdisp::QueryResource* r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
-            qdisp::Executive::newNotifier(ex, jobId),
+    qdisp::QueryResource* r = new qdisp::QueryResource(s.resource.path(), s.request, s.respHandler,
+            qdisp::MarkCompleteFunc::newInstance(&ex, jobId),
             retryTest, status);
     r->ProvisionDone(NULL);
     BOOST_CHECK(status.getInfo().state  == qdisp::JobStatus::PROVISION_NACK);
     char buf[20];
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
     qdisp::XrdSsiSessionMock xsMock(buf);
-    r = new qdisp::QueryResource(s.resource.path(), s.request, s.requester,
-            qdisp::Executive::newNotifier(ex, jobId),
+    r = new qdisp::QueryResource(s.resource.path(), s.request, s.respHandler,
+            qdisp::MarkCompleteFunc::newInstance(&ex, jobId),
             retryTest, status);
     r->ProvisionDone(&xsMock);
     BOOST_CHECK(status.getInfo().state  == qdisp::JobStatus::REQUEST);
@@ -290,7 +291,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     std::shared_ptr<RetryTest> retryTest = std::make_shared<RetryTest>();
     //        std::make_shared<RetryTest>(std::ref(ex), jobId, std::ref(s), std::ref(status));
     qdisp::JobStatus status(ru);
-    std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
+    std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
     std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
     respReq->registerCancel(cancelTest);
 
@@ -342,7 +343,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     LOGF_INFO("QueryRequest::ProcessResponseData test 2");
     finishTest->_finishCalled = false;
     qrq = new qdisp::QueryRequest(&sessionMock, "mock", respReq, finishTest, retryNull, status);
-    qrq->ProcessResponseData(dataBuf, ResponseRequesterTest::magic()+1, true); // qrq deleted
+    qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic()+1, true); // qrq deleted
     BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::MERGE_ERROR);
     BOOST_CHECK(finishTest->_finishCalled);
 
@@ -350,15 +351,15 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     finishTest->_finishCalled = false;
     retryTest->_retryCalled = false;
     qrq = new qdisp::QueryRequest(&sessionMock, "mock", respReq, finishTest, retryTest, status);
-    qrq->ProcessResponseData(dataBuf, ResponseRequesterTest::magic(), true); // qrq deleted
+    qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic(), true); // qrq deleted
     BOOST_CHECK(status.getInfo().state == qdisp::JobStatus::COMPLETE);
     BOOST_CHECK(finishTest->_finishCalled);
     BOOST_CHECK(!retryTest->_retryCalled);
 }
 
-BOOST_AUTO_TEST_CASE(ResponseRequester) {
-    LOGF_INFO("ResponseRequester test 1");
-    std::shared_ptr<ResponseRequesterTest> respReq = std::make_shared<ResponseRequesterTest>();
+BOOST_AUTO_TEST_CASE(ResponseHandler) {
+    LOGF_INFO("ResponseHandler test 1");
+    std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
     std::shared_ptr<CancelTest> cancelTest = std::make_shared<CancelTest>();
     respReq->registerCancel(cancelTest);
     // The cancel function should only be called once.
@@ -373,9 +374,9 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(Squash)
 
-class CancellableRequester : public qdisp::ResponseRequester {
+class CancellableRequester : public qdisp::ResponseHandler {
 public:
-    using ResponseRequester::CancelFunc;
+    using ResponseHandler::CancelFunc;
 
     typedef std::shared_ptr<CancellableRequester> Ptr;
     CancellableRequester()

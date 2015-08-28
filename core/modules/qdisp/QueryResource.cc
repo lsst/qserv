@@ -73,9 +73,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
 
     // QueryRequest handles its own deletion by registering a cancellation
     // functor with the requester that deletes the request in its destructor.
-    QueryRequest * request = new QueryRequest(s, _payload, _requester,
-                                              _finishFunc, _retryFunc,
-                                              _status);
+    QueryRequest * request = new QueryRequest(s, _payload, _requester, _markCompleteFunc, _retryQueryFunc, _status);
 
     // Hand off the request.
     _status.updateInfo(JobStatus::REQUEST);

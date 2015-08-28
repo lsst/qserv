@@ -76,20 +76,14 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
-QueryRequest::QueryRequest(
-    XrdSsiSession* session,
-    std::string const& payload,
-    std::shared_ptr<ResponseRequester> const requester,
-    std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
-    std::shared_ptr<util::VoidCallable<void> > const retryFunc,
-    JobStatus& status)
-    : _session(session),
-      _payload(payload),
-      _requester(requester),
-      _finishFunc(finishFunc),
-      _retryFunc(retryFunc),
-      _status(status),
-      _finishStatus(QueryRequest::ACTIVE) {
+QueryRequest::QueryRequest( XrdSsiSession* session, std::string const& payload,
+    std::shared_ptr<ResponseHandler> const respRequester,
+    std::shared_ptr<MarkCompleteFunc> const markCompleteFunc,
+    std::shared_ptr<RetryQueryFunc> const retryQueryFunc,
+    JobStatus& status) :
+        _session(session), _payload(payload), _respRequester(respRequester),
+        _markCompleteFunc(markCompleteFunc), _retryFunc(retryQueryFunc),
+        _status(status), _finishStatus(QueryRequest::ACTIVE) {
     LOGF_INFO("New QueryRequest with payload(%1%)" % payload.size());
     _registerSelfDestruct();
 }
@@ -121,7 +115,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
         return true;
     }
     if(!isOk) {
-        _requester->errorFlush(std::string("Request failed"), -1);
+        _respRequester->errorFlush(std::string("Request failed"), -1);
         _status.updateInfo(JobStatus::RESPONSE_ERROR);
         _errorFinish(); // deletes this
         return true;
@@ -152,8 +146,8 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
 /// Retrieve and process results in using the XrdSsi stream mechanism
 bool QueryRequest::_importStream() {
     bool retrieveInitiated = false;
-    // Pass ResponseRequester's buffer directly.
-    std::vector<char>& buffer = _requester->nextBuffer();
+    // Pass ResponseHandler's buffer directly.
+    std::vector<char>& buffer = _respRequester->nextBuffer();
     LOGF_DEBUG("QueryRequest::_importStream buffer.size=%1%" % buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
     LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
@@ -179,7 +173,7 @@ bool QueryRequest::_importStream() {
 
 /// Process an incoming error.
 bool QueryRequest::_importError(std::string const& msg, int code) {
-    _requester->errorFlush(msg, code);
+    _respRequester->errorFlush(msg, code);
     _errorFinish();
     return true;
 }
@@ -192,22 +186,22 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         std::string reason = (chs == NULL) ? "Null" : chs;
         _status.updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
-        _requester->errorFlush("Couldn't retrieve response data:" + reason, eCode);
+        _respRequester->errorFlush("Couldn't retrieve response data:" + reason, eCode);
         _errorFinish();
         return;
     }
     _status.updateInfo(JobStatus::RESPONSE_DATA);
-    bool flushOk = _requester->flush(blen, last);
+    bool flushOk = _respRequester->flush(blen, last);
     if(flushOk) {
         if (last) {
-            auto sz = _requester->nextBuffer().size();
+            auto sz = _respRequester->nextBuffer().size();
             if (last && sz != 0) {
                 LOGF_WARN("Connection closed when more information expected sz=%1%" % sz);
             }
             _status.updateInfo(JobStatus::COMPLETE);
             _finish();
         } else {
-            std::vector<char>& buffer = _requester->nextBuffer();
+            std::vector<char>& buffer = _respRequester->nextBuffer();
             const void* pbuf = (void*)(&buffer[0]);
             LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
                       buffer.size() % pbuf % util::prettyCharList(buffer, 5));
@@ -218,7 +212,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         }
     } else {
         LOGF_INFO("ProcessResponse data flush failed");
-        ResponseRequester::Error err = _requester->getError();
+        ResponseHandler::Error err = _respRequester->getError();
         _status.updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
@@ -247,15 +241,15 @@ bool QueryRequest::cancelled() {
 
 void QueryRequest::cleanup() {
     _retryFunc.reset();
-    _requester.reset();
+    _respRequester.reset();
 }
 
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
     LOGF_DEBUG("Error finish");
-    std::shared_ptr<util::UnaryCallable<void, bool>> finish;
-    std::shared_ptr<util::VoidCallable<void>> retry;
+    std::shared_ptr<MarkCompleteFunc> finish;
+    std::shared_ptr<RetryQueryFunc> retry;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
@@ -269,8 +263,8 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         }
         if(_retryFunc) { // Protect against multiple calls of retry or finish.
             retry.swap(_retryFunc);
-        } else if(_finishFunc) {
-            finish.swap(_finishFunc);
+        } else if(_markCompleteFunc) {
+            finish.swap(_markCompleteFunc);
         }
         _finishStatus = ERROR;
     }
@@ -285,7 +279,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 
 /// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
-    std::shared_ptr<util::UnaryCallable<void, bool>> finish;
+    std::shared_ptr<MarkCompleteFunc> finish;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
@@ -297,7 +291,7 @@ void QueryRequest::_finish() {
         } else {
             LOGF_INFO("Finished() ok.");
         }
-        finish.swap(_finishFunc);
+        finish.swap(_markCompleteFunc);
         _finishStatus = FINISHED;
     }
     if(finish) {
@@ -311,7 +305,7 @@ void QueryRequest::_finish() {
 /// notifications upon errors detected in the receiver.
 void QueryRequest::_registerSelfDestruct() {
     std::shared_ptr<Canceller> canceller(new Canceller(this));
-    _requester->registerCancel(canceller);
+    _respRequester->registerCancel(canceller);
 }
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r) {

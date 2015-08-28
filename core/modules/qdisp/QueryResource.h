@@ -25,6 +25,7 @@
 
 // System headers
 #include <cstdlib>
+#include <functional>
 #include <memory>
 #include <new>
 #include <string>
@@ -40,9 +41,13 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 // Local forward declarations
+class MarkCompleteFunc;
+class RetryQueryFunc;
 class JobStatus;
 class QueryRequest;
-class ResponseRequester;
+class ResponseHandler;
+class RetryQueryFunc;
+
 
 /// Note: this object takes responsibility for deleting itself once it is passed
 /// off via service->Provision(resourceptr).
@@ -55,16 +60,16 @@ public:
     /// @param status reference to update the current execution status
     QueryResource(std::string const& rPath,
                   std::string const& payload,
-                  std::shared_ptr<ResponseRequester> requester,
-                  std::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
-                  std::shared_ptr<util::VoidCallable<void> > retryFunc,
+                  std::shared_ptr<ResponseHandler> requester,
+                  std::shared_ptr<MarkCompleteFunc> markCompleteFunc,
+                  std::shared_ptr<RetryQueryFunc> retryQueryFunc,
                   JobStatus& status)
         : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
           _session(NULL),
           _payload(payload),
           _requester(requester),
-          _finishFunc(finishFunc),
-          _retryFunc(retryFunc),
+          _markCompleteFunc(markCompleteFunc),
+          _retryQueryFunc(retryQueryFunc),
           _status(status) {
         if (rName == NULL) {
             throw std::bad_alloc();
@@ -86,11 +91,11 @@ private:
     XrdSsiSession* _session; ///< unowned, do not delete.
 
     std::string const _payload; ///< Request payload
-    std::shared_ptr<ResponseRequester> _requester; ///< Response requester
+    std::shared_ptr<ResponseHandler> _requester; ///< Response requester
     /// Called upon transaction finish
-    std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
     /// Called to retry the transaction
-    std::shared_ptr<util::VoidCallable<void> > _retryFunc;
+    std::shared_ptr<RetryQueryFunc> _retryQueryFunc;
     JobStatus& _status;
 };
 

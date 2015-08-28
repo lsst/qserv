@@ -51,7 +51,7 @@ public:
         return qr._payload;
     }
     static void finish(QueryResource& qr) {
-        qr._finishFunc->operator ()(true);
+        qr._markCompleteFunc->operator ()(true);
     }
 };
 

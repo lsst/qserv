@@ -118,24 +118,7 @@ struct printMapSecond {
     bool first;
 };
 
-class NotifyExecutive : public util::UnaryCallable<void, bool> {
-public:
-    typedef std::shared_ptr<NotifyExecutive> Ptr;
 
-    NotifyExecutive(Executive& e, int jobId)
-        : _executive(e), _jobId(jobId) {}
-
-    virtual void operator()(bool success) {
-        _executive.markCompleted(_jobId, success);
-    }
-
-    static Ptr newInstance(Executive& e, int jobId) {
-        return std::make_shared<NotifyExecutive>(std::ref(e), jobId);;
-    }
-private:
-    Executive& _executive;
-    int _jobId;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -150,32 +133,8 @@ Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
 
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
-    delete dynamic_cast<XrdSsiServiceMock *>(_service);
+    delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
 }
-
-class Executive::DispatchAction : public util::VoidCallable<void> {
-public:
-    typedef std::shared_ptr<DispatchAction> Ptr;
-    DispatchAction(Executive& executive,
-                   int jobId,
-                   Executive::JobDescription const& jobDescription,
-                   JobStatus::Ptr jobStatus)
-        : _executive(executive), _jobId(jobId),
-          _jobDescription(jobDescription), _jobStatus(jobStatus) {
-    }
-    virtual ~DispatchAction() {}
-    virtual void operator()() {
-        if(_jobDescription.requester->reset()) { // Must be able to reset state
-            _executive._dispatchQuery(_jobId, _jobDescription, _jobStatus);
-        }
-        // If the reset fails, do nothing-- can't retry.
-    }
-private:
-    Executive& _executive;
-    int _jobId;
-    JobDescription _jobDescription;
-    JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
-};
 
 /* Add a new job to executive queue, if not already in. Not thread-safe.
  */
@@ -185,7 +144,7 @@ void Executive::add(int jobId, Executive::JobDescription const& jobDescription) 
         LOGF(getLogger(), LOG_LVL_INFO, "Executive already cancelled, ignoring add(%1%)" % jobId);
         return;
     }
-    bool trackOk = _track(jobId, jobDescription.requester); // Remember so we can join
+    bool trackOk = _track(jobId, jobDescription.respHandler); // Remember so we can join
     if(!trackOk) {
         LOGF(getLogger(), LOG_LVL_WARN, "Ignoring duplicate add(%1%)" % jobId);
         return;
@@ -238,19 +197,19 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
-    ResponseRequester::Error err;
+    ResponseHandler::Error err;
     LOGF(getLogger(), LOG_LVL_INFO, "Executive::markCompleted(%1%,%2%)" % jobId % success);
     if(!success) {
         {
-            std::lock_guard<std::mutex> lock(_requestersMutex);
-            RequesterMap::iterator i = _requesters.find(jobId);
-            if(i != _requesters.end()) {
+            std::lock_guard<std::mutex> lock(_respHandlersMutex);
+            RespHandlerMap::iterator i = _respHandlers.find(jobId);
+            if(i != _respHandlers.end()) {
                 err = i->second->getError();
             } else {
                 std::string msg =
                     (boost::format("Executive::markCompleted(%1%) "
                                    "failed to find tracked id=%2% size=%3%")
-                     % (void*)this % jobId % _requesters.size()).str();
+                     % (void*)this % jobId % _respHandlers.size()).str();
                 throw Bug(msg);
             }
         }
@@ -275,19 +234,14 @@ void Executive::markCompleted(int jobId, bool success) {
     }
 }
 
-std::shared_ptr<util::UnaryCallable<void, bool> >
-Executive::newNotifier(Executive &e, int jobId) {
-    return NotifyExecutive::newInstance(e, jobId);
-}
-
 void Executive::requestSquash(int jobId) {
-    RequesterPtr toSquash;
+    ResponseHandlerPtr toSquash;
     bool needToWarn = false;
-    ResponseRequester::Error e;
+    ResponseHandler::Error e;
     {
-        std::lock_guard<std::mutex> lock(_requestersMutex);
-        RequesterMap::iterator i = _requesters.find(jobId);
-        if(i != _requesters.end()) {
+        std::lock_guard<std::mutex> lock(_respHandlersMutex);
+        RespHandlerMap::iterator i = _respHandlers.find(jobId);
+        if(i != _respHandlers.end()) {
             e = i->second->getError();
             if(e.isNone()) {
                 toSquash = i->second; // Remember which one to squash
@@ -316,22 +270,21 @@ void Executive::squash() {
     }
 
     LOGF_INFO("Trying to cancel all queries...");
-    std::vector<RequesterPtr> pendingRequesters;
+    std::vector<ResponseHandlerPtr> pendingRespHandlers;
     std::ostringstream os;
     os << "STATE=";
     {
-        std::lock_guard<std::mutex> lock(_requestersMutex);
+        std::lock_guard<std::mutex> lock(_respHandlersMutex);
         _printState(os);
-        RequesterMap::iterator i,e;
-        for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
-            pendingRequesters.push_back(i->second);
+        RespHandlerMap::iterator i,e;
+        for(i=_respHandlers.begin(), e=_respHandlers.end(); i != e; ++i) {
+            pendingRespHandlers.push_back(i->second);
         }
     }
     LOGF_INFO("%1%\nLoop cancel all queries..." % os.str());
     LOGF_INFO("Enqueued requesters for cancelling...done");
     {
-        std::vector<RequesterPtr>::iterator i, e;
-        for(i=pendingRequesters.begin(), e=pendingRequesters.end(); i != e; ++i) {
+        for(auto i=pendingRespHandlers.begin(), e=pendingRespHandlers.end(); i != e; ++i) {
             // Could get stuck because it waits on xrootd,
             // which may be waiting on a thread blocked in _unTrack().
             // Don't do this while holding _requestersMutex
@@ -357,8 +310,8 @@ struct printMapEntry {
 };
 
 int Executive::getNumInflight() {
-    std::unique_lock<std::mutex> lock(_requestersMutex);
-    return _requesters.size();
+    std::unique_lock<std::mutex> lock(_respHandlersMutex);
+    return _respHandlers.size();
 }
 
 std::string Executive::getProgressDesc() const {
@@ -372,27 +325,18 @@ std::string Executive::getProgressDesc() const {
     return msg_progress;
 }
 
-////////////////////////////////////////////////////////////////////////
-// class Executive (private)
-////////////////////////////////////////////////////////////////////////
 void Executive::_dispatchQuery(int jobId,
                                Executive::JobDescription const& jobDescription,
                                JobStatus::Ptr jobStatus) {
-    std::shared_ptr<DispatchAction> retryFunc;
+    std::shared_ptr<RetryQueryFunc> retryQueryFunc;
     if(_shouldRetry(jobId)) { // limit retries for each request.
-        retryFunc.reset(new DispatchAction(*this, jobId,
-                                           jobDescription,
-                                           jobStatus));
+        retryQueryFunc.reset(new RetryQueryFunc(this, jobId, jobDescription, jobStatus));
     }
-    std::unique_ptr<QueryResource> r(new QueryResource(
-        jobDescription.resource.path(),
-        jobDescription.request,
-        jobDescription.requester,
-        NotifyExecutive::newInstance(*this, jobId),
-        retryFunc,
-        *jobStatus));
+    std::unique_ptr<QueryResource> r(new QueryResource( jobDescription.resource.path(), jobDescription.request,
+        jobDescription.respHandler, MarkCompleteFunc::newInstance(this, jobId),
+        retryQueryFunc, *jobStatus));
     jobStatus->updateInfo(JobStatus::PROVISION);
-    _service->Provision(r.get());
+    _xrdSsiService->Provision(r.get());
     // XrdSsiService will call ProvisionDone() on r in any case, and we clean up r there.
     // FIXME: For squashing, need to hold ptr to QueryResource, so we can
     // instruct it to call XrdSsiRequest::Finished(cancel=true). Also, can send
@@ -407,15 +351,15 @@ void Executive::_setup() {
     _requestCount = 0;
     // If unit testing, load the mock service.
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
-        _service = new XrdSsiServiceMock(this);
+        _xrdSsiService = new XrdSsiServiceMock(this);
     } else {
-        _service = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
+        _xrdSsiService = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
     }
-    if(!_service) {
+    if(!_xrdSsiService) {
         LOGF_ERROR("Error obtaining XrdSsiService in Executive: "
                    %  getErrorText(eInfo));
     }
-    assert(_service);
+    assert(_xrdSsiService);
 }
 
 /// Check to see if a requester should retry, based on how many retries have
@@ -445,15 +389,15 @@ JobStatus::Ptr Executive::_insertNewStatus(int jobId, ResourceUnit const& r) {
 /** Add (jobId,r) entry to _requesters map if not here yet
  *  else leave _requesters untouched.
  */
-bool Executive::_track(int jobId, RequesterPtr r) {
+bool Executive::_track(int jobId, ResponseHandlerPtr r) {
     assert(r);
     LOGF(getLogger(), LOG_LVL_TRACE, "Attempt to add jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
     {
-        std::lock_guard<std::mutex> lock(_requestersMutex);
-        if(_requesters.find(jobId) != _requesters.end()) {
+        std::lock_guard<std::mutex> lock(_respHandlersMutex);
+        if(_respHandlers.find(jobId) != _respHandlers.end()) {
             return false;
         }
-        _requesters[jobId] = r;
+        _respHandlers[jobId] = r;
     }
     LOGF(getLogger(), LOG_LVL_TRACE, "Success in adding jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
     return true;
@@ -462,12 +406,12 @@ bool Executive::_track(int jobId, RequesterPtr r) {
 void Executive::_unTrack(int jobId) {
     bool untracked = false;
     {
-        std::lock_guard<std::mutex> lock(_requestersMutex);
-        RequesterMap::iterator i = _requesters.find(jobId);
-        if(i != _requesters.end()) {
-            _requesters.erase(i);
+        std::lock_guard<std::mutex> lock(_respHandlersMutex);
+        RespHandlerMap::iterator i = _respHandlers.find(jobId);
+        if(i != _respHandlers.end()) {
+            _respHandlers.erase(i);
             untracked = true;
-            if(_requesters.empty()) _requestersEmpty.notify_all();
+            if(_respHandlers.empty()) _requestersEmpty.notify_all();
         }
     }
     if(untracked) {
@@ -479,15 +423,15 @@ void Executive::_unTrack(int jobId) {
 /// markCompleted() does the cleanup, while we are waiting (in
 /// _waitAllUntilEmpty()).
 void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
-    RequesterMap::iterator i, e;
+    RespHandlerMap::iterator i, e;
     while(true) {
         bool reaped = false;
-        for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
+        for(i=_respHandlers.begin(), e=_respHandlers.end(); i != e; ++i) {
             if(!i->second->getError().isNone()) {
                 // Requester should have logged the error to the messageStore
                 LOGF_INFO("Executive (%1%) reaped requester for jobId=%2%"
                           % (void*)this % i->first);
-                _requesters.erase(i);
+                _respHandlers.erase(i);
                 reaped = true;
                 break;
             }
@@ -525,15 +469,15 @@ void Executive::_updateProxyMessages() {
 /// Typically the requesters are handled by markCompleted().
 /// _reapRequesters() deals with cases that involve errors.
 void Executive::_waitAllUntilEmpty() {
-    std::unique_lock<std::mutex> lock(_requestersMutex);
+    std::unique_lock<std::mutex> lock(_respHandlersMutex);
     int lastCount = -1;
     int count;
     int moreDetailThreshold = 5;
     int complainCount = 0;
     const std::chrono::seconds statePrintDelay(5);
     //_printState(LOG_STRM(Debug));
-    while(!_requesters.empty()) {
-        count = _requesters.size();
+    while(!_respHandlers.empty()) {
+        count = _respHandlers.size();
         _reapRequesters(lock);
         if(count != lastCount) {
             lastCount = count;
@@ -563,8 +507,8 @@ std::ostream& operator<<(std::ostream& os,
 
 /// precondition: _requestersMutex is held by current thread.
 void Executive::_printState(std::ostream& os) {
-    std::for_each(_requesters.begin(), _requesters.end(),
-                  printMapSecond<RequesterMap::value_type>(os, "\n"));
+    std::for_each(_respHandlers.begin(), _respHandlers.end(),
+                  printMapSecond<RespHandlerMap::value_type>(os, "\n"));
     os << "\n" << getProgressDesc() << "\n";
 }
 

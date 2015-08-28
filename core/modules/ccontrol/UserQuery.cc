@@ -188,10 +188,8 @@ void UserQuery::submit() {
     LOG(getLogger(), LOG_LVL_INFO, "UserQuery beginning submission");
     assert(_infileMerger);
     std::vector<int> chunks;
-    qproc::QuerySession::Iter i;
-    qproc::QuerySession::Iter e = _qSession->cQueryEnd();
     // Writing query for each chunk
-    for(i = _qSession->cQueryBegin(); i != e; ++i) {
+    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e; ++i) {
         qproc::ChunkQuerySpec& cs = *i;
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);
@@ -209,8 +207,7 @@ void UserQuery::submit() {
         std::shared_ptr<ChunkMsgReceiver> cmr;
         cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         std::shared_ptr<MergingRequester> mr
-            = std::make_shared<MergingRequester>(cmr, _infileMerger,
-                                                 chunkResultName);
+            = std::make_shared<MergingRequester>(cmr, _infileMerger, chunkResultName);
         qdisp::Executive::JobDescription jobDesc = {ru, ss.str(), mr};
 
         int refNum = ++_sequence;

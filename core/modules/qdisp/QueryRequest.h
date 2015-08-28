@@ -36,13 +36,14 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
+#include "qdisp/Executive.h"
 #include "util/Callable.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 class JobStatus;
-class ResponseRequester;
+class ResponseHandler;
 
 /// Bad response received from xrootd API
 class BadResponseError : public std::exception {
@@ -95,9 +96,9 @@ public:
     QueryRequest(
         XrdSsiSession* session,
         std::string const& payload,
-        std::shared_ptr<ResponseRequester> const requester,
-        std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
-        std::shared_ptr<util::VoidCallable<void> > const retryFunc,
+        std::shared_ptr<ResponseHandler> const respRequester,
+        std::shared_ptr<MarkCompleteFunc> const markCompleteFunc,
+        std::shared_ptr<RetryQueryFunc> const retryQueryFunc,
         JobStatus& status);
 
     virtual ~QueryRequest();
@@ -132,12 +133,12 @@ private:
     XrdSsiSession* _session;
 
     std::string _payload; ///< Request buffer
-    std::shared_ptr<ResponseRequester> _requester; ///< Response requester
+    std::shared_ptr<ResponseHandler> _respRequester; ///< Response requester
 
     /// To be called when the request completes
-    std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
     /// To be called to retry a failed request
-    std::shared_ptr<util::VoidCallable<void> > _retryFunc;
+    std::shared_ptr<RetryQueryFunc> _retryFunc;
     /// Reference to an updatable Status
     JobStatus& _status;
 

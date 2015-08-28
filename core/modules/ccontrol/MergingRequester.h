@@ -45,13 +45,13 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-/// MergingRequester is an implementation of a ResponseRequester that implements
+/// MergingRequester is an implementation of a ResponseHandler that implements
 /// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
 /// API by pulling the exact number of bytes needed for the next logical
 /// fragment instead of performing buffer size and offset
 /// management. Fully-constructed protocol messages are then passed towards an
 /// InfileMerger.
-class MergingRequester : public qdisp::ResponseRequester {
+class MergingRequester : public qdisp::ResponseHandler {
 public:
     /// Possible MergingRequester message state
     enum class MsgState { INVALID, HEADER_SIZE_WAIT,
@@ -103,7 +103,7 @@ public:
     ///
     virtual void cancel();
 
-    using ResponseRequester::registerCancel;
+    using ResponseHandler::registerCancel;
 
 private:
     void _initState();
