@@ -39,7 +39,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -62,37 +61,7 @@ LOG_LOGGER getLogger() {
     return logger;
 }
 
-std::string makeIndexTableName(
-    std::string const& db,
-    std::string const& table
-) {
-    return (std::string(SEC_INDEX_DB) + "."
-            + sanitizeName(db) + "__" + sanitizeName(table));
-}
-
-std::string makeLookupSql(
-    std::vector<std::string> const& params
-) {
-
-    char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s);";
-    LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::formatable(params));
-
-    std::string const& db = params[0];
-    std::string const& table = params[1];
-    std::string const& keyColumn = params[2];
-
-    char const *const empty_bracket = "";
-    auto idsFormatter = util::formatable(params, 3, empty_bracket, empty_bracket);
-    std::string sql = (boost::format(LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
-                                                          % SUB_CHUNK_COLUMN
-                                                          % makeIndexTableName(db, table)
-                                                          % keyColumn
-                                                          % idsFormatter).str();
-    LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
-    return sql;
-}
-
-} // anonymous namespace 
+} // anonymous namespace
 
 class SecondaryIndex::Backend {
 public:
@@ -115,7 +84,7 @@ public:
             i != e;
             ++i) {
             if (i->name == "sIndex") {
-                lookup(output, *i);
+                _sqlLookup(output, *i);
                 hasIndex = true;
             }
         }
@@ -126,39 +95,84 @@ public:
         return output;
     }
 
-    virtual void lookup(ChunkSpecVector& output, query::Constraint const& c) {
-        IntVector ids;
-        if (c.name != "sIndex") {
-            throw Bug("Unexpected non-index constraint");
-        }
-        std::string lookupSql = makeLookupSql(c.params);
-        ChunkSpecMap m;
-        for(std::shared_ptr<sql::SqlResultIter> results
-                = _sqlConnection.getQueryIter(lookupSql);
-            !results->done();
-            ++(*results)) {
-            StringVector const& row = **results;
-            int chunkId = boost::lexical_cast<int>(row[0]);
-            int subChunkId = boost::lexical_cast<int>(row[1]);
-            ChunkSpecMap::iterator e = m.find(chunkId);
-            if (e == m.end()) {
-                ChunkSpec& cs = m[chunkId];
-                cs.chunkId = chunkId;
-                cs.subChunks.push_back(subChunkId);
-            } else {
-                ChunkSpec& cs = e->second;
-                cs.subChunks.push_back(subChunkId);
-            }
-        }
-        for(ChunkSpecMap::const_iterator i=m.begin(), e=m.end();
-            i != e; ++i) {
-            output.push_back(i->second);
-        }
-    }
-private:
-    sql::SqlConnection    SqlConnection();
-    sql::SqlConnection _sqlConnection;
 
+private:
+
+
+    static std::string _buildIndexTableName(
+        std::string const& db,
+        std::string const& table
+    ) {
+        return (std::string(SEC_INDEX_DB) + "."
+                + sanitizeName(db) + "__" + sanitizeName(table));
+    }
+
+    /**
+     *  Build sql query string to run against secondary index
+     *
+     *  @param:    vector of string used to build the query,
+     *             format is:
+     *             [db, table, keyColumn, id_0, ..., id_n]
+     *             where:
+     *             - db.table is the director table,
+     *             - keyColumn is its primary key,
+     *             - id_x are keyColumn values
+     *
+     *  @return:   the sql query string to run against secondary index in
+     *             order to get (chunks, subchunks) couples containing [id_0, ..., id_n]
+     */
+    static std::string _buildLookupQuery(
+        std::vector<std::string> const& params
+    ) {
+
+        char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s);";
+        LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::formatable(params));
+
+        std::string const& db = params[0];
+        std::string const& table = params[1];
+        std::string const& keyColumn = params[2];
+
+        char const *const empty_bracket = "";
+        auto idsFormatter = util::formatable(params, 3, empty_bracket, empty_bracket);
+        std::string sql = (boost::format(LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
+                                                              % SUB_CHUNK_COLUMN
+                                                              % _buildIndexTableName(db, table)
+                                                              % keyColumn
+                                                              % idsFormatter).str();
+        LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
+        return sql;
+    }
+
+    void _sqlLookup(ChunkSpecVector& output, query::Constraint const& c) {
+            IntVector ids;
+            if (c.name != "sIndex") {
+                throw Bug("Unexpected non-index constraint");
+            }
+            std::string sql = _buildLookupQuery(c.params);
+            ChunkSpecMap m;
+            for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection.getQueryIter(sql);
+                not results->done();
+                ++(*results)) {
+                StringVector const& row = **results;
+                int chunkId = std::stoi(row[0]);
+                int subChunkId = std::stoi(row[1]);
+                ChunkSpecMap::iterator e = m.find(chunkId);
+                if (e == m.end()) {
+                    ChunkSpec& cs = m[chunkId];
+                    cs.chunkId = chunkId;
+                    cs.subChunks.push_back(subChunkId);
+                } else {
+                    ChunkSpec& cs = e->second;
+                    cs.subChunks.push_back(subChunkId);
+                }
+            }
+            for(ChunkSpecMap::const_iterator i=m.begin(), e=m.end();
+                i != e; ++i) {
+                output.push_back(i->second);
+            }
+    }
+
+    sql::SqlConnection _sqlConnection;
 };
 
 class FakeBackend : public SecondaryIndex::Backend {
