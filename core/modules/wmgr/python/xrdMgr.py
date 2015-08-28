@@ -94,9 +94,10 @@ def _runCmd(cmd, noexcept=True):
         else:
             raise
 
-def _restartXrootd():
-    """ Restart xrootd process, only if it is running already """
-    initScript = os.path.join(Config.instance().runDir, 'etc/init.d/xrootd')
+def _restartService(sName):
+    """ Restart a service, only if it is running already """
+    _log.info('restarting %s', sName)
+    initScript = os.path.join(Config.instance().runDir, 'etc/init.d/'+ sName)
 
     cmd = [initScript, 'status']
     if _runCmd(cmd) == 0:
@@ -105,7 +106,10 @@ def _restartXrootd():
             _runCmd(cmd, False)
         except subprocess.CalledProcessError as exc:
             raise ExceptionResponse(409, "CommandFailure",
-                                    "Failed to restart xrootd, please restart it manually", str(exc))
+                                    "Failed to restart %s, please restart it manually" % sName, str(exc))
+
+def _restartXrootd():
+    _restartService('xrootd')
 
 #------------------------
 # Exported definitions --
