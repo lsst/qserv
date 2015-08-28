@@ -1,3 +1,29 @@
+R E L E A S E   2015_08
+=======================
+
+Release highlights:
+ * Further improvements to reliability
+ * Implemented MySQL-based KVInterface for CSS
+ * Improved compatibility with webserv
+
+Code improvements:
+ * DM-3450: Fix cluster install procedure and improve docker support
+ * DM-3456: Fix problems with talking from webserv to qserv
+ * DM-3555: Ignore "SELECT @@tx_isolation" queries
+ * DM-3358: Add mysql-based test to multi-node integration test
+ * DM-3360: Minor cleanup related to max_hostname
+ * DM-1662: Make qserv dependencies build on OS X with clang
+ * DM-3450: Tweaks to configurations discovered during S15 tests
+
+New features:
+ * DM-3163: CSS/QMeta interaction in czar
+ * DM-3161: Implement MySQL-based KVInterface
+
+Bug fixes:
+ * DM-3522: Releasing un-acquired resources bug
+ * DM-2930: Fix problem with Qserv related to restarting mysql
+
+
 R E L E A S E   2015_07
 =======================
 
