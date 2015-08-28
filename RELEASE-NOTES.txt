@@ -22,7 +22,7 @@ New features:
 Bug fixes:
  * DM-3522: Releasing un-acquired resources bug
  * DM-2930: Fix problem with Qserv related to restarting mysql
-
+ * DM-3618: Fix bug related to restarting xrootd in wmgr
 
 R E L E A S E   2015_07
 =======================
