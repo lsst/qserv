@@ -60,23 +60,41 @@ template <typename Iterable>
 class IterableFormatter
 {
 public:
+
+    /**
+     *  Create a printable wrapper for an iterable data structure
+     *
+     *  @param x:       an iterable data structure
+     *  @param first:   start printing from x[first]
+     *  @param open:    opening bracket, NULL is undefined behaviour
+     *  @param close:   closing bracket, NULL is undefined behaviour
+     *  @param sep:     separator between elements, NULL is undefined behaviour
+     */
     explicit IterableFormatter(const Iterable& x, int first, char const *const open, char const *const close,
                                char const *const sep) :
             _ref(x), _first(first), _open(open), _close(close), _sep(sep) {
     }
 
+    /**
+     *  Output operator for IterableFormatter<Iterable>
+     *
+     *  @param out
+     *  @param iterableFormatter
+     *  @return an output stream, with no newline at the end
+     */
     friend std::ostream& operator<<(std::ostream& os,
                                     const IterableFormatter<Iterable>& self) {
         os << self._open;
         size_t last = self._ref.size() - 1;
         for(size_t i=self._first; i<self._ref.size(); ++i) {
-            os <<  " " << self._ref[i];
+            os << self._ref[i];
             if (i != last)
-                os << self._sep;
+                os << self._sep << " ";
         }
         os << self._close;
         return os;
     }
+
 private:
     Iterable const& _ref;
     int const _first;
@@ -88,12 +106,17 @@ private:
 /**
  *  Create a printable wrapper for an iterable data structure
  *
- *  @param x:   an iterable data structure
- *  @return:    a printable wrapper for x
+ *  @param x:       an iterable data structure
+ *  @param first:   start printing from x[first]
+ *  @param open:    opening bracket, NULL is undefined behaviour
+ *  @param close:   closing bracket, NULL is undefined behaviour
+ *  @param sep:     separator between elements, NULL is undefined behaviour
+ *  @return:        an object wrapping x and providing an output operator
  */
 template <typename Iterable>
-IterableFormatter<Iterable> formatable(Iterable const& x, int first = 0, char const *const open = "[", char const *const close = "]",
-        char const *const sep = ",")
+IterableFormatter<Iterable> formatable(Iterable const& x, int first = 0,
+                                       char const *const open = "[", char const *const close = "]",
+                                       char const *const sep = ",")
 {
     return IterableFormatter<Iterable>(x, first, open, close, sep);
 }

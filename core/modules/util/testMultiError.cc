@@ -41,7 +41,7 @@
 #include "util/MultiError.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE multiError
+#define BOOST_TEST_MODULE MultiError
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;

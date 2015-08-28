@@ -18,14 +18,15 @@ myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"),
                 env.Glob("*.cc"))
 extDeps = "boost_system crypto log log4cxx ssl ".split()
 
-p = env.Program(["testMultiError.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
-programs.append(p)
+unitTests = ["testIterableFormatter.cc", "testMultiError.cc", "testCommon.cc"]
 
-p = env.Program(["testCommon.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
-programs.append(p)
+for test in unitTests:
 
-# add a unit test which runs on every build
-utest = env.UnitTest(p)
-env.Append(UNIT_TESTS=utest)
+    p = env.Program([test] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
+    programs.append(p)
+
+    # add a unit test which runs on every build
+    utest = env.UnitTest(p)
+    env.Append(UNIT_TESTS=utest)
 
 Return('programs')
