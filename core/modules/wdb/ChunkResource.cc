@@ -320,9 +320,9 @@ private:
         std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
         sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid INT ) ENGINE = MEMORY;";
         _execLockSql(sql);
-        // Un-commenting the following lines will cause the new worker to always take the lock.
-        // sql = "TRUNCATE TABLE " + _lockDbTbl;
-        // _execLockSql(sql);
+        // The following 2 lines will cause the new worker to always take the lock.
+        sql = "TRUNCATE TABLE " + _lockDbTbl;
+        _execLockSql(sql);
         std::ostringstream insert;
         insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, " << _uid << " )";
         _execLockSql(insert.str());
