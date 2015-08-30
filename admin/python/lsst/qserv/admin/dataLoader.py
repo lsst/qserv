@@ -355,7 +355,8 @@ class DataLoader(object):
                     yield path
 
         # build arguments list
-        args = ['sph-partition', '--out.dir', self.chunksDir, '--part.prefix', self.chunkPrefix]
+        partitioner = 'sph-partition-matches' if self.partOptions.isRefMatch else 'sph-partition'
+        args = [partitioner, '--out.dir', self.chunksDir, '--part.prefix', self.chunkPrefix]
         for config in self.configFiles:
             args += ['--config-file', config]
         for data in files:

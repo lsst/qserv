@@ -126,7 +126,7 @@ class PartConfig(UserDict.UserDict):
 
     @property
     def isRefMatch(self):
-        """Returns True if table is a view"""
+        """Returns True if table is a match table"""
         return 'part.pos1' in self and 'part.pos2' in self
 
     @property
@@ -140,7 +140,7 @@ class PartConfig(UserDict.UserDict):
         is determined by dirDb and dirTable parameters, if dirTable is not set then
         Object is assumed to be a director table.
         """
-        return dbName == self['dirDb'] and tableName == self['dirTable']
+        return not self.isRefMatch and dbName == self['dirDb'] and tableName == self['dirTable']
 
     def cssDbOptions(self):
         """
@@ -171,6 +171,7 @@ class PartConfig(UserDict.UserDict):
             options['dirColName1'] = self['dirColName1']
             options['dirTable2'] = self['dirTable2']
             options['dirColName2'] = self['dirColName2']
+            options['flagColName'] = self['flagColName']
 
         elif self.partitioned:
 
