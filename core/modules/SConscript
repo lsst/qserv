@@ -42,11 +42,6 @@ if not env.GetOption('clean'):
 
     env.Append(CPPPATH=[os.getcwd()]) # top level
 
-    env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC", "-std=c++0x",
-                         "-Wno-unused-local-typedefs"])
-
-    env.Append(LINKFLAGS=["-pthread"])
-
     state.log.debug("Scons env:\n" + env.Dump())
 
 # all modules
