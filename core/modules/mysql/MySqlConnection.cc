@@ -29,6 +29,7 @@
 #include "mysql/MySqlConnection.h"
 
 // Third-party headers
+#include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/thread/tss.hpp"
 
@@ -144,7 +145,7 @@ MySqlConnection::cancel() {
     }
     // KILL QUERY only, not KILL CONNECTION.
     int threadId = mysql_thread_id(_mysql);
-    std::string killSql = "KILL QUERY " + boost::lexical_cast<int>(threadId);
+    std::string killSql = boost::str(boost::format("KILL QUERY ") % threadId);
     rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
     mysql_close(killMysql);
     if(rc) {
