@@ -25,8 +25,7 @@ for test in unitTests:
     p = env.Program([test] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
     programs.append(p)
 
-    # add a unit test which runs on every build
-    utest = env.UnitTest(p)
-    env.Append(UNIT_TESTS=utest)
+# add a unit test which runs on every build
+env.Append(UNIT_TESTS=map(env.UnitTest, programs))
 
 Return('programs')

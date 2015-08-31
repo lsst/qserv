@@ -51,21 +51,23 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qproc/testQueryAna.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
+#include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
+using lsst::qserv::tests::QueryAnaFixture;
 
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
-BOOST_FIXTURE_TEST_SUITE(OrderBy, ParserFixture)
+BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -80,17 +82,18 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 }
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
-    std::shared_ptr<QuerySession> qs = buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::string expectedParallel = "SELECT COUNT(*) AS QS1_COUNT FROM LSST.Source_100 AS QST_1_ "
                                    "WHERE objectId IN(386950783579546,386942193651348)";
     std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS N";
-    auto querySession = check(qsTest, stmt, expectedParallel, "", expectedMerge);
-    for(QuerySession::Iter i = querySession->cQueryBegin(),  e = querySession->cQueryEnd();
+    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+    BOOST_CHECK_EQUAL(queries[0], expectedParallel);
+    BOOST_CHECK_EQUAL(queries[1], expectedMerge);
+    for(QuerySession::Iter i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
         i != e; ++i) {
-        lsst::qserv::qproc::ChunkQuerySpec& cs = *i;
+        ChunkQuerySpec& cs = *i;
         LOGF_INFO("Chunk spec: %1%" % cs );
     }
-    querySession->cQueryBegin();
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
