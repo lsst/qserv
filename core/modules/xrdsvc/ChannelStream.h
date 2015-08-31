@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <string>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream

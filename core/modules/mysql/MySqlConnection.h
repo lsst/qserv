@@ -31,6 +31,7 @@
 #include <cassert>
 #include <memory>
 #include <mutex>
+#include <string>
 
 // Third-party headers
 #include "boost/utility.hpp"
