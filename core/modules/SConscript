@@ -42,11 +42,6 @@ if not env.GetOption('clean'):
 
     env.Append(CPPPATH=[os.getcwd()]) # top level
 
-    env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC", "-std=c++0x",
-                         "-Wno-unused-local-typedefs"])
-
-    env.Append(LINKFLAGS=["-pthread"])
-
     state.log.debug("Scons env:\n" + env.Dump())
 
 # all modules
@@ -222,6 +217,7 @@ for m in shmods:
             prods = libProducts[extra]
             if prods:
                 shmodSources.extend(prods)
+    shmodSources.sort(key=lambda n: n.str_for_display())
     out = env.SharedLibrary("libqserv_" + m, shmodSources, LIBS=shmodLibs[m])
     shlibs[m] = out
     for f in out:
