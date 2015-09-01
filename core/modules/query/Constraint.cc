@@ -32,6 +32,7 @@
 #include "query/Constraint.h"
 
 // System headers
+#include <iostream>
 #include <iterator>
 
 namespace lsst {
