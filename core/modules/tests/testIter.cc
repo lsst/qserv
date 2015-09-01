@@ -25,6 +25,7 @@
 #include <cstring>
 #include <map>
 #include <string>
+#include <fcntl.h>
 
 // Third-party headers
 
