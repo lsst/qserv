@@ -1,7 +1,3 @@
-- Run: 
-  ./build-docker-img.sh centos_latest
-  to build a Qserv Docker image running on CentOS.
-- Run:
-  ./build-docker-img.sh -h
-  to know more about this tool
-- cmd.example.sh and Dockerfile are here for documentation compatibilty reasons.
+See:
+- $QSERV_DIR/doc/source/install/docker.rst
+- http://www.slac.stanford.edu/exp/lsst/qserv/2015_08/install/docker.html

@@ -1,8 +1,7 @@
-#!/bin/sh
-
+#!/bin/bash
 
 # LSST Data Management System
-# Copyright 2015 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,32 +20,47 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Dependencies for Debian8.x-based distributions
-# Tested on jessie
-#
 
-# @author  Fabrice Jammes, IN2P3
+# Build and install in-place Qserv version setup by default
 
-apt-get --yes install bash \
-    bison \
-    bzip2 \
-    cmake \
-    curl \
-    flex \
-    g++ \
-    gettext \
-    libbz2-dev \
-    libglib2.0-dev \
-    libpthread-workqueue-dev \
-    libreadline-dev \
-    libssl-dev \
-    make \
-    python-numpy \
-    ncurses-dev \
-    openjdk-7-jre-headless \
-    openssl \
-    patch \
-    python-dev \
-    python-setuptools \
-    zlib1g-dev
+# @author  Fabrice Jammes, IN2P3/SLAC
+
+set -e
+
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options] 
+
+  Available options:
+    -h          this message
+
+  Build and install in-place Qserv version setup by default
+EOD
+}
+
+
+# get the options
+while getopts hs: c ; do
+    case $c in
+            h) usage ; exit 0 ;;
+            \?) usage ; exit 2 ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+if [ $# -ne 0 ] ; then
+    usage
+    exit 2
+fi
+
+. /qserv/scripts/params.sh
+
+. $INSTALL_DIR/loadLSST.bash
+
+setup qserv
+echo "Build and install Qserv from source (QSERV_DIR: $QSERV_DIR)"
+cd $QSERV_DIR
+scons -c
+scons install -j $(nproc)
+

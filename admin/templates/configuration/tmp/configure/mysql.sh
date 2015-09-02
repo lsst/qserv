@@ -17,41 +17,38 @@ is_socket_available() {
     # status == 1 means that the socket is available
     local status=$?
     local retcode=0
-    if [[ ${status} == 0 ]]; then 
+    if [[ ${status} == 0 ]]; then
         echo "WARN: A service is already running on MySQL socket : ${MYSQLD_HOST}:${MYSQLD_PORT}"
-	echo "WARN: Please stop it and relaunch configuration procedure"
+        echo "WARN: Please stop it and relaunch configuration procedure"
         retcode=1
-    elif [[ ${status} == 124 ]]; then 
-	echo "WARN: A time-out occured while testing MySQL socket state : ${MYSQLD_HOST}:${MYSQLD_PORT}"
-	echo "WARN: Please check that a service doesn't already use this socket, possibly with an other user account"
+    elif [[ ${status} == 124 ]]; then
+        echo "WARN: A time-out occured while testing MySQL socket state : ${MYSQLD_HOST}:${MYSQLD_PORT}"
+        echo "WARN: Please check that a service doesn't already use this socket, possibly with an other user account"
         retcode=124
-    elif [[ ${status} != 1 ]]; then 
-	echo "WARN: Unable to test MySQL socket state : ${MYSQLD_HOST}:${MYSQLD_PORT}"
-	echo "WARN: Please check that a service doesn't already use this socket"
+    elif [[ ${status} != 1 ]]; then
+        echo "WARN: Unable to test MySQL socket state : ${MYSQLD_HOST}:${MYSQLD_PORT}"
+        echo "WARN: Please check that a service doesn't already use this socket"
         retcode=2
-    fi 
+    fi
     return ${retcode}
 }
 
 is_socket_available || exit 1
 
-echo "-- Removing previous data." &&
-rm -rf ${MYSQLD_DATA_DIR}/* &&
-echo "-- ." &&
-echo "-- Installing mysql database files." &&
+echo "-- Removing previous data."
+rm -rf ${MYSQLD_DATA_DIR}/*
+echo "-- ."
+echo "-- Installing mysql database files."
 mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${USER} >/dev/null ||
 {
     echo "ERROR : mysql_install_db failed, exiting"
     exit 1
 }
-echo "-- Starting mysql server." &&
-${QSERV_RUN_DIR}/etc/init.d/mysqld start &&
-sleep 5 &&
-echo "-- Changing mysql root password." &&
-mysql --no-defaults -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
-rm ${SQL_DIR}/mysql-password.sql &&
-echo "-- Shutting down mysql server." &&
-${QSERV_RUN_DIR}/etc/init.d/mysqld stop || 
+echo "-- Starting mysql server."
+${QSERV_RUN_DIR}/etc/init.d/mysqld start
+sleep 5
+echo "-- Changing mysql root password."
+mysql --no-defaults -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql ||
 {
     echo -n "ERROR : Failed to set mysql root user password."
     echo "Please set the mysql root user password with : "
@@ -59,5 +56,8 @@ ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
     echo "mysqladmin -u root -h ${MYSQLD_HOST} -P${MYSQLD_PASS} password <password>"
     exit 1
 }
+rm ${SQL_DIR}/mysql-password.sql
+echo "-- Shutting down mysql server."
+${QSERV_RUN_DIR}/etc/init.d/mysqld stop
 
 echo "INFO: MySQL initialization SUCCESSFUL"

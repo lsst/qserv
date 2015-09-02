@@ -1,8 +1,7 @@
 #!/bin/sh
 
-
 # LSST Data Management System
-# Copyright 2015 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,32 +20,14 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Dependencies for Debian8.x-based distributions
-# Tested on jessie
-#
 
-# @author  Fabrice Jammes, IN2P3
+# Report Qserv status on current node
 
-apt-get --yes install bash \
-    bison \
-    bzip2 \
-    cmake \
-    curl \
-    flex \
-    g++ \
-    gettext \
-    libbz2-dev \
-    libglib2.0-dev \
-    libpthread-workqueue-dev \
-    libreadline-dev \
-    libssl-dev \
-    make \
-    python-numpy \
-    ncurses-dev \
-    openjdk-7-jre-headless \
-    openssl \
-    patch \
-    python-dev \
-    python-setuptools \
-    zlib1g-dev
+# @author  Fabrice Jammes, IN2P3/SLAC
+
+set -e
+
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. $DIR/params.sh
+
+$QSERV_RUN_DIR/bin/qserv-status.sh
