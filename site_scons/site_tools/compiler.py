@@ -18,10 +18,10 @@ import sys
 import SCons
 import state   # this should not be here
 
-def _compiler(env):
+def _guess_cxx(context):
     """
     Guess compiler type and version. Returns pair of strings:
-    - toolchain name, one of 'gcc', 'clang'
+    - toolchain name, one of 'gcc', 'clang', 'icc'
     - compiler + version, e.g. 'gcc44', 'gcc48', 'clang35'
     """
 
@@ -34,14 +34,12 @@ def _compiler(env):
     )
 
     # run $CXX --version
-    try:
-        output = subprocess.check_output([env['CXX'], '--version'], stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as exc:
-        # process ran but returned error code
-        raise SCons.Errors.StopError('Error while runnig CXX (%s --version): %s' % (env['CXX'], str(exc)))
-    except Exception as exc:
-        # process did not run
-        raise SCons.Errors.StopError('Failed to execute CXX (%s): %s' % (env['CXX'], str(exc)))
+    context.Message("Checking C++ compiler make and model... ")
+    result = context.TryAction(SCons.Script.Action(r"$CXX --version > $TARGET"))
+    result_ok, output = result[:2]
+    if not result_ok:
+        context.Result("failed")
+        raise SCons.Errors.StopError('Failed to execute CXX (%s): %s' % (context.env['CXX'], output))
 
     # try to match output to expected, see that compiler names match
     toolchain = ''
@@ -57,16 +55,25 @@ def _compiler(env):
     version = re.split('[-.]+', version) + ['']
     version = ''.join(version[:2])
 
+    context.Result(toolchain + version)
     return toolchain, toolchain + version
 
 
 def generate(env):
 
+    # SCons resets many envvars to make clean build, we want to pass some of them explicitly.
+    # Extend the list if you need to add more. This has to be done before env.Configure use.
+    for key in ['PATH', 'DYLD_LIBRARY_PATH', 'LD_LIBRARY_PATH', 'TMPDIR', 'TEMP', 'TMP']:
+        if key in os.environ:
+            env['ENV'][key] = os.environ[key]
+
     # current platform
     platform = sys.platform
 
     # compiler
-    toolchain, comp_version = _compiler(env)
+    conf = env.Configure(custom_tests=dict(GuessCxx=_guess_cxx))
+    toolchain, comp_version = conf.GuessCxx()
+    conf.Finish()
 
     state.log.info("Building on %s with %s" % (platform, toolchain))
 
@@ -85,8 +92,7 @@ def generate(env):
             env.Append(SHLINKFLAGS=["-Wl,-install_name", "-Wl,${TARGET.file}"])
 
     elif platform == 'linux2':
-        # gcc on any platform or
-        # clang on non-mac plartforms (assume it's linux)
+        # Linux with any compiler
 
         # Increase compiler strictness
         env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long', '-Wno-variadic-macros'])
@@ -103,12 +109,6 @@ def generate(env):
         # that is in LD_LIBRARY_PATH
         if 'LD_LIBRARY_PATH' in os.environ:
             env.Append(LINKFLAGS=["-Wl,-rpath-link=" + os.environ["LD_LIBRARY_PATH"]])
-
-        # SCons resets many envvars to make clean build, we want to pass some of them explicitly.
-        # Extend the list if you need to add more.
-        for key in ['LD_LIBRARY_PATH',]:
-            if key in os.environ:
-                env['ENV'][key] = os.environ[key]
 
         env.Append(LINKFLAGS=["-pthread"])
 
