@@ -20,7 +20,6 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-
 # Create Docker images containing Qserv master and worker instances
 
 # @author  Fabrice Jammes, IN2P3/SLAC
@@ -69,12 +68,11 @@ SCRIPT="/qserv/scripts/configure.sh"
 TMP_DIR=$(mktemp -d -t docker_qserv_uid.XXXXXX)
 CID_FILE="$TMP_DIR"/cid
 
-DEST_IMAGE="$IMAGE-worker"
 set -x
 docker run --cidfile="$CID_FILE" -u qserv "$IMAGE" $SCRIPT
 set +x
 
-CONTAINER_ID=$(cat $CID_FILE)
+CONTAINER_ID=$(<$CID_FILE)
 rm $CID_FILE
 
 MSG="Create Qserv worker image"
@@ -83,12 +81,12 @@ docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_
 echo "Image $DEST_IMAGE created successfully"
 
 # Create Qserv master image
-DEST_IMAGE="$IMAGE-master"
 docker run --cidfile="$CID_FILE" -u qserv "$IMAGE" $SCRIPT -m
 
 CONTAINER_ID=$(cat $CID_FILE)
 rm $CID_FILE
 
 MSG="Create Qserv master image"
+DEST_IMAGE="$IMAGE-master"
 docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_IMAGE"
 echo "Image $DEST_IMAGE created successfully"
