@@ -3,8 +3,8 @@
 # {{QSERV_META_CONFIG_FILE}}
 
 # Configuration variables
-# used by Qserv and depencies
-##############################
+# used by Qserv and dependencies
+#################################
 
 # used by all
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
@@ -44,9 +44,25 @@ export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
 
 # Debug settings
-################
+#################
 
+# used by all
 # Make sure core file is not discarded
 ulimit -c unlimited
+
+# used by qserv-czar
+export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
+# Disabling buffering in python in order to enable "real-time" logging.
+export PYTHONUNBUFFERED=1
+
+export XRD_LOGLEVEL=Debug
+export XRDSSIDEBUG=1
+
+# Increase timeouts, without that, long-running queries fail.
+# The proper fix is coming, see DM-3433
+export XRD_REQUESTTIMEOUT=64000
+export XRD_STREAMTIMEOUT=64000
+export XRD_DATASERVERTTL=64000
+export XRD_TIMEOUTRESOLUTION=64000
 
 
