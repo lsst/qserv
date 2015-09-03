@@ -25,3 +25,7 @@ qserv_client_info.log
 .project
 RemoteSystemTempFiles/
 \#*\#
+_build.log
+_build.sh
+_build.tags
+

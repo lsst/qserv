@@ -43,7 +43,7 @@ const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 2000000;
 const size_t ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT = 64000000;
 
 std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
-    unsigned char phSize = static_cast<unsigned char>(protoHeaderString.size());
+    char phSize = static_cast<char>(protoHeaderString.size());
     std::string msgBuf{phSize};
     msgBuf += protoHeaderString;
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
