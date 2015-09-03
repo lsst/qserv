@@ -41,62 +41,37 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 // Local forward declarations
-class MarkCompleteFunc;
-class RetryQueryFunc;
-class JobStatus;
-class QueryRequest;
-class ResponseHandler;
-class RetryQueryFunc;
+class JobQuery;
 
-
+/** This class is used to request a session from xrootd via Provision
+ * ProvisionDone is called by xrootd in some thread with a XrdSsiSession.
+ * ProvisionDone creates a QueryRequest using the session and JobQuery,
+ * then it calls xrootd's ProcessRequest with that object.
+ *
+ * This objects existence is controlled by _jobQuery. It must call
+ * _jobQuery->freeQueryResource() before leaving ProvisionDone.
+ * If provisionDone is
+ */
 /// Note: this object takes responsibility for deleting itself once it is passed
 /// off via service->Provision(resourceptr).
 class QueryResource : public XrdSsiService::Resource {
 public:
-    /// @param rPath resource path, e.g. /LSST/12312
-    /// @param payload serialized protobuf request message
-    /// @param requester response requester
-    /// @param retryFunc high-level retry function.
-    /// @param status reference to update the current execution status
-    QueryResource(std::string const& rPath,
-                  std::string const& payload,
-                  std::shared_ptr<ResponseHandler> requester,
-                  std::shared_ptr<MarkCompleteFunc> markCompleteFunc,
-                  std::shared_ptr<RetryQueryFunc> retryQueryFunc,
-                  JobStatus& status)
-        : Resource(::strdup(rPath.c_str())), // this char* must live as long as this object, so copy it on heap
-          _session(NULL),
-          _payload(payload),
-          _requester(requester),
-          _markCompleteFunc(markCompleteFunc),
-          _retryQueryFunc(retryQueryFunc),
-          _status(status) {
-        if (rName == NULL) {
-            throw std::bad_alloc();
-        }
-    }
+    typedef std::shared_ptr<QueryResource> Ptr;
+    QueryResource(std::shared_ptr<JobQuery> jobQuery);
 
-    virtual ~QueryResource() {
-        std::free(const_cast<char *>(rName)); // clean up heap allocated resource path copy
-    }
+    virtual ~QueryResource();
 
     void ProvisionDone(XrdSsiSession* s);
     const char* eInfoGet(int &code);
 
-    std::string const& getPayload() const { return _payload; }
+    std::shared_ptr<JobQuery> getJobQuery() { return _jobQuery; }
 
     friend class QueryResourceDebug;
 
 private:
-    XrdSsiSession* _session; ///< unowned, do not delete.
-
-    std::string const _payload; ///< Request payload
-    std::shared_ptr<ResponseHandler> _requester; ///< Response requester
-    /// Called upon transaction finish
-    std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
-    /// Called to retry the transaction
-    std::shared_ptr<RetryQueryFunc> _retryQueryFunc;
-    JobStatus& _status;
+    void _provisionDoneHelper(XrdSsiSession* s);
+    XrdSsiSession* _xrdSsiSession; ///< unowned, do not delete.
+    std::shared_ptr<JobQuery> _jobQuery;
 };
 
 }}} // namespace lsst::qserv::qdisp

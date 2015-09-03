@@ -56,10 +56,8 @@ LOG_LOGGER getLogger() {
 
 }
 
-JobStatus::Info::Info(ResourceUnit const& resourceUnit_)
-    : resourceUnit(resourceUnit_),
-      state(UNKNOWN),
-      stateCode(0) {
+JobStatus::Info::Info()
+    : state(UNKNOWN), stateCode(0) {
     stateTime = ::time(NULL);
 }
 
@@ -150,11 +148,7 @@ std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
                "%FT%T%z",
                ::localtime_r(&info.stateTime, &tmp_tm));
 
-    os << info.resourceUnit << ": "
-       << date_buf << ", "
-       << info.state << ", "
-       << info.stateCode << ", "
-       << info.stateDesc;
+    os << ": " << date_buf << ", " << info.state << ", " << info.stateCode << ", " << info.stateDesc;
     return os;
 }
 

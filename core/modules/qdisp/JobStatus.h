@@ -51,7 +51,7 @@ namespace qdisp {
 class JobStatus {
 public:
     typedef std::shared_ptr<JobStatus> Ptr;
-    JobStatus(ResourceUnit const& r) : _info(r) {}
+    JobStatus() {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -85,8 +85,7 @@ public:
     void updateInfo(State s, int code=0, std::string const& desc="");
 
     struct Info {
-        Info(ResourceUnit const& resourceUnit_);
-        ResourceUnit const resourceUnit; ///< Reference id for status
+        Info();
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
         State state; ///< Actual state

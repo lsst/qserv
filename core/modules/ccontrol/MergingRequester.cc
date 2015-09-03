@@ -38,6 +38,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
+#include "qdisp/JobQuery.h"
 #include "rproc/InfileMerger.h"
 #include "util/common.h"
 #include "util/StringHash.h"
@@ -53,7 +54,7 @@ namespace ccontrol {
 ////////////////////////////////////////////////////////////////////////
 // MergingRequester public
 ////////////////////////////////////////////////////////////////////////
-MergingRequester::MergingRequester(
+MergingHandler::MergingHandler(
     std::shared_ptr<MsgReceiver> msgReceiver,
     std::shared_ptr<rproc::InfileMerger> merger,
     std::string const& tableName)
@@ -62,12 +63,15 @@ MergingRequester::MergingRequester(
       _tableName(tableName),
       _response{new WorkerResponse()},
       _flushed{false},
-      _cancelled{false},
       _wName{"~"}  {
     _initState();
 }
 
-const char* MergingRequester::getStateStr(MsgState const& state) {
+MergingHandler::~MergingHandler() {
+    LOGF_DEBUG("~MergingHandler()");
+}
+
+const char* MergingHandler::getStateStr(MsgState const& state) {
     switch(state) {
     case MsgState::INVALID:          return "INVALID";
     case MsgState::HEADER_SIZE_WAIT: return "HEADER_SIZE_WAIT";
@@ -80,7 +84,7 @@ const char* MergingRequester::getStateStr(MsgState const& state) {
     return "unknown";
 }
 
-bool MergingRequester::flush(int bLen, bool& last) {
+bool MergingHandler::flush(int bLen, bool& last) {
     LOGF_INFO("From:%4% flush state=%1% blen=%2% last=%3%" %
               getStateStr(_state) % bLen % last % _wName);
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
@@ -162,18 +166,18 @@ bool MergingRequester::flush(int bLen, bool& last) {
     return false;
 }
 
-void MergingRequester::errorFlush(std::string const& msg, int code) {
+void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
     LOGF_ERROR("Error receiving result.");
 }
 
-bool MergingRequester::finished() const {
+bool MergingHandler::finished() const {
     return _flushed;
 }
 
-bool MergingRequester::reset() {
+bool MergingHandler::reset() {
     // If we've pushed any bits to the merger successfully, we have to undo them
     // to reset to a fresh state. For now, we will just fail if we've already
     // begun merging. If we implement the ability to retract a partial result
@@ -185,16 +189,7 @@ bool MergingRequester::reset() {
     return true;
 }
 
-void MergingRequester::cancel() {
-    {
-        std::lock_guard<std::mutex> lock(_cancelledMutex);
-        _setError(log::MSG_EXEC_SQUASHED, "Cancellation requested");
-        _cancelled = true;
-    }
-    _callCancel(); // Pass cancellation down to worker.
-}
-
-std::ostream& MergingRequester::print(std::ostream& os) const {
+std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed="
               << (_flushed ? "true)" : "false)") ;
 }
@@ -202,38 +197,45 @@ std::ostream& MergingRequester::print(std::ostream& os) const {
 // MergingRequester private
 ////////////////////////////////////////////////////////////////////////
 
-void MergingRequester::_initState() {
+void MergingHandler::_initState() {
     _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
     _state = MsgState::HEADER_SIZE_WAIT;
     _setError(0, "");
 }
 
-bool MergingRequester::_merge() {
-    std::lock_guard<std::mutex> lock(_cancelledMutex);
-    if(_cancelled) {
-        LOGF_INFO("MergingRequester::_merge(), but already cancelled");
-        return false;
+bool MergingHandler::_merge() {
+    // We don't want to let cancellation occur in the middle of this.
+    if (auto job = getJobQuery().lock()) {
+        std::recursive_mutex& cancelledMutex = job->getCancelledMutex();
+        std::lock_guard<std::recursive_mutex> lock(cancelledMutex);
+        if(job->getCancelled()) {
+            LOGF_INFO("MergingRequester::_merge(), but already cancelled");
+            return false;
+        }
+        if(_flushed) {
+            throw Bug("MergingRequester::_merge : already flushed");
+        }
+        bool success = _infileMerger->merge(_response);
+        if(!success) {
+            rproc::InfileMergerError const& err = _infileMerger->getError();
+            _setError(log::MSG_RESULT_ERROR, err.getMsg());
+            _state = MsgState::RESULT_ERR;
+        }
+        _response.reset();
+        return success;
     }
-    if(_flushed) {
-        throw Bug("MergingRequester::_merge : already flushed");
-    }
-    bool success = _infileMerger->merge(_response);
-    if(!success) {
-        rproc::InfileMergerError const& err = _infileMerger->getError();
-        _setError(log::MSG_RESULT_ERROR, err.getMsg());
-        _state = MsgState::RESULT_ERR;
-    }
-    _response.reset();
-    return success;
+
+    LOGF_ERROR("MergingHandler::_merge() failed, jobQuery was NULL");
+    return false;
 }
 
-void MergingRequester::_setError(int code, std::string const& msg) {
+void MergingHandler::_setError(int code, std::string const& msg) {
     LOGF_INFO("setError: code: %1%, message: %2%" % code % msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }
 
-bool MergingRequester::_setResult() {
+bool MergingHandler::_setResult() {
     if(!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
         _setError(log::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
@@ -241,7 +243,7 @@ bool MergingRequester::_setResult() {
     }
     return true;
 }
-bool MergingRequester::_verifyResult() {
+bool MergingHandler::_verifyResult() {
     if(_response->protoHeader.md5() != util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
         _setError(log::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;

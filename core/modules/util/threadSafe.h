@@ -74,17 +74,20 @@ public:
     /** Sets flag value to 'val' and returns the old value of flag.
      */
     virtual T set(T val) {
-        std::lock_guard<std::mutex> lock(_mutex);
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto oldVal = _flag;
         _flag = val;
         return oldVal;
     }
     T get() {
-        std::lock_guard<std::mutex> lock(_mutex);
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _flag;
     }
+
+    std::recursive_mutex& getMutex() { return _mutex; }
+
 protected:
-    std::mutex _mutex;
+    std::recursive_mutex _mutex;
     T _flag;
 };
 
@@ -92,28 +95,30 @@ protected:
  * used to wake up threads waiting for a specific value.
  */
 template <class T>
-class FlagNotify : public Flag<T> {
+class FlagNotify {
 public:
-    explicit FlagNotify(T flag) : Flag<T>(flag) {};
+    explicit FlagNotify(T flag) : _flag(flag) {};
     virtual ~FlagNotify() {};
     /** Sets flag value to 'val' while notifying others of the change,
      * and returns the old value of flag.
      */
     virtual T set(T val) {
-        std::lock_guard<std::mutex> lock(Flag<T>::_mutex);
-        auto oldVal = Flag<T>::_flag;
-        Flag<T>::_flag = val;
+        std::lock_guard<std::mutex> lock(_mutex);
+        auto oldVal = _flag;
+        _flag = val;
         _condition.notify_all();
         return oldVal;
     }
     void wait(T val) {
-        std::unique_lock<std::mutex> lock(Flag<T>::_mutex);
-        while (Flag<T>::_flag != val) {
+        std::unique_lock<std::mutex> lock(_mutex);
+        while (_flag != val) {
             _condition.wait(lock);
         }
     }
 protected:
     std::condition_variable _condition;
+    std::mutex _mutex;
+    T _flag;
 };
 
 }}} // namespace

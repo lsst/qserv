@@ -37,13 +37,13 @@
 
 // Local headers
 #include "qdisp/Executive.h"
+#include "qdisp/JobQuery.h"
 #include "util/Callable.h"
+#include "util/threadSafe.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class JobStatus;
-class ResponseHandler;
 
 /// Bad response received from xrootd API
 class BadResponseError : public std::exception {
@@ -51,7 +51,7 @@ public:
     BadResponseError(std::string const& s_)
         : std::exception(),
           s("BadResponseError:" + s_) {}
-    ~BadResponseError() throw() {}
+    virtual ~BadResponseError() throw() {}
     virtual char const* what() throw() {
         return s.c_str();
     }
@@ -93,13 +93,10 @@ public:
 /// from accessing the QueryRequest instance.
 class QueryRequest : public XrdSsiRequest {
 public:
+    typedef std::shared_ptr<QueryRequest> Ptr;
     QueryRequest(
         XrdSsiSession* session,
-        std::string const& payload,
-        std::shared_ptr<ResponseHandler> const respRequester,
-        std::shared_ptr<MarkCompleteFunc> const markCompleteFunc,
-        std::shared_ptr<RetryQueryFunc> const retryQueryFunc,
-        JobStatus& status);
+        std::shared_ptr<JobQuery> const jobQuery);
 
     virtual ~QueryRequest();
 
@@ -118,36 +115,39 @@ public:
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
     void cancel();
+    bool cancelled();
 
-    void cleanup();
+    void cleanup(); // Must be called when this object is no longer needed.
 
 private:
-    bool cancelled();
+    void _callMarkComplete(bool success);
 
     bool _importStream();
     bool _importError(std::string const& msg, int code);
     void _errorFinish(bool shouldCancel=false);
     void _finish();
-    void _registerSelfDestruct();
 
     XrdSsiSession* _session;
 
-    std::string _payload; ///< Request buffer
-    std::shared_ptr<ResponseHandler> _respRequester; ///< Response requester
+    //std::string _payload; ///< Request buffer  &&& delete ????
 
-    /// To be called when the request completes
-    std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
-    /// To be called to retry a failed request
-    std::shared_ptr<RetryQueryFunc> _retryFunc;
-    /// Reference to an updatable Status
-    JobStatus& _status;
+    /// Job information.
+    std::shared_ptr<JobQuery> _jobQuery;
+
+    // Job description
+    JobDescription& _jobDesc; // not owned by this object, do not delete.
+
+    // Protect against multiple retries of _jobQuery from a single QueryRequest.
+    util::Flag<bool> _retried;
+    // Protect against multiple calls to MarkCompleteFunc from a single QueryRequest.
+    util::Flag<bool> _calledMarkComplete;
 
     std::mutex _finishStatusMutex;
-    enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus;
+    enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus; // _finishStatusMutex
+    bool _cancelled; ///< true if cancelled, protected by _finishStatusMutex.
 
-    class Canceller;
-    friend class Canceller;
-}; // class QueryRequest
+    std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
+};
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 

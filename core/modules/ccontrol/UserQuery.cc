@@ -182,7 +182,6 @@ void UserQuery::submit() {
     // create query messages and send them to the async query manager.
     qproc::TaskMsgFactory2 f(_sessionId);
     TmpTableName ttn(_sessionId, _qSession->getOriginal());
-    std::ostringstream ss;
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
     LOG(getLogger(), LOG_LVL_INFO, "UserQuery beginning submission");
@@ -194,6 +193,7 @@ void UserQuery::submit() {
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);
         ++msgCount;
+        std::ostringstream ss;
         f.serializeMsg(cs, chunkResultName, ss);
         std::string msg = ss.str();
 
@@ -202,17 +202,12 @@ void UserQuery::submit() {
             throw UserQueryBug("Error serializing TaskMsg.");
         }
 
+        std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
-        std::shared_ptr<ChunkMsgReceiver> cmr;
-        cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-        std::shared_ptr<MergingRequester> mr
-            = std::make_shared<MergingRequester>(cmr, _infileMerger, chunkResultName);
-        qdisp::Executive::JobDescription jobDesc = {ru, ss.str(), mr};
-
         int refNum = ++_sequence;
-        _executive->add(refNum, jobDesc);
-        ss.str(""); // reset stream
+        qdisp::JobDescription jobDesc(refNum, ru, ss.str(), std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+        _executive->add(jobDesc);
     }
 
     _submitted = true;

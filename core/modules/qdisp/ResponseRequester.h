@@ -32,10 +32,13 @@
 // Qserv headers
 #include "util/Callable.h"
 #include "util/Error.h"
+#include "util/threadSafe.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
+
+class JobQuery;
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -47,13 +50,11 @@ namespace qdisp {
 /// bytes are desired.
 class ResponseHandler {
 public:
-
     typedef util::Error Error;
 
-    typedef util::VoidCallable<void> CancelFunc;
-
     typedef std::shared_ptr<ResponseHandler> Ptr;
-    ResponseHandler() : _cancelled(false) {}
+    ResponseHandler() {}
+    void setJobQuery(std::shared_ptr<JobQuery> jobQuery) { _jobQuery = jobQuery; }
     virtual ~ResponseHandler() {}
 
     /// @return a char vector to receive the next message. The vector
@@ -80,42 +81,13 @@ public:
     /// @return an error code and description
     virtual Error getError() const = 0;
 
-    /// Set a function to be called that forcibly cancels the ResponseHandler
-    /// process. The buffer filler should call this function so that it can be
-    /// notified when the receiver no longer cares about being filled.
-    virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
-        std::lock_guard<std::mutex> lock(_cancelMutex);
-        _cancelFunc = cancelFunc;
-    }
+    /// Do anything that needs to be done if this job gets cancelled.
+    virtual void processCancel() {};
 
-    /// Cancel operations on the Receiver. This calls _cancelFunc and propagates
-    /// cancellation towards the buffer-filler.
-    /// Default behavior invokes registered function.
-    virtual void cancel() { _callCancel(); }
-    virtual bool cancelled() {
-        std::lock_guard<std::mutex> lock(_cancelMutex);
-        return _cancelled;
-    }
+    std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
 
-protected:
-    /// Call _cancelFunc.
-    void _callCancel() {
-        // Ensure _cancelFunc is only called once.
-        std::shared_ptr<CancelFunc> f;
-        {
-            std::lock_guard<std::mutex> lock(_cancelMutex);
-            if(!_cancelled) {
-                f = _cancelFunc;
-                _cancelled = true;
-            }
-        }
-        if(f) {
-            (*f)();
-        }
-    }
-    std::shared_ptr<CancelFunc> _cancelFunc;
-    bool _cancelled;
-    std::mutex _cancelMutex;
+private:
+    std::weak_ptr<JobQuery> _jobQuery;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) {

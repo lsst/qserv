@@ -28,6 +28,7 @@
 
 // System headers
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 // Qserv headers
@@ -45,15 +46,39 @@ class XrdSsiService;
 namespace lsst {
 namespace qserv {
 namespace qdisp {
+
+class JobQuery;
 class MessageStore;
 class QueryResource;
+
+/** Description of a job managed by the executive
+ */
+class JobDescription {
+public:
+    JobDescription(int id, ResourceUnit resource, std::string payload,
+        std::shared_ptr<ResponseHandler> respHandler)
+        : _id(id), _resource(resource), _payload(payload), _respHandler(respHandler) {};
+
+    int id() const { return _id; }
+    ResourceUnit const& resource() const { return _resource; }
+    std::string const& payload() const { return _payload; }
+    std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
+    std::string toString() const;
+    friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
+private:
+    int _id; // Job's Id number.
+    ResourceUnit _resource; // path, e.g. /q/LSST/23125
+    std::string _payload; // encoded request
+    std::shared_ptr<ResponseHandler> _respHandler; // probably MergingHandler
+};
+std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 /// class Executive manages the execution of tasks for a UserQuery, while
 /// maintaining minimal information about the tasks themselves.
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, JobStatus::Ptr> JobStatusPtrMap;
+    typedef std::map<int, std::shared_ptr<JobQuery>> JobMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -65,17 +90,6 @@ public:
         static std::string getMockStr() {return "Mock";};
     };
 
-    /** Description of a job managed by the executive
-     *
-     * Launch a chunk query against a xrootd resource and
-     * retrieve the result
-     */
-    struct JobDescription {
-        ResourceUnit resource; // path, e.g. /q/LSST/23125
-        std::string request; // encoded request
-        std::shared_ptr<ResponseHandler> respHandler;
-    };
-
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
@@ -83,8 +97,8 @@ public:
 
     ~Executive();
 
-    /// Add an item with a reference number (not necessarily a chunk number)
-    void add(int refNum, JobDescription const& s);
+    /// Add an item with a reference number
+    void add(JobDescription const& s);
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -107,40 +121,20 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
-private:
-    typedef std::shared_ptr<ResponseHandler> ResponseHandlerPtr;
-    typedef std::map<int, ResponseHandlerPtr> RespHandlerMap;
+    /// @return true if cancelled
+    bool getCancelled() { return _cancelled.get(); }
 
-    friend class RetryQueryFunc;
-    void _dispatchQuery(int refNum,
-                        JobDescription const& spec,
-                        JobStatus::Ptr execStatus);
+private:
+    friend class JobQuery;
 
     void _setup();
-    bool _shouldRetry(int refNum);
-    JobStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
-    /** Add (jobId,r) entry to _requesters map if not here yet
-     *  else leave _requesters untouched.
-     *
-     *  @param jobId id of the job related to current chunk query
-     *  @param r pointer to requester which will store chunk query result
-     *
-     *  @return true if (jobId,r) was added to _requesters
-     *          false if this entry was previously in the map
-     */
-    bool _track(int refNum, ResponseHandlerPtr r);
+    bool _track(int refNum, std::shared_ptr<JobQuery> r);
     void _unTrack(int refNum);
+    bool _addJobToMap(std::shared_ptr<JobQuery> job);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
 
-    /** Store job status and execution errors in the current user query message store
-     *
-     * messageStore will be inserted in message table at the end of czar code
-     * and is used to log/report error in mysql-proxy.
-     *
-     * @see python module lsst.qserv.czar.proxy.unlock()
-     */
     void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
@@ -152,25 +146,23 @@ private:
     util::Flag<bool> _empty;
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _xrdSsiService; ///< RPC interface
-    RespHandlerMap _respHandlers; ///< RequesterMap for results from submitted tasks
-    JobStatusPtrMap _statuses; ///< Statuses of submitted tasks
+    JobMap _jobMap; ///< Contains information about all jobs.
+    JobMap _incompleteJobs; ///< Map of incomplete jobs.
 
     /** Execution errors */
     util::MultiError _multiError;
 
     int _requestCount; ///< Count of submitted tasks
-    bool _cancelled; ///< Has execution been cancelled?
+    util::Flag<bool> _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
-    std::mutex _respHandlersMutex;
+    std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
 
     /** Used to record execution errors */
     mutable std::mutex _errorsMutex;
 
-    std::condition_variable _requestersEmpty;
-    mutable std::mutex _statusesMutex;
-    std::mutex _retryMutex;
-    std::mutex _cancelledMutex;
+    std::condition_variable _allJobsComplete;
+    mutable std::mutex _jobsMutex;
 
     typedef std::map<int,int> IntIntMap;
     IntIntMap _retryMap; ///< Counter for task retries.
@@ -189,35 +181,9 @@ public:
         }
     }
 
-    static Ptr newInstance(Executive* e, int jobId) {
-        return std::make_shared<MarkCompleteFunc>(e, jobId);;
-    }
 private:
     Executive* _executive;
     int _jobId;
-};
-
-class RetryQueryFunc {
-public:
-    typedef std::shared_ptr<RetryQueryFunc> Ptr;
-    RetryQueryFunc() : _executive(0),_jobId(-1) {
-    }
-    RetryQueryFunc(Executive* executive, int jobId,
-                  Executive::JobDescription const& jobDescription, JobStatus::Ptr jobStatus)
-        : _executive(executive), _jobId(jobId), _jobDescription(jobDescription), _jobStatus(jobStatus) {
-    }
-    virtual ~RetryQueryFunc() {}
-    virtual void operator()() {
-        if(_executive && _jobDescription.respHandler->reset()) { // Must be able to reset state
-            _executive->_dispatchQuery(_jobId, _jobDescription, _jobStatus);
-        }
-        // If the reset fails, do nothing-- can't retry.
-    }
-private:
-    Executive* _executive;
-    int _jobId;
-    Executive::JobDescription _jobDescription;
-    JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
 };
 
 }}} // namespace lsst::qserv::qdisp
