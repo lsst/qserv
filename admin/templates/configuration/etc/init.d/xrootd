@@ -22,9 +22,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="xrootd"
 DAEMON=${NAME}
 
-# Make sure core file is not discarded
-ulimit -c unlimited
-
 source_sysconfig ${DIR}
 
 # Check variables which are not controlled by application

@@ -42,3 +42,11 @@ export PYTHONPATH={{PYTHONPATH}}
 # used by qserv-czar, xrootd
 export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
+
+# Debug settings
+################
+
+# Make sure core file is not discarded
+ulimit -c unlimited
+
+
