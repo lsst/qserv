@@ -4,7 +4,7 @@ Import('env')
 Import('extraTgts')
 import os
 
-myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"), env.Glob("*.cc"))
 
 # Import SqlSQL2ImpTokenTypes.txt from query/
 tokenFile = env.Command("SqlSQL2ImpTokenTypes.txt",

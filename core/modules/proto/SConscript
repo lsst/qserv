@@ -13,7 +13,8 @@ pFiles = env.Protoc(
     )
 
 # Handle non Protobufs sources
-sources = filter(lambda f: ("pb" not in str(f)) and (not str(f).startswith("test")),
+sources = filter(lambda f: ("pb" not in os.path.basename(str(f))) and
+                 (not os.path.basename(str(f)).startswith("test")),
                  Glob("*.cc"))
 #print "sources", sources, type(sources)
 sourceObjs = []

@@ -5,6 +5,7 @@ Import('cacheObjs')
 Import('findLibs')
 
 import itertools
+import os
 
 programs = []
 
@@ -13,7 +14,7 @@ modDeps = []
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = cacheObjs(env, deps, ".o")
 deps = map(lambda i:i, deps) # un-chain
-myDeps = filter(lambda i: not (str(i).startswith("test")),
+myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"),
                 env.Glob("*.cc"))
 extDeps = "boost_system crypto log log4cxx ssl ".split()
 
