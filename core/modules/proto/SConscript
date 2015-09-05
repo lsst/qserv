@@ -5,11 +5,12 @@ import os
 #import export_deps
 
 # Construct proto env (add protoc Builder)
+proto = File("worker.proto")
 pFiles = env.Protoc(
-    ["worker.proto"],
-    PROTOC_PATH='#',
-    PROTOC_CCOUT='#',
-    PROTOC_PYOUT='#',
+    proto,
+    PROTOC_PATH='.',
+    PROTOC_CCOUT='.',
+    PROTOC_PYOUT='.',
     )
 
 # Handle non Protobufs sources

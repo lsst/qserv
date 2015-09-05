@@ -11,10 +11,8 @@ tokenFile = env.Command("SqlSQL2ImpTokenTypes.txt",
                         "../query/SqlSQL2Tokens.txt",
                         Copy("$TARGET", "$SOURCE"))
 
-glib=File('DmlSQL2.g')
-
 antlrTgts = env.Antlr(['SqlSQL2.g'],
-    ANTLR_GLIB=env.File('DmlSQL2.g'),
+    ANTLR_GLIB='DmlSQL2.g',
     ANTLR_OUT='.',
     )
 
