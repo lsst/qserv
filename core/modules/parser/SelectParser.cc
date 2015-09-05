@@ -52,10 +52,10 @@
 #include "parser/parseExceptions.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/SelectFactory.h"
+#include "parser/SqlSQL2Parser.hpp"   //!!! Order is important, SqlSQL2Parser must be first
+#include "parser/SqlSQL2Lexer.hpp"
+#include "parser/SqlSQL2TokenTypes.hpp"
 #include "query/SelectStmt.h"
-#include "SqlSQL2Parser.hpp"
-#include "SqlSQL2Lexer.hpp"
-#include "SqlSQL2TokenTypes.hpp"
 
 // ANTLR headers, declare after auto-generated headers to
 // reduce namespace pollution

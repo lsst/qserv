@@ -38,7 +38,7 @@
 #include <iterator>
 
 // Third-party headers
-#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 // LSST headers
 #include "lsst/log/Log.h"

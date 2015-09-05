@@ -42,7 +42,7 @@
 #include "query/ValueExpr.h" // For ValueExpr, FuncExpr
 #include "query/ValueFactor.h" // For ValueFactor
 #include "parser/ParseException.h" //
-#include "SqlSQL2TokenTypes.hpp" // antlr-generated
+#include "parser/SqlSQL2TokenTypes.hpp" // antlr-generated
 
 
 using antlr::RefAST;

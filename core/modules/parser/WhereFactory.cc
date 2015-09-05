@@ -50,8 +50,8 @@
 #include "parser/parserBase.h" // Handler base classes
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
+#include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "query/WhereClause.h"
-#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 
 // Anonymous helpers
