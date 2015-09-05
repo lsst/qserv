@@ -89,7 +89,7 @@ else:
 
         (coreFilesToInstall, testTargets) = SConscript('core/modules/SConscript',
                                                        variant_dir=env['build_dir'],
-                                                       duplicate=1,
+                                                       duplicate=0,
                                                        exports=['env', 'ARGUMENTS'])
         targetFiles = []
         for (path, sourceNode) in coreFilesToInstall:
