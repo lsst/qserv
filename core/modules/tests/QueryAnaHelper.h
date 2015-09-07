@@ -1,7 +1,6 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2015 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,6 +28,9 @@
   * @author Fabrice Jammes, IN2P3/SLAC
   */
 
+#ifndef LSST_QSERV_TESTS_QUERYANAHELPER_H
+#define LSST_QSERV_TESTS_QUERYANAHELPER_H
+
 // System headers
 #include <memory>
 #include <string>
@@ -39,39 +41,40 @@
 // Qserv headers
 #include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
-#include "query/Constraint.h"
 #include "util/IterableFormatter.h"
-
-using lsst::qserv::parser::SelectParser;
-using lsst::qserv::qproc::ChunkQuerySpec;
-using lsst::qserv::qproc::ChunkSpec;
-using lsst::qserv::qproc::ChunkSpec;
-using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVec;
-using lsst::qserv::query::ConstraintVector;
-using lsst::qserv::util::formatable;
 
 namespace lsst {
 namespace qserv {
 namespace tests {
 
+/**
+*  @brief Test tools used by qproc::testQueryAna* units tests
+*/
 struct QueryAnaHelper {
 
-    static SelectParser::Ptr getParser(const std::string& stmt);
+    static parser::SelectParser::Ptr getParser(const std::string& stmt);
 
     /**
-    * @brief Prepare the query session used to process SQL queries
-    * issued from MySQL client.
+    *  @brief Prepare the query session used to process SQL queries
+    *  issued from MySQL client.
     *
-    * @param t:             Test environment required by the object
-    * @param stmt:          sql query to process
-    * @param expectedErr:   expected error message
-    *
+    *  @param t:             Test environment required by the object
+    *  @param stmt:          sql query to process
+    *  @param expectedErr:   expected error message
     */
-    std::shared_ptr<QuerySession> buildQuerySession(QuerySession::Test qsTest,
+    std::shared_ptr<qproc::QuerySession> buildQuerySession(qproc::QuerySession::Test qsTest,
                                                     std::string const & stmt);
 
+    /**
+    *  @brief Compute the first parallel query which will be send on
+    *  worker node.
+    *
+    *  Add a mock chunk, compute chunk queries for this chunk, and returns
+    *  the first one.
+    *
+    *  @param withSubChunks:    Also add subchunks
+    *  @return:                 The first parallel query for mock chunk
+    */
     std::string buildFirstParallelQuery(bool withSubChunks = true);
 
     /** @brief control consistency of Qserv internal queries
@@ -81,12 +84,12 @@ struct QueryAnaHelper {
      * If a user SQL query requires
      *
      */
-    std::vector<std::string> getInternalQueries(QuerySession::Test& t,
+    std::vector<std::string> getInternalQueries(qproc::QuerySession::Test& t,
                                                 std::string const & stmt);
 
-    std::shared_ptr<QuerySession> querySession;
+    std::shared_ptr<qproc::QuerySession> querySession;
 };
 
-
-
 }}} // namespace lsst::qserv::test
+
+#endif // LSST_QSERV_TESTS_QUERYANAHELPER_H

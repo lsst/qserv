@@ -32,16 +32,11 @@
   */
 
 // System headers
-#include <algorithm>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <sstream>
+#include <memory>
 #include <string>
+#include <vector>
 
 // Third-party headers
-#include "boost/algorithm/string.hpp"
-#include "boost/format.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaIn
@@ -56,6 +51,7 @@
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::qproc::ChunkQuerySpec;
+using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -76,7 +72,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
     BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
+    char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+6);
 }
@@ -92,7 +88,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     for(QuerySession::Iter i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
         i != e; ++i) {
         ChunkQuerySpec& cs = *i;
-        LOGF_INFO("Chunk spec: %1%" % cs );
+        LOGF_INFO("Chunk spec: %1%" % cs);
     }
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);

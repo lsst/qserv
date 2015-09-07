@@ -225,13 +225,10 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     bool hasRegion = true;
     try {
         indexSpecs = _si->lookup(cv);
-        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
-            LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::formatable(indexSpecs));
-        }
+        LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::printable(indexSpecs));
     } catch(SecondaryIndex::NoIndexConstraint& e) {
         hasIndex = false; // Ok if no index constraints
     }
-
 
     // Spatial area lookups
     RegionPtrVector rv;

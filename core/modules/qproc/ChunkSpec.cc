@@ -54,7 +54,7 @@ namespace qproc {
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << "ChunkSpec("
        << "chunkId=" << c.chunkId << ", "
-       << "subChunks=" << util::formatable(c.subChunks);
+       << "subChunks=" << util::printable(c.subChunks);
     os << ")";
     return os;
 }

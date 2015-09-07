@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 LSST Corporation.
+ * Copyright 2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,16 +45,23 @@
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
-
 namespace util = lsst::qserv::util;
 
-struct Fixture {
-    void _throw_it(std::exception e) {
-        throw e;
-    }
-};
 
-BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
+BOOST_AUTO_TEST_SUITE(Suite)
+
+/** @test
+ * Print an empty vector
+ */
+BOOST_AUTO_TEST_CASE(EmptyVector) {
+
+    test::output_test_stream output;
+    std::vector<int> iterable {};
+    auto formatable = util::printable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[]"));
+}
 
 /** @test
  * Print a vector of int with default formatting
@@ -63,7 +70,7 @@ BOOST_AUTO_TEST_CASE(Vector) {
 
     test::output_test_stream output;
     std::vector<int> iterable { 1, 2, 3, 4, 5, 6};
-    auto formatable = util::formatable(iterable);
+    auto formatable = util::printable(iterable);
 
     output << formatable;
     BOOST_REQUIRE(output.is_equal("[1, 2, 3, 4, 5, 6]"));
@@ -76,7 +83,8 @@ BOOST_AUTO_TEST_CASE(Array) {
 
     test::output_test_stream output;
     std::array<std::string, 6> iterable { "1", "2", "3", "4", "5", "6"};
-    auto formatable = util::formatable(iterable, 2, "", "", ";");
+    auto start = std::next(iterable.begin(), 2);
+    auto formatable = util::printable( start, iterable.end(), "", "", "; ");
 
     output << formatable;
     BOOST_REQUIRE(output.is_equal("3; 4; 5; 6"));

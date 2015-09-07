@@ -145,14 +145,13 @@ public:
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
     /**
-     *  Print query session to strem
+     *  Print query session to stream.
      *
-     *  Used for debugging purpose
+     *  Used for debugging
      *
      *  @params out:    stream to update
-     *  @return:        out
      */
-    std::ostream& print(std::ostream& out) const;
+    void print(std::ostream& out) const;
 
 private:
     typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
@@ -166,7 +165,6 @@ private:
 
     // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
-    void addChunk(const ChunkSpecVector& cs);
 
     // Fields
     std::shared_ptr<css::Facade> _cssFacade; ///< Metadata access facade
@@ -223,7 +221,7 @@ private:
  *  @param querySession
  *  @return an output stream, with no newline at the end
  */
-std::ostream& operator<<(std::ostream& out, const QuerySession querySession);
+std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
 class QuerySession::Iter : public boost::iterator_facade <

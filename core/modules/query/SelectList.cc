@@ -44,8 +44,10 @@
 
 // System headers
 #include <algorithm>
+#include <iostream>
 #include <iterator>
 #include <stdexcept>
+#include <string>
 
 // Third-party headers
 
@@ -53,16 +55,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/stringTypes.h"
-#include "qana/AnalysisError.h"
 #include "query/QueryTemplate.h"
+#include "query/typedefs.h"
 #include "query/ValueFactor.h"
-#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
 
 LOG_LOGGER SelectList::_logger = LOG_GET("lsst.qserv.query.SelectList");
 

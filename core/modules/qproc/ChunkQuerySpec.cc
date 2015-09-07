@@ -53,9 +53,9 @@ std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
         frag != NULL;
         frag = frag->nextFragment.get()) {
         os << "ChunkQuerySpec(db=" << frag->db << ", chunkId=" << frag->chunkId << ", ";
-        os << "sTables=" << util::formatable(frag->subChunkTables) << ", ";
-        os << "queries=" << util::formatable(frag->queries) << ", ";
-        os << "subChunkIds=" << util::formatable(frag->subChunkIds) << ", ";
+        os << "sTables=" << util::printable(frag->subChunkTables) << ", ";
+        os << "queries=" << util::printable(frag->queries) << ", ";
+        os << "subChunkIds=" << util::printable(frag->subChunkIds);
         os << ")";
     }
     return os;

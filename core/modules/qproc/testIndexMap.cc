@@ -86,7 +86,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
     ConstraintVector cv;
-    short const size=3;
+    int const size = 3;
     char const* argv[size] = {"111", "112","113"};
     cv.push_back(makeConstraint("sIndex", size, argv));
 
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(SecLookup) {
 
 BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectId) {
     ConstraintVector cv;
-    short const size=5;
+    int const size=5;
     char const* argv[size] = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
     cv.push_back(makeConstraint("sIndex", size, argv));
 

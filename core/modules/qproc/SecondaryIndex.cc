@@ -97,12 +97,9 @@ public:
 
 
 private:
-
-
     static std::string _buildIndexTableName(
         std::string const& db,
-        std::string const& table
-    ) {
+        std::string const& table) {
         return (std::string(SEC_INDEX_DB) + "."
                 + sanitizeName(db) + "__" + sanitizeName(table));
     }
@@ -122,23 +119,22 @@ private:
      *             order to get (chunks, subchunks) couples containing [id_0, ..., id_n]
      */
     static std::string _buildLookupQuery(
-        std::vector<std::string> const& params
-    ) {
-
-        char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s);";
-        LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::formatable(params));
+        std::vector<std::string> const& params) {
+        char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s)";
+        LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::printable(params));
 
         std::string const& db = params[0];
         std::string const& table = params[1];
-        std::string const& keyColumn = params[2];
+        std::string const& key_column = params[2];
 
         char const *const empty_bracket = "";
-        auto idsFormatter = util::formatable(params, 3, empty_bracket, empty_bracket);
+        auto id_start = std::next(params.begin(), 3);
+        auto ids_formatter = util::printable( id_start, params.end(), empty_bracket, empty_bracket);
         std::string sql = (boost::format(LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
                                                               % SUB_CHUNK_COLUMN
                                                               % _buildIndexTableName(db, table)
-                                                              % keyColumn
-                                                              % idsFormatter).str();
+                                                              % key_column
+                                                              % ids_formatter).str();
         LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
         return sql;
     }
@@ -148,50 +144,43 @@ private:
      *
      *  @param constraint:  a secondary index constraint issued from query analysis
      *  @param output:      existing ChunkSpec vector
-     *  @result:            void
      */
     void _sqlLookup(ChunkSpecVector& output, query::Constraint const& constraint) {
-            IntVector ids;
-            if (constraint.name != "sIndex") {
-                throw Bug("Unexpected non-index constraint");
-            }
+        IntVector ids;
+        if (constraint.name != "sIndex") {
+            throw Bug("Unexpected non-index constraint");
+        }
 
+        std::string sql = _buildLookupQuery(constraint.params);
+        std::map<int, Int32Vector> tmp;
 
-            std::string sql = _buildLookupQuery(constraint.params);
-            std::map<int, Int32Vector> tmp;
+        // Insert sql query result:
+        //   chunkId_x1, subChunkId_y1
+        //   chunkId_x1, subChunkId_y2
+        //   ...
+        //   chunkId_xi, subChunkId_yj
+        //   ...
+        //   chunkId_xm, subChunkId_yn
+        //
+        // in a std::map<int, Int32Vector>:
+        // key       , value
+        // chunkId_x1, [subChunkId_y1, subChunkId_y2, ...]
+        // chunkId_xi, [subChunkId_yj, ..., subChunkId_yk]
+        // chunkId_xm, [subChunkId_yl, ..., subChunkId_yn]
+        for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection.getQueryIter(sql);
+            not results->done();
+            ++(*results)) {
+            StringVector const& row = **results;
+            int chunkId = std::stoi(row[0]);
+            int subChunkId = std::stoi(row[1]);
+            tmp[chunkId].push_back(subChunkId);
+        }
 
-            // Insert sql query result:
-            //   chunkId_x1, subChunkId_y1
-            //   chunkId_x1, subChunkId_y2
-            //   ...
-            //   chunkId_xi, subChunkId_yj
-            //   ...
-            //   chunkId_xm, subChunkId_yn
-            //
-            // in a std::map<int, Int32Vector>:
-            // key       , value
-            // chunkId_x1, [subChunkId_y1, subChunkId_y2, ...]
-            // chunkId_xi, [subChunkId_yj, ..., subChunkId_yk]
-            // chunkId_xm, [subChunkId_yl, ..., subChunkId_yn]
-            for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection.getQueryIter(sql);
-                not results->done();
-                ++(*results)) {
-                StringVector const& row = **results;
-                int chunkId = std::stoi(row[0]);
-                int subChunkId = std::stoi(row[1]);
-                auto elem = tmp.find(chunkId);
-                if (elem == tmp.end()) {
-                    tmp.emplace(chunkId, Int32Vector(1,subChunkId));
-                } else {
-                    elem->second.push_back(subChunkId);
-                }
-            }
-
-            // Add results to output
-            for(auto i=tmp.begin(), e=tmp.end();
-                i != e; ++i) {
-                output.push_back(ChunkSpec(i->first, i->second));
-            }
+        // Add results to output
+        for(auto i=tmp.begin(), e=tmp.end();
+            i != e; ++i) {
+            output.push_back(ChunkSpec(i->first, i->second));
+        }
     }
 
     sql::SqlConnection _sqlConnection;

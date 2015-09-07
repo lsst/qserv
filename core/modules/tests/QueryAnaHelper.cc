@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2009-2015 AURA/LSST.
@@ -54,7 +53,7 @@ using lsst::qserv::query::Constraint;
 using lsst::qserv::query::ConstraintVec;
 using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::SelectStmt;
-using lsst::qserv::util::formatable;
+using lsst::qserv::util::printable;
 
 namespace lsst {
 namespace qserv {
@@ -85,7 +84,7 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
         ConstraintVec cv(querySession->getConstraints());
         std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
         if (cvRaw) {
-            LOGF_DEBUG("%1%, " % formatable(*cvRaw));
+            LOGF_DEBUG("%1%, " % util::printable(*cvRaw));
         }
     }
     return querySession;
@@ -93,14 +92,15 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
 
 std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));
-    QuerySession::Iter i = querySession->cQueryBegin(), e = querySession->cQueryEnd();
-    if (i == e) {
-            throw new std::string("Empty query session");
+    QuerySession::Iter i = querySession->cQueryBegin();
+    if (i == querySession->cQueryEnd()) {
+        throw new std::string("Empty query session");
     }
 
     ChunkQuerySpec& first = *i;
     std::string const & firstParallelQuery = first.queries[0];
-    LOGF(getLogger(), LOG_LVL_TRACE, "First parallel query: %1%" % firstParallelQuery);
+    LOGF(getLogger(), LOG_LVL_TRACE,
+         "First parallel query: %1%" % firstParallelQuery);
     return firstParallelQuery;
 }
 
@@ -116,7 +116,9 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     if (querySession->needsMerge()) {
         sql = querySession->getMergeStmt()->getQueryTemplate().toString();
     }
-    else sql = "";
+    else {
+        sql = "";
+    }
     queries.push_back(sql);
 
     sql = querySession->getProxyOrderBy();
@@ -125,4 +127,4 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     return queries;
 }
 
-}}} // namespace lsst::qserv::test
+}}} // namespace lsst::qserv::tests

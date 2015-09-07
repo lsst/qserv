@@ -45,8 +45,10 @@
 // Qserv headers
 #include "qproc/QuerySession.h"
 #include "query/QueryContext.h"
+#include "query/SelectStmt.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::tests::QueryAnaFixture;

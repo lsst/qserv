@@ -330,7 +330,7 @@ void UserQuery::_setupChunking() {
             csv = im->getAll();
         }
 
-        LOGF(getLogger(), LOG_LVL_TRACE, "Chunk specs: %1%" % util::formatable(csv));
+        LOGF(getLogger(), LOG_LVL_TRACE, "Chunk specs: %1%" % util::printable(csv));
         // Filter out empty chunks
         for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
             i != e;

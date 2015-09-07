@@ -45,7 +45,7 @@ namespace query {
 std::ostream& operator<<(std::ostream& os, Constraint const& c) {
     os << "Constraint("
        << "name=" << c.name << ", "
-       << "params=" << util::formatable(c.params) << ")";
+       << "params=" << util::printable(c.params) << ")";
     return os;
 }
 

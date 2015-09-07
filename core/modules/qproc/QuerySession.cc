@@ -68,8 +68,6 @@
 #include "query/typedefs.h"
 #include "util/IterableFormatter.h"
 
-#define DEBUG 0
-
 namespace {
 
 LOG_LOGGER getLogger() {
@@ -111,12 +109,8 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _generateConcrete();
         _applyConcretePlugins();
 
-        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_DEBUG)) {
-            LOGF(getLogger(), LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % *this);
-        }
-        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
-            LOGF(getLogger(), LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
-        }
+        LOGF(getLogger(), LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % *this);
+        LOGF(getLogger(), LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
 
     } catch(QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
@@ -171,11 +165,9 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
             (*cv)[i] = c;
             ++i;
         }
-        if (LOG_CHECK_LVL(getLogger(), LOG_LVL_TRACE)) {
-            LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::formatable(*cv));
-        }
+        LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::printable(*cv));
     } else {
-        LOG(getLogger(), LOG_LVL_TRACE, "No constraints.");
+        LOGF(getLogger(), LOG_LVL_TRACE, "No constraints.");
     }
     return cv;
 }
@@ -347,13 +339,13 @@ void QuerySession::_applyConcretePlugins() {
 }
 
 /// Some code useful for debugging.
-std::ostream& QuerySession::print(std::ostream& os) const {
+void QuerySession::print(std::ostream& os) const {
     query::QueryTemplate par = _stmtParallel.front()->getQueryTemplate();
     query::QueryTemplate mer = _stmtMerge->getQueryTemplate();
     os << "QuerySession description:\n";
     os << "  original: " << this->_original << "\n";
     os << "  has chunks: " << this->hasChunks() << "\n";
-    os << "  chunks: " << util::formatable(this->_chunks) << "\n";
+    os << "  chunks: " << util::printable(this->_chunks) << "\n";
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par.toString() << "\n";
     os << "  merge statement: " << mer.toString() << std::endl;
@@ -364,7 +356,6 @@ std::ostream& QuerySession::print(std::ostream& os) const {
             os << "  ScanTable: " << i->first << "." << i->second << std::endl;
         }
     }
-    return os;
 }
 
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
@@ -389,19 +380,14 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         queryTemplates.push_back((**i).getQueryTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        LOG(getLogger(), LOG_LVL_INFO, "Non-subchunked");
+        LOGF(getLogger(), LOG_LVL_INFO, "Non-subchunked");
 
         for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
         ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
-        if (LOG_CHECK_INFO()) {
-            std::stringstream ss;
-            std::copy(sVector.begin(), sVector.end(),
-                      std::ostream_iterator<ChunkSpecSingle>(ss, ","));
-            LOGF(getLogger(), LOG_LVL_INFO, "subchunks: %1%" % ss.str());
-        }
+        //LOGF(getLogger(), LOG_LVL_INFO, "Subchunks: %1%" % util::printable(sVector));
         typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
         for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
             for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
@@ -410,16 +396,13 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
             }
         }
     }
-    LOG(getLogger(), LOG_LVL_DEBUG, "Returning chunk queries: ");
-    for(unsigned int t=0;t<q.size();t++){
-        LOGF(getLogger(), LOG_LVL_DEBUG, "%1%" % q.at(t));
-    }
+    //LOGF(getLogger(), LOG_LVL_DEBUG, "Returning chunk queries:\n%1%" % util::printable(q));
     return q;
 }
 
-
-std::ostream& operator<<(std::ostream& out, const QuerySession querySession) {
-    return querySession.print(out);
+std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
+    querySession.print(out);
+    return out;
 }
 
 ////////////////////////////////////////////////////////////////////////

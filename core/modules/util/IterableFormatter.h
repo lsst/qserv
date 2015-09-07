@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2015 AURA/LSST.
@@ -20,21 +19,20 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_UTIL_CONTAINERFORMATTER_H
-#define LSST_QSERV_UTIL_CONTAINERFORMATTER_H
  /**
   * @file
   *
-  * @brief  Misc. lightweight vector manipulation.
+  * @brief Provide generic output operator for iterable data structures
   *
   * @author Fabrice Jammes, IN2P3/SLAC
   */
 
+
+#ifndef LSST_QSERV_UTIL_ITERABLERFORMATTER_H
+#define LSST_QSERV_UTIL_ITERABLERFORMATTER_H
+
 // System headers
-#include <vector>
-#include <iterator>
-#include <sstream>
-#include <string>
+#include <iostream>
 
 // Third-party headers
 
@@ -56,7 +54,7 @@ namespace util {
  *  - works fine for std::vector<std::string>,
  *  - doesn't work for std::multimap.
  */
-template <typename Iterable>
+template <typename Iter>
 class IterableFormatter
 {
 public:
@@ -70,9 +68,10 @@ public:
      *  @param close:   closing bracket, NULL is undefined behaviour
      *  @param sep:     separator between elements, NULL is undefined behaviour
      */
-    explicit IterableFormatter(const Iterable& x, int first, char const *const open, char const *const close,
+    explicit IterableFormatter(Iter begin, Iter end,
+                               char const *const open, char const *const close,
                                char const *const sep) :
-            _ref(x), _first(first), _open(open), _close(close), _sep(sep) {
+            _begin(begin), _end(end), _open(open), _close(close), _sep(sep) {
     }
 
     /**
@@ -83,25 +82,36 @@ public:
      *  @return an output stream, with no newline at the end
      */
     friend std::ostream& operator<<(std::ostream& os,
-                                    const IterableFormatter<Iterable>& self) {
+                                    IterableFormatter<Iter> const& self) {
         os << self._open;
-        size_t last = self._ref.size() - 1;
-        for(size_t i=self._first; i<self._ref.size(); ++i) {
-            os << self._ref[i];
-            if (i != last)
-                os << self._sep << " ";
+        auto it = self._begin;
+        if (it != self._end) {
+            os << *it;
+            ++it;
+        }
+        for ( ; it != self._end; ++it) {
+            os << self._sep << *it;
         }
         os << self._close;
         return os;
     }
 
 private:
-    Iterable const& _ref;
-    int const _first;
+    Iter _begin;
+    Iter _end;
     char const *const _open;
     char const *const _close;
     char const *const _sep;
 };
+
+template <typename Iterator>
+IterableFormatter<Iterator> printable(Iterator begin, Iterator end,
+                                  char const *const open = "[", char const *const close = "]",
+                                  char const *const sep = ", ")
+{
+    return IterableFormatter<Iterator>(begin, end, open, close, sep);
+}
+
 
 /**
  *  Create a printable wrapper for an iterable data structure
@@ -114,12 +124,12 @@ private:
  *  @return:        an object wrapping x and providing an output operator
  */
 template <typename Iterable>
-IterableFormatter<Iterable> formatable(Iterable const& x, int first = 0,
-                                       char const *const open = "[", char const *const close = "]",
-                                       char const *const sep = ",")
+IterableFormatter<typename Iterable::const_iterator> printable(Iterable const& x,
+                                  char const *const open = "[", char const *const close = "]",
+                                  char const *const sep = ", ")
 {
-    return IterableFormatter<Iterable>(x, first, open, close, sep);
+    return printable(x.begin(), x.end(), open, close, sep);
 }
 
 }}} // namespace lsst::qserv::util
-#endif //  LSST_QSERV_UTIL_CONTAINERFORMATTER_H
+#endif // LSST_QSERV_UTIL_ITERABLERFORMATTER_H

@@ -50,7 +50,7 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
-namespace lsst {
+namespace {
 
 LOG_LOGGER getLogger() {
     static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.RelationGraph");
@@ -965,7 +965,6 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         outputs.push_back(_query->clone());
         return;
     }
-
 
     LOGF(getLogger(), LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
     mapping.insertChunkEntry(TableInfo::CHUNK_TAG);

@@ -58,6 +58,7 @@
 
 
 using lsst::qserv::qana::DuplSelectExprPlugin;
+using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::tests::QueryAnaFixture;
 using lsst::qserv::util::Error;

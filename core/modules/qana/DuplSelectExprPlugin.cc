@@ -50,8 +50,8 @@
 #include "query/ValueExpr.h"
 #include "query/typedefs.h"
 #include "util/Error.h"
-#include "util/MultiError.h"
 #include "util/IterableFormatter.h"
+#include "util/MultiError.h"
 
 namespace lsst {
 namespace qserv {
@@ -70,9 +70,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
 
     util::MultiError multiError;
 
-    if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % util::formatable(v));
-    }
+    LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % util::printable(v));
 
     MultiMap mm;
     int pos;
