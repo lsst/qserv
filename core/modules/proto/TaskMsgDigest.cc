@@ -32,7 +32,7 @@
 #endif
 
 // Qserv headers
-#include "worker.pb.h"
+#include "proto/worker.pb.h"
 
 namespace {
     char hexChar[16] = {'0', '1', '2', '3',

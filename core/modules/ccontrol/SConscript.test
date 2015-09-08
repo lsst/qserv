@@ -4,8 +4,8 @@ Import('libProducts')
 Import('cacheObjs')
 Import('findLibs')
 
-import os
 import itertools
+import os
 
 programs = []
 
@@ -25,7 +25,7 @@ deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = map(lambda i:i, deps) # un-chain
 deps = cacheObjs(env, deps, ".o")
 
-myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"), env.Glob("*.cc"))
 myDeps = map(env.Object, myDeps)
 ubuntuDeps = ["pthread", "boost_regex"]
 extDeps = ubuntuDeps + "antlr boost_chrono boost_filesystem boost_thread boost_system crypto mysqlclient_r log log4cxx protobuf XrdPosix XrdClient XrdPosixPreload XrdSsi XrdUtils".split()

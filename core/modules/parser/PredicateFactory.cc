@@ -34,13 +34,13 @@
 
 // Third-party headers
 #include "boost/algorithm/string.hpp"
-#include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
 #include "parser/parseTreeUtil.h"
+#include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "parser/ValueExprFactory.h"
 #include "query/Predicate.h"
 

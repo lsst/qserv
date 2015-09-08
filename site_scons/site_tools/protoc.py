@@ -51,37 +51,40 @@ def _protoc_emitter(target, source, env):
     # flag --proto_path, -I
     proto_path = []
     if env['PROTOC_PATH']:
+
         inc = env['PROTOC_PATH']
-        if SCons.Util.is_List(inc):
-            for path in inc:
-                path = Dir(path)
-                #print "path:",path
-                proto_path.append(path)
-                flags.append('--proto_path='+str(path.abspath))
-        elif SCons.Util.is_Scalar(inc):
-            path=Dir(inc)
-            #print "path:",path
+        if SCons.Util.is_Scalar(inc):
+            inc = [inc]
+        inc = [Dir(path) for path in inc]
+        # by default Dir() makes node which resides in build directory (variant_dir)
+        # and we want it to be in source directory if duplication is disabled
+        inc = [path if path.duplicate else path.srcnode() for path in inc]
+        env['PROTOC_PATH'] = inc
+
+        # print "env['PROTOC_PATH']:", map(str, env['PROTOC_PATH'])
+        for i, path in enumerate(env['PROTOC_PATH']):
+            # print "path:", path
             proto_path.append(path)
-            flags.append('--proto_path='+str(path.abspath))
+            flags.append('--proto_path=${PROTOC_PATH[%d]}' % i)
 
     # flag --cpp_out
     if env['PROTOC_CCOUT']:
         env['PROTOC_CCOUT'] = Dir(env['PROTOC_CCOUT'])
-        flags.append('--cpp_out=${PROTOC_CCOUT.abspath}')
+        flags.append('--cpp_out=${PROTOC_CCOUT}')
 
     # flag --python_out
     if env['PROTOC_PYOUT']:
         env['PROTOC_PYOUT'] = Dir(env['PROTOC_PYOUT'])
-        flags.append('--python_out=${PROTOC_PYOUT.abspath}')
+        flags.append('--python_out=${PROTOC_PYOUT}')
 
     # flag --java_out
     if env['PROTOC_JAVAOUT']:
         env['PROTOC_JAVAOUT'] = Dir(env['PROTOC_JAVAOUT'])
-        flags.append('--java_out=${PROTOC_JAVAOUT.abspath}')
+        flags.append('--java_out=${PROTOC_JAVAOUT}')
 
     # updated flags
     env['PROTOC_FLAGS'] = str(flags)
-    #print "flags:",flags
+    # print "flags:", flags
 
     # source scons dirs
     src_struct = Dir('#')
@@ -90,45 +93,49 @@ def _protoc_emitter(target, source, env):
     # produce proper targets
     for src in source:
         src = File(src)
+        if not src.duplicate:
+            # file is in source directory when duplication is disabled
+            src = File(src).srcnode()
+        # print "src.abspath:", src.abspath
 
         # find proto_path for this source
         longest_common = '/'
         for path in proto_path:
+            # print "path.abspath:", path.abspath
             common = os.path.commonprefix([path.abspath, src.abspath])
             if len(common) > len(longest_common):
                 longest_common = common
-        #print "longest_common:",longest_common
+        # print "longest_common:", longest_common
 
         src_relpath = os.path.relpath(src.abspath, start=longest_common)
-        #print "src_relpath:",src_relpath
+        # print "src_relpath:", src_relpath
 
         # create stem by remove the $PROTOC_SUFFIX or take a guess
         if src_relpath.endswith(protoc_suffix):
             stem = src_relpath[:-len(protoc_suffix)]
         else:
             stem = src_relpath
+        # print "stem:", stem
 
         # C++ output, append
         if env['PROTOC_CCOUT']:
             out = Dir(env['PROTOC_CCOUT'])
-            base = os.path.join(out.abspath, stem)
-            target.append(File(base+protoc_cc_suffix))
-            target.append(File(base+protoc_h_suffix))
+            target.append(out.File(stem + protoc_cc_suffix))
+            target.append(out.File(stem + protoc_h_suffix))
 
         # python output, append
         if env['PROTOC_PYOUT']:
             out = Dir(env['PROTOC_PYOUT'])
-            base = os.path.join(out.abspath, stem)
-            target.append(File(base+protoc_py_suffix))
+            target.append(out.File(stem + protoc_py_suffix))
 
         # java output, append
         if env['PROTOC_JAVAOUT']:
             out = Dir(env['PROTOC_JAVAOUT'])
-            base = os.path.join(out.abspath, stem)
-            target.append(File(base+protoc_java_suffix))
+            target.append(out.File(stem + protoc_java_suffix))
 
-    #print "targets:",env.subst("${TARGETS}", target=target, source=source)
-    #print "sources:",env.subst("${SOURCES}", target=target, source=source)
+    # print "protoc targets:", env.subst("${TARGETS}", target=target, source=source)
+    # print "protoc sources:", env.subst("${SOURCES}", target=target, source=source)
+    # print "protoc command:", env.subst("${PROTOC_COM}", target=target, source=source)
 
     return target, source
 
@@ -165,7 +172,7 @@ def generate(env):
         PROTOC_JAVASUFFIX = '.java',
 
         # Protoc command
-        PROTOC_COM = "$PROTOC $PROTOC_FLAGS $SOURCES.abspath",
+        PROTOC_COM="$PROTOC $PROTOC_FLAGS $SOURCES",
         PROTOC_COMSTR = '',
 
         )

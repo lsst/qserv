@@ -145,7 +145,7 @@ def cacheObjs(env, depList, oType):
     cache = objCache[id(env)]
     result = []
     for d in depList:
-        (name,ext) = os.path.splitext(str(d))
+        (name, ext) = os.path.splitext(d.abspath)
         if (ext == ".cc") or (ext == ".cpp"):
             oName = name + oType
             if not cache[oName]:

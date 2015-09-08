@@ -4,17 +4,15 @@ Import('env')
 Import('extraTgts')
 import os
 
-myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"), env.Glob("*.cc"))
 
 # Import SqlSQL2ImpTokenTypes.txt from query/
 tokenFile = env.Command("SqlSQL2ImpTokenTypes.txt",
                         "../query/SqlSQL2Tokens.txt",
                         Copy("$TARGET", "$SOURCE"))
 
-glib=File('DmlSQL2.g')
-
 antlrTgts = env.Antlr(['SqlSQL2.g'],
-    ANTLR_GLIB=env.File('DmlSQL2.g'),
+    ANTLR_GLIB='DmlSQL2.g',
     ANTLR_OUT='.',
     )
 

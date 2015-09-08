@@ -44,12 +44,12 @@
 #include "parser/ColumnRefH.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
+#include "parser/SqlSQL2TokenTypes.hpp"
 #include "parser/ValueExprFactory.h"   // For expression nesting
 #include "query/ColumnRef.h"
 #include "query/FuncExpr.h"
 #include "query/ValueExpr.h"   // For ValueExpr
 #include "query/ValueFactor.h" // For ValueFactor
-#include "SqlSQL2TokenTypes.hpp"
 
 // namespace modifiers
 using antlr::RefAST;

@@ -5,6 +5,7 @@ Import('cacheObjs')
 Import('findLibs')
 
 import itertools
+import os
 
 programs = []
 
@@ -13,8 +14,8 @@ modDeps = "log mysql sql".split()
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = cacheObjs(env, deps, ".o")
 deps = map(lambda i:i, deps) # un-chain
-myDeps = filter(lambda i: not (str(i).startswith("test")
-                               or str(i) == "cssLib_wrap.cc"),
+myDeps = filter(lambda i: not (os.path.basename(str(i)).startswith("test")
+                               or os.path.basename(str(i)) == "cssLib_wrap.cc"),
                 env.Glob("*.cc"))
 extDeps = "log log4cxx boost_filesystem boost_system boost_thread mysqlclient_r".split()
 p = env.Program(["testKvInterfaceImpl.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))

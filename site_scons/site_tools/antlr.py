@@ -26,11 +26,11 @@ def _antlr_emitter(target, source, env):
     # -o flag
     if env['ANTLR_OUT']:
         env['ANTLR_OUT'] = Dir(env['ANTLR_OUT'])
-        flags.append('-o ${ANTLR_OUT.abspath}')
+        flags.append('-o ${ANTLR_OUT}')
     # -glib flag
     if env['ANTLR_GLIB']:
         env['ANTLR_GLIB'] = File(env['ANTLR_GLIB'])
-        flags.append('-glib ${ANTLR_GLIB.abspath}')
+        flags.append('-glib ${ANTLR_GLIB}')
         #TODO: ImpTokenTypes!?
 
     # update antlr flags
@@ -81,7 +81,7 @@ def generate(env):
         ANTLR_CCSUFFIX = '.cpp',
         ANTLR_TXTSUFFIX = '.txt',
         # Antlr command
-        ANTLR_COM = "$ANTLR $ANTLR_FLAGS $SOURCES.abspath",
+        ANTLR_COM="$ANTLR $ANTLR_FLAGS $SOURCES",
         ANTLR_COMSTR = '',
         )
     env['BUILDERS']['Antlr'] = _antlr_builder

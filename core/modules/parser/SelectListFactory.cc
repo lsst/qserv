@@ -39,10 +39,10 @@
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
 #include "parser/parseTreeUtil.h"
+#include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "parser/ValueExprFactory.h"
 #include "query/SelectList.h"
 #include "query/ValueFactor.h"
-#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 
 namespace lsst {

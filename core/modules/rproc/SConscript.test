@@ -1,24 +1,20 @@
 # -*- python -*-
 Import('env')
 Import('libProducts')
+Import('cacheObjs')
 
 import os
 import itertools
 
 
 programs = []
-obj = env.Object("testProtoRowBuffer.cc")
-def convertObj(o):
-    oStr = str(o)
-    # Avoid questionable conflict with .o for SharedLibrary
-    # production by using an alt name.
-    if oStr.endswith(".cc"): return env.Object(oStr+".staticobj", o)
-    return o
-libObjs = map(convertObj, libProducts['proto'])
+
+libObjs = cacheObjs(env, libProducts['proto'], ".o")
 ubuntuDeps=['pthread']
 # libcrypto MUST be at the end of the list in order to build successfully on Ubuntu 14.04
-extDeps = ['protobuf', 'libssl'] + libObjs + ubuntuDeps+ ['libcrypto'] + "log log4cxx".split()
-p = env.Program(source=[obj], LIBS=extDeps)
+extDeps = ['protobuf', 'libssl'] + ubuntuDeps + ['libcrypto'] + "log log4cxx".split()
+
+p = env.Program(["testProtoRowBuffer.cc"] + libObjs, LIBS=extDeps)
 programs.append(p)
 
 # add a unit test which runs on every build
