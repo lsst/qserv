@@ -25,9 +25,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="qserv-czar"
 DAEMON=${NAME}
 
-# Make sure core file is not discarded
-ulimit -c unlimited
-
 source_sysconfig ${DIR}
 
 # Check variables which are not controlled by application
@@ -44,21 +41,6 @@ lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
 # only xrdssi debug message are printed here for now
 logfile=${QSERV_LOG_DIR}/${NAME}-console.log
 starttimeout=1
-
-export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
-# Disabling buffering in python in order to enable "real-time" logging.
-export PYTHONUNBUFFERED=1
-
-export XRD_LOGLEVEL=Debug
-export XRDSSIDEBUG=1
-
-# Increase timeouts, without that, long-running queries fail.
-# The proper fix is coming, see DM-3433
-export XRD_REQUESTTIMEOUT=64000
-export XRD_STREAMTIMEOUT=64000
-export XRD_DATASERVERTTL=64000
-export XRD_TIMEOUTRESOLUTION=64000
-
 
 cmd="${PYTHON} ${start} -c ${config} >> ${logfile} 2>&1 &"
 
