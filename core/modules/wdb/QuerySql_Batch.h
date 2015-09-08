@@ -32,6 +32,7 @@
   */
 
 // System headers
+#include <cassert>
 #include <sstream>
 
 // Local headers

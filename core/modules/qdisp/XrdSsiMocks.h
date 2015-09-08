@@ -33,6 +33,7 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
+#include "lsst/log/Log.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/QueryResource.h"
 #include "util/threadSafe.h"

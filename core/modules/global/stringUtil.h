@@ -27,6 +27,10 @@
   *
   */
 
+// System headers
+#include <algorithm>
+#include <cctype>
+
 namespace lsst {
 namespace qserv {
 

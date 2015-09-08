@@ -27,6 +27,7 @@
 // System headers
 #include <cassert>
 #include <stdlib.h>
+#include <string>
 
 // Third-party headers
 
