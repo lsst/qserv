@@ -62,10 +62,6 @@ using lsst::qserv::query::ConstraintVector;
 
 namespace {
 
-void testParse(SelectParser::Ptr p) {
-    p->setup();
-}
-
 /**
 * @brief Prepare the query session used to process SQL queries
 * issued from MySQL client.
@@ -107,6 +103,8 @@ std::string buildFirstParallelQuery(QuerySession& qs, bool withSubChunks=true) {
     ChunkQuerySpec& first = *i;
     return first.queries[0];
 }
+
+} // anonymous namespace
 
 /** @brief control consistency of Qserv internal queries
  *
@@ -154,7 +152,9 @@ void printChunkQuerySpecs(std::shared_ptr<QuerySession> qs) {
     }
 }
 
-} // anonymous namespace
+void testParse(SelectParser::Ptr p) {
+    p->setup();
+}
 
 struct ParserFixture {
     ParserFixture(void) {

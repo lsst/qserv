@@ -32,7 +32,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
-using lsst::qserv::worker::Config;
+using lsst::qserv::wconfig::Config;
 
 struct SanityFixture {
     SanityFixture(void) { };

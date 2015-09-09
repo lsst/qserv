@@ -72,6 +72,7 @@ public:
                 _position += _match.eo();
                 _cursor += _match.eo();
             }
+            return *this;
         }
         bool operator==(Iterator const& rhs) const {
             if(_position == -1) return _position == rhs._position;
