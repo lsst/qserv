@@ -81,7 +81,7 @@ def generate(env):
         # clang on OS x
 
         # Increase compiler strictness
-        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long', '-Wno-variadic-macros'])
+        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
         env.Append(CXXFLAGS=['-std=c++11'])
 
         # copied from sconsUtils
@@ -95,7 +95,7 @@ def generate(env):
         # Linux with any compiler
 
         # Increase compiler strictness
-        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long', '-Wno-variadic-macros'])
+        env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
         if toolchain == 'gcc':
             env.Append(CCFLAGS=['-Wno-unused-local-typedefs'])
         if comp_version in ['gcc44']:
