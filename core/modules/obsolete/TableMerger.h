@@ -80,7 +80,7 @@ public:
 /// class TableMergerConfig - value class for configuring a TableMerger
 class TableMergerConfig {
 public:
-    TableMergerConfig() {}
+    TableMergerConfig() : dropMem(false) {}
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
                       MergeFixup const& mFixup_,
                       std::string user_, std::string socket_,

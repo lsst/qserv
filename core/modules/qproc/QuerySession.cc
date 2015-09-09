@@ -88,7 +88,7 @@ void printConstraints(query::ConstraintVector const& cv) {
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
 QuerySession::QuerySession(std::shared_ptr<css::Facade> cssFacade) :
-    _cssFacade(cssFacade) {
+    _cssFacade(cssFacade), _hasMerge(false), _isDummy(false), _isFinal(0) {
 }
 
 void QuerySession::setDefaultDb(std::string const& defaultDb) {

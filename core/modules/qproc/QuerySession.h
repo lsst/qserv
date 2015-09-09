@@ -212,7 +212,7 @@ private:
 class QuerySession::Iter : public boost::iterator_facade <
     QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
 public:
-    Iter() : _qs(NULL) {}
+    Iter() : _qs(NULL), _hasChunks(false), _hasSubChunks(false), _dirty(false) {}
 
 private:
     Iter(QuerySession& qs, ChunkSpecVector::iterator i);

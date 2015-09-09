@@ -58,7 +58,7 @@ public:
     enum Order {DEFAULT, ASC, DESC};
     class render;
 
-    OrderByTerm() {}
+    OrderByTerm() : _order(DEFAULT) {}
     OrderByTerm(std::shared_ptr<ValueExpr> val,
                 Order _order,
                 std::string _collate);

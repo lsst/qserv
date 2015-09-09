@@ -49,7 +49,7 @@ public:
     typedef boost::match_results<BufIter> Match;
     typedef boost::sub_match<BufIter> Value;
 
-    SqlInsertIter() {}
+    SqlInsertIter() : _allowNull(false), _lastUsed(NULL), _blockFound(false) {}
 
     /// Constructor.  Buffer must be valid over this object's lifetime.
     /// Can query getFirstUnused() to see how much of buffer was used.

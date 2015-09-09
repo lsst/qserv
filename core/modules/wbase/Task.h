@@ -75,7 +75,7 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task() : _poisoned{false} {}
+    explicit Task() : entryTime(0), _poisoned{false} {}
     explicit Task(TaskMsgPtr t, std::shared_ptr<SendChannel> sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;

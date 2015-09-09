@@ -54,7 +54,7 @@ public:
     };
     class Iterator {
     public:
-        Iterator() : _regex(0), _position(-1) {}
+        Iterator() : _regex(0), _position(-1), _cursor(0) {}
         Iterator(regex_t* regex, std::string const& s)
             : _regex(regex), _s(s), _match(s) {
             setFirst();

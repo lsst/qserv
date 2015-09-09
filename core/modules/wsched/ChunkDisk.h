@@ -55,7 +55,7 @@ public:
     typedef std::set<wbase::Task const*> TaskSet;
 
     ChunkDisk(LOG_LOGGER const& logger)
-        : _chunkState(2), _logger(logger) {}
+        : _chunkState(2), _completed(false), _logger(logger) {}
     TaskSet getInflight() const;
 
     // Queue management

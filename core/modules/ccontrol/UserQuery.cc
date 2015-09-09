@@ -277,7 +277,7 @@ void UserQuery::discard() {
 UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId)
     :  _messageStore(std::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _submitted(false), _sequence(0) {
+       _killed(false), _submitted(false), _sessionId(0), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
 

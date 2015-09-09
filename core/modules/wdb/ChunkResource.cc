@@ -399,8 +399,7 @@ public:
 
     typedef std::shared_ptr<ChunkEntry> Ptr;
 
-    ChunkEntry(int chunkId)
-        : _chunkId(chunkId) {}
+    ChunkEntry(int chunkId) : _chunkId(chunkId), _refCount(0) {}
 
     /// Acquire a resource, loading if needed
     void acquire(std::string const& db,

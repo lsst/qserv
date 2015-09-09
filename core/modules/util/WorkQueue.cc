@@ -54,8 +54,7 @@ namespace util {
 ////////////////////////////////////////////////////////////////////////
 class WorkQueue::Runner {
 public:
-    Runner(WorkQueue& w) : _w(w) {
-    }
+    Runner(WorkQueue& w) : _c(NULL), _w(w) {}
     void operator()() {
         _w.registerRunner(this);
         std::shared_ptr<Callable> c = _w.getNextCallable();
