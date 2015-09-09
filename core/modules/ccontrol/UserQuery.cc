@@ -144,7 +144,7 @@ void UserQuery::kill() {
         _killed = true;
         try {
             _executive->squash();
-        } catch(UserQueryError e) {
+        } catch(UserQueryError const &e) {
             // Silence merger discarding errors, because this object is being
             // released. Client no longer cares about merger errors.
         }
@@ -266,7 +266,7 @@ void UserQuery::discard() {
     _qSession.reset();
     try {
         _discardMerger();
-    } catch(UserQueryError e) {
+    } catch(UserQueryError const &e) {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
