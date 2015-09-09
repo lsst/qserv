@@ -44,41 +44,6 @@
 
 
 namespace {
-    void updateSubchunks(std::string const& s,
-                         lsst::qserv::wbase::Task::Fragment& f) {
-        // deprecated though...
-        f.mutable_subchunks()->clear_id();
-        std::stringstream ss;
-        int sc;
-        std::string firstLine = s.substr(0, s.find('\n'));
-        boost::regex re("\\d+");
-        boost::sregex_iterator i;
-        for(i = boost::make_regex_iterator(firstLine, re);
-             i != boost::sregex_iterator(); ++i) {
-            ss.str((*i).str(0));
-            ss >> sc;
-            f.mutable_subchunks()->add_id(sc);
-        }
-    }
-
-    void updateResultTables(std::string const& script,
-                            lsst::qserv::wbase::Task::Fragment& f) {
-        f.clear_resulttable();
-        // Find resultTable prefix
-        char const prefix[] = "-- RESULTTABLES:";
-        int prefixLen = sizeof(prefix);
-        std::string::size_type prefixOffset = script.find(prefix);
-        if(prefixOffset == std::string::npos) { // no table indicator?
-            return;
-        }
-        prefixOffset += prefixLen - 1; // prefixLen includes null-termination.
-        std::string tables = script.substr(prefixOffset,
-                                           script.find('\n', prefixOffset)
-                                       - prefixOffset);
-        // actually, tables should only contain one table name.
-        // FIXME: consider verifying this.
-        f.set_resulttable(tables);
-    }
 
     std::ostream&
     dump(std::ostream& os,
@@ -125,7 +90,7 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 std::string const
 Task::defaultUser = "qsmaster";
 
-Task::Task(Task::TaskMsgPtr t, std::shared_ptr<SendChannel> sc) {
+Task::Task(Task::TaskMsgPtr t, std::shared_ptr<SendChannel> sc) : entryTime(0) {
     // Make msg copy.
     msg = std::make_shared<proto::TaskMsg>(*t);
     sendChannel = sc;

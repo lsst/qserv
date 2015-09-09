@@ -183,7 +183,6 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     bool hasSelectColumnRef = false; // Requires row-reading for
                                      // results
     bool hasSelectStar = false; // Requires reading all columns
-    bool hasSpatialSelect = false; // Recognized chunk restriction
     bool hasWhereColumnRef = false; // Makes count(*) non-trivial
     bool hasSecondaryKey = false; // Using secondaryKey to restrict
                                   // coverage, e.g., via objectId=123
@@ -191,10 +190,6 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
 
     if(stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
-        // Check WHERE for spatial select
-        std::shared_ptr<query::QsRestrictor::PtrVector const> restrs = wc.getRestrs();
-        hasSpatialSelect = restrs && !restrs->empty();
-
 
         // Look for column refs
         std::shared_ptr<query::ColumnRef::Vector const> crl = wc.getColumnRefs();

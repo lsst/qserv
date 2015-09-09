@@ -63,7 +63,6 @@ public:
      * @return void
      */
     inline void operator()(query::ValueExpr::FactorOp const& fo) {
-        if (!fo.factor.get());
         if (fo.factor->getType() == query::ValueFactor::AGGFUNC) {
             hasAgg = true;
         }

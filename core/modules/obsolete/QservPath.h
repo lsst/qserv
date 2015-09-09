@@ -36,7 +36,7 @@ class QservPath {
 public:
     enum RequestType {GARBAGE, CQUERY, UNKNOWN, OLDQ1, OLDQ2, RESULT};
 
-    QservPath() : _chunk(-1) {}
+    QservPath() : _requestType(UNKNOWN), _chunk(-1) {}
 
     explicit QservPath(std::string const& path);
 

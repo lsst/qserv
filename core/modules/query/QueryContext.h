@@ -59,7 +59,7 @@ class QueryContext {
 public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
-    QueryContext() {}
+    QueryContext() : chunkCount(0), needsMerge(false) {}
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive

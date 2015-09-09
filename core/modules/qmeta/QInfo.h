@@ -61,7 +61,7 @@ public:
     };
 
     /// Default constructor
-    QInfo() : _qType(ANY), _czarId(-1) {}
+    QInfo() : _qType(ANY), _qStatus(EXECUTING), _czarId(-1), _submitted(0), _completed(0), _returned(0) {}
 
     /**
      *  @brief Make new instance.

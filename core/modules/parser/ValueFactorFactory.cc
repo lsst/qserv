@@ -106,11 +106,9 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         throw std::logic_error("ValueFactorFactory missing _columnRefNodeMap");
     }
     std::shared_ptr<query::ValueFactor> vt;
-    int eType = a->getType();
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
     }
-    eType = a->getType();
     //LOGF_DEBUG("new ValueFactor: %1%" % tokenText(a));
     switch(a->getType()) {
     case SqlSQL2TokenTypes::COLUMN_REF:

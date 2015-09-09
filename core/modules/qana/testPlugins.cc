@@ -48,7 +48,7 @@ using lsst::qserv::query::TestFactory;
 
 
 struct TestFixture {
-    TestFixture(void) {
+    TestFixture(void) : metaSession(0) {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // FIXME

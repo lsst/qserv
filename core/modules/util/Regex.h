@@ -54,7 +54,7 @@ public:
     };
     class Iterator {
     public:
-        Iterator() : _regex(0), _position(-1) {}
+        Iterator() : _regex(0), _position(-1), _cursor(0) {}
         Iterator(regex_t* regex, std::string const& s)
             : _regex(regex), _s(s), _match(s) {
             setFirst();
@@ -72,6 +72,7 @@ public:
                 _position += _match.eo();
                 _cursor += _match.eo();
             }
+            return *this;
         }
         bool operator==(Iterator const& rhs) const {
             if(_position == -1) return _position == rhs._position;

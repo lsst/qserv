@@ -60,7 +60,7 @@ namespace sql {
 
 class SqlResultIter {
 public:
-    SqlResultIter() {}
+    SqlResultIter() : _columnCount(0) {}
     SqlResultIter(mysql::MySqlConfig const& sc, std::string const& query);
     virtual ~SqlResultIter() {}
     virtual SqlErrorObject& getErrorObject() { return _errObj; }

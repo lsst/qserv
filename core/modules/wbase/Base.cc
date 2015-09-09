@@ -117,9 +117,10 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
 // Note:
 // Not all Object partitions will have overlap tables created by the
 // partitioner.  Thus we need to create empty overlap tables to prevent
-// run-time errors.  The following command might be useful:
+// run-time errors.  The following command might be useful (put it on
+// a single line):
 //
-// echo "show tables in LSST;" | mysql --socket=/u1/local/mysql.sock  \
+// echo "show tables in LSST;" | mysql --socket=/u1/local/mysql.sock
 // | grep Object_ | sed 's/\(.*\)_\(.*\)/create table if not exists LSST.
 //
 

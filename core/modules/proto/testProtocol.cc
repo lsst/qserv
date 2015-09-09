@@ -50,7 +50,7 @@ namespace gio = google::protobuf::io;
 using namespace lsst::qserv;
 
 struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
-    ProtocolFixture(void) : FakeProtocolFixture() {}
+    ProtocolFixture(void) : FakeProtocolFixture(), counter(0) {}
     ~ProtocolFixture(void) {}
 
     bool compareTaskMsgs(lsst::qserv::proto::TaskMsg& t1, lsst::qserv::proto::TaskMsg& t2) {

@@ -66,7 +66,7 @@ public:
     struct FactorOp {
         explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_=NONE)
             : factor(factor_), op(op_) {}
-        FactorOp() {}
+        FactorOp() : op(NONE) {}
         std::shared_ptr<ValueFactor> factor;
         Op op;
     };

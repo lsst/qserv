@@ -54,8 +54,7 @@ namespace util {
 ////////////////////////////////////////////////////////////////////////
 class WorkQueue::Runner {
 public:
-    Runner(WorkQueue& w) : _w(w) {
-    }
+    Runner(WorkQueue& w) : _c(NULL), _w(w) {}
     void operator()() {
         _w.registerRunner(this);
         std::shared_ptr<Callable> c = _w.getNextCallable();
@@ -219,6 +218,7 @@ public:
     float _spinTime;
 };
 
+#if UNUSED
 void test() {
     using namespace std;
     lsst::qserv::util::WorkQueue wq(10);
@@ -226,5 +226,6 @@ void test() {
         wq.add(std::make_shared<MyCallable>(i, 0.2));
     }
 }
+#endif // UNUSED
 
 } // anonymous namespace

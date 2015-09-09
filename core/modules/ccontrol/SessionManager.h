@@ -36,6 +36,7 @@
 #define LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 
 // System headers
+#include <cassert>
 #include <mutex>
 
 namespace lsst {

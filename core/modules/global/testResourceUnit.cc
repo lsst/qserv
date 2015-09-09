@@ -35,7 +35,7 @@ namespace test = boost::test_tools;
 using lsst::qserv::ResourceUnit;
 
 struct Fixture {
-    Fixture() {}
+    Fixture() : dummy(0) {}
 
     int dummy;
     ~Fixture(void) {};

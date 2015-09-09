@@ -144,7 +144,7 @@ void UserQuery::kill() {
         _killed = true;
         try {
             _executive->squash();
-        } catch(UserQueryError e) {
+        } catch(UserQueryError const &e) {
             // Silence merger discarding errors, because this object is being
             // released. Client no longer cares about merger errors.
         }
@@ -266,7 +266,7 @@ void UserQuery::discard() {
     _qSession.reset();
     try {
         _discardMerger();
-    } catch(UserQueryError e) {
+    } catch(UserQueryError const &e) {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
@@ -277,7 +277,7 @@ void UserQuery::discard() {
 UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId)
     :  _messageStore(std::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _submitted(false), _sequence(0) {
+       _killed(false), _submitted(false), _sessionId(0), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
 

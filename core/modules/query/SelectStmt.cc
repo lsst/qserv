@@ -88,8 +88,7 @@ namespace query {
 // class SelectStmt
 ////////////////////////////////////////////////////////////////////////
 
-SelectStmt::SelectStmt() {
-}
+SelectStmt::SelectStmt() : _hasDistinct(false), _limit(0) {}
 
 QueryTemplate
 SelectStmt::getQueryTemplate() const {

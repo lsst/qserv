@@ -130,6 +130,7 @@ private:
 ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
     : _result(result),
       _useLargeRow(false),
+      _fieldOffset(0),
       _sep("\t"), _rowSep("\n") {
     // Defer actual row fetching until fetch() is called
     assert(result);

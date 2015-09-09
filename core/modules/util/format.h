@@ -101,6 +101,7 @@ public:
                     assert(0);
                 }
                 sp = ep = pos+1;
+                break;
 
             case '0':
             case '1':

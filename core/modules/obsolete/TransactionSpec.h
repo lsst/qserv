@@ -48,7 +48,7 @@ namespace qdisp {
 /// concerned.
 class TransactionSpec {
 public:
- TransactionSpec() : chunkId(-1) {}
+    TransactionSpec() : chunkId(-1), bufferSize(0) {}
     int chunkId;
     std::string path;
     std::string query;
