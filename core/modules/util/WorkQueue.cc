@@ -218,6 +218,7 @@ public:
     float _spinTime;
 };
 
+#if UNUSED
 void test() {
     using namespace std;
     lsst::qserv::util::WorkQueue wq(10);
@@ -225,5 +226,6 @@ void test() {
         wq.add(std::make_shared<MyCallable>(i, 0.2));
     }
 }
+#endif // UNUSED
 
 } // anonymous namespace

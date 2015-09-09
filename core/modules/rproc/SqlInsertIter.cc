@@ -68,6 +68,7 @@ boost::regex makeNullInsertRegex(std::string const& tableName) {
 }
 
 // Helpful debugging
+#if UNUSED
 void printInserts(char const* buf, off_t bufSize,
                   std::string const& tableName)  {
     for(lsst::qserv::rproc::SqlInsertIter i(buf, bufSize, tableName, true);
@@ -83,6 +84,7 @@ void printInserts(char const* buf, off_t bufSize,
         std::cout << "\n";
     }
 }
+#endif // UNUSED
 
 } // anonymous namespace
 

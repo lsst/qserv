@@ -57,10 +57,6 @@ static const char* settings[settingsCount][4] = {
 };
 
 // Validator code /////////////////////////////////////////////////////
-bool isExecutable(std::string const& execFile) {
-    return 0 == ::access(execFile.c_str(), X_OK);
-}
-
 std::string validateMysql(Config const& c) {
     // Check config
     MySqlConfig sc;
