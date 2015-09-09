@@ -60,8 +60,6 @@ using lsst::qserv::query::Constraint;
 using lsst::qserv::query::ConstraintVec;
 using lsst::qserv::query::ConstraintVector;
 
-namespace {
-
 /**
 * @brief Prepare the query session used to process SQL queries
 * issued from MySQL client.
@@ -103,8 +101,6 @@ std::string buildFirstParallelQuery(QuerySession& qs, bool withSubChunks=true) {
     ChunkQuerySpec& first = *i;
     return first.queries[0];
 }
-
-} // anonymous namespace
 
 /** @brief control consistency of Qserv internal queries
  *

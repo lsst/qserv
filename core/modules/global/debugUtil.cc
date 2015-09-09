@@ -25,6 +25,7 @@
 #include "global/debugUtil.h"
 
 // System headers
+#include <cerrno>
 #include <sstream>
 #include <unistd.h>
 
