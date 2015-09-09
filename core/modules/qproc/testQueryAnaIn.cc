@@ -32,65 +32,68 @@
   */
 
 // System headers
+#include <memory>
 #include <string>
+#include <vector>
 
 // Third-party headers
 
 // Boost unit test header
-#define BOOST_TEST_MODULE QueryAnaAggregation
+#define BOOST_TEST_MODULE QueryAnaIn
 #include "boost/test/included/unit_test.hpp"
 
 // LSST headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qproc/QuerySession.h"
+#include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
-#include "query/SelectStmt.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::SelectStmt;
+using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::tests::QueryAnaFixture;
 
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
-BOOST_FIXTURE_TEST_SUITE(Aggregate, QueryAnaFixture)
+BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
-BOOST_AUTO_TEST_CASE(Aggregate) {
-    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-    std::string expPar = "SELECT sum(pm_declErr) AS QS1_SUM,chunkId,COUNT(bMagF2) AS QS2_COUNT,SUM(bMagF2) AS QS3_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId";
-
-    queryAnaHelper.buildQuerySession(qsTest,stmt);
-    auto& qs = queryAnaHelper.querySession;
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
-
-    BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
-    BOOST_CHECK(context->hasChunks());
-    BOOST_CHECK(!context->hasSubChunks());
-    BOOST_REQUIRE(ss.hasGroupBy());
-
-    std::string parallel = queryAnaHelper.buildFirstParallelQuery();
-    BOOST_CHECK_EQUAL(expPar, parallel);
-}
-
-BOOST_AUTO_TEST_CASE(Avg) {
-    std::string stmt = "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
-    std::string expPar = "SELECT chunkId,COUNT(bMagF2) AS QS1_COUNT,SUM(bMagF2) AS QS2_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0";
-
+BOOST_AUTO_TEST_CASE(SecondaryIndex) {
+    std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                  params, params+6);
+}
+BOOST_AUTO_TEST_CASE(CountIn) {
+    std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::string expectedParallel = "SELECT COUNT(*) AS QS1_COUNT FROM LSST.Source_100 AS QST_1_ "
+                                   "WHERE objectId IN(386950783579546,386942193651348)";
+    std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS N";
+    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+    BOOST_CHECK_EQUAL(queries[0], expectedParallel);
+    BOOST_CHECK_EQUAL(queries[1], expectedMerge);
+    for(QuerySession::Iter i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
+        i != e; ++i) {
+        ChunkQuerySpec& cs = *i;
+        LOGF_INFO("Chunk spec: %1%" % cs);
+    }
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(context->hasChunks());
-    BOOST_CHECK(!context->hasSubChunks());
-
-    std::string parallel = queryAnaHelper.buildFirstParallelQuery();
-    BOOST_CHECK_EQUAL(expPar, parallel);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

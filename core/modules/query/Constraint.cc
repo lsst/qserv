@@ -35,16 +35,17 @@
 #include <iostream>
 #include <iterator>
 
+// Qserv header
+#include "util/IterableFormatter.h"
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
 std::ostream& operator<<(std::ostream& os, Constraint const& c) {
-    os << "Constraint "
-       << c.name << ": (";
-    std::copy(c.params.begin(), c.params.end(),
-              std::ostream_iterator<std::string>(os, ","));
-    os << ")";
+    os << "Constraint("
+       << "name=" << c.name << ", "
+       << "params=" << util::printable(c.params) << ")";
     return os;
 }
 

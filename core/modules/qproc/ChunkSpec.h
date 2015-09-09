@@ -61,7 +61,6 @@ public:
     /// Subchunks of interest; empty indicates all subchunks are involved.
     Int32Vector subChunks;
 
-    void addSubChunk(int s) { subChunks.push_back(s); }
     bool shouldSplit() const;
 
     /// @return the intersection with the chunk.

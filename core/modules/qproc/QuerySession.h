@@ -94,7 +94,6 @@ public:
 
     std::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
-    void addChunk(ChunkSpecVector const& cs);
     void setDummy();
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
@@ -145,6 +144,15 @@ public:
     explicit QuerySession(Test& t); ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
+    /**
+     *  Print query session to stream.
+     *
+     *  Used for debugging
+     *
+     *  @params out:    stream to update
+     */
+    void print(std::ostream& out) const;
+
 private:
     typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
 
@@ -154,7 +162,6 @@ private:
     void _applyLogicPlugins();
     void _generateConcrete();
     void _applyConcretePlugins();
-    std::string toString(); // Debug
 
     // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
@@ -205,8 +212,16 @@ private:
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
 
-    static LOG_LOGGER _logger;
 };
+
+/**
+ *  Output operator for QuerySession
+ *
+ *  @param out
+ *  @param querySession
+ *  @return an output stream, with no newline at the end
+ */
+std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
 class QuerySession::Iter : public boost::iterator_facade <
@@ -219,10 +234,10 @@ private:
     friend class QuerySession;
     friend class boost::iterator_core_access;
 
-    void increment() { ++_pos; _dirty = true; }
+    void increment() { ++_chunkSpecsIter; _dirty = true; }
 
     bool equal(Iter const& other) const {
-        return (this->_qs == other._qs) && (this->_pos == other._pos);
+        return (this->_qs == other._qs) && (this->_chunkSpecsIter == other._chunkSpecsIter);
     }
 
     ChunkQuerySpec& dereference() const;
@@ -237,7 +252,7 @@ private:
     std::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
 
     QuerySession* _qs;
-    ChunkSpecVector::const_iterator _pos;
+    ChunkSpecVector::const_iterator _chunkSpecsIter;
     bool _hasChunks;
     bool _hasSubChunks;
     mutable ChunkQuerySpec _cache; ///< Query generation cache

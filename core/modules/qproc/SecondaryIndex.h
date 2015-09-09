@@ -43,16 +43,22 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-/// SecondaryIndex handles lookups into a secondary index. Only one instance of
-/// this is necessary: all user queries can share a single instance.
+/**
+ *  SecondaryIndex handles lookups into Qserv secondary index.
+ *
+ *  Only one instance of this is necessary: all user queries
+ *  can share a single instance.
+ */
 class SecondaryIndex {
 public:
     explicit SecondaryIndex(mysql::MySqlConfig const& c);
     explicit SecondaryIndex(int); // Construct a fake instance
 
-    /// Lookup an index constraint. If no index constraint exists,
-    /// throw a NoIndexConstraint exception.
-    /// Index constraints are combined with OR.
+    /** Lookup an index constraint.
+     *
+     *  If no index constraint exists, throw a NoIndexConstraint exception.
+     *  Index constraints are combined with OR.
+     */
     ChunkSpecVector lookup(query::ConstraintVector const& cv);
 
     class NoIndexConstraint : public std::invalid_argument {

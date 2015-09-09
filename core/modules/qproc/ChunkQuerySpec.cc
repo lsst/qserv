@@ -37,6 +37,9 @@
 #include <iostream>
 #include <iterator>
 
+// Qserv headers
+#include "util/IterableFormatter.h"
+
 namespace lsst {
 namespace qserv {
 namespace qproc {
@@ -45,23 +48,16 @@ namespace qproc {
 // class ChunkQuerySpec
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
-    os << "ChunkQuerySpec(db=" << c.db << " chunkId=" << c.chunkId
-       << "sTables=";
-    std::copy(c.subChunkTables.begin(), c.subChunkTables.end(),
-              std::ostream_iterator<std::string>(os, ","));
-    os << " : ";
+
     for(ChunkQuerySpec const* frag = &c;
         frag != NULL;
         frag = frag->nextFragment.get()) {
-        os << "[q=";
-        std::copy(frag->queries.begin(), frag->queries.end(),
-                  std::ostream_iterator<std::string>(os, ","));
-        os << " sIds=";
-        std::copy(frag->subChunkIds.begin(), frag->subChunkIds.end(),
-                  std::ostream_iterator<int>(os, ","));
-        os << "] ";
+        os << "ChunkQuerySpec(db=" << frag->db << ", chunkId=" << frag->chunkId << ", ";
+        os << "sTables=" << util::printable(frag->subChunkTables) << ", ";
+        os << "queries=" << util::printable(frag->queries) << ", ";
+        os << "subChunkIds=" << util::printable(frag->subChunkIds);
+        os << ")";
     }
-    os << ")";
     return os;
 }
 

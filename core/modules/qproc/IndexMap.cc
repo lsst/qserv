@@ -43,6 +43,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
+#include "lsst/log/Log.h"
 #include "sg/Chunker.h"
 
 // Qserv headers
@@ -53,6 +54,7 @@
 #include "qproc/QueryProcessingError.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/Constraint.h"
+#include "util/IterableFormatter.h"
 
 using lsst::qserv::StringVector;
 using lsst::sg::Region;
@@ -63,6 +65,13 @@ using lsst::sg::ConvexPolygon;
 using lsst::sg::SubChunks;
 
 typedef std::vector<SubChunks> SubChunksVector;
+
+namespace {
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.IndexMap");
+    return logger;
+}
+}
 
 namespace { // File-scope helpers
 template <typename T>
@@ -115,6 +124,7 @@ static FuncMap funcMap;
 std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
     FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
     if(i != funcMap.fMap.end()) {
+        LOGF(getLogger(), LOG_LVL_TRACE, "Region for %1%: %2%" % c % i->first);
         return i->second(c.params);
     }
     return std::shared_ptr<Region>();
@@ -215,6 +225,7 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     bool hasRegion = true;
     try {
         indexSpecs = _si->lookup(cv);
+        LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::printable(indexSpecs));
     } catch(SecondaryIndex::NoIndexConstraint& e) {
         hasIndex = false; // Ok if no index constraints
     }

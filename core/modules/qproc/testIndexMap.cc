@@ -86,10 +86,25 @@ BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
     ConstraintVector cv;
-    char const* argv[3] = {"111", "112","113"};
-    cv.push_back(makeConstraint("sIndex", 3, argv));
+    int const size = 3;
+    char const* argv[size] = {"111", "112","113"};
+    cv.push_back(makeConstraint("sIndex", size, argv));
 
     ChunkSpecVector csv = si.lookup(cv);
+
+    std::cout << "SecLookup\n";
+    std::copy(csv.begin(), csv.end(),
+              std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
+}
+
+BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectId) {
+    ConstraintVector cv;
+    int const size=5;
+    char const* argv[size] = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
+    cv.push_back(makeConstraint("sIndex", size, argv));
+
+    ChunkSpecVector csv = si.lookup(cv);
+    std::cout << "SecLookupMultipleObjectId\n";
     std::copy(csv.begin(), csv.end(),
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }

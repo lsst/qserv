@@ -34,7 +34,6 @@ p = env.Program(["testQDisp.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
 # add a unit test which runs on every build
-utest = env.UnitTest(p)
 env.Append(UNIT_TESTS=map(env.UnitTest, programs))
 
 Return('programs')
