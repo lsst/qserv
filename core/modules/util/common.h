@@ -117,7 +117,7 @@ std::string prettyCharList(C const& c) {
  * the begging and end of the list.
  */
 template <typename C>
-std::string prettyCharList(C const& c, uint edge) {
+std::string prettyCharList(C const& c, unsigned int edge) {
     std::ostringstream os;
     auto sz = c.size();
     os << "[";
@@ -147,10 +147,10 @@ std::string prettyCharList(C const& c, uint edge) {
 }
 
 template <typename C>
-std::string prettyCharBuf(C* c, uint bufLen, uint edge) {
+std::string prettyCharBuf(C* c, unsigned int bufLen, unsigned int edge) {
     std::ostringstream os;
     os << "[";
-    uint j;
+    unsigned int j;
     for(j = 0; j < bufLen && j < edge; ++j) {
         auto val = static_cast<int>(c[j]);
         os << "[" << j << "]=" << val;
