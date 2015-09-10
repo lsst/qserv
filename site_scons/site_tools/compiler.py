@@ -26,8 +26,10 @@ def _guess_cxx(context):
     """
 
     # borrowed from sconsUtils, list of version strings and their matching compiler
+    # Note the non-capturing parentheses in these regexes to ensure that they all only
+    # have a single capture group for the version detection.
     version_strings = (
-        (r"g(?:\+\+|cc)+(-[0-9.]+| )+\(.+\) +([0-9.a-zA-Z]+)", "gcc"),
+        (r"g(?:\+\+|cc)+(?:-[0-9.]+| )+\(.+\) +([0-9.a-zA-Z]+)", "gcc"),
         (r"LLVM +version +([0-9.a-zA-Z]+) ", "clang"), # clang on Mac
         (r"clang +version +([^ ]+) ", "clang"), # clang on linux
         (r"\(ICC\) +([0-9.a-zA-Z]+) ", "icc"),
@@ -48,7 +50,7 @@ def _guess_cxx(context):
         match = re.search(re_str, output)
         if match:
             toolchain = compiler_name
-            version = match.group(2)
+            version = match.group(1)
             break
 
     # take two first pieces of the version
