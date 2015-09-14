@@ -57,7 +57,7 @@ class JobQuery;
 class QueryResource : public XrdSsiService::Resource {
 public:
     typedef std::shared_ptr<QueryResource> Ptr;
-    QueryResource(std::shared_ptr<JobQuery> jobQuery);
+    QueryResource(std::shared_ptr<JobQuery> const& jobQuery);
 
     virtual ~QueryResource();
 
@@ -65,6 +65,7 @@ public:
     const char* eInfoGet(int &code);
 
     std::shared_ptr<JobQuery> getJobQuery() { return _jobQuery; }
+    bool getCancelled();
 
     friend class QueryResourceDebug;
 

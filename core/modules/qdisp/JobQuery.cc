@@ -22,6 +22,7 @@
  */
 
 // System headers
+#include <sstream>
 
 // Third-party headers
 
@@ -40,10 +41,12 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+namespace {
 void logErr(std::string const& msg, JobQuery* jq) {
     std::ostringstream os;
     os << msg << " " << *jq;
     LOGF_ERROR("%1%" % os.str());
+}
 }
 
 /** Attempt to run the job on a worker.
@@ -58,17 +61,12 @@ bool JobQuery::runJob() {
     bool cancelled = _executive->getCancelled();
     bool handlerReset = _jobDescription.respHandler()->reset();
     if (!cancelled && handlerReset) {
-        Ptr thisPtr = _weakThis.lock();
-        if (!thisPtr) {
-            logErr("runJob() _weakThis was null!", this);
-            return false;
-        }
         {
-            QueryResource::Ptr qr = std::make_shared<QueryResource>(thisPtr);
+            auto qr = std::make_shared<QueryResource>(shared_from_this());
             std::lock_guard<std::recursive_mutex> lock(_rmutex);
             if (shouldRetry()) {
                 ++_attemptsToRun;
-                if (_executive == NULL) {
+                if (_executive == nullptr) {
                     logErr("JobQuery couldn't run job as executive is NULL", this);
                     return false;
                 }
@@ -79,7 +77,7 @@ bool JobQuery::runJob() {
             }
         }
         _jobStatus->updateInfo(JobStatus::PROVISION);
-        _executive->_xrdSsiService->Provision(_queryResourcePtr.get());
+        _executive->getXrdSsiService()->Provision(_queryResourcePtr.get());
         return true;
     } else {
         std::ostringstream os;
@@ -102,7 +100,9 @@ bool JobQuery::cancel() {
     std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
     if (_cancelled.set(true) == false) {
         // Nothing needs to be done for _queryResourcePtr.
-        _queryRequestPtr->cancel();
+        if (_queryRequestPtr) {
+            _queryRequestPtr->cancel();
+        }
         _jobDescription.respHandler()->processCancel();
         return true;
     }

@@ -47,19 +47,18 @@ class QueryRequest;
 /** This class is used to describe, monitor, and control a single query to a worker.
  *
  */
-class JobQuery {
+class JobQuery : public std::enable_shared_from_this<JobQuery> {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
-    // Make a copy of the job description.
+
+    // Make a copy of the job description. JobQuery::setup() must be called after creation.
     JobQuery(Executive* executive, JobDescription const& jobDescription,
-             JobStatus::Ptr jobStatus, std::shared_ptr<MarkCompleteFunc> markCompleteFunc) :
+        JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
         _executive(executive), _jobDescription(jobDescription),
         _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
         _attemptsToRun(0), _cancelled(false) {}
-
-    void setupWeakThis(Ptr jobQuery) {
-        _weakThis = jobQuery;
-        _jobDescription.respHandler()->setJobQuery(jobQuery);
+    void setup() {
+        _jobDescription.respHandler()->setJobQuery(shared_from_this());
     }
 
     virtual ~JobQuery() {
@@ -100,7 +99,6 @@ protected:
     Executive* _executive;
     JobDescription _jobDescription;
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
-    std::weak_ptr<JobQuery> _weakThis; ///< Connection to the shared_ptr for this object.
 
     // JobStatus has its own mutex.
     JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap

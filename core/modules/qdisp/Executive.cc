@@ -126,16 +126,15 @@ Executive::~Executive() {
  */
 void Executive::add(JobDescription const& jobDesc) {
     LOGF_DEBUG("Executive::add(%1%)" % jobDesc.toString());
-    bool alreadyCancelled = _cancelled.get();
-    if(alreadyCancelled) {
+    if(_cancelled) {
         LOGF(getLogger(), LOG_LVL_INFO, "Executive already cancelled, ignoring add(%1%)" % jobDesc.id());
         return;
     }
     // Create the JobQuery and put it in the map.
     JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
     MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-    JobQuery::Ptr jobQuery(new JobQuery(this, jobDesc, jobStatus, mcf));
-    jobQuery->setupWeakThis(jobQuery);
+    JobQuery::Ptr jobQuery = std::make_shared<JobQuery>(this, jobDesc, jobStatus, mcf);
+    jobQuery->setup();
     if(!_addJobToMap(jobQuery)) {
         LOGF_ERROR("Executive ignoring duplicate job add(%1%)" % jobQuery->getId());
         return;
@@ -159,7 +158,7 @@ void Executive::add(JobDescription const& jobDesc) {
 /** Add a JobQuery to this Executive.
  * Return true if it was successfully added to the map.
  */
-bool Executive::_addJobToMap(JobQuery::Ptr job) {
+bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     int jobId = job->getId();
     if (_jobMap.find(jobId) != _jobMap.end()) {
         return false;
@@ -253,7 +252,7 @@ void Executive::requestSquash(int jobId) {
 }
 
 void Executive::squash() {
-    bool alreadyCancelled = _cancelled.set(true);
+    bool alreadyCancelled = _cancelled.exchange(true);
     if(alreadyCancelled) {
         LOGF_WARN("Executive::squash() already cancelled! refusing.");
         return;
@@ -337,7 +336,7 @@ void Executive::_setup() {
   *  @return true if (jobId,r) was added to _requesters
   *          false if this entry was previously in the map
   */
-bool Executive::_track(int jobId, std::shared_ptr<JobQuery> r) {
+bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
     LOGF(getLogger(), LOG_LVL_TRACE, "Attempt to add jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
     {
@@ -471,6 +470,15 @@ std::string JobDescription::toString() const {
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
     os << jd.toString();
     return os;
+}
+
+JobQuery::Ptr Executive::getJobQuery(int jobId) {
+    qdisp::JobQuery::Ptr job;
+    auto i = _jobMap.find(jobId);
+    if (i != _jobMap.end()) {
+        job = i->second;
+    }
+    return job;
 }
 
 }}} // namespace lsst::qserv::qdisp

@@ -54,7 +54,7 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setJobQuery(std::shared_ptr<JobQuery> jobQuery) { _jobQuery = jobQuery; }
+    void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
     virtual ~ResponseHandler() {}
 
     /// @return a char vector to receive the next message. The vector

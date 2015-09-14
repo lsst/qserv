@@ -206,7 +206,8 @@ void UserQuery::submit() {
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
         int refNum = ++_sequence;
-        qdisp::JobDescription jobDesc(refNum, ru, ss.str(), std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+        qdisp::JobDescription jobDesc(refNum, ru, ss.str(),
+            std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
         _executive->add(jobDesc);
     }
 

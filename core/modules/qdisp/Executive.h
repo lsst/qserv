@@ -27,6 +27,7 @@
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
 // System headers
+#include <atomic>
 #include <mutex>
 #include <sstream>
 #include <vector>
@@ -55,8 +56,8 @@ class QueryResource;
  */
 class JobDescription {
 public:
-    JobDescription(int id, ResourceUnit resource, std::string payload,
-        std::shared_ptr<ResponseHandler> respHandler)
+    JobDescription(int id, ResourceUnit const& resource, std::string const& payload,
+        std::shared_ptr<ResponseHandler> const& respHandler)
         : _id(id), _resource(resource), _payload(payload), _respHandler(respHandler) {};
 
     int id() const { return _id; }
@@ -122,16 +123,18 @@ public:
     std::string getProgressDesc() const;
 
     /// @return true if cancelled
-    bool getCancelled() { return _cancelled.get(); }
+    bool getCancelled() { return _cancelled; }
+
+    XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
+
+    std::shared_ptr<JobQuery> getJobQuery(int id);
 
 private:
-    friend class JobQuery;
-
     void _setup();
 
-    bool _track(int refNum, std::shared_ptr<JobQuery> r);
+    bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
-    bool _addJobToMap(std::shared_ptr<JobQuery> job);
+    bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
 
@@ -153,7 +156,7 @@ private:
     util::MultiError _multiError;
 
     int _requestCount; ///< Count of submitted tasks
-    util::Flag<bool> _cancelled; ///< Has execution been cancelled?
+    std::atomic<bool> _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
     std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
@@ -174,6 +177,7 @@ public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;
 
     MarkCompleteFunc(Executive* e, int jobId) : _executive(e), _jobId(jobId) {}
+    virtual ~MarkCompleteFunc() {}
 
     virtual void operator()(bool success) {
         if (_executive) {

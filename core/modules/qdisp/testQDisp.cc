@@ -92,10 +92,10 @@ public:
             XrdSsiSession* xsSession, bool createQueryRequest) {
         qdisp::JobStatus::Ptr status(new qdisp::JobStatus());
         std::shared_ptr<JobQueryTest> jqTest(new JobQueryTest(executive, jobDesc, status, markCompleteFunc));
-        jqTest->setupWeakThis(jqTest);
+        jqTest->setup();
         if (createQueryResource) {
-                    jqTest->_queryResourcePtr.reset(new qdisp::QueryResource(jqTest));
-                }
+            jqTest->_queryResourcePtr.reset(new qdisp::QueryResource(jqTest));
+        }
         if (createQueryRequest) {
             jqTest->_queryRequestPtr.reset(new qdisp::QueryRequest(xsSession, jqTest));
         }
@@ -103,25 +103,27 @@ public:
     }
 };
 
+
+
 /** Simple functor for testing _finishfunc.
  */
 class FinishTest : public qdisp::MarkCompleteFunc {
 public:
     typedef std::shared_ptr<FinishTest> Ptr;
-    FinishTest() : MarkCompleteFunc(0, -1), _finishCalled(false) {}
+    FinishTest() : MarkCompleteFunc(0, -1), finishCalled(false){}
     virtual ~FinishTest() {}
     virtual void operator()(bool val) {
-        _finishCalled = true;
-        LOGF_INFO("_finishCalled=%1%" % _finishCalled);
+        finishCalled = true;
+        LOGF_INFO("_finishCalled=%1%" % finishCalled);
     }
-    bool _finishCalled;
+    bool finishCalled;
 };
 
 /** Simple ResponseHandler for testing.
  */
 class ResponseHandlerTest : public qdisp::ResponseHandler {
 public:
-    ResponseHandlerTest() : _code(0), _finished(false) {}
+    ResponseHandlerTest() : _code(0), _finished(false), _processCancelCalled(false) {}
     virtual std::vector<char>& nextBuffer() {
         return _vect;
     }
@@ -144,11 +146,16 @@ public:
     virtual std::ostream& print(std::ostream& os) const {
         return os;
     }
+    virtual void processCancel() {
+        _processCancelCalled = true;
+    }
+
     static int magic() {return 8;}
     std::vector<char> _vect;
     std::string _msg;
     int _code;
     bool _finished;
+    bool _processCancelCalled;
 };
 
 /** Add dummy requests to an executive corresponding to the requesters
@@ -158,6 +165,7 @@ void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string 
     int copies = rv.size();
     std::vector<std::shared_ptr<qdisp::JobDescription>> s(copies);
     for(int j=0; j < copies; ++j) {
+        // The job copies the JobDescription.
         qdisp::JobDescription job(sequence.incr(),
                 ru,        // dummy
                 millisecs, // Request = stringified milliseconds
@@ -334,27 +342,26 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     int magicErrNum = 5678;
     rInfo.rType = XrdSsiRespInfo::isError;
     rInfo.eNum = magicErrNum;
-    finishTest->_finishCalled = false;
-    LOGF_INFO("*** a");
+    finishTest->finishCalled = false;
     qrq->ProcessResponse(rInfo, true);
     LOGF_INFO("respReq->_code=%1%" % respReq->_code);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESPONSE_ERROR);
     BOOST_CHECK(respReq->_code == magicErrNum);
-    BOOST_CHECK(finishTest->_finishCalled);
+    BOOST_CHECK(finishTest->finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 3");
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
     qrq = jqTest->getQueryRequest();
     rInfo.rType = XrdSsiRespInfo::isStream;
-    finishTest->_finishCalled = false;
+    finishTest->finishCalled = false;
     qrq->ProcessResponse(rInfo, true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESPONSE_DATA_ERROR_CORRUPT);
-    BOOST_CHECK(finishTest->_finishCalled);
+    BOOST_CHECK(finishTest->finishCalled);
     // The success case for ProcessResponse is probably best tested with integration testing.
     // Getting it work in a unit test requires replacing inline bool XrdSsiRequest::GetResponseData
     // or coding around that function call for the test. Failure of the path will have high visibility.
     LOGF_INFO("QueryRequest::ProcessResponseData test 1");
-    finishTest->_finishCalled = false;
+    finishTest->finishCalled = false;
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
     qrq = jqTest->getQueryRequest();
     const char* ts="abcdefghijklmnop";
@@ -362,148 +369,82 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     strcpy(dataBuf, ts);
     qrq->ProcessResponseData(dataBuf, -7, true); // qrq deleted
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESPONSE_DATA_NACK);
-    BOOST_CHECK(finishTest->_finishCalled);
+    BOOST_CHECK(finishTest->finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponseData test 2");
-    finishTest->_finishCalled = false;
+    finishTest->finishCalled = false;
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic()+1, true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::MERGE_ERROR);
-    BOOST_CHECK(finishTest->_finishCalled);
+    BOOST_CHECK(finishTest->finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponseData test 3");
-    finishTest->_finishCalled = false;
+    finishTest->finishCalled = false;
     jqTest->retryCalled = false;
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic(), true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::COMPLETE);
-    BOOST_CHECK(finishTest->_finishCalled);
+    BOOST_CHECK(finishTest->finishCalled);
     BOOST_CHECK(!jqTest->retryCalled);
 }
 
 BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
-    LOGF_INFO("Check that Executive::cancel() can only be called once"); // &&& make test
-    LOGF_INFO("Check that JobQuery::cancel() can only be called once"); // &&& make test
-}
-
-/* &&& JobQuery tests to make
- * jobs added to _jobMap and started
-*/
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE(Squash)
-
-/* &&& delete
-class CancellableRequester : public qdisp::ResponseHandler {
-public:
-    using ResponseHandler::CancelFunc;
-
-    typedef std::shared_ptr<CancellableRequester> Ptr;
-    CancellableRequester()
-        : _cancelCalls(0) {
-        reset();
+    // Test that all JobQueries are cancelled.
+    LOGF_INFO("Check that executive squash");
+    std::string str = qdisp::Executive::Config::getMockStr();
+    // Setup Executive and JobQueryTest child
+    qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
+    std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
+    qdisp::Executive ex(conf, ms);
+    int chunkId = 14;
+    int first = 1;
+    int last = 20;
+    std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
+    std::shared_ptr<rproc::InfileMerger> infileMerger;
+    std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
+    ResourceUnit ru;
+    std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
+    qdisp::JobQuery::Ptr jq;
+    for (int jobId=first; jobId<=last; ++jobId) {
+        qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
+        ex.add(jobDesc);
+        jq = ex.getJobQuery(jobId);
+        auto qRequest = jq->getQueryRequest();
+        BOOST_CHECK(jq->getCancelled() == false);
     }
-    virtual ~CancellableRequester() {}
-
-    virtual std::vector<char>& nextBuffer() {
-        return _buffer;
-    }
-
-    virtual bool flush(int bLen, bool& last) {
-        _flushedBytes += bLen;
-        if(_receivedLast) {
-            throw std::runtime_error("Duplicate last");
-        }
-        _receivedLast = last;
-        return true;
-    }
-    virtual void errorFlush(std::string const& msg, int code) {
-        _lastError = Error(code, msg);
-    }
-
-    virtual bool finished() const { return false; }
-    virtual bool reset() {
-        _flushedBytes = 0;
-        _receivedLast = false;
-        _lastError = Error();
-        return true;
-    }
-
-    virtual std::ostream& print(std::ostream& os) const {
-        return os << "CancellableRequester";
-    }
-
-    virtual Error getError() const { return _lastError; }
-
-    virtual void registerCancel(std::shared_ptr<CancelFunc> cancelFunc) {
-        throw std::runtime_error("Unexpected registerCancel() call");
-    }
-
-    virtual void cancel() { _cancelCalls += 1; }
-    virtual bool cancelled() { return _cancelCalls > 0; }
-
-    // Leave "public" to allow test checking.
-    std::vector<char> _buffer;
-    int _flushedBytes;
-    bool _receivedLast;
-    int _cancelCalls;
-    Error _lastError;
-};
-*/
-
-BOOST_AUTO_TEST_CASE(ExecutiveSquash) {
-// &&& make test for JobQuery cancel
-// &&& make test for executive squash
-/* &&& delete
-    qdisp::Executive ex(std::make_shared<qdisp::Executive::Config>(0,0),
-                        std::make_shared<qdisp::MessageStore>());
-    SequentialInt sequence(0);
-    SequentialInt chunkId(1234);
-    int jobs = 0;
-    const int CHUNK_COUNT=4;
-
-    int millisInt = 200;
-    std::string millis(boost::lexical_cast<std::string>(millisInt));
-    jobs += CHUNK_COUNT;
-    RequesterVector rv;
-    for (int j=0; j < CHUNK_COUNT; ++j) {
-        rv.push_back(std::make_shared<CancellableRequester>());
-    }
-    addFakeRequests(ex, sequence, millis, rv);
-    LOGF_INFO("jobs=%1%" % jobs);
-    ex.requestSquash(2); // Squash one of the items.
-    ex.join();
-    BOOST_CHECK(ex.getEmpty() == true);
-    // See if the requesters got the cancellation message.
-    int rCancels = 0;
-    for (int j=0; j < CHUNK_COUNT; ++j) {
-        int c = dynamic_cast<CancellableRequester*>(rv[j].get())->_cancelCalls;
-        if (c > 0) { ++rCancels; }
-    }
-    BOOST_CHECK_EQUAL(rCancels, 1);
-
-    for (int j=0; j < CHUNK_COUNT; ++j) { // Reset rv
-        rv[j] = std::make_shared<CancellableRequester>();
-    }
-    addFakeRequests(ex, sequence, millis, rv);
-    LOGF_INFO("jobs=%1%" % jobs);
     ex.squash();
-    ex.join();
-    BOOST_CHECK(ex.getEmpty() == true);
-    // See if the requesters got the cancellation message.
-    rCancels = 0;
-    for (int j=0; j < CHUNK_COUNT; ++j) {
-        int c = dynamic_cast<CancellableRequester*>(rv[j].get())->_cancelCalls;
-        if (c > 0) { ++rCancels; }
+    ex.squash(); // check that squashing twice doesn't cause issues.
+    for (int jobId=first; jobId<=last; ++jobId) {
+        jq = ex.getJobQuery(jobId);
+        BOOST_CHECK(jq->getCancelled() == true);
     }
-    BOOST_CHECK_EQUAL(rCancels, 4);
-*/
+    ex.join(); // XrdSsiMock doesn't pay attention to cancel, need to wait for all to finish.
+
+    LOGF_INFO("Check that QueryResource and QueryRequest detect the cancellation of a job.");
+    std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
+    int jobId = 7;
+    respReq = std::make_shared<ResponseHandlerTest>();
+    qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
+    char buf[20];
+    strcpy(buf, "sessionMock");
+    qdisp::XrdSsiSessionMock sessionMock(buf);
+    qdisp::JobQuery::Ptr jqTest =
+        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, true, &sessionMock, true);
+    auto resource = jqTest->getQueryResource();
+    auto request = jqTest->getQueryRequest();
+    BOOST_CHECK(resource->getCancelled() == false);
+    BOOST_CHECK(request->getCancelled() == false);
+    BOOST_CHECK(respReq->_processCancelCalled == false);
+    jqTest->cancel();
+    BOOST_CHECK(resource->getCancelled() == true);
+    BOOST_CHECK(request->getCancelled() == true);
+    BOOST_CHECK(respReq->_processCancelCalled == true);
+
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
+
 
 

@@ -94,10 +94,7 @@ void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
     JobStatus::Ptr status = QueryResourceDebug::getStatus(*qr);
     status->updateInfo(JobStatus::RESPONSE_DONE);
-    QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()
-    // qr->ProvisionDone would normally cause qr to commit suicide, but that requires
-    // a session object. Instead, take care of deletion ourselves.
-    // delete qr; // &&& now deleted by shared pointer in JobQuery
+    QueryResourceDebug::finish(*qr);
 }
 
 }}} // namespace

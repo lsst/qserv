@@ -52,7 +52,7 @@ public:
         : std::exception(),
           s("BadResponseError:" + s_) {}
     virtual ~BadResponseError() throw() {}
-    virtual char const* what() throw() {
+    virtual const char* what() throw() {
         return s.c_str();
     }
     std::string s;
@@ -115,13 +115,12 @@ public:
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
     void cancel();
-    bool cancelled();
+    bool getCancelled();
 
-    void cleanup(); // Must be called when this object is no longer needed.
+    void cleanup(); ///< Must be called when this object is no longer needed.
 
 private:
     void _callMarkComplete(bool success);
-
     bool _importStream();
     bool _importError(std::string const& msg, int code);
     void _errorFinish(bool shouldCancel=false);
@@ -129,21 +128,15 @@ private:
 
     XrdSsiSession* _session;
 
-    //std::string _payload; ///< Request buffer  &&& delete ????
+    std::shared_ptr<JobQuery> _jobQuery; ///< Job information.
+    JobDescription& _jobDesc; ///< Convenience reference to JobDescription inside _jobQuery.
 
-    /// Job information.
-    std::shared_ptr<JobQuery> _jobQuery;
-
-    // Job description
-    JobDescription& _jobDesc; // not owned by this object, do not delete.
-
-    // Protect against multiple retries of _jobQuery from a single QueryRequest.
-    util::Flag<bool> _retried;
-    // Protect against multiple calls to MarkCompleteFunc from a single QueryRequest.
-    util::Flag<bool> _calledMarkComplete;
+    util::Flag<bool> _retried; ///< Protect against multiple retries of _jobQuery from a single QueryRequest.
+    util::Flag<bool> _calledMarkComplete; ///< Protect against multiple calls to MarkCompleteFunc
+                                          /// from a single QueryRequest.
 
     std::mutex _finishStatusMutex;
-    enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus; // _finishStatusMutex
+    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus; // _finishStatusMutex
     bool _cancelled; ///< true if cancelled, protected by _finishStatusMutex.
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.

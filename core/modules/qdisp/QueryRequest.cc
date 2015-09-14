@@ -89,22 +89,18 @@ void QueryRequest::RelRequestBuffer() {
 // Callback function for XrdSsiRequest.
 // See QueryResource::ProvisionDone which invokes ProcessRequest(QueryRequest*))
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
-    LOGF_INFO("QueryRequest::ProcessResponse &&&");
     std::string errorDesc;
-    bool shouldStop = cancelled();
+    bool shouldStop = getCancelled();
     if(shouldStop) {
-        LOGF_INFO("QueryRequest::ProcessResponse cancelling &&&");
         cancel(); // calls _errorFinish()
         return true;
     }
-    LOGF_INFO("QueryRequest::ProcessResponse &&& 1 isOk=%1%" % isOk);
     if(!isOk) {
         _jobDesc.respHandler()->errorFlush(std::string("Request failed"), -1);
         _jobQuery->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
     }
-    LOGF_INFO("QueryRequest::ProcessResponse &&& 2");
     switch(rInfo.rType) {
     case XrdSsiRespInfo::isNone: // All responses are non-null right now
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
@@ -124,7 +120,6 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     default:
         errorDesc += "Out of range XrdSsiRespInfo.rType";
     }
-    LOGF_INFO("QueryRequest::ProcessResponse &&& 3");
     return _importError(errorDesc, -1);
 }
 
@@ -213,10 +208,10 @@ void QueryRequest::cancel() {
         _retried.set(true); // Prevent retries.
     }
     _jobQuery->getStatus()->updateInfo(JobStatus::CANCEL);
-    _errorFinish(true); // &&& since _finishStatus != ACTIVE, _errorFinish wont call Finished
+    _errorFinish(true);
 }
 
-bool QueryRequest::cancelled() {
+bool QueryRequest::getCancelled() {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     return _cancelled;
 }

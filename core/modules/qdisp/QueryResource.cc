@@ -49,7 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-QueryResource::QueryResource(std::shared_ptr<JobQuery> jobQuery)
+QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
       // this char* must live as long as this object, so copy it on heap
     : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
       _xrdSsiSession(NULL), _jobQuery(jobQuery) {
@@ -59,7 +59,7 @@ QueryResource::QueryResource(std::shared_ptr<JobQuery> jobQuery)
 }
 
 QueryResource::~QueryResource() {
-    LOGF_ERROR("~QueryResource() &&&");
+    LOGF_DEBUG("~QueryResource()");
     std::free(const_cast<char *>(rName)); // clean up heap allocated resource path copy
 }
 
@@ -79,8 +79,8 @@ void QueryResource::_provisionDoneHelper(XrdSsiSession* s) {
         _jobQuery->provisioningFailed(msg, code);
         return;
     }
-    if(_jobQuery->getCancelled()) {
-        return; // Don't bother doing anything if the requester doesn't care.
+    if(getCancelled()) {
+        return; // Don't bother doing anything if the job is cancelled.
     }
     _xrdSsiSession = s;
 
@@ -96,6 +96,10 @@ void QueryResource::_provisionDoneHelper(XrdSsiSession* s) {
 const char* QueryResource::eInfoGet(int &code) {
     char const* message = eInfo.Get(code);
     return message ? message : "no message from XrdSsi, code may not be reliable";
+}
+
+bool QueryResource::getCancelled() {
+    return _jobQuery->getCancelled();
 }
 
 }}} // lsst::qserv::qdisp
