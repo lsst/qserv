@@ -26,21 +26,17 @@
 
 set -e
 
-DEFAULT_IMAGE="fjammes/qserv:latest"
-IMAGE="$DEFAULT_IMAGE"
-
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] DOCKERDIR
+Usage: `basename $0` [options] host
 
   Available options:
     -h          this message
-    -i image    initial Docker image, must have Qserv stack installed
-                default to "$DEFAULT_IMAGE"
 
   Create docker images containing Qserv master and worker instances,
-  use a Docker image containing Qserv stack as input.
+  use a Docker image containing latest Qserv stack as input. 
+  Qserv master fqdn must be provided as unique argument.
 
   Once completed, run an interactive session on this container with:
   docker run -i --hostname="qserv-host" -t "fjammes/qserv:<VERSION>" /bin/bash
@@ -51,42 +47,41 @@ EOD
 while getopts hi: c ; do
     case $c in
             h) usage ; exit 0 ;;
-            i) IMAGE="$OPTARG" ;;
             \?) usage ; exit 2 ;;
     esac
 done
 shift `expr $OPTIND - 1`
 
-if [ $# -ne 0 ] ; then
+if [ $# -ne 1 ] ; then
     usage
     exit 2
 fi
 
-SCRIPT="/qserv/scripts/configure.sh"
+MASTER=$1
 
-# Create Qserv worker image
-TMP_DIR=$(mktemp -d -t docker_qserv_uid.XXXXXX)
-CID_FILE="$TMP_DIR"/cid
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+DOCKERDIR="$DIR/cfg"
 
-set -x
-docker run --cidfile="$CID_FILE" -u qserv "$IMAGE" $SCRIPT
-set +x
+# Build the master image
 
-CONTAINER_ID=$(<$CID_FILE)
-rm $CID_FILE
+sed 's/{{NODE_TYPE_OPT}}/-m/g' cfg/Dockerfile.tpl | \
+    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
 
-MSG="Create Qserv worker image"
-DEST_IMAGE="$IMAGE-worker"
-docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_IMAGE"
-echo "Image $DEST_IMAGE created successfully"
+VERSION=master-${MASTER}
+TAG="fjammes/qserv:$VERSION"
+printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
 
-# Create Qserv master image
-docker run --cidfile="$CID_FILE" -u qserv "$IMAGE" $SCRIPT -m
+printf "Image %s built successfully\n" "$TAG"
 
-CONTAINER_ID=$(cat $CID_FILE)
-rm $CID_FILE
+# Build the worker image
 
-MSG="Create Qserv master image"
-DEST_IMAGE="$IMAGE-master"
-docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_IMAGE"
-echo "Image $DEST_IMAGE created successfully"
+sed 's/{{NODE_TYPE_OPT}}//g' cfg/Dockerfile.tpl | \
+    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
+
+VERSION=worker-${MASTER}
+TAG="fjammes/qserv:$VERSION"
+printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
+
+printf "Image %s built successfully\n" "$TAG"
