@@ -30,13 +30,14 @@ set -e
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] 
+Usage: `basename $0` [options] host 
 
   Available options:
     -h          this message
     -m          configure Qserv master, instead of worker by default
 
-  Configure a Qserv worker/master in a docker image.
+  Configure a Qserv worker/master in a docker image. Qserv master fqdn
+  must be provided.
 EOD
 }
 
@@ -52,10 +53,12 @@ while getopts hm c ; do
 done
 shift `expr $OPTIND - 1`
 
-if [ $# -ne 0 ] ; then
+if [ $# -ne 1 ] ; then
     usage
     exit 2
 fi
+
+MASTER=$1
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . $DIR/params.sh
