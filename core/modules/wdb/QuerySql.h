@@ -69,7 +69,7 @@ typedef std::shared_ptr<QuerySql> Ptr;
     StringDeque buildList;
     StringDeque executeList; // Consider using SqlFragmenter to break this up into fragments.
     StringDeque cleanupList;
-    class Batch;
+    struct Batch;
     friend std::ostream& operator<<(std::ostream& os, QuerySql const& q);
 };
 

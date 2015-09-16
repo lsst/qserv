@@ -73,6 +73,7 @@ inline void fillVSInfo(XrdOssVSInfo *sP, char const* sname) {
 
 }
 
+#ifdef UNUSED
 inline std::ostream&
 print(std::ostream& os, lsst::qserv::xrdoss::QservOss::StringSet const& h) {
     lsst::qserv::xrdoss::QservOss::StringSet::const_iterator i;
@@ -83,8 +84,8 @@ print(std::ostream& os, lsst::qserv::xrdoss::QservOss::StringSet const& h) {
         else first = false;
     }
     return os;
-
 }
+#endif // UNUSED
 
 } // anonymous namespace
 

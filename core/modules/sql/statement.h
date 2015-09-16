@@ -32,7 +32,7 @@ namespace lsst {
 namespace qserv {
 namespace sql {
 
-class Schema; // Forward
+struct Schema; // Forward
 
 /// Construct a CREATE TABLE statement according to a table name and
 /// a schema.

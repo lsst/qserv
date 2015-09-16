@@ -50,7 +50,7 @@ class XrdSsiServiceMock : public XrdSsiService
 {
 public:
     virtual void Provision(Resource *resP, unsigned short timeOut=0);
-    XrdSsiServiceMock(Executive *executive) : _executive(executive) {};
+    XrdSsiServiceMock(Executive *executive) {};
     void setGo(bool go) {
         _go.set(go);
     }
@@ -60,8 +60,6 @@ public:
     virtual ~XrdSsiServiceMock() {}
     static util::FlagNotify<bool> _go;
     static util::Sequential<int> _count;
-private:
-    Executive *_executive;
 };
 
 /** Class used to fake calls to XrdSsiSession::ProcessRequest.

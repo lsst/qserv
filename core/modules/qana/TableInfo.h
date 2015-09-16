@@ -83,9 +83,9 @@ namespace qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 
-class DirTableInfo;
-class ChildTableInfo;
-class MatchTableInfo;
+struct DirTableInfo;
+struct ChildTableInfo;
+struct MatchTableInfo;
 
 
 /// `TableInfo` is a base class for table metadata. A subclass is provided

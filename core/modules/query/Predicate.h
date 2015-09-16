@@ -83,7 +83,7 @@ public:
     virtual ~GenericPredicate() {}
     virtual char const* getName() const { return "GenericPredicate"; }
 
-    virtual std::ostream& putStream(std::ostream& os) = 0;
+    virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const { return clone(); }

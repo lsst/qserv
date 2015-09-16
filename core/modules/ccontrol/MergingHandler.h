@@ -35,7 +35,7 @@ namespace lsst {
 namespace qserv {
   class MsgReceiver;
 namespace proto {
-  class WorkerResponse;
+  struct WorkerResponse;
 }
 namespace rproc {
   class InfileMerger;

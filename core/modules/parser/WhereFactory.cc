@@ -262,7 +262,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
 template <typename Check>
 struct PrintExcept : public PrintVisitor<antlr::RefAST> {
 public:
-    PrintExcept(Check c_) : c(c_) {}
+    PrintExcept(Check& c_) : c(c_) {}
     void operator()(antlr::RefAST a) {
         if(!c(a)) PrintVisitor<antlr::RefAST>::operator()(a);
     }

@@ -61,7 +61,7 @@ namespace xrdoss {
 class FakeOssDf : public XrdOssDF {
 public:
     virtual int Close(long long *retsz=0) { return XrdOssOK; }
-    virtual int Opendir(const char *) { return XrdOssOK; }
+    virtual int Opendir(const char *, XrdOucEnv &) { return XrdOssOK; }
     virtual int Readdir(char *buff, int blen) { return XrdOssOK; }
 
     // Constructor and destructor

@@ -41,7 +41,7 @@ namespace qserv {
 namespace qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
-class Vertex;
+struct Vertex;
 
 /// A `ColumnVertexMap` is a mapping from query column references to relation
 /// graph vertices, which are representations of the partitioned table

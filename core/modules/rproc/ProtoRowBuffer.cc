@@ -40,8 +40,6 @@
 // Helpful constants
 ////////////////////////////////////////////////////////////////////////
 std::string const mysqlNull("\\N");
-// should be less than 0.5 * infileBufferSize
-int const largeRowThreshold = 500*1024;
 
 namespace lsst {
 namespace qserv {
