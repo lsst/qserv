@@ -58,7 +58,7 @@ class JobDescription {
 public:
     JobDescription(int id, ResourceUnit const& resource, std::string const& payload,
         std::shared_ptr<ResponseHandler> const& respHandler)
-        : _id(id), _resource(resource), _payload(payload), _respHandler(respHandler) {};
+        : _id{id}, _resource{resource}, _payload{payload}, _respHandler{respHandler} {};
 
     int id() const { return _id; }
     ResourceUnit const& resource() const { return _resource; }
@@ -114,7 +114,7 @@ public:
     /// Squash everything. should we block?
     void squash();
 
-    bool getEmpty() {return _empty.get();}
+    bool getEmpty() { return _empty; }
 
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
@@ -146,7 +146,7 @@ private:
     void _printState(std::ostream& os);
 
     Config _config; ///< Personal copy of config
-    util::Flag<bool> _empty;
+    std::atomic<bool> _empty {true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
@@ -156,7 +156,7 @@ private:
     util::MultiError _multiError;
 
     int _requestCount; ///< Count of submitted tasks
-    std::atomic<bool> _cancelled; ///< Has execution been cancelled?
+    std::atomic<bool> _cancelled {false}; ///< Has execution been cancelled?
 
     // Mutexes
     std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
@@ -166,9 +166,6 @@ private:
 
     std::condition_variable _allJobsComplete;
     mutable std::mutex _jobsMutex;
-
-    typedef std::map<int,int> IntIntMap;
-    IntIntMap _retryMap; ///< Counter for task retries.
 
 };
 

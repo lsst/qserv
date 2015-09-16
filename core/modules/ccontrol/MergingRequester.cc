@@ -58,12 +58,8 @@ MergingHandler::MergingHandler(
     std::shared_ptr<MsgReceiver> msgReceiver,
     std::shared_ptr<rproc::InfileMerger> merger,
     std::string const& tableName)
-    : _msgReceiver{msgReceiver},
-      _infileMerger{merger},
-      _tableName(tableName),
-      _response{new WorkerResponse()},
-      _flushed{false},
-      _wName{"~"}  {
+    : _msgReceiver{msgReceiver}, _infileMerger{merger}, _tableName{tableName},
+      _response{new WorkerResponse()} {
     _initState();
 }
 
@@ -204,10 +200,7 @@ void MergingHandler::_initState() {
 }
 
 bool MergingHandler::_merge() {
-    // We don't want to let cancellation occur in the middle of this.
     if (auto job = getJobQuery().lock()) {
-        std::recursive_mutex& cancelledMutex = job->getCancelledMutex();
-        std::lock_guard<std::recursive_mutex> lock(cancelledMutex);
         if(job->getCancelled()) {
             LOGF_INFO("MergingRequester::_merge(), but already cancelled");
             return false;

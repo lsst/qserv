@@ -61,9 +61,8 @@ inline void unprovisionSession(XrdSsiSession* session) {
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
-QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const jobQuery) :
-    _session(session), _jobQuery(jobQuery), _jobDesc(_jobQuery->getDescription()), _retried(false),
-    _calledMarkComplete(false), _finishStatus(QueryRequest::ACTIVE), _cancelled(false) {
+QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery) :
+    _session(session), _jobQuery(jobQuery), _jobDesc(_jobQuery->getDescription()) {
     LOGF_INFO("New QueryRequest with payload(%1%)" % _jobDesc.payload().size());
 }
 
@@ -82,7 +81,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 
 // Deleting the buffer (payload) would cause us problems.
 void QueryRequest::RelRequestBuffer() {
-    LOGF_DEBUG("Early release of request buffer");
+    LOGF_DEBUG("RelRequestBuffer");
 }
 // precondition: rInfo.rType != isNone
 // Must not throw exceptions: calling thread cannot trap them.

@@ -43,24 +43,18 @@
 // Qserv headers
 #include "qdisp/JobStatus.h"
 #include "qdisp/QueryRequest.h"
-#include "qdisp/QueryResource.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
-      // this char* must live as long as this object, so copy it on heap
-    : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
-      _xrdSsiSession(NULL), _jobQuery(jobQuery) {
-    if (rName == NULL) {
-        throw std::bad_alloc();
-    }
+    : Resource(jobQuery->getDescription().resource().path().c_str()),
+      _jobQuery(jobQuery) {
 }
 
 QueryResource::~QueryResource() {
     LOGF_DEBUG("~QueryResource()");
-    std::free(const_cast<char *>(rName)); // clean up heap allocated resource path copy
 }
 
 /// May not throw exceptions because the calling code comes from

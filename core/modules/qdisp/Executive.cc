@@ -110,10 +110,7 @@ struct printMapSecond {
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
-    : _config(*c),
-      _empty{true},
-      _messageStore(ms),
-      _cancelled{false} {
+    : _config{*c}, _messageStore{ms} {
     _setup();
 }
 
@@ -125,7 +122,7 @@ Executive::~Executive() {
 /** Add a new job to executive queue, if not already in. Not thread-safe.
  */
 void Executive::add(JobDescription const& jobDesc) {
-    LOGF_DEBUG("Executive::add(%1%)" % jobDesc.toString());
+    LOGF(getLogger(), LOG_LVL_DEBUG, "Executive::add(%1%)" % jobDesc.toString());
     if(_cancelled) {
         LOGF(getLogger(), LOG_LVL_INFO, "Executive already cancelled, ignoring add(%1%)" % jobDesc.id());
         return;
@@ -136,20 +133,20 @@ void Executive::add(JobDescription const& jobDesc) {
     JobQuery::Ptr jobQuery = std::make_shared<JobQuery>(this, jobDesc, jobStatus, mcf);
     jobQuery->setup();
     if(!_addJobToMap(jobQuery)) {
-        LOGF_ERROR("Executive ignoring duplicate job add(%1%)" % jobQuery->getId());
+        LOGF(getLogger(), LOG_LVL_ERROR, "Executive ignoring duplicate job add(%1%)" % jobQuery->getId());
         return;
     }
 
     if (!_track(jobQuery->getId(), jobQuery)) {
-        LOGF_ERROR("Executive ignoring duplicate track add(%1%)" % jobQuery->getId());
+        LOGF(getLogger(), LOG_LVL_ERROR, "Executive ignoring duplicate track add(%1%)" % jobQuery->getId());
         return;
     }
-    if (_empty.set(false)) {
-        LOGF_INFO("Flag _empty set to false by jobId %1%" % jobQuery->getId());
+    if (_empty.exchange(false)) {
+        LOGF(getLogger(), LOG_LVL_INFO, "Flag _empty set to false by jobId %1%" % jobQuery->getId());
     }
     ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
-    LOGF_INFO("%1%" % msg);
+    LOGF(getLogger(), LOG_LVL_INFO, "%1%" % msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), log::MSG_MGR_ADD, msg);
 
     jobQuery->runJob();
@@ -159,12 +156,8 @@ void Executive::add(JobDescription const& jobDesc) {
  * Return true if it was successfully added to the map.
  */
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
-    int jobId = job->getId();
-    if (_jobMap.find(jobId) != _jobMap.end()) {
-        return false;
-     }
-     _jobMap[jobId] = job;
-     return true;
+    auto entry = std::pair<int, JobQuery::Ptr>(job->getId(), job);
+    return _jobMap.insert(entry).second;
 }
 
 bool Executive::join() {
@@ -174,8 +167,7 @@ bool Executive::join() {
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool f(Executive::JobMap::value_type const& entry) {
-            JobQuery::Ptr job = entry.second;
-            JobStatus::Info const& esI = job->getStatus()->getInfo();
+            JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
             LOGF_INFO("entry state:%1% %2%)" % (void*)entry.second.get() % esI);
             return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
         }
@@ -193,7 +185,7 @@ bool Executive::join() {
     }
     _updateProxyMessages();
     bool empty = (sCount == _requestCount);
-    _empty.set(empty);
+    _empty.store(empty);
     LOGF_DEBUG("Flag set to _empty=%1% sCount=%2% requestCount=%3%" % empty % sCount % _requestCount);
     return empty;
 }
@@ -204,9 +196,9 @@ void Executive::markCompleted(int jobId, bool success) {
     if(!success) {
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
-            auto i = _incompleteJobs.find(jobId);
-            if(i != _incompleteJobs.end()) {
-                err = i->second->getDescription().respHandler()->getError();
+            auto iter = _incompleteJobs.find(jobId);
+            if(iter != _incompleteJobs.end()) {
+                err = iter->second->getDescription().respHandler()->getError();
             } else {
                 std::string msg =
                     (boost::format("Executive::markCompleted(%1%) "
@@ -242,7 +234,7 @@ void Executive::requestSquash(int jobId) {
         std::lock_guard<std::mutex> lock(_jobsMutex);
         auto iter = _jobMap.find(jobId);
         if(iter == _jobMap.end()) {
-            LOGF_WARN("requesSquash invalid jobID %1%" % jobId);
+            LOGF_WARN("requestSquash invalid jobID %1%" % jobId);
             return;
         }
         toSquash = iter->second;
@@ -259,22 +251,11 @@ void Executive::squash() {
     }
 
     LOGF_INFO("Trying to cancel all queries...");
-    std::vector<JobQuery::Ptr> jobsToSquash;
     {
         std::lock_guard<std::mutex> lock(_jobsMutex);
-        for(auto i=_jobMap.begin(), e=_jobMap.end(); i != e; ++i) {
-            jobsToSquash.push_back(i->second);
+        for(auto const& jobEntry : _jobMap) {
+            jobEntry.second->cancel();
         }
-    }
-    LOGF_INFO("Enqueued jobs for cancelling...done");
-    {
-        for(auto i=jobsToSquash.begin(), e=jobsToSquash.end(); i != e; ++i) {
-            // Could get stuck because it waits on xrootd,
-            // which may be waiting on a thread blocked in _unTrack().
-            // Don't do this while holding _statusesMutex
-            (*i)->cancel();
-        }
-        LOGF_INFO("Cancelled all query requesters...done");
     }
 }
 
@@ -312,7 +293,7 @@ std::string Executive::getProgressDesc() const {
 void Executive::_setup() {
 
     XrdSsiErrInfo eInfo;
-    _empty.set(true);
+    _empty.store(true);
     _requestCount = 0;
     // If unit testing, load the mock service.
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
@@ -370,15 +351,13 @@ void Executive::_unTrack(int jobId) {
 // This function only acts when there are errors. In there are no errors,
 // markCompleted() does the cleanup, while we are waiting (in _waitAllUntilEmpty()).
 void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
-    for(auto i=_incompleteJobs.begin(), e=_incompleteJobs.end(); i != e;) {
-        if(!i->second->getDescription().respHandler()->getError().isNone()) {
+    for(auto iter=_incompleteJobs.begin(), e=_incompleteJobs.end(); iter != e;) {
+        if(!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
-            LOGF_INFO("Executive (%1%) reaped requester for jobId=%2%" % (void*)this % i->first);
-            auto eraseMe = i;
-            ++i;
-            _incompleteJobs.erase(eraseMe);
+            LOGF_INFO("Executive (%1%) reaped requester for jobId=%2%" % (void*)this % iter->first);
+            iter = _incompleteJobs.erase(iter);
         } else {
-            ++i;
+            ++iter;
         }
     }
 }
@@ -393,8 +372,8 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
 void Executive::_updateProxyMessages() {
     {
         std::lock_guard<std::mutex> lock(_jobsMutex);
-        for(auto i=_jobMap.begin(), e=_jobMap.end(); i != e; ++i) {
-            JobQuery::Ptr job = i->second;
+        for (auto const& entry : _jobMap) {
+            JobQuery::Ptr const& job = entry.second;
             auto const& info = job->getStatus()->getInfo();
             std::ostringstream os;
             os << info.state << " " << info.stateCode;
@@ -403,7 +382,8 @@ void Executive::_updateProxyMessages() {
             }
             os << " " << info.stateTime;
             _messageStore->addMessage(job->getDescription().resource().chunk(),
-                                      info.state, os.str());
+                    info.state, os.str());
+
         }
     }
     {
@@ -450,7 +430,7 @@ void Executive::_waitAllUntilEmpty() {
 
 std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();
-    os << v.first << ": " << status;
+    os << v.first << ": " << *status;
     return os;
 }
 
@@ -463,12 +443,12 @@ void Executive::_printState(std::ostream& os) {
 
 std::string JobDescription::toString() const {
     std::ostringstream os;
-    os << "job(id=" << _id << " payload=" << _payload << ")";
+    os << *this;
     return os.str();
 }
 
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
-    os << jd.toString();
+    os << "job(id=" << jd._id << " payload=" << jd._payload << ")";
     return os;
 }
 

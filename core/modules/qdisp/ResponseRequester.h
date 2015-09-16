@@ -42,12 +42,10 @@ class JobQuery;
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
-/// required), a request string (task payload), and a requester (handler for
-/// returning bytes). The requester implements logic to process incoming results
+/// required), a request string (task payload), and a handler for returning bytes.
+/// The requester implements logic to process incoming results
 /// and buffers that are sized to the number of bytes expected in the next
-/// segment of results. The requester instance functions as a handle object that
-/// allows the original task owner to cancel the task, indicating that no further
-/// bytes are desired.
+/// segment of results.
 class ResponseHandler {
 public:
     typedef util::Error Error;

@@ -94,9 +94,7 @@ public:
 class QueryRequest : public XrdSsiRequest {
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
-    QueryRequest(
-        XrdSsiSession* session,
-        std::shared_ptr<JobQuery> const jobQuery);
+    QueryRequest(XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery);
 
     virtual ~QueryRequest();
 
@@ -131,13 +129,13 @@ private:
     std::shared_ptr<JobQuery> _jobQuery; ///< Job information.
     JobDescription& _jobDesc; ///< Convenience reference to JobDescription inside _jobQuery.
 
-    util::Flag<bool> _retried; ///< Protect against multiple retries of _jobQuery from a single QueryRequest.
-    util::Flag<bool> _calledMarkComplete; ///< Protect against multiple calls to MarkCompleteFunc
+    util::Flag<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a single QueryRequest.
+    util::Flag<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
                                           /// from a single QueryRequest.
 
     std::mutex _finishStatusMutex;
-    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus; // _finishStatusMutex
-    bool _cancelled; ///< true if cancelled, protected by _finishStatusMutex.
+    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus {ACTIVE}; // _finishStatusMutex
+    bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
 };

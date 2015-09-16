@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_EXECSTATUS_H
-#define LSST_QSERV_QDISP_EXECSTATUS_H
+#ifndef LSST_QSERV_QDISP_JOBSTATUS_H
+#define LSST_QSERV_QDISP_JOBSTATUS_H
 
 // System headers
 #include <fstream>
@@ -31,7 +31,6 @@
 #include <time.h>
 
 // Qserv headers
-#include "global/ResourceUnit.h"
 
 namespace lsst {
 namespace qserv {
@@ -112,4 +111,4 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_EXECSTATUS_H
+#endif // LSST_QSERV_QDISP_JOBSTATUS_H

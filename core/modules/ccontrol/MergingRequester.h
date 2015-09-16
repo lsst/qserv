@@ -113,8 +113,8 @@ private:
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
     std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
-    bool _flushed; ///< flushed to InfileMerger?
-    std::string _wName; /// worker name
+    bool _flushed {false}; ///< flushed to InfileMerger?
+    std::string _wName {"~"}; /// worker name
 };
 
 }}} // namespace lsst::qserv::qdisp

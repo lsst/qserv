@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2015 AURA/LSST.
@@ -61,20 +60,18 @@ bool JobQuery::runJob() {
     bool cancelled = _executive->getCancelled();
     bool handlerReset = _jobDescription.respHandler()->reset();
     if (!cancelled && handlerReset) {
-        {
-            auto qr = std::make_shared<QueryResource>(shared_from_this());
-            std::lock_guard<std::recursive_mutex> lock(_rmutex);
-            if (shouldRetry()) {
-                ++_attemptsToRun;
-                if (_executive == nullptr) {
-                    logErr("JobQuery couldn't run job as executive is NULL", this);
-                    return false;
-                }
-                _queryResourcePtr = qr;
-            } else {
-                logErr("JobQuery hit maximum number of retries!", this);
+        auto qr = std::make_shared<QueryResource>(shared_from_this());
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        if (shouldRetry()) {
+            ++_attemptsToRun;
+            if (_executive == nullptr) {
+                logErr("JobQuery couldn't run job as executive is null", this);
                 return false;
             }
+            _queryResourcePtr = qr;
+        } else {
+            logErr("JobQuery hit maximum number of retries!", this);
+            return false;
         }
         _jobStatus->updateInfo(JobStatus::PROVISION);
         _executive->getXrdSsiService()->Provision(_queryResourcePtr.get());
@@ -97,8 +94,8 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel() {
-    std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
-    if (_cancelled.set(true) == false) {
+    if (_cancelled.exchange(true) == false) {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
         // Nothing needs to be done for _queryResourcePtr.
         if (_queryRequestPtr) {
             _queryRequestPtr->cancel();

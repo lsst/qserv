@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2015 LSST Corporation.
@@ -28,6 +27,7 @@
 #define LSST_QSERV_QDISP_JOBQUERY_H_
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -51,12 +51,11 @@ class JobQuery : public std::enable_shared_from_this<JobQuery> {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
-    // Make a copy of the job description. JobQuery::setup() must be called after creation.
+    /// Make a copy of the job description. JobQuery::setup() must be called after creation.
     JobQuery(Executive* executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
         _executive(executive), _jobDescription(jobDescription),
-        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
-        _attemptsToRun(0), _cancelled(false) {}
+        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {}
     void setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());
     }
@@ -77,18 +76,31 @@ public:
     JobStatus::Ptr getStatus() { return _jobStatus; }
 
     void provisioningFailed(std::string const& msg, int code);
-    std::shared_ptr<QueryResource> getQueryResource() { return _queryResourcePtr; }
-    void freeQueryResource() { _queryResourcePtr.reset(); }
+    std::shared_ptr<QueryResource> getQueryResource() {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _queryResourcePtr;
+    }
+    void freeQueryResource() {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        _queryResourcePtr.reset();
+    }
 
-    void setQueryRequest(std::shared_ptr<QueryRequest> qr) { _queryRequestPtr = qr; }
-    std::shared_ptr<QueryRequest> getQueryRequest() { return _queryRequestPtr; }
-    void freeQueryRequest() { _queryRequestPtr.reset(); }
+    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        _queryRequestPtr = qr;
+    }
+    std::shared_ptr<QueryRequest> getQueryRequest() {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _queryRequestPtr; }
+    void freeQueryRequest() {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        _queryRequestPtr.reset();
+    }
 
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
     bool cancel();
-    bool getCancelled() { return _cancelled.get(); }
-    std::recursive_mutex& getCancelledMutex() { return _cancelled.getMutex(); }
+    bool getCancelled() { return _cancelled; }
 
     std::string toString() const ;
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
@@ -104,15 +116,15 @@ protected:
     JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex;
-    int _attemptsToRun;
+    mutable std::recursive_mutex _rmutex; // protects _attemptsToRun, _queryResourcePtr, _queryRequestPtr
+    int _attemptsToRun {0};
 
     // xrootd items
     std::shared_ptr<QueryResource> _queryResourcePtr;
     std::shared_ptr<QueryRequest> _queryRequestPtr;
 
     // Cancellation
-    util::Flag<bool> _cancelled;
+    std::atomic<bool> _cancelled {false};
 };
 
 }}} // end namespace

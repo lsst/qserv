@@ -50,7 +50,9 @@ class JobQuery;
  *
  * This objects existence is controlled by _jobQuery. It must call
  * _jobQuery->freeQueryResource() before leaving ProvisionDone.
- * If provisionDone is
+ * If ProvisionDone is not called by xrootd, there's really not much that
+ * can be done to prevent a memory leak, as there's no way to know that
+ * xrootd is done with this.
  */
 /// Note: this object takes responsibility for deleting itself once it is passed
 /// off via service->Provision(resourceptr).
@@ -61,7 +63,7 @@ public:
 
     virtual ~QueryResource();
 
-    void ProvisionDone(XrdSsiSession* s);
+    void ProvisionDone(XrdSsiSession* s) override;
     const char* eInfoGet(int &code);
 
     std::shared_ptr<JobQuery> getJobQuery() { return _jobQuery; }
@@ -71,7 +73,7 @@ public:
 
 private:
     void _provisionDoneHelper(XrdSsiSession* s);
-    XrdSsiSession* _xrdSsiSession; ///< unowned, do not delete.
+    XrdSsiSession* _xrdSsiSession {nullptr}; ///< unowned, do not delete.
     std::shared_ptr<JobQuery> _jobQuery;
 };
 
