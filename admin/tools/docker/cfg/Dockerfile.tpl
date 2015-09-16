@@ -5,6 +5,7 @@ USER qserv
 
 WORKDIR /qserv
 
-RUN /bin/bash /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}
+RUN /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}
 
-CMD ["/qserv/run/bin/qserv-start.sh"]
+# 'tail -F' allow container not to exit
+CMD /qserv/run/bin/qserv-start.sh && tail -F /qserv/run/var/log/worker/xrootd.log
