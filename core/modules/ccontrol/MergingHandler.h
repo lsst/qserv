@@ -20,15 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
-#define LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
+#ifndef LSST_QSERV_CCONTROL_MERGINGHANDLER_H
+#define LSST_QSERV_CCONTROL_MERGINGHANDLER_H
 
 // System headers
 #include <memory>
 #include <mutex>
 
 // Qserv headers
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/ResponseHandler.h"
 
 // Forward decl
 namespace lsst {
@@ -45,28 +45,28 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-/// MergingRequester is an implementation of a ResponseRequester that implements
+/// MergingHandler is an implementation of a ResponseHandler that implements
 /// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
 /// API by pulling the exact number of bytes needed for the next logical
 /// fragment instead of performing buffer size and offset
 /// management. Fully-constructed protocol messages are then passed towards an
 /// InfileMerger.
-class MergingRequester : public qdisp::ResponseRequester {
+class MergingHandler : public qdisp::ResponseHandler {
 public:
-    /// Possible MergingRequester message state
+    /// Possible MergingHandler message state
     enum class MsgState { INVALID, HEADER_SIZE_WAIT,
                     RESULT_WAIT, RESULT_EXTRA,
                     RESULT_RECV, 
                     HEADER_ERR, RESULT_ERR };
     static const char* getStateStr(MsgState const& st);
 
-    typedef std::shared_ptr<MergingRequester> Ptr;
-    virtual ~MergingRequester() {}
+    typedef std::shared_ptr<MergingHandler> Ptr;
+    virtual ~MergingHandler();
 
     /// @param msgReceiver Message code receiver
     /// @param merger downstream merge acceptor
     /// @param tableName target table for incoming data
-    MergingRequester(std::shared_ptr<MsgReceiver> msgReceiver,
+    MergingHandler(std::shared_ptr<MsgReceiver> msgReceiver,
                      std::shared_ptr<rproc::InfileMerger> merger,
                      std::string const& tableName);
 
@@ -98,13 +98,6 @@ public:
         return _error;
     }
 
-    /// Cancel operations on the Receiver.
-    /// This cancels internal state and calls _cancelFunc .
-    ///
-    virtual void cancel();
-
-    using ResponseRequester::registerCancel;
-
 private:
     void _initState();
     bool _merge();
@@ -120,12 +113,10 @@ private:
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
     std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
-    bool _flushed; ///< flushed to InfileMerger?
-    std::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
-    bool _cancelled; ///< Cancelled?
-    std::string _wName; /// worker name
+    bool _flushed {false}; ///< flushed to InfileMerger?
+    std::string _wName {"~"}; /// worker name
 };
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
+#endif // LSST_QSERV_CCONTROL_MERGINGHANDLER_H

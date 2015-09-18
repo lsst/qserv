@@ -33,9 +33,6 @@
 #include "qdisp/QueryResource.h"
 
 // System headers
-#include <cassert>
-#include <iostream>
-#include <sstream>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,52 +40,63 @@
 // Qserv headers
 #include "qdisp/JobStatus.h"
 #include "qdisp/QueryRequest.h"
-#include "qdisp/QueryResource.h"
-#include "qdisp/ResponseRequester.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
+    : Resource(jobQuery->getDescription().resource().path().c_str()),
+      _jobQuery(jobQuery) {
+}
+
+QueryResource::~QueryResource() {
+    LOGF_DEBUG("~QueryResource()");
+}
+
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
-void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
-    LOGF_INFO("Provision done");
+void QueryResource::ProvisionDone(XrdSsiSession* s) {
+    struct Destroyer {
+        Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
+        : _job{job},  _qr{qr} {}
+        ~Destroyer() {
+            // This should cause this object to be destroyed.
+            _job->freeQueryResource(_qr);
+        }
+    private:
+        JobQuery::Ptr _job;
+        QueryResource* _qr;
+    };
+    Destroyer destroyer(_jobQuery, this);
     if(!s) {
         // Check eInfo in resource for error details
         int code = 0;
         std::string msg = eInfoGet(code);
-        LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
-        _status.updateInfo(JobStatus::PROVISION_NACK, code, msg);
-        // FIXME code may be wrong.
-        _requester->errorFlush(msg, code);
-        delete this;
+        _jobQuery->provisioningFailed(msg, code);
         return;
     }
-    if(_requester->cancelled()) {
-        delete this;
-        return; // Don't bother doing anything if the requester doesn't care.
+    if(isCancelled()) {
+        return; // Don't bother doing anything if the job is cancelled.
     }
-    _session = s;
+    _xrdSsiSession = s;
 
-    // QueryRequest handles its own deletion by registering a cancellation
-    // functor with the requester that deletes the request in its destructor.
-    QueryRequest * request = new QueryRequest(s, _payload, _requester,
-                                              _finishFunc, _retryFunc,
-                                              _status);
+    QueryRequest::Ptr qr = std::make_shared<QueryRequest>(s, _jobQuery);
+    _jobQuery->setQueryRequest(qr);
 
     // Hand off the request.
-    _status.updateInfo(JobStatus::REQUEST);
-    _session->ProcessRequest(request);
-
-    // If we are not doing anything else with the session,
-    // we can stop it after our requests are complete.
-    delete this; // Delete ourselves, nobody needs this resource anymore.
+    _jobQuery->getStatus()->updateInfo(JobStatus::REQUEST);
+    _xrdSsiSession->ProcessRequest(qr.get()); // xrootd will not delete the QueryRequest.
+    // There are no more requests for this session.
 }
 
 const char* QueryResource::eInfoGet(int &code) {
     char const* message = eInfo.Get(code);
     return message ? message : "no message from XrdSsi, code may not be reliable";
+}
+
+bool QueryResource::isCancelled() {
+    return _jobQuery->isCancelled();
 }
 
 }}} // lsst::qserv::qdisp

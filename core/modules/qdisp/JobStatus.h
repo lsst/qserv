@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_EXECSTATUS_H
-#define LSST_QSERV_QDISP_EXECSTATUS_H
+#ifndef LSST_QSERV_QDISP_JOBSTATUS_H
+#define LSST_QSERV_QDISP_JOBSTATUS_H
 
 // System headers
 #include <fstream>
@@ -31,7 +31,6 @@
 #include <time.h>
 
 // Qserv headers
-#include "global/ResourceUnit.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,7 +50,7 @@ namespace qdisp {
 class JobStatus {
 public:
     typedef std::shared_ptr<JobStatus> Ptr;
-    JobStatus(ResourceUnit const& r) : _info(r) {}
+    JobStatus() {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -85,8 +84,7 @@ public:
     void updateInfo(State s, int code=0, std::string const& desc="");
 
     struct Info {
-        Info(ResourceUnit const& resourceUnit_);
-        ResourceUnit const resourceUnit; ///< Reference id for status
+        Info();
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
         State state; ///< Actual state
@@ -113,4 +111,4 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_EXECSTATUS_H
+#endif // LSST_QSERV_QDISP_JOBSTATUS_H

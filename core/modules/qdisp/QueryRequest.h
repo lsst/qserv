@@ -36,13 +36,11 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
-#include "util/Callable.h"
+#include "qdisp/JobQuery.h"
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class JobStatus;
-class ResponseRequester;
 
 /// Bad response received from xrootd API
 class BadResponseError : public std::exception {
@@ -50,8 +48,8 @@ public:
     BadResponseError(std::string const& s_)
         : std::exception(),
           s("BadResponseError:" + s_) {}
-    ~BadResponseError() throw() {}
-    virtual char const* what() throw() {
+    virtual ~BadResponseError() throw() {}
+    virtual const char* what() throw() {
         return s.c_str();
     }
     std::string s;
@@ -92,13 +90,8 @@ public:
 /// from accessing the QueryRequest instance.
 class QueryRequest : public XrdSsiRequest {
 public:
-    QueryRequest(
-        XrdSsiSession* session,
-        std::string const& payload,
-        std::shared_ptr<ResponseRequester> const requester,
-        std::shared_ptr<util::UnaryCallable<void, bool> > const finishFunc,
-        std::shared_ptr<util::VoidCallable<void> > const retryFunc,
-        JobStatus& status);
+    typedef std::shared_ptr<QueryRequest> Ptr;
+    QueryRequest(XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery);
 
     virtual ~QueryRequest();
 
@@ -117,36 +110,33 @@ public:
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
     void cancel();
+    bool isCancelled();
 
-    void cleanup();
+    void cleanup(); ///< Must be called when this object is no longer needed.
 
 private:
-    bool cancelled();
-
+    void _callMarkComplete(bool success);
     bool _importStream();
     bool _importError(std::string const& msg, int code);
     void _errorFinish(bool shouldCancel=false);
     void _finish();
-    void _registerSelfDestruct();
 
     XrdSsiSession* _session;
 
-    std::string _payload; ///< Request buffer
-    std::shared_ptr<ResponseRequester> _requester; ///< Response requester
+    std::shared_ptr<JobQuery> _jobQuery; ///< Job information.
+    JobDescription& _jobDesc; ///< Convenience reference to JobDescription inside _jobQuery.
 
-    /// To be called when the request completes
-    std::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
-    /// To be called to retry a failed request
-    std::shared_ptr<util::VoidCallable<void> > _retryFunc;
-    /// Reference to an updatable Status
-    JobStatus& _status;
+    std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 
+                                        /// single QueryRequest.
+    std::atomic<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
+                                                   /// from a single QueryRequest.
 
     std::mutex _finishStatusMutex;
-    enum FinishStatus { ACTIVE, FINISHED, CANCELLED, ERROR } _finishStatus;
+    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus {ACTIVE}; // _finishStatusMutex
+    bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
 
-    class Canceller;
-    friend class Canceller;
-}; // class QueryRequest
+    std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
+};
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 

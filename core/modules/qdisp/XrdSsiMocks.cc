@@ -44,14 +44,14 @@ namespace qdisp {
 
 class QueryResourceDebug {
 public:
-    static JobStatus& getStatus(QueryResource& qr) {
-        return qr._status;
+    static JobStatus::Ptr getStatus(QueryResource& qr) {
+        return qr._jobQuery->getStatus();
     }
     static std::string const& getPayload(QueryResource& qr) {
-        return qr._payload;
+        return qr.getJobQuery()->getDescription().payload();
     }
     static void finish(QueryResource& qr) {
-        qr._finishFunc->operator ()(true);
+        qr.getJobQuery()->getMarkCompleteFunc()->operator ()(true);
     }
 };
 
@@ -92,11 +92,9 @@ void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep begin");
     usleep(1000*millisecs);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
-    QueryResourceDebug::getStatus(*qr).updateInfo(JobStatus::RESPONSE_DONE);
-    QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()
-    // qr->ProvisionDone would normally cause qr to commit suicide, but that requires
-    // a session object. Instead, take care of deletion ourselves.
-    delete qr;
+    JobStatus::Ptr status = QueryResourceDebug::getStatus(*qr);
+    status->updateInfo(JobStatus::RESPONSE_DONE);
+    QueryResourceDebug::finish(*qr);
 }
 
 }}} // namespace

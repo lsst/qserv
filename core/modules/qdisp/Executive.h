@@ -27,14 +27,17 @@
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
 // System headers
+#include <atomic>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
+#include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
-#include "util/Callable.h"
+#include "qdisp/ResponseHandler.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 
@@ -44,16 +47,17 @@ class XrdSsiService;
 namespace lsst {
 namespace qserv {
 namespace qdisp {
+
+class JobQuery;
 class MessageStore;
 class QueryResource;
-class ResponseRequester;
 
-/// class Executive manages the execution of tasks for a UserQuery, while
-/// maintaining minimal information about the tasks themselves.
+/// class Executive manages the execution of jobs for a UserQuery, while
+/// maintaining minimal information about the jobs themselves.
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, JobStatus::Ptr> JobStatusPtrMap;
+    typedef std::map<int, std::shared_ptr<JobQuery>> JobMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -65,17 +69,6 @@ public:
         static std::string getMockStr() {return "Mock";};
     };
 
-    /** Description of a job managed by the executive
-     *
-     * Launch a chunk query against a xrootd resource and
-     * retrieve the result
-     */
-    struct JobDescription {
-        ResourceUnit resource; // path, e.g. /q/LSST/23125
-        std::string request; // encoded request
-        std::shared_ptr<ResponseRequester> requester;
-    };
-
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
@@ -83,8 +76,8 @@ public:
 
     ~Executive();
 
-    /// Add an item with a reference number (not necessarily a chunk number)
-    void add(int refNum, JobDescription const& s);
+    /// Add an item with a reference number
+    void add(JobDescription const& s);
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -99,7 +92,7 @@ public:
     /// Squash everything. should we block?
     void squash();
 
-    bool getEmpty() {return _empty.get();}
+    bool getEmpty() { return _empty; }
 
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
@@ -107,44 +100,22 @@ public:
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
-    static std::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
+    /// @return true if cancelled
+    bool getCancelled() { return _cancelled; }
 
+    XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
+
+    std::shared_ptr<JobQuery> getJobQuery(int id);
 
 private:
-    typedef std::shared_ptr<ResponseRequester> RequesterPtr;
-    typedef std::map<int, RequesterPtr> RequesterMap;
-
-    class DispatchAction;
-    friend class DispatchAction;
-    void _dispatchQuery(int refNum,
-                        JobDescription const& spec,
-                        JobStatus::Ptr execStatus);
-
     void _setup();
-    bool _shouldRetry(int refNum);
-    JobStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
-    /** Add (jobId,r) entry to _requesters map if not here yet
-     *  else leave _requesters untouched.
-     *
-     *  @param jobId id of the job related to current chunk query
-     *  @param r pointer to requester which will store chunk query result
-     *
-     *  @return true if (jobId,r) was added to _requesters
-     *          false if this entry was previously in the map
-     */
-    bool _track(int refNum, RequesterPtr r);
+    bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
+    bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
 
     void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
 
-    /** Store job status and execution errors in the current user query message store
-     *
-     * messageStore will be inserted in message table at the end of czar code
-     * and is used to log/report error in mysql-proxy.
-     *
-     * @see python module lsst.qserv.czar.proxy.unlock()
-     */
     void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
@@ -153,33 +124,46 @@ private:
     void _printState(std::ostream& os);
 
     Config _config; ///< Personal copy of config
-    util::Flag<bool> _empty;
+    std::atomic<bool> _empty {true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
-    XrdSsiService* _service; ///< RPC interface
-    RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
-    JobStatusPtrMap _statuses; ///< Statuses of submitted tasks
+    XrdSsiService* _xrdSsiService; ///< RPC interface
+    JobMap _jobMap; ///< Contains information about all jobs.
+    JobMap _incompleteJobs; ///< Map of incomplete jobs.
 
     /** Execution errors */
     util::MultiError _multiError;
 
-    int _requestCount; ///< Count of submitted tasks
-    bool _cancelled; ///< Has execution been cancelled?
+    int _requestCount; ///< Count of submitted jobs
+    std::atomic<bool> _cancelled {false}; ///< Has execution been cancelled?
 
     // Mutexes
-    std::mutex _requestersMutex;
+    std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
 
     /** Used to record execution errors */
     mutable std::mutex _errorsMutex;
 
-    std::condition_variable _requestersEmpty;
-    mutable std::mutex _statusesMutex;
-    std::mutex _retryMutex;
-    std::mutex _cancelledMutex;
+    std::condition_variable _allJobsComplete;
+    mutable std::mutex _jobsMutex;
 
-    typedef std::map<int,int> IntIntMap;
-    IntIntMap _retryMap; ///< Counter for task retries.
+};
 
-}; // class Executive
+class MarkCompleteFunc {
+public:
+    typedef std::shared_ptr<MarkCompleteFunc> Ptr;
+
+    MarkCompleteFunc(Executive* e, int jobId) : _executive(e), _jobId(jobId) {}
+    virtual ~MarkCompleteFunc() {}
+
+    virtual void operator()(bool success) {
+        if (_executive) {
+            _executive->markCompleted(_jobId, success);
+        }
+    }
+
+private:
+    Executive* _executive;
+    int _jobId;
+};
 
 }}} // namespace lsst::qserv::qdisp
 

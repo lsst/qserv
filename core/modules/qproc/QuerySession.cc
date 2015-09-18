@@ -239,7 +239,6 @@ QuerySession::getMergeStmt() const {
     }
 }
 
-
 void QuerySession::finalize() {
     if(_isFinal) {
         return;
