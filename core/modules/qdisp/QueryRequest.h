@@ -36,10 +36,7 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
-#include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "util/Callable.h"
-#include "util/threadSafe.h"
 
 namespace lsst {
 namespace qserv {
@@ -113,7 +110,7 @@ public:
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
     void cancel();
-    bool getCancelled();
+    bool isCancelled();
 
     void cleanup(); ///< Must be called when this object is no longer needed.
 
@@ -129,9 +126,10 @@ private:
     std::shared_ptr<JobQuery> _jobQuery; ///< Job information.
     JobDescription& _jobDesc; ///< Convenience reference to JobDescription inside _jobQuery.
 
-    util::Flag<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a single QueryRequest.
-    util::Flag<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
-                                          /// from a single QueryRequest.
+    std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 
+                                        /// single QueryRequest.
+    std::atomic<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
+                                                   /// from a single QueryRequest.
 
     std::mutex _finishStatusMutex;
     enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus {ACTIVE}; // _finishStatusMutex

@@ -259,21 +259,6 @@ void Executive::squash() {
     }
 }
 
-
-struct printMapEntry {
-    printMapEntry(std::ostream& os_, std::string const& sep_)
-        : os(os_), sep(sep_), first(true) {}
-    void operator()(Executive::JobMap::value_type const& entry) {
-        JobQuery::Ptr job = entry.second;
-        if(!first) { os << sep; }
-        os << "Ref=" << entry.first << " " << job;
-        first = false;
-    }
-    std::ostream& os;
-    std::string const& sep;
-    bool first;
-};
-
 int Executive::getNumInflight() {
     std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
     return _incompleteJobs.size();
@@ -283,7 +268,14 @@ std::string Executive::getProgressDesc() const {
     std::ostringstream os;
     {
         std::lock_guard<std::mutex> lock(_jobsMutex);
-        std::for_each(_jobMap.begin(), _jobMap.end(), printMapEntry(os, "\n"));
+        auto first = true;
+        for (auto entry : _jobMap) {
+            JobQuery::Ptr job = entry.second;
+            if(!first) { os << "\n"; }
+            first = false;
+            os << "Ref=" << entry.first << " " << job;
+
+        }
     }
     std::string msg_progress = os.str();
     LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % msg_progress);

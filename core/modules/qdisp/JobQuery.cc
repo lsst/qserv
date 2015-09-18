@@ -53,8 +53,8 @@ void logErr(std::string const& msg, JobQuery* jq) {
  */
 bool JobQuery::runJob() {
     LOGF_DEBUG("runJob %1%" % toString());
-    if (!_executive) {
-        logErr("runJob failed _executive=NULL", this);
+    if (_executive == nullptr) {
+        logErr("runJob failed _executive=nullptr", this);
         return false;
     }
     bool cancelled = _executive->getCancelled();
@@ -62,8 +62,8 @@ bool JobQuery::runJob() {
     if (!cancelled && handlerReset) {
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        if (shouldRetry()) {
-            ++_attemptsToRun;
+        if ( _runAttemptsCount < _getMaxRetries() ) {
+            ++_runAttemptsCount;
             if (_executive == nullptr) {
                 logErr("JobQuery couldn't run job as executive is null", this);
                 return false;
@@ -104,6 +104,16 @@ bool JobQuery::cancel() {
         return true;
     }
     return false;
+}
+
+/// Reset the QueryResource pointer, but only if called by the current QueryResource.
+void JobQuery::freeQueryResource(QueryResource* qr) {
+    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    if (qr == _queryResourcePtr.get()) {
+        _queryResourcePtr.reset();
+    } else {
+        LOGF_ERROR("freeQueryResource called by wrong QueryResource.");
+    }
 }
 
 std::string JobQuery::toString() const {

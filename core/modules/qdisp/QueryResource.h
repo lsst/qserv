@@ -67,12 +67,11 @@ public:
     const char* eInfoGet(int &code);
 
     std::shared_ptr<JobQuery> getJobQuery() { return _jobQuery; }
-    bool getCancelled();
+    bool isCancelled();
 
     friend class QueryResourceDebug;
 
 private:
-    void _provisionDoneHelper(XrdSsiSession* s);
     XrdSsiSession* _xrdSsiSession {nullptr}; ///< unowned, do not delete.
     std::shared_ptr<JobQuery> _jobQuery;
 };

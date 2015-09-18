@@ -47,17 +47,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-inline void unprovisionSession(XrdSsiSession* session) {
-    if(session) {
-        bool ok = session->Unprovision();
-        if(!ok) {
-            LOGF_ERROR("Error unprovisioning");
-        } else {
-            LOGF_DEBUG("Unprovision ok.");
-        }
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
@@ -68,7 +57,13 @@ QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> co
 
 QueryRequest::~QueryRequest() {
     LOGF_DEBUG("~QueryRequest");
-    unprovisionSession(_session);
+    if(_session) {
+          if(_session->Unprovision()) {
+              LOGF_DEBUG("Unprovision ok.");
+          } else {
+              LOGF_ERROR("Error unprovisioning");
+          }
+      }
 }
 
 // content of request data
@@ -79,7 +74,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
     return const_cast<char*>(_jobDesc.payload().data());
 }
 
-// Deleting the buffer (payload) would cause us problems.
+// Deleting the buffer (payload) would cause us problems, as this class is not the owner.
 void QueryRequest::RelRequestBuffer() {
     LOGF_DEBUG("RelRequestBuffer");
 }
@@ -89,8 +84,7 @@ void QueryRequest::RelRequestBuffer() {
 // See QueryResource::ProvisionDone which invokes ProcessRequest(QueryRequest*))
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     std::string errorDesc;
-    bool shouldStop = getCancelled();
-    if(shouldStop) {
+    if(isCancelled()) {
         cancel(); // calls _errorFinish()
         return true;
     }
@@ -129,10 +123,10 @@ bool QueryRequest::_importStream() {
     std::vector<char>& buffer = _jobDesc.respHandler()->nextBuffer();
     LOGF_DEBUG("QueryRequest::_importStream buffer.size=%1%" % buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
-    LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
+    LOGF_DEBUG("_importStream->GetResponseData size=%1% %2% %3%" %
               buffer.size() % pbuf % util::prettyCharList(buffer, 5));
     success = GetResponseData(&buffer[0], buffer.size());
-    LOGF_INFO("Initiated request %1%" % (success ? "ok" : "err"));
+    LOGF_DEBUG("Initiated request %1%" % (success ? "ok" : "err"));
     if(!success) {
         _jobQuery->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
@@ -159,7 +153,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         const char* chs = eInfo.Get(eCode);
-        std::string reason = (chs == NULL) ? "Null" : chs;
+        std::string reason = (chs == nullptr) ? "nullptr" : chs;
         _jobQuery->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
         _jobDesc.respHandler()->errorFlush("Couldn't retrieve response data:" + reason, eCode);
@@ -192,7 +186,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         _jobQuery->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
-        _retried.set(true); // Do not retry
+        _retried.store(true); // Do not retry
         _errorFinish();
     }
 }
@@ -204,13 +198,13 @@ void QueryRequest::cancel() {
             return; // Don't do anything if already cancelled.
         }
         _cancelled = true;
-        _retried.set(true); // Prevent retries.
+        _retried.store(true); // Prevent retries.
     }
     _jobQuery->getStatus()->updateInfo(JobStatus::CANCEL);
     _errorFinish(true);
 }
 
-bool QueryRequest::getCancelled() {
+bool QueryRequest::isCancelled() {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     return _cancelled;
 }
@@ -238,7 +232,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         }
     }
     // Make the calls outside of the mutex lock.
-    if (!_retried.set(true)) {
+    if (!_retried.exchange(true)) {
         // There's a slight race condition here. _jobQuery::runJob() creates a
         // new QueryResource object which is used to create a new QueryRequest object
         // which will replace this one in _jobQuery. The replacement could show up
@@ -277,7 +271,7 @@ void QueryRequest::_finish() {
 /// Inform the Executive that this query completed, and
 // Call MarkCompleteFunc only once.
 void QueryRequest::_callMarkComplete(bool success) {
-    if (!_calledMarkComplete.set(true)) {
+    if (!_calledMarkComplete.exchange(true)) {
         _jobQuery->getMarkCompleteFunc()->operator ()(success);
     }
 }

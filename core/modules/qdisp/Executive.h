@@ -37,9 +37,7 @@
 #include "global/stringTypes.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseRequester.h"
-#include "util/Callable.h"
 #include "util/MultiError.h"
-#include "util/threadSafe.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -74,8 +72,8 @@ private:
 };
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
-/// class Executive manages the execution of tasks for a UserQuery, while
-/// maintaining minimal information about the tasks themselves.
+/// class Executive manages the execution of jobs for a UserQuery, while
+/// maintaining minimal information about the jobs themselves.
 class Executive {
 public:
     typedef std::shared_ptr<Executive> Ptr;
@@ -155,7 +153,7 @@ private:
     /** Execution errors */
     util::MultiError _multiError;
 
-    int _requestCount; ///< Count of submitted tasks
+    int _requestCount; ///< Count of submitted jobs
     std::atomic<bool> _cancelled {false}; ///< Has execution been cancelled?
 
     // Mutexes

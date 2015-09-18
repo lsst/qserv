@@ -33,9 +33,6 @@
 #include "qdisp/QueryResource.h"
 
 // System headers
-#include <cassert>
-#include <iostream>
-#include <sstream>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -59,13 +56,19 @@ QueryResource::~QueryResource() {
 
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
-void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
-    _provisionDoneHelper(s);
-    // freeQueryResource must be called before returning to prevent memory leaks.
-    _jobQuery->freeQueryResource();
-}
-
-void QueryResource::_provisionDoneHelper(XrdSsiSession* s) {
+void QueryResource::ProvisionDone(XrdSsiSession* s) {
+    struct Destroyer {
+        Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
+        : _job{job},  _qr{qr} {}
+        ~Destroyer() {
+            // This should cause this object to be destroyed.
+            _job->freeQueryResource(_qr);
+        }
+    private:
+        JobQuery::Ptr _job;
+        QueryResource* _qr;
+    };
+    Destroyer destroyer(_jobQuery, this);
     if(!s) {
         // Check eInfo in resource for error details
         int code = 0;
@@ -73,7 +76,7 @@ void QueryResource::_provisionDoneHelper(XrdSsiSession* s) {
         _jobQuery->provisioningFailed(msg, code);
         return;
     }
-    if(getCancelled()) {
+    if(isCancelled()) {
         return; // Don't bother doing anything if the job is cancelled.
     }
     _xrdSsiSession = s;
@@ -92,8 +95,8 @@ const char* QueryResource::eInfoGet(int &code) {
     return message ? message : "no message from XrdSsi, code may not be reliable";
 }
 
-bool QueryResource::getCancelled() {
-    return _jobQuery->getCancelled();
+bool QueryResource::isCancelled() {
+    return _jobQuery->isCancelled();
 }
 
 }}} // lsst::qserv::qdisp

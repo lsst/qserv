@@ -67,29 +67,27 @@ class JobQueryTest : public qdisp::JobQuery {
 public:
     typedef std::shared_ptr<JobQueryTest> Ptr;
     JobQueryTest(qdisp::Executive* executive,
-              qdisp::JobDescription const& jobDescription,
-              qdisp::JobStatus::Ptr jobStatus,
-              qdisp::MarkCompleteFunc::Ptr markCompleteFunc)
-       : qdisp::JobQuery(executive, jobDescription, jobStatus, markCompleteFunc),
-         retryCalled(false) {}
+                 qdisp::JobDescription const& jobDescription,
+                 qdisp::JobStatus::Ptr jobStatus,
+                 qdisp::MarkCompleteFunc::Ptr markCompleteFunc)
+        : qdisp::JobQuery{executive, jobDescription, jobStatus, markCompleteFunc} {}
 
     virtual ~JobQueryTest() {}
-    virtual bool runJob() {
+    virtual bool runJob() override {
         retryCalled = true;
         LOGF_INFO("_retryCalled=%1%" % retryCalled);
         return true;
     }
-    bool retryCalled;
+    bool retryCalled {false};
 
     // Create a fresh JobQueryTest instance. If you're making this to get a QueryRequestObject,
     // set createQueryRequest=true and pass an xsSession pointer.
     // set createQueryResource=true to get a QueryResource.
     // Special ResponseHandlers need to be defined in JobDescription.
-    static JobQueryTest::Ptr getJobQueryTest(qdisp::Executive* executive,
-            qdisp::JobDescription jobDesc,
+    static JobQueryTest::Ptr getJobQueryTest(
+            qdisp::Executive* executive, qdisp::JobDescription jobDesc,
             qdisp::MarkCompleteFunc::Ptr markCompleteFunc,
-            bool createQueryResource,
-            XrdSsiSession* xsSession, bool createQueryRequest) {
+            bool createQueryResource, XrdSsiSession* xsSession, bool createQueryRequest) {
         qdisp::JobStatus::Ptr status(new qdisp::JobStatus());
         std::shared_ptr<JobQueryTest> jqTest(new JobQueryTest(executive, jobDesc, status, markCompleteFunc));
         jqTest->setup();
@@ -103,20 +101,18 @@ public:
     }
 };
 
-
-
 /** Simple functor for testing _finishfunc.
  */
 class FinishTest : public qdisp::MarkCompleteFunc {
 public:
     typedef std::shared_ptr<FinishTest> Ptr;
-    FinishTest() : MarkCompleteFunc(0, -1), finishCalled(false){}
+    FinishTest() : MarkCompleteFunc(0, -1) {}
     virtual ~FinishTest() {}
     virtual void operator()(bool val) {
         finishCalled = true;
         LOGF_INFO("_finishCalled=%1%" % finishCalled);
     }
-    bool finishCalled;
+    bool finishCalled {false};
 };
 
 /** Simple ResponseHandler for testing.
@@ -287,15 +283,15 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
             std::make_shared<ccontrol::MergingHandler>(cmr, infileMerger, chunkResultName));
     qdisp::MarkCompleteFunc::Ptr mcf = std::make_shared<qdisp::MarkCompleteFunc>(&ex, jobId);
 
-    JobQueryTest::Ptr jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, NULL, false);
+    JobQueryTest::Ptr jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, nullptr, false);
     qdisp::QueryResource::Ptr r = jqTest->getQueryResource();
-    r->ProvisionDone(NULL);
+    r->ProvisionDone(nullptr);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::PROVISION_NACK);
 
     char buf[20];
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
     qdisp::XrdSsiSessionMock xsMock(buf);
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, NULL, false);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, nullptr, false);
     r = jqTest->getQueryResource();
     r->ProvisionDone(&xsMock);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::REQUEST);
@@ -412,13 +408,13 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         ex.add(jobDesc);
         jq = ex.getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
-        BOOST_CHECK(jq->getCancelled() == false);
+        BOOST_CHECK(jq->isCancelled() == false);
     }
     ex.squash();
     ex.squash(); // check that squashing twice doesn't cause issues.
     for (int jobId=first; jobId<=last; ++jobId) {
         jq = ex.getJobQuery(jobId);
-        BOOST_CHECK(jq->getCancelled() == true);
+        BOOST_CHECK(jq->isCancelled() == true);
     }
     ex.join(); // XrdSsiMock doesn't pay attention to cancel, need to wait for all to finish.
 
@@ -434,12 +430,12 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, true, &sessionMock, true);
     auto resource = jqTest->getQueryResource();
     auto request = jqTest->getQueryRequest();
-    BOOST_CHECK(resource->getCancelled() == false);
-    BOOST_CHECK(request->getCancelled() == false);
+    BOOST_CHECK(resource->isCancelled() == false);
+    BOOST_CHECK(request->isCancelled() == false);
     BOOST_CHECK(respReq->_processCancelCalled == false);
     jqTest->cancel();
-    BOOST_CHECK(resource->getCancelled() == true);
-    BOOST_CHECK(request->getCancelled() == true);
+    BOOST_CHECK(resource->isCancelled() == true);
+    BOOST_CHECK(request->isCancelled() == true);
     BOOST_CHECK(respReq->_processCancelCalled == true);
 
 }

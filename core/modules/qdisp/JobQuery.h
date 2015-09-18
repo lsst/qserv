@@ -35,7 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qdisp/Executive.h"
+#include "qdisp/Executive.h"     // &&& replace with qdisp/JobDescritpion.h
 #include "qdisp/ResponseRequester.h"
 
 namespace lsst {
@@ -63,27 +63,12 @@ public:
     virtual ~JobQuery() {
         LOGF_DEBUG("~JobQuery _jobId=%1%" % getId());
     }
-    int getAttemptsToRun() const {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _attemptsToRun;
-    }
-    int getMaxRetries() const { return 5; }
-    bool shouldRetry() const { return getAttemptsToRun() < getMaxRetries(); }
+   
     virtual bool runJob();
 
     int getId() const { return _jobDescription.id(); }
     JobDescription& getDescription() { return _jobDescription; }
     JobStatus::Ptr getStatus() { return _jobStatus; }
-
-    void provisioningFailed(std::string const& msg, int code);
-    std::shared_ptr<QueryResource> getQueryResource() {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _queryResourcePtr;
-    }
-    void freeQueryResource() {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        _queryResourcePtr.reset();
-    }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
@@ -91,21 +76,31 @@ public:
     }
     std::shared_ptr<QueryRequest> getQueryRequest() {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _queryRequestPtr; }
-    void freeQueryRequest() {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        _queryRequestPtr.reset();
+        return _queryRequestPtr;
     }
 
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
     bool cancel();
-    bool getCancelled() { return _cancelled; }
+    bool isCancelled() { return _cancelled; }
+
+    void freeQueryResource(QueryResource* qr);
+
+    void provisioningFailed(std::string const& msg, int code);
+    std::shared_ptr<QueryResource> getQueryResource() {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _queryResourcePtr;
+    }
 
     std::string toString() const ;
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
 protected:
+    int _getRunAttemptsCount() const {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _runAttemptsCount;
+    }
+    int _getMaxRetries() const { return 5; } // Arbitrary value until solid value with reason determined.
 
     // Values that don't change once set.
     Executive* _executive;
@@ -116,8 +111,9 @@ protected:
     JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex; // protects _attemptsToRun, _queryResourcePtr, _queryRequestPtr
-    int _attemptsToRun {0};
+    mutable std::recursive_mutex _rmutex; ///< protects _runAttemtsCount, _queryResourcePtr,
+                                          /// _queryRequestPtr
+    int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job.
 
     // xrootd items
     std::shared_ptr<QueryResource> _queryResourcePtr;
