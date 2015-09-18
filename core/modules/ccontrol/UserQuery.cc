@@ -71,7 +71,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/MergingRequester.h"
+#include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"

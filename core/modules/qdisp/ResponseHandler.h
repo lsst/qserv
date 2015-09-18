@@ -30,9 +30,7 @@
 #include <vector>
 
 // Qserv headers
-#include "util/Callable.h"
 #include "util/Error.h"
-#include "util/threadSafe.h"
 
 namespace lsst {
 namespace qserv {

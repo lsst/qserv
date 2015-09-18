@@ -35,9 +35,11 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
+#include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/ResponseHandler.h"
 #include "util/MultiError.h"
+#include "util/threadSafe.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -49,28 +51,6 @@ namespace qdisp {
 class JobQuery;
 class MessageStore;
 class QueryResource;
-
-/** Description of a job managed by the executive
- */
-class JobDescription {
-public:
-    JobDescription(int id, ResourceUnit const& resource, std::string const& payload,
-        std::shared_ptr<ResponseHandler> const& respHandler)
-        : _id{id}, _resource{resource}, _payload{payload}, _respHandler{respHandler} {};
-
-    int id() const { return _id; }
-    ResourceUnit const& resource() const { return _resource; }
-    std::string const& payload() const { return _payload; }
-    std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
-    std::string toString() const;
-    friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
-private:
-    int _id; // Job's Id number.
-    ResourceUnit _resource; // path, e.g. /q/LSST/23125
-    std::string _payload; // encoded request
-    std::shared_ptr<ResponseHandler> _respHandler; // probably MergingHandler
-};
-std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.

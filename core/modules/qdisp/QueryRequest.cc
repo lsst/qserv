@@ -40,7 +40,7 @@
 
 // Qserv headers
 #include "qdisp/JobStatus.h"
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/ResponseHandler.h"
 #include "util/common.h"
 
 namespace lsst {

@@ -35,8 +35,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qdisp/Executive.h"     // &&& replace with qdisp/JobDescritpion.h
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/Executive.h"
+#include "qdisp/JobDescription.h"
+#include "qdisp/ResponseHandler.h"
 
 namespace lsst {
 namespace qserv {

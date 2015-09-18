@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "ccontrol/MergingRequester.h"
+#include "ccontrol/MergingHandler.h"
 
 // System headers
 #include <cassert>

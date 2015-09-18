@@ -33,7 +33,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/MergingRequester.h"
+#include "ccontrol/MergingHandler.h"
 #include "global/ResourceUnit.h"
 #include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"

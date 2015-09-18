@@ -24,7 +24,7 @@
 /**
   * @file
   *
-  * @brief Executive. It executes things.
+  * @brief Executive. It executes and tracks jobs from a user query.
   *
   * TODO: Consider merging RequesterMap and StatusMap. Originally, RequesterMap
   * was separate from StatusMap to reduce contention when things are just
@@ -61,7 +61,7 @@
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryResource.h"
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -86,25 +86,6 @@ std::string getErrorText(XrdSsiErrInfo & e) {
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-
-template <typename Ptr>
-struct printMapSecond {
-    printMapSecond(std::ostream& os_, std::string sep_)
-        : os(os_), sep(sep_), first(true)  {}
-
-    void operator()(Ptr const& p) {
-        if(!first) {
-            os << sep;
-        }
-        os << *(p.second);
-        first = false;
-    }
-    std::ostream& os;
-    std::string sep;
-    bool first;
-};
-
-
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -428,20 +409,15 @@ std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& 
 
 /// precondition: _requestersMutex is held by current thread.
 void Executive::_printState(std::ostream& os) {
-    std::for_each(_incompleteJobs.begin(), _incompleteJobs.end(),
-                  printMapSecond<JobMap::value_type>(os, "\n"));
-    os << "\n" << getProgressDesc() << "\n";
-}
-
-std::string JobDescription::toString() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._id << " payload=" << jd._payload << ")";
-    return os;
+    bool first = false;
+    for (auto const& entry : _incompleteJobs) {
+        JobQuery::Ptr job = entry.second;
+        if(!first) {
+            os << "\n";
+        }
+        os << *job;
+        first = false;
+    }
 }
 
 JobQuery::Ptr Executive::getJobQuery(int jobId) {

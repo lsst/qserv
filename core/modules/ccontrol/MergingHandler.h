@@ -20,15 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
-#define LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
+#ifndef LSST_QSERV_CCONTROL_MERGINGHANDLER_H
+#define LSST_QSERV_CCONTROL_MERGINGHANDLER_H
 
 // System headers
 #include <memory>
 #include <mutex>
 
 // Qserv headers
-#include "qdisp/ResponseRequester.h"
+#include "qdisp/ResponseHandler.h"
 
 // Forward decl
 namespace lsst {
@@ -119,4 +119,4 @@ private:
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_CCONTROL_MERGINGREQUESTER_H
+#endif // LSST_QSERV_CCONTROL_MERGINGHANDLER_H
