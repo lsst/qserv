@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(Vector) {
 BOOST_AUTO_TEST_CASE(Array) {
 
     test::output_test_stream output;
-    std::array<std::string, 6> iterable { "1", "2", "3", "4", "5", "6"};
+    std::array<std::string, 6> iterable { {"1", "2", "3", "4", "5", "6"} };
     auto start = std::next(iterable.begin(), 2);
     auto formatable = util::printable( start, iterable.end(), "", "", "; ");
 

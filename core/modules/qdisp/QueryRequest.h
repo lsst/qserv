@@ -49,7 +49,7 @@ public:
         : std::exception(),
           s("BadResponseError:" + s_) {}
     virtual ~BadResponseError() throw() {}
-    virtual const char* what() throw() {
+    virtual const char* what() const throw() {
         return s.c_str();
     }
     std::string s;
@@ -62,7 +62,7 @@ public:
         : std::exception(),
           s("QueryRequest error:" + s_) {}
     virtual ~RequestError() throw() {}
-    virtual char const* what() throw() {
+    virtual const char* what() const throw() {
         return s.c_str();
     }
     std::string s;

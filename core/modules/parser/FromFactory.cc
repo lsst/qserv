@@ -59,25 +59,6 @@
 // Anonymous helpers
 ////////////////////////////////////////////////////////////////////////
 namespace {
-inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
-    RefAST last = node;
-    for(; node.get(); node = node->getNextSibling()) {
-        if(node->getType() == typeId) return last;
-        last = node;
-    }
-    return RefAST();
-}
-
-inline std::string
-getSiblingStringBounded(RefAST left, RefAST right) {
-    lsst::qserv::parser::CompactPrintVisitor<RefAST> p;
-    for(; left.get(); left = left->getNextSibling()) {
-        p(left);
-        if(left == right) break;
-    }
-    return p.result;
-}
-
 class ParamGenerator {
 public:
     struct Check {

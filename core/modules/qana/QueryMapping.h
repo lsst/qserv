@@ -41,7 +41,7 @@ namespace query {
     class QueryTemplate;
 }
 namespace qproc {
-    class ChunkSpec;
+    struct ChunkSpec;
     class ChunkSpecSingle;
 }}} // End of forward declarations
 

@@ -38,7 +38,7 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
-    class ScriptMeta;
+    struct ScriptMeta;
     class SendChannel;
 }
 namespace proto {
