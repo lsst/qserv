@@ -46,18 +46,7 @@ Configure master and worker nodes
 
    :code:`<qserv-run directory>/bin/qserv-start.sh`
 
-5. Grant permissions on every worker:
-
-   :code:`mysql -S <qserv-run directory>/var/lib/mysql/mysql.sock -uroot -p`
-
-   .. code-block:: sql
-
-     GRANT USAGE ON *.* TO 'qsmaster'@'<master hostName>';
-     GRANT SELECT ON `mysql`.* TO 'qsmaster'@'<master hostName>';
-     GRANT ALL PRIVILEGES ON `qservTest%`.* TO 'qsmaster'@'<master hostName>';
-     GRANT ALL PRIVILEGES ON `qservw_worker`.* TO 'qsmaster'@'<master hostName>';
-
-6. On the master, register workers with CSS:
+5. On the master, register workers with CSS:
 
    :code:`qserv-admin.py`
 
