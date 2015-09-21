@@ -953,7 +953,6 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
                             QueryMapping& mapping)
 {
     typedef std::list<Vertex>::iterator ListIter;
-    typedef std::vector<Vertex*>::iterator VecIter;
 
     if (!_query) {
         return;
