@@ -33,6 +33,7 @@
 #include "qdisp/QueryRequest.h"
 
 // System headers
+#include <cstddef>
 #include <iostream>
 
 // LSST headers

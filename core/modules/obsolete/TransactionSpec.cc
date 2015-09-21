@@ -26,6 +26,7 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <fcntl.h>
 #include <fstream>
 #include <sys/mman.h>
@@ -56,14 +57,14 @@ namespace qdisp {
 TransactionSpec::Reader::Reader(std::string const& file) {
     _mmapFd = -1;
     _mmapChunk = 0;
-    _rawContents = NULL;
+    _rawContents = nullptr;
     _setupMmap(file);
     //_readWholeFile(file);
     _pos = 0;
 }
 
 TransactionSpec::Reader::~Reader() {
-    if(_rawContents != NULL) delete[] _rawContents; // cleanup
+    if(_rawContents) delete[] _rawContents; // cleanup
     _cleanupMmap();
 }
 
@@ -76,7 +77,7 @@ void TransactionSpec::Reader::_readWholeFile(std::string const& file) {
     is.seekg(0, std::ios::end);
     _rawLength = is.tellg();
     if(_rawLength <= 0) {
-        _rawContents = NULL;
+        _rawContents = nullptr;
         return;
     }
     is.seekg(0, std::ios::beg);
@@ -105,8 +106,8 @@ void TransactionSpec::Reader::_setupMmap(std::string const& file) {
     _mmapMinimum = 0x40000; // 256K
     _mmapOffset = 0;
     _mmapFd = open(file.c_str(), O_RDONLY);
-    _mmapChunk = NULL;
-    _mmapChunk = (char*)mmap(NULL, _mmapDefaultSize, PROT_READ, MAP_PRIVATE,
+    _mmapChunk = nullptr;
+    _mmapChunk = (char*)mmap(nullptr, _mmapDefaultSize, PROT_READ, MAP_PRIVATE,
                              _mmapFd, _mmapOffset);
     if(_mmapChunk == (void*)-1) {
         perror("error mmaping.");
@@ -122,7 +123,7 @@ void TransactionSpec::Reader::_advanceMmap() {
         if(distToBorder < _mmapMinimum) {
             munmap(_mmapChunk, _mmapDefaultSize);
             _mmapOffset += _mmapDefaultSize - _mmapMinimum;
-            _mmapChunk = (char*)mmap(NULL, _mmapDefaultSize, PROT_READ,
+            _mmapChunk = (char*)mmap(nullptr, _mmapDefaultSize, PROT_READ,
                                      MAP_PRIVATE, _mmapFd, _mmapOffset);
             assert(_mmapChunk != (void*)-1);
 
@@ -136,7 +137,7 @@ void TransactionSpec::Reader::_advanceMmap() {
 }
 
 void TransactionSpec::Reader::_cleanupMmap() {
-    if(_mmapChunk != NULL) {
+    if(_mmapChunk) {
         munmap(_mmapChunk, _mmapChunkSize);
     }
     if(_mmapFd != -1) {

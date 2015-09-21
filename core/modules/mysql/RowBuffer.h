@@ -20,10 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_MYSQL_ROWBUFFER_H
 #define LSST_QSERV_MYSQL_ROWBUFFER_H
 
 // System headers
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -43,7 +45,7 @@ namespace mysql {
 /// Row is a mysql row abstraction that bundles field sizes and counts. Row is
 /// shallow, and does not perform any memory management.
 struct Row {
-    Row() : row(NULL), lengths(NULL), numFields(-1) {}
+    Row() : row(nullptr), lengths(nullptr), numFields(-1) {}
 
     // Shallow copies all-around.
     Row(char** row_, unsigned long int* lengths_, int numFields_)

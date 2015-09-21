@@ -36,6 +36,7 @@
 #else // Linux?
 #include <openssl/md5.h>
 #endif
+#include <cstddef>
 #include <fstream>
 #include <glob.h>
 #include <iostream>
@@ -134,7 +135,7 @@ namespace {
                               unsigned char* md) {
         // Defined with RFC 1321 MD5 functions.
         MD5_CTX ctx;
-        assert(md != NULL); // Don't support null input.
+        assert(md != nullptr); // Don't support null input.
         MD5Init(&ctx);
         MD5Update(&ctx, d, n);
         MD5Final(md, &ctx);
@@ -160,9 +161,9 @@ void clearResultPath() {
     std::string globstr(DUMP_BASE);
     globstr += "/*";
     // Glob, with no special opts, no error function
-    if(0 == glob(globstr.c_str(), 0, NULL, &globbuf)) {
+    if(0 == glob(globstr.c_str(), 0, nullptr, &globbuf)) {
         char** s = globbuf.gl_pathv;
-        while(0 != *s) {
+        while(nullptr != *s) {
             unlink(*s++); // delete file, ignore errors.
         }
         globfree(&globbuf);
@@ -214,7 +215,7 @@ void StringBuffer::addBuffer(
     _totalSize += bufferSize;
 #else
     char* newItem = new char[bufferSize];
-    assert(newItem != (char*)0);
+    assert(newItem != nullptr);
     memcpy(newItem, buffer, bufferSize);
     { // Assume(!) that there are no overlapping writes.
         std::unique_lock<std::mutex> lock(_mutex);

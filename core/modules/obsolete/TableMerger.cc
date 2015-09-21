@@ -40,6 +40,7 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
@@ -63,7 +64,7 @@ using lsst::qserv::rproc::TableMergerConfig;
 
 std::string getTimeStampId() {
     struct timeval now;
-    int rc = gettimeofday(&now, NULL);
+    int rc = gettimeofday(&now, nullptr);
     if (rc != 0) throw "Failed to get timestamp.";
     std::stringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -324,7 +325,7 @@ bool TableMerger::_applySql(std::string const& sql) {
         std::lock_guard<std::mutex> m(_popenMutex);
         fp = popen(_loadCmd.c_str(), "w"); // check error
     }
-    if(fp == NULL) {
+    if(fp == nullptr) {
         _error.status = TableMergerError::MYSQLOPEN;
         _error.errorCode = 0;
         _error.description = "Error starting mysql process.";

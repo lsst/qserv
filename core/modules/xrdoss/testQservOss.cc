@@ -20,8 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /// Test QservOss oss plugin.
 #define BOOST_TEST_MODULE QservOss_1
+
+// System headers
+#include <cstddef>
 
 // Third-party headers
 #include "XrdSys/XrdSysLogger.hh"
@@ -63,37 +67,37 @@ BOOST_AUTO_TEST_CASE(Test1) {
     BOOST_CHECK((result == XrdOssOK) || (result == -ENOENT));
 
     // Necessary but unimportant StatVS.
-    result = oss->StatVS(NULL, NULL);
+    result = oss->StatVS(nullptr, nullptr);
     BOOST_CHECK_EQUAL(result, -EEXIST);
     XrdOssVSInfo vsInfo;
-    result = oss->StatVS(&vsInfo, NULL);
+    result = oss->StatVS(&vsInfo, nullptr);
     BOOST_CHECK_EQUAL(result, XrdOssOK);
 
     // Test XrdOss overrides (stubs)
     std::shared_ptr<XrdOssDF>  ossDf;
     ossDf.reset(oss->newDir(tident));
-    BOOST_CHECK_NE(ossDf.get(), static_cast<XrdOssDF*>(NULL));
+    BOOST_CHECK_NE(ossDf.get(), static_cast<XrdOssDF*>(nullptr));
     ossDf.reset(oss->newFile(tident));
-    BOOST_CHECK_NE(ossDf.get(),  static_cast<XrdOssDF*>(NULL));
+    BOOST_CHECK_NE(ossDf.get(),  static_cast<XrdOssDF*>(nullptr));
 
-    result = oss->Chmod(aPath, 0777, NULL);
+    result = oss->Chmod(aPath, 0777, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
 
     XrdOucEnv env;
     result = oss->Create(aPath, tident, 0777, env);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
 
-    result = oss->Init(&logger, NULL);
+    result = oss->Init(&logger, nullptr);
     BOOST_CHECK_EQUAL(result, 0);
-    result = oss->Mkdir(aPath, 0777, 0, NULL);
+    result = oss->Mkdir(aPath, 0777, 0, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Remdir(aPath, 0, NULL);
+    result = oss->Remdir(aPath, 0, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Truncate(aPath, 0, NULL);
+    result = oss->Truncate(aPath, 0, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Unlink(aPath, 0, NULL);
+    result = oss->Unlink(aPath, 0, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Rename(aPath, aPath, 0, NULL);
+    result = oss->Rename(aPath, aPath, 0, nullptr);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
 }
 BOOST_AUTO_TEST_SUITE_END()

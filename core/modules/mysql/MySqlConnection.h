@@ -29,6 +29,7 @@
 
 // System headers
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -65,7 +66,7 @@ public:
     int cancel();
 
     MYSQL_RES* getResult() { return _mysql_res; }
-    void freeResult() { mysql_free_result(_mysql_res); _mysql_res = NULL; }
+    void freeResult() { mysql_free_result(_mysql_res); _mysql_res = nullptr; }
     int getResultFieldCount() {
         assert(_mysql);
         return mysql_field_count(_mysql);

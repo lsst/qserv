@@ -64,7 +64,7 @@ public:
                ValidatorPtr validator,
                std::shared_ptr<wbase::MsgProcessor> processor)
         : XrdSsiSession(strdup(sname), 0),
-          XrdSsiResponder(this, (void *)0),
+          XrdSsiResponder(this, nullptr),
           _validator(validator),
           _processor(processor),
           _cancelled(false)

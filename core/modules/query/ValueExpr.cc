@@ -38,6 +38,7 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -191,15 +192,13 @@ bool ValueExpr::hasAggregation() const {
     return hasAgg;
 }
 
-// TODO C++11 move nullptr_cr to nullptr
 ColumnRef::Ptr ValueExpr::getColumnRef() const {
-    ColumnRef::Ptr nullptr_cr;
     if (_factorOps.size() != 1) {
-        return nullptr_cr;
+        return nullptr;
     }
     ValueFactorPtr const& vf = _factorOps.front().factor;
     if (!vf) {
-        return nullptr_cr;
+        return nullptr;
     }
     return vf->getColumnRef();
 }

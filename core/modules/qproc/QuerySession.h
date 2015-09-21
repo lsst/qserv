@@ -20,8 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_QPROC_QUERYSESSION_H
 #define LSST_QSERV_QPROC_QUERYSESSION_H
+
 /**
   * @file
   *
@@ -29,6 +31,7 @@
   */
 
 // System headers
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -227,7 +230,7 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 class QuerySession::Iter : public boost::iterator_facade <
     QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
 public:
-    Iter() : _qs(NULL), _hasChunks(false), _hasSubChunks(false), _dirty(false) {}
+    Iter() : _qs(nullptr), _hasChunks(false), _hasSubChunks(false), _dirty(false) {}
 
 private:
     Iter(QuerySession& qs, ChunkSpecVector::iterator i);

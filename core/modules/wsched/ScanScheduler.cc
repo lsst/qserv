@@ -33,6 +33,7 @@
 #include "wsched/ScanScheduler.h"
 
 // System headers
+#include <cstddef>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -46,8 +47,8 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-ScanScheduler* dbgScanScheduler = 0; ///< A symbol for gdb
-ChunkDisk* dbgChunkDisk1 = 0; ///< A symbol for gdb
+ScanScheduler* dbgScanScheduler = nullptr; ///< A symbol for gdb
+ChunkDisk* dbgChunkDisk1 = nullptr; ///< A symbol for gdb
 
 
 ////////////////////////////////////////////////////////////////////////

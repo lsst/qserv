@@ -31,6 +31,7 @@
 #define LSST_QSERV_XRDOSS_QSERVOSS_H
 
 // System headers
+#include <cstddef>
 #include <deque>
 #include <memory>
 #include <set>
@@ -86,9 +87,9 @@ public:
 
     // XrdOss overrides (relevant)
     virtual int Stat(const char* path, struct stat* buff,
-                     int opts=0, XrdOucEnv*e=NULL);
+                     int opts=0, XrdOucEnv*e=nullptr);
     virtual int StatVS(XrdOssVSInfo *sP,
-                       const char *sname=0,
+                       const char *sname=nullptr,
                        int updt=0);
 
     virtual int Init(XrdSysLogger* log, const char* cfgFn);

@@ -1,5 +1,4 @@
 // -*- LSST-C++ -*-
-
 /*
  * LSST Data Management System
  * Copyright 2014-2015 AURA/LSST.
@@ -32,6 +31,7 @@
 
 // System headers
 #include <algorithm> // sort
+#include <cstddef>   // nullptr
 #include <cstdlib>   // rand, srand
 #include <iostream>
 #include <sstream>
@@ -52,7 +52,7 @@
 
 struct KvInterfaceFixture {
     KvInterfaceFixture(void) {
-        srand(time(NULL));
+        srand(time(nullptr));
         prefix = "/unittest_" + boost::lexical_cast<std::string>(rand());
         k1 = prefix + "/xyzA";
         k2 = prefix + "/xyzB";

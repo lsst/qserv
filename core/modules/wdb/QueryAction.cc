@@ -33,6 +33,7 @@
 
 // System headers
 #include <algorithm>
+#include <cstddef>
 #include <iostream>
 #include <memory>
 
@@ -196,7 +197,7 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         if(!queryOk) {
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
             _multiError.push_back(error);
-            return NULL;
+            return nullptr;
         }
         return _mysqlConn->getResult();
 }
