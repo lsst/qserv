@@ -1,7 +1,6 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -18,36 +17,41 @@
  *
  * You should have received a copy of the LSST License Statement and
  * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * see <https://www.lsstcorp.org/LegalNotices/>.
  */
+#ifndef LSST_QSERV_CSS_TABLEPARAMS_H
+#define LSST_QSERV_CSS_TABLEPARAMS_H
 
-/**
-  * @file
-  *
-  * @brief Struct containing 2 integers, for C++-->python swig.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+// System headers
 
-#ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
-#define LSST_QSERV_CSS_STRIPINGPARAMS_H
+// Third-party headers
+
+// Qserv headers
+#include "css/MatchTableParams.h"
+#include "css/PartTableParams.h"
 
 namespace lsst {
 namespace qserv {
 namespace css {
 
-class StripingParams {
-public:
-    StripingParams() : stripes(0), subStripes(0), partitioningId(0), overlap(0.0) {}
-    StripingParams(int stripes_, int subStripes_, int partitioningId_, double overlap_) :
-        stripes(stripes_), subStripes(subStripes_), partitioningId(partitioningId_),
-        overlap(overlap_){}
-    int stripes;
-    int subStripes;
-    int partitioningId;
-    double overlap;     // default overlap for tables that do not specify their own overlap
+/// @addtogroup css
+
+/**
+ *  @ingroup css
+ *
+ *  @brief Class defining a set of table partitioning parameters.
+ *
+ *  This class is just a combination of the PartTableParams and
+ *  MatchTableParams.
+ */
+
+struct TableParams {
+
+    MatchTableParams match;          ///< match metadata
+    PartTableParams partitioning;    ///< partitioning metadata
+
 };
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_STRIPINGPARAMS_H
+#endif // LSST_QSERV_CSS_TABLEPARAMS_H

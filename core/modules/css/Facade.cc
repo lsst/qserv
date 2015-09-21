@@ -433,7 +433,7 @@ void
 Facade::_throwIfNotTbExists(string const& dbName, string const& tableName) const {
     if (!containsTable(dbName, tableName)) {
         LOGF(_log, LOG_LVL_DEBUG, "Table %1%.%2% not found." % dbName % tableName);
-        throw NoSuchTable(dbName+"."+tableName);
+        throw NoSuchTable(dbName, tableName);
     }
 }
 

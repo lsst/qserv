@@ -85,8 +85,17 @@ public:
  */
 class NoSuchTable : public CssError {
 public:
-    explicit NoSuchTable(std::string const& tableName)
-        : CssError("Table '" + tableName + "' does not exist.") {}
+    explicit NoSuchTable(std::string const& dbName, std::string const& tableName)
+        : CssError("Table '" + dbName + "." + tableName + "' does not exist.") {}
+};
+
+/**
+ * Specialized run-time error: table already exist.
+ */
+class TableExists : public CssError {
+public:
+    explicit TableExists(std::string const& dbName, std::string const& tableName)
+        : CssError("Table '" + dbName + "." + tableName + "' already exists.") {}
 };
 
 /**
@@ -122,6 +131,15 @@ public:
 };
 
 /**
+ * Specialized run-time error: something is wrong with key value.
+ */
+class KeyValueError : public CssError {
+public:
+    explicit KeyValueError(std::string const& key, std::string const& message)
+        : CssError("Key '" + key +"' value error: " + message) {}
+};
+
+/**
  * Specialized run-time error: can't allocate memory to get data for a given key.
  */
 class BadAllocError : public CssError {
@@ -149,6 +167,32 @@ public:
         : CssError("CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
 };
 
+/**
+ * Specialized run-time error: database does not exist.
+ */
+class ReadonlyCss : public CssError {
+public:
+    explicit ReadonlyCss()
+        : CssError("Attempt to modify read-only CSS.") {}
+};
+
+/**
+ * Specialized run-time error: node does not exist.
+ */
+class NoSuchNode : public CssError {
+public:
+    explicit NoSuchNode(std::string const& nodeName)
+        : CssError("Node '" + nodeName + "' does not exist.") {}
+};
+
+/**
+ * Specialized run-time error: node does not exist.
+ */
+class NodeExists : public CssError {
+public:
+    explicit NodeExists(std::string const& nodeName)
+        : CssError("Node '" + nodeName + "' already exists.") {}
+};
 
 }}} // namespace lsst::qserv::css
 

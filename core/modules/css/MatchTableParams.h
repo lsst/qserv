@@ -37,6 +37,9 @@ struct MatchTableParams {
     std::string dirTable2;   ///< Second director-table involved in match.
     std::string dirColName2; ///< The column used to join with dirTable2.
     std::string flagColName; ///< Match-flags column name.
+
+    /// Returns true if table is a match table
+    bool isMatchTable() const { return not dirTable1.empty(); }
 };
 
 }}} // namespace lsst::qserv::css
