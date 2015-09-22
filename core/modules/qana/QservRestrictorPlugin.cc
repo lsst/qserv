@@ -519,24 +519,38 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
         for(BfIter b = factor->_terms.begin();
             b != factor->_terms.end();
             ++b) {
-            query::InPredicate::Ptr ip =
+
+            // IN predicate
+            query::InPredicate::Ptr inPredicate =
                 std::dynamic_pointer_cast<query::InPredicate>(*b);
-            if(ip) {
+            if(inPredicate) {
                 std::shared_ptr<query::ColumnRef> cr
-                    = resolveAsColumnRef(context, ip->value);
+                    = resolveAsColumnRef(context, inPredicate->value);
                 if(cr && lookupSecIndex(context, cr)) {
                     query::QsRestrictor::Ptr p =
-                        _newSecIndexRestrictor(context, cr, ip->cands);
+                        _newSecIndexRestrictor(context, cr, inPredicate->cands);
                     addPred(secIndexPreds, p);
                 }
-            } else {
-                query::CompPredicate::Ptr cp =
-                    std::dynamic_pointer_cast<query::CompPredicate>(*b);
-                if(cp) {
-                    query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, cp);
-                    addPred(secIndexPreds, p);
-                }
+                continue;
             }
+
+            // = predicate
+            query::CompPredicate::Ptr compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(*b);
+            if(compPredicate) {
+                query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, compPredicate);
+                addPred(secIndexPreds, p);
+                continue;
+            }
+
+            // BETWEEN predicate
+            /* TODO
+            query::BetweenPredicate::Ptr betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(*b);
+            if(betweenPredicate) {
+                query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, betweenPredicate);
+                addPred(secIndexPreds, p);
+                continue;
+            }
+            */
         }
     }
     return secIndexPreds;
