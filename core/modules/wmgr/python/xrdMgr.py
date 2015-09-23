@@ -40,7 +40,7 @@ import subprocess
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
-from lsst.db import db
+from sqlalchemy.exc import SQLAlchemyError
 
 #----------------------------------
 # Local non-exported definitions --
@@ -118,10 +118,10 @@ def _restartXrootd():
 xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 
 
-@xrdService.errorhandler(db.DbException)
+@xrdService.errorhandler(SQLAlchemyError)
 def dbExceptionHandler(error):
-    """ All leaked DbException exceptions make 500 error """
-    return errorResponse(500, "db.DbException", str(error))
+    """ All leaked database-related exceptions generate 500 error """
+    return errorResponse(500, "DbException", str(error))
 
 @xrdService.route('/dbs', methods=['GET'])
 def dbs():
@@ -136,13 +136,13 @@ def dbs():
     _log.debug('request: %s', request)
 
     # use non-privileged account
-    dbConn = Config.instance().dbConn()
+    dbConn = Config.instance().dbEngine().connect()
 
     # TODO: Make sure that database name that we use here is correct.
     # The database name that holds Dbs table is constructed from the
     # xrootd instance name as qservw_<instance>. Currently we use fixed
     # instance name "worker" (defined in etc/init.d/xrootd)
-    dbs = dbConn.execCommandN('SELECT db FROM qservw_worker.Dbs')
+    dbs = dbConn.execute('SELECT db FROM qservw_worker.Dbs')
 
     dbs = [row[0] for row in dbs]
     _log.debug('dbs = %s', dbs)
@@ -181,23 +181,23 @@ def registerDb():
 
     # apparently for now we need to use privileged account
     # as our regular account can only read from qservw_worker
-    dbConn = Config.instance().privDbConn()
+    dbConn = Config.instance().privDbEngine()
 
     # table is not indexed, to avoid multiple entries check that it's not defined yet
     try:
         query = "SELECT db FROM qservw_worker.Dbs WHERE db='{0}';".format(dbName)
-        dbs = dbConn.execCommandN(query)
-        if dbs:
+        dbs = dbConn.execute(query)
+        if dbs.first():
             raise ExceptionResponse(409, "DatabaseExists", "Database %s is already defined" % dbName)
-    except db.DbException as exc:
+    except SQLAlchemyError as exc:
         _log.error('exception when checking qservw_worker.Dbs: %s', exc)
         raise
 
     # now add it
     try:
         query = "INSERT INTO qservw_worker.Dbs (db) VALUES ('{0}')".format(dbName)
-        dbs = dbConn.execCommand0(query)
-    except db.DbException as exc:
+        dbConn.execute(query)
+    except SQLAlchemyError as exc:
         _log.error('exception when adding database %s: %s', dbName, exc)
         raise
 
@@ -232,19 +232,16 @@ def unregisterDb(dbName):
 
     # apparently for now we need to use privileged account
     # as our regular account can only read from qservw_worker
-    dbConn = Config.instance().privDbConn()
+    dbConn = Config.instance().privDbEngine().connect()
 
-    # TODO: replace with dbConn.cursor() when it's available
-    dbConn.connect()
-    cursor = dbConn._conn.cursor()
     try:
         query = "DELETE FROM qservw_worker.Dbs WHERE db=%s;"
         _log.debug('executing: %s for %s', query, dbName)
-        cursor.execute(query, [dbName])
-        if cursor.rowcount == 0:
+        results = dbConn.execute(query, [dbName])
+        if results.rowcount == 0:
             _log.error('no rows have been removed')
             raise ExceptionResponse(409, "DatabaseMissing", "Database %s is not defined" % dbName)
-    except db.DbException as exc:
+    except SQLAlchemyError as exc:
         _log.error('exception when executing query: %s', exc)
         raise
 
