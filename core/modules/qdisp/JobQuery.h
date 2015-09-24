@@ -56,13 +56,15 @@ public:
     JobQuery(Executive* executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
         _executive(executive), _jobDescription(jobDescription),
-        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {}
+        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
+        LOGF_DEBUG("JobQuery JQ_jobId=%1% desc=%2%" % getId() % _jobDescription);
+    }
     void setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());
     }
 
     virtual ~JobQuery() {
-        LOGF_DEBUG("~JobQuery _jobId=%1%" % getId());
+        LOGF_DEBUG("~JobQuery JQ_jobId=%1%" % getId());
     }
    
     virtual bool runJob();

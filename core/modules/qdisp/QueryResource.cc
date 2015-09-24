@@ -46,12 +46,14 @@ namespace qserv {
 namespace qdisp {
 
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
-    : Resource(jobQuery->getDescription().resource().path().c_str()),
-      _jobQuery(jobQuery) {
+  : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
+      _jobQuery(jobQuery), _jobId(jobQuery->getId()) {
+  LOGF_DEBUG("QueryResource JQ_jobId=%1%" % _jobId);
 }
 
 QueryResource::~QueryResource() {
-    LOGF_DEBUG("~QueryResource()");
+    LOGF_DEBUG("~QueryResource() JQ_jobId=%1%" % _jobId);
+    std::free(const_cast<char*>(rName));
 }
 
 /// May not throw exceptions because the calling code comes from
@@ -61,7 +63,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
         Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
         : _job{job},  _qr{qr} {}
         ~Destroyer() {
-            // This should cause this object to be destroyed.
+            // This should cause this QueryResource to be destroyed.
             _job->freeQueryResource(_qr);
         }
     private:

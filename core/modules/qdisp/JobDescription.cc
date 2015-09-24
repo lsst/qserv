@@ -40,7 +40,8 @@ std::string JobDescription::toString() const {
 }
 
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._id << " payload=" << jd._payload << ")";
+    os << "job(id=" << jd._id << " payload.len=" << jd._payload.length()
+       << " ru=" << jd._resource.path() <<  ")";
     return os;
 }
 

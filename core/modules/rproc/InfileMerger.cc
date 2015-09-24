@@ -271,7 +271,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     // TODO: Check session id (once session id mgmt is implemented)
 
     LOGF(getLogger(), LOG_LVL_DEBUG,
-         "Executing InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errorCode=%4%, hasErrorMsg=%5%)"
+         "Executing InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errCode=%4%, hasErrorMsg=%5%)"
          % static_cast<short>(response->headerSize)
          % response->protoHeader.size()
          % response->result.row_size()
