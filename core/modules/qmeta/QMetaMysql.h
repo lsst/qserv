@@ -23,6 +23,7 @@
 #define LSST_QSERV_QMETA_QMETAMYSQL_H
 
 // System headers
+#include <mutex>
 
 // Third-party headers
 
@@ -235,6 +236,7 @@ protected:
 private:
 
     sql::SqlConnection _conn;
+    std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
 
 };
 
