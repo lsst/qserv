@@ -33,6 +33,8 @@
 
 // System headers
 #include <iostream>
+#include <iterator>
+#include <utility>
 
 // Third-party headers
 
@@ -83,14 +85,16 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os,
                                     IterableFormatter<Iter> const& self) {
+        typedef _item_fmt<typename std::iterator_traits<Iter>::value_type> item_fmt;
         os << self._open;
         auto it = self._begin;
         if (it != self._end) {
-            os << *it;
+            item_fmt::fmt(os, *it);
             ++it;
         }
         for ( ; it != self._end; ++it) {
-            os << self._sep << *it;
+            os << self._sep;
+            item_fmt::fmt(os, *it);
         }
         os << self._close;
         return os;
@@ -102,6 +106,19 @@ private:
     char const *const _open;
     char const *const _close;
     char const *const _sep;
+
+    // generic item formatting
+    template <typename T>
+    struct _item_fmt {
+        static void fmt(std::ostream& os, const T& item) { os << item; }
+    };
+    // specialization for pair
+    template <typename U, typename V>
+    struct _item_fmt<std::pair<U, V>> {
+        static void fmt(std::ostream& os, const std::pair<U, V>& item) {
+            os << '(' << item.first << ", " << item.second << ')'; }
+    };
+
 };
 
 template <typename Iterator>
