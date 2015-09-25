@@ -31,7 +31,6 @@ Module defining Config class and related methods.
 #--------------------------------
 import logging
 import tempfile
-import warnings
 
 #-----------------------------
 # Imports for other modules --
@@ -39,7 +38,6 @@ import warnings
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv.admin.qservAdmin import QservAdmin
-import MySQLdb
 
 #----------------------------------
 # Local non-exported definitions --
@@ -104,8 +102,6 @@ class Config(object):
         _log.debug('creating new connection %s', kwargs)
         if self.dbPasswd: kwargs['password'] = self.dbPasswd
         inst = getEngineFromArgs(**kwargs)
-        # ignore mysql warnings
-        warnings.filterwarnings("ignore", category=MySQLdb.Warning)
         return inst
 
     def privDbEngine(self):
@@ -118,8 +114,6 @@ class Config(object):
         _log.debug('creating new connection %s', kwargs)
         if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
         inst = getEngineFromArgs(**kwargs)
-        # ignore mysql warnings
-        warnings.filterwarnings("ignore", category=MySQLdb.Warning)
         return inst
 
     def qservAdmin(self):

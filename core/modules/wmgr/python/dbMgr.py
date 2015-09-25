@@ -44,13 +44,12 @@ from threading import Thread
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
-from lsst.db import utils
-
-from lsst.qserv.admin.qservAdminException import QservAdminException
-import MySQLdb
-from MySQLdb.constants import FIELD_TYPE
 from werkzeug.urls import url_decode
 from sqlalchemy.exc import NoSuchTableError, OperationalError, SQLAlchemyError
+
+from lsst.db import utils
+from lsst.qserv.admin.qservAdminException import QservAdminException
+
 
 #----------------------------------
 # Local non-exported definitions --
@@ -118,17 +117,6 @@ def _getArgFlag(mdict, option, default=True):
                                 "Unexpected value of '%s' option: \"%s\"" % (option, value))
     return value in ('1', 'yes', 'true')
 
-def _typeCode2Name(code):
-    """
-    Convert mysql type code to type name, returns None if ther is no mapping.
-    This is mysql-specific, it would be better to have technology-neutral way
-    to provide the same mapping.
-    """
-    for name in dir(FIELD_TYPE):
-        if getattr(FIELD_TYPE, name) == code:
-            return name
-    return None
-
 #------------------------
 # Exported definitions --
 #------------------------
@@ -137,8 +125,6 @@ dbService = Blueprint('dbService', __name__, template_folder='dbService')
 
 
 @dbService.errorhandler(SQLAlchemyError)
-@dbService.errorhandler(MySQLdb.Error)
-@dbService.errorhandler(MySQLdb.Warning)
 def dbExceptionHandler(error):
     """ All leaked database-related exceptions generate 500 error """
     return errorResponse(500, error.__class__.__name__, str(error))
@@ -916,7 +902,7 @@ def getIndex(dbName, tblName, chunkId=None):
         allRows = dbConn.execute(query)
 
         if allRows.keys():
-            descr = [dict(name=d[0], type=_typeCode2Name(d[1])) for d in allRows.keys()]
+            descr = [dict(name=d[0], type=utils.typeCode2Name(dbConn, d[1])) for d in allRows.cursor.description]
         else:
             descr = [dict(name=name) for name in columns]
         _log.debug("description: %s", descr)
