@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013-2014 AURA/LSST.
+# Copyright 2013-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -26,22 +26,68 @@ This is a unittest for the Central State System Interface class.
 @author  Jacek Becla, SLAC
 
 """
+from __future__ import print_function
 
-import logging
+import copy
+import ConfigParser
+import lsst.qserv.css
+from lsst.qserv.css import cssLib
 import os
+import random
 import time
 import unittest
-from kvInterface import KvInterface, KvException
+import uuid
+
+def getConfig():
+    """
+    @brief loads the configuration information needed to test KvInterface with a running mysql server
+    @return a formatted MySqlConfig object
+    """
+    cfgFile = os.path.join(os.path.expanduser("~"), ".lsst", "KvInterfaceImplMySql-testRemote.txt")
+    cfgParser = ConfigParser.ConfigParser()
+    filesRead = cfgParser.read(cfgFile)
+    if not cfgFile in filesRead:
+        return None
+    cfg = cssLib.MySqlConfig()
+    cfg.username = cfgParser.get('mysql', 'user')
+    cfg.password = cfgParser.get('mysql', 'passwd')
+    cfg.hostname = cfgParser.get('mysql', 'host')
+    cfg.port = cfgParser.getint('mysql', 'port')
+    cfg.dbName = str("tempName" + str(uuid.uuid1()).replace('-', ''))
+    return cfg
+
 
 class TestKvInterface(unittest.TestCase):
     def setUp(self):
-        self._kvI = KvInterface.newImpl(connInfo='127.0.0.1:12181')
+        self.dbCfg = getConfig()
+        self.connectionCfg = getConfig()
+        self.connectionCfg.dbName = '' # no db name for connecting to mysql.
+
+        schemaFile = open('../../admin/templates/configuration/tmp/configure/sql/CssData.sql', 'r')
+        schema = schemaFile.read()
+        errObj = cssLib.SqlErrorObject()
+        # replace production schema name with test schema:
+        schema = schema.replace("qservCssData", self.dbCfg.dbName)
+        self.sqlConn = cssLib.SqlConnection(self.connectionCfg)
+        self.sqlConn.runQuery(schema, errObj)
+        if errObj.isSet():
+            raise RuntimeError("setupDatabase error: "  + errObj.printErrMsg())
+
+        self._kvI = cssLib.KvInterfaceImplMySql(self.dbCfg)
+
+    def tearDown(self):
+        statement = "DROP DATABASE " + self.dbCfg.dbName
+        errObj = cssLib.SqlErrorObject()
+        self.sqlConn.runQuery(statement, errObj)
+        if errObj.isSet():
+            raise RuntimeError("cleanupDatabase error: "  + errObj.printErrMsg())
 
     def testCreateGetSetDelete(self):
         # first delete everything
-        self._kvI.delete("/unittest", recursive=True)
-        # try second time, just for fun, that should work too
-        self._kvI.delete("/unittest", recursive=True)
+        if self._kvI.exists("/unittest"):
+            self._kvI.deleteKey("/unittest")
+        # try second time, just for fun, should raise:
+        self.assertRaises(lsst.qserv.css.CssError, self._kvI.deleteKey, "/unittest")
         # define key/value for testing
         k1 = "/unittest/my/first/testX"
         k2 = "/unittest/my/testY"
@@ -55,56 +101,50 @@ class TestKvInterface(unittest.TestCase):
         v1a = self._kvI.get(k1)
         assert(v1a == v1)
         # try to create it again, this should fail
-        self.assertRaises(KvException, self._kvI.create, k1, v1)
+        self.assertRaises(lsst.qserv.css.KeyExistsError, self._kvI.create, k1, v1)
+
         # set the value to something else
         self._kvI.set(k1, v2)
         # get it
         v2a = self._kvI.get(k1)
         assert(v2a == v2)
         # delete it
-        self._kvI.delete(k1)
+        self._kvI.deleteKey(k1)
         # try deleting it again, this should fail
-        self.assertRaises(KvException, self._kvI.delete, k1)
+        self.assertRaises(lsst.qserv.css.NoSuchKey, self._kvI.deleteKey, k1)
         # try to get it, it should fail
-        self.assertRaises(KvException, self._kvI.get, k1)
-        # try to set it, it should fail
-        self.assertRaises(KvException, self._kvI.set, k1, v1)
+        self.assertRaises(lsst.qserv.css.NoSuchKey, self._kvI.get, k1)
+        # set it
+        self._kvI.set(k1, v1)
         # get the second key
         v2a = self._kvI.get(k2)
         assert(v2a == v2)
         # test getChildren
-        self._kvI.getChildren("/unittest/")
-        self.assertRaises(KvException, self._kvI.getChildren, "/whatever")
-        # try to set for invalid key
-        self.assertRaises(KvException, self._kvI.set, "/whatever", "value")
+        # try an invalid key first
+        self.assertRaises(lsst.qserv.css.CssError, self._kvI.getChildren, "/unittest/")
+        self.assertEqual(self._kvI.getChildren("/unittest"), ("my", ))
+        self.assertRaises(lsst.qserv.css.NoSuchKey, self._kvI.getChildren, "/whatever")
         # try to delete invalid key
-        self.assertRaises(KvException, self._kvI.delete, "/whatever")
-        # print everything
-        self._kvI.dumpAll()
+        self.assertRaises(lsst.qserv.css.NoSuchKey, self._kvI.deleteKey, "/whatever")
+        # # print everything
+        # self._kvI.dumpAll()
 
-    #def testPerformance(self):
-    #    n = 10 # set it to something larger for real test...
-    #    start = time.clock()
-    #    for i in range(1,n+1):
-    #        k = "unittest/node_%02i" % i
-    #        # print ("creating %s --> %i" % (k, i))
-    #        self._kvI.create(k, str(i))
-    #    elapsed = time.clock()-start
-    #    print "It took", elapsed, "to create", n, "entries"
-
-
-####################################################################################
-def setLogging():
-    logging.basicConfig(
-        #filename="/tmp/testKvInterface.log",
-        format='%(asctime)s %(name)s %(levelname)s: %(message)s',
-        datefmt='%m/%d/%Y %I:%M:%S',
-        level=logging.DEBUG)
-    logging.getLogger("kazoo.client").setLevel(logging.ERROR)
+    def testPerformance(self):
+        n = 10 # set it to something larger for real test...
+        start = time.clock()
+        for i in range(1,n+1):
+            k = "/unittest/node_%02i" % i
+            #print ("creating %s --> %i" % (k, i))
+            self._kvI.create(k, str(i))
+        elapsed = time.clock()-start
+        print("It took " + str(elapsed) + " to create " + str(n) + " entries.")
+        self._kvI.deleteKey("/unittest")
 
 def main():
-    setLogging()
     unittest.main()
 
 if __name__ == "__main__":
+    requiredRunDir = "lsst/qserv/core/modules"
+    if not os.getcwd().endswith(requiredRunDir):
+        raise BaseException("should be running from directory: " + requiredRunDir)
     main()
