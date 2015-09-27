@@ -82,7 +82,7 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, QueryAnaFixture)
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected = "SELECT * FROM LSST.Object_100 AS QST_1_ WHERE someField>5.0";
-    BOOST_CHECK(qsTest.cssFacade);
+    BOOST_CHECK(qsTest.css);
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();

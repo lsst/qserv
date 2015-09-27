@@ -33,7 +33,7 @@
 namespace lsst {
 namespace qserv {
 namespace css {
-    class Facade;
+    class CssAccess;
 }
 namespace query {
     class QueryContext;
@@ -51,7 +51,7 @@ public:
     TestFactory() {}
     std::shared_ptr<QueryContext> newContext();
     std::shared_ptr<QueryContext> newContext(
-                         std::shared_ptr<css::Facade> cssFacade);
+                         std::shared_ptr<css::CssAccess> css);
     std::shared_ptr<SelectStmt> newSimpleStmt();
     std::shared_ptr<SelectStmt> newDuplSelectExprStmt();
 private:

@@ -27,7 +27,7 @@
   */
 
 // Qserv headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "qana/AnalysisError.h"
 #include "qana/QueryPlugin.h"
 #include "query/QueryContext.h"
@@ -52,13 +52,12 @@ struct TestFixture {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // FIXME
-        cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(
-            kvMapPath, ".");
+        css = lsst::qserv::css::CssAccess::makeMemCss(kvMapPath, ".");
     }
 
     ~TestFixture(void) {}
 
-    std::shared_ptr<lsst::qserv::css::Facade> cssFacade;
+    std::shared_ptr<lsst::qserv::css::CssAccess> css;
     int metaSession;
 };
 
@@ -70,7 +69,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     // Under normal operation, the columnref is patched by the TablePlugin
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor");
     TestFactory factory;
-    std::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
+    std::shared_ptr<QueryContext> qc = factory.newContext(css);
     std::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
@@ -87,7 +86,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
 BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr");
     TestFactory factory;
-    std::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
+    std::shared_ptr<QueryContext> qc = factory.newContext(css);
     std::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);

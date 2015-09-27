@@ -39,7 +39,7 @@
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/userQueryProxy.h"
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
@@ -57,25 +57,25 @@ LOG_LOGGER UserQueryFactory::_log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactor
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    /// Import non-Facade-related config from caller
+    /// Import non-CSS-related config from caller
     void readConfig(StringMap const& m);
 
-    /// Import facade config and construct Facade
-    void readConfigFacade(StringMap const& m,
-                          std::shared_ptr<css::KvInterface> kvi);
+    /// Import CSS config and construct CSS
+    void readConfigCss(StringMap const& m,
+                       std::shared_ptr<css::KvInterface> kvi);
 
-    void initFacade(std::string const& cssTech, std::string const& cssConn,
+    void initCss(std::string const& cssTech, std::string const& cssConn,
                     int timeout,
                     std::string const& emptyChunkPath);
 
-    void initFacade(std::shared_ptr<css::KvInterface> kvi,
+    void initCss(std::shared_ptr<css::KvInterface> kvi,
                     std::string const& emptyChunkPath);
 
     void initMergerTemplate(); ///< Construct template config for merger
 
     /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
-    std::shared_ptr<css::Facade> facade;
+    std::shared_ptr<css::CssAccess> css;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
@@ -90,7 +90,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     ::putenv((char*)"XRDDEBUG=1");
     assert(_impl);
     _impl->readConfig(m);
-    _impl->readConfigFacade(m, kvi);
+    _impl->readConfigCss(m, kvi);
 
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
@@ -103,7 +103,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& resultTable) {
     bool sessionValid = true;
     std::string errorExtra;
-    qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->facade);
+    qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css);
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
@@ -191,7 +191,7 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
     queryMetadata = std::make_shared<qmeta::QMetaMysql>(qmetaConfig);
 }
 
-void UserQueryFactory::Impl::readConfigFacade(
+void UserQueryFactory::Impl::readConfigCss(
     StringMap const& m,
     std::shared_ptr<css::KvInterface> kvi) {
     ConfigMap cm(m);
@@ -214,30 +214,29 @@ void UserQueryFactory::Impl::readConfigFacade(
             "Error, css.timeout not found.",
             10000);
 
-        initFacade(cssTech, cssConn, cssTimeout, emptyChunkPath);
+        initCss(cssTech, cssConn, cssTimeout, emptyChunkPath);
     } else {
-        initFacade(kvi, emptyChunkPath);
+        initCss(kvi, emptyChunkPath);
     }
 }
 
-void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
-                                        std::string const& cssConn,
-                                        int timeout_msec,
-                                        std::string const& emptyChunkPath) {
+void UserQueryFactory::Impl::initCss(std::string const& cssTech,
+                                     std::string const& cssConn,
+                                     int timeout_msec,
+                                     std::string const& emptyChunkPath) {
     if (cssTech == "mem") {
         LOGF(_log, LOG_LVL_INFO, "Initializing memory-based css, with %1%" % cssConn);
-        facade = css::FacadeFactory::createMemFacade(cssConn, emptyChunkPath);
+        css = css::CssAccess::makeMemCss(cssConn, emptyChunkPath);
     } else {
         LOGF(_log, LOG_LVL_ERROR, "Unable to determine css technology, check config file.");
         throw ConfigError("Invalid css technology, check config file.");
     }
 }
 
-void UserQueryFactory::Impl::initFacade(
-    std::shared_ptr<css::KvInterface> kvi,
-    std::string const& emptyChunkPath) {
-    facade = css::FacadeFactory::createCacheFacade(kvi, emptyChunkPath);
-    LOGF(_log, LOG_LVL_INFO, "Initializing cache-based css facade");
+void UserQueryFactory::Impl::initCss(std::shared_ptr<css::KvInterface> kvi,
+                                     std::string const& emptyChunkPath) {
+    css = css::CssAccess::makeKvCss(kvi, emptyChunkPath);
+    LOGF(_log, LOG_LVL_INFO, "Initializing cache-based css");
 }
 
 }}} // lsst::qserv::ccontrol

@@ -25,13 +25,6 @@ programs.append(p)
 utest = env.UnitTest(p)
 env.Append(UNIT_TESTS=utest)
 
-p = env.Program(["testFacade.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
-programs.append(p)
-
-# add a unit test which runs on every build
-utest = env.UnitTest(p)
-env.Append(UNIT_TESTS=utest)
-
 p = env.Program(["testCssAccess.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
