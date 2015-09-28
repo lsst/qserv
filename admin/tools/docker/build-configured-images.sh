@@ -35,7 +35,7 @@ Usage: `basename $0` [options] host
     -h          this message
 
   Create docker images containing Qserv master and worker instances,
-  use a Docker image containing latest Qserv stack as input. 
+  use a Docker image containing latest Qserv stack as input.
   Qserv master fqdn must be provided as unique argument.
 
   Once completed, run an interactive session on this container with:
