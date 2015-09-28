@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -57,6 +57,9 @@ public:
                 + boost::lexical_cast<std::string>(sqlErr.errNo())
                 + ") "
                 + sqlErr.errMsg()) {}
+
+    // this name will be used to find corresponding Python exception type
+    virtual std::string typeName() const { return "CssError"; }
 };
 
 /**
@@ -66,6 +69,8 @@ class NoSuchDb : public CssError {
 public:
     explicit NoSuchDb(std::string const& dbName)
         : CssError("Database '" + dbName + "' does not exist.") {}
+
+    virtual std::string typeName() const override { return "NoSuchDb"; }
 };
 
 /**
@@ -78,6 +83,8 @@ public:
 
     explicit NoSuchKey(sql::SqlErrorObject const& sqlErr)
         : CssError(sqlErr) {}
+
+    virtual std::string typeName() const override { return "NoSuchKey"; }
 };
 
 /**
@@ -87,6 +94,8 @@ class NoSuchTable : public CssError {
 public:
     explicit NoSuchTable(std::string const& dbName, std::string const& tableName)
         : CssError("Table '" + dbName + "." + tableName + "' does not exist.") {}
+
+    virtual std::string typeName() const override { return "NoSuchTable"; }
 };
 
 /**
@@ -96,6 +105,8 @@ class TableExists : public CssError {
 public:
     explicit TableExists(std::string const& dbName, std::string const& tableName)
         : CssError("Table '" + dbName + "." + tableName + "' already exists.") {}
+
+    virtual std::string typeName() const override { return "TableExists"; }
 };
 
 /**
@@ -105,6 +116,8 @@ class AuthError : public CssError {
 public:
     AuthError()
         : CssError("Authorization failure.") {}
+
+    virtual std::string typeName() const override { return "AuthError"; }
 };
 
 /**
@@ -116,6 +129,8 @@ public:
         : CssError("Failed to connect to persistent store.") {}
     explicit ConnError(std::string const& reason)
         : CssError("Failed to connect to persistent store. (" + reason + ")") {}
+
+    virtual std::string typeName() const override { return "ConnError"; }
 };
 
 /**
@@ -128,6 +143,8 @@ public:
 
     explicit KeyExistsError(sql::SqlErrorObject const& sqlErr)
         : CssError(sqlErr) {}
+
+    virtual std::string typeName() const override { return "KeyExistsError"; }
 };
 
 /**
@@ -137,6 +154,8 @@ class KeyValueError : public CssError {
 public:
     explicit KeyValueError(std::string const& key, std::string const& message)
         : CssError("Key '" + key +"' value error: " + message) {}
+
+    virtual std::string typeName() const override { return "KeyValueError"; }
 };
 
 /**
@@ -147,6 +166,8 @@ public:
     BadAllocError(std::string const& key, std::string const& sizeTried)
         : CssError("Can't allocate memory to get data for key'" + key +"'"
                    + ", tried allocating up to " + sizeTried + " bytes.") {}
+
+    virtual std::string typeName() const override { return "BadAllocError"; }
 };
 
 /**
@@ -156,6 +177,8 @@ class VersionMissingError : public CssError {
 public:
     explicit VersionMissingError(std::string const& key)
         : CssError("Key for CSS version is not defined: '" + key +"'") {}
+
+    virtual std::string typeName() const override { return "VersionMissingError"; }
 };
 
 /**
@@ -165,6 +188,8 @@ class VersionMismatchError : public CssError {
 public:
     VersionMismatchError(std::string const& expected, std::string const& actual)
         : CssError("CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
+
+    virtual std::string typeName() const override { return "VersionMismatchError"; }
 };
 
 /**
@@ -174,6 +199,8 @@ class ReadonlyCss : public CssError {
 public:
     explicit ReadonlyCss()
         : CssError("Attempt to modify read-only CSS.") {}
+
+    virtual std::string typeName() const override { return "ReadonlyCss"; }
 };
 
 /**
@@ -183,6 +210,8 @@ class NoSuchNode : public CssError {
 public:
     explicit NoSuchNode(std::string const& nodeName)
         : CssError("Node '" + nodeName + "' does not exist.") {}
+
+    virtual std::string typeName() const override { return "NoSuchNode"; }
 };
 
 /**
@@ -192,6 +221,8 @@ class NodeExists : public CssError {
 public:
     explicit NodeExists(std::string const& nodeName)
         : CssError("Node '" + nodeName + "' already exists.") {}
+
+    virtual std::string typeName() const override { return "NodeExists"; }
 };
 
 }}} // namespace lsst::qserv::css

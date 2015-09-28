@@ -31,7 +31,9 @@ Access to the classes from the qserv_css library
 %{
 #define SWIG_FILE_WITH_INIT
 #include "css/constants.h"
+#include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "css/EmptyChunks.h"
 #include "css/KvInterface.h"
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplMySql.h"
@@ -68,6 +70,9 @@ class NoSuchKey(CssError):
 class NoSuchTable(CssError):
     pass
 
+class TableExists(CssError):
+    pass
+
 class AuthError(CssError):
     pass
 
@@ -77,6 +82,9 @@ class ConnError(CssError):
 class KeyExistsError(CssError):
     pass
 
+class KeyValueError(CssError):
+    pass
+
 class BadAllocError(CssError):
     pass
 
@@ -84,6 +92,15 @@ class VersionMissingError(CssError):
     pass
 
 class VersionMismatchError(CssError):
+    pass
+
+class ReadonlyCss(CssError):
+    pass
+
+class NoSuchNode(CssError):
+    pass
+
+class NodeExists(CssError):
     pass
  %}
 
@@ -115,11 +132,11 @@ class VersionMismatchError(CssError):
         PyObject* obj;
     };
 
-    void setPythonException(const std::string& exceptionStr, const lsst::qserv::css::CssError& ex) {
+    void setPythonException(const lsst::qserv::css::CssError& ex) {
         PyObjectMgr module(PyImport_ImportModule("lsst.qserv.css"));
         if (not module)
             return;
-        PyObjectMgr exception(PyObject_GetAttrString(module, exceptionStr.c_str()));
+        PyObjectMgr exception(PyObject_GetAttrString(module, ex.typeName().c_str()));
         if (not exception)
             return;
         PyErr_SetString(exception, ex.what());
@@ -129,36 +146,8 @@ class VersionMismatchError(CssError):
 %exception {
     try {
         $action
-    } catch (lsst::qserv::css::NoSuchDb e) {
-        setPythonException("NoSuchDb", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::NoSuchKey e) {
-        setPythonException("NoSuchKey", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::NoSuchTable e) {
-        setPythonException("NoSuchTable", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::AuthError e) {
-        setPythonException("AuthError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::ConnError e) {
-        setPythonException("ConnError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::KeyExistsError e) {
-        setPythonException("KeyExistsError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::BadAllocError e) {
-        setPythonException("BadAllocError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::VersionMissingError e) {
-        setPythonException("VersionMissingError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::VersionMismatchError e) {
-        setPythonException("VersionMismatchError", e);
-        SWIG_fail;
-    } catch (lsst::qserv::css::CssError e) {
-        // Important: the base class handler must be last
-        setPythonException("CssError", e);
+    } catch (lsst::qserv::css::CssError const& exc) {
+        setPythonException(exc);
         SWIG_fail;
     }
 }
@@ -175,3 +164,12 @@ class VersionMismatchError(CssError):
 
 %include "css/KvInterfaceImplMySql.h"
 %include "global/constants.h"
+
+%include "global/intTypes.h"
+%include "css/EmptyChunks.h"
+%include "css/MatchTableParams.h"
+%include "css/NodeParams.h"
+%include "css/PartTableParams.h"
+%include "css/StripingParams.h"
+%include "css/TableParams.h"
+%include "css/CssAccess.h"
