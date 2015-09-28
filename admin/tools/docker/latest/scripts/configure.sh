@@ -30,7 +30,7 @@ set -e
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host 
+Usage: `basename $0` [options] host
 
   Available options:
     -h          this message
