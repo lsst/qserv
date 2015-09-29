@@ -101,6 +101,8 @@ QMetaMysql::~QMetaMysql() {
 CzarId
 QMetaMysql::getCzarID(std::string const& name) {
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // run query
@@ -138,6 +140,8 @@ QMetaMysql::getCzarID(std::string const& name) {
 // Register new czar, return czar ID.
 CzarId
 QMetaMysql::registerCzar(std::string const& name) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
 
     QMetaTransaction trans(_conn);
 
@@ -203,6 +207,8 @@ QMetaMysql::registerCzar(std::string const& name) {
 void
 QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // run query
@@ -233,6 +239,8 @@ QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 QueryId
 QMetaMysql::registerQuery(QInfo const& qInfo,
                           TableNames const& tables) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
 
     QMetaTransaction trans(_conn);
 
@@ -305,6 +313,8 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 void
 QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // register all tables
@@ -331,6 +341,9 @@ void
 QMetaMysql::assignChunk(QueryId queryId,
                         int chunk,
                         std::string const& xrdEndpoint) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // find and update chunk info
@@ -366,6 +379,8 @@ QMetaMysql::assignChunk(QueryId queryId,
 void
 QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // find and update query info
@@ -399,6 +414,8 @@ QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 void
 QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // find and update query info
@@ -430,6 +447,8 @@ QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
 // Mark query as finished and returned to client.
 void
 QMetaMysql::finishQuery(QueryId queryId) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
 
     QMetaTransaction trans(_conn);
 
@@ -465,6 +484,8 @@ QMetaMysql::findQueries(CzarId czarId,
                         std::vector<QInfo::QStatus> status,
                         int completed,
                         int returned) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
 
     std::vector<QueryId> result;
 
@@ -539,6 +560,8 @@ QMetaMysql::getPendingQueries(CzarId czarId) {
 
     std::vector<QueryId> result;
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // run query
@@ -573,6 +596,8 @@ QMetaMysql::getPendingQueries(CzarId czarId) {
 // Get full query information.
 QInfo
 QMetaMysql::getQueryInfo(QueryId queryId) {
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
 
     QMetaTransaction trans(_conn);
 
@@ -631,6 +656,8 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
 
     std::vector<QueryId> result;
 
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
     QMetaTransaction trans(_conn);
 
     // run query
@@ -667,6 +694,8 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
 // Check that all necessary tables exist or create them
 void
 QMetaMysql::_checkDb() {
+
+    // this is only called from constructor, no locking is needed here
 
     std::vector<std::string> tables;
     sql::SqlErrorObject errObj;
