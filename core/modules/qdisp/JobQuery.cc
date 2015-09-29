@@ -86,7 +86,8 @@ bool JobQuery::runJob() {
 
 void JobQuery::provisioningFailed(std::string const& msg, int code) {
     std::ostringstream os;
-    os << "Error provisioning, msg=" << msg << " code=" << code << " " << *this;
+    os << "Error provisioning, jobId=" << getId() << " msg=" << msg << " code=" << code << " " << *this;
+    os << "\n    desc=" << _jobDescription;
     LOGF_ERROR("%1%" % os.str());
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
     _jobDescription.respHandler()->errorFlush(msg, code);

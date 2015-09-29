@@ -52,12 +52,14 @@ namespace qdisp {
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery) :
-    _session(session), _jobQuery(jobQuery), _jobDesc(_jobQuery->getDescription()) {
+  _session(session), _jobQuery(jobQuery), _jobDesc(_jobQuery->getDescription()),
+  _jobId(jobQuery->getId()) {
     LOGF_INFO("New QueryRequest with payload(%1%)" % _jobDesc.payload().size());
+    LOGF_DEBUG("QueryRequest JQ_jobId=%1%" % _jobId);
 }
 
 QueryRequest::~QueryRequest() {
-    LOGF_DEBUG("~QueryRequest");
+    LOGF_DEBUG("~QueryRequest JQ_jobId=%1%)" % _jobId);
     if(_session) {
           if(_session->Unprovision()) {
               LOGF_DEBUG("Unprovision ok.");

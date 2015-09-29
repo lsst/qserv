@@ -136,6 +136,7 @@ private:
     bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
+    int _jobId {-1}; ///< for debugging only. TODO delete in DM-3946
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
