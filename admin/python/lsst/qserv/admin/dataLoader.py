@@ -1,5 +1,5 @@
 # LSST Data Management System
-# Copyright 2014 AURA/LSST.
+# Copyright 2014-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -44,7 +44,6 @@ import tempfile
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
 from lsst.qserv.wmgr import client
-import MySQLdb
 
 #----------------------------------
 # Local non-exported definitions --
