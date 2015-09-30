@@ -1,3 +1,40 @@
+R E L E A S E   2015_09
+=======================
+
+Release highlights:
+ * Simplified executor
+ * Added support for clang / Mac OS X
+ * Switched to SQLAlchemy based db module
+ * Reduced/isolated dependency on mysql
+ * Added support for IN queries
+ * Integrated Qserv with pipelines and SUI
+ * Ported to C++11 continued (nullptrs)
+
+Code improvements:
+ * DM-3562: Refactor executor code
+ * DM-2733: Generalize / Simplify Facade
+ * DM-3805: uint type is non-standard
+ * DM-3663: Add support for clang and OS X to qserv scons
+ * DM-3584: Port Qserv to OS X/Clang
+ * DM-3803: Fix Qserv compiler warnings with clang
+ * DM-3915: Unused local typedef warning in Qserv
+ * DM-3779: clean up gcc and eclipse code analyzer warns
+ * DM-3707: qserv scons - do not copy files to variant_dir
+
+New features:
+ * DM-3199: Standardize Qserv install procedure: step 1 build docker
+            container for master/worker instance and development version
+
+Bug fixes:
+ * DM-3656: Data loader doesn't work for match tables
+ * DM-2887: Fix broken IN - it now takes first element only
+ * DM-3772: Fix compiler detection for non-default gcc/g++ compiler
+ * DM-3779: Fix compiler detection in Qserv for non-gcc compiler
+ * DM-3686: Fix PATH and compiler version detection in qserv scons
+
+Documentation improvements:
+ * DM-3922: Update multi-node setup documentation
+
 R E L E A S E   2015_08
 =======================
 
@@ -9,7 +46,11 @@ Release highlights:
 Code improvements:
  * DM-3450: Fix cluster install procedure and improve docker support
  * DM-3456: Fix problems with talking from webserv to qserv
+ * DM-2558: Migrate qserv code to reworked db/dbPool
+ * DM-2956: Migrate Qserv code to nullptr
+ * DM-3253: Unify KVInterface python and c++ interfaces
  * DM-3555: Ignore "SELECT @@tx_isolation" queries
+ * DM-3947: Remove dependency on mysqldb in wmgr
  * DM-3358: Add mysql-based test to multi-node integration test
  * DM-3360: Minor cleanup related to max_hostname
  * DM-1662: Make qserv dependencies build on OS X with clang
@@ -20,6 +61,8 @@ New features:
  * DM-3161: Implement MySQL-based KVInterface
 
 Bug fixes:
+ * DM-3936: Fix "Executive error executing job" on the cluster
+ * DM-3943: QMeta thread safety
  * DM-3522: Releasing un-acquired resources bug
  * DM-2930: Fix problem with Qserv related to restarting mysql
  * DM-3618: Fix bug related to restarting xrootd in wmgr
