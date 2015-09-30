@@ -33,6 +33,7 @@
 #define LSST_QSERV_CSS_KVINTERFACE_H
 
 // System headers
+#include <map>
 #include <string>
 #include <vector>
 
@@ -56,10 +57,19 @@ public:
      * Create a slash-delimited key-value pair.
      * Key must be shorter than MAX_KEY_LENGTH.
      * If the parent key does not exist it will be created with an empty value.
+     *
+     * @param key key name
+     * @param value key value (may be empty)
+     * @param unique if set to true a unique suffix consisting of digits (possibly
+     *        zero-padded) will be added to the key name.
+     * @return The name of the created key, if `unique` is false it is the same
+     *         as input key parameter.
      * @throws KeyExistsError if the key already exists
      * @throws CssError for other problems (e.g., a connection error is detected).
      */
-    virtual void create(std::string const& key, std::string const& value) = 0;
+    virtual std::string create(std::string const& key,
+                               std::string const& value,
+                               bool unique=false) = 0;
 
     /**
      * Set a key/value pair. If the key already exists, its value is
@@ -95,6 +105,15 @@ public:
                     std::string const& defaultValue) {
         return _get(key, defaultValue, false);
     }
+
+    /**
+     * Returns values for a set of given keys.
+     * Returns map of the keys and their values, if key does not exists it
+     * will be missing from returned map.
+     * @throws CssError if there are any other problems, e.g., a connection
+     * error is detected).
+     */
+    virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) = 0;
 
     /**
      * Returns children (vector of strings) for a given key.

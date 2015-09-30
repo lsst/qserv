@@ -925,7 +925,7 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
         throw QueryNotEvaluableError(
             "Query must include at least one table reference");
     }
-    double overlap = ctx.cssFacade->getOverlap(ctx.dominantDb);
+    double overlap = ctx.css->getDbStriping(ctx.dominantDb).overlap;
     // Build a graph for the first entry in the from list
     RelationGraph g(ctx, refs.front(), overlap, pool);
     // "SELECT ... FROM A, B, C, ..." is equivalent to

@@ -55,18 +55,20 @@ public:
 
     virtual ~KvInterfaceImplMem();
 
-    virtual void create(std::string const& key, std::string const& value);
-    virtual void set(std::string const& key, std::string const& value);
-    virtual bool exists(std::string const& key);
-    virtual std::vector<std::string> getChildren(std::string const& key);
-    virtual void deleteKey(std::string const& key);
+    virtual std::string create(std::string const& key, std::string const& value,
+                               bool unique=false) override;
+    virtual void set(std::string const& key, std::string const& value) override;
+    virtual bool exists(std::string const& key) override;
+    virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) override;
+    virtual std::vector<std::string> getChildren(std::string const& key) override;
+    virtual void deleteKey(std::string const& key) override;
 
     std::shared_ptr<KvInterfaceImplMem> clone() const;
 
 protected:
-    std::string _get(std::string const& key,
-                     std::string const& defaultValue,
-                     bool throwIfKeyNotFound);
+    virtual std::string _get(std::string const& key,
+                             std::string const& defaultValue,
+                             bool throwIfKeyNotFound) override;
 
 private:
     void _init(std::istream& mapStream);

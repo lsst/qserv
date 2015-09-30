@@ -43,6 +43,7 @@
 
 // System headers
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -56,6 +57,7 @@
 
 // Qserv headers
 #include "css/CssError.h"
+#include "util/IterableFormatter.h"
 
 using std::map;
 using std::string;
@@ -92,14 +94,26 @@ KvInterfaceImplMem::KvInterfaceImplMem(string const& filename) {
 KvInterfaceImplMem::~KvInterfaceImplMem() {
 }
 
-void
-KvInterfaceImplMem::create(string const& key, string const& value) {
-    LOGF_DEBUG("create(%1%, %2%)" % key % value);
-    if (exists(key)) {
-        throw KeyExistsError(key);
+std::string
+KvInterfaceImplMem::create(string const& key, string const& value, bool unique) {
+    LOGF_DEBUG("create(%1%, %2%, unique=%3%)" % key % value % int(unique));
+
+    string path = key;
+    if (unique) {
+        // append unique suffix, in-memory KVI is not meant for large-scale
+        // storage, so we can do dumb brute-force loop
+        int seq = 0;
+        do {
+            std::ostringstream str;
+            str << std::setfill('0') << std::setw(10) << ++seq;
+            path = key + str.str();
+        } while (_kvMap.count(path));
+    }
+    if (exists(path)) {
+        throw KeyExistsError(path);
     }
     // create all parents
-    string parent = key;
+    string parent = path;
     for (string::size_type p = parent.rfind('/'); p != string::npos; p = parent.rfind('/')) {
         parent = parent.substr(0, p);
         if (parent.empty()) break;
@@ -107,7 +121,8 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
         _kvMap.insert(std::make_pair(parent, string()));
     }
     // store the key with value
-    _kvMap[key] = value;
+    _kvMap[path] = value;
+    return path;
 }
 
 void
@@ -122,6 +137,18 @@ KvInterfaceImplMem::exists(string const& key) {
     bool ret = _kvMap.find(key) != _kvMap.end();
     LOGF_DEBUG("exists(%1%): %2%" % key % (ret?"YES":"NO"));
     return ret;
+}
+
+std::map<std::string, std::string>
+KvInterfaceImplMem::getMany(std::vector<std::string> const& keys) {
+    std::map<std::string, std::string> result;
+    for (auto& key: keys) {
+        auto iter = _kvMap.find(key);
+        if (iter != _kvMap.end()) {
+            result.insert(*iter);
+        }
+    }
+    return result;
 }
 
 string
@@ -160,14 +187,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
             }
         }
     }
-    if (LOG_CHECK_DEBUG()) {
-        vector<string>::const_iterator itrV;
-        std::stringstream ss;
-        for (itrV=retV.begin(); itrV!=retV.end() ; itrV++) {
-            ss << *itrV;
-        }
-        LOGF_DEBUG("got: %1% children: %2%" % retV.size() % ss.str());
-    }
+    LOGF_DEBUG("got: %1% children: %2%" % retV.size() % util::printable(retV));
     return retV;
 }
 

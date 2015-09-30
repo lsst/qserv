@@ -35,7 +35,7 @@
 // Third-party headers
 
 // Qserv headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "qana/InvalidTableError.h"
 #include "qana/TableInfo.h"
 #include "query/QueryContext.h"
@@ -72,15 +72,17 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
     if (t) {
         return t;
     }
-    css::Facade const& f = *ctx.cssFacade;
-    int const chunkLevel = f.getChunkLevel(db_, table);
+    css::CssAccess const& css = *ctx.css;
+    css::TableParams const tParam = css.getTableParams(db_, table);
+    css::PartTableParams const& partParam = tParam.partitioning;
+    int const chunkLevel = partParam.chunkLevel();
     // unpartitioned table
     if (chunkLevel == 0) {
         return 0;
     }
     // match table
-    if (f.isMatchTable(db_, table)) {
-        css::MatchTableParams m = f.getMatchTableParams(db_, table);
+    if (tParam.match.isMatchTable()) {
+        css::MatchTableParams const& m = tParam.match;
         std::unique_ptr<MatchTableInfo> p(new MatchTableInfo(db_, table));
         p->director.first = dynamic_cast<DirTableInfo const*>(
             get(ctx, db_, m.dirTable1));
@@ -107,7 +109,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
         _insert(p.get());
         return p.release();
     }
-    std::string dirTable = f.getDirTable(db_, table);
+    std::string const& dirTable = partParam.dirTable;
     // director table
     if (dirTable.empty() || dirTable == table) {
         if (chunkLevel != 2) {
@@ -115,7 +117,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
                                     "table, but cannot be sub-chunked!");
         }
         std::unique_ptr<DirTableInfo> p(new DirTableInfo(db_, table));
-        std::vector<std::string> v = f.getPartitionCols(db, table);
+        std::vector<std::string> v = css.getPartTableParams(db, table).partitionCols();
         if (v.size() != 3 ||
             v[0].empty() || v[1].empty() || v[2].empty() ||
             v[0] == v[1] || v[1] == v[2] || v[0] == v[2]) {
@@ -127,7 +129,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
         p->pk = v[2];
         p->lon = v[0];
         p->lat = v[1];
-        p->partitioningId = f.getDbStriping(db_).partitioningId;
+        p->partitioningId = css.getDbStriping(db_).partitioningId;
         _insert(p.get());
         return p.release();
     }
@@ -138,12 +140,12 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
     }
     std::unique_ptr<ChildTableInfo> p(new ChildTableInfo(db_, table));
     p->director = dynamic_cast<DirTableInfo const*>(
-        get(ctx, db_, f.getDirTable(db_, table)));
+        get(ctx, db_, partParam.dirTable));
     if (!p->director) {
         throw InvalidTableError(db_ + "." + table + " is a child table, but"
                                 " does not reference a director table!");
     }
-    p->fk = f.getDirColName(db_, table);
+    p->fk = partParam.dirColName;
     if (p->fk.empty()) {
         throw InvalidTableError("Child table " + db_ + "." + table + " metadata"
                                 " does not contain a director column name!");

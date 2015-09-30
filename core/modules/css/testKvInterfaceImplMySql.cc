@@ -45,6 +45,7 @@
 
 // System headers
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 
@@ -158,8 +159,38 @@ BOOST_FIXTURE_TEST_SUITE(SqlKVInterfaceConnectionTestSuite, PerTestFixture)
 BOOST_AUTO_TEST_CASE(CreateAndGetKV) {
     CHECK_CONNECTION();
 
-    BOOST_CHECK_NO_THROW(kvInterface->create("/CreateAndGetKV/testKey", "testValue"));
+    std::string key;
+    BOOST_CHECK_NO_THROW(key = kvInterface->create("/CreateAndGetKV/testKey", "testValue"));
+    BOOST_CHECK_EQUAL(key, "/CreateAndGetKV/testKey");
     BOOST_CHECK_EQUAL(kvInterface->get("/CreateAndGetKV/testKey"), "testValue");
+}
+
+
+BOOST_AUTO_TEST_CASE(CreateUnique) {
+    CHECK_CONNECTION();
+
+    std::string pfx = "/CreateAndGetKV/uniqueKey_";
+    std::string key;
+
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "uniqueValue1", true));
+    BOOST_CHECK_EQUAL(key, pfx+"0000000001");
+    BOOST_CHECK_EQUAL(kvInterface->get(key), "uniqueValue1");
+
+    // try to confuse it by adding non-numeric keys
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"01234567ab", ""));
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"abcdefghij", ""));
+
+    for (int i = 0; i != 10; ++ i) {
+        std::ostringstream str;
+        str << pfx << std::setfill('0') << std::setw(10) << i+2;
+        BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "", true));
+        BOOST_CHECK_EQUAL(key, str.str());
+    }
+
+    // this should reset unique to higher value
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"0000001234", ""));
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "", true));
+    BOOST_CHECK_EQUAL(key, pfx+"0000001235");
 }
 
 

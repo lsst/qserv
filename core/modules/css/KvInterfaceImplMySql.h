@@ -58,20 +58,23 @@ public:
     KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf);
     virtual ~KvInterfaceImplMySql() {};
 
-    virtual void create(std::string const& key, std::string const& value);
+    virtual std::string create(std::string const& key, std::string const& value,
+                               bool unique=false) override;
 
-    virtual void set(std::string const& key, std::string const& value);
+    virtual void set(std::string const& key, std::string const& value) override;
 
-    virtual bool exists(std::string const& key);
+    virtual bool exists(std::string const& key) override;
 
-    virtual std::vector<std::string> getChildren(std::string const& parentKey);
+    virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) override;
 
-    virtual void deleteKey(std::string const& key);
+    virtual std::vector<std::string> getChildren(std::string const& parentKey) override;
+
+    virtual void deleteKey(std::string const& key) override;
 
 protected:
     virtual std::string _get(std::string const& key,
                              std::string const& defaultValue,
-                             bool throwIfKeyNotFound);
+                             bool throwIfKeyNotFound) override;
 private:
     /**
      * @brief Returns children with full path (vector of strings) for a given key.

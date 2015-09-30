@@ -34,7 +34,7 @@
 #include <vector>
 
 // Local headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
 #include "query/TableAlias.h"
@@ -62,8 +62,7 @@ public:
     QueryContext() : chunkCount(0), needsMerge(false) {}
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
-    std::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
-                                            ///  for this lifetime.
+    std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
@@ -85,11 +84,11 @@ public:
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
     css::StripingParams getDbStriping() {
-        return cssFacade->getDbStriping(dominantDb); }
+        return css->getDbStriping(dominantDb); }
     bool containsDb(std::string const& dbName) {
-        return cssFacade->containsDb(dbName); }
+        return css->containsDb(dbName); }
     bool containsTable(std::string const& dbName, std::string const& tableName) {
-        return cssFacade->containsTable(dbName, tableName); }
+        return css->containsTable(dbName, tableName); }
     bool hasChunks() const {
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {

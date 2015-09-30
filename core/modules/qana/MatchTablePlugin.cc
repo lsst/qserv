@@ -33,7 +33,7 @@
 // Third-party headers
 
 // Qserv headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "qana/QueryPlugin.h"
 #include "query/BoolTerm.h"
@@ -143,11 +143,11 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
         return;
     }
     TableRef& t = *(stmt.getFromList().getTableRefList()[0]);
-    css::Facade& f = *ctx.cssFacade;
-    if (!f.isMatchTable(t.getDb(), t.getTable())) {
+    css::CssAccess& css = *ctx.css;
+    css::MatchTableParams mt = css.getMatchTableParams(t.getDb(), t.getTable());
+    if (!mt.isMatchTable()) {
         return;
     }
-    css::MatchTableParams mt = f.getMatchTableParams(t.getDb(), t.getTable());
     // Build the IR for the for duplicate filtering logic. Note that when
     // creating column references, there is no need to qualify the column name
     // (as db.table.column or alias.column). This is because the query is

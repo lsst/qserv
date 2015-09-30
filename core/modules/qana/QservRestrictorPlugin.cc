@@ -45,7 +45,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "global/stringTypes.h"
 #include "qana/AnalysisError.h"
 #include "query/ColumnRef.h"
@@ -89,16 +89,16 @@ lookupSecIndex(query::QueryContext& context,
                std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    if((!cr) || !context.cssFacade) { return false; }
-    if(!context.cssFacade->containsDb(cr->db)
-       || !context.cssFacade->containsTable(cr->db, cr->table)) {
+    if((!cr) || !context.css) { return false; }
+    if(!context.css->containsDb(cr->db)
+       || !context.css->containsTable(cr->db, cr->table)) {
         throw AnalysisError("Invalid db/table:" + cr->db + "." + cr->table);
     }
     if (cr->column.empty()) {
         return false;
     }
-    std::vector<std::string> sics = context.cssFacade->getSecIndexColNames(
-        cr->db, cr->table);
+    std::vector<std::string> sics = context.css->getPartTableParams(
+        cr->db, cr->table).secIndexColNames();
     return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
 }
 
@@ -174,8 +174,8 @@ typedef std::deque<RestrictorEntry> RestrictorEntries;
 class getTable : public query::TableRef::Func {
 public:
 
-    getTable(css::Facade& cssFacade, RestrictorEntries& entries)
-        : _cssFacade(cssFacade),
+    getTable(css::CssAccess& css, RestrictorEntries& entries)
+        : _css(css),
           _entries(entries) {}
 
     void operator()(query::TableRef::Ptr t) {
@@ -190,12 +190,13 @@ public:
         std::string const& table = t.getTable();
 
         if(db.empty()
-           || !_cssFacade.containsDb(db)
-           || !_cssFacade.containsTable(db, table)) {
+           || !_css.containsDb(db)
+           || !_css.containsTable(db, table)) {
             throw AnalysisError("Invalid db/table:" + db + "." + table);
         }
+        css::PartTableParams const& partParam = _css.getPartTableParams(db, table);
         // Is table chunked?
-        if(!_cssFacade.tableIsChunked(db, table)) {
+        if(!partParam.isChunked()) {
             return; // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
@@ -205,7 +206,7 @@ public:
             // been done earlier)
             throw AnalysisBug("Unexpected unaliased table reference");
         }
-        std::vector<std::string> pCols = _cssFacade.getPartitionCols(db, table);
+        std::vector<std::string> pCols = partParam.partitionCols();
         RestrictorEntry se(alias,
                            StringPair(pCols[0], pCols[1]),
                            pCols[2]);
@@ -216,7 +217,7 @@ public:
             (*this)((**i).getRight());
         }
     }
-    css::Facade& _cssFacade;
+    css::CssAccess& _css;
     RestrictorEntries& _entries;
 };
 ////////////////////////////////////////////////////////////////////////
@@ -414,10 +415,10 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     query::FromList& fList = stmt.getFromList();
     query::TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
-    if(!context.cssFacade) {
+    if(!context.css) {
         throw AnalysisBug("Missing metadata in context");
     }
-    getTable gt(*context.cssFacade, entries);
+    getTable gt(*context.css, entries);
     std::for_each(tList.begin(), tList.end(), gt);
 
     if(!stmt.hasWhereClause()) { return; }
@@ -579,14 +580,15 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...
 
+    css::PartTableParams const partParam = context.css->getPartTableParams(cr->db, cr->table);
     // Get the director column name
-    std::string dirCol = context.cssFacade->getDirColName(cr->db, cr->table);
+    std::string dirCol = partParam.dirColName;
     if (cr->column == dirCol) {
         // cr may be a column in a child table, in which case we must figure
         // out the corresponding column in the child's director to properly
         // generate a secondary index constraint.
-        std::string dirDb = context.cssFacade->getDirDb(cr->db, cr->table);
-        std::string dirTable = context.cssFacade->getDirTable(cr->db, cr->table);
+        std::string dirDb = partParam.dirDb;
+        std::string dirTable = partParam.dirTable;
         if (dirTable.empty()) {
             dirTable = cr->table;
             if (!dirDb.empty() && dirDb != cr->db) {
@@ -600,7 +602,7 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
         }
         if (dirDb != cr->db || dirTable != cr->table) {
             // Lookup the name of the director column in the director table
-            dirCol = context.cssFacade->getDirColName(dirDb, dirTable);
+            dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
             if (dirCol.empty()) {
                 LOGF_ERROR("dirCol missing for %1%.%2%" % dirDb % dirTable);
                 return query::QsRestrictor::Ptr();
@@ -665,16 +667,16 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
     // db, table, column, val1, val2, ...
     p->_params.push_back(context.dominantDb);
     p->_params.push_back(context.anonymousTable);
-    if(!context.cssFacade->containsDb(context.dominantDb)
-       || !context.cssFacade->containsTable(context.dominantDb,
+    if(!context.css->containsDb(context.dominantDb)
+       || !context.css->containsTable(context.dominantDb,
                                             context.anonymousTable) ) {
         throw AnalysisError("Invalid db/table: " + context.dominantDb
                             + "." + context.anonymousTable);
     }
     // TODO: The qserv_objectId hint/restrictor should be removed.
     // For now, assume that "objectId" refers to the director column.
-    std::string dirColumn = context.cssFacade->getDirColName(
-        context.dominantDb, context.anonymousTable);
+    std::string dirColumn = context.css->getPartTableParams(
+        context.dominantDb, context.anonymousTable).dirColName;
     p->_params.push_back(dirColumn);
     std::copy(original._params.begin(), original._params.end(),
               std::back_inserter(p->_params));

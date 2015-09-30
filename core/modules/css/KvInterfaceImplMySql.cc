@@ -36,6 +36,7 @@
 
 // System headers
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -202,12 +203,65 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
 }
 
 
-void
-KvInterfaceImplMySql::create(std::string const& key, std::string const& value) {
+std::string
+KvInterfaceImplMySql::create(std::string const& key, std::string const& value, bool unique) {
     // key is validated by _create
     KvTransaction transaction(_conn);
-    _create(key, value, false, transaction);
+
+    std::string path = key;
+    if (unique) {
+        // Need to add unique suffix which includes digits only, use 10-digit
+        // numbers with padding for that. See if there are matching keys there
+        // already and find highest one as initial value.
+
+        // Key can contain characters which are special to SQL pattern matching
+        // so instead of simple pattern matching we are doing pretty complicated
+        // substring operations. This may kill indexing so it's not very efficient.
+        const char* qTemplate = "SELECT RIGHT(kvKey, 10) FROM kvData WHERE "
+                        "LENGTH(kvKey) = %1%+10 AND LEFT(kvKey, %1%) = '%2%'";
+        std::string query = (boost::format(qTemplate)  % key.size() % _escapeSqlString(key)).str();
+
+        // run query
+        sql::SqlErrorObject errObj;
+        sql::SqlResults results;
+        LOGF(_logger, LOG_LVL_DEBUG, "create - executing query: %1%" % query);
+        if (not _conn.runQuery(query, results, errObj)) {
+            LOGF(_logger, LOG_LVL_ERROR, "create - %1% failed with err:%2%" % query % errObj.errMsg());
+            throw CssError((boost::format("create - error:%1% from query:%2%") % errObj.errMsg() % query).str());
+        }
+
+        // look at results
+        int uniqueId = 0;
+        for (auto& row: results) {
+            char* eptr;
+            int val = strtol(row[0].first, &eptr, 10);
+            if (*eptr == '\0') {
+                // converted OK
+                if (val > uniqueId) uniqueId = val;
+            }
+        }
+        LOGF(_logger, LOG_LVL_DEBUG, "create - last used unique id: %1%" % uniqueId);
+
+        // try to create key until succeed
+        while (true) {
+            ++ uniqueId;
+            std::ostringstream str;
+            str << std::setfill('0') << std::setw(10) << uniqueId;
+            path = key + str.str();
+            try {
+                _create(path, value, false, transaction);
+                break;
+            } catch (KeyExistsError const& exc) {
+                // exists already, try next
+            }
+        }
+
+    } else {
+        _create(path, value, false, transaction);
+    }
+
     transaction.commit();
+    return path;
 }
 
 
@@ -288,6 +342,47 @@ KvInterfaceImplMySql::exists(std::string const& key) {
     return 1 == count;
 }
 
+std::map<std::string, std::string>
+KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
+    for (auto& key: keys) {
+        _validateKey(key);
+    }
+
+    // build query
+    std::string query = "SELECT kvKey, kvVal FROM kvData WHERE kvKey IN (";
+    bool first = true;
+    for (auto& key: keys) {
+        query += '"';
+        query += _escapeSqlString(key);
+        query += '"';
+        if (not first) query += ", ";
+        first = false;
+    }
+    query += ')';
+
+    // run query
+    KvTransaction transaction(_conn);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    LOGF(_logger, LOG_LVL_DEBUG, "getMany - executing query: %1%" % query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "getMany - %1% failed with err:%2%" % query % errObj.errMsg());
+        throw CssError((boost::format("getMany - error:%1% from query:%2%") % errObj.errMsg() % query).str());
+    }
+
+    // copy results
+    std::map<std::string, std::string> res;
+    for (auto& row: results) {
+        // row is the vector of pair<char const*, unsigned long>
+        // key cannot be NULL, but value could be?
+        const char* key = row[0].first;
+        const char* val = row[1].first ? row[1].first : "";
+        res.insert(std::make_pair(key, val));
+    }
+
+    transaction.commit();
+    return res;
+}
 
 std::vector<std::string>
 KvInterfaceImplMySql::getChildren(std::string const& parentKey) {

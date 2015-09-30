@@ -49,9 +49,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/EmptyChunks.h"
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "css/EmptyChunks.h"
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
@@ -85,8 +85,8 @@ namespace qproc {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(std::shared_ptr<css::Facade> cssFacade) :
-    _cssFacade(cssFacade), _hasMerge(false), _isDummy(false), _isFinal(0) {
+QuerySession::QuerySession(std::shared_ptr<css::CssAccess> css) :
+    _css(css), _hasMerge(false), _isDummy(false), _isFinal(0) {
 }
 
 void QuerySession::setDefaultDb(std::string const& defaultDb) {
@@ -226,7 +226,7 @@ QuerySession::getDbStriping() {
 std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
     // FIXME: do we need to catch an exception here?
-    return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
+    return _css->getEmptyChunks().getEmpty(_context->dominantDb);
 }
 
 /// Returns the merge statment, if appropriate.
@@ -263,7 +263,7 @@ QuerySession::Iter QuerySession::cQueryEnd() {
 }
 
 QuerySession::QuerySession(Test& t)
-    : _cssFacade(t.cssFacade), _defaultDb(t.defaultDb) {
+    : _css(t.css), _defaultDb(t.defaultDb) {
     _initContext();
 }
 
@@ -273,7 +273,7 @@ void QuerySession::_initContext() {
     _context->username = "default";
     _context->needsMerge = false;
     _context->chunkCount = 0;
-    _context->cssFacade = _cssFacade;
+    _context->css = _css;
 }
 
 void QuerySession::_preparePlugins() {

@@ -43,7 +43,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/Facade.h"
+#include "css/CssAccess.h"
 #include "global/intTypes.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
@@ -77,7 +77,7 @@ public:
     friend class Iter;
     typedef std::shared_ptr<QuerySession> Ptr;
 
-    explicit QuerySession(std::shared_ptr<css::Facade>);
+    explicit QuerySession(std::shared_ptr<css::CssAccess>);
 
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
@@ -141,7 +141,7 @@ public:
     // For test harnesses.
     struct Test {
         int cfgNum;
-        std::shared_ptr<css::Facade> cssFacade;
+        std::shared_ptr<css::CssAccess> css;
         std::string defaultDb;
     };
     explicit QuerySession(Test& t); ///< Debug constructor
@@ -170,7 +170,7 @@ private:
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
 
     // Fields
-    std::shared_ptr<css::Facade> _cssFacade; ///< Metadata access facade
+    std::shared_ptr<css::CssAccess> _css; ///< Metadata access
     std::string _defaultDb; ///< User db context
     std::string _original; ///< Original user query
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context

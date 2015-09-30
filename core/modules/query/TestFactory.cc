@@ -50,9 +50,9 @@ TestFactory::newContext() {
 }
 
 std::shared_ptr<QueryContext>
-TestFactory::newContext(std::shared_ptr<css::Facade> cssFacade) {
+TestFactory::newContext(std::shared_ptr<css::CssAccess> css) {
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
-    context->cssFacade = cssFacade;
+    context->css = css;
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;

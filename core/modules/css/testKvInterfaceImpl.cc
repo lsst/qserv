@@ -57,6 +57,7 @@ struct KvInterfaceFixture {
         k1 = prefix + "/xyzA";
         k2 = prefix + "/xyzB";
         k3 = prefix + "/xyzC";
+        k4 = prefix + "/xyz_unique_";
         v1 = "firstOne";
         v2 = "secondOne";
     };
@@ -88,10 +89,18 @@ struct KvInterfaceFixture {
         kvI->deleteKey(k2);
         kvI->deleteKey(prefix);
 
+        // test unique
+        std::string key;
+        BOOST_CHECK_NO_THROW(key = kvI->create(k4, "uniqueValue", true));
+        BOOST_CHECK_EQUAL(key, k4+"0000000001");
+        BOOST_CHECK_EQUAL(kvI->get(key), "uniqueValue");
+        BOOST_CHECK_NO_THROW(key = kvI->create(k4, "", true));
+        BOOST_CHECK_EQUAL(key, k4+"0000000002");
+
         delete kvI;
     }
 
-    std::string prefix, k1, k2, k3, v1, v2;
+    std::string prefix, k1, k2, k3, k4, v1, v2;
 };
 
 BOOST_FIXTURE_TEST_SUITE(KvInterfaceTest, KvInterfaceFixture)
