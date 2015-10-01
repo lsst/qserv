@@ -1,5 +1,1 @@
-perms.sh: add qserv in docker group (should be performed by puppet)
-conf.sh: update docker configuration (add proxy and change runtime directory)
-pull.sh: retrieve docker images on all nodes
-run.sh: run qserv docker containers on all nodes
-ps.sh: show docker containers state on all nodes
+See ../../../../doc/source/HOW-TO/docker-multinode-test.rst 
