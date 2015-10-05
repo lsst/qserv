@@ -23,6 +23,7 @@ qserv_client_info.log
 .cproject
 .metadata/
 .project
+.settings/
 RemoteSystemTempFiles/
 \#*\#
 _build.log
