@@ -113,6 +113,14 @@ def validateDirTableOpts(opts):
             raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, k)
     return
 
+def _deuni(arg):
+    """
+    De-unicode string, if argument is unicode string convert it to utf8-encoded bytes.
+    """
+    if isinstance(arg, unicode):
+        arg = arg.encode('utf_8')
+    return arg
+
 class QservAdmin(object):
     """
     QservAdmin implements functions needed by qserv_admin client program.
@@ -185,7 +193,7 @@ class QservAdmin(object):
 
         @param dbName    Database name.
         """
-        p = "/DBS/%s" % dbName
+        p = "/DBS/%s" % _deuni(dbName)
         return self._kvI.exists(p)
 
     def getDbInfo(self, dbName):
@@ -195,7 +203,7 @@ class QservAdmin(object):
 
         @param dbName:    Database name
         """
-        node = "/DBS/" + dbName
+        node = "/DBS/" + _deuni(dbName)
         return self._getMaybePacked(node, ['releaseStatus', 'uuid', 'storageClass', 'partitioningId'])
 
     def getPartInfo(self, partId):
@@ -205,7 +213,7 @@ class QservAdmin(object):
 
         @param partId:    partitioning ID
         """
-        node = "/PARTITIONING/_" + partId
+        node = "/PARTITIONING/_" + _deuni(partId)
         return self._getMaybePacked(node, ['nStripes', 'nSubStripes', 'overlap', 'uuid'])
 
     def createDb(self, dbName, options):
@@ -224,6 +232,7 @@ class QservAdmin(object):
         @param dbName    Database name
         @param options   Dictionary with options (key/value)
         """
+        dbName = _deuni(dbName)
         self._logger.debug("Create database %r, options: %r", dbName, options)
         validateDbNameOrThrow(dbName)
         # client should guarantee existence of "partitioning" option
@@ -285,6 +294,9 @@ class QservAdmin(object):
         @param dbName           Database name (of the database to create)
         @param templateDbName   Database name (of the template database)
         """
+        dbName = _deuni(dbName)
+        templateDbName = _deuni(templateDbName)
+
         self._logger.info("Creating db %r like %r", dbName, templateDbName)
 
         # first check version
@@ -324,6 +336,7 @@ class QservAdmin(object):
 
         @param dbName    Database name.
         """
+        dbName = _deuni(dbName)
         self._logger.info("Drop database %r", dbName)
 
         # first check version
@@ -360,11 +373,14 @@ class QservAdmin(object):
         @param dbName    Database name.
         @param tableName Table name.
         """
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         p = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         return self._kvI.exists(p)
 
     def tables(self, dbName):
         """ Returns the list of table names defined in CSS """
+        dbName = _deuni(dbName)
         key = "/DBS/%s/TABLES" % (dbName,)
         return self._cssChildren(key, [])
 
@@ -378,6 +394,8 @@ class QservAdmin(object):
         @raise Exception: if table schema is not defined in CSS
         """
 
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         self._logger.debug("Get table schema %r.%r", dbName, tableName)
 
         tableKey = "/DBS/%s/TABLES/%s" % (dbName, tableName)
@@ -417,6 +435,8 @@ class QservAdmin(object):
         @param tableName Table name
         @param options   Dictionary with options (key/value)
         """
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         self._logger.debug("Create table %r.%r, options: %r",
                            dbName, tableName, options)
 
@@ -446,6 +466,8 @@ class QservAdmin(object):
         @param dbName    Database name
         @param tableName Table name
         """
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         self._logger.debug("Drop table %r.%r", dbName, tableName)
 
         with self._getDbLock(dbName):
@@ -537,6 +559,7 @@ class QservAdmin(object):
         as 'state' key in the dictionary.
         If node does not exist then exception is raised.
         """
+        nodeName = _deuni(nodeName)
 
         # first check version
         self._versionCheck()
@@ -551,6 +574,7 @@ class QservAdmin(object):
         used internally by other methods.
         """
 
+        nodeName = _deuni(nodeName)
         nodeKey = '/NODES/' + nodeName
         if self._kvI.exists(nodeKey + '.json'):
             data = self._cssGet(nodeKey + '.json')
@@ -604,6 +628,11 @@ class QservAdmin(object):
         @param state:      State for newly created node.
         """
 
+        nodeName = _deuni(nodeName)
+        nodeType = _deuni(nodeType)
+        host = _deuni(host)
+        state = _deuni(state)
+
         if state not in NodeState.STATES:
             raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, 'state: ' + str(state))
 
@@ -637,6 +666,7 @@ class QservAdmin(object):
         @param nodes:    Lsit of node names or single node name
         """
 
+        state = _deuni(state)
         if state not in NodeState.STATES:
             raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, 'state: ' + str(state))
 
@@ -650,6 +680,7 @@ class QservAdmin(object):
         # protect against concurrent modifications
         with self._getNodeLock():
             for node in nodes:
+                node = _deuni(node)
                 # check that node exists
                 nodeKey = '/NODES/' + node
                 if not self._kvI.exists(nodeKey):
@@ -665,6 +696,8 @@ class QservAdmin(object):
         Only "unused" nodes that have no associated chunks can be deleted. If
         node has any chunk an attempt to delete it will result in exception.
         """
+
+        nodeName = _deuni(nodeName)
 
         # first check version
         self._versionCheck()
@@ -701,6 +734,8 @@ class QservAdmin(object):
         as an argument to getNode method to retrieve node information). Empty dict is
         returned if no chunk info is defined.
         """
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         res = {}
         with self._getDbLock(dbName):
             key = "/DBS/%s/TABLES/%s/CHUNKS" % (dbName, tableName)
@@ -731,6 +766,8 @@ class QservAdmin(object):
         @param hosts:       list of host names for specified chunk
         """
 
+        dbName = _deuni(dbName)
+        tableName = _deuni(tableName)
         self._logger.debug("Add chunk replicas r%r.%r, chunk: %r hosts: %r",
                            dbName, tableName, chunk, hosts)
 
@@ -743,6 +780,7 @@ class QservAdmin(object):
                 # TODO: no checks yet whether host already has the chunk registered
 
                 for host in hosts:
+                    host = _deuni(host)
                     path = self._kvI.create(key + '/', sequence=True)
                     self._logger.debug("New chunk replica key: %r", path)
                     self._addPacked(path, dict(nodeName=host))

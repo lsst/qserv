@@ -62,6 +62,7 @@ import logging
 # ----------------------------
 # Imports for other modules --
 # ----------------------------
+import lsst.log
 from lsst.qserv.admin.dataLoader import DataLoader
 from lsst.qserv.admin.qservAdmin import QservAdmin
 from lsst.qserv.admin.nodeAdmin import NodeAdmin
@@ -135,9 +136,9 @@ class Loader(object):
                            'partitioned but still loaded into a single table.')
 
         group = parser.add_argument_group('CSS options', 'Options controlling CSS metadata')
-        parser.set_defaults(cssConn='localhost:12181')
+        parser.set_defaults(cssConn='mysql://qsmaster@127.0.0.1:13306/qservCssData')
         group.add_argument('-c', '--css-conn', dest='cssConn',
-                           help='Connection string for zookeeper, def: %(default)s.')
+                           help='Connection string for CSS, def: %(default)s.')
         group.add_argument('-r', '--css-remove', dest='cssClear', default=False, action='store_true',
                            help='Remove CSS table info if it already exists.')
         group.add_argument('-C', '--no-css', dest='cssConn', action='store_const', const=None,
@@ -204,6 +205,13 @@ class Loader(object):
             logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
             logger.handlers = []
             logger.addHandler(handler)
+
+        # configure log4cxx logging based on the logging level of Python logger
+        levels = {logging.ERROR: lsst.log.ERROR,
+                  logging.WARNING: lsst.log.WARN,
+                  logging.INFO: lsst.log.INFO,
+                  logging.DEBUG: lsst.log.DEBUG}
+        lsst.log.setLevel('', levels.get(logger.level, lsst.log.DEBUG))
 
         # connect to czar server
         czarWmgr = WmgrClient(self.args.czarHost, self.args.czarPort, secretFile=self.args.secret)

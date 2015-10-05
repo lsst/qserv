@@ -266,6 +266,9 @@ class DataLoader(object):
         # get partitioning config
         partConfig = self.css.getPartInfo(partId)
         self._log.debug('CSS partitioning info: %r', partConfig)
+        if partConfig is None:
+            raise RuntimeError("CSS error: failed to get partitioning info for database " \
+                               + database)
 
         # check parameters
         self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
