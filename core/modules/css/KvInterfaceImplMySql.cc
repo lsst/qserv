@@ -171,21 +171,24 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
     if (hasParent == NULL || parentKvId == NULL) {
         throw CssError("null out-var ptr");
     }
+
+    // acceptable childKvKey is "", "/child", "/child/child", but not "/"
+    if (childKvKey.empty()) {
+        *hasParent = false;
+        return;
+    }
+
     // Keys should always start with the delimiter and since we validate all keys created it should always be there.
     // However when looking for parent keys we do pull keys from the database, and there is some possibility the
     // values have been tampered with and the first delimiter removed.
     // It's easy enough to check for that condition here, so do a quick sanity check:
-    if (0 != childKvKey.find_first_of(KEY_PATH_DELIMITER)) {
+    if (childKvKey == "/" or 0 != childKvKey.find_first_of(KEY_PATH_DELIMITER)) {
         LOGF(_logger, LOG_LVL_ERROR, "_findParentId - badly formatted childKvKey:%1%" % childKvKey);
         throw CssError("_findParentId - invalid childKvKey");
     }
 
     size_t loc = childKvKey.find_last_of(KEY_PATH_DELIMITER);
-    if (loc == 0) {
-        *hasParent = false;
-        return;
-    }
-    std::string parentKey = childKvKey.substr(0, loc);
+    std::string const parentKey(childKvKey, 0, loc);
     std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(parentKey));
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
@@ -257,6 +260,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         }
 
     } else {
+        if (path == "/") path.erase();
         _create(path, value, false, transaction);
     }
 
@@ -345,7 +349,7 @@ KvInterfaceImplMySql::exists(std::string const& key) {
 std::map<std::string, std::string>
 KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     for (auto& key: keys) {
-        _validateKey(key);
+        if (key != "/") _validateKey(key);    // slash == ""
     }
 
     // build query
@@ -353,7 +357,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     bool first = true;
     for (auto& key: keys) {
         query += '"';
-        query += _escapeSqlString(key);
+        if (key != "/") query += _escapeSqlString(key);  // slash == ""
         query += '"';
         if (not first) query += ", ";
         first = false;
@@ -386,10 +390,13 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
 
 std::vector<std::string>
 KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
-    _validateKey(parentKey);
+    std::string key = parentKey;
+    if (key == "/") key.erase();
+
+    _validateKey(key);
     // get the children with a /fully/qualified/path
     KvTransaction transaction(_conn);
-    std::vector<std::string> strVec = _getChildrenFullPath(parentKey, transaction);
+    std::vector<std::string> strVec = _getChildrenFullPath(key, transaction);
     transaction.commit();
 
     // trim off the parent key, leaving only the last item in the path.
@@ -439,7 +446,9 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
 
 
 void
-KvInterfaceImplMySql::deleteKey(std::string const& key) {
+KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
+    std::string key = keyArg;
+    if (key == "/") key.erase();
     KvTransaction transaction(_conn);
     _delete(key, transaction);
     transaction.commit();
@@ -482,7 +491,11 @@ KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& trans
 
 
 std::string
-KvInterfaceImplMySql::_get(std::string const& key, std::string const& defaultValue, bool throwIfKeyNotFound) {
+KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& defaultValue, bool throwIfKeyNotFound) {
+
+    std::string key = keyArg;
+    if (key == "/") key.erase();
+
     KvTransaction transaction(_conn);
 
     std::string val;
@@ -533,6 +546,9 @@ bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int
 
 void KvInterfaceImplMySql::_validateKey(std::string const& key) {
     // There is no need for a transaction here.
+
+    // empty key means root
+    if (key.empty()) return;
 
     // verify that:
     // - key is less than max length
