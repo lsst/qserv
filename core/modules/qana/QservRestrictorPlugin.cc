@@ -63,6 +63,11 @@
 
 namespace { // File-scope helpers
     std::string const UDF_PREFIX = "scisql_";
+
+    LOG_LOGGER getLogger() {
+        static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
+        return logger;
+    }
 } // anonymous
 
 namespace lsst {
@@ -506,14 +511,14 @@ addPred(std::shared_ptr<query::QsRestrictor::PtrVector>& preds,
 
 std::shared_ptr<query::QsRestrictor::PtrVector>
 QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
-                                         query::AndTerm::Ptr p) {
+                                         query::AndTerm::Ptr andTerm) {
     typedef query::BoolTerm::PtrVector::iterator TermIter;
     typedef query::BfTerm::PtrVector::iterator BfIter;
     std::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds;
 
-    if(!p) return secIndexPreds;
+    if(not andTerm) return nullptr;
 
-    for(TermIter i = p->iterBegin(); i != p->iterEnd(); ++i) {
+    for(TermIter i = andTerm->iterBegin(); i != andTerm->iterEnd(); ++i) {
         query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(i->get());
         if(!factor) continue;
         for(BfIter b = factor->_terms.begin();
@@ -534,7 +539,7 @@ QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
                 continue;
             }
 
-            // = predicate
+            // '=' predicate
             query::CompPredicate::Ptr compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(*b);
             if(compPredicate) {
                 query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, compPredicate);
