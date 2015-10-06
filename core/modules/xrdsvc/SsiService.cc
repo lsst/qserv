@@ -79,7 +79,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
-    _foreman = wcontrol::newForeman(
+    _foreman = wcontrol::Foreman::newForeman(
         std::make_shared<wsched::BlendScheduler>(
             std::make_shared<wsched::GroupScheduler>(),
             std::make_shared<wsched::ScanScheduler>()

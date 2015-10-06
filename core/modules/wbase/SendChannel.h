@@ -42,16 +42,17 @@ namespace wbase {
 /// accepts only one call to send bytes, unless the sendStream call is used.
 class SendChannel {
 public:
-    typedef util::VoidCallable<void> ReleaseFunc;
-    typedef std::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
-    typedef long long Size;
+    using Ptr = std::shared_ptr<SendChannel>;
+    struct ReleaseFunc {
+        using Ptr = std::shared_ptr<ReleaseFunc>;
+        virtual ~ReleaseFunc() {}
+        virtual void operator()() = 0;
+    };
+    using Size = long long;
 
     virtual ~SendChannel() {}
 
-    /// Send a buffer
     virtual bool send(char const* buf, int bufLen) = 0;
-
-    /// Send an error
     virtual bool sendError(std::string const& msg, int code) = 0;
 
     /// Send the bytes from a POSIX file handle
@@ -66,7 +67,7 @@ public:
     /// Set a function to be called when a resources from a deferred send*
     /// operation may be released. This allows a sendFile() caller to be
     /// notified when the file descriptor may be closed and perhaps reclaimed.
-    void setReleaseFunc(ReleaseFuncPtr r) { _release = r; }
+    void setReleaseFunc(ReleaseFunc::Ptr const& r) { _release = r; }
     void release() {
         if(_release) {
             (*_release)();
@@ -74,14 +75,14 @@ public:
     }
 
     /// Construct a new NopChannel that ignores everything it is asked to send
-    static std::shared_ptr<SendChannel> newNopChannel();
+    static SendChannel::Ptr newNopChannel();
 
     /// Construct a StringChannel, which appends all it receives into a string
     /// provided by reference at construction.
-    static std::shared_ptr<SendChannel> newStringChannel(std::string& dest);
+    static SendChannel::Ptr newStringChannel(std::string& dest);
 
 protected:
-    ReleaseFuncPtr _release;
+    ReleaseFunc::Ptr _release;
 };
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_SENDCHANNEL_H

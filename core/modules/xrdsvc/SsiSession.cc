@@ -50,8 +50,7 @@ namespace xrdsvc {
 
 // Step 4
 /// Called by XrdSsi to actually process a request.
-void
-SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
+void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     util::Timer t;
 
     LOGF_INFO("ProcessRequest, service=%1%" % sessName);
@@ -89,8 +88,8 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
     LOGF_INFO("Decoding TaskMsg of size %1%" % reqSize);
-    auto task = std::make_shared<proto::TaskMsg>();
-    bool ok = task->ParseFromArray(reqData, reqSize) && task->IsInitialized();
+    auto taskMsg = std::make_shared<proto::TaskMsg>();
+    bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
 
     // Now that the request is decoded (successfully or not), release the
     // xrootd request buffer. To avoid data races, this must happen before
@@ -106,7 +105,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         return;
     }
 
-    if(!task->has_db() || !task->has_chunkid() || (ru.db() != task->db()) || (ru.chunk() != task->chunkid())) {
+    if(!taskMsg->has_db() || !taskMsg->has_chunkid() || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
         std::ostringstream os;
         os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
         LOGF_ERROR(os.str());
@@ -115,27 +114,23 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     }
 
     t.start();
-    SsiSession::CancelFuncPtr p = (*_processor)(task, replyChannel);
-    _addCanceller(p);
+
+    wbase::Task::Ptr task = (*_processor)(taskMsg, replyChannel);
+    _addTask(task);
     t.stop();
     LOGF_INFO("Enqueued TaskMsg for %1% in %2% seconds" % ru % t.getElapsed());
 }
 
 /// Called by XrdSsi to free resources.
-void
-SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
-                            bool cancel) { // Step 8
+void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
     {
-        std::lock_guard<std::mutex> lock(_cancelMutex);
-        if(!_cancelled && cancel) { // Cancel if not already cancelled
-            _cancelled = true;
-            typedef std::vector<CancelFuncPtr>::iterator Iter;
-            for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
-                assert(*i);
-                (**i)();
+        std::lock_guard<std::mutex> lock(_tasksMutex);
+        if(cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled
+            for (auto task: _tasks) {
+                task->cancel();
             }
         }
     }
@@ -152,6 +147,7 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGF_INFO("RequestFinished %1%" % type);
+    // &&& is the file or stream closed by this point?
 }
 
 bool
@@ -161,19 +157,15 @@ SsiSession::Unprovision(bool forced) {
     return true; // false if we can't unprovision now.
 }
 
-void SsiSession::_addCanceller(CancelFuncPtr p) {
-    bool shouldCall = false;
+void SsiSession::_addTask(wbase::Task::Ptr const& task) {
     {
-        std::lock_guard<std::mutex> lock(_cancelMutex);
-        if(_cancelled) {
-            // Don't add the canceller, just call it.
-            shouldCall = true;
-        } else {
-            _cancellers.push_back(p);
-        }
+        std::lock_guard<std::mutex> lock(_tasksMutex);
+        _tasks.push_back(task);
+
     }
-    if (shouldCall) {
-        (*p)(); // call outside of the lock
+    if (_cancelled) {
+        // calling Task::cancel multiple times should be harmless.
+        task->cancel();
     }
 }
 

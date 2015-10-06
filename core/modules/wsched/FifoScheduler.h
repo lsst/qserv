@@ -39,7 +39,7 @@ namespace wcontrol {
 
 namespace wsched {
 
-class FifoScheduler : public wcontrol::Foreman::Scheduler {
+class FifoScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<FifoScheduler> Ptr;
 

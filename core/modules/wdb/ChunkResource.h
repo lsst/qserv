@@ -94,9 +94,10 @@ private:
 /// subchunks.
 class ChunkResourceMgr {
 public:
+    using Ptr = std::shared_ptr<ChunkResourceMgr>;
     /// Factory
-    static std::shared_ptr<ChunkResourceMgr> newMgr(mysql::MySqlConfig const& c);
-    static std::shared_ptr<ChunkResourceMgr> newFakeMgr();
+    static Ptr newMgr(mysql::MySqlConfig const& c);
+    static Ptr newFakeMgr();
     virtual ~ChunkResourceMgr() {}
 
     /// Reserve a chunk. Currently, this does not result in any explicit chunk

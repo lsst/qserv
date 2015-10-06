@@ -608,14 +608,11 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // ChunkResourceMgr
 ////////////////////////////////////////////////////////////////////////
-std::shared_ptr<ChunkResourceMgr>
-ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
+ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
     return std::shared_ptr<ChunkResourceMgr>(new Impl(c));
-
 }
 
-std::shared_ptr<ChunkResourceMgr>
-ChunkResourceMgr::newFakeMgr() {
+ChunkResourceMgr::Ptr ChunkResourceMgr::newFakeMgr() {
     return std::shared_ptr<ChunkResourceMgr>(new Impl());
 }
 

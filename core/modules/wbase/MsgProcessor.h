@@ -28,7 +28,6 @@
 #include <memory>
 
 // Qserv headers
-#include "util/Callable.h"
 
 // Forward declarations
 namespace lsst {
@@ -38,22 +37,23 @@ namespace proto {
 }
 namespace wbase {
     class SendChannel;
+    class Task;
 }}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
 namespace wbase {
 
-/// MsgProcessor implementations handle incoming TaskMsg objects and write their
-/// results over a SendChannel
-class MsgProcessor
-    : public util::BinaryCallable<std::shared_ptr<util::VoidCallable<void> >,
-                                  std::shared_ptr<proto::TaskMsg>,
-                                  std::shared_ptr<SendChannel> > {
-public:
-    /// @return a cancellation function.
-    /// This allows the caller to request work stoppage.
-    virtual R operator()(A1 taskMsg, A2 replyChannel) = 0;
+/** MsgProcessor implementations handle incoming TaskMsg objects by creating a Task to write their
+ * results over a SendChannel
+ */
+struct MsgProcessor {
+	virtual ~MsgProcessor() {}
+    /// @return a pointer to the Task so it can be cancelled or tracked.
+	virtual std::shared_ptr<Task> operator()(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+	                                         std::shared_ptr<SendChannel> const& replyChannel) = 0;
+
 };
-}}} // lsst::qserv::wbase
+
+}}} // namespace
 #endif // LSST_QSERV_WBASE_MSGPROCESSOR_H
