@@ -53,12 +53,12 @@ namespace query {
 // Forward declarations
 class QueryTemplate;
 
-/// BfTerm is a term in a in a BoolFactor
-class BfTerm {
+/// BoolFactorTerm is a term in a in a BoolFactor
+class BoolFactorTerm {
 public:
-    typedef std::shared_ptr<BfTerm> Ptr;
+    typedef std::shared_ptr<BoolFactorTerm> Ptr;
     typedef std::vector<Ptr> PtrVector;
-    virtual ~BfTerm() {}
+    virtual ~BoolFactorTerm() {}
     virtual Ptr clone() const = 0;
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
@@ -185,13 +185,13 @@ public:
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
 
     virtual void findValueExprs(ValueExprPtrVector& vector) {
-        typedef BfTerm::PtrVector::iterator Iter;
+        typedef BoolFactorTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
             if (*i) { (*i)->findValueExprs(vector); }
         }
     }
     virtual void findColumnRefs(ColumnRef::Vector& vector) {
-        typedef BfTerm::PtrVector::iterator Iter;
+        typedef BoolFactorTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
             if (*i) { (*i)->findColumnRefs(vector); }
         }
@@ -204,10 +204,10 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    BfTerm::PtrVector _terms;
+    BoolFactorTerm::PtrVector _terms;
 private:
-    bool _reduceTerms(BfTerm::PtrVector& newTerms, BfTerm::PtrVector& oldTerms);
-    bool _checkParen(BfTerm::PtrVector& terms);
+    bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
+    bool _checkParen(BoolFactorTerm::PtrVector& terms);
 };
 
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
@@ -222,12 +222,12 @@ public:
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
-class PassTerm : public BfTerm {
+class PassTerm : public BoolFactorTerm {
 public: // text
     typedef std::shared_ptr<PassTerm> Ptr;
 
-    virtual BfTerm::Ptr clone() const { return copySyntax(); }
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BoolFactorTerm::Ptr clone() const { return copySyntax(); }
+    virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
@@ -235,12 +235,12 @@ public: // text
 };
 
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
-class PassListTerm : public BfTerm {
+class PassListTerm : public BoolFactorTerm {
 public: // ( term, term, term )
     typedef std::shared_ptr<PassListTerm> Ptr;
 
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     StringVector _terms;
@@ -249,12 +249,12 @@ public: // ( term, term, term )
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
 /// when parentheses are used within a bool term. The parenthetical group is an
 /// entire factor, and it contains bool terms.
-class BoolTermFactor : public BfTerm {
+class BoolTermFactor : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<BoolTermFactor> Ptr;
 
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 

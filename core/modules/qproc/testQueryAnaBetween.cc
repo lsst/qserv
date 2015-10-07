@@ -67,16 +67,14 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    /* TODO
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
+    BOOST_CHECK_EQUAL(r._name, "sIndexBetween");
+    char const* params[] = {"LSST", "Object", "objectIdObjTest", "386942193651347", "386942193651349"};
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
-                                  */
+                                  params, params+5);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

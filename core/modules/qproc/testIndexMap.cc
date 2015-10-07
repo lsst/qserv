@@ -75,7 +75,7 @@ struct Fixture {
         return c;
     }
     SecondaryIndex si;
-    // TODO: IndexMap with fake secondary index
+    // TODO: IndexMap with fake secondary index: see DM-4047
     // TODO: 2+ StripingParams sets.
 };
 

@@ -60,7 +60,7 @@ class QueryTemplate;
 ///         ) {#predicate = #([PREDICATE, "PREDICATE"],predicate);}
 ///     | exists_predicate
 ///     | unique_predicate
-class Predicate : public BfTerm {
+class Predicate : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<Predicate> Ptr;
 
@@ -71,7 +71,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual BfTerm::Ptr copySyntax() const { return BfTerm::Ptr(); }
+    virtual BoolFactorTerm::Ptr copySyntax() const { return BoolFactorTerm::Ptr(); }
 };
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
@@ -85,8 +85,8 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 };
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
@@ -104,8 +104,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
     static char const* lookupOp(int op);
@@ -130,8 +130,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone();}
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
@@ -150,8 +150,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     ValueExprPtr value;
     ValueExprPtr minValue;
@@ -172,8 +172,8 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     ValueExprPtr value;
     ValueExprPtr charValue;
@@ -192,8 +192,8 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+    virtual BoolFactorTerm::Ptr clone() const;
+    virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
 
