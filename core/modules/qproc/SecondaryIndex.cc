@@ -61,6 +61,8 @@ LOG_LOGGER getLogger() {
     return logger;
 }
 
+enum QueryType { IN =1, BETWEEN };
+
 } // anonymous namespace
 
 class SecondaryIndex::Backend {
@@ -83,9 +85,13 @@ public:
         for(query::ConstraintVector::const_iterator i=cv.begin(), e=cv.end();
             i != e;
             ++i) {
-            if (i->name == "sIndex") {
-                _sqlLookup(output, *i);
+            if (i->name == "sIndex"){
                 hasIndex = true;
+                _sqlLookup(output, i->params, IN);
+            }
+            else if (i->name == "sIndexBetween") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, BETWEEN);
             }
         }
         if(!hasIndex) {
@@ -107,34 +113,55 @@ private:
     /**
      *  Build sql query string to run against secondary index
      *
-     *  @param:    vector of string used to build the query,
-     *             format is:
-     *             [db, table, keyColumn, id_0, ..., id_n]
-     *             where:
-     *             - db.table is the director table,
-     *             - keyColumn is its primary key,
-     *             - id_x are keyColumn values
+     *  @param params:  vector of string used to build the query,
+     *                  format is:
+     *                  [db, table, keyColumn, id_0, ..., id_n]
+     *                  where:
+     *                  - db.table is the director table,
+     *                  - keyColumn is its primary key,
+     *                  - id_x are keyColumn values
+     *
+     *  @param query_type: Type of the query launched against
+     *                     secondary index. Use IN or BETWEEN on object ids
+     *                     to find chunk ids.
      *
      *  @return:   the sql query string to run against secondary index in
      *             order to get (chunks, subchunks) couples containing [id_0, ..., id_n]
      */
     static std::string _buildLookupQuery(
-        std::vector<std::string> const& params) {
-        char const LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s)";
+        std::vector<std::string> const& params,
+        QueryType const& query_type) {
+
+
         LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::printable(params));
 
         std::string const& db = params[0];
         std::string const& table = params[1];
         std::string const& key_column = params[2];
 
-        char const *const empty_bracket = "";
-        auto id_start = std::next(params.begin(), 3);
-        auto ids_formatter = util::printable( id_start, params.end(), empty_bracket, empty_bracket);
-        std::string sql = (boost::format(LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
-                                                              % SUB_CHUNK_COLUMN
-                                                              % _buildIndexTableName(db, table)
-                                                              % key_column
-                                                              % ids_formatter).str();
+        std::string sql;
+        std::string index_table = _buildIndexTableName(db, table);
+        if (query_type == QueryType::IN) {
+            char const IN_LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s)";
+            char const *const empty_bracket = "";
+            auto id_start = std::next(params.begin(), 3);
+            auto ids_formatter = util::printable( id_start, params.end(), empty_bracket, empty_bracket);
+            sql = (boost::format(IN_LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
+                                                         % SUB_CHUNK_COLUMN
+                                                         % index_table
+                                                         % key_column
+                                                         % ids_formatter).str();
+        }
+        else if (query_type == QueryType::BETWEEN) {
+            if (params.size() != 5) {
+                throw Bug("Incorrect parameters for bounded secondary index lookup ");
+            }
+            char const BETWEEN_LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s BETWEEN %s AND %s";
+            sql = (boost::format(BETWEEN_LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
+                                                              % SUB_CHUNK_COLUMN % index_table % key_column % params[3]
+                                                              % params[4]).str();
+        }
+
         LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
         return sql;
     }
@@ -142,16 +169,16 @@ private:
     /**
      *  Add results from secondary index sql query to existing ChunkSpec vector
      *
-     *  @param constraint:  a secondary index constraint issued from query analysis
      *  @param output:      existing ChunkSpec vector
+     *  @param params:      parameters used to query secondary index
+     *  @param query_type:  Type of the query launched against
+     *                      secondary index. Use IN or BETWEEN on object ids
+     *                      to find chunk ids.
      */
-    void _sqlLookup(ChunkSpecVector& output, query::Constraint const& constraint) {
+    void _sqlLookup(ChunkSpecVector& output, StringVector const& params, QueryType const& query_type) {
         IntVector ids;
-        if (constraint.name != "sIndex") {
-            throw Bug("Unexpected non-index constraint");
-        }
 
-        std::string sql = _buildLookupQuery(constraint.params);
+        std::string sql = _buildLookupQuery(params, query_type);
         std::map<int, Int32Vector> tmp;
 
         // Insert sql query result:

@@ -236,6 +236,7 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
         indexSpecs = _si->lookup(cv);
         LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::printable(indexSpecs));
     } catch(SecondaryIndex::NoIndexConstraint& e) {
+        LOGF(getLogger(), LOG_LVL_DEBUG, "No secondary index constraint");
         hasIndex = false; // Ok if no index constraints
     }
 
