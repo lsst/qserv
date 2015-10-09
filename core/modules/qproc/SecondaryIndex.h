@@ -52,7 +52,12 @@ namespace qproc {
 class SecondaryIndex {
 public:
     explicit SecondaryIndex(mysql::MySqlConfig const& c);
-    explicit SecondaryIndex(int); // Construct a fake instance
+
+    /** Construct a fake instance
+     *
+     *  Used for testing purpose
+     */
+    explicit SecondaryIndex();
 
     /** Lookup an index constraint.
      *

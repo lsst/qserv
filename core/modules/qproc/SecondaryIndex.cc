@@ -230,7 +230,7 @@ public:
 private:
     struct _checkIndex {
         bool operator()(query::Constraint const& c) {
-            return c.name == "sIndex"; }
+            return (c.name == "sIndex" || c.name == "sIndexBetween"); }
     };
     bool _hasSecondary(query::ConstraintVector const& cv) {
         return cv.end() != std::find_if(cv.begin(), cv.end(), _checkIndex());
@@ -241,7 +241,7 @@ SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
     : _backend(std::make_shared<MySqlBackend>(c)) {
 }
 
-SecondaryIndex::SecondaryIndex(int)
+SecondaryIndex::SecondaryIndex()
     : _backend(std::make_shared<FakeBackend>()) {
 }
 

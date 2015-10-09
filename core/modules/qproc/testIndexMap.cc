@@ -63,7 +63,7 @@ using lsst::qserv::IntVector;
 
 struct Fixture {
     Fixture(void) :
-        si(0) {
+        si() {
     }
 
     ~Fixture(void) { };
@@ -97,14 +97,26 @@ BOOST_AUTO_TEST_CASE(SecLookup) {
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }
 
-BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectId) {
+BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdIN) {
     ConstraintVector cv;
     int const size=5;
     char const* argv[size] = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
     cv.push_back(makeConstraint("sIndex", size, argv));
 
     ChunkSpecVector csv = si.lookup(cv);
-    std::cout << "SecLookupMultipleObjectId\n";
+    std::cout << "SecLookupMultipleObjectIdIN\n";
+    std::copy(csv.begin(), csv.end(),
+              std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
+}
+
+BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdBETWEEN) {
+    ConstraintVector cv;
+    int const size=5;
+    char const* argv[size] = {"LSST", "Object", "objectId", "386942193651348", "386950783579546"};
+    cv.push_back(makeConstraint("sIndexBetWeen", size, argv));
+
+    ChunkSpecVector csv = si.lookup(cv);
+    std::cout << "SecLookupMultipleObjectIdBETWEEN\n";
     std::copy(csv.begin(), csv.end(),
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }
