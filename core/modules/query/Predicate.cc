@@ -164,47 +164,6 @@ void NullPredicate::findValueExprs(ValueExprPtrVector& vector) {
     vector.push_back(value);
 }
 
-// CompPredicate special function
-/// @return a parse token type that is the reversed operator of the
-///         input token type.
-int CompPredicate::reverseOp(int op) {
-    switch(op) {
-    case SqlSQL2Tokens::NOT_EQUALS_OP:
-        return SqlSQL2Tokens::NOT_EQUALS_OP;
-    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
-        return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
-    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
-        return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
-    case SqlSQL2Tokens::LESS_THAN_OP:
-        return SqlSQL2Tokens::GREATER_THAN_OP;
-    case  SqlSQL2Tokens::GREATER_THAN_OP:
-        return SqlSQL2Tokens::LESS_THAN_OP;
-    case SqlSQL2Tokens::EQUALS_OP:
-        return SqlSQL2Tokens::EQUALS_OP;
-    default:
-        throw std::logic_error("Invalid op type for reversing");
-    }
-}
-
-char const* CompPredicate::lookupOp(int op) {
-    switch(op) {
-    case SqlSQL2Tokens::NOT_EQUALS_OP:
-        return "<>";
-    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
-        return "<=";
-    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
-        return ">=";
-    case SqlSQL2Tokens::LESS_THAN_OP:
-        return "<";
-    case  SqlSQL2Tokens::GREATER_THAN_OP:
-        return ">";
-    case SqlSQL2Tokens::EQUALS_OP:
-        return "==";
-    default:
-        throw std::invalid_argument("Invalid op type");
-    }
-}
-
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
     case '<':

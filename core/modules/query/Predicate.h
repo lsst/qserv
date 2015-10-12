@@ -107,8 +107,6 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
-    static int reverseOp(int op); // Reverses operator token
-    static char const* lookupOp(int op);
     static int lookupOp(char const* op);
 
     ValueExprPtr left;
