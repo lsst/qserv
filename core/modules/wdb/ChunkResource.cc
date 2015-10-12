@@ -88,12 +88,12 @@ class ChunkResource::Info {
 public:
     Info(std::string const& db_, int chunkId_,
          StringVector const& tables_, IntVector const& subChunkIds_)
-        : db(db_), chunkId(chunkId_),
-          tables(tables_), subChunkIds(subChunkIds_) {}
+        : db{db_}, chunkId{chunkId_},
+          tables{tables_}, subChunkIds{subChunkIds_} {}
 
     Info(std::string const& db_, int chunkId_,
          StringVector const& tables_)
-        : db(db_), chunkId(chunkId_), tables(tables_) {}
+        : db{db_}, chunkId{chunkId_}, tables{tables_} {}
 
     std::string db;
     int chunkId;
@@ -111,16 +111,16 @@ std::ostream& operator<<(std::ostream& os, ChunkResource::Info const& i) {
 // ChunkResource
 ////////////////////////////////////////////////////////////////////////
 ChunkResource::ChunkResource(ChunkResourceMgr& mgr)
-    : _mgr(mgr) {
+    : _mgr{mgr} {
 }
 
 ChunkResource::ChunkResource(ChunkResourceMgr& mgr,
                              ChunkResource::Info* info)
-    : _mgr(mgr), _info(info) {
+    : _mgr{mgr}, _info{info} {
     _mgr.acquireUnit(*_info);
 }
 ChunkResource::ChunkResource(ChunkResource const& cr)
-    : _mgr(cr._mgr), _info(new Info(*cr._info)) {
+    : _mgr{cr._mgr}, _info{new Info(*cr._info)} {
     _mgr.acquireUnit(*_info);
 }
 

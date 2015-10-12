@@ -98,7 +98,7 @@ public:
     };
 
     explicit Task() {}
-    explicit Task(TaskMsgPtr t, std::shared_ptr<SendChannel> sc);
+    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
 

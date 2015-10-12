@@ -50,7 +50,7 @@ namespace wbase {
 struct MsgProcessor {
 	virtual ~MsgProcessor() {}
     /// @return a pointer to the Task so it can be cancelled or tracked.
-	virtual std::shared_ptr<Task> operator()(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+	virtual std::shared_ptr<Task> processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
 	                                         std::shared_ptr<SendChannel> const& replyChannel) = 0;
 
 };

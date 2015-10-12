@@ -90,10 +90,8 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 ////////////////////////////////////////////////////////////////////////
 std::string const Task::defaultUser = "qsmaster";
 
-Task::Task(Task::TaskMsgPtr t, SendChannel::Ptr sc)
+Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc} {
-    // Make msg copy.
-    // msg = std::make_shared<proto::TaskMsg>(*t); &&& this doesn't make a msg copy. Do we need a copy?
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
     if(t->has_user()) {
@@ -104,8 +102,7 @@ Task::Task(Task::TaskMsgPtr t, SendChannel::Ptr sc)
     timestr[0] = '\0';
 }
 
-/** Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
- */
+/// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
@@ -121,9 +118,8 @@ void Task::cancel() {
     }
 }
 
-/**
- * @return true if task has already been cancelled.
- */
+
+/// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
     return getCancelled();

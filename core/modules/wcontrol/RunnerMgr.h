@@ -22,8 +22,8 @@ namespace wdb {
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
-/** Run an event driven thread that is fed by the Foreman's Scheduler.
- */
+
+/// Run an event driven thread that is fed by the Foreman's Scheduler.
 class Runner : public std::enable_shared_from_this<Runner> {
 public:
 	using Ptr = std::shared_ptr<Runner>;
@@ -40,8 +40,8 @@ private:
     std::atomic<bool> _poisoned{false}; // TODO:remove in DM-3945
 };
 
-/** Keep track of the existing Runner objects for the Foreman.
- */
+/// Keep track of the existing Runner objects for the Foreman.
+///
 class RunnerMgr {
 public:
     RunnerMgr(Foreman& f);

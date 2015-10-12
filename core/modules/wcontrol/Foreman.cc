@@ -54,23 +54,6 @@ Foreman::Ptr Foreman::newForeman(Scheduler::Ptr const& sched) {
     return fmi;
 }
 
-/// This functor is used to create and queue a Task from a TaskMsg.
-/// &&& Look into why a more direct method can't be used to do this.
-class Foreman::Processor : public wbase::MsgProcessor {
-public:
-    virtual ~Processor() {}
-    Processor(Foreman& f) : _foreman{f} {}
-
-    virtual wbase::Task::Ptr
-    operator()(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-               std::shared_ptr<wbase::SendChannel> const& replyChannel) override {
-        wbase::Task::Ptr t = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-        _foreman.newTaskAction(t);
-        return t;
-    }
-    Foreman& _foreman;
-};
-
 Foreman::Foreman(Scheduler::Ptr s) : _scheduler{s} {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
@@ -82,6 +65,14 @@ Foreman::~Foreman() {
 	LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
     // FIXME: Poison and drain runners.
     // This should only (get called on shutdown/restart).
+}
+
+/// Create and queue a Task from a TaskMsg and a replyChannel.
+wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                     std::shared_ptr<wbase::SendChannel> const& replyChannel) {
+    wbase::Task::Ptr t = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+    newTaskAction(t);
+    return t;
 }
 
 void Foreman::_startRunner(wbase::Task::Ptr const& t) {
@@ -104,10 +95,6 @@ void Foreman::newTaskAction(wbase::Task::Ptr const& task) {
             _startRunner(*i);
         }
     }
-}
-
-std::shared_ptr<wbase::MsgProcessor> Foreman::getProcessor() {
-    return std::shared_ptr<Processor>(new Processor(*this));
 }
 
 }}} // namespace

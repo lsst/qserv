@@ -114,8 +114,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     }
 
     t.start();
-
-    wbase::Task::Ptr task = (*_processor)(taskMsg, replyChannel);
+    wbase::Task::Ptr task = _processor->processMsg(taskMsg, replyChannel);
     _addTask(task);
     t.stop();
     LOGF_INFO("Enqueued TaskMsg for %1% in %2% seconds" % ru % t.getElapsed());
@@ -147,12 +146,10 @@ void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGF_INFO("RequestFinished %1%" % type);
-    // &&& is the file or stream closed by this point?
 }
 
-bool
-SsiSession::Unprovision(bool forced) {
-    // all requests guaranteed to be finished or cancelled.
+bool SsiSession::Unprovision(bool forced) {
+    // All requests guaranteed to be finished or cancelled.
     delete this;
     return true; // false if we can't unprovision now.
 }
@@ -164,9 +161,9 @@ void SsiSession::_addTask(wbase::Task::Ptr const& task) {
 
     }
     if (_cancelled) {
-        // calling Task::cancel multiple times should be harmless.
+        // Calling Task::cancel multiple times should be harmless.
         task->cancel();
     }
 }
 
-}}} // lsst::qserv::xrdsvc
+}}} // namespace

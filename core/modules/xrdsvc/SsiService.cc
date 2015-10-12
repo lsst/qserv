@@ -91,14 +91,9 @@ SsiService::~SsiService() {
     LOG_INFO("SsiService dying.");
 }
 
-void
-SsiService::Provision(XrdSsiService::Resource* r,
-                      unsigned short timeOut) { // Step 2
+void SsiService::Provision(XrdSsiService::Resource* r, unsigned short timeOut) { // Step 2
     LOGF_INFO("Got provision call where rName is: %1%" % r->rName);
-    XrdSsiSession* session = new SsiSession(
-        r->rName,
-        _chunkInventory->newValidator(),
-        _foreman->getProcessor());
+    XrdSsiSession* session = new SsiSession(r->rName, _chunkInventory->newValidator(), _foreman);
     r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
 }
 
@@ -106,8 +101,7 @@ void SsiService::_initInventory() {
     XrdName x;
     std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
-    _chunkInventory =
-            std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
+    _chunkInventory = std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
@@ -153,4 +147,4 @@ bool SsiService::_setupScratchDb() {
 }
 
 
-}}} // lsst::qserv::xrdsvc
+}}} // namespace

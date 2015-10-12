@@ -84,8 +84,7 @@ QueryRunner::QueryRunner(QueryRunnerArg const& a)
     }
 }
 
-/** Initialize the db connection
- */
+/// Initialize the db connection
 bool QueryRunner::_initConnection() {
     mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
     sc.username = _task->user.c_str(); // Override with czar-passed username.
@@ -189,11 +188,10 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     }
 }
 
-/** Fill one row in the Result msg from one row in MYSQL_RES*
- * If the message has gotten larger than the desired message size,
- * it will be transmitted with a flag set indicating the result
- * continues in later messages.
- */
+/// Fill one row in the Result msg from one row in MYSQL_RES*
+/// If the message has gotten larger than the desired message size,
+/// it will be transmitted with a flag set indicating the result
+/// continues in later messages.
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
     MYSQL_ROW row;
     size_t size = 0;
@@ -210,12 +208,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
             }
         }
         size += rawRow->ByteSize();
-#if 0 // Enable for tracing result values while debugging.
-        std::cout << "row: ";
-        std::copy(row, row+numFields,
-                  std::ostream_iterator<char*>(std::cout, ","));
-        std::cout << "\n";
-#endif
+
         // Each element needs to be mysql-sanitized
         if (size > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
             if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -231,10 +224,9 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
     return true;
 }
 
-/** Transmit result data with its header.
- * If 'last' is true, this is the last message in the result set
- * and flags are set accordingly.
- */
+/// Transmit result data with its header.
+/// If 'last' is true, this is the last message in the result set
+/// and flags are set accordingly.
 void QueryRunner::_transmit(bool last) {
     LOGF_DEBUG("_transmit last=%1%" % last);
     std::string resultString;
@@ -251,8 +243,7 @@ void QueryRunner::_transmit(bool last) {
     _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
 }
 
-/** Transmit the protoHeader
- */
+/// Transmit the protoHeader
 void QueryRunner::_transmitHeader(std::string& msg) {
     LOGF_DEBUG("_transmitHeader");
     // Set header
@@ -274,7 +265,7 @@ class ChunkResourceRequest {
 public:
     ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> mgr,
                          proto::TaskMsg const& msg)
-        : _mgr(mgr), _msg(msg) {}
+        : _mgr{mgr}, _msg{msg} {}
 
     ChunkResource getResourceFragment(int i) {
         wbase::Task::Fragment const& f(_msg.fragment(i));

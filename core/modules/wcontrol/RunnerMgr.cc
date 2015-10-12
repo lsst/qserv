@@ -127,8 +127,7 @@ public:
     std::string hash;
 };
 
-/** This will attach the 'task' to 'scheduler', which will result in the task being run at some point.
- */
+/// This will attach the 'task' to 'scheduler', which will result in the task being run at some point.
 wbase::TaskQueuePtr RunnerMgr::queueTask(wbase::Task::Ptr const& task, Scheduler::Ptr const& scheduler) {
 	std::lock_guard<std::mutex> lock(_runnersMutex);
 	wbase::TaskScheduler::Ptr p = scheduler;
@@ -144,11 +143,10 @@ Runner::~Runner() {
 	LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
 }
 
-/**  Run when Foreman creates the thread. It runs the task passed to the constructor and then
- * goes back to the scheduler for more tasks.
- * Note: This function never exits as _poisoned is never set to true.
- * Expect significant changes in DM-3945.
- */
+/// Run when Foreman creates the thread. It runs the task passed to the constructor and then
+/// goes back to the scheduler for more tasks.
+/// Note: This function never exits as _poisoned is never set to true.
+/// Expect significant changes in DM-3945.
 void Runner::operator()() {
 	// Real purpose of thisPtr is to keep Runner from being deleted before this function exits.
 	Runner::Ptr thisPtr(shared_from_this());

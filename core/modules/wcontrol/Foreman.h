@@ -58,14 +58,12 @@
 
 // Local headers
 #include "wbase/Base.h"
+#include "wbase/MsgProcessor.h"
 #include "wbase/Task.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace wbase {
-    class MsgProcessor;
-}
 namespace wdb {
 	class ChunkResourceMgr;
 }
@@ -96,10 +94,10 @@ public:
     virtual ~Scheduler() {}
 
     virtual bool removeByHash(std::string const& hash) { return false; }
-    /** Take appropriate action when a task in the Schedule is cancelled. Doing
-     * nothing should be harmless, but some Schedulers may work better if cancelled
-     * tasks are removed.
-     */
+
+    /// Take appropriate action when a task in the Schedule is cancelled. Doing
+    /// nothing should be harmless, but some Schedulers may work better if cancelled
+    /// tasks are removed.
     virtual void taskCancelled(wbase::Task *task) { return; }
     virtual void queueTaskAct(wbase::Task::Ptr incoming) = 0;
     virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0;
@@ -109,10 +107,9 @@ public:
                                               wbase::TaskQueuePtr running) = 0;
 };
 
-/** Foreman is a pooling thread manager that is pluggable with different scheduling objects.
- *
- */
-class Foreman {
+/// Foreman is a pooling thread manager that is pluggable with different scheduling objects.
+///
+class Foreman : public wbase::MsgProcessor{
 public:
 	using Ptr = std::shared_ptr<Foreman>;
 	static Foreman::Ptr newForeman(Scheduler::Ptr const& s);
@@ -123,7 +120,10 @@ public:
     Foreman& operator=(Foreman&) = delete;
 
     void newTaskAction(wbase::Task::Ptr const& task);
-    virtual std::shared_ptr<wbase::MsgProcessor> getProcessor();
+
+    wbase::Task::Ptr processMsg(
+        std::shared_ptr<proto::TaskMsg> const& taskMsg,
+        std::shared_ptr<wbase::SendChannel> const& replyChannel) override;
 
     class Processor;
     friend class RunnerMgr;
