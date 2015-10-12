@@ -36,13 +36,14 @@ Known issues and todos:
 # standard library imports
 import ConfigParser
 import logging
-from optparse import OptionParser
+from argparse import ArgumentParser
 import os
 import re
 import readline
 import sys
 
 # local imports
+import lsst.log
 from lsst.qserv.css.kvInterface import KvException
 from lsst.qserv.admin.qservAdmin import QservAdmin, NodeState
 from lsst.qserv.admin.qservAdminException import QservAdminException
@@ -576,62 +577,47 @@ readline.set_completer(completer.complete)
 ####################################################################################
 
 def getOptions():
-    usage = \
+    description = \
 """
-
-NAME
-        qserv-admin - the client program for Central State System (CSS)
-
-SYNOPSIS
-        qserv-admin [OPTIONS] [command ...]
-
-OPTIONS
-   -v
-        Verbosity threshold. Logging messages which are less severe than
-        provided will be ignored. Expected value range: 0=50: (CRITICAL=50,
-        ERROR=40, WARNING=30, INFO=20, DEBUG=10). Default value is ERROR.
-   -f
-        Name of the output log file. If not specified, the output goes to stderr.
-   -c
-        Connection information (hostname:port)
+Client application for Central State System (CSS)
 
 If commands are provided then they are executed and application will exit.
 Every argument is treated as separate command, use quotes if command contains
 spaces or special characters. If any command fails then all other commands are
 ignored and non-zero code is returned to caller.
+
+If invoked without command list then commands are read from standard input,
+prompt is printed for each command if input comes from a terminal. Type 'help;'
+to print the list of supported commands.
 """
 
-    parser = OptionParser(usage=usage)
-    parser.add_option("-v", dest="verbT", default=40) # default is ERROR
-    parser.add_option("-f", dest="logF", default=None)
-    parser.add_option("-c", dest="connI", default = '127.0.0.1:12181')
-                      # default for kazoo (single node, local))
-    (options, args) = parser.parse_args()
-    if int(options.verbT) > 50: options.verbT = 50
-    if int(options.verbT) <  0: options.verbT = 0
-    return (int(options.verbT), options.logF, options.connI, args)
+    parser = ArgumentParser(description=description)
+    parser.add_argument("-v", dest="verbosity", default="WARN", choices=['DEBUG', 'INFO', 'WARN', 'ERROR'],
+                        help="Verbosity threshold, def: %(default)s")
+    parser.add_argument("-c", dest="connection", default='mysql://qsmaster@127.0.0.1:13306/qservCssData',
+                        help="CSS connection information, def: %(default)s")
+    parser.add_argument('commands', metavar='commands', nargs='*', default=[],
+                        help='list of commands to be executed')
+
+    args = parser.parse_args()
+
+    return args
 
 ####################################################################################
 def main():
 
-    (verbosity, logFileName, connInfo, args) = getOptions()
+    args = getOptions()
 
     # configure logging
-    if logFileName:
-        logging.basicConfig(
-            filename=logFileName,
-            format='%(asctime)s %(name)s %(levelname)s: %(message)s',
-            datefmt='%m/%d/%Y %I:%M:%S',
-            level=verbosity)
-    else:
-        logging.basicConfig(
-            format='%(asctime)s %(name)s %(levelname)s: %(message)s',
-            datefmt='%m/%d/%Y %I:%M:%S',
-            level=verbosity)
+    lsst.log.setLevel('', getattr(lsst.log, args.verbosity))
 
-    parser = CommandParser(connInfo)
-    if args:
-        for cmd in args:
+    # redirect Python logging to LSST logger
+    pylgr = logging.getLogger()
+    pylgr.addHandler(lsst.log.LogHandler())
+
+    parser = CommandParser(args.connection)
+    if args.commands:
+        for cmd in args.commands:
             # strip semicolons just in case
             cmd = cmd.strip().rstrip(';')
             try:

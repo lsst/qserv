@@ -155,6 +155,14 @@ TestDBGuard PerTestFixture::testDB;
 
 BOOST_FIXTURE_TEST_SUITE(SqlKVInterfaceConnectionTestSuite, PerTestFixture)
 
+BOOST_AUTO_TEST_CASE(EmptyDBGet) {
+    CHECK_CONNECTION();
+
+    std::string key;
+    BOOST_CHECK_THROW(kvInterface->get("/"), lsst::qserv::css::NoSuchKey);
+    BOOST_CHECK_THROW(kvInterface->get("/Get"), lsst::qserv::css::NoSuchKey);
+    BOOST_CHECK_THROW(kvInterface->getChildren("/"), lsst::qserv::css::NoSuchKey);
+}
 
 BOOST_AUTO_TEST_CASE(CreateAndGetKV) {
     CHECK_CONNECTION();
@@ -193,6 +201,13 @@ BOOST_AUTO_TEST_CASE(CreateUnique) {
     BOOST_CHECK_EQUAL(key, pfx+"0000001235");
 }
 
+
+BOOST_AUTO_TEST_CASE(GetRootChildren) {
+    std::vector<std::string> children;
+    children = kvInterface->getChildren("/");
+    BOOST_REQUIRE(children.size() == 1U);
+    BOOST_CHECK_EQUAL(children[0], "CreateAndGetKV");
+}
 
 BOOST_AUTO_TEST_CASE(SetAndGetChildren) {
     CHECK_CONNECTION();

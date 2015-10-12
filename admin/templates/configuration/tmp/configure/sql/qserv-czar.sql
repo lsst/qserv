@@ -6,6 +6,10 @@ GRANT ALL ON qservResult.* TO 'qsmaster'@'localhost';
 CREATE DATABASE IF NOT EXISTS qservMeta;
 GRANT ALL ON qservMeta.* TO 'qsmaster'@'localhost';
 
+-- CSS database
+CREATE DATABASE IF NOT EXISTS qservCssData;
+GRANT ALL ON qservCssData.* TO 'qsmaster'@'localhost';
+
 -- Database for business (i.e. LSST) data
 -- In the long term:
 --    * has to created by the dataloader

@@ -43,10 +43,41 @@ import time
 # third-party software imports
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError, NoNodeError
+from sqlalchemy.engine.url import make_url
+
 
 # local imports
 from lsst.db.exception import produceExceptionClass
-from lsst.qserv.css import KvInterfaceImplMem
+from . import cssLib
+
+def _parsConnInfo(connInfo):
+    if '/' not in connInfo:
+        # expect "host:port" for zookeeper
+        if ':' not in connInfo:
+            raise KvException(KvException.INVALID_CONNECTION, connInfo)
+        return dict(technology='zoo', connection=connInfo, timeout=10000)
+
+    # parse connection string
+    try:
+        url = make_url(connInfo)
+    except Exception as exc:
+            raise KvException(KvException.INVALID_CONNECTION, connInfo)
+
+    cssConfig = {'technology': url.drivername}
+    if url.host:
+        cssConfig['hostname'] = url.host
+    if url.port:
+        cssConfig['port'] = url.port
+    if url.username:
+        cssConfig['username'] = url.username
+    if url.password:
+        cssConfig['password'] = url.password
+    if url.database:
+        cssConfig['database'] = url.database
+    if url.query and 'unix_socket' in url.query:
+        cssConfig['socket'] = url.query['unix_socket']
+    return cssConfig
+
 
 ####################################################################################
 KvException = produceExceptionClass('KvException', [
@@ -84,30 +115,57 @@ class KvInterface(object):
     @classmethod
     def newImpl(cls, **kwargs):
         """
-        Initialize a KvInterface
+        Initialize a KvInterface.
 
-        @param connInfo  Connection information for zk mode
-        or @param config  Config containing css config (technology,
-        connection, timeout keys)
+        Accepts one of the two keyword arguments, `connInfo` or `config`.
+        If `connInfo` is present then it is treated the same as if
+        `config=dict(technology='zoo', connection=connInfo, timeout=10000)`
+        argument is provided.
 
-        self._filename : filename for css info.
-        self._zk : a KazooClient object, valid "if not self._filename:"
+        `config` is a dictionary containing all needed parameters, there is
+        one required key "technology" in the dictionary, all other keys
+        depend on the value of "technology" key. Here are possible values:
+        - 'zoo': possible other keys:
+            - connection: a string like "127.0.0.1:2121"
+            - timeout: timeout value in milliseconds
+        - 'mem': other keys:
+            - connection: either a string representing a file name to read
+              the data from or an instance of KvInterface
+        - 'mysql': other keys (all optional):
+            - hostname:  string with mysql server host name or IP address
+            - port: integer port number of mysql server (could be string)
+            - socket: unix socket name
+            - username: mysql user name
+            - password: user password
+            - database: database name
+        - 'fake': no extra keys
         """
         if ("connInfo" in kwargs) and kwargs["connInfo"]:
-            return KvInterfaceZoo(connection=kwargs["connInfo"],
-                                  timeout=10000)
+            cfg = _parsConnInfo(kwargs["connInfo"])
         elif "config" in kwargs:
             cfg = kwargs["config"]
-            if cfg["technology"] == "zoo":
-                cfgClean = cfg.copy()
-                cfgClean.pop("technology")
-                return KvInterfaceZoo(**cfgClean)
-            elif cfg["technology"] == "mem":
-                return KvInterfaceMem(cfg["connection"])
-            elif cfg["technology"] == "fake":
-                return KvInterfaceFake()
         else:
             raise KvException(KvException.MISSING_PARAM, "<None>")
+
+        if cfg["technology"] == "zoo":
+            cfgClean = cfg.copy()
+            cfgClean.pop("technology")
+            return KvInterfaceZoo(**cfgClean)
+        elif cfg["technology"] == "mysql":
+            mycfg = cssLib.MySqlConfig()
+            if 'hostname' in cfg: mycfg.hostname = cfg['hostname']
+            if 'port' in cfg and cfg['port']: mycfg.port = int(cfg['port'])
+            if 'socket' in cfg: mycfg.socket = cfg['socket']
+            if 'username' in cfg: mycfg.username = cfg['username']
+            if 'password' in cfg: mycfg.password = cfg['password']
+            if 'database' in cfg: mycfg.dbName = cfg['database']
+            kvi = cssLib.KvInterfaceImplMySql(mycfg)
+            return KvInterfaceMem(kvi)
+        elif cfg["technology"] == "mem":
+            return KvInterfaceMem(cfg["connection"])
+        else:
+            raise KvException(KvException.MISSING_PARAM,
+                              "technology key has unexpected value: " + cfg["technology"])
 
     @property
     def lastModified(self):
@@ -350,7 +408,7 @@ class KvInterfaceZoo(KvInterface):
 
         @raise     KvException if the key k already exists.
         """
-        self._logger.info("CREATE '%s' --> '%s', seq=%s, eph=%s" % \
+        self._logger.debug("CREATE '%s' --> '%s', seq=%s, eph=%s" % \
                               (k, v, sequence, ephemeral))
         try:
             return self._zk.create(k, v, sequence=sequence,
@@ -368,7 +426,7 @@ class KvInterfaceZoo(KvInterface):
         @return boolean  True if the key exists, False otherwise.
         """
         ret = (self._zk.exists(k) != None)
-        self._logger.info("EXISTS '%s': %s" % (k, ret))
+        self._logger.debug("EXISTS '%s': %s" % (k, ret))
         return ret
 
     def get(self, k):
@@ -383,7 +441,7 @@ class KvInterfaceZoo(KvInterface):
         """
         try:
             v, stat = self._zk.get(k)
-            self._logger.info("GET '%s' --> '%s'" % (k, v))
+            self._logger.debug("GET '%s' --> '%s'" % (k, v))
             return v
         except NoNodeError:
             self._logger.error("in get(), key %s does not exist" % k)
@@ -400,7 +458,7 @@ class KvInterfaceZoo(KvInterface):
         @raise     Raise KvException if the key does not exists.
         """
         try:
-            self._logger.info("GETCHILDREN '%s'" % (k))
+            self._logger.debug("GETCHILDREN '%s'" % (k))
             return self._zk.get_children(k)
         except NoNodeError:
             self._logger.error("in getChildren(), key %s does not exist" % k)
@@ -416,7 +474,7 @@ class KvInterfaceZoo(KvInterface):
         @raise     Raise KvException if the key doesn't exist.
         """
         try:
-            self._logger.info("SET '%s' --> '%s'" % (k, v))
+            self._logger.debug("SET '%s' --> '%s'" % (k, v))
             self._zk.set(k, v)
         except NoNodeError:
             self._logger.error("in set(), key %s does not exist" % k)
@@ -430,7 +488,7 @@ class KvInterfaceZoo(KvInterface):
         @param k  Key.
         @param v  Value.
         """
-        self._logger.info("SETFORCE '%s' --> '%s'" % (k, v))
+        self._logger.debug("SETFORCE '%s' --> '%s'" % (k, v))
         try:
             self._zk.set(k, v)
         except NoNodeError:
@@ -451,12 +509,12 @@ class KvInterfaceZoo(KvInterface):
                 if recursive:
                     for child in self.getChildren("/"):
                         if child != "zookeeper": # skip zookeeper internals
-                            self._logger.info("DELETE '/%s'" % (child))
+                            self._logger.debug("DELETE '/%s'" % (child))
                             self._zk.delete("/%s" % child, recursive=True)
                 else:
                     pass
             else:
-                self._logger.info("DELETE '%s'" % (k))
+                self._logger.debug("DELETE '%s'" % (k))
                 self._zk.delete(k, recursive=recursive)
         except NoNodeError:
             self._logger.error("in delete(), key %s does not exist" % k)
@@ -480,7 +538,7 @@ class KvInterfaceZoo(KvInterface):
 
         @return lock object
         """
-        self._logger.info("Getting lock '%s' on '%s'" % (id, k))
+        self._logger.debug("Getting lock '%s' on '%s'" % (id, k))
         lockK = "%s.LOCK" % k
         return self._zk.Lock(lockK, id)
 
@@ -537,7 +595,7 @@ class KvInterfaceMem(KvInterface):
 
     def load(self, filename):
         self._filename = filename
-        self._kvi = KvInterfaceImplMem(self._filename)
+        self._kvi = cssLib.KvInterfaceImplMem(self._filename)
 
     @property
     def lastModified(self):
@@ -558,12 +616,11 @@ class KvInterfaceMem(KvInterface):
 
         @raise     KvException if the key k already exists.
         """
-        if self._kvi.exists(k):
+        if not sequence and self._kvi.exists(k):
             self._logger.error("in create(), key %s exists" % k)
             raise KvException(KvException.KEY_EXISTS, k)
         else:
-            self._kvi.create(k, v)
-        return k
+            return self._kvi.create(k, v, bool(sequence))
 
     def exists(self, k):
         """
@@ -574,7 +631,7 @@ class KvInterfaceMem(KvInterface):
         @return boolean  True if the key exists, False otherwise.
         """
         ret = self._kvi.exists(k)
-        self._logger.info("EXISTS '%s': %s" % (k, ret))
+        self._logger.debug("EXISTS '%s': %s" % (k, ret))
         return ret
 
     def get(self, k):
@@ -589,9 +646,9 @@ class KvInterfaceMem(KvInterface):
         """
         try:
             v = self._kvi.get(k)
-            self._logger.info("GET '%s' --> '%s'" % (k, v))
+            self._logger.debug("GET '%s' --> '%s'" % (k, v))
             return v
-        except NoNodeError:
+        except cssLib.NoSuchKey:
             self._logger.error("in get(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
@@ -606,9 +663,9 @@ class KvInterfaceMem(KvInterface):
         @raise     Raise KvException if the key does not exists.
         """
         try:
-            self._logger.info("GETCHILDREN '%s'" % (k))
+            self._logger.debug("GETCHILDREN '%s'" % (k))
             return self._kvi.getChildren(k)
-        except NoNodeError:
+        except cssLib.NoSuchKey:
             self._logger.error("in getChildren(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
@@ -621,7 +678,7 @@ class KvInterfaceMem(KvInterface):
 
         @raise     Raise KvException if the key doesn't exist.
         """
-        self._logger.info("SET '%s' --> '%s'" % (k, v))
+        self._logger.debug("SET '%s' --> '%s'" % (k, v))
         if not self._kvi.exists(k):
             self._logger.error("in getChildren(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
@@ -635,7 +692,7 @@ class KvInterfaceMem(KvInterface):
         @param k  Key.
         @param v  Value.
         """
-        self._logger.info("SETFORCE '%s' --> '%s'" % (k, v))
+        self._logger.debug("SETFORCE '%s' --> '%s'" % (k, v))
         self._kvi.set(k, v)
 
     def delete(self, k, recursive=False):
@@ -671,7 +728,7 @@ class KvInterfaceMem(KvInterface):
 
         @return lock object
         """
-        self._logger.info("Getting lock '%s' on '%s' (in-mem, NOP)" % (id, k))
+        self._logger.debug("Getting lock '%s' on '%s' (in-mem, NOP)" % (id, k))
         return self
 
     def _printNode(self, p, fileH=None):
