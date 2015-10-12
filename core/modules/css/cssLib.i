@@ -40,12 +40,12 @@ Access to the classes from the qserv_css library
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 %}
 
 %include typemaps.i
 %include cstring.i
+%include "std_map.i"
 %include "std_string.i"
 %include "std_vector.i"
 %include "stdint.i"
@@ -53,6 +53,9 @@ Access to the classes from the qserv_css library
 // Instantiate types
 namespace std {
     %template(StringVector) vector<string>;
+    %template(StringMap) map<string, string>;
+    %template(NodeParamMap) map<string, lsst::qserv::css::NodeParams>;
+    %template(ChunkMap) map<int, vector<string>>;
 };
 
 
@@ -101,6 +104,12 @@ class NoSuchNode(CssError):
     pass
 
 class NodeExists(CssError):
+    pass
+
+class NodeInUse(CssError):
+    pass
+
+class ConfigError(CssError):
     pass
  %}
 
@@ -152,6 +161,11 @@ class NodeExists(CssError):
     }
 }
 
+%include "std_shared_ptr.i"
+%shared_ptr(lsst::qserv::css::CssAccess)
+%shared_ptr(lsst::qserv::css::KvInterface)
+%shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
+%shared_ptr(lsst::qserv::css::KvInterfaceImplMySql)
 
 %include "css/constants.h"
 %include "css/KvInterface.h"
@@ -160,7 +174,6 @@ class NodeExists(CssError):
 // must be included before KvInterfaceImplMySql
 %include "global/stringTypes.h"
 %include "mysql/MySqlConfig.h" 
-%include "sql/SqlConnection.h"
 
 %include "css/KvInterfaceImplMySql.h"
 %include "global/constants.h"

@@ -19,6 +19,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "css/constants.h"
 #include "css/CssAccess.h"
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
@@ -457,7 +458,7 @@ BOOST_AUTO_TEST_CASE(testCreateTable) {
 
 BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     MatchTableParams params0;
-    createMatchTable("dbA", "MatchTable", "(INT I)", params0, 0);
+    createMatchTable("dbA", "MatchTable", "(INT I)", params0);
     BOOST_CHECK(containsTable("dbA", "MatchTable"));
 
     BOOST_CHECK_EQUAL(getTableSchema("dbA", "MatchTable"), "(INT I)");
@@ -477,10 +478,10 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     BOOST_CHECK_EQUAL(params.partitioning.overlap, 0.0);
     BOOST_CHECK_EQUAL(params.partitioning.subChunks, false);
 
-    BOOST_CHECK_THROW(createMatchTable("dbA", "MatchTable", "(INT I)", params0, 0), TableExists);
+    BOOST_CHECK_THROW(createMatchTable("dbA", "MatchTable", "(INT I)", params0), TableExists);
 
     MatchTableParams params1{"dirTable1", "dirCol1", "dirTable2", "dirCol2", "flagCol"};
-    createMatchTable("dbA", "MatchTable2", "(INT X)", params1, 2);
+    createMatchTable("dbA", "MatchTable2", "(INT X)", params1);
     BOOST_CHECK(containsTable("dbA", "MatchTable2"));
 
     BOOST_CHECK_EQUAL(getTableSchema("dbA", "MatchTable2"), "(INT X)");
@@ -497,7 +498,7 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     BOOST_CHECK(params.partitioning.latColName.empty());
     BOOST_CHECK(params.partitioning.lonColName.empty());
     BOOST_CHECK_EQUAL(params.partitioning.overlap, 0.0);
-    BOOST_CHECK_EQUAL(params.partitioning.subChunks, true);
+    BOOST_CHECK_EQUAL(params.partitioning.subChunks, false);
 }
 
 BOOST_AUTO_TEST_CASE(testDropTable) {
@@ -637,6 +638,108 @@ BOOST_AUTO_TEST_CASE(testAddChunk) {
     BOOST_CHECK(chunks[1000] == expected1000);
     std::vector<std::string> expected2000{"worker3"};
     BOOST_CHECK(chunks[2000] == expected2000);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// inline test data for test cases below
+char const* testData = "\
+/\t\\N\n\
+/css_meta\t\\N\n\
+/css_meta/version\t1\n\
+/DBS\t\\N\n\
+/DBS/LSST\tLSST\n\
+";
+
+// Test quite for CssAccess factory methods
+BOOST_AUTO_TEST_SUITE(CssAccessFactoryTestSuite)
+
+BOOST_AUTO_TEST_CASE(testDataString) {
+
+    auto css1 = CssAccess::createFromData("", "");
+    auto css2 = CssAccess::createFromData(testData, "");
+    auto names = css2->getDbNames();
+    BOOST_CHECK_EQUAL(names.size(), 1U);
+    BOOST_CHECK_EQUAL(names[0], "LSST");
+}
+
+BOOST_AUTO_TEST_CASE(testConfigMap) {
+    typedef std::map<std::string, std::string> StringMap;
+
+    // test with missing required keyword
+    BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(StringMap(), ""), ConfigError);
+    {
+        // test with incorrect keyword value
+        // this test will fail when we have CSS implemented using monkeys
+        StringMap config = {std::make_pair("technology", "monkeys")};
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+
+    }
+    {
+        // test with empty initial data
+        StringMap config = {std::make_pair("technology", "mem")};
+        auto css = CssAccess::createFromConfig(config, "");
+    }
+    {
+        // test with initial data from string
+        StringMap config = {
+            std::make_pair("technology", "mem"),
+            std::make_pair("data", testData),
+        };
+        auto css = CssAccess::createFromConfig(config, "");
+        auto names = css->getDbNames();
+        BOOST_CHECK_EQUAL(names.size(), 1U);
+    }
+    {
+        // test bad file name
+        StringMap config = {
+            std::make_pair("technology", "mem"),
+            std::make_pair("file", "/~~~"),
+        };
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+    }
+    {
+        // test badly-formatted port number for mysql
+        StringMap config = {
+            std::make_pair("technology", "mysql"),
+            std::make_pair("port", "X"),
+        };
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+
+        config["port"] = "12bad";
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+
+        config["port"] = "0xdead";
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testReadOnly) {
+
+    // read-write instance
+    auto css = CssAccess::createFromData(testData, "");
+    StripingParams params1;
+    css->createDb("dbNew1", params1, "L2", "UNRELEASED");
+
+    // read-only instance
+    css = CssAccess::createFromData(testData, "", true);
+    BOOST_CHECK_THROW(css->createDb("dbNew1", params1, "L2", "UNRELEASED"), ReadonlyCss);
+
+    // same read-only from config map
+    typedef std::map<std::string, std::string> StringMap;
+    StringMap config = {
+        std::make_pair("technology", "mem"),
+        std::make_pair("data", testData),
+    };
+    css = CssAccess::createFromConfig(config, "", true);
+    BOOST_CHECK_THROW(css->createDb("dbNew1", params1, "L2", "UNRELEASED"), ReadonlyCss);
+}
+
+BOOST_AUTO_TEST_CASE(testCssVersion) {
+
+    // version mismatch
+    testData = "/\t\\N\n/css_meta\t\\N\n/css_meta/version\t1000000";
+    BOOST_CHECK_THROW(CssAccess::createFromData(testData, ""), VersionMismatchError);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

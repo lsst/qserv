@@ -225,6 +225,28 @@ public:
     virtual std::string typeName() const override { return "NodeExists"; }
 };
 
+/**
+ * Specialized run-time error: node in use, cannot be deleted.
+ */
+class NodeInUse : public CssError {
+public:
+    explicit NodeInUse(std::string const& nodeName)
+        : CssError("Node '" + nodeName + "' is in use and cannot be deleted.") {}
+
+    virtual std::string typeName() const override { return "NodeInUse"; }
+};
+
+/**
+ * Specialized run-time error: configuration is invalid.
+ */
+class ConfigError : public CssError {
+public:
+    explicit ConfigError(std::string const& msg)
+        : CssError("Invalid config: " + msg) {}
+
+    virtual std::string typeName() const override { return "ConfigError"; }
+};
+
 }}} // namespace lsst::qserv::css
 
 #endif // LSST_QSERV_CSSERROR_H
