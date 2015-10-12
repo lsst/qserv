@@ -82,11 +82,13 @@ namespace css {
   * 3) then copy the generate file to final destination:
   *    mv /tmp/testMap.kvmap <destination>
   */
-KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
+KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream, bool readOnly)
+    : _readOnly(readOnly) {
     _init(mapStream);
 }
 
-KvInterfaceImplMem::KvInterfaceImplMem(string const& filename) {
+KvInterfaceImplMem::KvInterfaceImplMem(string const& filename, bool readOnly)
+    : _readOnly(readOnly) {
     std::ifstream f(filename.c_str());
     _init(f);
 }
@@ -97,6 +99,10 @@ KvInterfaceImplMem::~KvInterfaceImplMem() {
 std::string
 KvInterfaceImplMem::create(string const& key, string const& value, bool unique) {
     LOGF_DEBUG("create(%1%, %2%, unique=%3%)" % key % value % int(unique));
+
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
 
     string path = key;
     if (unique) {
@@ -129,6 +135,20 @@ void
 KvInterfaceImplMem::set(string const& key, string const& value) {
     // Should always succeed, as long as std::map works.
     LOGF_DEBUG("set(%1%, %2%)" % key % value);
+
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
+
+    // create all parents
+    string parent = key;
+    for (string::size_type p = parent.rfind('/'); p != string::npos; p = parent.rfind('/')) {
+        parent = parent.substr(0, p);
+        if (parent.empty()) break;
+        if (_kvMap.find(parent) != _kvMap.end()) break;
+        _kvMap.insert(std::make_pair(parent, string()));
+    }
+
     _kvMap[key] = value;
 }
 
@@ -194,10 +214,33 @@ KvInterfaceImplMem::getChildren(string const& key) {
 void
 KvInterfaceImplMem::deleteKey(string const& key) {
     LOGF_DEBUG("deleteKey(%1%)." % key);
+
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
+
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
     _kvMap.erase(key);
+}
+
+std::string KvInterfaceImplMem::dumpKV() {
+    std::string result;
+    for (auto& pair: _kvMap) {
+        if (not result.empty()) result += '\n';
+        result += pair.first;
+        result += '\t';
+        if (pair.second.empty()) {
+            result += "\\N";
+        } else {
+            if (pair.second.find('\n') != std::string::npos) {
+                throw CssError("KvInterfaceImplMem::dumpKV - value contains newline");
+            }
+            result += pair.second;
+        }
+    }
+    return result;
 }
 
 void KvInterfaceImplMem::_init(std::istream& mapStream) {
