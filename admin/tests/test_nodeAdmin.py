@@ -32,37 +32,24 @@ import os
 import tempfile
 import unittest
 
+from lsst.qserv import css
 import lsst.qserv.admin.nodeAdmin as nodeAdmin
-import lsst.qserv.admin.qservAdmin as qservAdmin
 
 
 logging.basicConfig(level=logging.INFO)
 _LOG = logging.getLogger('TEST')
 
 
-def _makeAdmin(data=None):
+def _makeCss(data=None):
     """
-    Create QservAdmin instance with some pre-defined data.
+    Create CssAccess instance with some pre-defined data.
     """
-    if data is None:
-        # read from /dev/null
-        connection = '/dev/null'
-    else:
-        # make temp file and save data in it
-        file = tempfile.NamedTemporaryFile(delete=False)
-        connection = file.name
-        file.write(data)
-        file.close()
 
     # make an instance
-    config = dict(technology='mem', connection=connection)
-    admin = qservAdmin.QservAdmin(config=config)
+    data = data or ""
+    instance = css.CssAccess.createFromData(data, "")
 
-    # remove tmp file
-    if connection != '/dev/null':
-        os.unlink(connection)
-
-    return admin
+    return instance
 
 
 class TestWorkerAdmin(unittest.TestCase):
@@ -74,7 +61,7 @@ class TestWorkerAdmin(unittest.TestCase):
         # no arguments to constructor
         self.assertRaises(Exception, nodeAdmin.NodeAdmin)
 
-        # name given but no qservAdmin
+        # name given but no CssAccess
         self.assertRaises(Exception, nodeAdmin.NodeAdmin, name="worker")
 
         # name not given, must have both host and port
@@ -90,11 +77,11 @@ class TestWorkerAdmin(unittest.TestCase):
 /NODES/worker\t\\N
 /NODES/worker.json\t{{"type": "worker", "host": "localhost", "port": 5012}}
 """
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
         # setup with CSS, this should not throw
-        nodeAdmin.NodeAdmin(name="worker", qservAdmin=admin)
+        nodeAdmin.NodeAdmin(name="worker", css=css_inst)
 
 ####################################################################################
 

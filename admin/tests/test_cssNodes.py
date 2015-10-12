@@ -31,34 +31,20 @@ import os
 import tempfile
 import unittest
 
-import lsst.qserv.admin.qservAdmin as qservAdmin
-from lsst.qserv.admin.qservAdminException import QservAdminException
+from lsst.qserv import css
 import lsst.qserv.admin.nodeMgmt as nodeMgmt
 
 
-def _makeAdmin(data=None):
+def _makeCss(data=None):
     """
-    Create QservAdmin instance with some pre-defined data.
+    Create CssAccess instance with some pre-defined data.
     """
-    if data is None:
-        # read from /dev/null
-        connection = '/dev/null'
-    else:
-        # make temp file and save data in it
-        file = tempfile.NamedTemporaryFile(delete=False)
-        connection = file.name
-        file.write(data)
-        file.close()
 
     # make an instance
-    config = dict(technology='mem', connection=connection)
-    admin = qservAdmin.QservAdmin(config=config)
+    data = data or ""
+    instance = css.CssAccess.createFromData(data, "")
 
-    # remove tmp file
-    if connection != '/dev/null':
-        os.unlink(connection)
-
-    return admin
+    return instance
 
 
 class TestCssNodes(unittest.TestCase):
@@ -66,7 +52,7 @@ class TestCssNodes(unittest.TestCase):
     def testGetNode(self):
         """ Test for getting nodes """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -78,28 +64,29 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5012)
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5012)
 
-        node = admin.getNode('worker-2')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5013)
+        node = css_inst.getNodeParams('worker-2')
+        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5013)
 
-        self.assertRaises(Exception, admin.getNode, 'worker-3')
+        with self.assertRaises(css.NoSuchNode):
+            css_inst.getNodeParams('worker-3')
 
 
     def testGetNodeUnpacked(self):
         """ Test for getting nodes, data in CSS is not packed """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -115,28 +102,29 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-2/port\t5013
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], '5012')
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5012)
 
-        node = admin.getNode('worker-2')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], '5013')
+        node = css_inst.getNodeParams('worker-2')
+        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5013)
 
-        self.assertRaises(Exception, admin.getNode, 'worker-3')
+        with self.assertRaises(css.NoSuchNode):
+            css_inst.getNodeParams('worker-3')
 
 
     def testGetNodes(self):
         """ Test for getting all nodes """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -148,69 +136,64 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        nodes = admin.getNodes()
+        nodes = css_inst.getAllNodeParams()
 
         self.assertEqual(sorted(nodes.keys()), ['worker-1', 'worker-2'])
 
         node = nodes['worker-1']
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5012)
+        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5012)
 
         node = nodes['worker-2']
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5013)
+        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5013)
 
     def testAddNode(self):
         """ Test for creating new nodes """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
 /css_meta/version\t{version}
 """
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
-
+        params = css.NodeParams('worker', 'worker.domain', 5012, 'ACTIVE')
         nodeName = 'worker-1'
-        nodeType = 'worker'
-        host = 'worker.domain'
-        port = 5012
-        admin.addNode(nodeName, nodeType, host, port)
+        css_inst.addNode(nodeName, params)
 
+        params = css.NodeParams('worker', 'worker.domain', 5013, 'INACTIVE')
         nodeName = 'worker-2'
-        nodeType = 'worker'
-        host = 'worker.domain'
-        port = 5013
-        state = qservAdmin.NodeState.INACTIVE
-        admin.addNode(nodeName, nodeType, host, port, state)
+        css_inst.addNode(nodeName, params)
 
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5012)
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5012)
 
-        node = admin.getNode('worker-2')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
-        self.assertEqual(node['type'], 'worker')
-        self.assertEqual(node['host'], 'worker.domain')
-        self.assertEqual(node['port'], 5013)
+        node = css_inst.getNodeParams('worker-2')
+        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.type, 'worker')
+        self.assertEqual(node.host, 'worker.domain')
+        self.assertEqual(node.port, 5013)
 
-        self.assertRaises(Exception, admin.getNode, 'worker-3')
+        with self.assertRaises(css.NoSuchNode):
+            css_inst.getNodeParams('worker-3')
 
     def testDeleteNode(self):
         """ Test for deleting nodes """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -231,74 +214,74 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        admin.getNode('worker-1')
-        admin.getNode('worker-2')
+        css_inst.getNodeParams('worker-1')
+        css_inst.getNodeParams('worker-2')
 
-        # delete one node
-        admin.deleteNode('worker-1')
-        self.assertRaises(QservAdminException, admin.getNode, 'worker-1')
-        admin.getNode('worker-2')
+        # delete
+        css_inst.deleteNode('worker-1')
+        with self.assertRaises(css.NoSuchNode):
+            css_inst.getNodeParams('worker-1')
+        css_inst.getNodeParams('worker-2')
 
         # must throw because there is a table using it
-        self.assertRaises(QservAdminException, admin.deleteNode, 'worker-2')
+        with self.assertRaises(css.NodeInUse):
+            css_inst.deleteNode('worker-2')
 
         # drop table that uses it and retry
-        admin.dropTable('TEST', 'TEST')
-        admin.deleteNode('worker-2')
-        self.assertRaises(QservAdminException, admin.getNode, 'worker-2')
+        css_inst.dropTable('TEST', 'TEST')
+        css_inst.deleteNode('worker-2')
+        with self.assertRaises(css.NoSuchNode):
+            css_inst.getNodeParams('worker-2')
 
     def testSetNodeState(self):
         """ Test for changing node state """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
 /css_meta/version\t{version}
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
+        params = css.NodeParams('worker', 'worker.domain', 5012, 'ACTIVE')
         nodeName = 'worker-1'
-        nodeType = 'worker'
-        host = 'worker.domain'
-        port = 5012
-        admin.addNode(nodeName, nodeType, host, port)
+        css_inst.addNode(nodeName, params)
 
+        params = css.NodeParams('worker', 'worker.domain', 5013, 'ACTIVE')
         nodeName = 'worker-2'
-        nodeType = 'worker'
-        host = 'worker.domain'
-        port = 5013
-        admin.addNode(nodeName, nodeType, host, port)
+        css_inst.addNode(nodeName, params)
 
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "ACTIVE")
 
-        node = admin.getNode('worker-2')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
+        node = css_inst.getNodeParams('worker-2')
+        self.assertEqual(node.status, "ACTIVE")
 
-        admin.setNodeState('worker-1', qservAdmin.NodeState.INACTIVE)
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
+        css_inst.setNodeStatus('worker-1', "INACTIVE")
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "INACTIVE")
 
-        admin.setNodeState('worker-1', qservAdmin.NodeState.ACTIVE)
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.ACTIVE)
+        css_inst.setNodeStatus('worker-1', "ACTIVE")
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "ACTIVE")
 
-        admin.setNodeState(['worker-1', 'worker-2'], qservAdmin.NodeState.INACTIVE)
-        node = admin.getNode('worker-1')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
-        node = admin.getNode('worker-2')
-        self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
+        css_inst.setNodeStatus('worker-1', "INACTIVE")
+        css_inst.setNodeStatus('worker-2', "INACTIVE")
+        node = css_inst.getNodeParams('worker-1')
+        self.assertEqual(node.status, "INACTIVE")
+        node = css_inst.getNodeParams('worker-2')
+        self.assertEqual(node.status, "INACTIVE")
 
     def testMgmtSelect(self):
         """ Test for WorkerMgmt.select methods """
 
-        # instantiate kvI with some initial data
+        # instantiate CSS with some initial data
         initData = """\
 /\t\\N
 /css_meta\t\\N
@@ -310,10 +293,10 @@ class TestCssNodes(unittest.TestCase):
 /NODES/worker-2.json\t{{"type": "backup", "host": "worker.domain", "port": 5013}}
 """
 
-        initData = initData.format(version=qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION)
+        css_inst = _makeCss(initData)
 
-        mgr = nodeMgmt.NodeMgmt(admin)
+        mgr = nodeMgmt.NodeMgmt(css_inst)
 
         # should return all nodes
         nodes = mgr.selectDict()
@@ -322,18 +305,18 @@ class TestCssNodes(unittest.TestCase):
         self.assertIn('worker-2', nodes)
 
         # select 'ACTIVE' or 'INACTIVE', should return two nodes
-        nodes = mgr.selectDict(state=[qservAdmin.NodeState.ACTIVE, qservAdmin.NodeState.INACTIVE])
+        nodes = mgr.selectDict(state=["ACTIVE", "INACTIVE"])
         self.assertEqual(len(nodes), 2)
         self.assertIn('worker-1', nodes)
         self.assertIn('worker-2', nodes)
 
         # select 'ACTIVE', should return one node
-        nodes = mgr.selectDict(state=[qservAdmin.NodeState.ACTIVE])
+        nodes = mgr.selectDict(state=["ACTIVE"])
         self.assertEqual(len(nodes), 1)
         self.assertIn('worker-1', nodes)
 
         # select 'INACTIVE', should return one node
-        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE)
+        nodes = mgr.selectDict(state="INACTIVE")
         self.assertEqual(len(nodes), 1)
         self.assertIn('worker-2', nodes)
 
@@ -354,15 +337,15 @@ class TestCssNodes(unittest.TestCase):
         self.assertIn('worker-2', nodes)
 
         # combinations
-        nodes = mgr.selectDict(state=qservAdmin.NodeState.ACTIVE, nodeType='worker')
+        nodes = mgr.selectDict(state="ACTIVE", nodeType='worker')
         self.assertEqual(len(nodes), 1)
         self.assertIn('worker-1', nodes)
-        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE, nodeType='backup')
+        nodes = mgr.selectDict(state="INACTIVE", nodeType='backup')
         self.assertEqual(len(nodes), 1)
         self.assertIn('worker-2', nodes)
-        nodes = mgr.selectDict(state=qservAdmin.NodeState.ACTIVE, nodeType='backup')
+        nodes = mgr.selectDict(state="ACTIVE", nodeType='backup')
         self.assertEqual(len(nodes), 0)
-        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE, nodeType='worker')
+        nodes = mgr.selectDict(state="INACTIVE", nodeType='worker')
         self.assertEqual(len(nodes), 0)
 
 ####################################################################################

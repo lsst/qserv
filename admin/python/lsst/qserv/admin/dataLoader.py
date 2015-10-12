@@ -30,7 +30,6 @@ DataLoader class is used to simplify data loading procedure.
 #  Imports of standard modules --
 #--------------------------------
 from cStringIO import StringIO
-import io
 import logging
 import os
 import re
@@ -41,9 +40,9 @@ import tempfile
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
+from lsst.qserv import css
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
-from lsst.qserv.wmgr import client
 
 #----------------------------------
 # Local non-exported definitions --
@@ -76,7 +75,7 @@ class DataLoader(object):
 
     def __init__(self, configFiles, czarWmgr, workerWmgrMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 qservAdmin=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
+                 css=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
                  emptyChunks=None, deleteTables=False, loggerName=None):
         """
         Constructor parses all arguments and prepares for execution.
@@ -94,7 +93,7 @@ class DataLoader(object):
                              (chunks should exist already).
         @param oneTable:     If set to True then load all data into one table, do not
                              create chunk tables.
-        @param qservAdmin:   Instance of QservAdmin class, None if CSS operations are disabled.
+        @param css:          Instance of CssAccess class, None if CSS operations are disabled.
         @param cssClear:     If true then CSS info for a table will be deleted first.
         @param indexDb:      Name of  database for object indices, index is generated for director
                              table when it is partitioned, use empty string to disable index.
@@ -118,7 +117,7 @@ class DataLoader(object):
         self.keepChunks = keepChunks
         self.skipPart = skipPart
         self.oneTable = oneTable
-        self.css = qservAdmin
+        self.css = css
         self.cssClear = cssClear
         self.indexDb = None if oneTable else indexDb
         self.emptyChunks = emptyChunks
@@ -251,32 +250,21 @@ class DataLoader(object):
 
         self._log.info('Verifying CSS info for table %r', table)
 
-        # get database config
-        dbConfig = self.css.getDbInfo(database)
-        self._log.debug('CSS database info: %r', dbConfig)
-        if dbConfig is None:
+        # get striping info
+        try:
+            striping = self.css.getDbStriping(database)
+            self._log.debug('CSS database striping info: %r', striping)
+        except css.NoSuchDb:
+            # we'll create it later
             return
 
-        # get partitioning ID
-        partId = dbConfig.get('partitioningId')
-        if partId is None:
-            raise RuntimeError("CSS error: partitioningId is not defined for database " \
-                               + database)
-
-        # get partitioning config
-        partConfig = self.css.getPartInfo(partId)
-        self._log.debug('CSS partitioning info: %r', partConfig)
-        if partConfig is None:
-            raise RuntimeError("CSS error: failed to get partitioning info for database " \
-                               + database)
-
         # check parameters
-        self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
-        self._checkPartParam(self.partOptions, 'part.num-sub-stripes', partConfig, 'nSubStripes', int)
-        self._checkPartParam(self.partOptions, 'part.default-overlap', partConfig, 'overlap', float)
+        self._checkPartParam(self.partOptions, 'part.num-stripes', striping.stripes, int)
+        self._checkPartParam(self.partOptions, 'part.num-sub-stripes', striping.subStripes, int)
+        self._checkPartParam(self.partOptions, 'part.default-overlap', striping.overlap, float)
 
         # also check that table does not exist in CSS, or optionally remove it
-        cssTableExists = self.css.tableExists(database, table)
+        cssTableExists = self.css.containsTable(database, table)
         if cssTableExists:
             if self.cssClear:
                 # try to remove it
@@ -286,16 +274,15 @@ class DataLoader(object):
                 raise RuntimeError('table exists in CSS')
 
     @staticmethod
-    def _checkPartParam(partOptions, partKey, cssOptions, cssKey, optType=str):
+    def _checkPartParam(partOptions, partKey, cssValue, optType=str):
         """
         Check that partitioning parameters are compatible. Throws exception
         if there is a mismatch.
         """
         optValue = optType(partOptions[partKey])
-        cssValue = optType(cssOptions[cssKey])
         if optValue != cssValue:
-            raise ValueError('Option %r does not match CSS %r: %r != %r' % \
-                             (partKey, cssKey, optValue, cssValue))
+            raise ValueError('Option %r does not match CSS: %r != %r' % \
+                             (partKey, optValue, cssValue))
 
     def _makeOrCheckChunksDir(self, data):
         '''Create directory for chunk data or check that it exists, throws in case of errors.'''
@@ -684,17 +671,32 @@ class DataLoader(object):
         """
 
         # create database in CSS if not there yet
-        if not self.css.dbExists(database):
+        if not self.css.containsDb(database):
             self._log.info('Creating database CSS info')
             options = self.partOptions.cssDbOptions()
-            self.css.createDb(database, options)
+            striping = css.StripingParams(options['nStripes'], options['nSubStripes'],
+                                          0, options['overlap'])
+            self.css.createDb(database, striping, options['storageClass'], 'RELEASED')
 
         # define options for table
         options = self.partOptions.cssTableOptions()
-        options['schema'] = self._schemaForCSS(database, table)
+        schema = self._schemaForCSS(database, table)
 
-        self._log.info('Creating table CSS info')
-        self.css.createTable(database, table, options)
+        if options.get('match', False):
+            matchParams = css.MatchTableParams(options['dirTable1'], options['dirColName1'],
+                                               options['dirTable2'], options['dirColName2'],
+                                               options['flagColName'])
+            self._log.info('Creating table CSS info for match table')
+            self.css.createMatchTable(database, table, schema, matchParams)
+        else:
+            if 'dirTable' in options:
+                # partitioned table
+                params = css.PartTableParams(options['dirDb'], options['dirTable'], options['dirColName'],
+                                             options['latColName'], options['lonColName'],
+                                             options['overlap'], True, options['subChunks'])
+            else:
+                params = css.PartTableParams()
+            self.css.createTable(database, table, schema, params)
 
         # save chunk mapping too
         self._log.info('Saving updated chunk map to CSS')
@@ -709,7 +711,7 @@ class DataLoader(object):
         schema = self.czarWmgr.tableSchema(database, table)
         # strip CREATE TABLE
         i = schema.find('(')
-        return schema[i:]
+        return schema[i:].encode('utf_8')
 
 
     def _makeEmptyChunks(self):

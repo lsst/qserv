@@ -37,7 +37,7 @@ import tempfile
 #-----------------------------
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
-from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv import css
 
 #----------------------------------
 # Local non-exported definitions --
@@ -81,7 +81,7 @@ class Config(object):
         self.dbPasswdPriv = appConfig.get('DB_PASSWD_PRIV')
         # CSS connection info
         self.useCss = appConfig.get('USE_CSS', True)
-        self.cssConn = appConfig.get('CSS_CONN')
+        self.cssConfig = appConfig.get('CSS_CONFIG')
         # Location of the run directory for qserv, must contain etc/ stuff
         self.runDir = appConfig.get('RUN_DIR')
         self.tmpDir = appConfig.get('TMP_DIR', '/tmp')
@@ -116,13 +116,13 @@ class Config(object):
         inst = getEngineFromArgs(**kwargs)
         return inst
 
-    def qservAdmin(self):
+    def cssAccess(self):
         """
-        Returns QservQdmin instance, if CSS is disabled (via USE_CSS=False)
+        Returns CssAccess instance, if CSS is disabled (via USE_CSS=False)
         it throws an ExceptionResponse exception with code 409 (CONFLICT).
         """
         if not self.useCss:
             # CSS disabled in config, return 409 (CONFLICT) code
             raise ExceptionResponse(409, "CSSDisabled",
                                     "CSS access is disabled by service configuration")
-        return QservAdmin(self.cssConn)
+        return css.CssAccess.createFromConfig(self.cssConfig, '')

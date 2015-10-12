@@ -48,7 +48,7 @@ from werkzeug.urls import url_decode
 from sqlalchemy.exc import NoSuchTableError, OperationalError, SQLAlchemyError
 
 from lsst.db import utils
-from lsst.qserv.admin.qservAdminException import QservAdminException
+from lsst.qserv import css
 
 
 #----------------------------------
@@ -327,10 +327,10 @@ def createTable(dbName):
 
         # get table schema from CSS
         try:
-            css = Config.instance().qservAdmin()
+            css = Config.instance().cssAccess()
             schema = css.getTableSchema(dbName, tblName)
             _log.debug('schema from CSS: %s', schema)
-        except QservAdminException as exc:
+        except css.CssError as exc:
             _log.error('Failed to retrieve table schema from CSS: %s', exc)
             raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
 

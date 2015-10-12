@@ -32,36 +32,23 @@ import tempfile
 import unittest
 import StringIO
 
+from lsst.qserv import css
 from lsst.qserv.admin.chunkMapping import ChunkMapping
-import lsst.qserv.admin.qservAdmin as qservAdmin
 
 
-def _makeAdmin(data=None):
+def _makeCss(data=None):
     """
-    Create QservAdmin instance with some pre-defined data.
+    Create CssAccess instance with some pre-defined data.
     """
-    if data is None:
-        # read from /dev/null
-        connection = '/dev/null'
-    else:
-        # make temp file and save data in it
-        file = tempfile.NamedTemporaryFile(delete=False)
-        connection = file.name
-        file.write(data)
-        file.close()
 
     # make an instance
-    config = dict(technology='mem', connection=connection)
-    admin = qservAdmin.QservAdmin(config=config)
+    data = data or ""
+    instance = css.CssAccess.createFromData(data, "")
 
-    # remove tmp file
-    if connection != '/dev/null':
-        os.unlink(connection)
-
-    return admin
+    return instance
 
 
-class TestConfigParser(unittest.TestCase):
+class TestChunkMapping(unittest.TestCase):
 
     def testRR(self):
         """ Testing round-robin without CSS backend """
@@ -117,10 +104,10 @@ class TestConfigParser(unittest.TestCase):
         database = 'TESTDB'
         table = 'TABLE'
 
-        initData = initData.format(version=qservAdmin.VERSION, db=database, table=table)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION, db=database, table=table)
+        css_inst = _makeCss(initData)
 
-        mapper = ChunkMapping(workers, database, table, admin)
+        mapper = ChunkMapping(workers, database, table, css_inst)
 
         # check that pre-defined chunks work
         worker = mapper.worker(333)
@@ -159,10 +146,10 @@ class TestConfigParser(unittest.TestCase):
         database = 'TESTDB'
         table = 'TABLE'
 
-        initData = initData.format(version=qservAdmin.VERSION, db=database, table="TBL123")
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION, db=database, table="TBL123")
+        css_inst = _makeCss(initData)
 
-        mapper = ChunkMapping(workers, database, table, admin)
+        mapper = ChunkMapping(workers, database, table, css_inst)
 
         # check that pre-defined chunks work
         worker = mapper.worker(333)
@@ -195,10 +182,10 @@ class TestConfigParser(unittest.TestCase):
         database = 'TESTDB'
         table = 'TABLE'
 
-        initData = initData.format(version=qservAdmin.VERSION, db=database, table=table)
-        admin = _makeAdmin(initData)
+        initData = initData.format(version=css.VERSION, db=database, table=table)
+        css_inst = _makeCss(initData)
 
-        mapper = ChunkMapping(workers, database, table, admin)
+        mapper = ChunkMapping(workers, database, table, css_inst)
 
         # chunks that are not in CSS should return workers from the list
         worker = mapper.worker(1)
@@ -209,17 +196,15 @@ class TestConfigParser(unittest.TestCase):
         # save stuff to CSS
         mapper.save()
 
-        # save all CSS to file
-        dest = StringIO.StringIO()
-        admin.dumpEverything(dest)
-        data = dest.getvalue()
+        # save all CSS to string
+        data = css_inst.getKvI().dumpKV()
 
         # build another CSS instance from saved data
-        admin = _makeAdmin(data)
+        css_inst = _makeCss(data)
 
-        # new mapper, use different worker set to avboid confusion
+        # new mapper, use different worker set to avoid confusion
         workers = ['worker1000', 'worker2000']
-        mapper = ChunkMapping(workers, database, table, admin)
+        mapper = ChunkMapping(workers, database, table, css_inst)
 
         # get workers for chunks from css
         worker = mapper.worker(1)

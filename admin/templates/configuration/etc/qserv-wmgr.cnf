@@ -35,8 +35,16 @@ DB_USER_PRIV = '{{MYSQLD_USER}}'
 DB_PASSWD_PRIV = '{{MYSQLD_PASS}}'
 
 # CSS-related parameters
+# CSS_CONFIG is a dictionary as accepted by CssAccess.createFromConfig() method,
+# all values in a dictionary must bestrings even if represent numbers
 USE_CSS = True
-CSS_CONN = '{{QSERV_MASTER}}:{{ZOOKEEPER_PORT}}'
+CSS_CONFIG = {
+    'technology': 'mysql',
+    'hostname': '{{QSERV_MASTER}}',
+    'port': '{{MYSQLD_PORT}}',
+    'username': '{{QSERV_USER}}',
+    'database': 'qservCssData',
+}
 
 # location of the run directory
 RUN_DIR = "{{QSERV_RUN_DIR}}"

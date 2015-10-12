@@ -95,7 +95,7 @@ class PartConfig(UserDict.UserDict):
             options = dict((key, _options(group)) for key, group
                            in itertools.groupby(options, lambda pair: pair[0]))
 
-            # in partitioner config files loaded earlier have higer priority
+            # in partitioner config files loaded earlier have higher priority
             # (options are not overwritten by later configs), do the same here
             options.update(self.data)
             self.data = options
@@ -146,11 +146,10 @@ class PartConfig(UserDict.UserDict):
         """
         Returns dictionary of CSS options for database.
         """
-        options = {'partitioning': "1",
-                   'partitioningStrategy': "sphBox",
-                   'nStripes': self['part.num-stripes'],
-                   'nSubStripes': self['part.num-sub-stripes'],
-                   'overlap': self['part.default-overlap'],
+        options = {'partitioningStrategy': "sphBox",
+                   'nStripes': int(self['part.num-stripes']),
+                   'nSubStripes': int(self['part.num-sub-stripes']),
+                   'overlap': float(self['part.default-overlap']),
                    'storageClass': self.get('storageClass', 'L2')
                    }
         return options
@@ -159,19 +158,20 @@ class PartConfig(UserDict.UserDict):
         """
         Returns dictionary of CSS options for a table.
         """
-        options = {'compression': '0',
-                   'match': '0'
+        options = {'compression': False,
+                   'match': False
                    }
 
         if self.isRefMatch:
 
             # refmatch table
-            options['match'] = '1'
+            options['match'] = True
             options['dirTable1'] = self['dirTable1']
             options['dirColName1'] = self['dirColName1']
             options['dirTable2'] = self['dirTable2']
             options['dirColName2'] = self['dirColName2']
             options['flagColName'] = self['flagColName']
+            options['subChunks'] = int(self.get('part.subChunks', 1))
 
         elif self.partitioned:
 
@@ -180,8 +180,8 @@ class PartConfig(UserDict.UserDict):
             raCol, declCol = pos[0].strip(), pos[1].strip()
             options['latColName'] = declCol
             options['lonColName'] = raCol
-            options['overlap'] = self['part.overlap']
-            options['subChunks'] = self.get('part.subChunks', '1')
+            options['overlap'] = float(self['part.overlap'])
+            options['subChunks'] = bool(int(self.get('part.subChunks', 1)))
             options['dirDb'] = self['dirDb']
             options['dirTable'] = self['dirTable']
             if 'dirColName' in self:

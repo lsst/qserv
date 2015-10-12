@@ -63,8 +63,9 @@ import logging
 # Imports for other modules --
 # ----------------------------
 import lsst.log
+from lsst.qserv import css
+from lsst.qserv.css import cssConfig
 from lsst.qserv.admin.dataLoader import DataLoader
-from lsst.qserv.admin.qservAdmin import QservAdmin
 from lsst.qserv.admin.nodeAdmin import NodeAdmin
 import lsst.qserv.admin.logger
 from lsst.qserv.wmgr.client import WmgrClient
@@ -217,10 +218,11 @@ class Loader(object):
         czarWmgr = WmgrClient(self.args.czarHost, self.args.czarPort, secretFile=self.args.secret)
 
         # instantiate CSS interface
-        css = None
+        css_inst = None
         if self.args.cssConn:
             logger.debug('connecting to css: %s', self.args.cssConn)
-            css = QservAdmin(self.args.cssConn)
+            config = cssConfig.configFromUrl(self.args.cssConn)
+            css_inst = css.CssAccess.createFromConfig(config, "")
 
         # connect to all worker servers
         workerWmgrMap = {}
@@ -236,7 +238,7 @@ class Loader(object):
                                  tmpDir=self.args.tmpDir,
                                  skipPart=self.args.skipPart,
                                  oneTable=self.args.oneTable,
-                                 qservAdmin=css,
+                                 css=css_inst,
                                  cssClear=self.args.cssClear,
                                  indexDb=self.args.indexDb,
                                  emptyChunks=self.args.emptyChunks,
@@ -260,7 +262,7 @@ class Loader(object):
         """
         if css:
             # will get node info from CSS
-            nodeAdmin = NodeAdmin(name=nodeName, qservAdmin=css, wmgrSecretFile=self.args.secret)
+            nodeAdmin = NodeAdmin(name=nodeName, css=css, wmgrSecretFile=self.args.secret)
         else:
             # no CSS, use node name as host name
             nodeAdmin = NodeAdmin(host=nodeName, port=self.args.czarPort, wmgrSecretFile=self.args.secret)

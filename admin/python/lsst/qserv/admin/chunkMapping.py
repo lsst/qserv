@@ -36,7 +36,7 @@ import logging
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
-
+from lsst.qserv import css
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
@@ -52,15 +52,16 @@ class ChunkMapping(object):
     """
 
 
-    def __init__(self, workers, database, table, qservAdmin=None):
+    def __init__(self, workers, database, table, css=None):
         """
-        @param workers:      List of worker names.
+        @param workers:      List of worker names, new chunks will be assigned
+                             to one of the workers in this list.
         @param database:     Database name.
         @param table:        Table name.
-        @param qservAdmin:   Instance of QservAdmin class, CSS interface. This
+        @param css:          Instance of CssAccess class, CSS interface. This
                              can be None, but this is only useful for testing.
         """
-        self.css = qservAdmin
+        self.css = css
         self.workers = workers[:]   # need a copy, will modify
         self.database = database
         self.table = table
@@ -85,9 +86,17 @@ class ChunkMapping(object):
         if self.css is None:
             return
 
-        for table in self.css.tables(self.database):
+        try:
+            tables = self.css.getTableNames(self.database, False)
+        except css.NoSuchDb:
+            return
 
-            chunks = self.css.chunks(self.database, table)
+        for table in tables:
+
+            try:
+                chunks = self.css.getChunks(self.database, table)
+            except css.NoSuchTable:
+                return
 
             if chunks:
                 self._log.debug('Loading mapping for table %r', table)

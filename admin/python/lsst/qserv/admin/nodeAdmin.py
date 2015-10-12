@@ -65,20 +65,20 @@ class NodeAdmin(object):
     Class representing administration/communication endpoint for qserv worker.
     """
 
-    def __init__(self, name=None, qservAdmin=None, host=None, port=None, wmgrSecretFile=None):
+    def __init__(self, name=None, css=None, host=None, port=None, wmgrSecretFile=None):
         """
         Make new endpoint for remote worker. Worker can be specified
         either by its name or by the complete set of parameters. If name
         is given then host and port other parameters are taken from CSS
-        and qservAdmin has to be specified as well. If name is not given
-        then host and port parameters (except qservAdmin) need to be specified.
+        and css has to be specified as well. If name is not given
+        then host and port parameters (except css) need to be specified.
         wmgrSecretFile needs to be provided if connections to wmgr service
         is protected (which means almost always).
 
         This will throw if node with given name is not defined in CSS.
 
         @param name:        Name of the worker as defined in CSS.
-        @param qservAdmin:  QservAdmin instance, required if name is provided.
+        @param css:         CssAccess instance, required if name is provided.
         @param host:        Node host name, required if name is not provided.
         @param port:        Port number for wmgr service running on node, required
                             if name is not provided.
@@ -87,15 +87,15 @@ class NodeAdmin(object):
 
         if name:
 
-            # need qservAdmin
-            if not qservAdmin:
-                raise ValueError('qservAdmin has to be specified if name is used')
+            # need CSS
+            if not css:
+                raise ValueError('css has to be specified if name is used')
 
-            params = qservAdmin.getNode(name)
-            self.host = params.get('host')
+            params = css.getNodeParams(name)
+            self.host = params.host
             if not self.host:
                 raise _Exception(_Exception.CSS_HOST_NAME_MISS, "node=" + name)
-            self.port = params.get('port')
+            self.port = params.port
             self._name = name
 
         else:
