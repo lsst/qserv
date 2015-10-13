@@ -25,7 +25,6 @@
 
 This is a unit test but it requires few other things to be present:
 - mysql server up and running
-- zookeeper up and running
 - application config file, passed via WMGRCONFIG envvar
 
 @author Andy Salnikov - salnikov@slac.stanford.edu

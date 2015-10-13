@@ -19,17 +19,6 @@ password =
 database = qservCssData
 socket = {{MYSQLD_SOCK}}
 
-# For zoo, provide zookeeper connection information
-# For local zookeeper installation, use "localhost:{{ZOOKEEPER_PORT}}"
-# For mem, provide location of file containing key-value pairs
-# (to learn how to dump key-value pairs, see
-# qserv/core/modules/css/KvInterfaceImplMem.cc)
-# TODO : localhost doesn't work on Ubuntu 14.04, why ?
-# connection=127.0.0.1:{{ZOOKEEPER_PORT}}
-
-# For zoo, you can also overwrite default timeout (10000 milisec)
-#timeout=20000
-
 [resultdb]
 passwd =
 db=qservResult

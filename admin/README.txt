@@ -1,9 +1,7 @@
 #### Dependencies #####
 
 CSS depends on:
-a) Zookeeper and Kazoo, for details how to install them, see:
-   https://dev.lsstcorp.org/trac/wiki/db/Qserv/ZookeeperNotes
-b) db package. Hacky way to get it for now:
+a) db package. Hacky way to get it for now:
     1) git clone git@git.lsstcorp.org:LSST/DMS/db.git db
     2) cd db
     3) git checkout u/jbecla/ticket3133
@@ -13,10 +11,6 @@ The eups-based install procedure sets up these dependencies automatically
 ##### Building  and installing core/modules/css #####
 
 Follow the Qserv install procedure, described in top-level README.txt
-
-##### Starting zookeeper #####
-
-$QSERV_DIR/etc/init.d/zookeeper start
 
 ##### Testing C bindings #####
 
@@ -30,12 +24,6 @@ build/css/dist/testFacade
 
 ### set PYTHONPATH
 export PYTHONPATH=<basePath>/localPython/lib/python<version>/site-packages:<basePath>/db/python/:<basePath>/qserv/css:<basePath>/qserv/client
-
-
-### set verbosity of kazoo
-# You might want to change kazoo logging level by setting:
-export KAZOO_LOGGING=50
-# 50-critical, 40-error, 30-warning, 20-info, 10-debug
 
 
 ### clean up everything

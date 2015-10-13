@@ -557,9 +557,6 @@ class CommandParser(object):
 
     def _initLogging(self):
         self._logger = logging.getLogger("QADM")
-        kL = os.getenv('KAZOO_LOGGING')
-        if kL: logging.getLogger("kazoo.client").setLevel(int(kL))
-        if kL: self._logger.setLevel(int(kL))
 
 ####################################################################################
 class WordCompleter(object):

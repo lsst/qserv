@@ -25,18 +25,10 @@
 /**
   * @file
   *
-  * @brief Interface to the Common State System - zookeeper-based implementation.
+  * @brief Interface to the Common State System - transient memory-based implementation.
   *
   * @Author Jacek Becla, SLAC
   */
-
-/*
- * Based on:
- * http://zookeeper.apache.org/doc/r3.3.4/zookeeperProgrammers.html#ZooKeeper+C+client+API
- *
- * To do:
- *  - perhaps switch to async (seems to be recommended by zookeeper)
- */
 
 // Class header
 #include "css/KvInterfaceImplMem.h"
@@ -73,9 +65,9 @@ namespace css {
   * @param mapPath path to the map dumped using ./admin/bin/qserv-admin.py
   *
   * To generate the key/value map, follow this recipe:
-  * 1) cleanup everything in zookeeper. careful, this will wipe out
-  *    everyting in zookeeper!
-  *    echo "drop everything;" | ./admin/bin/qserv-admin.py
+  * 1) cleanup everything in CSS. careful, this will wipe out
+  *    everyting!
+  *    ./admin/bin/qserv-admin.py "drop everything"
   * 2) generate the clean set:
   *    ./admin/bin/qserv-admin.py <  <commands>
   *    (example commands can be found in admin/examples/testMap_generateMap)

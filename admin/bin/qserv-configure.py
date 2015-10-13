@@ -31,7 +31,7 @@ Create a Qserv run directory which contains:
  - configuration/startup files for each services
  - log files
  - pid files
- - data file for zookeeper, MySQL and Qserv
+ - data file for MySQL and Qserv
 
 A Qserv run directory can only run one Qserv instance at a time.
 
@@ -85,7 +85,7 @@ class Configurator(object):
                    "  - Create an execution directory (QSERV_RUN_DIR) which contains configuration and"
                    " execution\n"
                    "    data for a given Qserv instance.\n"
-                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv/Zookeeper data,\n"
+                   "  - Create a data directory (QSERV_DATA_DIR) which contains MySQL/Qserv data,\n"
                    "    QSERV_RUN_DIR/var/lib symlink to QSERV_DATA_DIR if different\n"
                    "  - Use templates and meta-config file parameters (see QSERV_RUN_DIR/qserv-meta.conf) to"
                    " generate\n"

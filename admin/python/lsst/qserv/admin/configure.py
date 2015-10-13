@@ -245,7 +245,6 @@ def _get_template_params():
         'XROOTD_RUN_DIR': os.path.join(config['qserv']['qserv_run_dir'], "xrootd-run"),
         'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
         'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
-        'ZOOKEEPER_PORT': config['zookeeper']['port'],
         'HOME': os.path.expanduser("~"),
         'NODE_TYPE': config['qserv']['node_type'],
         'WMGR_PORT': config['wmgr']['port'],
