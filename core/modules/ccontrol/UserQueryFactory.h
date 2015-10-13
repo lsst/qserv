@@ -43,13 +43,6 @@
 // Local headers
 #include "global/stringTypes.h"
 
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace css {
-  class KvInterface;
-}}}
-
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -60,10 +53,9 @@ namespace ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-    typedef std::shared_ptr<css::KvInterface> KviPtr;
+
     UserQueryFactory(std::map<std::string,std::string> const& m,
-                     std::string const& czarName,
-                     KviPtr kvi=KviPtr());
+                     std::string const& czarName);
 
     /// @return a handle to the new UserQuery object to be used with the
     /// userQueryProxy interface.

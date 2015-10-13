@@ -60,7 +60,6 @@ import traceback
 
 # Package imports
 import logger
-import lsst.qserv.css
 import lsst.qserv.czar.config
 from lsst.qserv.czar.db import TaskDb as Persistence
 
@@ -268,11 +267,7 @@ class Context:
     def _initFactory(cls, czarName):
         """Initialize the UserQueryFactory instance from our configuration"""
         cfg = lsst.qserv.czar.config.getStringMap()
-        cssItems = dict(lsst.qserv.czar.config.config.items("css"))
-        kvi = lsst.qserv.css.getKvi(config=cssItems)
-        snap = lsst.qserv.css.getSnapshot(kvi)
-        cls._uqFactory = UserQueryFactory(cfg, czarName, snap.clone())
-        cls._cssKvi = kvi
+        cls._uqFactory = UserQueryFactory(cfg, czarName)
 
 
 ########################################################################

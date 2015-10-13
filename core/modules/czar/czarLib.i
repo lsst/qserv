@@ -37,11 +37,8 @@ Access to the classes from the qserv_czar library
 #define SWIG_FILE_WITH_INIT
 #include "ccontrol/queryMsg.h"
 #include "ccontrol/QueryState.h"
-#include "css/KvInterface.h"
-#include "css/KvInterfaceImplMem.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "ccontrol/userQueryProxy.h"
-#include "css/StripingParams.h"
 #include "global/constants.h"
 #include "qdisp/ChunkMeta.h"
 #include "util/common.h"
@@ -102,13 +99,6 @@ Access to the classes from the qserv_czar library
 
 // ------------------------------------------------------------------------
 
-%include "std_shared_ptr.i"
-%shared_ptr(lsst::qserv::css::KvInterface)
-%shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
-
-// Include all classes to wrap:
-// %include "lsst/qserv/czar/Master.h"
-
 //%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
 %apply (char *STRING, int LENGTH) { (char *str, int len) };
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
@@ -118,11 +108,8 @@ Access to the classes from the qserv_czar library
 
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"
-%include "css/KvInterface.h"
-%include "css/KvInterfaceImplMem.h"
 %include "ccontrol/UserQueryFactory.h"
 %include "ccontrol/userQueryProxy.h"
-%include "css/StripingParams.h"
 %include "global/constants.h"
 %include "qdisp/ChunkMeta.h"
 %include "query/Constraint.h"

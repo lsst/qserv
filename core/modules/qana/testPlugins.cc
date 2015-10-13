@@ -26,6 +26,9 @@
   *
   */
 
+// System headers
+#include <fstream>
+
 // Qserv headers
 #include "css/CssAccess.h"
 #include "qana/AnalysisError.h"
@@ -52,7 +55,8 @@ struct TestFixture {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // FIXME
-        css = lsst::qserv::css::CssAccess::makeMemCss(kvMapPath, ".");
+        std::ifstream stream(kvMapPath);
+        css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
     }
 
     ~TestFixture(void) {}

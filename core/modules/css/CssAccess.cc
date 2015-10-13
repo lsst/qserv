@@ -68,25 +68,12 @@ namespace qserv {
 namespace css {
 
 std::shared_ptr<CssAccess>
-CssAccess::makeMemCss(std::string const& mapPath, std::string const& emptyChunkPath) {
-    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance from data in file: %s" % mapPath);
-    std::ifstream f(mapPath);
-    if(f.fail()) {
-        throw ConnError();
-    }
-    return CssAccess::makeMemCss(f, emptyChunkPath);
-}
-
-std::shared_ptr<CssAccess>
-CssAccess::makeMemCss(std::istream& mapStream, std::string const& emptyChunkPath) {
-    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance from data in stream");
-    return CssAccess::makeKvCss(std::make_shared<KvInterfaceImplMem>(mapStream),
-                                emptyChunkPath);
-}
-
-std::shared_ptr<CssAccess>
-CssAccess::makeKvCss(std::shared_ptr<KvInterface> const& kv, std::string const& emptyChunkPath) {
-    return std::shared_ptr<CssAccess>(new CssAccess(kv, std::make_shared<EmptyChunks>(emptyChunkPath)));
+CssAccess::createFromStream(std::istream& stream,
+                            std::string const& emptyChunkPath,
+                            bool readOnly) {
+    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in stream");
+    return std::shared_ptr<CssAccess>(new CssAccess(std::make_shared<KvInterfaceImplMem>(stream, readOnly),
+                                                    std::make_shared<EmptyChunks>(emptyChunkPath)));
 }
 
 // Create CssAccess instance from existing key-value data.
@@ -941,7 +928,6 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
             for (auto& packed: packedMap) {
                 keyMap.insert(std::make_pair(parentKey + "/" + packed.first, packed.second));
             }
-            keyMap.erase(iter);
         }
     }
 

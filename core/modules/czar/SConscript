@@ -22,8 +22,7 @@ def _debug_dist_target():
 
 # Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
-depends = ['css/StripingParams.h',
-           'query/Constraint.h',
+depends = ['query/Constraint.h',
            'qdisp/ChunkMeta.h',
            'qproc/ChunkSpec.h',
            'util/Substitution.h']

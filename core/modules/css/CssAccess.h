@@ -71,28 +71,21 @@ class CssAccess {
 public:
 
     /**
-     *  @deprecated
-     *  Factory method for creating CssAccess instance based on in-memory KV.
-     *  Data will be loaded from a file whose name is specified in a first argument.
+     *  Create CssAccess instance from existing key-value data in a stream.
+     *
+     *  Stream should contain a set of key-value pairs, pairs are separated
+     *  from each other by newline character, key is separated from value by TAB
+     *  character. Empty value can be represented by \N sequence (backslash-N).
+     *  Neither keys nor values can contain newline or TAB.
+     *
+     *  @param stream:  stream with initial data
+     *  @param emptyChunkPath:  path to empty chunk list file
+     *  @param readOnly:  if true then KV storage will be set read-only
+     *                    after loading initial data.
      */
-    static std::shared_ptr<CssAccess> makeMemCss(std::string const& mapPath,
-                                                 std::string const& emptyChunkPath);
-
-    /**
-     *  @deprecated
-     *  Factory method for creating CssAccess instance based on in-memory KV.
-     *  Data will be loaded from a stream.
-     */
-    static std::shared_ptr<CssAccess> makeMemCss(std::istream& mapStream,
-                                                 std::string const& emptyChunkPath);
-
-    /**
-     *  @deprecated
-     *  Factory method for creating CssAccess instance based on existing
-     *  KvInterface instance.
-     */
-    static std::shared_ptr<CssAccess> makeKvCss(std::shared_ptr<KvInterface> const& kv,
-                                                std::string const& emptyChunkPath);
+    static std::shared_ptr<CssAccess> createFromStream(std::istream& stream,
+                                                       std::string const& emptyChunkPath,
+                                                       bool readOnly = false);
 
     /**
      *  Create CssAccess instance from existing key-value data.

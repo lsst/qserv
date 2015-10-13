@@ -26,16 +26,5 @@ Top level Central State System (CSS) module
 
 """
 
-
 # local imports
-import cssLib
 from cssLib import *
-
-import snapshot
-import kvInterface
-
-def getSnapshot(kvi):
-    s = snapshot.Snapshot(kvi)
-    return s.snapshot
-
-getKvi = kvInterface.KvInterface.newImpl

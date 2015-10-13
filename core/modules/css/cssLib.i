@@ -35,12 +35,7 @@ Access to the classes from the qserv_css library
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
 #include "css/KvInterface.h"
-#include "css/KvInterfaceImplMem.h"
-#include "css/KvInterfaceImplMySql.h"
-#include "global/constants.h"
-#include "global/stringTypes.h"
-#include "mysql/MySqlConfig.h"
-#include "sql/SqlErrorObject.h"
+#include "global/intTypes.h"
 %}
 
 %include typemaps.i
@@ -116,36 +111,11 @@ class ConfigError(CssError):
 %include "sql/SqlErrorObject.h"
 
 %{
-    // RAII-style struct used to manage the ref-counted lifecycle of PyObject pointers
-    struct PyObjectMgr {
-        PyObjectMgr(PyObject* iObj) : obj(iObj) {
-        }
-
-        ~PyObjectMgr() {
-            if (obj) {
-                Py_DECREF(obj);
-            }
-        }
-
-        // Used to check if object contains a valid pointer (inside if-statements)
-        operator bool() const {
-            return obj != nullptr;
-        }
-
-        // Convenience operator so that PyObjectMgr object may be passed to functions
-        // that take PyObject* and the implicit pointer extraction will happen automatically.
-        operator PyObject*() const {
-            return obj;
-        }
-
-        PyObject* obj;
-    };
-
     void setPythonException(const lsst::qserv::css::CssError& ex) {
-        PyObjectMgr module(PyImport_ImportModule("lsst.qserv.css"));
+        swig::SwigPtr_PyObject module(PyImport_ImportModule("lsst.qserv.css"), false);
         if (not module)
             return;
-        PyObjectMgr exception(PyObject_GetAttrString(module, ex.typeName().c_str()));
+        swig::SwigPtr_PyObject exception(PyObject_GetAttrString(module, ex.typeName().c_str()), false);
         if (not exception)
             return;
         PyErr_SetString(exception, ex.what());
@@ -164,22 +134,11 @@ class ConfigError(CssError):
 %include "std_shared_ptr.i"
 %shared_ptr(lsst::qserv::css::CssAccess)
 %shared_ptr(lsst::qserv::css::KvInterface)
-%shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
-%shared_ptr(lsst::qserv::css::KvInterfaceImplMySql)
 
 %include "css/constants.h"
-%include "css/KvInterface.h"
-%include "css/KvInterfaceImplMem.h"
-
-// must be included before KvInterfaceImplMySql
-%include "global/stringTypes.h"
-%include "mysql/MySqlConfig.h" 
-
-%include "css/KvInterfaceImplMySql.h"
-%include "global/constants.h"
-
 %include "global/intTypes.h"
 %include "css/EmptyChunks.h"
+%include "css/KvInterface.h"
 %include "css/MatchTableParams.h"
 %include "css/NodeParams.h"
 %include "css/PartTableParams.h"
