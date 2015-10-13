@@ -1,0 +1,148 @@
+// -*- LSST-C++ -*-
+/*
+ * LSST Data Management System
+ * Copyright 2014-2015 AURA/LSST.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+/// Implement XrdSsiProviderServer to provide Qserv's SsiService
+/// implementation. Link this file when building a plugin to be used as
+/// ssi.svclib or oss.statlib.
+
+// Class header
+#include "xrdsvc/SsiProvider.h"
+
+// System headers
+#include <memory>
+#include <sstream>
+#include <sys/types.h>
+
+// Third party headers
+#include "XrdSsi/XrdSsiCluster.hh"
+#include "XrdSsi/XrdSsiLogger.hh"
+
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
+#include "global/ResourceUnit.h"
+#include "wpublish/ChunkInventory.h"
+#include "xrdsvc/XrdName.h"
+
+/******************************************************************************/
+/*                               G l o b a l s                                */
+/******************************************************************************/
+
+XrdSsiProvider *XrdSsiProviderServer = 
+                new  lsst::qserv::xrdsvc::SsiProviderServer;
+
+XrdSsiProvider *XrdSsiProviderLookup = XrdSsiProviderServer;
+  
+/******************************************************************************/
+/*                                  I n i t                                   */
+/******************************************************************************/
+  
+namespace lsst {
+namespace qserv {
+namespace xrdsvc {
+
+bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP, char const* cfgFn,
+          char const*   parms, int argc, char **argv) {
+
+    lsst::qserv::xrdsvc::XrdName x;
+
+// Establish our instance name (many different qservs may be running here).
+//
+    _name = x.getName();
+
+// Save the ssi logger as it places messages in anoher file than our log.
+//
+    _logSsi = logP;
+
+// Save the cluster object as we will need to use it to inform the cluster when
+// chunks come and go. We also can use it to schedule ourselves. The object or
+// its absence will indicate whether or not we need to provide any service other
+// than QueryResource().
+//
+    _cmsSsi = clsP;
+
+// We would process the configuration file (if present), any present parameters,
+// and the command line arguments. However, at the moment, we have nothing of
+// interest in any of these arguments. So, we ignore them.
+//
+
+// Herald our initialization
+//
+    LOG_INFO("SsiProvider initializing...");
+    _logSsi->Msg("Qserv", "Provider Initializing");
+
+// Initialize the inventory. We need to be able to handle QueryResource() calls
+// either in the data provider and the metadata provider (we can be either one).
+//
+    _chunkInventory.reset(new wpublish::ChunkInventory(_name));
+
+// If we are a data provider (i.e. xrootd) then we need to get the service
+// object. It will print the exported paths. Otherwise, we need to print them
+// here. This is a bit kludgy and should be corrected when we transition to a
+// single shared memory inventory object which should do this by itself.
+//
+    if(clsP && clsP->DataContext()) {
+        _service = std::unique_ptr<SsiService>(new SsiService(logP));
+    } else {
+        std::ostringstream ss;
+        ss << "Provider valid paths(ci): ";
+        _chunkInventory->dbgPrint(ss);
+        LOGF_INFO("%1%" % ss.str());
+        _logSsi->Msg("Qserv", ss.str().c_str());
+    }
+
+// We have completed full initialization. Return sucess.
+//
+    return true;
+}
+
+/******************************************************************************/
+/*                         Q u e r y R e s o u r c e                          */
+/******************************************************************************/
+
+XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
+        char const* contact) {
+
+// Extract db and chunk from path and validate result
+//
+    ResourceUnit ru(rName);
+    if(ru.unitType() != ResourceUnit::DBCHUNK) {
+        // FIXME: Do we need to support /result here?
+        LOGF_INFO("SsiProvider Query %1% invalid" % rName);
+        return notPresent;
+    }
+
+// If the chunk exists on our node then tell he caller it is here.
+//
+    if(_chunkInventory->has(ru.db(), ru.chunk())) {
+        LOGF_INFO("SsiProvider Query %1% present" % rName);
+        return isPresent;
+    }
+
+// Tell the caller we do not have the chunk.
+//
+    LOGF_INFO("SsiProvider Query %1% absent" % rName);
+    return notPresent;
+}
+  
+}}} // namespace lsst::qserv::xrdsvc
