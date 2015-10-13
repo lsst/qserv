@@ -59,7 +59,8 @@ public:
 
     /// Called by xrootd daemon to handle new resource requests
     virtual void Provision(XrdSsiService::Resource* r,
-                           unsigned short timeOut=0);
+                           unsigned short timeOut=0,
+                           bool userConn=false);
 
 private:
     void _initInventory();

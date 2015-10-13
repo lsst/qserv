@@ -49,7 +49,7 @@ class Executive;
 class XrdSsiServiceMock : public XrdSsiService
 {
 public:
-    virtual void Provision(Resource *resP, unsigned short timeOut=0);
+    virtual void Provision(Resource *resP, unsigned short timeOut=0, bool userConn=false);
     XrdSsiServiceMock(Executive *executive) {};
     void setGo(bool go) {
         _go.set(go);
