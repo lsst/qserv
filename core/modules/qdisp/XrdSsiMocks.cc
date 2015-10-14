@@ -62,7 +62,7 @@ util::Sequential<int> XrdSsiServiceMock::_count(0);
 /** Class to fake being a request to xrootd.
  * Fire up thread that sleeps for a bit and then indicates it was successful.
  */
-void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut){
+void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut, bool userConn){
     if (resP == nullptr) {
         LOGF_ERROR("XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
         return;
