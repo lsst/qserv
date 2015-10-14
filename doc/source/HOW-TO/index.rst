@@ -7,3 +7,4 @@ HOW TOs
 
    cluster-deployment.rst
    cluster-configuration.rst
+   docker-multinode-test.rst

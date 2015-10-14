@@ -1,0 +1,3 @@
+CREATE NODE worker1 type=worker port=5012 host=ccqserv01.in2p3.fr;
+CREATE NODE worker2 type=worker port=5012 host=ccqserv02.in2p3.fr;
+CREATE NODE worker3 type=worker port=5012 host=ccqserv03.in2p3.fr;
