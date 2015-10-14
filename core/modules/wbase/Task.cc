@@ -108,11 +108,12 @@ void Task::cancel() {
         // Was already cancelled.
         return;
     }
-    auto qr = _taskQueryRunner;
+    auto qr = _taskQueryRunner; // Want a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
     }
-    TaskScheduler::Ptr sched(_taskScheduler);
+
+    auto sched = _taskScheduler.lock();
     if (sched != nullptr) {
         sched->taskCancelled(this);
     }

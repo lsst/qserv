@@ -39,7 +39,6 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "wbase/Base.h"
-#include "wbase/MsgProcessor.h"
 #include "wconfig/Config.h"
 #include "wcontrol/RunnerMgr.h"
 #include "wdb/ChunkResource.h"
@@ -50,11 +49,10 @@ namespace qserv {
 namespace wcontrol {
 
 Foreman::Ptr Foreman::newForeman(Scheduler::Ptr const& sched) {
-    Foreman::Ptr fmi = std::make_shared<Foreman>(sched);
-    return fmi;
+    return std::make_shared<Foreman>(sched);
 }
 
-Foreman::Foreman(Scheduler::Ptr s) : _scheduler{s} {
+Foreman::Foreman(Scheduler::Ptr const& s) : _scheduler{s} {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
@@ -62,21 +60,22 @@ Foreman::Foreman(Scheduler::Ptr s) : _scheduler{s} {
     assert(s); // Cannot operate without scheduler.
 }
 Foreman::~Foreman() {
-	LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
-    // FIXME: Poison and drain runners.
+    LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
+    // FIXME: Cancel and drain runners. It will take significant effort to have xrootd shutdown cleanly
+    // and this will never get called until that happens, making this a very low priority item.
     // This should only (get called on shutdown/restart).
 }
 
 /// Create and queue a Task from a TaskMsg and a replyChannel.
 wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                      std::shared_ptr<wbase::SendChannel> const& replyChannel) {
-    wbase::Task::Ptr t = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-    newTaskAction(t);
-    return t;
+    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+    newTaskAction(task);
+    return task;
 }
 
 void Foreman::_startRunner(wbase::Task::Ptr const& t) {
-    auto f = [this](wbase::Task::Ptr const& t) {
+    auto f = [this](wbase::Task::Ptr t) {
         std::unique_ptr<Runner> rp{new Runner{*(this->_rManager), t}};
         (*rp)();
     };

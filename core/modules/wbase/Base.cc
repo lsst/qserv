@@ -31,12 +31,12 @@
 #include "wbase/Base.h"
 
 // System headers
-#include <openssl/md5.h>
 #include <cassert>
 #include <cstddef>
 #include <fstream>
 #include <glob.h>
 #include <iostream>
+#include <openssl/md5.h>
 #include <sstream>
 #include <string.h> // memcpy
 #include <unistd.h>

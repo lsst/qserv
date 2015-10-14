@@ -38,9 +38,10 @@
 #include <memory>
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
 #include <mysql/mysql.h>
-#include <wdb/QueryRunner.h>
+
+// Class header
+#include "wdb/QueryRunner.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -121,7 +122,7 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     if (_task->getCancelled()) {
-        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started." % _task->dbName);
+        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. %1%" % _task->dbName);
         return false;
     }
 
@@ -232,7 +233,7 @@ void QueryRunner::_transmit(bool last) {
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
-        std::string chunkId = boost::lexical_cast<std::string>(_task->msg->chunkid());
+        std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_ERROR, msg);

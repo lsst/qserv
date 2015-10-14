@@ -16,7 +16,7 @@
 namespace lsst {
 namespace qserv {
 namespace wdb {
-	class QueryRunner;
+    class QueryRunner;
 }}}
 
 namespace lsst {
@@ -26,10 +26,10 @@ namespace wcontrol {
 /// Run an event driven thread that is fed by the Foreman's Scheduler.
 class Runner : public std::enable_shared_from_this<Runner> {
 public:
-	using Ptr = std::shared_ptr<Runner>;
-    Runner(RunnerMgr& rm, wbase::Task::Ptr firstTask);
-    Runner(Runner&) = delete;
-    Runner operator=(Runner&) = delete;
+    using Ptr = std::shared_ptr<Runner>;
+    Runner(RunnerMgr& rm, wbase::Task::Ptr const& firstTask);
+    Runner(Runner const&) = delete;
+    Runner operator=(Runner const&) = delete;
     virtual ~Runner();
     void operator()();
     std::string const& getHash() const { return _task->hash; }
@@ -45,19 +45,19 @@ private:
 class RunnerMgr {
 public:
     RunnerMgr(Foreman& f);
-    RunnerMgr(RunnerMgr&) = delete;
-    RunnerMgr operator=(RunnerMgr&) = delete;
-    void registerRunner(Runner::Ptr const& r, wbase::Task::Ptr t);
-    std::shared_ptr<wdb::QueryRunner> newQueryAction(wbase::Task::Ptr t);
-    void reportComplete(wbase::Task::Ptr t);
-    void reportStart(wbase::Task::Ptr t);
+    RunnerMgr(RunnerMgr const&) = delete;
+    RunnerMgr operator=(RunnerMgr const&) = delete;
+    void registerRunner(Runner::Ptr const& r, wbase::Task::Ptr const& t);
+    std::shared_ptr<wdb::QueryRunner> newQueryAction(wbase::Task::Ptr const& t);
+    void reportComplete(wbase::Task::Ptr const& t);
+    void reportStart(wbase::Task::Ptr const& t);
     void signalDeath(Runner::Ptr const& r);
     wbase::Task::Ptr getNextTask(Runner::Ptr const& r, wbase::Task::Ptr previous);
     LOG_LOGGER getLog();
     wbase::TaskQueuePtr queueTask(wbase::Task::Ptr const& task, Scheduler::Ptr const& scheduler);
 
 private:
-    void _reportStartHelper(wbase::Task::Ptr t);
+    void _reportStartHelper(wbase::Task::Ptr const& t);
     class StartTaskF;
     Foreman& _f;
     TaskWatcher& _taskWatcher;

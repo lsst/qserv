@@ -34,7 +34,6 @@
 
 // Local headers
 #include "global/ResourceUnit.h"
-#include "wbase/MsgProcessor.h"
 #include "wbase/Task.h"
 
 // Forward declarations

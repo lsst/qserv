@@ -32,8 +32,6 @@
 #include <mutex>
 #include <string>
 
-// Qserv headers
-
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -50,37 +48,32 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
-/** Base class for tracking a database query for a worker Task.
- */
+/// Base class for tracking a database query for a worker Task.
 class TaskQueryRunner {
 public:
     using Ptr = std::shared_ptr<TaskQueryRunner>;
     virtual ~TaskQueryRunner() {};
     virtual bool runQuery()=0;
-    virtual void cancel()=0;
+    virtual void cancel()=0; ///< Repeated calls to cancel() must be harmless.
 };
 
 class Task;
 
-/** Base class for scheduling Tasks.
- * Allows the scheduler to take appropriate action when a task is cancelled.
- */
+/// Base class for scheduling Tasks.
+/// Allows the scheduler to take appropriate action when a task is cancelled.
 class TaskScheduler {
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     virtual ~TaskScheduler() {}
-    virtual void taskCancelled(Task*)=0;
+    virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
 };
 
-/** struct Task defines a query task to be done, containing a TaskMsg
- * (over-the-wire) additional concrete info related to physical
- * execution conditions.
- * Task is non-copyable
- * Task encapsulates nearly zero logic, aside from:
- *  * constructors
- *  * poison()
- *
- */
+/// struct Task defines a query task to be done, containing a TaskMsg
+/// (over-the-wire) additional concrete info related to physical
+/// execution conditions.
+/// Task is non-copyable
+/// Task encapsulates nearly zero logic, aside from:
+/// * constructors
 struct Task {
 public:
     static std::string const defaultUser;
@@ -97,7 +90,7 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task() {}
+    Task() {}
     explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -111,7 +104,7 @@ public:
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    void cancel(); ///< Call the previously-set poisonFunc
+    void cancel();
     bool getCancelled(){ return _cancelled; }
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
@@ -125,6 +118,16 @@ private:
 };
 using TaskQueue =  std::deque<Task::Ptr>;
 using TaskQueuePtr = std::shared_ptr<TaskQueue>;
+
+/// MsgProcessor implementations handle incoming TaskMsg objects by creating a Task to write their
+///results over a SendChannel
+struct MsgProcessor {
+    virtual ~MsgProcessor() {}
+    /// @return a pointer to the Task so it can be cancelled or tracked.
+    virtual std::shared_ptr<Task> processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                             std::shared_ptr<SendChannel> const& replyChannel) = 0;
+
+};
 
 }}} // namespace lsst::qserv::wbase
 

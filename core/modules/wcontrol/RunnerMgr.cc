@@ -47,7 +47,7 @@ RunnerMgr::RunnerMgr(Foreman& f)
     : _f(f), _taskWatcher(*f._scheduler) {
 }
 
-void RunnerMgr::registerRunner(Runner::Ptr const& r, wbase::Task::Ptr t) {
+void RunnerMgr::registerRunner(Runner::Ptr const& r, wbase::Task::Ptr const& t) {
     {
         std::lock_guard<std::mutex> lock(_runnersMutex);
         _runners.push_back(r);
@@ -57,13 +57,13 @@ void RunnerMgr::registerRunner(Runner::Ptr const& r, wbase::Task::Ptr t) {
     _reportStartHelper(t);
 }
 
-std::shared_ptr<wdb::QueryRunner> RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
+std::shared_ptr<wdb::QueryRunner> RunnerMgr::newQueryAction(wbase::Task::Ptr const& t) {
     wdb::QueryRunnerArg a(_f._log, t, _f._chunkResourceMgr);
     std::shared_ptr<wdb::QueryRunner> qa = std::make_shared<wdb::QueryRunner>(a);
     return qa;
 }
 
-void RunnerMgr::reportComplete(wbase::Task::Ptr t) {
+void RunnerMgr::reportComplete(wbase::Task::Ptr const& t) {
     {
         std::lock_guard<std::mutex> lock(_runnersMutex);
         bool popped = popFrom(*_running, t);
@@ -74,11 +74,11 @@ void RunnerMgr::reportComplete(wbase::Task::Ptr t) {
     _taskWatcher.markFinished(t);
 }
 
-void RunnerMgr::reportStart(wbase::Task::Ptr t) {
+void RunnerMgr::reportStart(wbase::Task::Ptr const& t) {
    _reportStartHelper(t);
 }
 
-void RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
+void RunnerMgr::_reportStartHelper(wbase::Task::Ptr const& t) {
     {
         std::lock_guard<std::mutex> lock(_runnersMutex);
         _running->push_back(t);
@@ -90,7 +90,7 @@ void RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
 void RunnerMgr::signalDeath(Runner::Ptr const& r) {
     std::lock_guard<std::mutex> lock(_runnersMutex);
     for(auto iter = _runners.begin(), e = _runners.end(); iter != e; ++iter) {
-    	auto const& runner = *iter;
+        auto const& runner = *iter;
         if(runner.get() == r.get()) {
             _runners.erase(iter);
             //_f._runnersEmpty.notify_all(); // Still needed?
@@ -117,30 +117,21 @@ wbase::Task::Ptr RunnerMgr::getNextTask(Runner::Ptr const& r, wbase::Task::Ptr p
 LOG_LOGGER RunnerMgr::getLog() {
     return _f._log;
 }
-/// matchHash: helper functor that matches queries by hash.
-class matchHash {
-public:
-    matchHash(std::string const& hash_) : hash{hash_} {}
-    inline bool operator()(Runner::Ptr const& r) {
-        return r->getHash() == hash;
-    }
-    std::string hash;
-};
 
 /// This will attach the 'task' to 'scheduler', which will result in the task being run at some point.
 wbase::TaskQueuePtr RunnerMgr::queueTask(wbase::Task::Ptr const& task, Scheduler::Ptr const& scheduler) {
-	std::lock_guard<std::mutex> lock(_runnersMutex);
-	wbase::TaskScheduler::Ptr p = scheduler;
-	task->setTaskScheduler(p);
-	return scheduler->newTaskAct(task, _running);
+    std::lock_guard<std::mutex> lock(_runnersMutex);
+    wbase::TaskScheduler::Ptr p = scheduler;
+    task->setTaskScheduler(p);
+    return scheduler->newTaskAct(task, _running);
 }
 
-Runner::Runner(RunnerMgr& rm, wbase::Task::Ptr firstTask) : _rm{rm}, _task{firstTask} {
-	LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::Runner()");
+Runner::Runner(RunnerMgr &rm, wbase::Task::Ptr const& firstTask) : _rm{rm}, _task{firstTask} {
+    LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::Runner()");
 }
 
 Runner::~Runner() {
-	LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
+    LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
 }
 
 /// Run when Foreman creates the thread. It runs the task passed to the constructor and then
@@ -148,8 +139,8 @@ Runner::~Runner() {
 /// Note: This function never exits as _poisoned is never set to true.
 /// Expect significant changes in DM-3945.
 void Runner::operator()() {
-	// Real purpose of thisPtr is to keep Runner from being deleted before this function exits.
-	Runner::Ptr thisPtr(shared_from_this());
+    // Real purpose of thisPtr is to keep Runner from being deleted before this function exits.
+    Runner::Ptr thisPtr(shared_from_this());
     _rm.registerRunner(thisPtr, _task);
     while(!_poisoned) {
         LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner running %1%" % *_task);

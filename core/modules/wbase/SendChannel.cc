@@ -63,8 +63,7 @@ public:
 };
 
 SendChannel::Ptr SendChannel::newNopChannel() {
-    std::shared_ptr<NopChannel> n = std::make_shared<NopChannel>();
-    return n;
+    return std::make_shared<NopChannel>();
 }
 
 
@@ -119,7 +118,8 @@ private:
 };
 
 SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
-    return std::shared_ptr<StringChannel>(new StringChannel(d));
+    return std::make_shared<StringChannel>(d);
+
 }
 
 }}} // namespace

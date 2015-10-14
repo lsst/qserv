@@ -77,8 +77,8 @@ class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_fro
 public:
     QueryRunner(QueryRunnerArg const& a);
     // Having more than one copy of this would making tracking its progress difficult.
-    QueryRunner(QueryRunner&) = delete;
-    QueryRunner operator=(QueryRunner&) = delete;
+    QueryRunner(QueryRunner const&) = delete;
+    QueryRunner operator=(QueryRunner const&) = delete;
     ~QueryRunner();
 
     bool runQuery() override;

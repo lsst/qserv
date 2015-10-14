@@ -58,14 +58,13 @@
 
 // Local headers
 #include "wbase/Base.h"
-#include "wbase/MsgProcessor.h"
 #include "wbase/Task.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace wdb {
-	class ChunkResourceMgr;
+    class ChunkResourceMgr;
 }
 }}
 
@@ -90,7 +89,7 @@ public:
 /// to determine what tasks to launch upon triggering events.
 class Scheduler : public TaskWatcher, public wbase::TaskScheduler {
 public:
-	using Ptr = std::shared_ptr<Scheduler>;
+    using Ptr = std::shared_ptr<Scheduler>;
     virtual ~Scheduler() {}
 
     virtual bool removeByHash(std::string const& hash) { return false; }
@@ -109,15 +108,15 @@ public:
 
 /// Foreman is a pooling thread manager that is pluggable with different scheduling objects.
 ///
-class Foreman : public wbase::MsgProcessor{
+class Foreman : public wbase::MsgProcessor {
 public:
-	using Ptr = std::shared_ptr<Foreman>;
-	static Foreman::Ptr newForeman(Scheduler::Ptr const& s);
-    Foreman(Scheduler::Ptr s);
+    using Ptr = std::shared_ptr<Foreman>;
+    static Foreman::Ptr newForeman(Scheduler::Ptr const& s);
+    explicit Foreman(Scheduler::Ptr const& s);
     virtual ~Foreman();
     // This class should not be copied.
-    Foreman(Foreman&) = delete;
-    Foreman& operator=(Foreman&) = delete;
+    Foreman(Foreman const&) = delete;
+    Foreman& operator=(Foreman const&) = delete;
 
     void newTaskAction(wbase::Task::Ptr const& task);
 

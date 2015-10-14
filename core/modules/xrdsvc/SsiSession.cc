@@ -40,7 +40,6 @@
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
-#include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiSession_ReplyChannel.h"
 

@@ -43,11 +43,6 @@ namespace wbase {
 class SendChannel {
 public:
     using Ptr = std::shared_ptr<SendChannel>;
-    struct ReleaseFunc {
-        using Ptr = std::shared_ptr<ReleaseFunc>;
-        virtual ~ReleaseFunc() {}
-        virtual void operator()() = 0;
-    };
     using Size = long long;
 
     virtual ~SendChannel() {}
@@ -67,11 +62,9 @@ public:
     /// Set a function to be called when a resources from a deferred send*
     /// operation may be released. This allows a sendFile() caller to be
     /// notified when the file descriptor may be closed and perhaps reclaimed.
-    void setReleaseFunc(ReleaseFunc::Ptr const& r) { _release = r; }
+    void setReleaseFunc(std::function<void(void)> const& r) { _release = r; }
     void release() {
-        if(_release) {
-            (*_release)();
-        }
+        _release();
     }
 
     /// Construct a new NopChannel that ignores everything it is asked to send
@@ -82,7 +75,7 @@ public:
     static SendChannel::Ptr newStringChannel(std::string& dest);
 
 protected:
-    ReleaseFunc::Ptr _release;
+    std::function<void(void)> _release = [](){;}; ///< Function to release resources.
 };
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_SENDCHANNEL_H
