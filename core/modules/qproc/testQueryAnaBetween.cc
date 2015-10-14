@@ -77,4 +77,66 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
                                   params, params+5);
 }
 
+BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
+    std::string stmt = "select * from Object where someField between 386942193651347 and 386942193651349;";
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(not context->restrictors);
+}
+
+BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
+    // FIXME: next query should be also supported:
+    // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
+    // but this doesn't work: see DM-4017
+    std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);";
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
+    BOOST_REQUIRE(context->restrictors->at(0));
+    QsRestrictor& restrictor0 = *context->restrictors->at(0);
+    BOOST_CHECK_EQUAL(restrictor0._name, "sIndexBetween");
+    char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor0._params.begin(), restrictor0._params.end(),
+                                  params0, params0+5);
+    BOOST_REQUIRE(context->restrictors->at(1));
+    QsRestrictor& restrictor1 = *context->restrictors->at(1);
+    BOOST_CHECK_EQUAL(restrictor1._name, "sIndex");
+    char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor1._params.begin(), restrictor1._params.end(),
+                                  params1, params1+6);
+}
+
+BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
+    // This query has no astronomical meaning, but add additional test for cartesian product
+    // FIXME: next query should be also supported:
+    // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
+    // but this doesn't work: see DM-4017
+    std::string stmt = "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);";
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
+    BOOST_REQUIRE(context->restrictors->at(0));
+    QsRestrictor& restrictor0 = *context->restrictors->at(0);
+    BOOST_CHECK_EQUAL(restrictor0._name, "sIndexBetween");
+    char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor0._params.begin(), restrictor0._params.end(),
+                                  params0, params0+5);
+    BOOST_REQUIRE(context->restrictors->at(1));
+    QsRestrictor& restrictor1 = *context->restrictors->at(1);
+    BOOST_CHECK_EQUAL(restrictor1._name, "sIndex");
+    char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor1._params.begin(), restrictor1._params.end(),
+                                  params1, params1+6);
+}
+
+
+
 BOOST_AUTO_TEST_SUITE_END()
