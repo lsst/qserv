@@ -26,13 +26,11 @@
 #define LSST_QSERV_WBASE_TASK_H
 
 // System headers
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
-
-// Qserv headers
-#include "util/Callable.h"
 
 // Forward declarations
 namespace lsst {
@@ -50,23 +48,40 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
-/** struct Task defines a query task to be done, containing a TaskMsg
- * (over-the-wire) additional concrete info related to physical
- * execution conditions.
- * Task is non-copyable
- * Task encapsulates nearly zero logic, aside from:
- *  * constructors
- *  * poison()
- *
- */
+/// Base class for tracking a database query for a worker Task.
+class TaskQueryRunner {
+public:
+    using Ptr = std::shared_ptr<TaskQueryRunner>;
+    virtual ~TaskQueryRunner() {};
+    virtual bool runQuery()=0;
+    virtual void cancel()=0; ///< Repeated calls to cancel() must be harmless.
+};
+
+class Task;
+
+/// Base class for scheduling Tasks.
+/// Allows the scheduler to take appropriate action when a task is cancelled.
+class TaskScheduler {
+public:
+    using Ptr = std::shared_ptr<TaskScheduler>;
+    virtual ~TaskScheduler() {}
+    virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
+};
+
+/// struct Task defines a query task to be done, containing a TaskMsg
+/// (over-the-wire) additional concrete info related to physical
+/// execution conditions.
+/// Task is non-copyable
+/// Task encapsulates nearly zero logic, aside from:
+/// * constructors
 struct Task {
 public:
     static std::string const defaultUser;
 
-    typedef std::shared_ptr<Task> Ptr;
-    typedef proto::TaskMsg_Fragment Fragment;
-    typedef std::shared_ptr<Fragment> FragmentPtr;
-    typedef std::shared_ptr<proto::TaskMsg> TaskMsgPtr;
+    using Ptr =  std::shared_ptr<Task>;
+    using Fragment = proto::TaskMsg_Fragment;
+    using FragmentPtr = std::shared_ptr<Fragment>;
+    using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
@@ -75,8 +90,8 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task() : entryTime(0), _poisoned(false) {}
-    explicit Task(TaskMsgPtr t, std::shared_ptr<SendChannel> sc);
+    Task() {}
+    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
 
@@ -85,21 +100,34 @@ public:
     std::string hash; ///< hash of TaskMsg
     std::string dbName; ///< dominant db
     std::string user; ///< Incoming username
-    time_t entryTime; ///< Timestamp for task admission
+    time_t entryTime {0}; ///< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    void poison(); ///< Call the previously-set poisonFunc
-    void setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc);
+    void cancel();
+    bool getCancelled(){ return _cancelled; }
+    bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
+    void freeTaskQueryRunner(TaskQueryRunner *tqr);
+    void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
 private:
-    std::mutex _mutex; // Used for handling poison
-    std::shared_ptr<util::VoidCallable<void> > _poisonFunc;
-    bool _poisoned; ///< To prevent multiple-poisonings
+    std::atomic<bool> _cancelled{false};
+    TaskQueryRunner::Ptr _taskQueryRunner;
+    std::weak_ptr<TaskScheduler> _taskScheduler;
 };
-typedef std::deque<Task::Ptr> TaskQueue;
-typedef std::shared_ptr<TaskQueue> TaskQueuePtr;
+using TaskQueue =  std::deque<Task::Ptr>;
+using TaskQueuePtr = std::shared_ptr<TaskQueue>;
+
+/// MsgProcessor implementations handle incoming TaskMsg objects by creating a Task to write their
+///results over a SendChannel
+struct MsgProcessor {
+    virtual ~MsgProcessor() {}
+    /// @return a pointer to the Task so it can be cancelled or tracked.
+    virtual std::shared_ptr<Task> processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                             std::shared_ptr<SendChannel> const& replyChannel) = 0;
+
+};
 
 }}} // namespace lsst::qserv::wbase
 

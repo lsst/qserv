@@ -62,9 +62,8 @@ public:
     }
 };
 
-std::shared_ptr<SendChannel> SendChannel::newNopChannel() {
-    std::shared_ptr<NopChannel> n = std::make_shared<NopChannel>();
-    return n;
+SendChannel::Ptr SendChannel::newNopChannel() {
+    return std::make_shared<NopChannel>();
 }
 
 
@@ -118,8 +117,9 @@ private:
     std::string& _dest;
 };
 
-std::shared_ptr<SendChannel> SendChannel::newStringChannel(std::string& d) {
-    return std::shared_ptr<StringChannel>(new StringChannel(d));
+SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
+    return std::make_shared<StringChannel>(d);
+
 }
 
-}}} // namespace lsst::qserv::wbase
+}}} // namespace

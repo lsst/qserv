@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
   /**
-  * @brief Simple testing for class QueryAction
+  * @brief Simple testing for class QueryRunner
   * Requires some setup, and assumes some access to a mysqld
   *
   * @author Daniel L. Wang, SLAC
@@ -37,10 +37,10 @@
 #include "wbase/SendChannel.h"
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
-#include "wdb/QueryAction.h"
+#include "wdb/QueryRunner.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE QueryAction
+#define BOOST_TEST_MODULE QueryRunner
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
@@ -57,8 +57,8 @@ using lsst::qserv::proto::TaskMsg_Fragment;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
-using lsst::qserv::wdb::QueryAction;
-using lsst::qserv::wdb::QueryActionArg;
+using lsst::qserv::wdb::QueryRunner;
+using lsst::qserv::wdb::QueryRunnerArg;
 
 struct Fixture {
     std::shared_ptr<TaskMsg> newTaskMsg() {
@@ -72,35 +72,33 @@ struct Fixture {
         f->add_query("SELECT AVG(yFlux_PS) from LSST.Object_3240");
         return t;
     }
-    QueryActionArg newArg() {
+    QueryRunnerArg newArg() {
         std::shared_ptr<TaskMsg> msg(newTaskMsg());
         std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         lsst::qserv::wbase::Task::Ptr t =
                 std::make_shared<lsst::qserv::wbase::Task>(msg, sc);
         LOG_LOGGER w(LOG_GET("test"));
         std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
-        QueryActionArg a(w, t, crm);
+        QueryRunnerArg a(w, t, crm);
         return a;
     }
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
-
-    QueryActionArg aa(newArg());
-    QueryAction a(aa);
-    BOOST_CHECK(a());
+    QueryRunnerArg aa(newArg());
+    QueryRunner a(aa);
+    BOOST_CHECK(a.runQuery());
 }
 
 BOOST_AUTO_TEST_CASE(Output) {
     std::string out;
-    QueryActionArg aa(newArg());
+    QueryRunnerArg aa(newArg());
     std::shared_ptr<SendChannel> sc = SendChannel::newStringChannel(out);
     aa.task->sendChannel = sc;
-    QueryAction a(aa);
-    BOOST_CHECK(a());
+    QueryRunner a(aa);
+    BOOST_CHECK(a.runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
     char const* cursor = out.data() + 1;
@@ -117,7 +115,6 @@ BOOST_AUTO_TEST_CASE(Output) {
     std::string computedMd5 = util::StringHash::getMd5(cursor, remain);
     BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
     BOOST_CHECK_EQUAL(aa.task->msg->session(), result.session());
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -31,17 +31,15 @@
 #include "wbase/Base.h"
 
 // System headers
-#ifdef __SUNPRO_CC
-#include <sys/md5.h>
-#else // Linux?
-#include <openssl/md5.h>
-#endif
+#include <cassert>
 #include <cstddef>
 #include <fstream>
 #include <glob.h>
 #include <iostream>
+#include <openssl/md5.h>
 #include <sstream>
 #include <string.h> // memcpy
+#include <unistd.h>
 
 // Third-party headers
 #include "boost/format.hpp"
@@ -125,25 +123,6 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
 // | grep Object_ | sed 's/\(.*\)_\(.*\)/create table if not exists LSST.
 //
 
-//////////////////////////////////////////////////////////////////////
-// Hashing-related
-//////////////////////////////////////////////////////////////////////
-#ifdef __SUNPRO_CC // MD5(...) not defined on Solaris's ssl impl.
-namespace {
-    inline unsigned char* MD5(unsigned char const* d,
-                              unsigned long n,
-                              unsigned char* md) {
-        // Defined with RFC 1321 MD5 functions.
-        MD5_CTX ctx;
-        assert(md != nullptr); // Don't support null input.
-        MD5Init(&ctx);
-        MD5Update(&ctx, d, n);
-        MD5Final(md, &ctx);
-        return md;
-    }
-}
-#endif
-
 void updateResultPath(char const* resultPath) {
     if(checkWritablePath(resultPath)) {
         DUMP_BASE.assign(resultPath);
@@ -209,11 +188,6 @@ ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
 //////////////////////////////////////////////////////////////////////
 void StringBuffer::addBuffer(
     StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
-#if QSERV_USE_STUPID_STRING
-    std::unique_lock<std::mutex> lock(_mutex);
-    _ss << std::string(buffer,bufferSize);
-    _totalSize += bufferSize;
-#else
     char* newItem = new char[bufferSize];
     assert(newItem != nullptr);
     memcpy(newItem, buffer, bufferSize);
@@ -222,16 +196,9 @@ void StringBuffer::addBuffer(
         _buffers.push_back(Fragment(offset, newItem, bufferSize));
         _totalSize += bufferSize;
     }
-#endif
 }
 
 std::string StringBuffer::getStr() const {
-#if QSERV_USE_STUPID_STRING
-    // Cast away const in order to lock.
-    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
-    std::unique_lock<std::mutex> lock(mutex);
-    return _ss.str();
-#else
     std::string accumulated;
     char* accStr = new char[_totalSize];
     assert(accStr);
@@ -258,20 +225,9 @@ std::string StringBuffer::getStr() const {
     accumulated.assign(accStr, cursor);
     delete[] accStr;
     return accumulated;
-#endif
 }
 
 std::string StringBuffer::getDigest() const {
-#if QSERV_USE_STUPID_STRING
-    // Cast away const in order to lock.
-    std::mutex& mutex = const_cast<std::mutex&>(_mutex);
-    std::unique_lock<std::mutex> lock(mutex);
-    int length = 200;
-    if(length > _totalSize)
-        length = _totalSize;
-
-    return std::string(_ss.str().data(), length);
-#else
     FragmentDeque::const_iterator bi;
     FragmentDeque::const_iterator bend = _buffers.end();
 
@@ -284,21 +240,11 @@ std::string StringBuffer::getDigest() const {
         ss << std::string(p.buffer, fragsize) << "\n";
     }
     return ss.str();
-#endif
 }
 
 StringBufferOffset StringBuffer::getLength() const {
     return _totalSize;
     // Might be wise to do a sanity check sometime (overlapping writes!)
-#if 0
-    struct accumulateSize {
-        StringBufferSize operator() (StringBufferOffset x, Fragment const& p) {
-            return x + p.bufferSize;
-        }
-    };
-    return std::accumulate(_buffers.begin(), _buffers.end(),
-                           0, accumulateSize());
-#endif
 }
 
 void StringBuffer::reset() {
@@ -373,4 +319,4 @@ void StringBuffer2::_setSize(unsigned size) {
     _bufferSize = size;
 }
 
-}}} // namespace lsst::qserv::wbase
+}}} // namespace

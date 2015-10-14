@@ -23,7 +23,7 @@
  /**
   * @file
   *
-  * @brief QueryAction instances perform single-shot query execution with the
+  * @brief QueryRunner instances perform single-shot query execution with the
   * result reflected in the db state or returned via a SendChannel. Works with
   * new XrdSsi API.
   *
@@ -38,8 +38,10 @@
 #include <memory>
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
 #include <mysql/mysql.h>
+
+// Class header
+#include "wdb/QueryRunner.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -63,136 +65,87 @@
 #include "wbase/SendChannel.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
-#include "wdb/QueryAction.h"
 
 namespace lsst {
 namespace qserv {
 namespace wdb {
-/// QueryAction Implementation class
-class QueryAction::Impl {
-public:
-    Impl(QueryActionArg const& a);
-    ~Impl() {
-        if(_task) { // Detach poisoner
-            _task->setPoison(std::shared_ptr<util::VoidCallable<void> >());
-        }
-    }
 
-    bool act(); ///< Perform the task
-    void poison(); ///< Stop the task if it is already running, or prevent it
-                   ///< from starting.
-    class Poisoner;
-
-private:
-
-    /// Initialize the db connection
-    bool _initConnection() {
-        mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
-        sc.username = _user.c_str(); // Override with czar-passed username.
-        _mysqlConn.reset(new mysql::MySqlConnection(sc));
-
-        if(!_mysqlConn->connect()) {
-            LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
-                 % wconfig::getConfig().getString("mysqlSocket") % _user);
-            util::Error error(-1, "Unable to connect to MySQL as " + _user);
-            _multiError.push_back(error);
-            return false;
-        }
-        return true;
-    }
-
-    /// Override _dbName with _msg->db() if available.
-    void _setDb() {
-        if(_msg->has_db()) {
-            _dbName = _msg->db();
-            LOGF(_log, LOG_LVL_WARN, "QueryAction overriding dbName with %1%" % _dbName);
-        }
-    }
-
-    /// Dispatch with output sent through a SendChannel
-    bool _dispatchChannel();
-    /// Obtain a result handle for a query.
-    MYSQL_RES* _primeResult(std::string const& query);
-
-    bool _fillRows(MYSQL_RES* result, int numFields);
-    void _fillSchema(MYSQL_RES* result);
-    void _initMsgs();
-    void _initMsg();
-    void _transmit(bool last);
-    void _transmitHeader(std::string& msg);
-
-    LOG_LOGGER _log;
-    wbase::Task::Ptr _task;
-    std::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
-    std::string _dbName;
-    std::shared_ptr<proto::TaskMsg> _msg;
-    util::Flag<bool> _poisoned;
-    std::shared_ptr<wbase::SendChannel> _sendChannel;
-    std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
-    std::string _user;
-
-    util::MultiError _multiError; // Error log
-
-    std::shared_ptr<proto::ProtoHeader> _protoHeader;
-    // _resultCurrent points to _resultA's buffer or _resultB's buffer as needed.
-    std::shared_ptr<proto::Result> _result;
-};
-
-class QueryAction::Impl::Poisoner : public util::VoidCallable<void> {
-public:
-    Poisoner(std::shared_ptr<Impl> i) : _i(i) {}
-    void operator()() {
-        std::shared_ptr<Impl> iSharedPtr(_i.lock());
-        if (iSharedPtr) {
-            iSharedPtr->poison();
-        }
-    }
-    // Poisoners are potentially long-lived, so weak_ptr is better,
-    // otherwise we would unnecessarily hold resources corresponding
-    // to work that has been completed (and we wouldn't be able to do
-    // poisoning for these resources anyway).
-    std::weak_ptr<Impl> _i;
-};
-
-////////////////////////////////////////////////////////////////////////
-// QueryAction::Impl implementation
-////////////////////////////////////////////////////////////////////////
-QueryAction::Impl::Impl(QueryActionArg const& a)
-    : _log(a.log),
-      _task(a.task),
-      _chunkResourceMgr(a.mgr),
-      _dbName(a.task->dbName),
-      _msg(a.task->msg),
-      _poisoned(false),
-      _sendChannel(a.task->sendChannel),
-      _user(a.task->user) {
+QueryRunner::QueryRunner(QueryRunnerArg const& a)
+    : _log{a.log}, _task{a.task},
+      _chunkResourceMgr{a.mgr},
+      _dbName{a.task->dbName} {
     int rc = mysql_thread_init();
     assert(rc == 0);
-    assert(_msg);
+    assert(_task->msg);
+    // Let the Task know this is its QueryRunner.
+    auto cancelled = a.task->setTaskQueryRunner(shared_from_this());
+    if (cancelled) {
+        _cancelled.store(true);
+        // runQuery will return quickly if the Task has been cancelled.
+    }
 }
 
-bool QueryAction::Impl::act() {
-    char msg[] = "Exec in flight for Db = %1%";
-    LOGF(_log, LOG_LVL_INFO, msg % _task->dbName);
+/// Initialize the db connection
+bool QueryRunner::_initConnection() {
+    mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
+    sc.username = _task->user.c_str(); // Override with czar-passed username.
+    _mysqlConn.reset(new mysql::MySqlConnection(sc));
+
+    if(!_mysqlConn->connect()) {
+        LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
+                % wconfig::getConfig().getString("mysqlSocket") % _task->user);
+        util::Error error(-1, "Unable to connect to MySQL as " + _task->user);
+        _multiError.push_back(error);
+        return false;
+    }
+    return true;
+}
+
+/// Override _dbName with _msg->db() if available.
+void QueryRunner::_setDb() {
+    if(_task->msg->has_db()) {
+        _dbName = _task->msg->db();
+        LOGF(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with %1%" % _dbName);
+    }
+}
+
+bool QueryRunner::runQuery() {
+    // Make certain our Task knows that this object is no longer in use when this function exits.
+    class Release {
+    public:
+        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner *tqr) : _t{t}, _tqr{tqr} {}
+        ~Release() { _t->freeTaskQueryRunner(_tqr); }
+    private:
+        wbase::Task::Ptr _t;
+        wbase::TaskQueryRunner *_tqr;
+    };
+    Release release(_task, this);
+
+    if (_task->getCancelled()) {
+        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. %1%" % _task->dbName);
+        return false;
+    }
+
+    LOGF(_log, LOG_LVL_DEBUG, "Exec in flight for Db = %1%" % _task->dbName);
     _setDb();
     bool connOk = _initConnection();
     if(!connOk) { return false; }
 
-    if(_msg->has_protocol()) {
-        switch(_msg->protocol()) {
-        case 1:
-            throw UnsupportedError("QueryAction: Expected protocol > 1 in TaskMsg");
+    if(_task->msg->has_protocol()) {
+        switch(_task->msg->protocol()) {
         case 2:
-            return _dispatchChannel();
+            return _dispatchChannel(); // Run the query and send the results back.
+        case 1:
+            throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
-            throw UnsupportedError("QueryAction: Invalid protocol in TaskMsg");
+            throw UnsupportedError("QueryRunner: Invalid protocol in TaskMsg");
         }
     } else {
-        throw UnsupportedError("QueryAction: Expected protocol > 1 in TaskMsg");
+        throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
     }
 }
 
-MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
+MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
@@ -202,21 +155,21 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         return _mysqlConn->getResult();
 }
 
-void QueryAction::Impl::_initMsgs() {
+void QueryRunner::_initMsgs() {
     _protoHeader = std::make_shared<proto::ProtoHeader>();
     _initMsg();
 }
 
-void QueryAction::Impl::_initMsg() {
+void QueryRunner::_initMsg() {
     _result = std::make_shared<proto::Result>();
     _result->mutable_rowschema();
     _result->set_continues(0);
-    if(_msg->has_session()) {
-        _result->set_session(_msg->session());
+    if(_task->msg->has_session()) {
+        _result->set_session(_task->msg->session());
     }
 }
 
-void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
+void QueryRunner::_fillSchema(MYSQL_RES* result) {
     // Build schema obj from result
     auto s = mysql::SchemaFactory::newFromResult(result);
     // Fill _result's schema from Schema obj
@@ -236,12 +189,11 @@ void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
     }
 }
 
-/** Fill one row in the Result msg from one row in MYSQL_RES*
- * If the message has gotten larger than the desired message size,
- * it will be transmitted with a flag set indicating the result
- * continues in later messages.
- */
-bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
+/// Fill one row in the Result msg from one row in MYSQL_RES*
+/// If the message has gotten larger than the desired message size,
+/// it will be transmitted with a flag set indicating the result
+/// continues in later messages.
+bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
     MYSQL_ROW row;
     size_t size = 0;
     while ((row = mysql_fetch_row(result))) {
@@ -257,12 +209,7 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
             }
         }
         size += rawRow->ByteSize();
-#if 0 // Enable for tracing result values while debugging.
-        std::cout << "row: ";
-        std::copy(row, row+numFields,
-                  std::ostream_iterator<char*>(std::cout, ","));
-        std::cout << "\n";
-#endif
+
         // Each element needs to be mysql-sanitized
         if (size > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
             if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -278,17 +225,15 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
     return true;
 }
 
-/** Transmit result data with its header.
- * If 'last' is true, this is the last message in the result set
- * and flags are set accordingly.
- */
-void QueryAction::Impl::_transmit(bool last) {
+/// Transmit result data with its header.
+/// If 'last' is true, this is the last message in the result set
+/// and flags are set accordingly.
+void QueryRunner::_transmit(bool last) {
     LOGF_DEBUG("_transmit last=%1%" % last);
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
-
-        std::string chunkId = boost::lexical_cast<std::string>((*_msg).chunkid());
+        std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_ERROR, msg);
@@ -296,12 +241,11 @@ void QueryAction::Impl::_transmit(bool last) {
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
     LOGF_INFO("_transmit last=%1% resultString=%2%" % last % util::prettyCharList(resultString, 5));
-    _sendChannel->sendStream(resultString.data(), resultString.size(), last);
+    _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
 }
 
-/** Transmit the protoHeader
- */
-void QueryAction::Impl::_transmitHeader(std::string& msg) {
+/// Transmit the protoHeader
+void QueryRunner::_transmitHeader(std::string& msg) {
     LOGF_DEBUG("_transmitHeader");
     // Set header
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
@@ -315,14 +259,14 @@ void QueryAction::Impl::_transmitHeader(std::string& msg) {
     // Make sure protoheader size can be encoded in a byte.
     assert(protoHeaderString.size() < 255);
     auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
-    _sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+    _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
 }
 
 class ChunkResourceRequest {
 public:
     ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> mgr,
                          proto::TaskMsg const& msg)
-        : _mgr(mgr), _msg(msg) {}
+        : _mgr{mgr}, _msg{msg} {}
 
     ChunkResource getResourceFragment(int i) {
         wbase::Task::Fragment const& f(_msg.fragment(i));
@@ -348,20 +292,20 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-bool QueryAction::Impl::_dispatchChannel() {
+bool QueryRunner::_dispatchChannel() {
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
     bool firstResult = true;
     bool erred = false;
     int numFields = -1;
     if(m.fragment_size() < 1) {
-        throw Bug("QueryAction: No fragments to execute in TaskMsg");
+        throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
 
     try {
         for(int i=0; i < m.fragment_size(); ++i) {
-            if (_poisoned.get()) {
+            if (_cancelled) {
                 break;
             }
             wbase::Task::Fragment const& f(m.fragment(i));
@@ -392,7 +336,7 @@ bool QueryAction::Impl::_dispatchChannel() {
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
     }
-    if(!_poisoned.get()) {
+    if(!_cancelled) {
         // Send results.
         _transmit(true);
     } else {
@@ -404,54 +348,37 @@ bool QueryAction::Impl::_dispatchChannel() {
     return !erred;
 }
 
-void QueryAction::Impl::poison() {
-    LOGF(_log, LOG_LVL_WARN, "Trying QueryAction::Impl::poison() call, experimental");
-    _poisoned.set(true);
+void QueryRunner::cancel() {
+    LOGF(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
+    _cancelled.store(true);
     if(!_mysqlConn.get()) {
-    LOGF(_log, LOG_LVL_WARN, "QueryAction::Impl::poison() no MysqlConn");
+    LOGF(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
     }
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
-          LOGF(_log, LOG_LVL_ERROR, "poison() NOP");
+          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
           break;
       case 0:
-          LOGF(_log, LOG_LVL_ERROR, "poison() success");
+          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() success");
           break;
       case 1:
-          LOGF(_log, LOG_LVL_ERROR, "poison() Error connecting to kill query.");
+          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
           break;
       case 2:
-          LOGF(_log, LOG_LVL_ERROR, "poison() Error processing kill query.");
+          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
           break;
       default:
-          LOGF(_log, LOG_LVL_ERROR, "poison() unknown error");
+          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
           break;
     }
 }
 
-////////////////////////////////////////////////////////////////////////
-// QueryAction implementation
-////////////////////////////////////////////////////////////////////////
-QueryAction::QueryAction(QueryActionArg& a)
-    : _impl(new Impl(a)) {
-    auto p = std::make_shared<Impl::Poisoner>(_impl);
-    // Attach a poisoner that will use us.
-    a.task->setPoison(p);
+QueryRunner::~QueryRunner() {
 }
 
-QueryAction::~QueryAction() {
-}
-
-bool QueryAction::operator()() {
-    return _impl->act();
-}
-
-void QueryAction::poison() {
-    _impl->poison();
-}
-}}} // lsst::qserv::wdb
+}}} // namespace
 
 // Future idea: Query cache
 // Pseudocode: Record query in query cache table

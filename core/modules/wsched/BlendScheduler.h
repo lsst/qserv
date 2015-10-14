@@ -48,7 +48,7 @@ namespace wsched {
 /// ScanScheduler; otherwise it uses the GroupScheduler.
 /// The GroupScheduler has concessions for chunk grouping as well, but
 /// it should be set for reduced concurrency limited I/O sharing.
-class BlendScheduler : public wcontrol::Foreman::Scheduler {
+class BlendScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<BlendScheduler> Ptr;
 
@@ -70,16 +70,16 @@ public:
     static std::string getName()  { return std::string("BlendSched"); }
     bool checkIntegrity();
 
-    wcontrol ::Foreman::Scheduler* lookup(wbase::Task::Ptr p);
+    wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
 private:
     wbase::TaskQueuePtr _getNextIfAvail(wbase::TaskQueuePtr running);
     bool _integrityHelper() const;
-    wcontrol::Foreman::Scheduler* _lookup(wbase::Task::Ptr p);
+    wcontrol::Scheduler* _lookup(wbase::Task::Ptr p);
 
     std::shared_ptr<GroupScheduler> _group;
     std::shared_ptr<ScanScheduler> _scan;
     LOG_LOGGER _logger;
-    typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
+    typedef std::map<wbase::Task*, wcontrol::Scheduler*> Map;
     Map _map;
     std::mutex _mapMutex;
 };

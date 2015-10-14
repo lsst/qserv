@@ -79,15 +79,9 @@ struct ScriptMeta {
     int chunkId;
 };
 
-class CheckFlag {
-public:
-    virtual ~CheckFlag() {}
-    virtual bool operator()() = 0;
-};
-
 class StringBuffer {
 public:
-    StringBuffer() : _totalSize(0) {}
+    StringBuffer() {}
     ~StringBuffer() { reset(); }
     void addBuffer(StringBufferOffset offset, char const* buffer,
                    StringBufferSize bufferSize);
@@ -108,15 +102,14 @@ private:
 
     typedef std::deque<Fragment> FragmentDeque;
     FragmentDeque _buffers;
-    StringBufferOffset _totalSize;
+    StringBufferOffset _totalSize{0};
     std::mutex _mutex;
     std::stringstream _ss;
 };
 
 class StringBuffer2 {
 public:
-    StringBuffer2() : _buffer(0),
-                      _bufferSize(0),_bytesWritten(0) {}
+    StringBuffer2() {}
     ~StringBuffer2() { reset(); }
     void addBuffer(StringBufferOffset offset, char const* buffer,
                    StringBufferSize bufferSize);
@@ -127,9 +120,9 @@ public:
 private:
     void _setSize(unsigned size);
     std::mutex _mutex;
-    char* _buffer;
-    unsigned _bufferSize;
-    unsigned _bytesWritten;
+    char* _buffer{nullptr};
+    unsigned _bufferSize{0};
+    unsigned _bytesWritten{0};
 };
 
 }}} // namespace lsst::qserv::wbase

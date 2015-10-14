@@ -83,10 +83,10 @@ public:
     ChunkResource(ChunkResource const& cr);
     ChunkResource& operator=(ChunkResource const& cr);
 private:
-    ChunkResource(ChunkResourceMgr& mgr);
-    ChunkResource(ChunkResourceMgr& mgr, Info* info);
+    ChunkResource(ChunkResourceMgr* mgr);
+    ChunkResource(ChunkResourceMgr* mgr, Info* info);
 
-    ChunkResourceMgr& _mgr;
+    ChunkResourceMgr *_mgr; ///< Do not delete, not owner.
     std::unique_ptr<Info> _info;
 };
 
@@ -94,9 +94,10 @@ private:
 /// subchunks.
 class ChunkResourceMgr {
 public:
+    using Ptr = std::shared_ptr<ChunkResourceMgr>;
     /// Factory
-    static std::shared_ptr<ChunkResourceMgr> newMgr(mysql::MySqlConfig const& c);
-    static std::shared_ptr<ChunkResourceMgr> newFakeMgr();
+    static Ptr newMgr(mysql::MySqlConfig const& c);
+    static Ptr newFakeMgr();
     virtual ~ChunkResourceMgr() {}
 
     /// Reserve a chunk. Currently, this does not result in any explicit chunk

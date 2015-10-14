@@ -71,7 +71,7 @@ public:
     /** Report a state transition by updating JobStatus::Info attributes
      *  with its input parameters values
      *
-     *	Useful for logging and error reporting
+     *  Useful for logging and error reporting
      *
      *  @param s state value
      *  @param code code value, default to 0
