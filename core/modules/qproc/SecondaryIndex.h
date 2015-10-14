@@ -57,7 +57,7 @@ public:
      *
      *  Used for testing purpose
      */
-    explicit SecondaryIndex();
+    SecondaryIndex();
 
     /** Lookup an index constraint.
      *

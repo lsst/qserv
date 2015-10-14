@@ -61,7 +61,7 @@ LOG_LOGGER getLogger() {
     return logger;
 }
 
-enum QueryType { IN =1, BETWEEN };
+enum QueryType { IN, BETWEEN };
 
 } // anonymous namespace
 
@@ -151,8 +151,7 @@ private:
                                                          % index_table
                                                          % key_column
                                                          % ids_formatter).str();
-        }
-        else if (query_type == QueryType::BETWEEN) {
+        } else if (query_type == QueryType::BETWEEN) {
             if (params.size() != 5) {
                 throw Bug("Incorrect parameters for bounded secondary index lookup ");
             }
