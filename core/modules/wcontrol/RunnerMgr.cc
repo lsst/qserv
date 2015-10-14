@@ -126,12 +126,12 @@ wbase::TaskQueuePtr RunnerMgr::queueTask(wbase::Task::Ptr const& task, Scheduler
     return scheduler->newTaskAct(task, _running);
 }
 
-Runner::Runner(RunnerMgr &rm, wbase::Task::Ptr const& firstTask) : _rm{rm}, _task{firstTask} {
-    LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::Runner()");
+Runner::Runner(RunnerMgr *rm, wbase::Task::Ptr const& firstTask) : _rm{rm}, _task{firstTask} {
+    LOGF(_rm->getLog(), LOG_LVL_DEBUG, "Runner::Runner()");
 }
 
 Runner::~Runner() {
-    LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
+    LOGF(_rm->getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
 }
 
 /// Run when Foreman creates the thread. It runs the task passed to the constructor and then
@@ -141,26 +141,26 @@ Runner::~Runner() {
 void Runner::operator()() {
     // Real purpose of thisPtr is to keep Runner from being deleted before this function exits.
     Runner::Ptr thisPtr(shared_from_this());
-    _rm.registerRunner(thisPtr, _task);
+    _rm->registerRunner(thisPtr, _task);
     while(!_poisoned) {
-        LOGF(_rm.getLog(), LOG_LVL_DEBUG, "Runner running %1%" % *_task);
+        LOGF(_rm->getLog(), LOG_LVL_DEBUG, "Runner running %1%" % *_task);
         proto::TaskMsg const& msg = *_task->msg;
         if(!msg.has_protocol() || msg.protocol() < 2) {
             _task->sendChannel->sendError("Unsupported wire protocol", 1);
         } else {
-            auto qr = _rm.newQueryAction(_task);
+            auto qr = _rm->newQueryAction(_task);
             qr->runQuery();
         }
         if(_poisoned) break;
         // Request new work from the manager
         // (mgr is a role of the foreman, who will check with the
         // scheduler for the next assignment)
-        _rm.reportComplete(_task);
-        _task = _rm.getNextTask(thisPtr, _task);
+        _rm->reportComplete(_task);
+        _task = _rm->getNextTask(thisPtr, _task);
         if(!_task.get()) break; // No more work?
-        _rm.reportStart(_task);
+        _rm->reportStart(_task);
     } // Keep running until we get poisoned.
-    _rm.signalDeath(thisPtr);
+    _rm->signalDeath(thisPtr);
 }
 
 }}} // namespace

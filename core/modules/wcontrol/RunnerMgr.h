@@ -27,7 +27,7 @@ namespace wcontrol {
 class Runner : public std::enable_shared_from_this<Runner> {
 public:
     using Ptr = std::shared_ptr<Runner>;
-    Runner(RunnerMgr& rm, wbase::Task::Ptr const& firstTask);
+    Runner(RunnerMgr *rm, wbase::Task::Ptr const& firstTask);
     Runner(Runner const&) = delete;
     Runner operator=(Runner const&) = delete;
     virtual ~Runner();
@@ -35,7 +35,7 @@ public:
     std::string const& getHash() const { return _task->hash; }
 
 private:
-    RunnerMgr& _rm;
+    RunnerMgr *_rm; ///< Do not delete, not owner.
     wbase::Task::Ptr _task;
     std::atomic<bool> _poisoned{false}; // TODO:remove in DM-3945
 };

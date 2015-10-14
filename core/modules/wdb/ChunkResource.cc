@@ -110,30 +110,30 @@ std::ostream& operator<<(std::ostream& os, ChunkResource::Info const& i) {
 ////////////////////////////////////////////////////////////////////////
 // ChunkResource
 ////////////////////////////////////////////////////////////////////////
-ChunkResource::ChunkResource(ChunkResourceMgr& mgr)
+ChunkResource::ChunkResource(ChunkResourceMgr *mgr)
     : _mgr{mgr} {
 }
 
-ChunkResource::ChunkResource(ChunkResourceMgr& mgr,
+ChunkResource::ChunkResource(ChunkResourceMgr *mgr,
                              ChunkResource::Info* info)
     : _mgr{mgr}, _info{info} {
-    _mgr.acquireUnit(*_info);
+    _mgr->acquireUnit(*_info);
 }
 ChunkResource::ChunkResource(ChunkResource const& cr)
     : _mgr{cr._mgr}, _info{new Info(*cr._info)} {
-    _mgr.acquireUnit(*_info);
+    _mgr->acquireUnit(*_info);
 }
 
 ChunkResource& ChunkResource::operator=(ChunkResource const& cr) {
     _mgr = cr._mgr;
     _info.reset(new Info(*cr._info));
-    _mgr.acquireUnit(*_info);
+    _mgr->acquireUnit(*_info);
     return *this;
 }
 
 ChunkResource::~ChunkResource() {
     if(_info.get()) {
-        _mgr.release(*_info);
+        _mgr->release(*_info);
     }
 }
 
@@ -527,16 +527,13 @@ public:
     virtual ChunkResource acquire(std::string const& db, int chunkId,
                                   StringVector const& tables) {
         // Make sure that the chunk is ready. (NOP right now.)
-        ChunkResource cr(*this, new ChunkResource::Info(db, chunkId,
-                                                        tables));
+        ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables));
         return cr;
     }
     virtual ChunkResource acquire(std::string const& db, int chunkId,
                                   StringVector const& tables,
                                   IntVector const& subChunks) {
-        ChunkResource cr(*this, new ChunkResource::Info(db, chunkId,
-                                                        tables, subChunks));
-
+        ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables, subChunks));
         return cr;
     }
 

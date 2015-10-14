@@ -83,10 +83,10 @@ public:
     ChunkResource(ChunkResource const& cr);
     ChunkResource& operator=(ChunkResource const& cr);
 private:
-    ChunkResource(ChunkResourceMgr& mgr);
-    ChunkResource(ChunkResourceMgr& mgr, Info* info);
+    ChunkResource(ChunkResourceMgr* mgr);
+    ChunkResource(ChunkResourceMgr* mgr, Info* info);
 
-    ChunkResourceMgr& _mgr;
+    ChunkResourceMgr *_mgr; ///< Do not delete, not owner.
     std::unique_ptr<Info> _info;
 };
 
