@@ -44,7 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-class ScanScheduler : public wcontrol::Foreman::Scheduler {
+class ScanScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
     typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;

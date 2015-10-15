@@ -76,7 +76,7 @@ BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     }
     assert(_group);
     assert(_scan);
-    wcontrol::Foreman::Scheduler* s = nullptr;
+    wcontrol::Scheduler* s = nullptr;
     if(incoming->msg->scantables_size() > 0) {
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
@@ -121,7 +121,7 @@ BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
 wbase::TaskQueuePtr
 BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
                               wbase::TaskQueuePtr running) {
-    wcontrol::Foreman::Scheduler* s = nullptr;
+    wcontrol::Scheduler* s = nullptr;
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
         assert(_integrityHelper());
@@ -137,7 +137,7 @@ BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
     wbase::TaskQueuePtr t = s->taskFinishAct(finished, running);
     if(!t) { // Try other scheduler.
         LOG(_logger, LOG_LVL_DEBUG, "Blend trying other sched.");
-        return other<wcontrol::Foreman::Scheduler>(s, _group.get(),
+        return other<wcontrol::Scheduler>(s, _group.get(),
                                                    _scan.get())->nopAct(running);
     }
     return t;
@@ -145,7 +145,7 @@ BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
 
 void
 BlendScheduler::markStarted(wbase::Task::Ptr t) {
-    wcontrol::Foreman::Scheduler* s = lookup(t);
+    wcontrol::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markStarted(t);
     } else {
@@ -155,7 +155,7 @@ BlendScheduler::markStarted(wbase::Task::Ptr t) {
 
 void
 BlendScheduler::markFinished(wbase::Task::Ptr t) {
-    wcontrol::Foreman::Scheduler* s = lookup(t);
+    wcontrol::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markFinished(t);
     } else {
@@ -171,7 +171,7 @@ BlendScheduler::checkIntegrity() {
 }
 
 /// @return ptr to scheduler that is tracking p
-wcontrol::Foreman::Scheduler*
+wcontrol::Scheduler*
 BlendScheduler::lookup(wbase::Task::Ptr p) {
     std::lock_guard<std::mutex> guard(_mapMutex);
     Map::iterator i = _map.find(p.get());

@@ -24,6 +24,7 @@
 #define LSST_QSERV_XRDSVC_SSISESSION_H
 
 // System headers
+#include <atomic>
 #include <mutex>
 #include <vector>
 
@@ -33,7 +34,7 @@
 
 // Local headers
 #include "global/ResourceUnit.h"
-#include "wbase/MsgProcessor.h"
+#include "wbase/Task.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -56,19 +57,11 @@ namespace xrdsvc {
 class SsiSession : public XrdSsiSession, public XrdSsiResponder {
 public:
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
-    typedef util::VoidCallable<void> CancelFunc;
-    typedef std::shared_ptr<CancelFunc> CancelFuncPtr;
 
     /// Construct a new session (called by SsiService)
-    SsiSession(char const* sname,
-               ValidatorPtr validator,
-               std::shared_ptr<wbase::MsgProcessor> processor)
-        : XrdSsiSession(strdup(sname), 0),
-          XrdSsiResponder(this, nullptr),
-          _validator(validator),
-          _processor(processor),
-          _cancelled(false)
-        {}
+    SsiSession(char const* sname, ValidatorPtr validator, std::shared_ptr<wbase::MsgProcessor> processor)
+        : XrdSsiSession{strdup(sname), 0}, XrdSsiResponder{this, nullptr},
+          _validator{validator}, _processor{processor} {}
 
     virtual ~SsiSession() {
         // XrdSsiSession::sessName is unmanaged, need to free()
@@ -77,14 +70,11 @@ public:
 
     // XrdSsiSession and XrdSsiResponder interfaces
     virtual void ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
-    virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
-                                 bool cancel=false);
-
+    virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo, bool cancel=false);
     virtual bool Unprovision(bool forced);
 
 private:
-
-    void _addCanceller(CancelFuncPtr p);
+    void _addTask(wbase::Task::Ptr const& task);
 
     class ReplyChannel;
     friend class ReplyChannel;
@@ -92,14 +82,13 @@ private:
     ValidatorPtr _validator; ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
 
-    /// Stash of cancellation functions to be called to cancel msgs in flight on
-    /// _processor.
-    std::vector<CancelFuncPtr> _cancellers;
-    std::mutex _cancelMutex; ///< For _cancellers and _cancelled
-    bool _cancelled; ///< true if the session has been cancelled.
+    /// List of Tasks.
+    std::mutex _tasksMutex; ///< protects _tasks.
+    std::vector<wbase::Task::Ptr> _tasks;
+    std::atomic<bool> _cancelled{false}; ///< true if the session has been cancelled.
 
     friend class SsiProcessor; // Allow access for cancellation
-}; // class SsiSession
-}}} // namespace lsst::qserv::xrdsvc
+};
+}}} // namespace
 
 #endif // LSST_QSERV_XRDSVC_SSISESSION_H

@@ -50,7 +50,11 @@
 #define LSST_QSERV_WCONTROL_FOREMAN_H
 
 // System headers
+#include <atomic>
 #include <memory>
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Local headers
 #include "wbase/Base.h"
@@ -59,59 +63,79 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace wbase {
-    class MsgProcessor;
-}}} // End of forward declarations
+namespace wdb {
+    class ChunkResourceMgr;
+}
+}}
 
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-/// Foreman is a pooling thread manager that is pluggable with different
-/// scheduling objects
-class Foreman {
+class RunnerMgr;
+
+/// An abstract interface. Runners receive a reference to an
+/// object implementing this and make calls to report start and
+/// finish events for tasks they run. Schedulers must return
+/// TaskWatcher objects so that runners can make reports.
+class TaskWatcher {
 public:
-    typedef std::shared_ptr<Foreman> Ptr;
-
-    /// An abstract interface. Runners receive a reference to an
-    /// object implementing this and make calls to report start and
-    /// finish events for tasks they run. Schedulers must return
-    /// TaskWatcher objects so that runners can make reports.
-    class TaskWatcher {
-    public:
-        virtual ~TaskWatcher() {}
-        virtual void markStarted(wbase::Task::Ptr t) {}
-        virtual void markFinished(wbase::Task::Ptr t) {}
-    };
-
-    /// An abstract scheduler interface. Foreman objects use Scheduler instances
-    /// to determine what tasks to launch upon triggering events.
-    class Scheduler : public TaskWatcher {
-    public:
-        typedef std::shared_ptr<Scheduler> Ptr;
-        virtual ~Scheduler() {}
-
-        virtual bool removeByHash(std::string const& hash) { return false; }
-        virtual void queueTaskAct(wbase::Task::Ptr incoming) = 0;
-        virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0;
-        virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
-                                               wbase::TaskQueuePtr running) = 0;
-        virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
-                                                  wbase::TaskQueuePtr running) = 0;
-    };
-
-    virtual bool squashByHash(std::string const& hash) { return false; }
-
-    virtual std::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
-    virtual ~Foreman() {}
-
-protected:
-    explicit Foreman() {}
+    virtual ~TaskWatcher() {}
+    virtual void markStarted(wbase::Task::Ptr t) {}
+    virtual void markFinished(wbase::Task::Ptr t) {}
 };
 
-/// Factory function for Foreman that hooks in a scheduler
-Foreman::Ptr
-newForeman(Foreman::Scheduler::Ptr s);
+/// An abstract scheduler interface. Foreman objects use Scheduler instances
+/// to determine what tasks to launch upon triggering events.
+class Scheduler : public TaskWatcher, public wbase::TaskScheduler {
+public:
+    using Ptr = std::shared_ptr<Scheduler>;
+    virtual ~Scheduler() {}
+
+    virtual bool removeByHash(std::string const& hash) { return false; }
+
+    /// Take appropriate action when a task in the Schedule is cancelled. Doing
+    /// nothing should be harmless, but some Schedulers may work better if cancelled
+    /// tasks are removed.
+    virtual void taskCancelled(wbase::Task *task) { return; }
+    virtual void queueTaskAct(wbase::Task::Ptr incoming) = 0;
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0;
+    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                           wbase::TaskQueuePtr running) = 0;
+    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                              wbase::TaskQueuePtr running) = 0;
+};
+
+/// Foreman is a pooling thread manager that is pluggable with different scheduling objects.
+///
+class Foreman : public wbase::MsgProcessor {
+public:
+    using Ptr = std::shared_ptr<Foreman>;
+    static Foreman::Ptr newForeman(Scheduler::Ptr const& s);
+    explicit Foreman(Scheduler::Ptr const& s);
+    virtual ~Foreman();
+    // This class should not be copied.
+    Foreman(Foreman const&) = delete;
+    Foreman& operator=(Foreman const&) = delete;
+
+    void newTaskAction(wbase::Task::Ptr const& task);
+
+    wbase::Task::Ptr processMsg(
+        std::shared_ptr<proto::TaskMsg> const& taskMsg,
+        std::shared_ptr<wbase::SendChannel> const& replyChannel) override;
+
+    class Processor;
+    friend class RunnerMgr;
+
+protected:
+    void _startRunner(wbase::Task::Ptr const& t);
+
+    std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
+    std::mutex _mutex;
+    Scheduler::Ptr _scheduler;
+    std::unique_ptr<RunnerMgr> _rManager;
+    LOG_LOGGER _log {LOG_GET("Foreman")};
+};
 
 }}}  // namespace lsst::qserv::wcontrol
 

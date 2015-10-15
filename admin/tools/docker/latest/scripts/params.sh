@@ -33,9 +33,6 @@
 
 # Default values below are for CC-IN2P3 50 nodes cluster
 
-# Node to be configured as master node
-MASTER='ccqserv100.in2p3.fr'
-
 # Cluster install script will be copied on each nodes in $INSTALL_BASE/scripts
 INSTALL_BASE=/qserv
 

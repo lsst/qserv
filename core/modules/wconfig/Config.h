@@ -61,7 +61,7 @@ private:
     void _validate();
 
     StringMap _map;
-    bool _isValid;
+    bool _isValid {false};
     std::string _error;
     std::shared_ptr<mysql::MySqlConfig> _sqlConfig;
 };

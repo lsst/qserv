@@ -28,7 +28,7 @@ utest = env.UnitTest(p)
 env.Append(UNIT_TESTS=utest)
 
 # Compile it but don't run on every build as it needs MySQL to run.
-p = env.Program(['testQueryAction.cc'] + deps, LIBS=findLibs(extDeps))
+p = env.Program(['testQueryRunner.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 #utest = env.UnitTest(p)
 #env.Append(UNIT_TESTS=utest)

@@ -41,6 +41,7 @@
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
+#include "wbase/SendChannel.h"
 
 
 namespace {
@@ -87,13 +88,10 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 ////////////////////////////////////////////////////////////////////////
 // Task
 ////////////////////////////////////////////////////////////////////////
-std::string const
-Task::defaultUser = "qsmaster";
+std::string const Task::defaultUser = "qsmaster";
 
-Task::Task(Task::TaskMsgPtr t, std::shared_ptr<SendChannel> sc) : entryTime(0) {
-    // Make msg copy.
-    msg = std::make_shared<proto::TaskMsg>(*t);
-    sendChannel = sc;
+Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
+    : msg{t}, sendChannel{sc} {
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
     if(t->has_user()) {
@@ -102,36 +100,37 @@ Task::Task(Task::TaskMsgPtr t, std::shared_ptr<SendChannel> sc) : entryTime(0) {
         user = defaultUser;
     }
     timestr[0] = '\0';
-    _poisoned = false;
 }
 
-void Task::poison() {
-    std::shared_ptr<util::VoidCallable<void> > func;
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-        if(_poisonFunc && !_poisoned) {
-            func.swap(_poisonFunc);
-        }
-        _poisoned = true;
+/// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
+void Task::cancel() {
+    if (_cancelled.exchange(true)) {
+        // Was already cancelled.
+        return;
     }
-    if(func) {
-        (*func)();
+    auto qr = _taskQueryRunner; // Want a copy in case _taskQueryRunner is reset.
+    if (qr != nullptr) {
+        qr->cancel();
+    }
+
+    auto sched = _taskScheduler.lock();
+    if (sched != nullptr) {
+        sched->taskCancelled(this);
     }
 }
 
-void Task::setPoison(std::shared_ptr<util::VoidCallable<void> > poisonFunc) {
-    std::shared_ptr<util::VoidCallable<void> > func;
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-        // Were we poisoned without a poison function available?
-        if(_poisoned && !_poisonFunc) {
-            func = _poisonFunc;
-        } else {
-            _poisonFunc = poisonFunc;
-        }
-    }
-    if(func) {
-        (*func)();
+
+/// @return true if task has already been cancelled.
+bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
+    _taskQueryRunner = taskQueryRunner;
+    return getCancelled();
+}
+
+void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
+    if (_taskQueryRunner.get() == tqr) {
+        _taskQueryRunner.reset();
+    } else {
+        LOGF_DEBUG("Task::freeTaskQueryRunner pointer didn't match!");
     }
 }
 
