@@ -29,6 +29,8 @@
 
 set -e
 
+VERSION=$(date --date='-1 month' +'%Y-%m')
+
 usage() {
   cat << EOD
 
@@ -36,6 +38,7 @@ Usage: `basename $0` [options]
 
   Available options:
     -h          this message
+    -R          Qserv release to be packaged, default to $VERSION
     -d path     directory containing dependency scripts, default to
                 \$QSERV_DIR/admin/bootstrap
 
@@ -45,10 +48,11 @@ EOD
 }
 
 # get the options
-while getopts hd: c ; do
+while getopts hd:v: c ; do
     case $c in
             h) usage ; exit 0 ;;
             d) DEPS_DIR="$OPTARG" ;;
+            v) VERSION="$OPTARG" ;;
             \?) usage ; exit 2 ;;
     esac
 done
@@ -87,10 +91,15 @@ printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIP
 ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 
 # Build the release image
-VERSION=$(basename "$DOCKERDIR")
 TAG="fjammes/qserv:$VERSION"
 printf "Building latest release image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
+
+# Use 'latest' as tag alias
+LATEST_VERSION=$(basename "$DOCKERDIR")
+LATEST_TAG="fjammes/qserv:$LATEST_VERSION"
+docker tag --force $TAG $LATEST_TAG
+docker push $LATEST_TAG
 
 # Build the development image
 DOCKERDIR="$DIR/dev"
