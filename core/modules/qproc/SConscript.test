@@ -66,6 +66,10 @@ p = env.Program(["testQueryAnaAggregation.cc"] + myDeps + deps, LIBS=findLibs(ex
 env.Depends(p, header)
 programs.append(p)
 
+p = env.Program(["testQueryAnaBetween.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
+env.Depends(p, header)
+programs.append(p)
+
 p = env.Program(["testQueryAnaDuplSelectExpr.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
 env.Depends(p, header)
 programs.append(p)

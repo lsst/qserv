@@ -63,6 +63,14 @@
 
 namespace { // File-scope helpers
     std::string const UDF_PREFIX = "scisql_";
+
+    LOG_LOGGER getLogger() {
+        static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
+        return logger;
+    }
+
+    enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN };
+
 } // anonymous
 
 namespace lsst {
@@ -74,7 +82,7 @@ typedef std::pair<std::string, std::string> StringPair;
 std::shared_ptr<query::ColumnRef>
 resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
     std::shared_ptr<query::ColumnRef> cr = vexpr->copyAsColumnRef();
-    if(!cr) {
+    if (!cr) {
         return cr;
     }
     query::DbTablePair p = context.resolve(cr);
@@ -89,8 +97,8 @@ lookupSecIndex(query::QueryContext& context,
                std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    if((!cr) || !context.css) { return false; }
-    if(!context.css->containsDb(cr->db)
+    if ((!cr) || !context.css) { return false; }
+    if (!context.css->containsDb(cr->db)
        || !context.css->containsTable(cr->db, cr->table)) {
         throw AnalysisError("Invalid db/table:" + cr->db + "." + cr->table);
     }
@@ -100,6 +108,183 @@ lookupSecIndex(query::QueryContext& context,
     std::vector<std::string> sics = context.css->getPartTableParams(
         cr->db, cr->table).secIndexColNames();
     return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
+}
+
+
+inline bool isValidLiteral(query::ValueExprPtr p) {
+    return p && !p->copyAsLiteral().empty();
+}
+
+struct validateLiteral {
+    validateLiteral(bool& isValid_) : isValid(isValid_) {}
+    inline void operator()(query::ValueExprPtr p) {
+        isValid = isValid && isValidLiteral(p);
+    }
+    bool& isValid;
+};
+
+struct extractLiteral {
+    inline std::string operator()(query::ValueExprPtr p) {
+        return p->copyAsLiteral();
+    }
+};
+
+/**  Create a QsRestrictor from the column ref and the set of specified values or NULL if one of the values is a non-literal.
+ *
+ *   @param restrictorType: The type of restrictor, only secondary index restrictors are handled
+ *   @param context:        Context, used to get database schema informations
+ *   @param cr:             Represent the column on which secondary index will be queried
+ *   @return:               A Qserv restrictor or NULL if at least one element in values is a non-literal.
+ */
+query::QsRestrictor::Ptr newRestrictor(
+    RestrictorType restrictorType,
+    query::QueryContext const& context,
+    std::shared_ptr<query::ColumnRef> cr,
+    query::ValueExprPtrVector const& values)
+{
+    // Extract the literals, bailing out if we see a non-literal
+    bool isValid = true;
+    std::for_each(values.begin(), values.end(), validateLiteral(isValid));
+    if (!isValid) {
+        return query::QsRestrictor::Ptr();
+    }
+
+    // Build the QsRestrictor
+    query::QsRestrictor::Ptr restrictor = std::make_shared<query::QsRestrictor>();
+    if (restrictorType==SECONDARY_INDEX_IN) {
+        restrictor->_name = "sIndex";
+    }
+    else if (restrictorType==SECONDARY_INDEX_BETWEEN) {
+        restrictor->_name = "sIndexBetween";
+    }
+    // sIndex and sIndexBetween have parameters as follows:
+    // db, table, column, val1, val2, ...
+
+    css::PartTableParams const partParam = context.css->getPartTableParams(cr->db, cr->table);
+    // Get the director column name
+    std::string dirCol = partParam.dirColName;
+    if (cr->column == dirCol) {
+        // cr may be a column in a child table, in which case we must figure
+        // out the corresponding column in the child's director to properly
+        // generate a secondary index constraint.
+        std::string dirDb = partParam.dirDb;
+        std::string dirTable = partParam.dirTable;
+        if (dirTable.empty()) {
+            dirTable = cr->table;
+            if (!dirDb.empty() && dirDb != cr->db) {
+                LOGF_ERROR("dirTable missing, but dirDb is set inconsistently for %1%.%2%"
+                           % cr->db % cr->table);
+                return query::QsRestrictor::Ptr();
+            }
+            dirDb = cr->db;
+        } else if (dirDb.empty()) {
+            dirDb = cr->db;
+        }
+        if (dirDb != cr->db || dirTable != cr->table) {
+            // Lookup the name of the director column in the director table
+            dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
+            if (dirCol.empty()) {
+                LOGF_ERROR("dirCol missing for %1%.%2%" % dirDb % dirTable);
+                return query::QsRestrictor::Ptr();
+            }
+        }
+        LOGF_DEBUG("Using dirDb %1%, dirTable %2%, dirCol %3% as sIndex for %4%.%5%.%6%" %
+                   dirDb % dirTable % dirCol % cr->db % cr->table % cr->column);
+        restrictor->_params.push_back(dirDb);
+        restrictor->_params.push_back(dirTable);
+        restrictor->_params.push_back(dirCol);
+    } else {
+        LOGF_DEBUG("Using %1%, %2%, %3% as sIndex." % cr->db % cr->table % cr->column);
+        restrictor->_params.push_back(cr->db);
+        restrictor->_params.push_back(cr->table);
+        restrictor->_params.push_back(cr->column);
+    }
+    std::transform(values.begin(), values.end(),
+                   std::back_inserter(restrictor->_params), extractLiteral());
+    return restrictor;
+}
+
+/**  Create QSRestrictors which will use secondary index
+ *
+ *   @param context:  Context used to analyze SQL query, allow to compute
+ *                    columns names and find if they are in secondary index.
+ *   @param andTerm:  Intermediatre representation of a subset of a SQL WHERE clause
+ *
+ *   @return:         Qserv restrictors list
+ */
+query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
+                                                      query::AndTerm::Ptr andTerm) {
+    query::QsRestrictor::PtrVector result;
+
+    if (not andTerm) return result;
+
+    for (auto term : andTerm->_terms) {
+        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
+        if (!factor) continue;
+        for (auto factorTerm : factor->_terms) {
+
+            std::shared_ptr<query::ColumnRef> column_ref;
+            query::QsRestrictor::Ptr restrictor;
+
+            /* Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
+             * but this is not obvious because it would move restrictor-related code outside of current plugin.
+             */
+
+            // IN predicate
+            if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+                column_ref = resolveAsColumnRef(context, inPredicate->value);
+                if (column_ref && lookupSecIndex(context, column_ref)) {
+                    restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
+                    LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: %s" % *restrictor);
+                }
+            } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
+                // '=' predicate
+                query::ValueExprPtr literalValue;
+                column_ref = resolveAsColumnRef(context, compPredicate->left);
+
+                // Find the secondary index column ref: Is it on the rhs or lhs?
+                if (column_ref) {
+                    literalValue = compPredicate->right;
+                } else  {
+                    column_ref = resolveAsColumnRef(context, compPredicate->right);
+                    literalValue = compPredicate->left;
+                }
+
+                if (column_ref && lookupSecIndex(context, column_ref)) {
+                    query::ValueExprPtrVector cands(1, literalValue);
+                    restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
+                    if (restrictor) {
+                        LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: %s, for '=' predicate" % *restrictor);
+                    } else {
+                        LOGF(getLogger(), LOG_LVL_TRACE, "No SECONDARY_INDEX_IN restrictor found");
+                    }
+
+                }
+            } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
+            // BETWEEN predicate
+                column_ref = resolveAsColumnRef(context, betweenPredicate->value);
+                if (column_ref && lookupSecIndex(context, column_ref)) {
+                    query::ValueExprPtrVector cands;
+
+                    cands.push_back(betweenPredicate->minValue);
+                    cands.push_back(betweenPredicate->maxValue);
+
+                    restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
+                    if (restrictor) {
+                        LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_BETWEEN restrictor: %s, for '=' predicate" % *restrictor);
+                    } else {
+                        LOGF(getLogger(), LOG_LVL_TRACE, "No SECONDARY_INDEX_BETWEEN restrictor found");
+                    }
+                }
+            }
+
+            if (restrictor) {
+                result.push_back(restrictor);
+            }
+
+        }
+    }
+    return result;
 }
 
 query::PassTerm::Ptr newPass(std::string const& s) {
@@ -126,7 +311,7 @@ newInPred(std::string const& aliasTable,
         query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
 
     typedef std::vector<std::string>::const_iterator Iter;
-    for(Iter i=params.begin(), e=params.end(); i != e; ++i) {
+    for (Iter i=params.begin(), e=params.end(); i != e; ++i) {
         query::ValueExprPtr vep;
         vep = query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i));
         p->cands.push_back(vep);
@@ -151,7 +336,7 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
                           "", tableAlias, chunkColumns.second))));
 
     typename C::const_iterator i;
-    for(i = c.begin(); i != c.end(); ++i) {
+    for (i = c.begin(); i != c.end(); ++i) {
         fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i)));
     }
@@ -180,7 +365,7 @@ public:
 
     void operator()(query::TableRef::Ptr t) {
         // FIXME: Modify so we can use TableRef::apply()
-        if(!t) {
+        if (!t) {
             throw AnalysisBug("NULL TableRefN::Ptr");
         }
         (*this)(*t);
@@ -189,19 +374,19 @@ public:
         std::string const& db = t.getDb();
         std::string const& table = t.getTable();
 
-        if(db.empty()
+        if (db.empty()
            || !_css.containsDb(db)
            || !_css.containsTable(db, table)) {
             throw AnalysisError("Invalid db/table:" + db + "." + table);
         }
         css::PartTableParams const& partParam = _css.getPartTableParams(db, table);
         // Is table chunked?
-        if(!partParam.isChunked()) {
+        if (!partParam.isChunked()) {
             return; // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
         std::string alias = t.getAlias();
-        if(alias.empty()) {
+        if (alias.empty()) {
             // For now, only accept aliased tablerefs (should have
             // been done earlier)
             throw AnalysisBug("Unexpected unaliased table reference");
@@ -213,7 +398,7 @@ public:
         _entries.push_back(se);
         query::JoinRefPtrVector& joinRefs = t.getJoins();
         typedef query::JoinRefPtrVector::iterator Iter;
-        for(Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
+        for (Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
             (*this)((**i).getRight());
         }
     }
@@ -244,16 +429,6 @@ private:
     query::BoolTerm::Ptr
         _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
-    std::shared_ptr<query::QsRestrictor::PtrVector>
-        _getSecIndexPreds(query::QueryContext&,
-                          query::AndTerm::Ptr);
-    query::QsRestrictor::Ptr
-        _newSecIndexRestrictor(query::QueryContext& context,
-                               std::shared_ptr<query::ColumnRef> cr,
-                               query::ValueExprPtrVector& vList);
-    query::QsRestrictor::Ptr
-        _newSecIndexRestrictor(query::QueryContext& context,
-                               std::shared_ptr<query::CompPredicate> cp);
     query::QsRestrictor::Ptr
         _convertObjectId(query::QueryContext& context,
                          query::QsRestrictor const& original);
@@ -276,7 +451,7 @@ public:
 
     // std::string getUdfCallString(std::string const& tName,
     //                              StringMap const& tableConfig) const {
-    //     if(_generator.get()) {
+    //     if (_generator.get()) {
     //         return (*_generator)(tName, tableConfig);
     //     }
     //     return std::string();
@@ -296,7 +471,7 @@ private:
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
                     std::make_shared<query::BoolFactor>();
-            query::BfTerm::PtrVector& terms = newFactor->_terms;
+            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
             terms.push_back(newInPred(e.alias, e.secIndexColumn, params));
             return newFactor;
         }
@@ -308,7 +483,7 @@ private:
         AreaGenerator(char const* fName_, int paramCount_,
                       StringVector const& params_)
             :  fName(fName_), paramCount(paramCount_), params(params_) {
-            if(paramCount_ == USE_STRING) {
+            if (paramCount_ == USE_STRING) {
                 // Convert param list to one quoted string.
                 // This bundles a variable-sized list into a single
                 // parameter to work with the MySQL UDF facility.
@@ -318,7 +493,7 @@ private:
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
                     std::make_shared<query::BoolFactor>();
-            query::BfTerm::PtrVector& terms = newFactor->_terms;
+            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
             query::CompPredicate::Ptr cp =
                     std::make_shared<query::CompPredicate>();
             std::shared_ptr<query::FuncExpr> fe =
@@ -338,28 +513,28 @@ private:
     };
 
     void _setGenerator(query::QsRestrictor const& r) {
-        if(r._name == "qserv_areaspec_box") {
+        if (r._name == "qserv_areaspec_box") {
             _generator = std::make_shared<AreaGenerator>("s2PtInBox",
                                                          4,
                                                          r._params
                                                          );
-        } else if(r._name == "qserv_areaspec_circle") {
+        } else if (r._name == "qserv_areaspec_circle") {
             _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
                                                          3,
                                                          r._params
                                                          );
-        } else if(r._name == "qserv_areaspec_ellipse") {
+        } else if (r._name == "qserv_areaspec_ellipse") {
             _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
                                                          5,
                                                          r._params
                                                          );
-        } else if(r._name == "qserv_areaspec_poly") {
+        } else if (r._name == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
             _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
                                                          use_string,
                                                          r._params
                                                          );
-        } else if(_name == "qserv_objectId") {
+        } else if (_name == "qserv_objectId") {
             _generator = std::make_shared<ObjectIdGenerator>(r._params);
         } else {
             throw AnalysisBug("Unmatched restriction spec: " + _name);
@@ -415,68 +590,63 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     query::FromList& fList = stmt.getFromList();
     query::TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
-    if(!context.css) {
+    if (!context.css) {
         throw AnalysisBug("Missing metadata in context");
     }
     getTable gt(*context.css, entries);
     std::for_each(tList.begin(), tList.end(), gt);
 
-    if(!stmt.hasWhereClause()) { return; }
+    if (!stmt.hasWhereClause()) { return; }
 
     // Prepare to patch the WHERE clause
     query::WhereClause& wc = stmt.getWhereClause();
 
     std::shared_ptr<query::QsRestrictor::PtrVector const> restrsPtr = wc.getRestrs();
     query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    std::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds =
-        _getSecIndexPreds(context, originalAnd);
-    query::AndTerm::Ptr newTerm;
+    query::QueryContext::RestrList restrictors;
     // Now handle the explicit restrictors
-    if(restrsPtr && !restrsPtr->empty()) {
+    if (restrsPtr && not restrsPtr->empty()) {
+
+        query::AndTerm::Ptr newTerm;
         // spatial restrictions
         query::QsRestrictor::PtrVector const& restrs = *restrsPtr;
-        context.restrictors = std::make_shared<query::QueryContext::RestrList>();
         newTerm = std::make_shared<query::AndTerm>();
 
         // At least one table should exist in the restrictor entries
-        if(entries.empty()) {
+        if (entries.empty()) {
             throw AnalysisError("Spatial restrictor w/o partitioned table");
         }
 
         // Now, for each of the qserv restrictors:
-        for(query::QsRestrictor::PtrVector::const_iterator i=restrs.begin();
-            i != restrs.end(); ++i) {
+        for (auto const i : restrs) {
             // for each restrictor entry
             // generate a restrictor condition.
-            for(RestrictorEntries::const_iterator j = entries.begin();
-                j != entries.end(); ++j) {
-                newTerm->_terms.push_back(_makeCondition(*i, *j));
+            for (auto const j : entries) {
+                newTerm->_terms.push_back(_makeCondition(i, j));
             }
-            if((**i)._name == "qserv_objectId") {
+            if ((*i)._name == "qserv_objectId") {
                 // Convert to secIndex restrictor
-                query::QsRestrictor::Ptr p = _convertObjectId(context, **i);
-                context.restrictors->push_back(p);
+                query::QsRestrictor::Ptr p = _convertObjectId(context, *i);
+                restrictors.push_back(p);
             } else {
                 // Save restrictor in QueryContext.
-                context.restrictors->push_back(*i);
+                restrictors.push_back(i);
             }
         }
+
+        wc.prependAndTerm(newTerm);
     }
     wc.resetRestrs();
-    // Merge in the implicit restrictors
-    if(secIndexPreds) {
-        if(!context.restrictors) {
-            context.restrictors = secIndexPreds;
-        } else {
-            context.restrictors->insert(context.restrictors->end(),
-                                        secIndexPreds->begin(),
-                                        secIndexPreds->end());
-        }
+
+    // Merge in the implicit (i.e. secondary index) restrictors
+    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
+    restrictors.insert(restrictors.end(),
+                       secIndexPreds.begin(),
+                       secIndexPreds.end());
+
+    if (not restrictors.empty()) {
+        context.restrictors = std::make_shared<query::QueryContext::RestrList>(restrictors);
     }
-    if(context.restrictors && context.restrictors->empty()) {
-        context.restrictors.reset();
-    }
-    if(newTerm) { wc.prependAndTerm(newTerm); }
 }
 
 void
@@ -493,170 +663,6 @@ QservRestrictorPlugin::_makeCondition(
     return r.generate(restrictorEntry);
 }
 
-inline void
-addPred(std::shared_ptr<query::QsRestrictor::PtrVector>& preds,
-        query::QsRestrictor::Ptr p) {
-    if(p) {
-        if(!preds) {
-            preds = std::make_shared<query::QsRestrictor::PtrVector>();
-        }
-        preds->push_back(p);
-    }
-}
-
-std::shared_ptr<query::QsRestrictor::PtrVector>
-QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
-                                         query::AndTerm::Ptr p) {
-    typedef query::BoolTerm::PtrVector::iterator TermIter;
-    typedef query::BfTerm::PtrVector::iterator BfIter;
-    std::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds;
-
-    if(!p) return secIndexPreds;
-
-    for(TermIter i = p->iterBegin(); i != p->iterEnd(); ++i) {
-        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(i->get());
-        if(!factor) continue;
-        for(BfIter b = factor->_terms.begin();
-            b != factor->_terms.end();
-            ++b) {
-            query::InPredicate::Ptr ip =
-                std::dynamic_pointer_cast<query::InPredicate>(*b);
-            if(ip) {
-                std::shared_ptr<query::ColumnRef> cr
-                    = resolveAsColumnRef(context, ip->value);
-                if(cr && lookupSecIndex(context, cr)) {
-                    query::QsRestrictor::Ptr p =
-                        _newSecIndexRestrictor(context, cr, ip->cands);
-                    addPred(secIndexPreds, p);
-                }
-            } else {
-                query::CompPredicate::Ptr cp =
-                    std::dynamic_pointer_cast<query::CompPredicate>(*b);
-                if(cp) {
-                    query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, cp);
-                    addPred(secIndexPreds, p);
-                }
-            }
-        }
-    }
-    return secIndexPreds;
-}
-
-inline bool isValidLiteral(query::ValueExprPtr p) {
-    return p && !p->copyAsLiteral().empty();
-}
-
-struct validateLiteral {
-    validateLiteral(bool& isValid_) : isValid(isValid_) {}
-    inline void operator()(query::ValueExprPtr p) {
-        isValid = isValid && isValidLiteral(p);
-    }
-    bool& isValid;
-};
-
-struct extractLiteral {
-    inline std::string operator()(query::ValueExprPtr p) {
-        return p->copyAsLiteral();
-    }
-};
-/// @return a new QsRestrictor from the column ref and the set of
-/// specified values or NULL if one of the values is a non-literal.
-query::QsRestrictor::Ptr
-QservRestrictorPlugin::_newSecIndexRestrictor(
-    query::QueryContext& context,
-    std::shared_ptr<query::ColumnRef> cr,
-    query::ValueExprPtrVector& vList)
-{
-    // Extract the literals, bailing out if we see a non-literal
-    bool isValid = true;
-    std::for_each(vList.begin(), vList.end(), validateLiteral(isValid));
-    if(!isValid) {
-        return query::QsRestrictor::Ptr();
-    }
-
-    // Build the QsRestrictor
-    query::QsRestrictor::Ptr p = std::make_shared<query::QsRestrictor>();
-    p->_name = "sIndex";
-    // sIndex has paramers as follows:
-    // db, table, column, val1, val2, ...
-
-    css::PartTableParams const partParam = context.css->getPartTableParams(cr->db, cr->table);
-    // Get the director column name
-    std::string dirCol = partParam.dirColName;
-    if (cr->column == dirCol) {
-        // cr may be a column in a child table, in which case we must figure
-        // out the corresponding column in the child's director to properly
-        // generate a secondary index constraint.
-        std::string dirDb = partParam.dirDb;
-        std::string dirTable = partParam.dirTable;
-        if (dirTable.empty()) {
-            dirTable = cr->table;
-            if (!dirDb.empty() && dirDb != cr->db) {
-                LOGF_ERROR("dirTable missing, but dirDb is set inconsistently for %1%.%2%"
-                           % cr->db % cr->table);
-                return query::QsRestrictor::Ptr();
-            }
-            dirDb = cr->db;
-        } else if (dirDb.empty()) {
-            dirDb = cr->db;
-        }
-        if (dirDb != cr->db || dirTable != cr->table) {
-            // Lookup the name of the director column in the director table
-            dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
-            if (dirCol.empty()) {
-                LOGF_ERROR("dirCol missing for %1%.%2%" % dirDb % dirTable);
-                return query::QsRestrictor::Ptr();
-            }
-        }
-        LOGF_DEBUG("Using dirDb %1%, dirTable %2%, dirCol %3% as sIndex for %4%.%5%.%6%" %
-                   dirDb % dirTable % dirCol % cr->db % cr->table % cr->column);
-        p->_params.push_back(dirDb);
-        p->_params.push_back(dirTable);
-        p->_params.push_back(dirCol);
-    } else {
-        LOGF_DEBUG("Using %1%, %2%, %3% as sIndex." % cr->db % cr->table % cr->column);
-        p->_params.push_back(cr->db);
-        p->_params.push_back(cr->table);
-        p->_params.push_back(cr->column);
-    }
-    std::transform(vList.begin(), vList.end(),
-                   std::back_inserter(p->_params), extractLiteral());
-    return p;
-}
-
-/// @return a new QsRestrictor from a CompPredicate
-query::QsRestrictor::Ptr
-QservRestrictorPlugin::_newSecIndexRestrictor(
-    query::QueryContext& context,
-    std::shared_ptr<query::CompPredicate> cp)
-{
-    query::QsRestrictor::Ptr p;
-    std::shared_ptr<query::ColumnRef> secIndex =
-        resolveAsColumnRef(context, cp->left);
-    int op = cp->op;
-    query::ValueExprPtr literalValue = cp->right;
-    // Find the secondary index column ref: Is it on the rhs or lhs?
-    if(secIndex && lookupSecIndex(context, secIndex)) {
-        // go on.
-    } else {
-        secIndex = resolveAsColumnRef(context, cp->right);
-        if(secIndex && lookupSecIndex(context, secIndex)) {
-            op = query::CompPredicate::reverseOp(op);
-            literalValue = cp->left;
-        } else {
-            return p; // No secondary index column ref. Leave it alone.
-        }
-    }
-    // Make sure the expected literal is a literal
-    bool isValid = true;
-    validateLiteral vl(isValid);
-    vl(literalValue);
-    if(!isValid) { return p; } // No secondary index. Leave alone.
-    std::vector<std::shared_ptr<query::ValueExpr> > cands;
-    cands.push_back(literalValue);
-    return _newSecIndexRestrictor(context, secIndex, cands);
-}
-
 query::QsRestrictor::Ptr
 QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
                                         query::QsRestrictor const& original) {
@@ -667,7 +673,7 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
     // db, table, column, val1, val2, ...
     p->_params.push_back(context.dominantDb);
     p->_params.push_back(context.anonymousTable);
-    if(!context.css->containsDb(context.dominantDb)
+    if (!context.css->containsDb(context.dominantDb)
        || !context.css->containsTable(context.dominantDb,
                                             context.anonymousTable) ) {
         throw AnalysisError("Invalid db/table: " + context.dominantDb

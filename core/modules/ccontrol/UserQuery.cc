@@ -318,9 +318,9 @@ void UserQuery::_setupChunking() {
         im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
         if(constraints) {
-            csv = im->getIntersect(*constraints);
+            csv = im->getChunks(*constraints);
         } else { // Unconstrained: full-sky
-            csv = im->getAll();
+            csv = im->getAllChunks();
         }
 
         LOGF(getLogger(), LOG_LVL_TRACE, "Chunk specs: %1%" % util::printable(csv));

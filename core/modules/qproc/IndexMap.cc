@@ -121,13 +121,19 @@ struct FuncMap {
 };
 static FuncMap funcMap;
 
+/*  Computes region covered by a given spherical geometry UDF call
+ *
+ *  @param c:   Constraint containing name and parameter of UDF call
+ *  @return:    Pointer to Region covered by c, or nullptr if empty
+ */
 std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
+    std::shared_ptr<Region> covered_region = nullptr;
     FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
     if(i != funcMap.fMap.end()) {
         LOGF(getLogger(), LOG_LVL_TRACE, "Region for %1%: %2%" % c % i->first);
-        return i->second(c.params);
+        covered_region = i->second(c.params);
     }
-    return std::shared_ptr<Region>();
+    return covered_region;
 }
 
 lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
@@ -211,12 +217,15 @@ IndexMap::IndexMap(css::StripingParams const& sp,
       _si(si) {
 }
 
-ChunkSpecVector IndexMap::getAll() {
+// Compute the chunks list for the whole partitioning scheme
+ChunkSpecVector IndexMap::getAllChunks() {
     return _pm->getAllChunks();
 }
 
-ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
-    // Index lookups
+//  Compute chunks coverage of spatial and secondary index constraints
+ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
+
+    // Secondary Index lookups
     if(!_si) {
         throw Bug("Invalid SecondaryIndex in IndexMap. Check IndexMap(...)");
     }
@@ -227,6 +236,7 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
         indexSpecs = _si->lookup(cv);
         LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::printable(indexSpecs));
     } catch(SecondaryIndex::NoIndexConstraint& e) {
+        LOGF(getLogger(), LOG_LVL_DEBUG, "No secondary index constraint");
         hasIndex = false; // Ok if no index constraints
     }
 
@@ -247,7 +257,7 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     std::transform(scv.begin(), scv.end(),
                    std::back_inserter(regionSpecs), convertSgSubChunks);
 
-    // Index and spatial lookup are supported in AND format only right now.
+    // FIXME: Index and spatial lookup are supported in AND format only right now.
     if(hasIndex && hasRegion) {
         // Perform AND with index and spatial
         normalize(indexSpecs);
@@ -259,7 +269,7 @@ ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     } else if(hasRegion) {
         return regionSpecs;
     } else {
-        return _pm->getAllChunks();
+        return getAllChunks();
     }
 }
 

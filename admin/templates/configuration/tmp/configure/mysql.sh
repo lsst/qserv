@@ -3,6 +3,7 @@
 set -e
 
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
+QSERV_UNIX_USER={{QSERV_UNIX_USER}}
 PATH={{PATH}}
 MYSQLD_SOCK={{MYSQLD_SOCK}}
 MYSQLD_DATA_DIR={{MYSQLD_DATA_DIR}}
@@ -39,7 +40,7 @@ echo "-- Removing previous data."
 rm -rf ${MYSQLD_DATA_DIR}/*
 echo "-- ."
 echo "-- Installing mysql database files."
-mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${USER} >/dev/null ||
+mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${QSERV_UNIX_USER} >/dev/null ||
 {
     echo "ERROR : mysql_install_db failed, exiting"
     exit 1

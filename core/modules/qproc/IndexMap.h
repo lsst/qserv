@@ -46,12 +46,27 @@ public:
     IndexMap(css::StripingParams const& sp,
              std::shared_ptr<SecondaryIndex> si);
 
-    ChunkSpecVector getAll();
+    /** Compute the chunks list for the whole partitioning scheme
+     *
+     *  @returns all chunks of the partitioning scheme
+     *
+     */
+    ChunkSpecVector getAllChunks();
 
-    /// Index constraints are combined with OR, and spatial constraints are
-    /// combined with OR, but the cumulative index constraints are ANDed with
-    /// the cumulative spatial constraints.
-    ChunkSpecVector getIntersect(query::ConstraintVector const& cv);
+    /**  Compute chunks coverage of spatial and secondary index constraints
+     *
+     *   Index constraints are combined with OR, and spatial constraints are
+     *   combined with OR, but the cumulative index constraints are ANDed with
+     *   the cumulative spatial constraints.
+     *
+     *   @param cv: Constraints issued from SQL query
+     *   @returns:  list of chunk queried by all secondary index search and
+     *              spatial (i.e. UDF) constraints
+     *
+     *   FIXME: Index and spatial lookup composition is only supported using SQL "AND"
+     *          operator for now. "OR" support has to be added, see DM-2888, DM-4017.
+     */
+    ChunkSpecVector getChunks(query::ConstraintVector const& cv);
 
     class PartitioningMap;
 private:

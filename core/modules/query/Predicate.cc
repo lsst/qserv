@@ -164,47 +164,6 @@ void NullPredicate::findValueExprs(ValueExprPtrVector& vector) {
     vector.push_back(value);
 }
 
-// CompPredicate special function
-/// @return a parse token type that is the reversed operator of the
-///         input token type.
-int CompPredicate::reverseOp(int op) {
-    switch(op) {
-    case SqlSQL2Tokens::NOT_EQUALS_OP:
-        return SqlSQL2Tokens::NOT_EQUALS_OP;
-    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
-        return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
-    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
-        return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
-    case SqlSQL2Tokens::LESS_THAN_OP:
-        return SqlSQL2Tokens::GREATER_THAN_OP;
-    case  SqlSQL2Tokens::GREATER_THAN_OP:
-        return SqlSQL2Tokens::LESS_THAN_OP;
-    case SqlSQL2Tokens::EQUALS_OP:
-        return SqlSQL2Tokens::EQUALS_OP;
-    default:
-        throw std::logic_error("Invalid op type for reversing");
-    }
-}
-
-char const* CompPredicate::lookupOp(int op) {
-    switch(op) {
-    case SqlSQL2Tokens::NOT_EQUALS_OP:
-        return "<>";
-    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
-        return "<=";
-    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
-        return ">=";
-    case SqlSQL2Tokens::LESS_THAN_OP:
-        return "<";
-    case  SqlSQL2Tokens::GREATER_THAN_OP:
-        return ">";
-    case SqlSQL2Tokens::EQUALS_OP:
-        return "==";
-    default:
-        throw std::invalid_argument("Invalid op type");
-    }
-}
-
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
     case '<':
@@ -223,17 +182,17 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
-BfTerm::Ptr CompPredicate::clone() const {
+BoolFactorTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
     if(left) p->left = left->clone();
     p->op = op;
     if(right) p->right = right->clone();
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
-BfTerm::Ptr GenericPredicate::clone() const {
+BoolFactorTerm::Ptr GenericPredicate::clone() const {
     //return BfTerm::Ptr(new GenericPredicate());
-    return BfTerm::Ptr();
+    return BoolFactorTerm::Ptr();
 }
 
 namespace {
@@ -244,35 +203,35 @@ namespace {
     };
 }
 
-BfTerm::Ptr InPredicate::clone() const {
+BoolFactorTerm::Ptr InPredicate::clone() const {
     InPredicate::Ptr p  = std::make_shared<InPredicate>();
     if(value) p->value = value->clone();
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
                    valueExprCopy());
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
-BfTerm::Ptr BetweenPredicate::clone() const {
+BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if(value) p->value = value->clone();
     if(minValue) p->minValue = minValue->clone();
     if(maxValue) p->maxValue = maxValue->clone();
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
-BfTerm::Ptr LikePredicate::clone() const {
+BoolFactorTerm::Ptr LikePredicate::clone() const {
     LikePredicate::Ptr p = std::make_shared<LikePredicate>();
     if(value) p->value = value->clone();
     if(charValue) p->charValue = charValue->clone();
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
-BfTerm::Ptr NullPredicate::clone() const {
+BoolFactorTerm::Ptr NullPredicate::clone() const {
     NullPredicate::Ptr p = std::make_shared<NullPredicate>();
     if(value) p->value = value->clone();
     p->hasNot = hasNot;
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
 }}} // namespace lsst::qserv::query

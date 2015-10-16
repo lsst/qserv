@@ -164,12 +164,12 @@ std::shared_ptr<BoolTerm> AndTerm::getReduced() {
     return std::shared_ptr<BoolTerm>();
 }
 
-bool BoolFactor::_reduceTerms(BfTerm::PtrVector& newTerms,
-                              BfTerm::PtrVector& oldTerms) {
-    typedef BfTerm::PtrVector::iterator Iter;
+bool BoolFactor::_reduceTerms(BoolFactorTerm::PtrVector& newTerms,
+                              BoolFactorTerm::PtrVector& oldTerms) {
+    typedef BoolFactorTerm::PtrVector::iterator Iter;
     bool hasReduction = false;
     for(Iter i=oldTerms.begin(), e=oldTerms.end(); i != e; ++i) {
-        BfTerm& term = **i;
+        BoolFactorTerm& term = **i;
         BoolTermFactor* btf = dynamic_cast<BoolTermFactor*>(&term);
 
         if(btf) {
@@ -204,7 +204,7 @@ bool BoolFactor::_reduceTerms(BfTerm::PtrVector& newTerms,
     return hasReduction;
 }
 
-bool BoolFactor::_checkParen(BfTerm::PtrVector& terms) {
+bool BoolFactor::_checkParen(BoolFactorTerm::PtrVector& terms) {
     if(terms.size() != 3) { return false; }
 
     PassTerm* pt = dynamic_cast<PassTerm*>(terms.front().get());
@@ -218,7 +218,7 @@ bool BoolFactor::_checkParen(BfTerm::PtrVector& terms) {
 
 std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     // Get reduced versions of my children.
-    BfTerm::PtrVector newTerms;
+    BoolFactorTerm::PtrVector newTerms;
     bool hasReduction = false;
     hasReduction = _reduceTerms(newTerms, _terms);
     // Parentheses reduction
@@ -246,8 +246,8 @@ namespace {
         inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
             return t ? t->copySyntax() : BoolTerm::Ptr();
         }
-        inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
-            return t ? t->copySyntax() : BfTerm::Ptr();
+        inline BoolFactorTerm::Ptr operator()(BoolFactorTerm::Ptr const& t) {
+            return t ? t->copySyntax() : BoolFactorTerm::Ptr();
         }
     };
 
@@ -255,8 +255,8 @@ namespace {
         inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
             return t ? t->clone() : BoolTerm::Ptr();
         }
-        inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
-            return t ? t->clone() : BfTerm::Ptr();
+        inline BoolFactorTerm::Ptr operator()(BoolFactorTerm::Ptr const& t) {
+            return t ? t->clone() : BoolFactorTerm::Ptr();
         }
     };
 
@@ -278,7 +278,7 @@ std::shared_ptr<BoolTerm> AndTerm::clone() const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::clone() const {
     std::shared_ptr<BoolFactor> t = std::make_shared<BoolFactor>();
-    copyTerms<BfTerm::PtrVector, deepCopy>(t->_terms, _terms);
+    copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
 
@@ -286,15 +286,15 @@ std::shared_ptr<BoolTerm> UnknownTerm::clone() const {
     return  std::make_shared<UnknownTerm>(); // TODO what is unknown now?
 }
 
-BfTerm::Ptr PassListTerm::clone() const {
+BoolFactorTerm::Ptr PassListTerm::clone() const {
     PassListTerm* p = new PassListTerm;
     std::copy(_terms.begin(), _terms.end(), std::back_inserter(p->_terms));
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
-BfTerm::Ptr BoolTermFactor::clone() const {
+BoolFactorTerm::Ptr BoolTermFactor::clone() const {
     BoolTermFactor* p = new BoolTermFactor;
     if(_term) { p->_term = _term->clone(); }
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
 // copySyntax
@@ -310,24 +310,24 @@ std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
-    copyTerms<BfTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
+    copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
 
-BfTerm::Ptr PassTerm::copySyntax() const {
+BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
     p->_text = _text;
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
-BfTerm::Ptr PassListTerm::copySyntax() const {
+BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     PassListTerm* p = new PassListTerm;
     p->_terms = _terms;
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
-BfTerm::Ptr BoolTermFactor::copySyntax() const {
+BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
     if(_term) { p->_term = _term->copySyntax(); }
-    return BfTerm::Ptr(p);
+    return BoolFactorTerm::Ptr(p);
 }
 
 }}} // namespace lsst::qserv::query

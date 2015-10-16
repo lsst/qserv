@@ -37,8 +37,24 @@ docker push jdoe/qserv:dm-1234
 ## Cleanup
 ##
 
-# Clean old local containers 
+# Clean old local containers
 docker ps -a | grep 'hours ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
 
 # Clean old local images
 docker images | grep 'hours ago' | awk '{print $3}' | xargs --no-run-if-empty docker rmi
+
+##
+## Develop
+##
+
+# Launch a shell on a docker container named my_qserv
+docker run -it --rm --name my_qserv  -h $(hostname)-docker \
+    -v $HOME/src/qserv:/home/dev/src/qserv \
+    -v $HOME/qserv-run/:/home/dev/qserv-run \
+    -u dev fjammes/qserv:dev-uid bash
+
+# Launch a shell with a different user on that container
+docker exec -it -u qserv --name my_qserv bash
+
+# Commit this version of the container to image fjammes/qserv:dev-uid
+docker commit -m "Add xrootd 4.2.3.lsst1" my_qserv fjammes/qserv:dev-uid
