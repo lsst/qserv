@@ -59,7 +59,7 @@ void RunnerMgr::registerRunner(Runner::Ptr const& r, wbase::Task::Ptr const& t) 
 
 std::shared_ptr<wdb::QueryRunner> RunnerMgr::newQueryAction(wbase::Task::Ptr const& t) {
     wdb::QueryRunnerArg a(_f._log, t, _f._chunkResourceMgr);
-    std::shared_ptr<wdb::QueryRunner> qa = std::make_shared<wdb::QueryRunner>(a);
+    auto qa = wdb::QueryRunner::newQueryRunner(a);
     return qa;
 }
 
@@ -97,6 +97,7 @@ void RunnerMgr::signalDeath(Runner::Ptr const& r) {
             return;
         }
     }
+    LOGF(_f._log, LOG_LVL_DEBUG, "RunnerMgr::signalDeath runner not found.");
 }
 
 wbase::Task::Ptr RunnerMgr::getNextTask(Runner::Ptr const& r, wbase::Task::Ptr previous) {
@@ -139,7 +140,6 @@ Runner::~Runner() {
 /// Note: This function never exits as _poisoned is never set to true.
 /// Expect significant changes in DM-3945.
 void Runner::operator()() {
-    // Real purpose of thisPtr is to keep Runner from being deleted before this function exits.
     Runner::Ptr thisPtr(shared_from_this());
     _rm->registerRunner(thisPtr, _task);
     while(!_poisoned) {

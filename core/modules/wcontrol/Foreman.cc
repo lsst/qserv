@@ -76,9 +76,11 @@ wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& task
 
 void Foreman::_startRunner(wbase::Task::Ptr const& t) {
     auto f = [this](wbase::Task::Ptr t) {
+        LOGF_DEBUG("Foreman::_startRunner start");
         RunnerMgr *rm = this->_rManager.get();
-        std::unique_ptr<Runner> rp{new Runner(rm, t)};
+        Runner::Ptr rp = std::make_shared<Runner>(rm, t);
         (*rp)();
+        LOGF_DEBUG("Foreman::_startRunner end");
     };
     std::thread thrd{f, t};
     thrd.detach();

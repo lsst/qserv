@@ -52,15 +52,12 @@ class JobQuery : public std::enable_shared_from_this<JobQuery> {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
-    /// Make a copy of the job description. JobQuery::setup() must be called after creation.
-    JobQuery(Executive* executive, JobDescription const& jobDescription,
-        JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
-        _executive(executive), _jobDescription(jobDescription),
-        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
-        LOGF_DEBUG("JobQuery JQ_jobId=%1% desc=%2%" % getId() % _jobDescription);
-    }
-    void setup() {
-        _jobDescription.respHandler()->setJobQuery(shared_from_this());
+    /// Factory function to make certain a shared_ptr is used and _setup is called.
+    static JobQuery::Ptr newJobQuery(Executive* executive, JobDescription const& jobDescription,
+            JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) {
+        Ptr jq{new JobQuery{executive, jobDescription, jobStatus, markCompleteFunc}};
+        jq->_setup();
+        return jq;
     }
 
     virtual ~JobQuery() {
@@ -99,6 +96,17 @@ public:
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
 protected:
+    /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
+    JobQuery(Executive* executive, JobDescription const& jobDescription,
+        JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
+        _executive(executive), _jobDescription(jobDescription),
+        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
+        LOGF_DEBUG("JobQuery JQ_jobId=%1% desc=%2%" % getId() % _jobDescription);
+    }
+    void _setup() {
+        _jobDescription.respHandler()->setJobQuery(shared_from_this());
+    }
+
     int _getRunAttemptsCount() const {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         return _runAttemptsCount;

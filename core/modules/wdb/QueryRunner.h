@@ -75,7 +75,8 @@ public:
 ///
 class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
 public:
-    QueryRunner(QueryRunnerArg const& a);
+    using Ptr = std::shared_ptr<QueryRunner>;
+    static QueryRunner::Ptr newQueryRunner(QueryRunnerArg const& a);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner operator=(QueryRunner const&) = delete;
@@ -84,6 +85,8 @@ public:
     bool runQuery() override;
     void cancel() override; ///< Cancel the action (in-progress)
 
+protected:
+    QueryRunner(QueryRunnerArg const& a);
 private:
     bool _initConnection();
     void _setDb();
