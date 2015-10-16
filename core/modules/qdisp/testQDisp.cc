@@ -90,7 +90,7 @@ public:
             bool createQueryResource, XrdSsiSession* xsSession, bool createQueryRequest) {
         qdisp::JobStatus::Ptr status(new qdisp::JobStatus());
         std::shared_ptr<JobQueryTest> jqTest(new JobQueryTest(executive, jobDesc, status, markCompleteFunc));
-        jqTest->setup();
+        jqTest->_setup(); // Must call _setup() by hand as bypassing newJobQuery().
         if (createQueryResource) {
             jqTest->_queryResourcePtr.reset(new qdisp::QueryResource(jqTest));
         }

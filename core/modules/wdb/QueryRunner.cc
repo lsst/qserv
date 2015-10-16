@@ -70,6 +70,19 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
+QueryRunner::Ptr QueryRunner::newQueryRunner(QueryRunnerArg const& a) {
+    Ptr qr{new QueryRunner{a}}; // Private constructor.
+    // Let the Task know this is its QueryRunner.
+    auto cancelled = qr->_task->setTaskQueryRunner(qr);
+    if (cancelled) {
+        qr->_cancelled.store(true);
+        // runQuery will return quickly if the Task has been cancelled.
+    }
+    return qr;
+}
+
+/// New instances need to be made with QueryRunner to ensure registration with the task
+/// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(QueryRunnerArg const& a)
     : _log{a.log}, _task{a.task},
       _chunkResourceMgr{a.mgr},
@@ -77,12 +90,6 @@ QueryRunner::QueryRunner(QueryRunnerArg const& a)
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
-    // Let the Task know this is its QueryRunner.
-    auto cancelled = a.task->setTaskQueryRunner(shared_from_this());
-    if (cancelled) {
-        _cancelled.store(true);
-        // runQuery will return quickly if the Task has been cancelled.
-    }
 }
 
 /// Initialize the db connection

@@ -111,8 +111,7 @@ void Executive::add(JobDescription const& jobDesc) {
     // Create the JobQuery and put it in the map.
     JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
     MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-    JobQuery::Ptr jobQuery = std::make_shared<JobQuery>(this, jobDesc, jobStatus, mcf);
-    jobQuery->setup();
+    JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf);
     if(!_addJobToMap(jobQuery)) {
         LOGF(getLogger(), LOG_LVL_ERROR, "Executive ignoring duplicate job add(%1%)" % jobQuery->getId());
         return;

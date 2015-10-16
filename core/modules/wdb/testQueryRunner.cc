@@ -88,8 +88,8 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
     QueryRunnerArg aa(newArg());
-    QueryRunner a(aa);
-    BOOST_CHECK(a.runQuery());
+    QueryRunner::Ptr a{QueryRunner::newQueryRunner(aa)};
+    BOOST_CHECK(a->runQuery());
 }
 
 BOOST_AUTO_TEST_CASE(Output) {
@@ -97,8 +97,8 @@ BOOST_AUTO_TEST_CASE(Output) {
     QueryRunnerArg aa(newArg());
     std::shared_ptr<SendChannel> sc = SendChannel::newStringChannel(out);
     aa.task->sendChannel = sc;
-    QueryRunner a(aa);
-    BOOST_CHECK(a.runQuery());
+    QueryRunner::Ptr a{QueryRunner::newQueryRunner(aa)};
+    BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
     char const* cursor = out.data() + 1;
