@@ -52,14 +52,18 @@ FifoScheduler::FifoScheduler(int maxRunning)
     // https://dev.lsstcorp.org/trac/wiki/db/Qserv/WorkerParallelism
 }
 
+/* &&&
 void
 FifoScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     std::lock_guard<std::mutex> guard(_mutex);
     _queue.push_back(incoming);
 }
+*/
+void FifoScheduler::queueTaskAct(wbase::Task::Ptr incoming) { // &&& anyone call this?
+    queCmd(incoming);
+}
 
-wbase::TaskQueuePtr
-FifoScheduler::nopAct(wbase::TaskQueuePtr running) {
+wbase::TaskQueuePtr FifoScheduler::nopAct(wbase::TaskQueuePtr running) {
     // For now, do nothing when there is no event.
 
     // Perhaps better: Check to see how many are running, and schedule
@@ -67,6 +71,7 @@ FifoScheduler::nopAct(wbase::TaskQueuePtr running) {
     return wbase::TaskQueuePtr();
 }
 
+// &&& delete - replaced by queueTaskAct
 wbase::TaskQueuePtr
 FifoScheduler::newTaskAct(wbase::Task::Ptr incoming,
                           wbase::TaskQueuePtr running) {
@@ -80,6 +85,7 @@ FifoScheduler::newTaskAct(wbase::Task::Ptr incoming,
     }
     return wbase::TaskQueuePtr();
 }
+
 
 wbase::TaskQueuePtr
 FifoScheduler::taskFinishAct(wbase::Task::Ptr finished,

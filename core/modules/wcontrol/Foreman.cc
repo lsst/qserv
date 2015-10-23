@@ -38,10 +38,13 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "proto/worker.pb.h"
 #include "wbase/Base.h"
+#include "wbase/SendChannel.h"
 #include "wconfig/Config.h"
 #include "wcontrol/RunnerMgr.h"
 #include "wdb/ChunkResource.h"
+#include "wdb/QueryRunner.h"
 
 
 namespace lsst {
@@ -58,18 +61,31 @@ Foreman::Foreman(Scheduler::Ptr const& s) : _scheduler{s} {
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
     _rManager.reset(new RunnerMgr(*this));
     assert(s); // Cannot operate without scheduler.
+
+    _pool = util::ThreadPool::newThreadPool(12, _scheduler); // &&& get rid of magic number
 }
 Foreman::~Foreman() {
     LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
     // FIXME: Cancel and drain runners. It will take significant effort to have xrootd shutdown cleanly
     // and this will never get called until that happens, making this a very low priority item.
     // This should only (get called on shutdown/restart).
+    _pool->endAll();
 }
 
 /// Create and queue a Task from a TaskMsg and a replyChannel.
 wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                      std::shared_ptr<wbase::SendChannel> const& replyChannel) {
     auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+    auto func = [this, task](util::Command*){
+        proto::TaskMsg const& msg = *task->msg;
+        if(!msg.has_protocol() || msg.protocol() < 2) {
+            task->sendChannel->sendError("Unsupported wire protocol", 1);
+        } else {
+            auto qr = _rManager->newQueryRunner(task);
+            qr->runQuery();
+        }
+    };
+    task->setFunc(func);
     newTaskAction(task);
     return task;
 }
@@ -87,6 +103,7 @@ void Foreman::_startRunner(wbase::Task::Ptr const& t) {
 }
 
 void Foreman::newTaskAction(wbase::Task::Ptr const& task) {
+    /* &&& delete
     // Pass to scheduler.
     assert(_scheduler);
     auto newReady = _rManager->queueTask(task, _scheduler);
@@ -97,6 +114,8 @@ void Foreman::newTaskAction(wbase::Task::Ptr const& task) {
             _startRunner(*i);
         }
     }
+    */
+    _scheduler->queueTaskAct(task);
 }
 
 }}} // namespace

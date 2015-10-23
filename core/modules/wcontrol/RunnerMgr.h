@@ -48,7 +48,7 @@ public:
     RunnerMgr(RunnerMgr const&) = delete;
     RunnerMgr operator=(RunnerMgr const&) = delete;
     void registerRunner(Runner::Ptr const& r, wbase::Task::Ptr const& t);
-    std::shared_ptr<wdb::QueryRunner> newQueryAction(wbase::Task::Ptr const& t);
+    std::shared_ptr<wdb::QueryRunner> newQueryRunner(wbase::Task::Ptr const& t);
     void reportComplete(wbase::Task::Ptr const& t);
     void reportStart(wbase::Task::Ptr const& t);
     void signalDeath(Runner::Ptr const& r);

@@ -56,7 +56,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
+#include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
 
@@ -87,7 +88,7 @@ public:
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
-class Scheduler : public TaskWatcher, public wbase::TaskScheduler {
+class Scheduler : public TaskWatcher, public wbase::TaskScheduler, public util::CommandQueue {
 public:
     using Ptr = std::shared_ptr<Scheduler>;
     virtual ~Scheduler() {}
@@ -98,8 +99,9 @@ public:
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
     virtual void taskCancelled(wbase::Task *task) { return; }
+    // &&& make all of these const&
     virtual void queueTaskAct(wbase::Task::Ptr incoming) = 0;
-    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0;
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0; // &&& what is the purpose of this?
     virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
                                            wbase::TaskQueuePtr running) = 0;
     virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
@@ -135,6 +137,10 @@ protected:
     Scheduler::Ptr _scheduler;
     std::unique_ptr<RunnerMgr> _rManager;
     LOG_LOGGER _log {LOG_GET("Foreman")};
+
+
+
+    util::ThreadPool::Ptr _pool;
 };
 
 }}}  // namespace lsst::qserv::wcontrol

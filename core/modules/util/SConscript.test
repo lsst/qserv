@@ -18,7 +18,7 @@ myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"),
                 env.Glob("*.cc"))
 extDeps = "boost_system crypto log log4cxx ssl ".split()
 
-unitTests = ["testIterableFormatter.cc", "testMultiError.cc", "testCommon.cc"]
+unitTests = ["testCommon.cc", "testEventThread.cc", "testIterableFormatter.cc", "testMultiError.cc"]
 
 for test in unitTests:
 

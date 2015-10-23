@@ -46,6 +46,7 @@
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
+#include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 #include "xrdsvc/SsiSession.h"
@@ -79,12 +80,17 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
+    /* &&& need to get back to BlendScheduler
     _foreman = wcontrol::Foreman::newForeman(
         std::make_shared<wsched::BlendScheduler>(
             std::make_shared<wsched::GroupScheduler>(),
             std::make_shared<wsched::ScanScheduler>()
         )
     );
+    */
+
+    _foreman = wcontrol::Foreman::newForeman(std::make_shared<wsched::FifoScheduler>());
+
 }
 
 SsiService::~SsiService() {

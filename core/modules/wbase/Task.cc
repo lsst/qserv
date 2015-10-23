@@ -148,4 +148,7 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
     }
     return os;
 }
+
+
+
 }}} // namespace lsst::qserv::wbase

@@ -27,6 +27,7 @@
 #include <mutex>
 
 // Qserv headers
+#include "util/EventThread.h"
 #include "wcontrol/Foreman.h"
 
 namespace lsst {
@@ -56,9 +57,9 @@ public:
 private:
     wbase::TaskQueuePtr _fetchTask();
 
-    std::mutex _mutex;
-    wbase::TaskQueue _queue;
-    int _maxRunning;
+    std::mutex _mutex; // &&& delete
+    wbase::TaskQueue _queue; // &&& delete
+    int _maxRunning;  // &&& delete
 };
 
 }}} // namespace lsst::qserv::wsched

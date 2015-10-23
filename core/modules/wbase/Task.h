@@ -32,6 +32,9 @@
 #include <mutex>
 #include <string>
 
+// Qserv headers
+#include "util/EventThread.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -74,11 +77,12 @@ public:
 /// Task is non-copyable
 /// Task encapsulates nearly zero logic, aside from:
 /// * constructors
-struct Task {
+struct Task : public util::Command {
 public:
     static std::string const defaultUser;
-
     using Ptr =  std::shared_ptr<Task>;
+    // int action() override; &&& using lambda in Foreman::processMsg for now
+
     using Fragment = proto::TaskMsg_Fragment;
     using FragmentPtr = std::shared_ptr<Fragment>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;

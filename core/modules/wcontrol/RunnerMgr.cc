@@ -57,7 +57,7 @@ void RunnerMgr::registerRunner(Runner::Ptr const& r, wbase::Task::Ptr const& t) 
     _reportStartHelper(t);
 }
 
-std::shared_ptr<wdb::QueryRunner> RunnerMgr::newQueryAction(wbase::Task::Ptr const& t) {
+std::shared_ptr<wdb::QueryRunner> RunnerMgr::newQueryRunner(wbase::Task::Ptr const& t) {
     wdb::QueryRunnerArg a(_f._log, t, _f._chunkResourceMgr);
     auto qa = wdb::QueryRunner::newQueryRunner(a);
     return qa;
@@ -135,20 +135,21 @@ Runner::~Runner() {
     LOGF(_rm->getLog(), LOG_LVL_DEBUG, "Runner::~Runner()");
 }
 
+//&&& Runner::operator() Needs to go in Task action() or _func somehow.
 /// Run when Foreman creates the thread. It runs the task passed to the constructor and then
 /// goes back to the scheduler for more tasks.
 /// Note: This function never exits as _poisoned is never set to true.
 /// Expect significant changes in DM-3945.
 void Runner::operator()() {
     Runner::Ptr thisPtr(shared_from_this());
-    _rm->registerRunner(thisPtr, _task);
+    _rm->registerRunner(thisPtr, _task);  // &&& put in scheduler
     while(!_poisoned) {
         LOGF(_rm->getLog(), LOG_LVL_DEBUG, "Runner running %1%" % *_task);
         proto::TaskMsg const& msg = *_task->msg;
         if(!msg.has_protocol() || msg.protocol() < 2) {
             _task->sendChannel->sendError("Unsupported wire protocol", 1);
         } else {
-            auto qr = _rm->newQueryAction(_task);
+            auto qr = _rm->newQueryRunner(_task);
             qr->runQuery();
         }
         if(_poisoned) break;
