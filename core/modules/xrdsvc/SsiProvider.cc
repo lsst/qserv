@@ -28,7 +28,6 @@
 #include "xrdsvc/SsiProvider.h"
 
 // System headers
-#include <memory>
 #include <sstream>
 #include <sys/types.h>
 
@@ -48,62 +47,75 @@
 /*                               G l o b a l s                                */
 /******************************************************************************/
 
+// The following are global sysbols that point to an instance of our provider
+// object. The SSI framework looks for these symbols when the shared library
+// plug-in is loaded. The framework must find a valid provider object at load
+// time or it will refuse to use the shared library. As the library is never
+// unloaded, the object does not need to be deleted.
+//
 XrdSsiProvider *XrdSsiProviderServer = 
                 new  lsst::qserv::xrdsvc::SsiProviderServer;
 
 XrdSsiProvider *XrdSsiProviderLookup = XrdSsiProviderServer;
   
 /******************************************************************************/
-/*                                  I n i t                                   */
+/*                            D e s t r u c t o r                             */
 /******************************************************************************/
   
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP, char const* cfgFn,
-          char const*   parms, int argc, char **argv) {
+SsiProviderServer::~SsiProviderServer() {}
+  
+/******************************************************************************/
+/*                                  I n i t                                   */
+/******************************************************************************/
+
+bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
+                             char const*   cfgFn, char const*    parms,
+                             int           argc,  char**         argv) {
 
     lsst::qserv::xrdsvc::XrdName x;
 
-// Establish our instance name (many different qservs may be running here).
-//
+    // Establish our instance name (many different qservs may be running here).
+    //
     _name = x.getName();
 
-// Save the ssi logger as it places messages in anoher file than our log.
-//
+    // Save the ssi logger as it places messages in anoher file than our log.
+    //
     _logSsi = logP;
 
-// Save the cluster object as we will need to use it to inform the cluster when
-// chunks come and go. We also can use it to schedule ourselves. The object or
-// its absence will indicate whether or not we need to provide any service other
-// than QueryResource().
-//
+    // Save the cluster object as we will need to use it to inform the cluster
+    // when chunks come and go. We also can use it to schedule ourselves. The
+    // object or its absence will indicate whether or not we need to provide
+    // any service other than QueryResource().
+    //
     _cmsSsi = clsP;
 
-// We would process the configuration file (if present), any present parameters,
-// and the command line arguments. However, at the moment, we have nothing of
-// interest in any of these arguments. So, we ignore them.
-//
+    // We would process the configuration file (if present), any present
+    // parameters and the command line arguments. However, at the moment, we
+    // have nothing of interest in any of these arguments. So, we ignore them.
+    //
 
-// Herald our initialization
-//
+    // Herald our initialization
+    //
     LOG_INFO("SsiProvider initializing...");
     _logSsi->Msg("Qserv", "Provider Initializing");
 
-// Initialize the inventory. We need to be able to handle QueryResource() calls
-// either in the data provider and the metadata provider (we can be either one).
-//
+    // Initialize the inventory. We need to be able to handle QueryResource()
+    // calls either in the data provider and the metadata provider (we can be
+    // either one).
+    //
     _chunkInventory.reset(new wpublish::ChunkInventory(_name));
 
-// If we are a data provider (i.e. xrootd) then we need to get the service
-// object. It will print the exported paths. Otherwise, we need to print them
-// here. This is a bit kludgy and should be corrected when we transition to a
-// single shared memory inventory object which should do this by itself.
-//
-    if(clsP && clsP->DataContext()) {
-        _service = std::unique_ptr<SsiService>(new SsiService(logP));
-    } else {
+    // If we are a data provider (i.e. xrootd) then we need to get the service
+    // object. It will print the exported paths. Otherwise, we need to print
+    // them here. This is kludgy and should be corrected when we transition to a
+    // single shared memory inventory object which should do this by itself.
+    //
+    if(clsP && clsP->DataContext()) _service.reset(new SsiService(logP));
+      else {
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";
         _chunkInventory->dbgPrint(ss);
@@ -111,8 +123,8 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP, char cons
         _logSsi->Msg("Qserv", ss.str().c_str());
     }
 
-// We have completed full initialization. Return sucess.
-//
+    // We have completed full initialization. Return sucess.
+    //
     return true;
 }
 
@@ -121,10 +133,10 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP, char cons
 /******************************************************************************/
 
 XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
-        char const* contact) {
+                                                       char const* contact) {
 
-// Extract db and chunk from path and validate result
-//
+    // Extract db and chunk from path and validate result
+    //
     ResourceUnit ru(rName);
     if(ru.unitType() != ResourceUnit::DBCHUNK) {
         // FIXME: Do we need to support /result here?
@@ -132,16 +144,16 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
         return notPresent;
     }
 
-// If the chunk exists on our node then tell he caller it is here.
-//
+    // If the chunk exists on our node then tell he caller it is here.
+    //
     if(_chunkInventory->has(ru.db(), ru.chunk())) {
-        LOGF_INFO("SsiProvider Query %1% present" % rName);
+        LOGF_DEBUG("SsiProvider Query %1% present" % rName);
         return isPresent;
     }
 
-// Tell the caller we do not have the chunk.
-//
-    LOGF_INFO("SsiProvider Query %1% absent" % rName);
+    // Tell the caller we do not have the chunk.
+    //
+    LOGF_DEBUG("SsiProvider Query %1% absent" % rName);
     return notPresent;
 }
   

@@ -28,6 +28,7 @@
 #define LSST_QSERV_XRDSVC_SSIPROVIDER_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third-party headers
@@ -54,17 +55,20 @@ class SsiProviderServer : public XrdSsiProvider
 public:
 
     virtual XrdSsiService *GetService(XrdSsiErrInfo& eInfo,
-                                      char const* contact, int oHold=256) {
+                                      char const*    contact,
+                                      int            oHold=256) override {
         return _service.get();
     }
 
-    virtual bool Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, char const* cfgFn,
-                      char const* parms, int argc, char** argv);
+    virtual bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
+                       char const*   cfgFn, char const*    parms,
+                       int           argc,  char**         argv) override;
 
-    virtual rStat QueryResource(char const* rName, char const* contact=0);
+    virtual rStat QueryResource(char const* rName,
+                                char const* contact=0) override;
 
-                   SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
-    virtual      ~SsiProviderServer() {}
+                  SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
+    virtual      ~SsiProviderServer();
 
 private:
 
