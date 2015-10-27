@@ -41,6 +41,7 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
+#include "util/EventThread.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
@@ -60,158 +61,128 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 BlendScheduler::BlendScheduler(std::shared_ptr<GroupScheduler> group,
                                std::shared_ptr<ScanScheduler> scan)
-    : _group(group),
-      _scan(scan),
-      _logger(LOG_GET(getName()))
+    : _group{group}, _scan{scan}, _logger{LOG_GET(getName())}
 {
     dbgBlendScheduler = this;
     if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
 }
 
-void
-BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    // Check for scan tables
-    if(!incoming || !incoming->msg) {
+void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
+    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if(task == nullptr || task->msg == nullptr) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
+    LOGF_DEBUG("BlendScheduler::queCmd tSeq=%1%" % task->tSeq);
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    // Check for scan tables
     assert(_group);
     assert(_scan);
     wcontrol::Scheduler* s = nullptr;
-    if(incoming->msg->scantables_size() > 0) {
+    if(task->msg->scantables_size() > 0) {
         if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
-            int size = incoming->msg->scantables_size();
+            int size = task->msg->scantables_size();
             ss << "Blend chose scan for:";
             for(int i=0; i < size; ++i) {
-                ss << i << " " << incoming->msg->scantables(i);
+                ss << i << " " << task->msg->scantables(i);
             }
             LOGF(_logger, LOG_LVL_DEBUG, "%1%" % ss.str());
         }
         s = _scan.get();
     } else {
+        LOGF(_logger, LOG_LVL_DEBUG, "Blend chose group");
         s = _group.get();
     }
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
-        _map[incoming.get()] = s;
+        _map[task.get()] = s;
     }
-    s->queueTaskAct(incoming);
+    LOGF(_logger, LOG_LVL_DEBUG, "Blend queCmd tSeq=%1%" % task->tSeq);
+    s->queCmd(task);
+    notify(true);
 }
 
-wbase::TaskQueuePtr
-BlendScheduler::nopAct(wbase::TaskQueuePtr running) {
-    // For now, do nothing when there is no event.
-
-    // Perhaps better: Check to see how many are running, and schedule
-    // a task if the number of running jobs is below a threshold.
-    return wbase::TaskQueuePtr();
-}
-
-/// @return a queue of all tasks ready to run.
-///
-wbase::TaskQueuePtr
-BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
-                           wbase::TaskQueuePtr running) {
-    queueTaskAct(incoming);
-    assert(checkIntegrity());
-    assert(running.get());
-    return _getNextIfAvail(running);
-}
-
-wbase::TaskQueuePtr
-BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
-                              wbase::TaskQueuePtr running) {
-    wcontrol::Scheduler* s = nullptr;
-    {
-        std::lock_guard<std::mutex> guard(_mapMutex);
-        assert(_integrityHelper());
-        Map::iterator i = _map.find(finished.get());
-        if(i == _map.end()) {
-            throw Bug("BlendScheduler::taskFinishAct: Finished untracked task");
-        }
-        s = i->second;
-        _map.erase(i);
+void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
+    auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF(_logger, LOG_LVL_WARN, "BlendScheduler::commandStart cmd failed conversion");
+        return;
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
-            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
-    wbase::TaskQueuePtr t = s->taskFinishAct(finished, running);
-    if(!t) { // Try other scheduler.
-        LOG(_logger, LOG_LVL_DEBUG, "Blend trying other sched.");
-        return other<wcontrol::Scheduler>(s, _group.get(),
-                                                   _scan.get())->nopAct(running);
+    wcontrol::Scheduler* s = lookup(t);
+    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::commandStart tSeq=%1%" % t->tSeq);
+    if(s == _group.get()) {
+        _group->commandStart(t);
+    } else {
+        _scan->commandStart(t);
     }
-    return t;
 }
 
-void
-BlendScheduler::markStarted(wbase::Task::Ptr t) {
+void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF(_logger, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
+        return;
+    }
     wcontrol::Scheduler* s = lookup(t);
     if(s == _group.get()) {
-        _group->markStarted(t);
+        _group->commandFinish(t);
     } else {
-        _scan->markStarted(t);
+        _scan->commandFinish(t);
     }
-}
-
-void
-BlendScheduler::markFinished(wbase::Task::Ptr t) {
-    wcontrol::Scheduler* s = lookup(t);
-    if(s == _group.get()) {
-        _group->markFinished(t);
-    } else {
-        _scan->markFinished(t);
-    }
-}
-
-/// @return true if data is okay.
-bool
-BlendScheduler::checkIntegrity() {
-    std::lock_guard<std::mutex> guard(_mapMutex);
-    return _integrityHelper();
+    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::commandFinish tSeq=%1%" % t->tSeq);
 }
 
 /// @return ptr to scheduler that is tracking p
-wcontrol::Scheduler*
-BlendScheduler::lookup(wbase::Task::Ptr p) {
+wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p) {
     std::lock_guard<std::mutex> guard(_mapMutex);
-    Map::iterator i = _map.find(p.get());
+    auto i = _map.find(p.get());
     return i->second;
 }
 
-/// @return true if data is okay
-/// precondition: _mapMutex is locked.
-bool
-BlendScheduler::_integrityHelper() const {
-    if(!_group) { return false; }
-    else if(!_group->checkIntegrity()) { return false; }
-
-    if(!_scan) { return false; }
-    else if(!_scan->checkIntegrity()) { return false; }
-
-    Map::const_iterator i, e;
-    // Make sure each map entry points at one of the schedulers.
-    for(i=_map.begin(), e=_map.end(); i != e; ++i) {
-        if(i->second == _group.get()) continue;
-        if(i->second == _scan.get()) continue;
-        return false;
-    }
-    return true;
+/// Returns true when either scheduler has a command ready
+bool BlendScheduler::_ready() {
+    auto groupReady = _group->ready();
+    auto scanReady = _scan->ready();
+    auto ready = groupReady || scanReady;
+    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::_ready() groups(r=%1%, q=%2%, flight=%3%) scan(r=%4%, q=%5%, flight=%6%)"
+            % groupReady % _group->getSize() % _group->getInFlight()
+            % scanReady %_scan->getSize() % _scan->getInFlight());
+    return ready;
 }
 
-/// @return new tasks to run
-wbase::TaskQueuePtr
-BlendScheduler::_getNextIfAvail(wbase::TaskQueuePtr running) {
-    // Get from interactive queue first
-    wbase::TaskQueuePtr tg = _group->nopAct(running);
-    wbase::TaskQueuePtr ts = _scan->nopAct(running);
-    // Merge
-    if(tg) {
-        if(ts) { tg->insert(tg->end(), ts->begin(), ts->end()); }
-        return tg;
-    } else {
-        if(!ts) LOG(_logger, LOG_LVL_DEBUG, "BlendScheduler: no tasks available");
-        return ts;
+util::Command::Ptr BlendScheduler::getCmd(bool wait) {
+    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    if (wait) {
+        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
     }
+
+    // Figure out which scheduler to draw from.
+    auto scanReady = _scan->ready();
+    auto groupReady = _group->ready();
+
+    util::Command::Ptr cmd;
+    // Alternate priority between schedulers. TODO: There is probably a better way, but this will work for now.
+    if (_lastCmdFromScan) {
+        if (groupReady) {
+            cmd = _group->getCmd(false); // no wait
+            _lastCmdFromScan = false;
+        } else  if (scanReady) {
+            cmd = _scan->getCmd(false); // no wait
+            _lastCmdFromScan = true;
+        }
+    } else {
+        if (scanReady) {
+            cmd = _scan->getCmd(false); // no wait
+            _lastCmdFromScan = true;
+        } else if (groupReady) {
+            cmd = _group->getCmd(false); // no wait
+            _lastCmdFromScan = false;
+        }
+    }
+    LOGF(_logger, LOG_LVL_DEBUG,
+         "BlendScheduler::getCmd: groupReady=%1% scanReady=%2% lastCmdFromScan=%3%"
+         % groupReady % scanReady % _lastCmdFromScan);
+    return cmd;
 }
 
 }}} // namespace lsst::qserv::wsched

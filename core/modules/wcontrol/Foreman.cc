@@ -42,7 +42,6 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wconfig/Config.h"
-#include "wcontrol/RunnerMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -51,24 +50,24 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-Foreman::Ptr Foreman::newForeman(Scheduler::Ptr const& sched) {
-    return std::make_shared<Foreman>(sched);
+Foreman::Ptr Foreman::newForeman(Scheduler::Ptr const& sched, uint poolSize) {
+    return std::make_shared<Foreman>(sched, poolSize);
 }
 
-Foreman::Foreman(Scheduler::Ptr const& s) : _scheduler{s} {
+Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize) : _scheduler{s} {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
-    _rManager.reset(new RunnerMgr(*this));
     assert(s); // Cannot operate without scheduler.
 
-    _pool = util::ThreadPool::newThreadPool(12, _scheduler); // &&& get rid of magic number
+    LOGF_DEBUG("poolSize=%1%" % poolSize);
+    _pool = util::ThreadPool::newThreadPool(poolSize, _scheduler);
 }
+
 Foreman::~Foreman() {
     LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
-    // FIXME: Cancel and drain runners. It will take significant effort to have xrootd shutdown cleanly
-    // and this will never get called until that happens, making this a very low priority item.
-    // This should only (get called on shutdown/restart).
+    // It will take significant effort to have xrootd shutdown cleanly and this will never get called
+    // until that happens.
     _pool->endAll();
 }
 
@@ -76,46 +75,25 @@ Foreman::~Foreman() {
 wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                      std::shared_ptr<wbase::SendChannel> const& replyChannel) {
     auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-    auto func = [this, task](util::Command*){
+    auto func = [this, task](){
         proto::TaskMsg const& msg = *task->msg;
-        if(!msg.has_protocol() || msg.protocol() < 2) {
+        int const resultProtocol = 2; // See proto/worker.proto Result protocol
+        if(!msg.has_protocol() || msg.protocol() < resultProtocol) {
             task->sendChannel->sendError("Unsupported wire protocol", 1);
         } else {
-            auto qr = _rManager->newQueryRunner(task);
+            auto qr = _newQueryRunner(task);
             qr->runQuery();
         }
     };
     task->setFunc(func);
-    newTaskAction(task);
+    _scheduler->queCmd(task);
     return task;
 }
 
-void Foreman::_startRunner(wbase::Task::Ptr const& t) {
-    auto f = [this](wbase::Task::Ptr t) {
-        LOGF_DEBUG("Foreman::_startRunner start");
-        RunnerMgr *rm = this->_rManager.get();
-        Runner::Ptr rp = std::make_shared<Runner>(rm, t);
-        (*rp)();
-        LOGF_DEBUG("Foreman::_startRunner end");
-    };
-    std::thread thrd{f, t};
-    thrd.detach();
-}
-
-void Foreman::newTaskAction(wbase::Task::Ptr const& task) {
-    /* &&& delete
-    // Pass to scheduler.
-    assert(_scheduler);
-    auto newReady = _rManager->queueTask(task, _scheduler);
-    // Perform only what the scheduler requests.
-    if(newReady.get() && (newReady->size() > 0)) {
-        wbase::TaskQueue::iterator i = newReady->begin();
-        for(; i != newReady->end(); ++i) {
-            _startRunner(*i);
-        }
-    }
-    */
-    _scheduler->queueTaskAct(task);
+std::shared_ptr<wdb::QueryRunner> Foreman::_newQueryRunner(wbase::Task::Ptr const& t) {
+    wdb::QueryRunnerArg a(_log, t, _chunkResourceMgr);
+    auto qa = wdb::QueryRunner::newQueryRunner(a);
+    return qa;
 }
 
 }}} // namespace

@@ -30,10 +30,13 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <sstream>
 #include <string>
 
 // Qserv headers
 #include "util/EventThread.h"
+#include "util/threadSafe.h"
 
 // Forward declarations
 namespace lsst {
@@ -71,20 +74,31 @@ public:
     virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
 };
 
+/// Used to find tasks that are in process for debugging with Task::tSeq.
+/// This is largely meant to track down incomplete tasks in a possible intermittent
+/// failure and should probably be removed when it is no longer needed.
+/// It depends on code in BlendScheduler to work. If the decision is made to keep it
+/// forever, dependency on BlendScheduler needs to be re-worked.
+struct IdSet {
+    void add(int id) { std::lock_guard<std::mutex> lock(mx); _ids.insert(id); }
+    void remove(int id) { std::lock_guard<std::mutex> lock(mx); _ids.erase(id); }
+    std::string toString();
+    friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
+private:
+    std::set<int> _ids;
+    std::mutex mx;
+};
+
 /// struct Task defines a query task to be done, containing a TaskMsg
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable
 /// Task encapsulates nearly zero logic, aside from:
 /// * constructors
-struct Task : public util::Command {
+class Task : public util::Command {
 public:
     static std::string const defaultUser;
     using Ptr =  std::shared_ptr<Task>;
-    // int action() override; &&& using lambda in Foreman::processMsg for now
-
-    using Fragment = proto::TaskMsg_Fragment;
-    using FragmentPtr = std::shared_ptr<Fragment>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
     struct ChunkEqual {
@@ -94,10 +108,11 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    Task() {}
+    Task();
     explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
+    virtual ~Task();
 
     TaskMsgPtr msg; ///< Protobufs Task spec
     std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
@@ -115,13 +130,15 @@ public:
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
+    static util::Sequential<int> sequence; // for debugging only
+    static IdSet allTSeq; // set of all task sequence numbers that are not complete.
+    int tSeq{-1}; // for debugging only
+
 private:
     std::atomic<bool> _cancelled{false};
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
 };
-using TaskQueue =  std::deque<Task::Ptr>;
-using TaskQueuePtr = std::shared_ptr<TaskQueue>;
 
 /// MsgProcessor implementations handle incoming TaskMsg objects by creating a Task to write their
 ///results over a SendChannel

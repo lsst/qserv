@@ -38,23 +38,18 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-/// Change the function called when the Command is activated.
-/// nullptr is replaced with a nop function.
-void Command::setFunc(std::function<void(Command*)> func) {
-    if (func == nullptr) {
-        _func = [](Command*){;};
-    } else {
-        _func = func;
-    }
-}
-
 /// Handle commands as they arrive until queEnd() is called.
 void EventThread::handleCmds() {
     startup();
     while(_loop) {
         Command::Ptr cmd = _q->getCmd();
-        if (cmd->action() == HALT) {
-            _loop = false;
+        if (cmd != nullptr) {
+            _q->commandStart(cmd);
+            if (cmd->action() == HALT) {
+                _loop = false;
+            }
+            _q->commandFinish(cmd);
+            cmd->resetFunc(); // Reset _func in case it has a captured Command::Ptr
         }
     }
     finishup();
@@ -63,7 +58,7 @@ void EventThread::handleCmds() {
 /// call this to start the thread
 void EventThread::run() {
     std::thread t{&EventThread::handleCmds, this};
-    _t = move(t);
+    _t = std::move(t);
 }
 
 PoolEventThread::~PoolEventThread() {
@@ -71,7 +66,9 @@ PoolEventThread::~PoolEventThread() {
 }
 
 void PoolEventThread::finishup() {
-    //  Need to make sure the thread data doesn't disappear before the thread finishes.
+    // 'pet' will keep this PoolEventThread instance alive until this thread completes,
+    // otherwise it would likely be deleted when _threadPool->release(this) is called.
+    // It's probably overly cautious but it is safe.
     PoolEventThread::Ptr pet = _threadPool->release(this);
     if (pet != nullptr) {
         auto f = [pet](){ pet->join(); };
@@ -164,27 +161,6 @@ void ThreadPool::waitForResize(int millisecs) {
     }
 }
 
-/// Set status to COMPLETE and notify everyone waiting for a status change.
-void Tracker::setComplete() {
-    {
-        std::lock_guard<std::mutex> lock(_trMutex);
-        _trStatus = Status::COMPLETE;
-    }
-    _trCV.notify_all();
-}
-
-/// Check if the action is complete without waiting.
-bool Tracker::isFinished() {
-    std::lock_guard<std::mutex> lock(_trMutex);
-    return _trStatus == Status::COMPLETE;
-}
-
-/// Wait until this Tracker's action is complete.
-void Tracker::waitComplete() {
-    std::unique_lock<std::mutex> lock(_trMutex);
-    _trCV.wait(lock, [this](){return _trStatus == Status::COMPLETE;});
-}
-
-}}}
+}}} // namespace
 
 

@@ -49,87 +49,62 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
+
 class ChunkDisk {
 public:
-    typedef std::shared_ptr<wbase::Task> TaskPtr;
-    typedef std::set<wbase::Task const*> TaskSet;
+    using TaskSet = std::set<wbase::Task const*>;
 
     ChunkDisk(LOG_LOGGER const& logger)
         : _chunkState(2), _logger(logger) {}
     TaskSet getInflight() const;
 
     // Queue management
-    void enqueue(TaskPtr a);
-    TaskPtr getNext(bool allowAdvance);
+    void enqueue(wbase::Task::Ptr const& a);
+    wbase::Task::Ptr getTask();
     bool busy() const; /// Busy scanning a chunk?
     bool empty() const;
-    int removeByHash(std::string const& hash); ///< Remove queued elt by hash
+    bool ready();
+    std::size_t getSize() const;
 
     // Inflight management
-    void registerInflight(TaskPtr const& e);
-    void removeInflight(TaskPtr const& e);
+    void registerInflight(wbase::Task::Ptr const& e);
+    void removeInflight(wbase::Task::Ptr const& e);
 
-    bool checkIntegrity();
+    /// Class that keeps the minimum chunk id at the front of the heap.
+    class MinHeap {
+    public:
+        // Using a greater than comparison function results in a minimum value heap.
+        std::function<bool(wbase::Task::Ptr const&, wbase::Task::Ptr const&)> compareFunc =
+            [](wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) -> bool {
+                if(!x || !y) { return false; }
+                if((!x->msg) || (!y->msg)) { return false; }
+                return x->msg->chunkid() > y->msg->chunkid();
+        };
+        void push(wbase::Task::Ptr const& task);
+        wbase::Task::Ptr pop();
+        wbase::Task::Ptr top() { return _tasks.front(); }
+        bool empty() const { return _tasks.empty(); }
+        void heapify() {
+            std::make_heap(_tasks.begin(), _tasks.end(), compareFunc);
+        }
+
+        std::vector<wbase::Task::Ptr> _tasks;
+    };
 
 private:
-    class TaskPtrCompare {
-    public:
-        bool operator()(TaskPtr const& x, TaskPtr const& y) {
-            if(!x || !y) { return false; }
-            if((!x->msg) || (!y->msg)) { return false; }
-            return x->msg->chunkid()  > y->msg->chunkid();
-        }
-    };
-    class IterablePq {
-    public:
-        typedef TaskPtr value_type;
-        // pqueue takes "less" and provides a maxheap.
-        // We want minheap, so provide "more"
-        typedef wbase::Task::ChunkIdGreater compare;
-
-        typedef std::vector<value_type> Container;
-        Container& impl() { return _c; }
-
-        bool empty() const { return _c.empty(); }
-        Container::size_type size() const { return _c.size(); }
-        value_type& top();
-        value_type const& top() const;
-        void push(value_type& v);
-        void pop();
-
-        template <class F>
-        int removeIf(F f) {
-            // Slightly expensive O(N logN) removal
-            int numErased = 0;
-            typename Container::iterator i = _c.begin();
-            typename Container::iterator e = _c.end();
-            while(i != e) {
-                if(f(*i)) {
-                    ++numErased;
-                i = _c.erase(i);
-                } else { // no match, continue
-                    ++i;
-                }
-            }
-            _maintainHeap();
-            return numErased;
-        }
-    private:
-        void _maintainHeap();
-        Container _c;
-    };
-    typedef IterablePq Queue;
-
+    bool _busy() const;
+    bool _empty() const;
+    bool _ready();
 
     mutable std::mutex _queueMutex;
-    Queue _activeTasks;
-    Queue _pendingTasks;
+    MinHeap _activeTasks;
+    MinHeap _pendingTasks;
     ChunkState _chunkState;
     mutable std::mutex _inflightMutex;
     TaskSet _inflight;
     LOG_LOGGER _logger;
 };
 
-}}} // namespace lsst::qserv::wsched
+}}} // namespace
 
 #endif // LSST_QSERV_WSCHED_CHUNKDISK_H

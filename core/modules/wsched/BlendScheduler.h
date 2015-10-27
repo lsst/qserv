@@ -50,37 +50,28 @@ namespace wsched {
 /// it should be set for reduced concurrency limited I/O sharing.
 class BlendScheduler : public wcontrol::Scheduler {
 public:
-    typedef std::shared_ptr<BlendScheduler> Ptr;
+    using Ptr = std::shared_ptr<BlendScheduler>;
 
     BlendScheduler(std::shared_ptr<GroupScheduler> group,
                    std::shared_ptr<ScanScheduler> scan);
     virtual ~BlendScheduler() {}
 
-    virtual void queueTaskAct(wbase::Task::Ptr incoming);
-    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
-                                              wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
-                                                 wbase::TaskQueuePtr running);
+    void queCmd(util::Command::Ptr const& cmd) override;
+    util::Command::Ptr getCmd(bool wait) override;
 
-    // TaskWatcher interface
-    virtual void markStarted(wbase::Task::Ptr t);
-    virtual void markFinished(wbase::Task::Ptr t);
+    void commandStart(util::Command::Ptr const& cmd) override;
+    void commandFinish(util::Command::Ptr const& cmd) override;
 
     static std::string getName()  { return std::string("BlendSched"); }
-    bool checkIntegrity();
-
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
 private:
-    wbase::TaskQueuePtr _getNextIfAvail(wbase::TaskQueuePtr running);
-    bool _integrityHelper() const;
-    wcontrol::Scheduler* _lookup(wbase::Task::Ptr p);
+    bool _ready();
 
     std::shared_ptr<GroupScheduler> _group;
     std::shared_ptr<ScanScheduler> _scan;
+    bool _lastCmdFromScan{false};
     LOG_LOGGER _logger;
-    typedef std::map<wbase::Task*, wcontrol::Scheduler*> Map;
-    Map _map;
+    std::map<wbase::Task*, wcontrol::Scheduler*> _map;
     std::mutex _mapMutex;
 };
 

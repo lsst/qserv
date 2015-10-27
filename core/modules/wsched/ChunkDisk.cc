@@ -69,55 +69,27 @@ inline int taskChunkId(wbase::Task const& e) {
     assert(e.msg->has_chunkid());
     return e.msg->chunkid();
 }
-namespace {
-/// @return true if the task is missing a TaskMsg or a chunkId
-inline bool taskBad(ChunkDisk::TaskPtr p) {
-    if(p->msg && p->msg->has_chunkid()) { return false; }
-    return true;
+
+void ChunkDisk::MinHeap::push(wbase::Task::Ptr const& task) {
+    _tasks.push_back(task);
+    std::push_heap(_tasks.begin(), _tasks.end(), compareFunc);
+}
+wbase::Task::Ptr ChunkDisk::MinHeap::pop() {
+    if (_tasks.empty()) {
+        return nullptr;
+    }
+    auto task = _tasks.front();
+    std::pop_heap(_tasks.begin(), _tasks.end(), compareFunc);
+    _tasks.pop_back();
+    return task;
 }
 
-/// @return true if NO elements in the queue test true for taskBad
-///
-template <class Q> // Use template to avoid naming Queue, which is private
-inline bool checkQueueOk(Q& q) {
-    typename Q::Container& container = q.impl();
-    return container.end() == std::find_if(container.begin(), container.end(),
-                                           std::ptr_fun(taskBad));
-}
-
-} // anonymous
-
-////////////////////////////////////////////////////////////////////////
-// ChunkDisk implementation
-////////////////////////////////////////////////////////////////////////
-ChunkDisk::IterablePq::value_type& ChunkDisk::IterablePq::top() {
-    return _c.front();
-}
-ChunkDisk::IterablePq::value_type const& ChunkDisk::IterablePq::top() const {
-    return _c.front();
-}
-void ChunkDisk::IterablePq::push(ChunkDisk::IterablePq::value_type& v) {
-    _c.push_back(v);
-    std::push_heap(_c.begin(), _c.end());
-}
-void ChunkDisk::IterablePq::pop() {
-    std::pop_heap(_c.begin(), _c.end());
-    _c.pop_back();
-}
-void ChunkDisk::IterablePq::_maintainHeap() {
-    std::make_heap(_c.begin(), _c.end());
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// ChunkDisk implementation
-////////////////////////////////////////////////////////////////////////
 ChunkDisk::TaskSet ChunkDisk::getInflight() const {
     std::lock_guard<std::mutex> lock(_inflightMutex);
     return TaskSet(_inflight);
 }
 
-void ChunkDisk::enqueue(TaskPtr a) {
+void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
     std::lock_guard<std::mutex> lock(_queueMutex);
     int chunkId = taskChunkId(*a);
     time(&a->entryTime);
@@ -127,6 +99,7 @@ void ChunkDisk::enqueue(TaskPtr a) {
     const char* state = "";
     if(_chunkState.empty()) {
         _activeTasks.push(a);
+        state = "EMPTY";
     } else {
         if(chunkId < _chunkState.lastScan()) {
             _pendingTasks.push(a);
@@ -140,8 +113,10 @@ void ChunkDisk::enqueue(TaskPtr a) {
             state = "ACTIVE";
         }
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk enqueue %1%  %2%" % chunkId % state);
-
+    LOGF(_logger, LOG_LVL_DEBUG,
+         "ChunkDisk enqueue chunkId=%1% state=%2% tSeq=%3% lastScan=%4% active.sz=%5% pend.sz=%6%"
+         % chunkId % state % a->tSeq % _chunkState.lastScan()
+         % _activeTasks._tasks.size() % _pendingTasks._tasks.size());
     if(_activeTasks.empty()) {
         LOGF(_logger, LOG_LVL_DEBUG, "Top of ACTIVE is now: (empty)");
     } else {
@@ -149,11 +124,15 @@ void ChunkDisk::enqueue(TaskPtr a) {
     }
 }
 
-/// Get the next task, popping it off the queue. Client must do
-/// something with this task.
-ChunkDisk::TaskPtr ChunkDisk::getNext(bool allowAdvance) {
+/// Return true if this disk is ready to provide a Task from its queue.
+bool ChunkDisk::ready() {
     std::lock_guard<std::mutex> lock(_queueMutex);
+    return _ready();
+}
 
+/// Precondition: _queueMutex must be locked
+/// Return true if this disk is ready to provide a Task from its queue.
+bool ChunkDisk::_ready() {
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
     if(_activeTasks.empty() && !_pendingTasks.empty()) {
@@ -162,28 +141,31 @@ ChunkDisk::TaskPtr ChunkDisk::getNext(bool allowAdvance) {
         LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
     }
     // If the pending was empty too, nothing to do.
-    if(_activeTasks.empty()) { return TaskPtr(); }
-
-    // Check the chunkId.
-    TaskPtr e = _activeTasks.top();
-    int chunkId = taskChunkId(*e);
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk getNext: current= %1% candidate=%2%"
-            % _chunkState % chunkId);
-
+    if(_activeTasks.empty()) { return false; }
+    wbase::Task::Ptr top = _activeTasks.top();
+    int chunkId = taskChunkId(*top);
+    bool allowAdvance = !_busy() && !_empty();
     bool idle = !_chunkState.hasScan();
     bool inScan = _chunkState.isScan(chunkId);
-    if(allowAdvance || idle || inScan) {
-        LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk allowing task for %1%"
-           " (advance=%2% idle=%3% inScan=%4%)" % chunkId %
-           (allowAdvance ? "yes" : "no") % (idle ? "yes" : "no") %
-           (inScan ? "yes" : "no"));
-        _activeTasks.pop();
-        _chunkState.addScan(chunkId);
-        return e;
-    } else {
+    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk::_ready() allowAdvance=%1% idle=%2% inScan=%3%" % allowAdvance % idle % inScan);
+    return allowAdvance || idle || inScan ;
+}
+
+/// Return a Task that is ready to run, if available.
+wbase::Task::Ptr ChunkDisk::getTask() {
+    LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk::getTask start");
+    std::lock_guard<std::mutex> lock(_queueMutex);
+    if (!_ready()) {
         LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk denying task");
+        return nullptr;
     }
-    return TaskPtr();
+    // Check the chunkId.
+    auto task = _activeTasks.pop();
+    int chunkId = taskChunkId(*task);
+    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk getTask: current= %1% candidate=%2% tSeq=%3%"
+            % _chunkState % chunkId % task->tSeq);
+    _chunkState.addScan(chunkId);
+    return task;
     // If next chunk is of a different chunk, only continue if current
     // chunk has completed a scan already.
 
@@ -192,9 +174,14 @@ ChunkDisk::TaskPtr ChunkDisk::getNext(bool allowAdvance) {
 }
 
 bool ChunkDisk::busy() const {
+    std::lock_guard<std::mutex> lock(_queueMutex);
+    return _busy();
+}
+
+/// Precondition: _queueMutex must be locked
+bool ChunkDisk::_busy() const {
     // Simplistic view, only one chunk in flight.
     // We are busy if the inflight list is non-empty
-    std::lock_guard<std::mutex> lock(_queueMutex);
     bool busy = _chunkState.hasScan();
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk busyness: %1%" % (busy ? "yes" : "no"));
     return busy;
@@ -209,34 +196,27 @@ bool ChunkDisk::busy() const {
 
 bool ChunkDisk::empty() const {
     std::lock_guard<std::mutex> lock(_queueMutex);
-    return _activeTasks.empty() && _pendingTasks.empty();
-}
-struct matchHash {
-    matchHash(std::string const& hash_) : hash(hash_) {}
-    bool operator()(ChunkDisk::TaskPtr const& t) {
-        return t && t->hash == hash;
-    }
-    std::string hash;
-};
-int ChunkDisk::removeByHash(std::string const& hash) {
-    std::lock_guard<std::mutex> lock(_queueMutex);
-    int numErased;
-    matchHash mh(hash);
-    numErased = _activeTasks.removeIf(mh);
-    numErased += _pendingTasks.removeIf(mh);
-    return numErased;
+    return _empty();
 }
 
-void
-ChunkDisk::registerInflight(TaskPtr const& e) {
+/// Precondition: _queueMutex must be locked
+bool ChunkDisk::_empty() const {
+    return _activeTasks.empty() && _pendingTasks.empty();
+}
+
+std::size_t ChunkDisk::getSize() const {
+    std::lock_guard<std::mutex> lock(_queueMutex);
+    return _activeTasks._tasks.size() + _pendingTasks._tasks.size();
+}
+
+void ChunkDisk::registerInflight(wbase::Task::Ptr const& e) {
     std::lock_guard<std::mutex> lock(_inflightMutex);
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk registering for %1% : %2% p=%3%" %
             e->msg->chunkid() % e->msg->fragment(0).query(0) % (void*) e.get());
     _inflight.insert(e.get());
-
 }
 
-void ChunkDisk::removeInflight(TaskPtr const& e) {
+void ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
     std::lock_guard<std::mutex> lock(_inflightMutex);
     int chunkId = e->msg->chunkid();
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk remove for %1% : %2%" % chunkId %
@@ -248,12 +228,4 @@ void ChunkDisk::removeInflight(TaskPtr const& e) {
     }
 }
 
-
-// @return true if things are okay
-bool ChunkDisk::checkIntegrity() {
-    std::lock_guard<std::mutex> lock(_queueMutex);
-    // Check for chunk ids in all tasks.
-    return checkQueueOk(_activeTasks) && checkQueueOk(_pendingTasks);
-}
-
-}}} // namespace lsst::qserv::wsched
+}}} // namespace

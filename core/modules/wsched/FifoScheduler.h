@@ -32,34 +32,16 @@
 
 namespace lsst {
 namespace qserv {
-
-namespace wcontrol {
-    // Forward
-    class Task;
-}
-
 namespace wsched {
 
 class FifoScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<FifoScheduler> Ptr;
 
-    explicit FifoScheduler(int maxRunning=-1);
+    FifoScheduler() {};
     virtual ~FifoScheduler() {}
 
-    virtual void queueTaskAct(wbase::Task::Ptr incoming);
-    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
-                                           wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
-                                              wbase::TaskQueuePtr running);
     static std::string getName() { return std::string("FifoSched"); }
-private:
-    wbase::TaskQueuePtr _fetchTask();
-
-    std::mutex _mutex; // &&& delete
-    wbase::TaskQueue _queue; // &&& delete
-    int _maxRunning;  // &&& delete
 };
 
 }}} // namespace lsst::qserv::wsched

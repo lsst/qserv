@@ -66,14 +66,15 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         EventThread et{};
         SumUnprotected sum;
         int total{0};
-        for (int j=1; j<10; j++) {
-            auto cmdSum = std::make_shared<Command>([&sum, j](Command*){sum.add(j);});
+        int cycles = 99; // Arbitrary number of times add message to queue.
+        for (int j=1; j<cycles; j++) {
+            auto cmdSum = std::make_shared<Command>([&sum, j](){sum.add(j);});
             total += j;
             et.queCmd(cmdSum);
         }
         et.run();
-        for (int j=1; j<10; j++) {
-            auto cmdSum = std::make_shared<Command>([&sum, j](Command*){sum.add(j);});
+        for (int j=1; j<cycles; j++) {
+            auto cmdSum = std::make_shared<Command>([&sum, j](){sum.add(j);});
             total += j;
             et.queCmd(cmdSum);
         }
@@ -88,16 +89,16 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     {
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
-        uint sz = 10;
+        uint sz = 10; // size of thread poo to create
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
         LOGF_DEBUG("pool size=%1%" % sz);
         BOOST_CHECK(pool->size() == sz);
-        sz = 20;
+        sz += 10; // test increase in size of thread pool.
         pool->resize(sz);
         LOGF_DEBUG("pool size=%1%" % sz);
         BOOST_CHECK(pool->size() == sz);
-        sz = 5;
+        sz = 5; // test decrease in size of thread pool.
         pool->resize(sz);
         pool->waitForResize(10000);
         LOGF_DEBUG("pool size=%1%" % sz);
@@ -113,13 +114,13 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         int total = 0;
         auto poolQueue = pool->getQueue();
         LOGF_DEBUG("Summing with pool");
-        sz = 17;
+        sz = 20; // Want enough threads so that there are reasonable chance of collisions.
         pool->resize(sz);
         LOGF_DEBUG("pool size=%1%" % sz);
         BOOST_CHECK(pool->size() == sz);
 
         for (int j=1;j<2000;j++) {
-            auto cmdSum = std::make_shared<Command>([&poolSum, j](Command*){poolSum.add(j);});
+            auto cmdSum = std::make_shared<Command>([&poolSum, j](){poolSum.add(j);});
             total += j;
             poolQueue->queCmd(cmdSum);
         }
@@ -129,22 +130,22 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         BOOST_CHECK(total == poolSum.total);
     }
 
-    // Give it some time to finish deleting everything
+    // Give it some time to finish deleting everything (5 seconds total)
     for (int j = 0; weak_pool.use_count() > 0 && j<50 ; j++) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     BOOST_CHECK(weak_pool.use_count() == 0);
     BOOST_CHECK(weak_que.use_count() == 0);
 
-    /// Wait for a long calculation to finish
+    // Wait for a moderately long calculation to finish with CommandTracked.
     {
-        SumUnprotected sum   ;
+        SumUnprotected sum;
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
         uint sz = 10;
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
-        auto func = [&sum](Command *){
+        auto func = [&sum](){
             for (int j=0; j<900000;j++) {
                 sum.add(1);
             }
@@ -158,8 +159,6 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
                 for (int j=0; j<900000;j++) {
                     total += 1;
                 }
-                // Short sleep to make sure waitComplete needs to wait a little.
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 setComplete();
                 return 0;
             };
@@ -178,7 +177,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     }
 
     // Give it some time to finish deleting everything (5 seconds)
-    for (int j = 0; weak_pool.use_count() > 0 && j<50 ; j++) {
+    for (int j = 0; weak_pool.use_count() > 0 && j<50 ; ++j) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     BOOST_CHECK(weak_pool.use_count() == 0);

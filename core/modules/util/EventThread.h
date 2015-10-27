@@ -29,96 +29,61 @@
 // System headers
 #include <atomic>
 #include <cassert>
-#include <condition_variable>
 #include <deque>
-#include <memory>
-#include <mutex>
 #include <thread>
 #include <vector>
+
+// Qserv headers
+#include "util/Command.h"
 
 namespace lsst {
 namespace qserv {
 namespace util {
-
-/// Tracker provides an interface for indicating an action is complete.
-///
-class Tracker {
-public:
-    Tracker() {};
-    virtual ~Tracker() {};
-    enum class Status { INPROGRESS, COMPLETE };
-    using Ptr = std::shared_ptr<Tracker>;
-    void setComplete();
-    bool isFinished();
-    void waitComplete();
-private:
-    Status _trStatus{Status::INPROGRESS};
-    std::mutex _trMutex;
-    std::condition_variable _trCV;
-};
-
-/// Base class for commands. Can be used with functions as is or
-/// as a base class when data is needed.
-class Command {
-public:
-    using Ptr = std::shared_ptr<Command>;
-    Command() {};
-    Command(std::function<void(Command*)> func) : _func{func} {}
-    virtual ~Command() {};
-    virtual int action() {
-        _func(this);
-        return 0;
-    };
-    void setFunc(std::function<void(Command*)> func);
-protected:
-    std::function<void(Command*)> _func = [](Command *){;};
-};
-
-/// Extension of Command that can notify other threads when its
-/// action is complete.
-class CommandTracked : public virtual Command, public virtual Tracker {
-public:
-    using Ptr = std::shared_ptr<CommandTracked>;
-    CommandTracked() {};
-    CommandTracked(std::function<void(Command*)> func) : Command{func} {}
-    virtual ~CommandTracked() {};
-    int action() override {
-        _func(this);
-        setComplete();
-        return 0;
-    };
-};
 
 /// A queue of Commands meant to drive an EventThread.
 ///
 class CommandQueue {
 public:
     using Ptr = std::shared_ptr<CommandQueue>;
+    virtual ~CommandQueue() {};
     /// Queue a command object in a thread safe way and signal any threads
     /// waiting on the queue that a command is available.
-    void queCmd(Command::Ptr const& cmd) {
+    virtual void queCmd(Command::Ptr const& cmd) {
         std::lock_guard<std::mutex> lock(_mx);
         _qu.push_back(cmd);
-        if (_qu.size() > 1) {
-            _cv.notify_all();
-        } else {
-            _cv.notify_one();
-        }
+        notify(_qu.size() > 1);
     };
 
-    /// Get a command off the queue. If no message is available, wait until one is.
-    Command::Ptr getCmd() {
+    /// Get a command off the queue.
+    /// If wait is true, wait until a message is available.
+    virtual Command::Ptr getCmd(bool wait=true) {
         std::unique_lock<std::mutex> lock(_mx);
-        _cv.wait(lock, [this](){return !_qu.empty();});
+        if (wait) {
+            _cv.wait(lock, [this](){return !_qu.empty();});
+        }
+        if (_qu.empty()) {
+            return nullptr;
+        }
         auto cmd = _qu.front();
         _qu.pop_front();
         return cmd;
     };
 
+    /// Notify all threads waiting on this queue, or just 1 if all is false.
+    virtual void notify(bool all=true) {
+        if (all) {
+            _cv.notify_all();
+        } else {
+            _cv.notify_one();
+        }
+    }
+
+    virtual void commandStart(Command::Ptr const&) {};
+    virtual void commandFinish(Command::Ptr const&) {};
 protected:
     std::deque<Command::Ptr> _qu{};
-    std::condition_variable _cv{};
-    std::mutex              _mx{};
+    std::condition_variable  _cv{};
+    std::mutex               _mx{};
 };
 
 /// An event driven thread.
@@ -177,7 +142,7 @@ protected:
 };
 
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
-/// Growing the pool is simple, shrinking the pool is complex. Both operation should
+/// Growing the pool is simple, shrinking the pool is complex. Both operations should
 /// have no effect on items running or on the queue.
 /// endAll() must be called to shutdown the ThreadPool.
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
