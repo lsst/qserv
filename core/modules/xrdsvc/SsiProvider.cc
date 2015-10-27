@@ -82,7 +82,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     //
     _name = x.getName();
 
-    // Save the ssi logger as it places messages in anoher file than our log.
+    // Save the ssi logger as it places messages in another file than our log.
     //
     _logSsi = logP;
 
@@ -114,8 +114,9 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     // them here. This is kludgy and should be corrected when we transition to a
     // single shared memory inventory object which should do this by itself.
     //
-    if(clsP && clsP->DataContext()) _service.reset(new SsiService(logP));
-      else {
+    if(clsP && clsP->DataContext()) {
+        _service.reset(new SsiService(logP));
+    } else {
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";
         _chunkInventory->dbgPrint(ss);
