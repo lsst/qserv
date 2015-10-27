@@ -61,6 +61,7 @@ public:
     virtual bool exists(std::string const& key) override;
     virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) override;
     virtual std::vector<std::string> getChildren(std::string const& key) override;
+    virtual std::map<std::string, std::string> getChildrenValues(std::string const& key) override;
     virtual void deleteKey(std::string const& key) override;
     virtual std::string dumpKV() override;
 

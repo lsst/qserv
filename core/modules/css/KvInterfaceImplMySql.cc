@@ -420,6 +420,58 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 }
 
 
+std::map<std::string, std::string>
+KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
+
+    std::string key = parentKey;
+    if (key == "/") key.erase();
+
+    _validateKey(key);
+
+    // get the children with a /fully/qualified/path
+    KvTransaction transaction(_conn);
+    unsigned int parentId;
+    if (not _getIdFromServer(key, &parentId, transaction)) {
+        if (not exists(key)) {
+            throw NoSuchKey(parentKey);
+        }
+    }
+
+    std::string query = str(boost::format("SELECT kvKey, kvVal FROM kvData WHERE parentKvId='%1%'") % parentId);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    LOGF(_logger, LOG_LVL_DEBUG, "getChildrenValues - executing query: %1%" % query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "getChildrenValues - %1% failed with err:%2%" % query % errObj.errMsg());
+        throw CssError((boost::format("getChildrenValues - error:%1% from query:%2%") % errObj.errMsg() % query).str());
+    }
+
+    std::map<std::string, std::string> res;
+    for (auto& row: results) {
+        if (row[0].first[0] == '\0') {
+            // skip root key, and this should not happen at all
+            continue;
+        }
+        std::string key = row[0].first;
+
+        // remove prefix up to last path delimiter
+        std::string::size_type loc = key.find_last_of(KEY_PATH_DELIMITER) + 1;
+        if (key.size() == loc) {
+            // technically this shouldn't happen because keys shouldn't end with '/', but a little safety does not hurt...
+            continue;
+        }
+        key.erase(0, loc);
+
+        std::string val(row[1].first ? row[1].first : "");
+        res.insert(std::make_pair(key, val));
+    }
+
+    transaction.commit();
+
+    return res;
+}
+
+
 std::vector<std::string>
 KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
