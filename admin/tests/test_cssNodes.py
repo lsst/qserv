@@ -27,8 +27,6 @@ This is a unit test for CSS node definitions.
 
 """
 
-import os
-import tempfile
 import unittest
 
 from lsst.qserv import css
@@ -68,13 +66,13 @@ class TestCssNodes(unittest.TestCase):
         css_inst = _makeCss(initData)
 
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5012)
 
         node = css_inst.getNodeParams('worker-2')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5013)
@@ -106,13 +104,13 @@ class TestCssNodes(unittest.TestCase):
         css_inst = _makeCss(initData)
 
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5012)
 
         node = css_inst.getNodeParams('worker-2')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5013)
@@ -144,13 +142,13 @@ class TestCssNodes(unittest.TestCase):
         self.assertEqual(sorted(nodes.keys()), ['worker-1', 'worker-2'])
 
         node = nodes['worker-1']
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5012)
 
         node = nodes['worker-2']
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5013)
@@ -176,13 +174,13 @@ class TestCssNodes(unittest.TestCase):
         css_inst.addNode(nodeName, params)
 
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5012)
 
         node = css_inst.getNodeParams('worker-2')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
         self.assertEqual(node.type, 'worker')
         self.assertEqual(node.host, 'worker.domain')
         self.assertEqual(node.port, 5013)
@@ -258,25 +256,25 @@ class TestCssNodes(unittest.TestCase):
         css_inst.addNode(nodeName, params)
 
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
 
         node = css_inst.getNodeParams('worker-2')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
 
-        css_inst.setNodeStatus('worker-1', "INACTIVE")
+        css_inst.setNodeState('worker-1', "INACTIVE")
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
 
-        css_inst.setNodeStatus('worker-1', "ACTIVE")
+        css_inst.setNodeState('worker-1', "ACTIVE")
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "ACTIVE")
+        self.assertEqual(node.state, "ACTIVE")
 
-        css_inst.setNodeStatus('worker-1', "INACTIVE")
-        css_inst.setNodeStatus('worker-2', "INACTIVE")
+        css_inst.setNodeState('worker-1', "INACTIVE")
+        css_inst.setNodeState('worker-2', "INACTIVE")
         node = css_inst.getNodeParams('worker-1')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
         node = css_inst.getNodeParams('worker-2')
-        self.assertEqual(node.status, "INACTIVE")
+        self.assertEqual(node.state, "INACTIVE")
 
     def testMgmtSelect(self):
         """ Test for WorkerMgmt.select methods """

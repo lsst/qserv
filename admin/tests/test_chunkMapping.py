@@ -27,10 +27,7 @@ This is a unit test for chunkMapping module.
 
 """
 
-import os
-import tempfile
 import unittest
-import StringIO
 
 from lsst.qserv import css
 from lsst.qserv.admin.chunkMapping import ChunkMapping

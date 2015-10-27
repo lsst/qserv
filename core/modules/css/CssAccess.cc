@@ -208,6 +208,36 @@ CssAccess::getDbNames() const {
     return names;
 }
 
+std::map<std::string, std::string>
+CssAccess::getDbStatus() const {
+    _checkVersion();
+
+    std::string p = _prefix + "/DBS";
+    auto kvs = _kvI->getChildrenValues(p);
+
+    // remove names from packed keys
+    for (auto iter = kvs.begin(); iter != kvs.end(); ) {
+        auto& name = iter->first;
+        if (name.size() > 5 and name.compare(name.size()-5, name.size(), ".json") == 0) {
+            iter = kvs.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+
+    return kvs;
+}
+
+void
+CssAccess::setDbStatus(std::string const& dbName, std::string const& status) {
+    LOGF(_log, LOG_LVL_DEBUG, "setDbStatus(%1%, %2%)" % dbName % status);
+    _checkVersion();
+
+    _assertDbExists(dbName);
+    std::string const dbKey = _prefix + "/DBS/" + dbName;
+    _kvI->set(dbKey, status);
+}
+
 bool
 CssAccess::containsDb(std::string const& dbName) const {
     _checkVersion();
@@ -299,7 +329,7 @@ CssAccess::createDb(std::string const& dbName,
 
     std::string const dbKey = _prefix + "/DBS/" + dbName;
     _storePacked(dbKey, dbMap);
-    _kvI->set(dbKey, "READY");
+    _kvI->set(dbKey, KEY_STATUS_READY);
 }
 
 void
@@ -318,7 +348,7 @@ CssAccess::createDbLike(std::string const& dbName,
     // make new database with the copy of all parameters
     std::string const dbKey = _prefix + "/DBS/" + dbName;
     _storePacked(dbKey, dbMap);
-    _kvI->set(dbKey, "READY");
+    _kvI->set(dbKey, KEY_STATUS_READY);
 }
 
 void
@@ -376,6 +406,46 @@ CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
         }
     }
     return names;
+}
+
+std::map<std::string, std::string>
+CssAccess::getTableStatus(std::string const& dbName) const {
+    LOGF(_log, LOG_LVL_DEBUG, "getTableStatus(%1%)" % dbName);
+    _checkVersion();
+
+    std::string key = _prefix + "/DBS/" + dbName + "/TABLES";
+    std::map<std::string, std::string> kvs;
+    try {
+        kvs = _kvI->getChildrenValues(key);
+    } catch (NoSuchKey const& exc) {
+        LOGF(_log, LOG_LVL_DEBUG, "getTableNames: key is not found: %s" % key);
+        _assertDbExists(dbName);
+    }
+
+    // remove names from packed keys
+    for (auto iter = kvs.begin(); iter != kvs.end(); ) {
+        auto& name = iter->first;
+        if (name.size() > 5 and name.compare(name.size()-5, name.size(), ".json") == 0) {
+            iter = kvs.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+
+    return kvs;
+
+}
+
+void
+CssAccess::setTableStatus(std::string const& dbName,
+                          std::string const& tableName,
+                          std::string const& status) {
+    LOGF(_log, LOG_LVL_DEBUG, "setTableStatus(%1%, %2%, %3%)" % dbName % tableName % status);
+    _checkVersion();
+
+    std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+    if (not _kvI->exists(tableKey)) throw NoSuchTable(dbName, tableName);
+    _kvI->set(tableKey, status);
 }
 
 bool
@@ -550,7 +620,7 @@ CssAccess::createTable(std::string const& dbName,
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
 
     try {
-        _kvI->create(tableKey, "CREATING");
+        _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
         LOGF(_log, LOG_LVL_DEBUG, "createTable: key already exists: %s" % tableKey);
         throw TableExists(dbName, tableName);
@@ -577,7 +647,7 @@ CssAccess::createTable(std::string const& dbName,
     }
 
     // done
-    _kvI->set(tableKey, "READY");
+    _kvI->set(tableKey, KEY_STATUS_READY);
 }
 
 void
@@ -591,7 +661,7 @@ CssAccess::createMatchTable(std::string const& dbName,
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
 
     try {
-        _kvI->create(tableKey, "CREATING");
+        _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
         LOGF(_log, LOG_LVL_DEBUG, "createMatchTable: key already exists: %s" % tableKey);
         throw TableExists(dbName, tableName);
@@ -617,7 +687,7 @@ CssAccess::createMatchTable(std::string const& dbName,
     }
 
     // done, can mark table as ready
-    _kvI->set(tableKey, "READY");
+    _kvI->set(tableKey, KEY_STATUS_READY);
 }
 
 void
@@ -683,7 +753,7 @@ CssAccess::getNodeParams(std::string const& nodeName) const {
     }
 
     // fill the structure
-    params.status = paramMap[nodeName];
+    params.state = paramMap[nodeName];
     params.type = paramMap[nodeName + "/type"];
     params.host = paramMap[nodeName + "/host"];
     try {
@@ -743,21 +813,21 @@ CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParams) {
     _storePacked(key, parMap);
 
     // done
-    _kvI->set(key, nodeParams.status);
+    _kvI->set(key, nodeParams.state);
 }
 
-void CssAccess::setNodeStatus(std::string const& nodeName, std::string const& newStatus) {
-    LOGF(_log, LOG_LVL_DEBUG, "setNodeStatus(%1%, %2%)" % nodeName % newStatus);
+void CssAccess::setNodeState(std::string const& nodeName, std::string const& newState) {
+    LOGF(_log, LOG_LVL_DEBUG, "setNodeState(%1%, %2%)" % nodeName % newState);
     _checkVersion();
 
     std::string const key = _prefix + "/NODES/" + nodeName;
 
     if (not _kvI->exists(key)) {
-        LOGF(_log, LOG_LVL_DEBUG, "addNode: key does not exist: %s" % key);
+        LOGF(_log, LOG_LVL_DEBUG, "setNodeState: key does not exist: %s" % key);
         throw NoSuchNode(nodeName);
     }
 
-    _kvI->set(key, newStatus);
+    _kvI->set(key, newState);
 }
 
 void

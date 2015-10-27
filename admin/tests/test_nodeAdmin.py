@@ -28,8 +28,6 @@ This is a unit test for workerAdmin module.
 """
 
 import logging
-import os
-import tempfile
 import unittest
 
 from lsst.qserv import css

@@ -145,6 +145,26 @@ public:
     std::vector<std::string> getDbNames() const;
 
     /**
+     * @brief Returns status information for all databases.
+     *
+     * Returns mapping object with database name as a key and
+     * database status as as a value.
+     *
+     * @throws CssError: for all CSS errors
+     */
+    std::map<std::string, std::string> getDbStatus() const;
+
+    /**
+     * @brief Change database status.
+     *
+     * @param dbName:  Database name
+     * @param status:  Database status
+     * @throws NoSuchDb: if database does not exist
+     * @throws CssError: for all CSS errors
+     */
+    void setDbStatus(std::string const& dbName, std::string const& status);
+
+    /**
      * @brief Returns true if database name is defined in CSS.
      *
      * @param dbName: database name
@@ -212,6 +232,28 @@ public:
      * @throws CssError: for all other errors
      */
     std::vector<std::string> getTableNames(std::string const& dbName, bool readyOnly=true) const;
+
+    /**
+     * @brief Returns status information for all table in a database.
+     *
+     * Returns mapping object with table name as a key and
+     * table status as as a value.
+     *
+     * @throws NoSuchDb: if database does not exist
+     * @throws CssError: for all other errors
+     */
+    std::map<std::string, std::string> getTableStatus(std::string const& dbName) const;
+
+    /**
+     * @brief Change table status.
+     *
+     * @param dbName:  Database name
+     * @param tableName:  Table name
+     * @param status:  Database status
+     * @throws NoSuchTable: if table (or database) does not exist
+     * @throws CssError: for all CSS errors
+     */
+    void setTableStatus(std::string const& dbName, std::string const& tableName, std::string const& status);
 
     /**
      * @brief Returns true if table name is defined in CSS.
@@ -355,15 +397,15 @@ public:
     void addNode(std::string const& nodeName, NodeParams const& nodeParams);
 
     /**
-     * @brief Updates node status.
+     * @brief Updates node state.
      *
      * @param nodeName: name of the new node
-     * @param newStatus: new node status
+     * @param newState: new node state
      * @throws NoSuchNode: if node is not defined in CSS
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all CSS errors
      */
-    void setNodeStatus(std::string const& nodeName, std::string const& newStatus);
+    void setNodeState(std::string const& nodeName, std::string const& newState);
 
     /**
      * @brief Deletes node from CSS.
