@@ -69,8 +69,8 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                "_czarLib" : {'mods' : """ccontrol czar global
                                          log
                                          parser proto
-                                         qana qdisp qmeta qproc query
-                                         rproc sg util""".split(),
+                                         qana qdisp qproc query
+                                         rproc sg""".split(),
                              'shmods' : ['css'],
                              'libs' : """ssl crypto antlr log
                                       mysqlclient_r protobuf
@@ -87,16 +87,23 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                             'SHLIBPREFIX' : '',
                             'distDir' : pyDistRelative(env, "css")},
 
+               "_qmetaLib" : {'mods' : [],
+                              'shmods' : ['css'],
+                              'libs' : "log".split(),
+                              'extraSrcs' : ['qmeta'],
+                              'SHLIBPREFIX' : '',
+                              'distDir' : pyDistRelative(env, "qmeta")},
+
                }
 
 # external libs for shmods
 shmodLibs = {
-  'css': ['log', 'log4cxx', 'boost_system', 'boost_thread', 'mysqlclient_r']
+  'css': ['log', 'log4cxx', 'boost_system', 'boost_thread', 'mysqlclient_r', 'crypto']
 }
 
 # extra modules to include into shmod
 shmodExtraMods = {
-  'css': ['sql', 'mysql']
+  'css': ['qmeta', 'util', 'sql', 'mysql']
 }
 
 # per-module set of products which will be used in building libraries

@@ -49,6 +49,9 @@ public:
     Exception(util::Issue::Context const& ctx, std::string const& message)
         : util::Issue(ctx, message)
     {}
+
+    // this name will be used to find corresponding Python exception type
+    virtual std::string typeName() const { return "CssError"; }
 };
 
 /// Exception thrown when czar name is not known.
@@ -57,6 +60,8 @@ public:
     CzarNameError(util::Issue::Context const& ctx, std::string const& name)
         : Exception(ctx, "Czar is not registered in metadata: " + name)
     {}
+
+    virtual std::string typeName() const override { return "CzarNameError"; }
 };
 
 /// Exception thrown when czar ID is not known.
@@ -65,6 +70,8 @@ public:
     CzarIdError(util::Issue::Context const& ctx, CzarId id)
         : Exception(ctx, "Czar ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
     {}
+
+    virtual std::string typeName() const override { return "CzarIdError"; }
 };
 
 /// Exception thrown when query ID is not known.
@@ -73,6 +80,8 @@ public:
     QueryIdError(util::Issue::Context const& ctx, QueryId id)
         : Exception(ctx, "Query ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
     {}
+
+    virtual std::string typeName() const override { return "QueryIdError"; }
 };
 
 /// Exception thrown when chunk ID is not known.
@@ -83,6 +92,8 @@ public:
                     boost::lexical_cast<std::string>(chunkId) + " query id:" +
                     boost::lexical_cast<std::string>(queryId))
     {}
+
+    virtual std::string typeName() const override { return "ChunkIdError"; }
 };
 
 /// Exception thrown when chunk ID is not known.
@@ -92,6 +103,8 @@ public:
         : Exception(ctx, "Error from mysql: (" + boost::lexical_cast<std::string>(sqlErr.errNo()) +
                     ") " + sqlErr.errMsg())
     {}
+
+    virtual std::string typeName() const override { return "SqlError"; }
 };
 
 /// Exception thrown when one or more metadata tables are missing.
@@ -100,6 +113,8 @@ public:
     MissingTableError(util::Issue::Context const& ctx, std::string const& table)
         : Exception(ctx, "Query metadata table is missing: " + table)
     {}
+
+    virtual std::string typeName() const override { return "MissingTableError"; }
 };
 
 /// Exception thrown when database consistency is violated.
@@ -108,6 +123,17 @@ public:
     ConsistencyError(util::Issue::Context const& ctx, std::string const& msg)
         : Exception(ctx, "Metadata consistency error: " + msg)
     {}
+
+    virtual std::string typeName() const override { return "ConsistencyError"; }
+};
+
+/// Specialized run-time error: configuration is invalid.
+class ConfigError : public Exception {
+public:
+    explicit ConfigError(util::Issue::Context const& ctx, std::string const& msg)
+        : Exception(ctx, "Invalid config: " + msg) {}
+
+    virtual std::string typeName() const override { return "ConfigError"; }
 };
 
 }}} // namespace lsst::qserv::qmeta

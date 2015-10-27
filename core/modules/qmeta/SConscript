@@ -1,5 +1,5 @@
 # -*- python -*-
-# Qserv css module SConscript
+# Qserv qmeta module SConscript
 import distutils.sysconfig
 import pytarget
 import cctarget
@@ -12,22 +12,22 @@ Import('extraSrcs')
 pythonInc = distutils.sysconfig.get_python_inc()
 
 cppPath = cctarget.getList(env, 'CPPPATH') + [pythonInc]
-swigged = env.SharedObject(source="cssLib.i",
+swigged = env.SharedObject(source="qmetaLib.i",
                             SWIGFLAGS=['-python', '-c++', '-Iinclude'],
                             SWIGPATH=['..', pythonInc],
                             CPPPATH=cppPath,
                             LDMODULEPREFIX='_', LDMODULESUFFIX='.so'
                             )
 
-extraSrcs["css"] = swigged
+extraSrcs["qmeta"] = swigged
 
 # # Create entry for python file, which SCons SWIG builder ignores
-pySwig = env.File('cssLib.py')
-extraTgts["cssLib.py"] = pySwig
+pySwig = env.File('qmetaLib.py')
+extraTgts["qmetaLib.py"] = pySwig
 
-pyFiles = pytarget.getPyTargets(env, ["lsst", "qserv", "css"], [pySwig])
+pyFiles = pytarget.getPyTargets(env, ["lsst", "qserv", "qmeta"], [pySwig])
 extraTgts['dist'].extend(pyFiles)
 
-defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "cssLib_wrap.cc")
+defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "qmetaLib_wrap.cc")
 
 Return('defaultTargets')
