@@ -49,9 +49,9 @@ namespace css {
 
 class KvInterfaceImplMem : public KvInterface {
 public:
-    KvInterfaceImplMem() {}
-    KvInterfaceImplMem(std::istream& mapStream);
-    KvInterfaceImplMem(std::string const& filename);
+    explicit KvInterfaceImplMem(bool readOnly=false) : _readOnly(readOnly) {}
+    explicit KvInterfaceImplMem(std::istream& mapStream, bool readOnly=false);
+    explicit KvInterfaceImplMem(std::string const& filename, bool readOnly=false);
 
     virtual ~KvInterfaceImplMem();
 
@@ -62,6 +62,7 @@ public:
     virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) override;
     virtual std::vector<std::string> getChildren(std::string const& key) override;
     virtual void deleteKey(std::string const& key) override;
+    virtual std::string dumpKV() override;
 
     std::shared_ptr<KvInterfaceImplMem> clone() const;
 
@@ -73,6 +74,7 @@ protected:
 private:
     void _init(std::istream& mapStream);
     std::map<std::string, std::string> _kvMap;
+    bool _readOnly;
 };
 
 }}} // namespace lsst::qserv::css

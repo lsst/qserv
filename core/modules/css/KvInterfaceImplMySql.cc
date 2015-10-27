@@ -158,8 +158,8 @@ private:
 };
 
 
-KvInterfaceImplMySql::KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf)
-: _conn(mysqlConf) {
+KvInterfaceImplMySql::KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly)
+: _conn(mysqlConf), _readOnly(readOnly) {
 }
 
 
@@ -208,6 +208,10 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
 
 std::string
 KvInterfaceImplMySql::create(std::string const& key, std::string const& value, bool unique) {
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
+
     // key is validated by _create
     KvTransaction transaction(_conn);
 
@@ -315,6 +319,10 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
 
 void
 KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
+
     // key is validated by _create
     KvTransaction transaction(_conn);
     _create(key, value, true, transaction);
@@ -356,11 +364,11 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     std::string query = "SELECT kvKey, kvVal FROM kvData WHERE kvKey IN (";
     bool first = true;
     for (auto& key: keys) {
+        if (not first) query += ", ";
+        first = false;
         query += '"';
         if (key != "/") query += _escapeSqlString(key);  // slash == ""
         query += '"';
-        if (not first) query += ", ";
-        first = false;
     }
     query += ')';
 
@@ -447,11 +455,57 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
 
 void
 KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
+    if (_readOnly) {
+        throw ReadonlyCss();
+    }
+
     std::string key = keyArg;
     if (key == "/") key.erase();
     KvTransaction transaction(_conn);
     _delete(key, transaction);
     transaction.commit();
+}
+
+
+std::string KvInterfaceImplMySql::dumpKV() {
+
+    // It's better to make them ordered so that /key comes before /key/subkey
+    std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
+
+    // run query
+    KvTransaction transaction(_conn);
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    LOGF(_logger, LOG_LVL_DEBUG, "dumpKV - executing query: %1%" % query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "dumpKV - %1% failed with err:%2%" % query % errObj.errMsg());
+        throw CssError((boost::format("dumpKV - error:%1% from query:%2%") % errObj.errMsg() % query).str());
+    }
+
+    // copy results
+    std::string result;
+    for (auto& row: results) {
+        if (row[0].first[0] == '\0') {
+            // skip root key, it is not useful and not supposed to have any data
+            continue;
+        }
+        if (not result.empty()) result += '\n';
+        // row is the vector of pair<char const*, unsigned long>
+        // key cannot be NULL, but value could be?
+        result += row[0].first;
+        result += '\t';
+        if (row[1].first == nullptr or *row[1].first == '\0') {
+            result += "\\N";
+        } else {
+            if (strchr(row[1].first, '\n') != nullptr) {
+                throw CssError("KvInterfaceImplMySql::dumpKV - value contains newline");
+            }
+            result += row[1].first;
+        }
+    }
+
+    transaction.commit();
+    return result;
 }
 
 

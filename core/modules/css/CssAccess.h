@@ -71,25 +71,67 @@ class CssAccess {
 public:
 
     /**
-     *  Factory method for creating CssAccess instance based on in-memory KV.
-     *  Data will be loaded from a file whose name is specified in a first argument.
+     *  Create CssAccess instance from existing key-value data in a stream.
+     *
+     *  Stream should contain a set of key-value pairs, pairs are separated
+     *  from each other by newline character, key is separated from value by TAB
+     *  character. Empty value can be represented by \N sequence (backslash-N).
+     *  Neither keys nor values can contain newline or TAB.
+     *
+     *  @param stream:  stream with initial data
+     *  @param emptyChunkPath:  path to empty chunk list file
+     *  @param readOnly:  if true then KV storage will be set read-only
+     *                    after loading initial data.
      */
-    static std::shared_ptr<CssAccess> makeMemCss(std::string const& mapPath,
-                                                 std::string const& emptyChunkPath);
+    static std::shared_ptr<CssAccess> createFromStream(std::istream& stream,
+                                                       std::string const& emptyChunkPath,
+                                                       bool readOnly = false);
 
     /**
-     *  Factory method for creating CssAccess instance based on in-memory KV.
-     *  Data will be loaded from a stream.
+     *  Create CssAccess instance from existing key-value data.
+     *
+     *  Data is a string containing a set of key-value pairs, pairs are separated
+     *  from each other by newline character, key is separated from value by TAB
+     *  character. Empty value can be represented by \N sequence (backslash-N).
+     *  Neither keys nor values can contain newline or TAB.
+     *
+     *  @param data:  initial data to load into KV store
+     *  @param emptyChunkPath:  path to empty chunk list file
+     *  @param readOnly:  if true then KV storage will be set read-only
+     *                    after loading initial data.
      */
-    static std::shared_ptr<CssAccess> makeMemCss(std::istream& mapStream,
-                                                 std::string const& emptyChunkPath);
+    static std::shared_ptr<CssAccess> createFromData(std::string const& data,
+                                                     std::string const& emptyChunkPath,
+                                                     bool readOnly = false);
 
     /**
-     *  Factory method for creating CssAccess instance based on existing
-     *  KvInterface instance.
+     *  Create CssAccess instance from configuration dictionary.
+     *
+     *  Accepts dictionary containing all needed parameters, there is one
+     *  required key "technology" in the dictionary, all other keys depend
+     *  on the value of "technology" key. Here are possible values:
+     *   'mem': other keys (all optional, file and data keys are exclusive):
+     *       'file': name of the file containing initial data
+     *       'data': string containing initial data (like in createFromData())
+     *   'mysql': other keys (all optional):
+     *       'hostname': string with mysql server host name or IP address
+     *       'port': port number of mysql server (encoded as string)
+     *       'socket': unix socket name
+     *       'username': mysql user name
+     *       'password': user password
+     *       'database': database name
+     *
+     *  @param config:  configuration map
+     *  @param emptyChunkPath:  path to empty chunk list file
+     *  @param readOnly:  if true then KV storage will be set read-only
+     *                    after loading initial data.
+     *
+     * @throws ConfigError: if config map is invalid
+     * @throws CssError: for all CSS errors
      */
-    static std::shared_ptr<CssAccess> makeKvCss(std::shared_ptr<KvInterface> const& kv,
-                                                std::string const& emptyChunkPath);
+    static std::shared_ptr<CssAccess> createFromConfig(std::map<std::string, std::string> const& config,
+                                                       std::string const& emptyChunkPath,
+                                                       bool readOnly = false);
 
     /**
      *  Returns current compiled-in version number of CSS data structures.
@@ -257,15 +299,13 @@ public:
      * @param tableName: table name
      * @param schema: table schema
      * @param matchParams: match table parameters
-     * @param chunkLevel: 0 - non-chunked, 1 - chunked, 2 - sub-chunked
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
      */
     void createMatchTable(std::string const& dbName,
                           std::string const& tableName,
                           std::string const& schema,
-                          MatchTableParams const& matchParams,
-                          int chunkLevel);
+                          MatchTableParams const& matchParams);
 
     /**
      * @brief Delete table from CSS.
@@ -374,6 +414,13 @@ public:
      */
     EmptyChunks const& getEmptyChunks() const { return *_emptyChunks; }
 
+    /**
+     *  Return underlying KvInterface instance.
+     *
+     *  This may be useful for testing, not much for regular clients.
+     */
+    std::shared_ptr<KvInterface> getKvI() { return _kvI; }
+
 protected:
 
     // Construct from KvInterface instance and empty chunk list instance
@@ -410,11 +457,19 @@ protected:
      */
     void _storePacked(std::string const& key, std::map<std::string, std::string> const& data);
 
+    /**
+     *  Validates version stored in KV. If version key exists but has
+     *  unexpected value it throws VersionMismatchError. If version key
+     *  is missing and mustExist is true it throws VersionMissingError.
+     */
+    void _checkVersion(bool mustExist=true) const;
+
 private:
 
     std::shared_ptr<KvInterface> _kvI;
     std::shared_ptr<EmptyChunks> _emptyChunks;
     std::string _prefix;    // optional prefix, for isolating tests from production
+    mutable bool _versionOk;   // True if version is checked (and is OK)
 };
 
 }}} // namespace lsst::qserv::css

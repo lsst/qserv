@@ -129,6 +129,14 @@ public:
      */
     virtual void deleteKey(std::string const& key) = 0;
 
+    /**
+     *  Dumps complete CSS contents as a string.
+     *
+     *  Result can be fed to CssAccess::createFromData() method to create
+     *  a new instance with the copy of CSS data.
+     */
+    virtual std::string dumpKV() = 0;
+
 protected:
     KvInterface() {}
     virtual std::string _get(std::string const& key,

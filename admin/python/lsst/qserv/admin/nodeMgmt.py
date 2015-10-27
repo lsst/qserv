@@ -76,18 +76,18 @@ class NodeMgmt(object):
     #----------------
     #  Constructor --
     #----------------
-    def __init__(self, qservAdmin, wmgrSecretFile=None):
+    def __init__(self, css, wmgrSecretFile=None):
         """
-        Constructor needs an instance of QservAdmin type which provides access to
+        Constructor needs an instance of CssAccess type which provides access to
         CSS worker node information.
 
-        @param qservAdmin:  QservAdmin instance.
+        @param css:  CssAccess instance.
         @param wmgrSecretFile:  Path to a file with wmgr secret, this argument is
                     only used when actual communication with remote nodes happen, but
                     it's not required if you only use selectDict()
         """
 
-        self.css = qservAdmin
+        self.css = css
         self.wmgrSecretFile = wmgrSecretFile
         self._log = logging.getLogger(__name__)
 
@@ -99,9 +99,8 @@ class NodeMgmt(object):
         """
         Returns set of NodeAdmin instances based on supplied selection criteria.
 
-        @param state:   string or list of strings from a list defined in  QservAdmin.NodeState.STATES
-                        (e.g. QservAdmin.NodeState.ACTIVE). If provided then only nodes with
-                        the state that match any item in the list (or the state if state is a string)
+        @param state:   string or list of strings. If provided then only nodes with the state
+                        that match any item in the list (or the state if state is a string)
                         are returned.
         @param nodeType: string or list of strings, if provided then only nodes that have the specified
                         node type are returned
@@ -112,7 +111,7 @@ class NodeMgmt(object):
         nodes = self.selectDict(state, nodeType)
 
         # convert to instances
-        return [NodeAdmin(name=key, qservAdmin=self.css, wmgrSecretFile=self.wmgrSecretFile)
+        return [NodeAdmin(name=key, css=self.css, wmgrSecretFile=self.wmgrSecretFile)
                 for key, _ in nodes.items()]
 
 
@@ -132,13 +131,13 @@ class NodeMgmt(object):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)
-        nodes = self.css.getNodes().items()
+        nodes = self.css.getAllNodeParams().items()
 
         # filter out those that don't match
         if state is not None:
-            nodes = [item for item in nodes if item[1].get('state') in state]
+            nodes = [item for item in nodes if item[1].status in state]
         if nodeType is not None:
-            nodes = [item for item in nodes if item[1].get('type') in nodeType]
+            nodes = [item for item in nodes if item[1].type in nodeType]
 
         # make dict
         return dict(nodes)

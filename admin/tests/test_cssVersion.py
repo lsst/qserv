@@ -21,7 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-This is a unittest for checking CSS version functionality in qservAdmin module.
+This is a unittest for checking CSS version functionality in CssAccess.
 
 @author  Andy Salnikov, SLAC
 
@@ -31,110 +31,87 @@ import os
 import tempfile
 import unittest
 
-import lsst.qserv.admin.qservAdmin as qservAdmin
-from lsst.qserv.admin.qservAdminException import QservAdminException
+from lsst.qserv import css
 
 
-def _makeAdmin(data=None):
+def _makeCss(data=None):
     """
-    Create QservAdmin instance with some pre-defined data.
+    Create CssAccess instance with some pre-defined data.
     """
-    if data is None:
-        # read from /dev/null
-        connection = '/dev/null'
-    else:
-        # make temp file and save data in it
-        file = tempfile.NamedTemporaryFile(delete=False)
-        connection = file.name
-        file.write(data)
-        file.close()
 
     # make an instance
-    config = dict(technology='mem', connection=connection)
-    admin = qservAdmin.QservAdmin(config=config)
+    data = data or ""
+    instance = css.CssAccess.createFromData(data, "")
 
-    # remove tmp file
-    if connection != '/dev/null':
-        os.unlink(connection)
-
-    return admin
+    return instance
 
 
 class TestCssVersion(unittest.TestCase):
     def setUp(self):
-        self.defaultDbOptions = dict(nStripes='10',
-                                     nSubStripes='10',
-                                     overlap='0.0',
-                                     storageClass='L2',
-                                     partitioning='1',
-                                     partitioningStrategy='sphBox')
+        self.dbStriping = css.StripingParams(10, 10, 0, 0.0)
     def test1(self):
         """
         Check that if version is missing then it is created on
         first database operation.
         """
 
-        # instantiate kvI with empty initial data
-        admin = _makeAdmin()
+        # instantiate CSS with empty initial data
+        css_inst = _makeCss()
 
         # create database, this should also create version key
-        dbOptions = self.defaultDbOptions
-        admin.createDb('TESTDB', dbOptions)
+        css_inst.createDb('TESTDB', self.dbStriping, "L2", "RELEASED")
 
         # look at the version key
-        kvi = admin._kvI
-        self.assertTrue(kvi.exists(qservAdmin.VERSION_KEY))
-        self.assertEqual(kvi.get(qservAdmin.VERSION_KEY), str(qservAdmin.VERSION))
+        kvi = css_inst.getKvI()
+        self.assertTrue(kvi.exists(css.VERSION_KEY))
+        self.assertEqual(kvi.get(css.VERSION_KEY), str(css.VERSION))
 
     def test2(self):
         """
         Check for existing correct version number.
         """
 
-        # instantiate kvI with empty initial data
+        # instantiate CSS with some initial data
         initData = """\
 /DBS\t\\N
 /css_meta\t\\N
-/css_meta/version\t""" + str(qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+/css_meta/version\t""" + str(css.VERSION)
+        css_inst = _makeCss(initData)
 
         # create database, this checks version number
-        dbOptions = self.defaultDbOptions
-        admin.createDb('TESTDB', dbOptions)
+        css_inst.createDb('TESTDB', self.dbStriping, "L2", "RELEASED")
 
     def test3(self):
         """
         Check for existing correct version number, use dropDb.
         """
 
-        # instantiate kvI with empty initial data
+        # instantiate CSS with some initial data
         initData = """\
 /DBS\t\\N
 /DBS/TESTDB\tREADY
 /DBS/TESTDB.json\t\\N
 /css_meta\t\\N
-/css_meta/version\t""" + str(qservAdmin.VERSION)
-        admin = _makeAdmin(initData)
+/css_meta/version\t""" + str(css.VERSION)
+        css_inst = _makeCss(initData)
 
         # drop database, this checks version number
-        admin.dropDb('TESTDB')
+        css_inst.dropDb('TESTDB')
 
     def test4(self):
         """
         Check for existing but mis-matching version number.
         """
 
-        # instantiate kvI with empty initial data
+        # instantiate CSS with some initial data
         initData = """\
 /DBS\t\\N
 /css_meta\t\\N
 /css_meta/version\t1000000"""
-        admin = _makeAdmin(initData)
 
-        # create database, this checks version number
-        dbOptions = self.defaultDbOptions
-        with self.assertRaises(QservAdminException):
-            admin.createDb('TESTDB', dbOptions)
+        # create CSS instance, this checks version number
+        with self.assertRaises(css.VersionMismatchError):
+            css_inst = _makeCss(initData)
 
 ####################################################################################
 

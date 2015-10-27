@@ -83,13 +83,13 @@ shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
                                       mysqlclient_r protobuf
                                       XrdClient XrdPosix XrdSsi XrdUtils
                                       boost_regex boost_thread boost_system
-                                      boost_signals zookeeper_mt""".split(),
+                                      boost_signals""".split(),
                                'SHLIBPREFIX' : '',
                                'distDir' : pyDistRelative(env,"czar")},
 
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
-                            'libs' : "log boost_thread zookeeper_mt".split(),
+                            'libs' : "log boost_thread".split(),
                             'extraSrcs' : ['css'],
                             'SHLIBPREFIX' : '',
                             'distDir' : pyDistRelative(env, "css")},

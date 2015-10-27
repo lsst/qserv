@@ -57,21 +57,8 @@ LOG_LOGGER UserQueryFactory::_log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactor
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    /// Import non-CSS-related config from caller
-    void readConfig(StringMap const& m);
 
-    /// Import CSS config and construct CSS
-    void readConfigCss(StringMap const& m,
-                       std::shared_ptr<css::KvInterface> kvi);
-
-    void initCss(std::string const& cssTech, std::string const& cssConn,
-                    int timeout,
-                    std::string const& emptyChunkPath);
-
-    void initCss(std::shared_ptr<css::KvInterface> kvi,
-                    std::string const& emptyChunkPath);
-
-    void initMergerTemplate(); ///< Construct template config for merger
+    Impl(StringMap const& config);
 
     /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
@@ -84,13 +71,10 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(StringMap const& m,
-                                   std::string const& czarName,
-                                   std::shared_ptr<css::KvInterface> kvi)
-    :  _impl(std::make_shared<Impl>()) {
+                                   std::string const& czarName)
+    :  _impl(std::make_shared<Impl>(m)) {
+
     ::putenv((char*)"XRDDEBUG=1");
-    assert(_impl);
-    _impl->readConfig(m);
-    _impl->readConfigCss(m, kvi);
 
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
@@ -134,7 +118,8 @@ UserQueryFactory::newUserQuery(std::string const& query,
     return std::make_pair(sessionId, qs->getProxyOrderBy());
 }
 
-void UserQueryFactory::Impl::readConfig(StringMap const& m) {
+UserQueryFactory::Impl::Impl(StringMap const& m) {
+
     ConfigMap cm(m);
     /// localhost:1094 is the most reasonable default, even though it is
     /// the wrong choice for all but small developer installations.
@@ -189,54 +174,23 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "Error, qmeta.db not found. Using qservMeta.",
         "qservMeta");
     queryMetadata = std::make_shared<qmeta::QMetaMysql>(qmetaConfig);
-}
 
-void UserQueryFactory::Impl::readConfigCss(
-    StringMap const& m,
-    std::shared_ptr<css::KvInterface> kvi) {
-    ConfigMap cm(m);
-
+    // empty chunk path
     std::string emptyChunkPath = cm.get(
         "partitioner.emptychunkpath",
         "Error, missing path for Empty chunk file, using '.'.",
         ".");
-    if (!kvi) {
-        std::string cssTech = cm.get(
-            "css.technology",
-            "Error, css.technology not found.",
-            "invalid");
-        std::string cssConn = cm.get(
-            "css.connection",
-            "Error, css.connection not found.",
-            "");
-        int cssTimeout = cm.getTyped<int>(
-            "css.timeout",
-            "Error, css.timeout not found.",
-            10000);
 
-        initCss(cssTech, cssConn, cssTimeout, emptyChunkPath);
-    } else {
-        initCss(kvi, emptyChunkPath);
+    // find all css.* parameters and copy to new map (dropping css.)
+    StringMap cssConfig;
+    for (auto& kv: m) {
+        if (kv.first.compare(0, 4, "css.") == 0) {
+            cssConfig.insert(std::make_pair(std::string(kv.first, 4), kv.second));
+        }
     }
-}
 
-void UserQueryFactory::Impl::initCss(std::string const& cssTech,
-                                     std::string const& cssConn,
-                                     int timeout_msec,
-                                     std::string const& emptyChunkPath) {
-    if (cssTech == "mem") {
-        LOGF(_log, LOG_LVL_INFO, "Initializing memory-based css, with %1%" % cssConn);
-        css = css::CssAccess::makeMemCss(cssConn, emptyChunkPath);
-    } else {
-        LOGF(_log, LOG_LVL_ERROR, "Unable to determine css technology, check config file.");
-        throw ConfigError("Invalid css technology, check config file.");
-    }
-}
-
-void UserQueryFactory::Impl::initCss(std::shared_ptr<css::KvInterface> kvi,
-                                     std::string const& emptyChunkPath) {
-    css = css::CssAccess::makeKvCss(kvi, emptyChunkPath);
-    LOGF(_log, LOG_LVL_INFO, "Initializing cache-based css");
+    // create CssAccess instance
+    css = css::CssAccess::createFromConfig(cssConfig, emptyChunkPath);
 }
 
 }}} // lsst::qserv::ccontrol

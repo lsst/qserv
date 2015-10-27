@@ -8,7 +8,7 @@
 
 # used by all
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-# used by mysql-proxy, xrootd, zookeeper, qserv-czar
+# used by mysql-proxy, xrootd, qserv-czar
 QSERV_PID_DIR={{QSERV_PID_DIR}}
 QSERV_LOG_DIR={{QSERV_LOG_DIR}}
 # used by mysqld, mysql-proxy

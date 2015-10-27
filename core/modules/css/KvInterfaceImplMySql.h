@@ -55,7 +55,7 @@ public:
     /**
      *  @param mysqlConf: Configuration object for mysql connection
      */
-    KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf);
+    explicit KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly=false);
     virtual ~KvInterfaceImplMySql() {};
 
     virtual std::string create(std::string const& key, std::string const& value,
@@ -70,6 +70,8 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& parentKey) override;
 
     virtual void deleteKey(std::string const& key) override;
+
+    virtual std::string dumpKV() override;
 
 protected:
     virtual std::string _get(std::string const& key,
@@ -132,6 +134,7 @@ private:
     std::string _escapeSqlString(std::string const& str);
 
     sql::SqlConnection _conn;
+    bool _readOnly;
 };
 
 }}} // namespace lsst::qserv::css

@@ -44,9 +44,39 @@ import sys
 
 # local imports
 import lsst.log
-from lsst.qserv.css.kvInterface import KvException
-from lsst.qserv.admin.qservAdmin import QservAdmin, NodeState
-from lsst.qserv.admin.qservAdminException import QservAdminException
+from lsst.qserv import css
+from lsst.qserv.css import cssConfig
+
+
+# exception classes used in this utility
+
+class _ToolError(RuntimeError):
+    pass
+
+class _NotImplementedError(_ToolError):
+    def __init__(self, cmd):
+        _ToolError.__init__(self, "Command not implemented: " + str(cmd))
+
+class _IllegalCommandError(_ToolError):
+    def __init__(self, cmd):
+        _ToolError.__init__(self, "Unexpected command or option, see HELP for details: " + str(cmd))
+
+class _WrongParamError(_ToolError):
+    def __init__(self, parm):
+        _ToolError.__init__(self, "Unrecognized parameter: " + str(parm))
+
+class _MissingParamError(_ToolError):
+    def __init__(self, parm):
+        _ToolError.__init__(self, "Missing parameter: " + str(parm))
+
+class _MissingConfigError(_ToolError):
+    def __init__(self, config):
+        _ToolError.__init__(self, "Config file not found: " + str(config))
+
+class _UnreadableConfigError(_ToolError):
+    def __init__(self, config):
+        _ToolError.__init__(self, "Can't access the config file: " + str(config))
+
 
 ####################################################################################
 class CommandParser(object):
@@ -120,7 +150,8 @@ class CommandParser(object):
             'SHOW':    self._parseShow,
             'UPDATE':  self._parseUpdate
             }
-        self._impl = QservAdmin(connInfo)
+        config = cssConfig.configFromUrl(connInfo)
+        self._css = css.CssAccess.createFromConfig(config, "")
         self._supportedCommands = """
   Supported commands:
     CREATE DATABASE <dbName> <configFile>;
@@ -131,6 +162,7 @@ class CommandParser(object):
     UPDATE NODE <nodeName> state=value;  # value: ACTIVE, INACTIVE
     DELETE NODE <nodeName>;
     DROP DATABASE <dbName>;
+    DROP TABLE <dbName>.<tableName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
     RESTORE <inFile>;
@@ -154,7 +186,7 @@ class CommandParser(object):
         cmd = ''
         prompt = self._prompt
         while True:
-            line = raw_input(prompt).decode("utf-8").strip()
+            line = raw_input(prompt).strip()
             cmd += line + ' '
             if prompt:
                 prompt = self._prompt if line.endswith(';') else "~ "
@@ -162,9 +194,8 @@ class CommandParser(object):
                 pos = cmd.index(';')
                 try:
                     self.parse(cmd[:pos])
-                except (QservAdminException, KvException) as e:
-                    self._logger.error(e.__str__())
-                    print "ERROR: ", e.__str__()
+                except (_ToolError, css.CssError) as exc:
+                    self._logger.error("%s", exc)
                 cmd = cmd[pos+1:]
 
     def parse(self, cmd):
@@ -180,7 +211,7 @@ class CommandParser(object):
         if t in self._funcMap:
             self._funcMap[t](tokens[1:])
         else:
-            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, cmd)
+            raise _NotImplementedError(cmd)
 
     def _parseCreate(self, tokens):
         """
@@ -194,12 +225,12 @@ class CommandParser(object):
         elif t == 'NODE':
             self._parseCreateNode(tokens[1:])
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            raise _IllegalCommandError(t)
 
     def _parseCreateDatabase(self, tokens):
         """
         Subparser - handles all CREATE DATABASE requests.
-        Throws KvException, QservAdminException
+        Throws css.CssError, _ToolError
         """
         l = len(tokens)
         if l == 2:
@@ -207,65 +238,61 @@ class CommandParser(object):
             configFile = tokens[1]
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processDbOptions(options)
-            self._impl.createDb(dbName, options)
+            striping = css.StripingParams(int(options['nStripes']), int(options['nSubStripes']),
+                                          0, float(options['overlap']))
+            self._css.createDb(dbName, striping, options['storageClass'], 'RELEASED')
         elif l == 3:
             if tokens[1].upper() != 'LIKE':
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                                    "Expected 'LIKE', found: '%s'." % tokens[1])
+                raise _IllegalCommandError("Expected 'LIKE', found: '{0}'.".format(tokens[1]))
             dbName = tokens[0]
             dbName2 = tokens[2]
-            self._impl.createDbLike(dbName, dbName2)
+            self._css.createDbLike(dbName, dbName2)
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD,
-                                "Unexpected number of arguments.")
+            raise _IllegalCommandError("Unexpected number of arguments.")
 
     def _parseCreateTable(self, tokens):
         """
         Subparser - handles all CREATE TABLE requests.
-        Throws KvException, QservAdminException.
+        Throws css.CssError, _ToolError.
         """
         l = len(tokens)
         if l == 2:
             (dbTbName, configFile) = tokens
             if '.' not in dbTbName:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName)
+                raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
             (dbName, tbName) = dbTbName.split('.')
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processTbOptions(dbName, options)
-            self._impl.createTable(dbName, tbName, options)
-        elif l == 3:
-            (dbTbName, likeToken, dbTbName2) = tokens
-            if likeToken.upper() != 'LIKE':
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                                    "Expected 'LIKE', found: '%s'." % tokens[2])
-            if '.' not in dbTbName:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName)
-            (dbName, tbName) = dbTbName.split('.')
-            if '.' not in dbTbName2:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName2)
-            (dbName2, tbName2) = dbTbName2.split('.')
-            self._impl.createTableLike(dbName, tbName, dbName2, tbName2,
-                                       options)
+            if options.get('match', False):
+                matchParams = css.MatchTableParams(options['dirTable1'], options['dirColName1'],
+                                                   options['dirTable2'], options['dirColName2'],
+                                                   options['flagColName'])
+                self._css.createMatchTable(dbName, tbName, options['schema'], matchParams)
+            else:
+                if 'dirTable' in options:
+                    # partitioned table
+                    params = css.PartTableParams(options.get('dirDb', ""), options['dirTable'],
+                                                 options['dirColName'], options['latColName'],
+                                                 options['lonColName'], options.get('overlap', 0.0),
+                                                 True, bool(int(options['subChunks'])))
+                else:
+                    params = css.PartTableParams()
+                self._css.createTable(dbName, tbName, options['schema'], params)
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD,
-                                "Unexpected number of arguments.")
+            raise _IllegalCommandError("Unexpected number of arguments.")
 
     def _parseCreateNode(self, tokens):
         """
         Subparser - handles all CREATE NODE requests.
-        Throws KvException, QservAdminException.
+        Throws css.CssError, _ToolError.
         """
         if len(tokens) < 2:
-            raise QservAdminException(QservAdminException.BAD_CMD,
-                                "Unexpected number of arguments.")
+            raise _IllegalCommandError("Unexpected number of arguments.")
 
         requiredKeys = self.requiredOpts['createNode']
 
         # parse command, 'type' and 'state' are optional, rest is required
-        options = {'nodeName': tokens[0], 'type': 'worker', 'state': NodeState.ACTIVE}
+        options = {'nodeName': tokens[0], 'type': 'worker', 'state': "ACTIVE"}
 
         for key, value in self._parseKVList(tokens[1:], requiredKeys):
             options[key] = value
@@ -274,57 +301,65 @@ class CommandParser(object):
         self._checkExist(options, requiredKeys)
 
         # call CSS to do the rest, remap options to argument names
-        options['nodeType'] = options['type']
-        del options['type']
-        self._impl.addNode(**options)
+        params = css.NodeParams(options['type'], options['host'],
+                                int(options.get('port', 0)), options['state'])
+        self._css.addNode(options['nodeName'], params)
 
     def _parseDrop(self, tokens):
         """
         Subparser - handles all DROP requests.
-        Throws KvException, QservAdminException.
+        Throws css.CssError, _ToolError.
         """
         t = tokens[0].upper()
         l = len(tokens)
         if t == 'DATABASE':
             if l != 2:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                                    "unexpected number of arguments")
-            self._impl.dropDb(tokens[1])
+                raise _IllegalCommandError("unexpected number of arguments")
+            self._css.dropDb(tokens[1])
         elif t == 'TABLE':
-            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED,
-                                      "DROP TABLE")
+            if l != 2:
+                raise _IllegalCommandError("unexpected number of arguments")
+            if '.' not in tokens[1]:
+                raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(tokens[1]))
+            dbName, tbName = tokens[1].split('.')
+            self._css.dropTable(dbName, tbName)
         elif t == 'EVERYTHING':
-            self._impl.dropEverything()
+            raise _NotImplementedError(t)
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            raise _IllegalCommandError(t)
 
     def _parseDelete(self, tokens):
         """
         Subparser - handles all DELETE requests.
-        Throws KvException, QservAdminException.
+        Throws css.CssError, _ToolError.
         """
         t = tokens[0].upper()
         l = len(tokens)
         if t == 'NODE':
             if l != 2:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                                    "unexpected number of arguments")
-            self._impl.deleteNode(tokens[1])
+                raise _IllegalCommandError("unexpected number of arguments")
+            self._css.deleteNode(tokens[1])
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            raise _IllegalCommandError(t)
 
     def _parseDump(self, tokens):
         """
         Subparser, handle all DUMP requests.
         """
         if len(tokens) > 2:
-            raise QservAdminException(QservAdminException.WRONG_PARAM)
+            raise _IllegalCommandError("unexpected number of arguments")
         t = tokens[0].upper()
-        dest = tokens[1] if len(tokens) == 2 else None
-        if t == 'EVERYTHING':
-            self._impl.dumpEverything(dest)
+        if len(tokens) == 2:
+            # this may throw
+            dest = open(tokens[1], 'w')
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            dest = sys.stdout
+        if t == 'EVERYTHING':
+            res = self._css.getKvI().dumpKV()
+            dest.write(res)
+            dest.write("\n")
+        else:
+            raise _IllegalCommandError(t)
 
     def _justExit(self, tokens):
         raise SystemExit()
@@ -339,13 +374,13 @@ class CommandParser(object):
         """
         Subparser - handles all RELEASE requests.
         """
-        raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, "RELEASE")
+        raise _NotImplementedError("RELEASE")
 
     def _restore(self, tokens):
         """
         Restore all data from the file fileName.
         """
-        self._impl.restore(tokens[0])
+        raise _NotImplementedError("RESTORE")
 
     def _parseShow(self, tokens):
         """
@@ -353,24 +388,24 @@ class CommandParser(object):
         """
         t = tokens[0].upper()
         if t == 'DATABASES':
-            self._impl.showDatabases()
+            names = self._css.getDbNames()
+            for name in names:
+                print name
         elif t == 'NODES':
             self._parseShowNodes()
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            raise _IllegalCommandError(t)
 
     def _parseShowNodes(self):
         """
         Subparser, handle all SHOW NODES requests.
         """
-
-        nodes = self._impl.getNodes()
+        nodes = self._css.getAllNodeParams()
         if not nodes:
             print "No nodes defined in CSS"
-        for node in sorted(nodes.keys()):
-            options = sorted(nodes[node].items())
-            options = ["{0}={1}".format(k, v) for k, v in options]
-            print "{0} {1}".format(node, ' '.join(options))
+        for node, params in sorted(nodes.items()):
+            print "{0} type={1} host={2} port={3} status={4}".format(node, params.type, params.host,
+                                                                     params.port, params.status)
 
     def _parseUpdate(self, tokens):
         """
@@ -380,22 +415,18 @@ class CommandParser(object):
         if t == 'NODE':
             self._parseUpdateNode(tokens[1:])
         else:
-            raise QservAdminException(QservAdminException.BAD_CMD)
+            raise _IllegalCommandError(t)
 
     def _parseUpdateNode(self, tokens):
         """
         Subparser - handles all UPDATE NODE requests.
-        Throws KvException, QservAdminException.
+        Throws css.CssError, _ToolError.
         """
         if len(tokens) < 2:
-            raise QservAdminException(QservAdminException.BAD_CMD,
-                                "Unexpected number of arguments.")
+            raise _IllegalCommandError("Unexpected number of arguments.")
 
         requiredKeys = self.requiredOpts['updateNode']
-
-        # parse key=value pairs
-        options = {'nodes': [tokens[0]]}
-
+        options = {}
         for key, value in self._parseKVList(tokens[1:], requiredKeys):
             options[key] = value
 
@@ -403,7 +434,7 @@ class CommandParser(object):
         self._checkExist(options, requiredKeys)
 
         # call CSS to do the rest, remap options to argument names
-        self._impl.setNodeState(**options)
+        self._css.setNodeStatus(tokens[0], options['state'])
 
     def _parseKVList(self, tokens, possibleKeys=None):
         """
@@ -414,27 +445,16 @@ class CommandParser(object):
         kvList = []
         for opt in tokens:
             if '=' not in opt:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Invalid argument '%s', should be <key>=<value>" % opt)
+                raise _IllegalCommandError("Invalid argument '{0}', should be <key>=<value>".format(opt))
             key, value = opt.split('=', 1)
 
             if possibleKeys is not None and key not in possibleKeys:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Unrecognized option key '%s', possible keys: %s" % \
-                   (key, ' '.join(possibleKeys)))
+                raise _IllegalCommandError("Unrecognized option key '{0}', possible keys: {0}".format(
+                                        (key, ' '.join(possibleKeys))))
 
             kvList.append((key, value))
 
         return kvList
-
-    def _createDb(self, dbName, configFile):
-        """
-        Create database through config file.
-        """
-        self._logger.info("Creating db '%s' using config '%s'" % \
-                              (dbName, configFile))
-        options = self._fetchOptionsFromConfigFile(configFile)
-        self._impl.createDb(dbName, options)
 
     def _fetchOptionsFromConfigFile(self, fName):
         """
@@ -443,9 +463,9 @@ class CommandParser(object):
         ignored.)
         """
         if not os.path.exists(fName):
-            raise QservAdminException(QservAdminException.CONFIG_NOT_FOUND, fName)
+            raise _MissingConfigError(fName)
         if not os.access(fName, os.R_OK):
-            raise QservAdminException(QservAdminException.AUTH_PROBLEM, fName)
+            raise _UnreadableConfigError(fName)
         config = ConfigParser.ConfigParser()
         config.optionxform = str # case sensitive
         config.read(fName)
@@ -458,7 +478,7 @@ class CommandParser(object):
     def _checkExist(self, opts, required):
         for r in required:
             if r not in opts:
-                raise QservAdminException(QservAdminException.MISSING_PARAM, r)
+                raise _MissingParamError(r)
 
     def _processDbOptions(self, opts):
         """
@@ -475,8 +495,7 @@ class CommandParser(object):
                 self._checkExist(opts,
                                  CommandParser.requiredOpts["createDbSphBox"])
             else:
-                raise QservAdminException(QservAdminException.WRONG_PARAM,
-                                          opts["partitioningStrategy"])
+                raise _WrongParamError(opts["partitioningStrategy"])
         return opts
 
     def _setDefault(self, opts, key, defaultValue, force=False):
@@ -485,19 +504,17 @@ class CommandParser(object):
                 "param '" + key + "' not found, will use default: " + str(defaultValue))
             opts[key] = defaultValue
         elif force and opts[key] != defaultValue:
-            raise QservAdminException(
-                QservAdminException.WRONG_PARAM,
-                "Got '%s' expected '%s'" % (opts[key], defaultValue))
+            raise _WrongParamError("Got '{0}' expected '{1}'".format(opts[key], defaultValue))
 
     def _processTbOptions(self, dbName, opts):
         """
         Validate options used by createTable, add default values for missing
         parameters.
         """
-        self._setDefault(opts, "partitioning", "0")
+        self._setDefault(opts, "partitioning", 0)
         self._setDefault(opts, "clusteredIndex", "NULL")
-        self._setDefault(opts, "match", "0")
-        self._setDefault(opts, "isView", "0")
+        self._setDefault(opts, "match", 0)
+        self._setDefault(opts, "isView", 0)
         if opts.has_key("schemaFile"):
             if opts.has_key("schema"):
                 self._logger.info("Both schema and schemaFile specified. " +
@@ -511,8 +528,7 @@ class CommandParser(object):
                 opts["schema"] = data[i:j + 1]
 
         elif not opts.has_key("schema"):
-            raise QservAdminException(QservAdminException.MISSING_PARAM,
-                                      "Missing 'schema' or 'schemaFile'")
+            raise _MissingParamError("Missing 'schema' or 'schemaFile'")
         # these are required options for createTable
         self._checkExist(opts, CommandParser.requiredOpts["createTable"])
         if opts["partitioning"] != "0":
@@ -541,9 +557,6 @@ class CommandParser(object):
 
     def _initLogging(self):
         self._logger = logging.getLogger("QADM")
-        kL = os.getenv('KAZOO_LOGGING')
-        if kL: logging.getLogger("kazoo.client").setLevel(int(kL))
-        if kL: self._logger.setLevel(int(kL))
 
 ####################################################################################
 class WordCompleter(object):
@@ -622,7 +635,7 @@ def main():
             cmd = cmd.strip().rstrip(';')
             try:
                 parser.parse(cmd)
-            except (QservAdminException, KvException) as e:
+            except (_ToolError, css.CssError) as e:
                 print "ERROR: ", e.__str__()
                 sys.exit(1)
     else:

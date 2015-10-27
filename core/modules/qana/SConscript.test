@@ -12,7 +12,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "antlr boost_filesystem boost_thread boost_system crypto log log4cxx ssl mysqlclient_r zookeeper_mt".split()
+extDeps = "antlr boost_filesystem boost_thread boost_system crypto log log4cxx ssl mysqlclient_r".split()
 
 modDeps = 'css global log mysql query sql util'.split() # deps on other modules
 pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
