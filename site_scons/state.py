@@ -279,6 +279,15 @@ def init(src_dir):
 
     opts.Update(env)
 
+    if not log.verbose:
+        env['CCCOMSTR'] = env['CXXCOMSTR'] = "Compiling static object $TARGET"
+        env['LINKCOMSTR'] = "Linking static object $TARGET"
+        env['SHCCCOMSTR'] = env['SHCXXCOMSTR'] = "Compiling shared object $TARGET"
+        env['SHLINKCOMSTR'] = "Linking shared object $TARGET"
+        env['SWIGCOMSTR'] = "Running SWIG wrapper on $SOURCE"
+        env['PROTOC_COMSTR'] = "Running protoc on $SOURCE"
+        env['ANTLR_COMSTR'] = "Running antlr on $SOURCE"
+
 #    _saveState()
 ## @endcond
 
