@@ -24,14 +24,27 @@
 /// implementation. Link this file when building a plugin to be used as
 /// ssi.svclib.
 
+#ifndef LSST_QSERV_XRDSVC_SSIPROVIDER_H
+#define LSST_QSERV_XRDSVC_SSIPROVIDER_H
+
 // System headers
 #include <memory>
+#include <string>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiProvider.hh"
 
 // Qserv headers
-#include "SsiService.h"
+#include "xrdsvc/SsiService.h"
+
+// Forward declarations
+class XrdSsiCluster;
+class XrdSsiLogger;
+namespace lsst {
+namespace qserv {
+namespace wpublish {
+  class ChunkInventory;
+}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -41,28 +54,32 @@ class SsiProviderServer : public XrdSsiProvider
 {
 public:
 
-    virtual XrdSsiService *GetService(XrdSsiErrInfo& eInfo, char const* contact, int oHold=256) {
+    virtual XrdSsiService *GetService(XrdSsiErrInfo& eInfo,
+                                      char const*    contact,
+                                      int            oHold=256) override {
         return _service.get();
     }
 
-    virtual bool Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, char const* cfgFn,
-            char const* parms, int argc, char **argv) {
-        _service = std::unique_ptr<SsiService>(new SsiService(logP));
-        return true;
-    }
+    virtual bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
+                       char const*   cfgFn, char const*    parms,
+                       int           argc,  char**         argv) override;
 
-    virtual rStat QueryResource(char const*rName, char const* contact=0) {
-        // Not called on this object but part of pure virtual interface,
-        // so we need to provide at least this dummy implementation.
-        return isPresent;
-    }
+    virtual rStat QueryResource(char const* rName,
+                                char const* contact=0) override;
+
+                  SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
+    virtual      ~SsiProviderServer();
 
 private:
 
-    std::unique_ptr<SsiService> _service;
+    std::unique_ptr<wpublish::ChunkInventory> _chunkInventory;
+    std::unique_ptr<SsiService>               _service;
 
+    std::string    _name;
+    XrdSsiCluster* _cmsSsi;
+    XrdSsiLogger*  _logSsi;
 };
 
 }}} // lsst::qserv::xrdsvc
 
-XrdSsiProvider *XrdSsiProviderServer = new lsst::qserv::xrdsvc::SsiProviderServer;
+#endif // LSST_QSERV_XRDSVC_SSIPROVIDER_H

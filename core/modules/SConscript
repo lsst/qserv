@@ -50,19 +50,12 @@ allModules = """ccontrol css czar global log mysql obsolete
                 rproc sql sg
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched wmgr
-                xrdoss xrdsvc""".split()
+                xrdsvc""".split()
 
 # Products
 def pyDistRelative(env, module):
     return os.path.join(env['python_relative_prefix'],"lsst","qserv",module)
-shProducts = { "xrdoss" : {'mods' : """global mysql sql util wconfig
-                                       wpublish xrdoss""".split(),
-                           'libs' : """boost_regex boost_thread crypto log
-                                       log4cxx mysqlclient_r ssl""".split(),
-                           'distDir' : 'lib'
-                           },
-
-               "xrdsvc" : {'mods' : """global mysql proto
+shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                                        sql util wbase
                                        wcontrol wconfig wdb wlog
                                        wpublish wsched

@@ -36,16 +36,12 @@ all.role server
 # default path is {{QSERV_RUN_DIR}}/xrootd-run/
 xrootd.fslib libXrdSsi.so
 ssi.svclib libxrdsvc.so
-ofs.osslib libxrdoss.so
+oss.statlib -2 libXrdSsi.so
 
 # Set pathname for file location resolution.
 # i.e., pathname/somefile will be exported in the xroot URL:
 # xroot://manager:0000/somefile
 oss.localroot {{XROOTD_RUN_DIR}}
-
-# Do not change.  This directive tries to lower the minimum free disk space
-# for "file" writes (which are subquery writes in our case).
-cms.space linger 0 recalc 15 min 10m 11m
 
 # Qserv uses the xrootd XrdSsi, which needs the configuration to
 # force-disable asyncronous access.
