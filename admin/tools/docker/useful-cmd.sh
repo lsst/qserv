@@ -54,7 +54,7 @@ docker run -it --rm --name my_qserv  -h $(hostname)-docker \
     -u dev fjammes/qserv:dev-uid bash
 
 # Launch a shell with a different user on that container
-docker exec -it -u qserv --name my_qserv bash
+docker exec -it -u qserv my_qserv bash
 
 # Commit this version of the container to image fjammes/qserv:dev-uid
 docker commit -m "Add xrootd 4.2.3.lsst1" my_qserv fjammes/qserv:dev-uid
