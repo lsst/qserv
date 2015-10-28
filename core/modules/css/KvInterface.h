@@ -123,6 +123,13 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key) = 0;
 
     /**
+     * Returns children (vector of strings) for a given key together with values.
+     * @throws NoSuchKey if the key does not exist
+     * @throws CssError for other problems (e.g., a connection error is detected).
+     */
+    virtual std::map<std::string, std::string> getChildrenValues(std::string const& key) = 0;
+
+    /**
      * Delete a key, and all of its children (if they exist)
      * @throws NoSuchKey on failure.
      * @throws CssError for other problems.

@@ -40,6 +40,34 @@ int const VERSION = 1; ///< Current supported version (integer)
 // conversions I define this string once and use it with kvInterface
 char const VERSION_STR[] = "1"; ///< Current supported version
 
+// Set of values used for database and table status.
+
+/// This status means CSS data is in inconsistent state, do not use.
+/// Typically used only when constructing new objects.
+char const KEY_STATUS_IGNORE[] = "DO_NOT_USE";
+
+/// Item is ready, meaning it exists both in CSS and on all workers
+char const KEY_STATUS_READY[] = "READY";
+
+/// Item is created in CSS, needs to be created on workers,
+/// this is the prefix followed by timestamp.
+char const KEY_STATUS_CREATE_PFX[] = "PENDING_CREATE:";
+
+/// Item is to be removed from workers and CSS,
+/// this is the prefix followed by timestamp.
+char const KEY_STATUS_DROP_PFX[] = "PENDING_DROP:";
+
+/// Some requested operation failed (e.g. after PENDING_CREATE
+/// watcher failed to create objects on workers),
+/// this is the prefix followed by arbitrary message.
+char const KEY_STATUS_FAILED_PFX[] = "FAILED:";
+
+/// Node state, "ACTIVE" means can be used for regular work
+char const NODE_STATE_ACTIVE[] = "ACTIVE";
+
+/// Node state, "ACTIVE" means can be used for regular work
+char const NODE_STATE_INACTIVE[] = "INACTIVE";
+
 }}} // namespace lsst::qserv::css
 
 #endif // LSST_QSERV_CSS_CONSTANTS_H

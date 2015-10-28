@@ -49,29 +49,29 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p+"/overlap", "0.025"));
 
     kv.push_back(make_pair("/DBS", ""));
-    kv.push_back(make_pair("/DBS/dbA", ""));
+    kv.push_back(make_pair("/DBS/dbA", KEY_STATUS_READY));
     kv.push_back(make_pair("/DBS/dbA/partitioningId", "0000000001"));
-    kv.push_back(make_pair("/DBS/dbB", ""));
-    kv.push_back(make_pair("/DBS/dbC", ""));
+    kv.push_back(make_pair("/DBS/dbB", "Bdb"));
+    kv.push_back(make_pair("/DBS/dbC", KEY_STATUS_IGNORE));
     p = "/DBS/dbA/TABLES";
     kv.push_back(make_pair(p, ""));
-    kv.push_back(make_pair(p + "/Object", "READY"));
+    kv.push_back(make_pair(p + "/Object", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Object/partitioning", ""));
     kv.push_back(make_pair(p + "/Object/partitioning/lonColName", "ra_PS"));
     kv.push_back(make_pair(p + "/Object/partitioning/latColName", "decl_PS"));
     kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
     kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objectId"));
-    kv.push_back(make_pair(p + "/Source", "READY"));
+    kv.push_back(make_pair(p + "/Source", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Source/partitioning", ""));
     kv.push_back(make_pair(p + "/Source/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/Source/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/Source/partitioning/subChunks", "0"));
-    kv.push_back(make_pair(p + "/FSource", "READY"));
+    kv.push_back(make_pair(p + "/FSource", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/FSource/partitioning", ""));
     kv.push_back(make_pair(p + "/FSource/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/FSource/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/FSource/partitioning/subChunks", "0"));
-    kv.push_back(make_pair(p + "/Exposure", "READY"));
+    kv.push_back(make_pair(p + "/Exposure", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Exposure/schema", "(I INT)"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234", ""));
@@ -87,9 +87,9 @@ shared_ptr<KvInterface> initKVI() {
 
     p = "/DBS/dbB/TABLES";
     kv.push_back(make_pair(p, ""));
-    kv.push_back(make_pair(p + "/Exposure", "READY"));
+    kv.push_back(make_pair(p + "/Exposure", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Exposure.json", R"X({"schema": "(FLOAT X)"})X"));
-    kv.push_back(make_pair(p + "/MyObject", "READY"));
+    kv.push_back(make_pair(p + "/MyObject", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/MyObject/partitioning", ""));
     kv.push_back(make_pair(p + "/MyObject/partitioning/lonColName", "ra_PS"));
     kv.push_back(make_pair(p + "/MyObject/partitioning/latColName", "decl_PS"));
@@ -101,16 +101,18 @@ shared_ptr<KvInterface> initKVI() {
 
     p = "/DBS/dbC/TABLES";
     kv.push_back(make_pair(p, ""));
-    kv.push_back(make_pair(p + "/RefMatch", "READY"));
+    kv.push_back(make_pair(p + "/RefMatch", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/RefMatch/match", ""));
     kv.push_back(make_pair(p + "/RefMatch/match/dirTable1", "Object"));
     kv.push_back(make_pair(p + "/RefMatch/match/dirColName1", "objectId"));
     kv.push_back(make_pair(p + "/RefMatch/match/dirTable2", "Source"));
     kv.push_back(make_pair(p + "/RefMatch/match/dirColName2", "sourceId"));
     kv.push_back(make_pair(p + "/RefMatch/match/flagColName", "flag"));
-    kv.push_back(make_pair(p + "/RefMatch2", "READY"));
+    kv.push_back(make_pair(p + "/RefMatch2", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/RefMatch2/match.json",
                            R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag"})"));
+    kv.push_back(make_pair(p + "/TempTable1", KEY_STATUS_IGNORE));
+    kv.push_back(make_pair(p + "/TempTable2", "PENDING_CREATE:12345"));
 
     p = "/NODES";
     kv.push_back(make_pair(p, ""));
@@ -187,6 +189,31 @@ BOOST_AUTO_TEST_CASE(testGetDbNames) {
     BOOST_CHECK(count(names.begin(), names.end(), "dbA"));
     BOOST_CHECK(count(names.begin(), names.end(), "dbB"));
     BOOST_CHECK(count(names.begin(), names.end(), "dbC"));
+}
+
+BOOST_AUTO_TEST_CASE(testGetDbStatus) {
+    auto statMap = getDbStatus();
+    BOOST_CHECK_EQUAL(statMap.size(), 3U);
+    BOOST_CHECK_EQUAL(statMap.count("dbA"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("dbB"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("dbC"), 1U);
+    BOOST_CHECK_EQUAL(statMap["dbA"], KEY_STATUS_READY);
+    BOOST_CHECK_EQUAL(statMap["dbB"], "Bdb");
+    BOOST_CHECK_EQUAL(statMap["dbC"], KEY_STATUS_IGNORE);
+}
+
+BOOST_AUTO_TEST_CASE(testSetDbStatus) {
+    setDbStatus("dbA", "DEAD");
+    setDbStatus("dbB", KEY_STATUS_READY);
+    setDbStatus("dbC", "");
+    auto statMap = getDbStatus();
+    BOOST_CHECK_EQUAL(statMap.size(), 3U);
+    BOOST_CHECK_EQUAL(statMap.count("dbA"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("dbB"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("dbC"), 1U);
+    BOOST_CHECK_EQUAL(statMap["dbA"], "DEAD");
+    BOOST_CHECK_EQUAL(statMap["dbB"], KEY_STATUS_READY);
+    BOOST_CHECK_EQUAL(statMap["dbC"], "");
 }
 
 BOOST_AUTO_TEST_CASE(testContainsDb) {
@@ -274,6 +301,36 @@ BOOST_AUTO_TEST_CASE(testGetTableNames) {
     BOOST_CHECK(tables == expectB2);
 
     BOOST_CHECK_THROW(tables = getTableNames("dbX"), NoSuchDb);
+}
+
+BOOST_AUTO_TEST_CASE(testGetTableStatus) {
+    auto statMap = getTableStatus("dbC");
+    BOOST_CHECK_EQUAL(statMap.size(), 4U);
+    BOOST_CHECK_EQUAL(statMap.count("RefMatch"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("RefMatch2"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("TempTable1"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("TempTable2"), 1U);
+    BOOST_CHECK_EQUAL(statMap["RefMatch"], KEY_STATUS_READY);
+    BOOST_CHECK_EQUAL(statMap["RefMatch2"], KEY_STATUS_READY);
+    BOOST_CHECK_EQUAL(statMap["TempTable1"], KEY_STATUS_IGNORE);
+    BOOST_CHECK_EQUAL(statMap["TempTable2"], "PENDING_CREATE:12345");
+}
+
+BOOST_AUTO_TEST_CASE(testSetTableStatus) {
+    setTableStatus("dbC", "RefMatch", "");
+    setTableStatus("dbC", "RefMatch2", "NOT_THERE");
+    setTableStatus("dbC", "TempTable1", KEY_STATUS_READY);
+    setTableStatus("dbC", "TempTable2", KEY_STATUS_IGNORE);
+    auto statMap = getTableStatus("dbC");
+    BOOST_CHECK_EQUAL(statMap.size(), 4U);
+    BOOST_CHECK_EQUAL(statMap.count("RefMatch"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("RefMatch2"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("TempTable1"), 1U);
+    BOOST_CHECK_EQUAL(statMap.count("TempTable2"), 1U);
+    BOOST_CHECK_EQUAL(statMap["RefMatch"], "");
+    BOOST_CHECK_EQUAL(statMap["RefMatch2"], "NOT_THERE");
+    BOOST_CHECK_EQUAL(statMap["TempTable1"], KEY_STATUS_READY);
+    BOOST_CHECK_EQUAL(statMap["TempTable2"], KEY_STATUS_IGNORE);
 }
 
 BOOST_AUTO_TEST_CASE(testContainsTable) {
@@ -527,21 +584,21 @@ BOOST_AUTO_TEST_CASE(testGetNodeParams) {
     BOOST_CHECK_EQUAL(params.type, "");
     BOOST_CHECK_EQUAL(params.host, "");
     BOOST_CHECK_EQUAL(params.port, 0);
-    BOOST_CHECK_EQUAL(params.status, "ACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_ACTIVE);
     BOOST_CHECK(params.isActive());
 
     params = getNodeParams("node2");
     BOOST_CHECK_EQUAL(params.type, "worker");
     BOOST_CHECK_EQUAL(params.host, "worker2");
     BOOST_CHECK_EQUAL(params.port, 5012);
-    BOOST_CHECK_EQUAL(params.status, "INACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_INACTIVE);
     BOOST_CHECK(not params.isActive());
 
     params = getNodeParams("node3");
     BOOST_CHECK_EQUAL(params.type, "worker");
     BOOST_CHECK_EQUAL(params.host, "worker3");
     BOOST_CHECK_EQUAL(params.port, 5012);
-    BOOST_CHECK_EQUAL(params.status, "ACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_ACTIVE);
     BOOST_CHECK(params.isActive());
 
     BOOST_CHECK_THROW(getNodeParams("UnknownNode"), NoSuchNode);
@@ -557,21 +614,21 @@ BOOST_AUTO_TEST_CASE(testGetAllNodeParams) {
     BOOST_CHECK_EQUAL(params.type, "");
     BOOST_CHECK_EQUAL(params.host, "");
     BOOST_CHECK_EQUAL(params.port, 0);
-    BOOST_CHECK_EQUAL(params.status, "ACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_ACTIVE);
     BOOST_CHECK(params.isActive());
 
     params = parMap["node2"];
     BOOST_CHECK_EQUAL(params.type, "worker");
     BOOST_CHECK_EQUAL(params.host, "worker2");
     BOOST_CHECK_EQUAL(params.port, 5012);
-    BOOST_CHECK_EQUAL(params.status, "INACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_INACTIVE);
     BOOST_CHECK(not params.isActive());
 
     params = parMap["node3"];
     BOOST_CHECK_EQUAL(params.type, "worker");
     BOOST_CHECK_EQUAL(params.host, "worker3");
     BOOST_CHECK_EQUAL(params.port, 5012);
-    BOOST_CHECK_EQUAL(params.status, "ACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_ACTIVE);
     BOOST_CHECK(params.isActive());
 }
 
@@ -588,15 +645,15 @@ BOOST_AUTO_TEST_CASE(testAddNode) {
     BOOST_CHECK_EQUAL(params.type, "worker");
     BOOST_CHECK_EQUAL(params.host, "worker100");
     BOOST_CHECK_EQUAL(params.port, 5012);
-    BOOST_CHECK_EQUAL(params.status, "SICK");
+    BOOST_CHECK_EQUAL(params.state, "SICK");
     BOOST_CHECK(not params.isActive());
 }
 
-BOOST_AUTO_TEST_CASE(testSetNodeStatus) {
-    setNodeStatus("node2", "ACTIVE");
+BOOST_AUTO_TEST_CASE(testSetNodeState) {
+    setNodeState("node2", NODE_STATE_ACTIVE);
 
     auto params = getNodeParams("node2");
-    BOOST_CHECK_EQUAL(params.status, "ACTIVE");
+    BOOST_CHECK_EQUAL(params.state, NODE_STATE_ACTIVE);
     BOOST_CHECK(params.isActive());
 }
 

@@ -27,8 +27,6 @@ This is a unittest for checking CSS version functionality in CssAccess.
 
 """
 
-import os
-import tempfile
 import unittest
 
 from lsst.qserv import css

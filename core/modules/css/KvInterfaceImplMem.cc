@@ -203,6 +203,29 @@ KvInterfaceImplMem::getChildren(string const& key) {
     return retV;
 }
 
+std::map<std::string, std::string>
+KvInterfaceImplMem::getChildrenValues(std::string const& key) {
+    LOGF_DEBUG("getChildrenValues(), key: %1%" % key);
+    if ( ! exists(key) ) {
+        throw NoSuchKey(key);
+    }
+    const string pfx(key == "/" ? key : key + "/");
+    std::map<std::string, std::string> retV;
+    for (auto const& pair: _kvMap) {
+        auto& fullKey = pair.first;
+        LOGF_DEBUG("fullKey: %1%" % fullKey);
+        if (boost::starts_with(fullKey, pfx)) {
+            string theChild(fullKey, pfx.length());
+            if (!theChild.empty() && (theChild.find("/") == string::npos)) {
+                LOGF_DEBUG("child: %1%" % theChild);
+                retV.insert(std::make_pair(theChild, pair.second));
+            }
+        }
+    }
+    LOGF_DEBUG("got: %1% children: %2%" % retV.size() % util::printable(retV));
+    return retV;
+}
+
 void
 KvInterfaceImplMem::deleteKey(string const& key) {
     LOGF_DEBUG("deleteKey(%1%)." % key);

@@ -1,0 +1,43 @@
+#
+# configuration file for watcher, production version
+#
+
+[DEFAULT]
+qserv_run_dir = {{QSERV_RUN_DIR}}
+
+[watcher]
+
+# interval in seconds between updates
+interval = 3.0
+
+[css]
+# connection parameters for CSS
+technology=mysql
+hostname =
+port =
+username = qsmaster
+password =
+database = qservCssData
+socket = {{MYSQLD_SOCK}}
+
+[qmeta]
+# connection parameters for QMeta
+technology=mysql
+hostname =
+port =
+username = qsmaster
+password =
+database = qservMeta
+socket = {{MYSQLD_SOCK}}
+
+[wmgr]
+# path to a file with wmgr secret
+secret = %(qserv_run_dir)s/etc/wmgr.secret
+
+[czar_wmgr]
+# This section defines access point for czar wmgr,
+# it is used only if there is no czar node(s) defined in CSS.
+# This is a workaround for our mono-node integration test which
+# does not update CSS (yet).
+host = 127.0.0.1
+port = 5012

@@ -23,6 +23,8 @@
 #define LSST_QSERV_QMETA_QMETA_H
 
 // System headers
+#include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -44,7 +46,7 @@ namespace qmeta {
  *  @brief Interface for query metadata.
  */
 
-class QMeta  {
+class QMeta {
 public:
 
     /**
@@ -52,6 +54,27 @@ public:
      *  database name, second is table name.
      */
     typedef std::vector<std::pair<std::string, std::string> > TableNames;
+
+    /**
+     *  Create QMeta instance from configuration dictionary.
+     *
+     *  Accepts dictionary containing all needed parameters, there is one
+     *  required key "technology" in the dictionary, all other keys depend
+     *  on the value of "technology" key. Here are possible values:
+     *   'mysql': other keys (all optional):
+     *       'hostname': string with mysql server host name or IP address
+     *       'port': port number of mysql server (encoded as string)
+     *       'socket': unix socket name
+     *       'username': mysql user name
+     *       'password': user password
+     *       'database': database name
+     *
+     *  @param config:  configuration map
+     *
+     * @throws ConfigError: if config map is invalid
+     * @throws CssError: for all CSS errors
+     */
+    static std::shared_ptr<QMeta> createFromConfig(std::map<std::string, std::string> const& config);
 
     // Instances cannot be copied
     QMeta(QMeta const&) = delete;
@@ -191,7 +214,7 @@ public:
     virtual std::vector<QueryId> findQueries(CzarId czarId=0,
                                              QInfo::QType qType=QInfo::ANY,
                                              std::string const& user=std::string(),
-                                             std::vector<QInfo::QStatus> status=std::vector<QInfo::QStatus>(),
+                                             std::vector<QInfo::QStatus> const& status=std::vector<QInfo::QStatus>(),
                                              int completed=-1,
                                              int returned=-1) = 0;
 
@@ -219,11 +242,22 @@ public:
     virtual QInfo getQueryInfo(QueryId queryId) = 0;
 
     /**
+     *  @brief Get queries which use specified database.
+     *
+     *  Only currently executing queries are returned.
+     *
+     *  @param dbName:   Database name.
+     *  @return: List of query IDs.
+     */
+    virtual std::vector<QueryId> getQueriesForDb(std::string const& dbName) = 0;
+
+    /**
      *  @brief Get queries which use specified table.
      *
      *  Only currently executing queries are returned.
      *
-     *  @param queryId:   Query ID, non-negative number.
+     *  @param dbName:   Database name.
+     *  @param tableName:   Table name.
      *  @return: List of query IDs.
      */
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,

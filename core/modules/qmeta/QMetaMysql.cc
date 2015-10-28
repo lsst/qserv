@@ -481,7 +481,7 @@ std::vector<QueryId>
 QMetaMysql::findQueries(CzarId czarId,
                         QInfo::QType qType,
                         std::string const& user,
-                        std::vector<QInfo::QStatus> status,
+                        std::vector<QInfo::QStatus> const& status,
                         int completed,
                         int returned) {
 
@@ -647,6 +647,45 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
 
     return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge, proxyOrderBy, qStatus,
                  submitted, completed, returned);
+}
+
+// Get queries which use specified database.
+std::vector<QueryId>
+QMetaMysql::getQueriesForDb(std::string const& dbName) {
+
+    std::vector<QueryId> result;
+
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
+    QMetaTransaction trans(_conn);
+
+    // run query
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
+    query += _conn.escapeString(dbName);
+    query += "' AND QInfo.completed IS NULL";
+    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    // get results of the query
+    std::vector<std::string> ids;
+    if (not results.extractFirstColumn(ids, errObj)) {
+        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans.commit();
+
+    // convert strings to numbers
+    result.reserve(ids.size());
+    std::transform(ids.begin(), ids.end(), std::back_inserter(result),
+                   boost::lexical_cast<QueryId, std::string>);
+
+    return result;
 }
 
 // Get queries which use specified table.

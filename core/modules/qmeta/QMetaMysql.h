@@ -67,7 +67,7 @@ public:
      *  @param name:  Czar name, arbitrary string.
      *  @return: Czar ID, zero if czar does not exist.
      */
-    virtual CzarId getCzarID(std::string const& name);
+    virtual CzarId getCzarID(std::string const& name) override;
 
     /**
      *  @brief Register new czar, return czar ID.
@@ -79,7 +79,7 @@ public:
      *  @param name:  Czar name, arbitrary string.
      *  @return: Czar ID, non-negative number.
      */
-    virtual CzarId registerCzar(std::string const& name);
+    virtual CzarId registerCzar(std::string const& name) override;
 
     /**
      *  @brief Mark specified czar as active or inactive.
@@ -89,7 +89,7 @@ public:
      *  @param name:  Czar ID, non-negative number.
      *  @param active:  new value if active flag.
      */
-    virtual void setCzarActive(CzarId czarId, bool active);
+    virtual void setCzarActive(CzarId czarId, bool active) override;
 
     /**
      *  @brief Register new query.
@@ -103,7 +103,7 @@ public:
      *  @return: Query ID, non-negative number
      */
     virtual QueryId registerQuery(QInfo const& qInfo,
-                                  TableNames const& tables);
+                                  TableNames const& tables) override;
 
     /**
      *  @brief Add list of chunks to query.
@@ -113,7 +113,7 @@ public:
      *  @param queryId:   Query ID, non-negative number.
      *  @param chunks:    Set of chunk numbers.
      */
-    virtual void addChunks(QueryId queryId, std::vector<int> const& chunks);
+    virtual void addChunks(QueryId queryId, std::vector<int> const& chunks) override;
 
     /**
      *  @brief Assign or re-assign chunk to a worker.
@@ -126,7 +126,7 @@ public:
      */
     virtual void assignChunk(QueryId queryId,
                              int chunk,
-                             std::string const& xrdEndpoint);
+                             std::string const& xrdEndpoint) override;
 
     /**
      *  @brief Mark chunk as completed.
@@ -136,7 +136,7 @@ public:
      *  @param queryId:   Query ID, non-negative number.
      *  @param chunk:     Sequence of chunk numbers.
      */
-    virtual void finishChunk(QueryId queryId, int chunk);
+    virtual void finishChunk(QueryId queryId, int chunk) override;
 
     /**
      *  @brief Mark query as completed or failed.
@@ -148,7 +148,7 @@ public:
      *  @param queryId:   Query ID, non-negative number.
      *  @param qStatus:   Query completion status, one of COMPLETED, FAILED, or ABORTED.
      */
-    virtual void completeQuery(QueryId queryId, QInfo::QStatus qStatus);
+    virtual void completeQuery(QueryId queryId, QInfo::QStatus qStatus) override;
 
     /**
      *  @brief Mark query as finished and returned to client.
@@ -159,7 +159,7 @@ public:
      *
      *  @param queryId:   Query ID, non-negative number.
      */
-    virtual void finishQuery(QueryId queryId);
+    virtual void finishQuery(QueryId queryId) override;
 
     /**
      *  @brief Generic interface for finding queries.
@@ -190,9 +190,9 @@ public:
     virtual std::vector<QueryId> findQueries(CzarId czarId=0,
                                              QInfo::QType qType=QInfo::ANY,
                                              std::string const& user=std::string(),
-                                             std::vector<QInfo::QStatus> status=std::vector<QInfo::QStatus>(),
+                                             std::vector<QInfo::QStatus> const& status=std::vector<QInfo::QStatus>(),
                                              int completed=-1,
-                                             int returned=-1);
+                                             int returned=-1) override;
 
     /**
      *  @brief Find all pending queries for given czar.
@@ -205,7 +205,7 @@ public:
      *  @param czarId:   Czar ID, non-negative number.
      *  @return: List of query IDs.
      */
-    virtual std::vector<QueryId> getPendingQueries(CzarId czarId);
+    virtual std::vector<QueryId> getPendingQueries(CzarId czarId) override;
 
     /**
      *  @brief Get full query information.
@@ -215,18 +215,29 @@ public:
      *  @param queryId:   Query ID, non-negative number.
      *  @return: Object with query information.
      */
-    virtual QInfo getQueryInfo(QueryId queryId);
+    virtual QInfo getQueryInfo(QueryId queryId) override;
+
+    /**
+     *  @brief Get queries which use specified database.
+     *
+     *  Only currently executing queries are returned.
+     *
+     *  @param dbName:   Database name.
+     *  @return: List of query IDs.
+     */
+    virtual std::vector<QueryId> getQueriesForDb(std::string const& dbName) override;
 
     /**
      *  @brief Get queries which use specified table.
      *
      *  Only currently executing queries are returned.
      *
-     *  @param queryId:   Query ID, non-negative number.
+     *  @param dbName:   Database name.
+     *  @param tableName:   Table name.
      *  @return: List of query IDs.
      */
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
-                                                    std::string const& tableName);
+                                                    std::string const& tableName) override;
 
 protected:
 

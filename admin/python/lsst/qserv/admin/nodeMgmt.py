@@ -135,7 +135,7 @@ class NodeMgmt(object):
 
         # filter out those that don't match
         if state is not None:
-            nodes = [item for item in nodes if item[1].status in state]
+            nodes = [item for item in nodes if item[1].state in state]
         if nodeType is not None:
             nodes = [item for item in nodes if item[1].type in nodeType]
 
