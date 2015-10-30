@@ -462,22 +462,6 @@ public:
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
     };
 private:
-    class ObjectIdGenerator : public Generator {
-    public:
-        ObjectIdGenerator(StringVector const& params_)
-            : params(params_.begin(), params_.end()) {
-        }
-
-        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
-            query::BoolFactor::Ptr newFactor =
-                    std::make_shared<query::BoolFactor>();
-            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
-            terms.push_back(newInPred(e.alias, e.secIndexColumn, params));
-            return newFactor;
-        }
-        std::vector<std::string> params;
-    };
-
     class AreaGenerator : public Generator {
     public:
         AreaGenerator(char const* fName_, int paramCount_,
@@ -534,8 +518,6 @@ private:
                                                          use_string,
                                                          r._params
                                                          );
-        } else if (_name == "qserv_objectId") {
-            _generator = std::make_shared<ObjectIdGenerator>(r._params);
         } else {
             throw AnalysisBug("Unmatched restriction spec: " + _name);
         }
@@ -624,14 +606,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
             for (auto const j : entries) {
                 newTerm->_terms.push_back(_makeCondition(i, j));
             }
-            if ((*i)._name == "qserv_objectId") {
-                // Convert to secIndex restrictor
-                query::QsRestrictor::Ptr p = _convertObjectId(context, *i);
-                restrictors.push_back(p);
-            } else {
-                // Save restrictor in QueryContext.
-                restrictors.push_back(i);
-            }
+            // Save restrictor in QueryContext.
+            restrictors.push_back(i);
         }
 
         wc.prependAndTerm(newTerm);
@@ -679,7 +655,6 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
         throw AnalysisError("Invalid db/table: " + context.dominantDb
                             + "." + context.anonymousTable);
     }
-    // TODO: The qserv_objectId hint/restrictor should be removed.
     // For now, assume that "objectId" refers to the director column.
     std::string dirColumn = context.css->getPartTableParams(
         context.dominantDb, context.anonymousTable).dirColName;

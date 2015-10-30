@@ -182,4 +182,3 @@ SQL2RW_qserv_areaspec_circle="qserv_areaspec_circle"=411
 SQL2RW_qserv_areaspec_ellipse="qserv_areaspec_ellipse"=412
 SQL2RW_qserv_areaspec_poly="qserv_areaspec_poly"=413
 SQL2RW_qserv_areaspec_hull="qserv_areaspec_hull"=414
-SQL2RW_qserv_objectId="qserv_objectId"=415

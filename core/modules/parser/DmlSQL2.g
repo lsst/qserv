@@ -1282,7 +1282,6 @@ qserv_fct_name :
     | "qserv_areaspec_ellipse"^ 
     | "qserv_areaspec_poly"^ 
     | "qserv_areaspec_hull"^ 
-    | "qserv_objectId"^ 
 ;
 //}
 

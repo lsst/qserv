@@ -166,39 +166,7 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_CHECK_EQUAL(context->anonymousTable, "Object");
     BOOST_CHECK(!context->hasSubChunks());
 }
-BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
-    std::string stmt = "select * from Object where qserv_objectId(2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, "LSST");
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
 
-}
-
-BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
-    std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
-
-}
 BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string stmt = "select count(*) from Object as o1, Object as o2 "
         "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.001;";
