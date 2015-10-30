@@ -59,7 +59,6 @@ class QueryTemplate;
 ///    | "qserv_areaspec_ellipse"^
 ///    | "qserv_areaspec_poly"^
 ///    | "qserv_areaspec_hull"^
-///    | "qserv_objectId"^
 /// but may include other names. They are used to pass information back
 /// to the python layer to evaluate the geometry restriction.
 class QsRestrictor {

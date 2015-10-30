@@ -249,7 +249,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     }
     // Add case insensitive behavior
     // in order to mimic MySQL functions/procedures
-    if (r != "sIndex" && r != "qserv_objectId") {
+    if (r != "sIndex") {
         std::transform(r.begin(), r.end(), r.begin(), ::tolower);
         if (LOG_CHECK_DEBUG()) {
             LOGF_DEBUG("Qserv restrictor changed to lower-case %1%:"% r);

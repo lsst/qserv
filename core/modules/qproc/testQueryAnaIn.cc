@@ -76,6 +76,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+6);
 }
+
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -94,6 +95,23 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(context->hasChunks());
+}
+
+BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
+    std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                  params, params+6);
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
