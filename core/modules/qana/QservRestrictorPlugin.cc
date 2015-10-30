@@ -429,9 +429,6 @@ private:
     query::BoolTerm::Ptr
         _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
-    query::QsRestrictor::Ptr
-        _convertObjectId(query::QueryContext& context,
-                         query::QsRestrictor const& original);
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -583,31 +580,29 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     // Prepare to patch the WHERE clause
     query::WhereClause& wc = stmt.getWhereClause();
 
-    std::shared_ptr<query::QsRestrictor::PtrVector const> restrsPtr = wc.getRestrs();
     query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    query::QueryContext::RestrList restrictors;
-    // Now handle the explicit restrictors
-    if (restrsPtr && not restrsPtr->empty()) {
+    query::QueryContext::RestrList ctx_restrictors;
 
-        query::AndTerm::Ptr newTerm;
-        // spatial restrictions
-        query::QsRestrictor::PtrVector const& restrs = *restrsPtr;
-        newTerm = std::make_shared<query::AndTerm>();
+    // Now handle the explicit restrictors
+    auto wc_restrictors = wc.getRestrs();
+    if (wc_restrictors && not wc_restrictors->empty()) {
 
         // At least one table should exist in the restrictor entries
         if (entries.empty()) {
             throw AnalysisError("Spatial restrictor w/o partitioned table");
         }
 
+        query::AndTerm::Ptr newTerm = std::make_shared<query::AndTerm>();
+        // spatial restrictions
         // Now, for each of the qserv restrictors:
-        for (auto const i : restrs) {
+        for (auto const restrictor_i : *wc_restrictors) {
             // for each restrictor entry
             // generate a restrictor condition.
-            for (auto const j : entries) {
-                newTerm->_terms.push_back(_makeCondition(i, j));
+            for (auto const entry_j : entries) {
+                newTerm->_terms.push_back(_makeCondition(restrictor_i, entry_j));
             }
             // Save restrictor in QueryContext.
-            restrictors.push_back(i);
+            ctx_restrictors.push_back(restrictor_i);
         }
 
         wc.prependAndTerm(newTerm);
@@ -616,12 +611,12 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
 
     // Merge in the implicit (i.e. secondary index) restrictors
     query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    restrictors.insert(restrictors.end(),
+    ctx_restrictors.insert(ctx_restrictors.end(),
                        secIndexPreds.begin(),
                        secIndexPreds.end());
 
-    if (not restrictors.empty()) {
-        context.restrictors = std::make_shared<query::QueryContext::RestrList>(restrictors);
+    if (not ctx_restrictors.empty()) {
+        context.restrictors = std::make_shared<query::QueryContext::RestrList>(ctx_restrictors);
     }
 }
 
@@ -637,31 +632,6 @@ QservRestrictorPlugin::_makeCondition(
              RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
-}
-
-query::QsRestrictor::Ptr
-QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
-                                        query::QsRestrictor const& original) {
-    // Build the QsRestrictor
-    query::QsRestrictor::Ptr p = std::make_shared<query::QsRestrictor>();
-    p->_name = "sIndex";
-    // sIndex has paramers as follows:
-    // db, table, column, val1, val2, ...
-    p->_params.push_back(context.dominantDb);
-    p->_params.push_back(context.anonymousTable);
-    if (!context.css->containsDb(context.dominantDb)
-       || !context.css->containsTable(context.dominantDb,
-                                            context.anonymousTable) ) {
-        throw AnalysisError("Invalid db/table: " + context.dominantDb
-                            + "." + context.anonymousTable);
-    }
-    // For now, assume that "objectId" refers to the director column.
-    std::string dirColumn = context.css->getPartTableParams(
-        context.dominantDb, context.anonymousTable).dirColName;
-    p->_params.push_back(dirColumn);
-    std::copy(original._params.begin(), original._params.end(),
-              std::back_inserter(p->_params));
-    return p;
 }
 
 }}} // namespace lsst::qserv::qana
