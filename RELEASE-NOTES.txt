@@ -1,3 +1,29 @@
+R E L E A S E   2015_10
+=======================
+
+Release highlights:
+ * Switched away from zookeeper to MySQL for CSS
+ * Cancellation-related code cleaned up
+
+Code improvements:
+ * DM-4003: Replace zookeeper CSS with mysql
+ * DM-3946: Cleanup cancellation-related worker code
+ * DM-3952: Cleanup lua miniParser
+ * DM-4092: Update qserv for lastest xrootd
+ * DM-2873: Handle "where objectId between"
+ * DM-2334: Simplify interactions with XrdOss
+ * DM-3755: Revisit shared scans design
+ * DM-3192: Re-implement watcher based on new CSS implementation
+ * DM-3574: Replace qservAdmin.py use with CssAccess
+ * DM-4145: Reduce scons output in qserv
+
+New features:
+
+Bug fixes:
+
+Documentation improvements:
+ * DM-3910: Run and document multi-node test with docker
+
 R E L E A S E   2015_09
 =======================
 
