@@ -578,45 +578,43 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     if (!stmt.hasWhereClause()) { return; }
 
     // Prepare to patch the WHERE clause
-    query::WhereClause& wc = stmt.getWhereClause();
+    query::WhereClause& whereClause = stmt.getWhereClause();
 
-    query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    query::QueryContext::RestrList ctx_restrictors;
+    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
+    query::QueryContext::RestrList ctxRestrictors;
 
     // Now handle the explicit restrictors
-    auto wc_restrictors = wc.getRestrs();
-    if (wc_restrictors && not wc_restrictors->empty()) {
+    auto whereClauseRestrictors = whereClause.getRestrs();
+    if (whereClauseRestrictors && not whereClauseRestrictors->empty()) {
 
         // At least one table should exist in the restrictor entries
         if (entries.empty()) {
             throw AnalysisError("Spatial restrictor w/o partitioned table");
         }
 
-        query::AndTerm::Ptr newTerm = std::make_shared<query::AndTerm>();
+        auto newTerm = std::make_shared<query::AndTerm>();
         // spatial restrictions
         // Now, for each of the qserv restrictors:
-        for (auto const restrictor_i : *wc_restrictors) {
+        for (auto const& restrictor : *whereClauseRestrictors) {
             // for each restrictor entry
             // generate a restrictor condition.
-            for (auto const entry_j : entries) {
-                newTerm->_terms.push_back(_makeCondition(restrictor_i, entry_j));
+            for (auto const& entry : entries) {
+                newTerm->_terms.push_back(_makeCondition(restrictor, entry));
             }
             // Save restrictor in QueryContext.
-            ctx_restrictors.push_back(restrictor_i);
+            ctxRestrictors.push_back(restrictor);
         }
 
-        wc.prependAndTerm(newTerm);
+        whereClause.prependAndTerm(newTerm);
     }
-    wc.resetRestrs();
+    whereClause.resetRestrs();
 
     // Merge in the implicit (i.e. secondary index) restrictors
     query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    ctx_restrictors.insert(ctx_restrictors.end(),
-                       secIndexPreds.begin(),
-                       secIndexPreds.end());
+    ctxRestrictors.insert(ctxRestrictors.end(), secIndexPreds.begin(), secIndexPreds.end());
 
-    if (not ctx_restrictors.empty()) {
-        context.restrictors = std::make_shared<query::QueryContext::RestrList>(ctx_restrictors);
+    if (not ctxRestrictors.empty()) {
+        context.restrictors = std::make_shared<query::QueryContext::RestrList>(ctxRestrictors);
     }
 }
 
