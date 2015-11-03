@@ -111,7 +111,6 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+6);
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
