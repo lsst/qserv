@@ -25,26 +25,25 @@
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+set -x
+
 
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host
+Usage: `basename $0` [options]
 
   Available options:
     -h          this message
 
-  Create docker images containing Qserv master and worker instances,
+  Create a docker image containing cutting-edge Qserv dependencies
   use a Docker image containing latest Qserv stack as input.
-  Qserv master fqdn must be provided as unique argument.
 
-  Once completed, run an interactive session on this container with:
-  docker run -i --hostname="qserv-host" -t "fjammes/qserv:<VERSION>" /bin/bash
 EOD
 }
 
 # Get the options
-while getopts hi: c ; do
+while getopts h c ; do
     case $c in
             h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
@@ -52,36 +51,18 @@ while getopts hi: c ; do
 done
 shift `expr $OPTIND - 1`
 
-if [ $# -ne 1 ] ; then
+if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
 
-MASTER=$1
-
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-DOCKERDIR="$DIR/cfg"
+DOCKERDIR="$DIR/dev"
 
-# Build the master image
-
-sed 's/{{NODE_TYPE_OPT}}/-m/g' cfg/Dockerfile.tpl | \
-    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
-
-VERSION=master-${MASTER}
-TAG="fjammes/qserv:$VERSION"
-printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
+# Docker tag doesn't stand '/'
+TAG="qserv/qserv:dev"
+printf "Building image with cutting edge dependencies (%s) from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-
-printf "Image %s built successfully\n" "$TAG"
-
-# Build the worker image
-
-sed 's/{{NODE_TYPE_OPT}}//g' cfg/Dockerfile.tpl | \
-    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
-
-VERSION=worker-${MASTER}
-TAG="fjammes/qserv:$VERSION"
-printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
+docker push $TAG
 
 printf "Image %s built successfully\n" "$TAG"

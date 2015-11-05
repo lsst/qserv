@@ -20,16 +20,51 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Update Qserv distribution to latest release
-#
+# Create Docker images containing Qserv master and worker instances
 
-# @author  Fabrice Jammes, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+set -x
+
+
+DOCKER_NAMESPACE=qserv
+
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options]
+
+  Available options:
+    -h          this message
+
+  Create a docker image usable on a development workstation.
+  Use a Docker image containing cutting-edge Qserv dependencies as input.
+
+EOD
+}
+
+# Get the options
+while getopts hu: c ; do
+    case $c in
+            h) usage ; exit 0 ;;
+            u) DOCKER_NAMESPACE="$OPTARG" ;;
+            \?) usage ; exit 2 ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+if [ $# -ne 1 ] ; then
+    usage
+    exit 2
+fi
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/params.sh"
+DOCKERDIR="$DIR/work"
 
-. "$INSTALL_DIR/loadLSST.bash"
-eups distrib install qserv_distrib -t qserv
+# Docker tag doesn't stand '/'
+TAG="$DOCKER_NAMESPACE/qserv:work"
+printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
+
+printf "Image %s built successfully\n" "$TAG"

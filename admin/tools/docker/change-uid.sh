@@ -28,7 +28,7 @@
 
 set -e
 
-DEFAULT_IMAGE="fjammes/qserv:dev"
+DEFAULT_IMAGE="qserv/qserv:work"
 IMAGE="$DEFAULT_IMAGE"
 
 usage() {
@@ -45,7 +45,7 @@ Usage: `basename $0` [options] DOCKERDIR
   in order to attach host directory to Docker image with correct permissions
 
   Once completed, run an interactive session on this container with:
-  docker run -i --hostname="qserv-host" -t "fjammes/qserv:<VERSION>" /bin/bash
+  docker run -i --hostname="qserv-host" -t <IMAGE-NAME> /bin/bash
 EOD
 }
 

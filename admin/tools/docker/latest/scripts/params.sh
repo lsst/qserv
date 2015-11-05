@@ -31,7 +31,7 @@
 #
 ################################################################
 
-# Default values below are for CC-IN2P3 50 nodes cluster
+# Default values below shouldn't be changed 
 
 # Cluster install script will be copied on each nodes in $INSTALL_BASE/scripts
 INSTALL_BASE=/qserv
@@ -49,4 +49,4 @@ QSERV_DATA_DIR="$INSTALL_BASE/data"
 # add it to ~/.eups/startup.py
 SETUP_OPT_GIT='-t git'
 
-SETUP_OPT_RELEASE='-t qserv'
+SETUP_OPT_DEV='-t qserv-dev'

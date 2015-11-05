@@ -38,19 +38,21 @@ Usage: `basename $0` [options]
 
   Available options:
     -h          this message
-    -R          Qserv release to be packaged, default to $VERSION
+    -v          Qserv release to be packaged, default to $VERSION
+    -C          Rebuild the images from scratch
     -d path     directory containing dependency scripts, default to
                 \$QSERV_DIR/admin/bootstrap
 
-  Create Docker images for Qserv release and development
+  Create Docker images for Qserv release
 
 EOD
 }
 
 # get the options
-while getopts hd:v: c ; do
+while getopts hd:v:C c ; do
     case $c in
             h) usage ; exit 0 ;;
+            C) CACHE_OPT="--no-cache=true" ;;
             d) DEPS_DIR="$OPTARG" ;;
             v) VERSION="$OPTARG" ;;
             \?) usage ; exit 2 ;;
@@ -84,28 +86,26 @@ DEPS_DIR=$(echo $DEPS_DIR | sed 's%\(.*[^/]\)/*%\1%')
 # So, copy it from templates to SCRIPT_DIR directory
 SCRIPT_DIR="$DOCKERDIR/scripts"
 
-. "$DOCKERDIR"/dist.sh
-TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-"$DIST".sh"
+TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-debian8.sh"
 
 printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIPT"
 ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 
 # Build the release image
-TAG="fjammes/qserv:$VERSION"
+TAG="qserv/qserv:$VERSION"
 printf "Building latest release image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
+docker build $CACHE_OPT --tag="$TAG" "$DOCKERDIR"
 
 # Use 'latest' as tag alias
 LATEST_VERSION=$(basename "$DOCKERDIR")
-LATEST_TAG="fjammes/qserv:$LATEST_VERSION"
+LATEST_TAG="qserv/qserv:$LATEST_VERSION"
 docker tag --force $TAG $LATEST_TAG
 docker push $LATEST_TAG
 
-# Build the development image
-DOCKERDIR="$DIR/dev"
-VERSION=$(basename "$DOCKERDIR")                                                                                                                                                                                   
-TAG="fjammes/qserv:$VERSION"
-printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
+# dev and release are the same at 
+# release time
+DEV_TAG="qserv/qserv:dev"
+docker tag --force $TAG $DEV_TAG 
+docker push $DEV_TAG
 
 printf "Image %s built successfully\n" "$TAG"

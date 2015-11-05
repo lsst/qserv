@@ -1,11 +1,11 @@
-FROM fjammes/qserv:latest
+FROM {{DOCKER_IMAGE_OPT}}
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
-
-USER qserv
 
 WORKDIR /qserv
 
-RUN /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}
+USER qserv
+
+RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}"
 
 # WARNING: Unsafe because it is pushed in Docker Hub
 # TODO: use consul to manage secret
