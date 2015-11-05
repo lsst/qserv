@@ -57,9 +57,9 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
+/NODES/worker-1/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
+/NODES/worker-2/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=css.VERSION)
@@ -129,9 +129,9 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
+/NODES/worker-1/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
+/NODES/worker-2/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=css.VERSION)
@@ -200,16 +200,17 @@ class TestCssNodes(unittest.TestCase):
 /DBS/TEST\t\\N
 /DBS/TEST/TABLES\t\\N
 /DBS/TEST/TABLES/TEST\t\\N
-/DBS/TEST/TABLES/TEST.json\t{{}}
+/DBS/TEST/TABLES/TEST/.packed.json\t{{}}
 /DBS/TEST/TABLES/TEST/CHUNKS\t\\N
 /DBS/TEST/TABLES/TEST/CHUNKS/1\t\\N
 /DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS\t\\N
-/DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS/001.json\t{{"nodeName": "worker-2"}}
+/DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS/001\t\\N
+/DBS/TEST/TABLES/TEST/CHUNKS/1/REPLICAS/001/.packed.json\t{{"nodeName": "worker-2"}}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
+/NODES/worker-1/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
+/NODES/worker-2/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=css.VERSION)
@@ -286,9 +287,9 @@ class TestCssNodes(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker-1\tACTIVE
-/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
+/NODES/worker-1/.packed.json\t{{"type": "worker", "host": "worker.domain", "port": 5012}}
 /NODES/worker-2\tINACTIVE
-/NODES/worker-2.json\t{{"type": "backup", "host": "worker.domain", "port": 5013}}
+/NODES/worker-2/.packed.json\t{{"type": "backup", "host": "worker.domain", "port": 5013}}
 """
 
         initData = initData.format(version=css.VERSION)
