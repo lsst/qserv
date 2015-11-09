@@ -133,10 +133,9 @@ class WatcherCss(object):
 
     def getNodes(self):
         """
-        Return the list of nodes (NodeAdmin instances) for all active nodes.
-        Both workers and czars are included in the list.
-
-        @param wmgrSecretFile:  Path to a file with wmgr secret.
+        Return tuple with two lists of nodes (NodeAdmin instances) for all
+        active nodes. First item in the returned tuple is a list of czar nodes,
+        second item is a list of worker nodes.
         """
 
         mgmt = nodeMgmt.NodeMgmt(self.css, self.wmgrSecretFile)
@@ -155,7 +154,7 @@ class WatcherCss(object):
             host, port = self.czar
             czars.append(nodeAdmin.NodeAdmin(host=host, port=port, wmgrSecretFile=self.wmgrSecretFile))
 
-        return czars + workers
+        return czars, workers
 
 class IExecutor(object):
     """
@@ -402,7 +401,8 @@ class QservExecutor(IExecutor):
 
         _LOG.info('Creating database %s', dbName)
 
-        nodes = self.wcss.getNodes()
+        czars, workers = self.wcss.getNodes()
+        nodes = czars + workers
         if not nodes:
             _LOG.error('Could not find any nodes to work on')
             return False
@@ -442,19 +442,32 @@ class QservExecutor(IExecutor):
             _LOG.info('Database %s is in use by %d queries', dbName, len(qids))
             return False
 
-        nodes = self.wcss.getNodes()
+        czars, workers = self.wcss.getNodes()
+        nodes = [(node, 'czar') for node in czars] + [(node, 'worker') for node in workers]
         if not nodes:
             _LOG.error('Could not find any nodes to work on')
             return False
 
         # TODO we should do it in parallel for better scaling
         nDropped = 0
-        for node in nodes:
+        for node, nodeType in nodes:
 
             wmgr = node.wmgrClient()
             if dbName not in wmgr.databases():
                 _LOG.info('Database %r does not exist on node %r', dbName, node.name())
             else:
+                if nodeType == 'worker':
+                    # Try to remove this database from chunk inventory
+                    try:
+                        # Do not restart xrootd
+                        restart = False
+                        wmgr.xrootdUnregisterDb(dbName, restart)
+                        _LOG.info('Removed database %r from chunk registry on node %r', dbName, node.name())
+                    except ServerError as exc:
+                        if exc.code == 409:
+                            _LOG.info('Database %r is not in chunk registry on node %r', dbName, node.name())
+                        else:
+                            raise
                 try:
                     wmgr.dropDb(dbName)
                     _LOG.info('Dropped database %r on node %r', dbName, node.name())
@@ -475,7 +488,8 @@ class QservExecutor(IExecutor):
 
         _LOG.info('Creating table %s.%s', dbName, tableName)
 
-        nodes = self.wcss.getNodes()
+        czars, workers = self.wcss.getNodes()
+        nodes = czars + workers
         if not nodes:
             _LOG.error('Could not find any nodes to work on')
             return False
@@ -515,7 +529,8 @@ class QservExecutor(IExecutor):
             _LOG.info('Table %s.%s is in use by %d queries', dbName, tableName, len(qids))
             return False
 
-        nodes = self.wcss.getNodes()
+        czars, workers = self.wcss.getNodes()
+        nodes = czars + workers
         if not nodes:
             _LOG.error('Could not find any nodes to work on')
             return False
