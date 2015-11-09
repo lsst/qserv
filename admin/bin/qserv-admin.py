@@ -404,8 +404,8 @@ class CommandParser(object):
         if not nodes:
             print "No nodes defined in CSS"
         for node, params in sorted(nodes.items()):
-            print "{0} type={1} host={2} port={3} status={4}".format(node, params.type, params.host,
-                                                                     params.port, params.status)
+            print "{0} type={1} host={2} port={3} state={4}".format(node, params.type, params.host,
+                                                                     params.port, params.state)
 
     def _parseUpdate(self, tokens):
         """
