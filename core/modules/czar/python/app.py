@@ -49,9 +49,7 @@
 # Questions? Contact Daniel L. Wang, SLAC (danielw)
 #
 # Standard Python imports
-import errno
 import hashlib
-import os
 from subprocess import Popen, PIPE
 import sys
 import threading
@@ -101,18 +99,6 @@ def listen():
     """Register debug() as a signal handler to SIGUSR1"""
     signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
-
-invokedActions = set()
-def stopAll():
-    """Try to stop all InbandQueryActions in flight"""
-    return # Disable query killing DM-1715
-    deathQueue = [i for i in invokedActions]
-    for action in deathQueue:
-        action.abort()
-        invokedActions.discard(action)
-    pass
-
-
 
 ######################################################################
 ## Methods
@@ -172,15 +158,6 @@ class TaskTracker:
         return self.tasks[taskId]["task"]
 
 ########################################################################
-
-class SleepingThread(threading.Thread):
-    def __init__(self, howlong=1.0):
-        self.howlong=howlong
-        threading.Thread.__init__(self)
-    def run(self):
-        time.sleep(self.howlong)
-
-########################################################################
 class CzarError(Exception):
     """Generic error in the czar"""
     def __init__(self, reason):
@@ -209,34 +186,6 @@ class DataError(CzarError):
     __init__ = CzarError.__init__
 
 ########################################################################
-def setupResultScratch():
-    """Prepare the configured scratch directory for use, creating if
-    necessary and checking for r/w access. """
-    # Make sure scratch directory exists.
-    cm = lsst.qserv.czar.config
-    c = lsst.qserv.czar.config.config
-
-    scratchPath = c.get("frontend", "scratch_path")
-    try: # Make sure the path is there
-        os.makedirs(scratchPath)
-    except OSError, exc:
-        if exc.errno == errno.EEXIST:
-            pass
-        else:
-            raise cm.ConfigError("Bad scratch_dir")
-    # Make sure we can read/write the dir.
-    if not os.access(scratchPath, os.R_OK | os.W_OK):
-        raise cm.ConfigError("No access for scratch_path(%s)" % scratchPath)
-    return scratchPath
-
-class IndexLookup:
-    """Value class for SecondaryIndex queries"""
-    def __init__(self, db, table, keyColumn, keyVals):
-        self.db = db
-        self.table = table
-        self.keyColumn = keyColumn
-        self.keyVals = keyVals
-        pass
 
 class Context:
     """Context for InbandQueryAction construction.
@@ -311,11 +260,7 @@ class InbandQueryAction:
         try:
             self._prepareForExec()
             self.isValid = True
-        except QueryHintError, e:
-            self._error = str(e)
-        except ParseError, e:
-            self._error = str(e)
-        except ConfigError, e:
+        except (QueryHintError, ParseError, ConfigError) as e:
             self._error = str(e)
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
@@ -337,11 +282,7 @@ class InbandQueryAction:
 
     def invoke(self):
         """Begin execution of the query"""
-        invokedActions.add(self) # Put self on the list to allow aborting.
-        try:
-            self._execAndJoin()
-        finally:
-            invokedActions.discard(self)
+        self._execAndJoin()
         self._invokeLock.release()
 
     def getError(self):

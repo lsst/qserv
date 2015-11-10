@@ -93,7 +93,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         qs->setDefaultDb(defaultDb);
         qs->analyzeQuery(query);
     } catch (...) {
-        errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
+        errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
         LOGF(_log, LOG_LVL_ERROR, errorExtra);
         sessionValid = false;
     }

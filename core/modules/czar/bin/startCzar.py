@@ -60,12 +60,6 @@ def runNamedTest(name):
     unittest.TextTestRunner(verbosity=2).run(suite)
     pass
 
-def resetTables():
-    p = app.Persistence()
-    p.activate()
-    p.makeTables()
-    pass
-
 def makeIndexes():
     log.warn("makeIndexes() called, but not implemented")
     pass
@@ -73,10 +67,6 @@ def makeIndexes():
 def main():
     parser = OptionParser()
 
-    # Db-backed task tracking is not supported right now.
-    # parser.add_option("--reset-tables", action="store_true",
-    #                   dest="resettables", default=False,
-    #                   help="Reset tables instead of starting the server ()")
     parser.add_option("-t", "--test", action="store_true",
                       dest="test", default=False,
                       help="Run tests instead of starting the server")
@@ -113,15 +103,19 @@ def main():
     log.debug("Configuration:\n%s", config.toString())
 
     if options.test == True:
+        # not working
         runParserTest()
         return
     elif options.testName:
+        # not working
         runNamedTest(options.testName)
         return
     elif options.sanityClient:
+        # not working
         client.runSanityClient()
         return
     elif options.makeIndex:
+        # not working
         makeIndexes()
         return
     else:

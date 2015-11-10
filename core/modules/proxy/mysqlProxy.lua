@@ -351,7 +351,7 @@ function queryProcessing()
     --
     --
     local sendToQserv = function(q, qU)
-        local p1 = string.find(qU, "WHERE")
+
         hintsToPassArr = {} -- Reset hints (it's global)
         -- Force original query to delegate spatial work to qsmaster.
         queryToPassStr = q
