@@ -46,8 +46,6 @@ BOOST_AUTO_TEST_CASE(UserQueryException) {
     int session = 1000;
     ccontrol::UserQuery_getQueryProcessingError(session++);
     ccontrol::UserQuery_kill(session++);
-    qproc::ChunkSpec chunkSpec;
-    ccontrol::UserQuery_addChunk(session++, chunkSpec);
     ccontrol::UserQuery_submit(session++);
     ccontrol::UserQuery_join(session++);
 }

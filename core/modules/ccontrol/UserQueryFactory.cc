@@ -37,12 +37,13 @@
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/ConfigError.h"
-#include "ccontrol/UserQuery.h"
+#include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
+#include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
@@ -101,19 +102,22 @@ UserQueryFactory::newUserQuery(std::string const& query,
         LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
         sessionValid = false;
     }
-    UserQuery* uq = new UserQuery(qs, _impl->qMetaCzarId);
-    int sessionId = UserQuery_takeOwnership(uq);
-    uq->_sessionId = sessionId;
-    uq->_secondaryIndex = _impl->secondaryIndex;
-    uq->_queryMetadata = _impl->queryMetadata;
+
+    auto messageStore = std::make_shared<qdisp::MessageStore>();
+    std::shared_ptr<qdisp::Executive> executive;
+    std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
     if(sessionValid) {
-        uq->_executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, uq->_messageStore);
-        rproc::InfileMergerConfig* ict = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
-        ict->targetTable = resultTable;
-        uq->_infileMergerConfig.reset(ict);
-        uq->_setupChunking();
-    } else {
-        uq->_errorExtra += errorExtra;
+        executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
+        infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
+        infileMergerConfig->targetTable = resultTable;
+    }
+    UserQuerySelect* uq = new UserQuerySelect(qs, messageStore, executive, infileMergerConfig,
+                                              _impl->secondaryIndex, _impl->queryMetadata,
+                                              _impl->qMetaCzarId, errorExtra);
+    int sessionId = UserQuery_takeOwnership(uq);
+    uq->setSessionId(sessionId);
+    if(sessionValid) {
+        uq->setupChunking();
     }
     return std::make_pair(sessionId, qs->getProxyOrderBy());
 }

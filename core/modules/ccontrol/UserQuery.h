@@ -33,108 +33,52 @@
 
 // System headers
 #include <memory>
-#include <mutex>
 
 // Third-party headers
-#include "boost/utility.hpp"
 
 // Qserv headers
 #include "ccontrol/QueryState.h"
-#include "css/StripingParams.h"
-#include "qmeta/QInfo.h"
-#include "qmeta/types.h"
-#include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
 
 // Forward decl
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class Executive;
 class MessageStore;
-}
-namespace qmeta {
-class QMeta;
-}
-namespace qproc {
-class QuerySession;
-class SecondaryIndex;
-}
-namespace rproc {
-class TableMerger;
-class TableMergerConfig;
-class InfileMerger;
-class InfileMergerConfig;
 }}}
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-class UserQueryFactory;
 
-/// UserQuery : top-level class for user query data. Not thread-safe, although
+/// UserQuery : interface for user query data. Not thread-safe, although
 /// its delegates are thread-safe as appropriate.
-class UserQuery : public boost::noncopyable {
+class UserQuery {
 public:
-    typedef std::shared_ptr<UserQuery> Ptr;
-    friend class UserQueryFactory;
 
-    // Accessors
+    typedef std::shared_ptr<UserQuery> Ptr;
+
+    virtual ~UserQuery() {}
 
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
-    std::string const& getError() const;
-
-    /// Add a chunk for later execution
-    void addChunk(qproc::ChunkSpec const& cs);
+    virtual std::string getError() const = 0;
 
     /// Begin execution of the query over all ChunkSpecs added so far.
-    void submit();
+    virtual void submit() = 0;
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
-    QueryState join();
+    virtual QueryState join() = 0;
 
     /// Stop a query in progress (for immediate shutdowns)
-    void kill();
+    virtual void kill() = 0;
 
     /// Release resources related to user query
-    void discard();
+    virtual void discard() = 0;
 
     // Delegate objects
-    std::shared_ptr<qdisp::Executive> getExecutive() {
-        return _executive; }
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() {
-        return _messageStore; }
+    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() = 0;
 
-private:
-    explicit UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId);
-    void setSessionId(int session) { _sessionId = session; }
-    void _setupMerger();
-    void _discardMerger();
-    void _setupChunking();
-    void _qMetaRegister();
-    void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
-    void _qMetaAddChunks(std::vector<int> const& chunks);
-
-    // Delegate classes
-    std::shared_ptr<qdisp::Executive> _executive;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
-    std::shared_ptr<qproc::QuerySession> _qSession;
-    std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
-    std::shared_ptr<rproc::InfileMerger> _infileMerger;
-    std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
-    std::shared_ptr<qmeta::QMeta> _queryMetadata;
-
-    qmeta::CzarId _qMetaCzarId;   ///< Czar ID in QMeta database
-    qmeta::QueryId _qMetaQueryId;   ///< Query ID in QMeta database
-    bool _killed;
-    bool _submitted;                ///< True after submit() is completed
-    std::mutex _killMutex;
-    int _sessionId; ///< External reference number
-    int _sequence; ///< Sequence number for subtask ids
-    std::string _errorExtra; ///< Additional error information
-    mutable std::string _errorExtraCache; ///< Cache so getError can return a ref
 };
 
 }}} // namespace lsst::qserv:ccontrol

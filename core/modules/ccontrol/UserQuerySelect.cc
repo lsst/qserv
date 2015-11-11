@@ -61,7 +61,7 @@
   */
 
 // Class header
-#include "ccontrol/UserQuery.h"
+#include "ccontrol/UserQuerySelect.h"
 
 // System headers
 #include <cassert>
@@ -95,7 +95,7 @@
 namespace {
 
 LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.ccontrol.UserQuery");
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
     return logger;
 }
 }
@@ -135,19 +135,34 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
-// UserQuery implementation
+// UserQuerySelect implementation
 namespace ccontrol {
 
-std::string const& UserQuery::getError() const {
+/// Constructor
+UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
+                                 std::shared_ptr<qdisp::MessageStore> const& messageStore,
+                                 std::shared_ptr<qdisp::Executive> const& executive,
+                                 std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
+                                 std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
+                                 std::shared_ptr<qmeta::QMeta> const& queryMetadata,
+                                 qmeta::CzarId czarId,
+                                 std::string const& errorExtra)
+    :  _qSession(qs), _messageStore(messageStore), _executive(executive),
+       _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
+       _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
+       _killed(false), _submitted(false), _sessionId(0), _sequence(0),
+       _errorExtra(errorExtra) {
+}
+
+std::string UserQuerySelect::getError() const {
     std::string div = (_errorExtra.size() && _qSession->getError().size())
         ? " " : "";
-    _errorExtraCache = _qSession->getError() + div + _errorExtra;
-    return _errorExtraCache;
+    return _qSession->getError() + div + _errorExtra;
 }
 
 /// Attempt to kill in progress.
-void UserQuery::kill() {
-    LOGF_INFO("UserQuery kill");
+void UserQuerySelect::kill() {
+    LOGF_INFO("UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
     if(!_killed) {
         _killed = true;
@@ -162,7 +177,7 @@ void UserQuery::kill() {
 }
 
 /// Add a chunk to be executed
-void UserQuery::addChunk(qproc::ChunkSpec const& cs) {
+void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
     // If this is not a chunked query, only accept the dummy chunk.
     // This should collapse out when chunk geometry coverage is moved from Python to C++.
     if(_qSession->hasChunks() || cs.chunkId == DUMMY_CHUNK) {
@@ -171,7 +186,7 @@ void UserQuery::addChunk(qproc::ChunkSpec const& cs) {
 }
 
 /// Begin running on all chunks added so far.
-void UserQuery::submit() {
+void UserQuerySelect::submit() {
     _qSession->finalize();
     _setupMerger();
 
@@ -184,7 +199,7 @@ void UserQuery::submit() {
     TmpTableName ttn(_sessionId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
-    LOG(getLogger(), LOG_LVL_INFO, "UserQuery beginning submission");
+    LOG(getLogger(), LOG_LVL_INFO, "UserQuerySelect beginning submission");
     assert(_infileMerger);
     std::vector<int> chunks;
     // Writing query for each chunk
@@ -223,7 +238,7 @@ void UserQuery::submit() {
 
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure
-QueryState UserQuery::join() {
+QueryState UserQuerySelect::join() {
     bool successful = _executive->join(); // Wait for all data
     _infileMerger->finalize(); // Wait for all data to get merged
     _discardMerger();
@@ -243,7 +258,7 @@ QueryState UserQuery::join() {
 }
 
 /// Release resources held by the merger
-void UserQuery::_discardMerger() {
+void UserQuerySelect::_discardMerger() {
     _infileMergerConfig.reset();
     if(_infileMerger && !_infileMerger->isFinished()) {
         throw UserQueryError("merger unfinished, cannot discard");
@@ -252,7 +267,7 @@ void UserQuery::_discardMerger() {
 }
 
 /// Release resources.
-void UserQuery::discard() {
+void UserQuerySelect::discard() {
     {
         std::lock_guard<std::mutex> lock(_killMutex);
         if(_killed) {
@@ -272,25 +287,17 @@ void UserQuery::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGF_INFO("Discarded UserQuery(%1%)" % _sessionId);
-}
-
-/// Constructor. Most setup work done by the UserQueryFactory
-UserQuery::UserQuery(std::shared_ptr<qproc::QuerySession> qs, qmeta::CzarId czarId)
-    :  _messageStore(std::make_shared<qdisp::MessageStore>()),
-       _qSession(qs), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _submitted(false), _sessionId(0), _sequence(0) {
-    // Some configuration done by factory: See UserQueryFactory
+    LOGF_INFO("Discarded UserQuerySelect(%1%)" % _sessionId);
 }
 
 /// Setup merger (for results handling and aggregation)
-void UserQuery::_setupMerger() {
+void UserQuerySelect::_setupMerger() {
     LOG(getLogger(), LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }
 
-void UserQuery::_setupChunking() {
+void UserQuerySelect::setupChunking() {
     LOG(getLogger(), LOG_LVL_TRACE, "Setup chunking");
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
@@ -338,7 +345,7 @@ void UserQuery::_setupChunking() {
 }
 
 // register query in qmeta database
-void UserQuery::_qMetaRegister()
+void UserQuerySelect::_qMetaRegister()
 {
     qmeta::QInfo::QType qType = qmeta::QInfo::SYNC;  // now all queries are SYNC
     std::string user = "anonymous";    // we do not have access to that info yet
@@ -405,13 +412,13 @@ void UserQuery::_qMetaRegister()
 }
 
 // update query status in QMeta
-void UserQuery::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
+void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
 }
 
 // add chunk information to qmeta
-void UserQuery::_qMetaAddChunks(std::vector<int> const& chunks)
+void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks)
 {
     _queryMetadata->addChunks(_qMetaQueryId, chunks);
 }
