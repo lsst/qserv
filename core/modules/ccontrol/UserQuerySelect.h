@@ -36,7 +36,6 @@
 #include <mutex>
 
 // Third-party headers
-#include "boost/utility.hpp"
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
@@ -70,7 +69,6 @@ class InfileMergerConfig;
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-class UserQueryFactory;
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
 class UserQuerySelect : public UserQuery {

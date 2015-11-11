@@ -281,10 +281,9 @@ function queryType()
            string.find(qU, "^LOAD ") or
            string.find(qU, "^CREATE ") or
            string.find(qU, "^ALTER ") or
-           string.find(qU, "^TRUNCATE ") or
-           string.find(qU, "^DROP ") then
+           string.find(qU, "^TRUNCATE ") then
             err.set(ERR_NOT_SUPPORTED,
-                    "Sorry, this type of queries is disallowed.")
+                    "Sorry, this type of queries is not supported.")
             return true
         end
         return false

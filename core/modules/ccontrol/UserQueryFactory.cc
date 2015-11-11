@@ -26,7 +26,8 @@
 
 // System headers
 #include <cassert>
-#include <stdlib.h>
+#include <cstdlib>
+#include <regex>
 #include <string>
 
 // Third-party headers
@@ -37,6 +38,8 @@
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/ConfigError.h"
+#include "ccontrol/UserQueryDropTable.h"
+#include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/CssAccess.h"
@@ -48,12 +51,24 @@
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "rproc/InfileMerger.h"
+#include "sql/SqlConnection.h"
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
+
+// Returns true if query is DROP TABLE
+bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName);
+
+// Returns true if query is SELECT
+bool isSelect(std::string const& query);
+
+}
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-LOG_LOGGER UserQueryFactory::_log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
@@ -67,6 +82,7 @@ public:
     rproc::InfileMergerConfig infileMergerConfigTemplate;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
+    std::unique_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
 };
 
@@ -86,40 +102,63 @@ std::pair<int,std::string>
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
-    bool sessionValid = true;
-    std::string errorExtra;
-    qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css);
-    try {
-        qs->setResultTable(resultTable);
-        qs->setDefaultDb(defaultDb);
-        qs->analyzeQuery(query);
-    } catch (...) {
-        errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
-        LOGF(_log, LOG_LVL_ERROR, errorExtra);
-        sessionValid = false;
-    }
-    if(!qs->getError().empty()) {
-        LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
-        sessionValid = false;
-    }
+    std::string dbName, tableName;
 
-    auto messageStore = std::make_shared<qdisp::MessageStore>();
-    std::shared_ptr<qdisp::Executive> executive;
-    std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
-    if(sessionValid) {
-        executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
-        infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
-        infileMergerConfig->targetTable = resultTable;
+    if (::isSelect(query)) {
+        // Processing regular select query
+        bool sessionValid = true;
+        std::string errorExtra;
+        qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css);
+        try {
+            qs->setResultTable(resultTable);
+            qs->setDefaultDb(defaultDb);
+            qs->analyzeQuery(query);
+        } catch (...) {
+            errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
+            LOGF(_log, LOG_LVL_ERROR, errorExtra);
+            sessionValid = false;
+        }
+        if(!qs->getError().empty()) {
+            LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
+            sessionValid = false;
+        }
+
+        auto messageStore = std::make_shared<qdisp::MessageStore>();
+        std::shared_ptr<qdisp::Executive> executive;
+        std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
+        if(sessionValid) {
+            executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
+            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
+            infileMergerConfig->targetTable = resultTable;
+        }
+        auto uq = new UserQuerySelect(qs, messageStore, executive, infileMergerConfig,
+                                      _impl->secondaryIndex, _impl->queryMetadata,
+                                      _impl->qMetaCzarId, errorExtra);
+        int sessionId = UserQuery_takeOwnership(uq);
+        uq->setSessionId(sessionId);
+        if(sessionValid) {
+            uq->setupChunking();
+        }
+        return std::make_pair(sessionId, qs->getProxyOrderBy());
+    } else if (::isDropTable(query, dbName, tableName)) {
+        // processing DROP TABLE
+        if (dbName.empty()) {
+            dbName = defaultDb;
+        }
+        auto uq = new UserQueryDropTable(_impl->css, dbName, tableName,
+                                         _impl->resultDbConn.get(), resultTable,
+                                         _impl->queryMetadata, _impl->qMetaCzarId);
+        int sessionId = UserQuery_takeOwnership(uq);
+        uq->setSessionId(sessionId);
+        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDropTable: %s.%s -> %s" % dbName % tableName % sessionId);
+        return std::make_pair(sessionId, std::string());
+    } else {
+        // something that we don't recognize
+        auto uq = new UserQueryInvalid("Invalid or unsupported query: " + query);
+        int sessionId = UserQuery_takeOwnership(uq);
+        uq->setSessionId(sessionId);
+        return std::make_pair(sessionId, std::string());
     }
-    UserQuerySelect* uq = new UserQuerySelect(qs, messageStore, executive, infileMergerConfig,
-                                              _impl->secondaryIndex, _impl->queryMetadata,
-                                              _impl->qMetaCzarId, errorExtra);
-    int sessionId = UserQuery_takeOwnership(uq);
-    uq->setSessionId(sessionId);
-    if(sessionValid) {
-        uq->setupChunking();
-    }
-    return std::make_pair(sessionId, qs->getProxyOrderBy());
 }
 
 UserQueryFactory::Impl::Impl(StringMap const& m) {
@@ -150,6 +189,9 @@ UserQueryFactory::Impl::Impl(StringMap const& m) {
     mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
     mc.socket = infileMergerConfigTemplate.socket;
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mc);
+
+    // make one dedicated connection for results database
+    resultDbConn.reset(new sql::SqlConnection(mc));
 
     // get config parameters for qmeta db
     mysql::MySqlConfig qmetaConfig;
@@ -198,3 +240,41 @@ UserQueryFactory::Impl::Impl(StringMap const& m) {
 }
 
 }}} // lsst::qserv::ccontrol
+
+
+namespace {
+
+// regex for DROP TABLE [dbname.]table; both table and db names can be in quotes;
+// db name will be in group 3, table name in group 5.
+// Note that parens around whole string are not part of the regex but raw string literal
+std::regex _dropTableRe(R"(^drop\s+table\s+((["`]?)(\w+)\2[.])?(["`]?)(\w+)\4\s*;?\s*$)",
+                        std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
+
+bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
+    LOGF(_log, LOG_LVL_DEBUG, "isDropTable: %s" % query);
+    std::smatch sm;
+    bool match = regex_match(query, sm, _dropTableRe);
+    if (match) {
+        dbName = sm.str(3);
+        tableName = sm.str(5);
+        LOGF(_log, LOG_LVL_DEBUG, "isDropTable: match: %s.%s" % dbName % tableName);
+    }
+    return match;
+}
+
+// regex for SELECT *
+// Note that parens around whole string are not part of the regex but raw string literal
+std::regex _selectRe(R"(^select\s+.+$)",
+                     std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
+
+bool isSelect(std::string const& query) {
+    LOGF(_log, LOG_LVL_DEBUG, "isSelect: %s" % query);
+    std::smatch sm;
+    bool match = regex_match(query, sm, _selectRe);
+    if (match) {
+        LOGF(_log, LOG_LVL_DEBUG, "isSelect: match");
+    }
+    return match;
+}
+
+}
