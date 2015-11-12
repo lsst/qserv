@@ -70,25 +70,30 @@ namespace qserv {
 namespace wbase {
 
 // Task::ChunkEqual functor
-bool
-Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
+bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if(!x || !y) { return false; }
     if((!x->msg) || (!y->msg)) { return false; }
     return x->msg->has_chunkid() && y->msg->has_chunkid()
         && x->msg->chunkid()  == y->msg->chunkid();
 }
+
 // Task::PtrChunkIdGreater functor
-bool
-Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
+bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if(!x || !y) { return false; }
     if((!x->msg) || (!y->msg)) { return false; }
     return x->msg->chunkid()  > y->msg->chunkid();
 }
 
-////////////////////////////////////////////////////////////////////////
-// Task
-////////////////////////////////////////////////////////////////////////
 std::string const Task::defaultUser = "qsmaster";
+
+util::Sequential<int> Task::sequence{0};
+IdSet Task::allTSeq{};
+
+Task::Task() {
+    tSeq = sequence.incr();
+    allTSeq.add(tSeq);
+    LOGF_DEBUG("Task tSeq=%1%  :%2%" % tSeq % allTSeq);
+}
 
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc} {
@@ -100,6 +105,15 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
         user = defaultUser;
     }
     timestr[0] = '\0';
+
+    tSeq = sequence.incr();
+    allTSeq.add(tSeq);
+    LOGF_DEBUG("Task(...) tSeq=%1%  :%2%" % tSeq % allTSeq);
+}
+
+Task::~Task() {
+    allTSeq.remove(tSeq);
+    LOGF_DEBUG("~Task() tSeq=%1%  :%2%" % tSeq % allTSeq);
 }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
@@ -118,7 +132,6 @@ void Task::cancel() {
         sched->taskCancelled(this);
     }
 }
-
 
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
@@ -148,4 +161,25 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
     }
     return os;
 }
+
+std::string IdSet::toString() {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
+    os << "count=" << idSet._ids.size() << " ";
+    bool first = true;
+    for(auto j: idSet._ids) {
+        if (!first) {
+            os << ", ";
+        } else {
+            first = false;
+        }
+        os << j;
+    }
+    return os;
+}
+
 }}} // namespace lsst::qserv::wbase

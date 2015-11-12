@@ -27,12 +27,31 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "util/EventThread.h"
 #include "wcontrol/Foreman.h"
-#include "wsched/GroupedQueue.h"
 
 namespace lsst {
 namespace qserv {
 namespace wsched {
+
+/// A container to hold commands for a single chunk.
+/// Similar to util::CommandQueue but it doesn't need the condition variable or mutex.
+class GroupQueue {
+public:
+    using Ptr = std::shared_ptr<GroupQueue>;
+
+    explicit GroupQueue(int maxAccepted, wbase::Task::Ptr const& task);
+    bool queTask(wbase::Task::Ptr const& task);
+    wbase::Task::Ptr getTask();
+    bool isEmpty() { return _tasks.empty(); }
+
+protected:
+    bool _hasChunkId{false};
+    int _chunkId{0};
+    int _maxAccepted{1}; ///< maximum number of commands to accept in this object.
+    int _accepted{0}; ///< number of commands accepted.
+    std::deque<wbase::Task::Ptr> _tasks;
+};
 
 /// GroupScheduler -- A scheduler that is a cross between FIFO and shared scan.
 /// Tasks are ordered as they come in, except that queries for the
@@ -41,31 +60,26 @@ class GroupScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler();
+    GroupScheduler(int maxThreads, int maxGroupSize);
     virtual ~GroupScheduler() {}
 
-    virtual bool removeByHash(std::string const& hash);
-    virtual void queueTaskAct(wbase::Task::Ptr incoming);
-    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
-                                              wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
-                                                 wbase::TaskQueuePtr running);
     static std::string getName()  { return std::string("GroupSched"); }
-    bool checkIntegrity();
+    bool empty();
+    bool ready();
+    std::size_t getSize();
+    int getInFlight() { return _inFlight; }
 
-    typedef GroupedQueue<wbase::Task::Ptr, wbase::Task::ChunkEqual> Queue;
+    void queCmd(util::Command::Ptr const& cmd) override;
+    util::Command::Ptr getCmd(bool wait) override;
+    void commandFinish(util::Command::Ptr const&) override {--_inFlight;}
 
 private:
-    void _enqueueTask(wbase::Task::Ptr incoming);
-    bool _integrityHelper();
-    wbase::TaskQueuePtr _getNextIfAvail(int runCount);
-    wbase::TaskQueuePtr _getNextTasks(int max);
+    bool _ready();
 
-    std::mutex _mutex;
-
-    Queue _queue;
-    int _maxRunning;
+    std::deque<GroupQueue::Ptr> _queue;
+    int _maxGroupSize{1};
+    int _maxThreads{1};
+    std::atomic<int> _inFlight{0};
     LOG_LOGGER _logger;
 };
 

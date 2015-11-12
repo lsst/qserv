@@ -54,11 +54,10 @@ ChunkDisk* dbgChunkDisk1 = nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class ScanScheduler
 ////////////////////////////////////////////////////////////////////////
-ScanScheduler::ScanScheduler()
-    : _maxRunning(32),  // FIXME: set to some multiple of system proc count.
-      _disks(),
-      _logger(LOG_GET(getName())),
-      _mutex()
+ScanScheduler::ScanScheduler(int maxThreads)
+    : _maxThreads{maxThreads},
+      _disks{},
+      _logger{LOG_GET(getName())}
 {
     _disks.push_back(std::make_shared<ChunkDisk>(_logger));
     dbgChunkDisk1 = _disks.front().get();
@@ -66,149 +65,79 @@ ScanScheduler::ScanScheduler()
     assert(!_disks.empty());
 }
 
-bool
-ScanScheduler::removeByHash(std::string const& hash) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    int numRemoved = _disks.front()->removeByHash(hash);
-    // Consider creating poisoned list, that is checked during later
-    // read/write ops; this would avoid O(nlogn) update for each
-    // removal.
-    return numRemoved > 0;
-}
-
-void
-ScanScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    _enqueueTask(incoming);
-}
-
-wbase::TaskQueuePtr
-ScanScheduler::nopAct(wbase::TaskQueuePtr running) {
-    if(!running) { throw Bug("ScanScheduler::nopAct: null run list"); }
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-    int available = _maxRunning - running->size();
-    return _getNextTasks(available);
-}
-
-/// @return a queue of all tasks ready to run.
-///
-wbase::TaskQueuePtr
-ScanScheduler::newTaskAct(wbase::Task::Ptr incoming,
-                          wbase::TaskQueuePtr running) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-    if(!running) { throw Bug("ScanScheduler::newTaskAct: null run list"); }
-
-    _enqueueTask(incoming);
-    // No free threads? Exit.
-    // FIXME: Can do an I/O bound scan if there is memory and an idle
-    // spindle.
-    int available = _maxRunning - running->size();
-    if(available <= 0) {
-        return wbase::TaskQueuePtr();
+void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
+    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF_WARN("ScanScheduler::commandStart cmd failed conversion");
+        return;
     }
-    return _getNextTasks(available);
-}
-
-wbase::TaskQueuePtr
-ScanScheduler::taskFinishAct(wbase::Task::Ptr finished,
-                             wbase::TaskQueuePtr running) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-
-    // No free threads? Exit.
-    // FIXME: Can do an I/O bound scan if there is memory and an idle
-    // spindle.
-    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
-            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
-    int available = _maxRunning - running->size();
-    if(available <= 0) {
-        return wbase::TaskQueuePtr();
-    }
-    return _getNextTasks(available);
-}
-
-void
-ScanScheduler::markStarted(wbase::Task::Ptr t) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    LOGF_DEBUG("ScanScheduler::commandStart tSeq=%1%" % t->tSeq);
+    std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     assert(!_disks.empty());
     _disks.front()->registerInflight(t);
 }
 
-void
-ScanScheduler::markFinished(wbase::Task::Ptr t) {
-    std::lock_guard<std::mutex> guard(_mutex);
+void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF_WARN("ScanScheduler::commandFinish cmd failed conversion");
+        return;
+    }
+    std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     assert(!_disks.empty());
     _disks.front()->removeInflight(t);
+    --_inFlight;
+    LOGF_DEBUG("ScanScheduler::commandFinish inFlight= %1%" % _inFlight);
 }
 
-/// @return true if data is okay.
-bool
-ScanScheduler::checkIntegrity() {
-    std::lock_guard<std::mutex> guard(_mutex);
-    return _integrityHelper();
+/// Returns true if there is a Task ready to go and we aren't up against any limits.
+bool ScanScheduler::ready() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    return _ready();
 }
 
-/// @return true if data is okay
-/// precondition: _mutex is locked.
-bool
-ScanScheduler::_integrityHelper() {
-    ChunkDiskList::iterator i, e;
-    for(i=_disks.begin(), e=_disks.end(); i != e; ++i) {
-        if(!(**i).checkIntegrity()) return false;
-    }
-    return true;
-}
-
-/// Precondition: _mutex is already locked.
-/// @return new tasks to run
-/// TODO: preferential treatment for chunkId just run?
-/// or chunkId that are currently running?
-wbase::TaskQueuePtr
-ScanScheduler::_getNextTasks(int max) {
-    // FIXME: Select disk based on chunk location.
-    assert(!_disks.empty());
-    assert(_disks.front());
-    LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
-    wbase::TaskQueuePtr tq;
-    ChunkDisk& disk = *_disks.front();
-
+/// Precondition: _mx is locked
+/// Returns true if there is a Task ready to go and we aren't up against any limits.
+bool ScanScheduler::_ready() {
+    // FIXME: Select disk based on chunk location. Currently only ever 1 element in _disks.
+    // FIXME: Pass most appropriate disk to getCmd().
     // Check disks for candidate ones.
     // Pick one. Prefer a less-loaded disk: want to make use of i/o
     // from both disks. (for multi-disk support)
-    bool allowNewChunk = (!disk.busy() && !disk.empty());
-    while(max > 0) {
-        wbase::Task::Ptr p = disk.getNext(allowNewChunk);
-        if(!p) { break; }
-        allowNewChunk = false; // Only allow one new chunk
-        if(!tq) {
-            tq = std::make_shared<wbase::TaskQueue>();
-        }
-        tq->push_back(p);
-
-        LOGF(_logger, LOG_LVL_DEBUG, "Making ready: %1%" % *(tq->front()));
-        --max;
-    }
-    if(tq) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Returning %1% to launch" % tq->size());
-    }
-    assert(_integrityHelper());
-    LOG(_logger, LOG_LVL_DEBUG, "_getNextTasks <<<<<");
-    return tq;
-}
-
-/// Precondition: _mutex is locked.
-void
-ScanScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
-    if(!incoming) { throw Bug("ScanScheduler::_enqueueTaskAct: No task to enqueue"); }
-    // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
     assert(_disks.front());
-    _disks.front()->enqueue(incoming);
-    proto::TaskMsg const& msg = *(incoming->msg);
-    LOGF(_logger, LOG_LVL_DEBUG, "Adding new task: %1% : %2%" % msg.chunkid()
-            % msg.fragment(0).query(0));
+    auto rdy = _disks.front()->ready();
+    return rdy && _inFlight < _maxThreads;
+}
+
+std::size_t ScanScheduler::getSize() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    // When more disks are available, the total will need to be found.
+    return _disks.front()->getSize();
+}
+
+util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
+    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    if (wait) {
+        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+    }
+    auto task =  _disks.front()->getTask();;
+    ++_inFlight; // in flight as soon as it is off the queue.
+    return task;
+}
+
+void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
+    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF_WARN("ScanScheduler::queCmd could not be converted to Task or was nullptr");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    assert(!_disks.empty());
+    assert(_disks.front());
+    LOGF_DEBUG("ScanScheduler::queCmd tSeq=%1%" % t->tSeq);
+    _disks.front()->enqueue(t);
+    util::CommandQueue::_cv.notify_all();
 }
 
 }}} // namespace lsst::qserv::wsched

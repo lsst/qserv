@@ -47,6 +47,12 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
+SsiSession::~SsiSession() {
+    // XrdSsiSession::sessName is unmanaged, need to free()
+    LOGF_DEBUG("~SsiSession()");
+    if(sessName) { ::free(sessName); sessName = 0; }
+}
+
 // Step 4
 /// Called by XrdSsi to actually process a request.
 void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {

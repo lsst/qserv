@@ -63,10 +63,7 @@ public:
         : XrdSsiSession{strdup(sname), 0}, XrdSsiResponder{this, nullptr},
           _validator{validator}, _processor{processor} {}
 
-    virtual ~SsiSession() {
-        // XrdSsiSession::sessName is unmanaged, need to free()
-        if(sessName) { ::free(sessName); sessName = 0; }
-    }
+    virtual ~SsiSession();
 
     // XrdSsiSession and XrdSsiResponder interfaces
     virtual void ProcessRequest(XrdSsiRequest* req, unsigned short timeout);

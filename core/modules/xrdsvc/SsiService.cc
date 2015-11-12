@@ -46,6 +46,7 @@
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
+#include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 #include "xrdsvc/SsiSession.h"
@@ -79,12 +80,19 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
+    // TODO: set poolSize and all maxThreads values from config file.
+    uint poolSize = std::max(static_cast<uint>(24), std::thread::hardware_concurrency());
+    // TODO: set GroupScheduler group size from configuration file
+    // TODO: Consider limiting the number of chunks being accessed at a time
+    //       by GroupScheduler and ScanScheduler
+    //_foreman = wcontrol::Foreman::newForeman(std::make_shared<wsched::FifoScheduler>(), poolSize);
+    //_foreman = wcontrol::Foreman::newForeman(std::make_shared<wsched::GroupScheduler>(12), poolSize);
+    // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     _foreman = wcontrol::Foreman::newForeman(
-        std::make_shared<wsched::BlendScheduler>(
-            std::make_shared<wsched::GroupScheduler>(),
-            std::make_shared<wsched::ScanScheduler>()
-        )
-    );
+            std::make_shared<wsched::BlendScheduler>(
+                std::make_shared<wsched::GroupScheduler>(20, 10),
+                std::make_shared<wsched::ScanScheduler>(20)),
+            poolSize);
 }
 
 SsiService::~SsiService() {

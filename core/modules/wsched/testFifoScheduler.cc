@@ -42,8 +42,6 @@ namespace test = boost::test_tools;
 
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
-using lsst::qserv::wbase::TaskQueue;
-using lsst::qserv::wbase::TaskQueuePtr;
 using lsst::qserv::wbase::SendChannel;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
@@ -52,10 +50,8 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
-    SchedulerFixture(void)
-        : fs(1) {
+    SchedulerFixture(void) {
         counter = 1;
-        emptyTqp = std::make_shared<TaskQueue>();
     }
     ~SchedulerFixture(void) { }
 
@@ -79,9 +75,7 @@ struct SchedulerFixture {
     }
 
     int counter;
-    TaskQueuePtr tqp;
-    TaskQueuePtr nullTqp;
-    TaskQueuePtr emptyTqp;
+
     lsst::qserv::wsched::FifoScheduler fs;
 };
 
@@ -89,19 +83,25 @@ struct SchedulerFixture {
 BOOST_FIXTURE_TEST_SUITE(FifoSchedulerSuite, SchedulerFixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
-    BOOST_CHECK_EQUAL(nullTqp, fs.nopAct(nullTqp));
     Task::Ptr first = makeTask(nextTaskMsg());
-    fs.queueTaskAct(first);
+    fs.queCmd(first);
 
     Task::Ptr second = makeTask(nextTaskMsg());
-    TaskQueuePtr next = fs.newTaskAct(second, emptyTqp);
-    BOOST_REQUIRE(next.get());
-    BOOST_CHECK_EQUAL(next->front(), first);
-    BOOST_CHECK_EQUAL(next->size(), 1U);
+    fs.queCmd(second);
 
-    next = fs.taskFinishAct(first, emptyTqp);
-    BOOST_REQUIRE(next.get());
-    BOOST_CHECK_EQUAL(next->front(), second);
+    Task::Ptr third = makeTask(nextTaskMsg());
+    fs.queCmd(third);
+
+    auto t1 = fs.getCmd();
+    auto t2 = fs.getCmd();
+    auto t3 = fs.getCmd();
+
+    BOOST_CHECK_EQUAL(first.get(), t1.get());
+    BOOST_CHECK_EQUAL(second.get(), t2.get());
+    BOOST_CHECK_EQUAL(third.get(), t3.get());
+
+    auto t4 = fs.getCmd(false);
+    BOOST_CHECK(t4 == nullptr);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

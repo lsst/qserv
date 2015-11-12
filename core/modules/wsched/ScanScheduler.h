@@ -49,31 +49,25 @@ public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
     typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;
 
-    ScanScheduler();
+    ScanScheduler(int maxThreads);
     virtual ~ScanScheduler() {}
 
-    virtual bool removeByHash(std::string const& hash);
-    virtual void queueTaskAct(wbase::Task::Ptr incoming);
-    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
-                                           wbase::TaskQueuePtr running);
-    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
-                                              wbase::TaskQueuePtr running);
-    // TaskWatcher interface
-    virtual void markStarted(wbase::Task::Ptr t);
-    virtual void markFinished(wbase::Task::Ptr t);
+    void queCmd(util::Command::Ptr const& cmd) override;
+    util::Command::Ptr getCmd(bool wait) override;
+    void commandStart(util::Command::Ptr const& cmd) override;
+    void commandFinish(util::Command::Ptr const& cmd) override;
+    int getInFlight() { return _inFlight; }
 
     static std::string getName()  { return std::string("ScanSched"); }
-    bool checkIntegrity();
+    bool ready();
+    std::size_t getSize();
 private:
-    wbase::TaskQueuePtr _getNextTasks(int max);
-    void _enqueueTask(wbase::Task::Ptr incoming);
-    bool _integrityHelper();
+    bool _ready();
 
-    int _maxRunning;
+    int _maxThreads;
     ChunkDiskList _disks;
     LOG_LOGGER _logger;
-    std::mutex _mutex;
+    std::atomic<int> _inFlight{0};
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -117,6 +117,7 @@ void QueryRunner::_setDb() {
 }
 
 bool QueryRunner::runQuery() {
+    LOGF(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() tSeq=%1%" % _task->tSeq);
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -150,6 +151,8 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
     }
+    LOGF(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END tSeq=%1%" % _task->tSeq);
+    return false;
 }
 
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
@@ -236,7 +239,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last) {
-    LOGF_DEBUG("_transmit last=%1%" % last);
+    LOGF_DEBUG("_transmit last=%1% tSeq=%2%" % last % _task->tSeq);
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
@@ -247,7 +250,7 @@ void QueryRunner::_transmit(bool last) {
     }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
-    LOGF_INFO("_transmit last=%1% resultString=%2%" % last % util::prettyCharList(resultString, 5));
+    LOGF_INFO("_transmit last=%1% tSeq=%3% resultString=%2%" % last % util::prettyCharList(resultString, 5) % _task->tSeq);
     _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
 }
 
@@ -276,8 +279,8 @@ public:
         : _mgr{mgr}, _msg{msg} {}
 
     ChunkResource getResourceFragment(int i) {
-        wbase::Task::Fragment const& f(_msg.fragment(i));
-        if(!f.has_subchunks()) {
+        proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
+        if(!fragment.has_subchunks()) {
             StringVector tables(_msg.scantables().begin(),
                                 _msg.scantables().end());
             assert(_msg.has_db());
@@ -285,7 +288,7 @@ public:
         }
 
         std::string db;
-        proto::TaskMsg_Subchunk const& sc = f.subchunks();
+        proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
         StringVector tables(sc.table().begin(),
                             sc.table().end());
         IntVector subchunks(sc.id().begin(), sc.id().end());
@@ -315,11 +318,11 @@ bool QueryRunner::_dispatchChannel() {
             if (_cancelled) {
                 break;
             }
-            wbase::Task::Fragment const& f(m.fragment(i));
+            proto::TaskMsg_Fragment const& fragment(m.fragment(i));
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
-            for(int qi=0, qe=f.query_size(); qi != qe; ++qi) {
-                MYSQL_RES* res = _primeResult(f.query(qi));
+            for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
+                MYSQL_RES* res = _primeResult(fragment.query(qi));
                 if(!res) {
                     erred = true;
                     continue;

@@ -44,127 +44,109 @@
 namespace lsst {
 namespace qserv {
 namespace wsched {
-////////////////////////////////////////////////////////////////////////
-// class GroupScheduler
-////////////////////////////////////////////////////////////////////////
-GroupScheduler::GroupScheduler()
-    : _maxRunning(4), // FIXME: set to some multiple of system proc count.
-      _logger(LOG_GET(getName())) {
-}
 
-struct matchHash {
-    explicit matchHash(std::string const& hash_) : hash(hash_) {}
-    bool operator()(wbase::Task::Ptr const& t) {
-        return t && (t->hash == hash);
+
+GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted{maxAccepted} {
+    assert(task != nullptr);
+    _hasChunkId = task->msg->has_chunkid();
+    if (_hasChunkId) {
+        _chunkId = task->msg->chunkid();
     }
-    std::string const hash;
-};
-
-bool
-GroupScheduler::removeByHash(std::string const& hash) {
-    int removed = _queue.removeIf(matchHash(hash));
-    return removed > 0;
+    assert(queTask(task));
 }
 
-void
-GroupScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    _enqueueTask(incoming);
-}
-
-wbase::TaskQueuePtr
-GroupScheduler::nopAct(wbase::TaskQueuePtr running) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-    return _getNextIfAvail(running->size());
-}
-
-/// @return a queue of all tasks ready to run.
-///
-wbase::TaskQueuePtr
-GroupScheduler::newTaskAct(wbase::Task::Ptr incoming,
-                           wbase::TaskQueuePtr running) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-    assert(running.get());
-    _enqueueTask(incoming);
-    return _getNextIfAvail(running->size());
-}
-
-wbase::TaskQueuePtr
-GroupScheduler::taskFinishAct(wbase::Task::Ptr finished,
-                              wbase::TaskQueuePtr running) {
-    std::lock_guard<std::mutex> guard(_mutex);
-    assert(_integrityHelper());
-
-    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
-            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
-    return _getNextIfAvail(running->size());
-}
-
-/// @return true if data is okay.
-bool
-GroupScheduler::checkIntegrity() {
-    std::lock_guard<std::mutex> guard(_mutex);
-    return _integrityHelper();
-}
-
-/// @return true if data is okay
-/// precondition: _mutex is locked.
-bool
-GroupScheduler::_integrityHelper() {
-    // FIXME
-    return true;
-}
-
-/// Precondition: _mutex is already locked.
-/// @return new tasks to run
-/// TODO: preferential treatment for chunkId just run?
-/// or chunkId that are currently running?
-wbase::TaskQueuePtr
-GroupScheduler::_getNextIfAvail(int runCount) {
-    int available = _maxRunning - runCount;
-    if(available <= 0) {
-        return wbase::TaskQueuePtr();
+/// Return true if this GroupQueue accepts this task.
+/// The task is acceptable if has the same chunk id.
+bool GroupQueue::queTask(wbase::Task::Ptr const& task) {
+    /// Not having a chunk id is considered an id.
+    auto hasChunkId = task->msg->has_chunkid();
+    if (hasChunkId != _hasChunkId) {
+        return false; // Reject as one has a chunk id and the other does not.
     }
-    return _getNextTasks(available);
+    auto chunkId = task->msg->chunkid();
+    if (hasChunkId && chunkId != _chunkId) {
+        return false; // Reject since chunk ids don't match.
+    }
+    // Accept if not already full
+    if (_accepted < _maxAccepted) {
+        ++_accepted;
+        _tasks.push_back(task);
+        return true;
+    }
+    return false;
 }
 
-/// Precondition: _mutex is already locked.
-/// @return new tasks to run
-wbase::TaskQueuePtr
-GroupScheduler::_getNextTasks(int max) {
-    // FIXME: Select disk based on chunk location.
-    if(max < 1) { throw Bug("GroupScheduler::_getNextTasks: max < 1)"); }
-    LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
-    wbase::TaskQueuePtr tq;
-    if(_queue.size() > 0) {
-        tq = std::make_shared<wbase::TaskQueue>();
-        for(int i=max; i >= 0; --i) {
-            if(_queue.empty()) { break; }
-            wbase::Task::Ptr t = _queue.front();
-            tq->push_back(t);
-            _queue.pop_front();
+/// Get a command off the queue. If no message is available, wait until one is.
+wbase::Task::Ptr GroupQueue::getTask() {
+    auto task = _tasks.front();
+    _tasks.pop_front();
+    return task;
+}
+
+/// Queue a Task in the GroupScheduler.
+/// Tasks in the same chunk are grouped together.
+void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
+    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t == nullptr) {
+        LOGF_WARN("GroupScheduler::queCmd could not be converted to Task or was nullptr");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    // Start at the front of the queue looking for a group to accept the task.
+    bool queued = false;
+    for(auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
+        GroupQueue::Ptr group = *iter;
+        if (group->queTask(t)) {
+            queued = true;
         }
     }
-    if(tq) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Returning %1% to launch" % tq->size());
+    if (!queued) {
+        // Wasn't inserted into an existing group, need to make a new group.
+        auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
+        _queue.push_back(group);
     }
-    assert(_integrityHelper());
-    LOG(_logger, LOG_LVL_DEBUG, "_getNextTasks <<<<<");
-    return tq;
+    util::CommandQueue::_cv.notify_all();
 }
 
-/// Precondition: _mutex is locked.
-void
-GroupScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
-    if(!incoming) {
-        throw Bug("GroupScheduler::_enqueueTask: null task");
+/// Return a Task from the front of the queue. If no message is available, wait until one is.
+util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
+    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    if (wait) {
+        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
     }
-    _queue.insert(incoming);
-    proto::TaskMsg const& msg = *(incoming->msg);
-    LOGF(_logger, LOG_LVL_DEBUG, "Adding new task: %1% : %2%" % msg.chunkid()
-            % msg.fragment(0).query(0));
+    auto group = _queue.front();
+    auto cmd = group->getTask();
+    if (group->isEmpty()) {
+        _queue.pop_front();
+    }
+    ++_inFlight; // Considered inFlight as soon as it's off the queue.
+    return cmd;
+}
+
+GroupScheduler::GroupScheduler(int maxThreads, int maxGroupSize)
+  : _maxGroupSize{maxGroupSize}, _maxThreads{maxThreads},  _logger(LOG_GET(getName())) {
+}
+
+bool GroupScheduler::empty() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    return _queue.empty();
+}
+
+/// Returns true when a Task is ready to run.
+bool GroupScheduler::ready() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    return _ready();
+}
+
+/// Precondition: _mx must be locked.
+bool GroupScheduler::_ready() {
+    return !_queue.empty() && _inFlight < _maxThreads;
+}
+
+/// Return the number of groups (not Tasks) in the queue.
+std::size_t GroupScheduler::getSize() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    return _queue.size();
 }
 
 }}} // namespace lsst::qserv::wsched
