@@ -30,25 +30,30 @@ class TestExecutor(watcherLib.IExecutor):
     ''' Implementation IExecutor used for testing '''
     def __init__(self, returnVal=True):
         self.lastCall = None
+        self.lastOptions = None
         self.returnVal = returnVal
 
-    def createDb(self, dbName):
+    def createDb(self, dbName, options):
         self.lastCall = "CREATE DATABASE " + dbName
+        self.lastOptions = options
         if self.returnVal is None: raise Exception(self.lastCall)
         return self.returnVal
 
-    def dropDb(self, dbName):
+    def dropDb(self, dbName, options):
         self.lastCall = "DROP DATABASE " + dbName
+        self.lastOptions = options
         if self.returnVal is None: raise Exception(self.lastCall)
         return self.returnVal
 
-    def createTable(self, dbName, tableName):
+    def createTable(self, dbName, tableName, options):
         self.lastCall = "CREATE TABLE " + dbName + "." + tableName
+        self.lastOptions = options
         if self.returnVal is None: raise Exception(self.lastCall)
         return self.returnVal
 
-    def dropTable(self, dbName, tableName):
+    def dropTable(self, dbName, tableName, options):
         self.lastCall = "DROP TABLE " + dbName + "." + tableName
+        self.lastOptions = options
         if self.returnVal is None: raise Exception(self.lastCall)
         return self.returnVal
 
@@ -136,6 +141,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getDbs()['DB1'], css.KEY_STATUS_READY)
 
     def test_11_dropDb(self):
@@ -155,6 +161,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assert_('DB1' not in wCss.getDbs())
 
     def test_12_createTable(self):
@@ -176,6 +183,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE TABLE DB1.TABLE1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], css.KEY_STATUS_READY)
 
     def test_13_dropTable(self):
@@ -197,6 +205,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP TABLE DB1.TABLE1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assert_(('DB1', 'TABLE1') not in wCss.getTables())
 
     def test_20_createDbFail(self):
@@ -216,6 +225,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getDbs()['DB1'], "FAILED:CREATE DATABASE DB1")
 
     def test_21_dropDbFail(self):
@@ -235,6 +245,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getDbs()['DB1'], "FAILED:DROP DATABASE DB1")
 
     def test_22_createTableFail(self):
@@ -256,6 +267,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE TABLE DB1.TABLE1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "FAILED:CREATE TABLE DB1.TABLE1")
 
     def test_23_dropTable(self):
@@ -277,6 +289,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP TABLE DB1.TABLE1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "FAILED:DROP TABLE DB1.TABLE1")
 
 
@@ -297,6 +310,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getDbs()['DB1'], "PENDING_CREATE:12345")
 
     def test_31_dropDbSkip(self):
@@ -316,6 +330,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP DATABASE DB1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getDbs()['DB1'], "PENDING_DROP:12345")
 
     def test_32_createTableSkip(self):
@@ -337,6 +352,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "CREATE TABLE DB1.TABLE1")
+        self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "PENDING_CREATE:12345")
 
     def test_33_dropSkip(self):
@@ -350,7 +366,7 @@ class TestWatcherLib(unittest.TestCase):
 /DBS\t\\N
 /DBS/DB1\tREADY
 /DBS/DB1/TABLES\t\\N
-/DBS/DB1/TABLES/TABLE1\tPENDING_DROP:12345
+/DBS/DB1/TABLES/TABLE1\tPENDING_DROP:12345:qid=24
 """
 
         wCss = _makeWcss(initData)
@@ -358,7 +374,8 @@ class TestWatcherLib(unittest.TestCase):
         watcher = watcherLib.Watcher(wCss, executor)
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP TABLE DB1.TABLE1")
-        self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "PENDING_DROP:12345")
+        self.assertEqual(executor.lastOptions, "12345:qid=24")
+        self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "PENDING_DROP:12345:qid=24")
 
 
 ####################################################################################

@@ -16,10 +16,10 @@ import warnings
 # Imports for other modules --
 #-----------------------------
 from lsst.qserv import css
+from lsst.qserv import qmeta
 from lsst.qserv.admin  import nodeMgmt
 from lsst.qserv.admin  import nodeAdmin
 from lsst.qserv.css import cssConfig
-from lsst.qserv.qmeta import QMeta
 from lsst.qserv.wmgr.client import ServerError
 
 #----------------------------------
@@ -163,10 +163,13 @@ class IExecutor(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def createDb(self, dbName):
+    def createDb(self, dbName, options):
         """
         Create new database, returns nothing, throws exceptions on errors.
 
+        @param dbName: database name
+        @param options: options string, anything that appears after colon in
+                      CSS status
         @return True on success, false if operation cannot be performed
                 immediately (CSS should not be modified)
         @raise Exception:  if operation failed
@@ -174,10 +177,13 @@ class IExecutor(object):
         pass
 
     @abstractmethod
-    def dropDb(self, dbName):
+    def dropDb(self, dbName, options):
         """
         Drop a database, returns nothing, throws exceptions on errors.
 
+        @param dbName: database name
+        @param options: options string, anything that appears after colon in
+                      CSS status
         @return True on success, false if operation cannot be performed
                 immediately (CSS should not be modified)
         @raise Exception:  if operation failed
@@ -185,10 +191,14 @@ class IExecutor(object):
         pass
 
     @abstractmethod
-    def createTable(self, dbName, tableName):
+    def createTable(self, dbName, tableName, options):
         """
         Create new table, returns nothing, throws exceptions on errors.
 
+        @param dbName: database name
+        @param tableName: table name
+        @param options: options string, anything that appears after colon in
+                      CSS status
         @return True on success, false if operation cannot be performed
                 immediately (CSS should not be modified)
         @raise Exception:  if operation failed
@@ -196,10 +206,14 @@ class IExecutor(object):
         pass
 
     @abstractmethod
-    def dropTable(self, dbName, tableName):
+    def dropTable(self, dbName, tableName, options):
         """
         Drop a table, returns nothing, throws exceptions on errors.
 
+        @param dbName: database name
+        @param tableName: table name
+        @param options: options string, anything that appears after colon in
+                      CSS status
         @return True on success, false if operation cannot be performed
                 immediately (CSS should not be modified)
         @raise Exception:  if operation failed
@@ -240,23 +254,26 @@ class Watcher(object):
             # "DROP DB", "CREATE DB", "CREATE TABLE", and we re-read CSS in each case
             for (db, table), status in self.wcss.getTables().items():
                 if status.startswith(css.KEY_STATUS_DROP_PFX):
-                    _LOG.info("Found DROP TABLE for %s.%s (requested at %s)",
-                              db, table, status.split(':', 1)[1])
-                    actions.append((self._dropTable, db, table))
+                    options = status.split(':', 1)[1]
+                    _LOG.info("Found DROP TABLE for %s.%s (options: %s)",
+                              db, table, options)
+                    actions.append((self._dropTable, db, table, options))
 
             for db, status in self.wcss.getDbs().items():
                 if status.startswith(css.KEY_STATUS_DROP_PFX):
-                    _LOG.info("Found DROP DB for %s (requested at %s)", db, status.split(':', 1)[1])
+                    options = status.split(':', 1)[1]
+                    _LOG.info("Found DROP DB for %s (options: %s)", db, options)
                     # DROP DB implies DROP TABLE for all tables, so we do not care about table status
-                    actions.append((self._dropDb, db))
+                    actions.append((self._dropDb, db, options))
                 if status.startswith(css.KEY_STATUS_CREATE_PFX):
-                    _LOG.info("Found CREATE DB for %s (requested at %s)", db, status.split(':', 1)[1])
-                    actions.append((self._createDb, db))
+                    options = status.split(':', 1)[1]
+                    _LOG.info("Found CREATE DB for %s (options: %s)", db, options)
+                    actions.append((self._createDb, db, options))
 
             for (db, table), status in self.wcss.getTables().items():
                 if status.startswith(css.KEY_STATUS_CREATE_PFX):
-                    _LOG.info("Found CREATE TABLE for %s.%s (requested at %s)",
-                              db, table, status.split(':', 1)[1])
+                    options = status.split(':', 1)[1]
+                    _LOG.info("Found CREATE TABLE for %s.%s (options: %s)", db, table, options)
 
                     #  check database status, it must be either READY or PENDING_CREATE
                     dbStat = self.wcss.getDbs().get(db)
@@ -264,7 +281,7 @@ class Watcher(object):
                         _LOG.error("inconsistent CSS data, table status = %s and db status = %s for %s.%s",
                                    dbStat, status, db, table)
                     else:
-                        actions.append((self._createTable, db, table))
+                        actions.append((self._createTable, db, table, options))
 
             # process everything
             for action in actions:
@@ -283,7 +300,7 @@ class Watcher(object):
             if sleep > 0:
                 time.sleep(sleep)
 
-    def _createDb(self, dbName):
+    def _createDb(self, dbName, options):
         """
         Create new database on all nodes.
         """
@@ -292,11 +309,12 @@ class Watcher(object):
 
         # call executor to perform action
         try:
-            if self.executor.createDb(dbName):
+            if self.executor.createDb(dbName, options):
                 status = css.KEY_STATUS_READY
             else:
                 status = None
         except Exception as exc:
+            _LOG.error('Failure in executor: %s', exc)
             status = css.KEY_STATUS_FAILED_PFX + str(exc)
             raise
         finally:
@@ -305,7 +323,7 @@ class Watcher(object):
                 _LOG.info('Set CSS status for database %s = %s', dbName, status)
                 self.wcss.setDbStatus(dbName, status)
 
-    def _dropDb(self, dbName):
+    def _dropDb(self, dbName, options):
         """
         Drop existing database on all nodes.
         """
@@ -314,11 +332,12 @@ class Watcher(object):
 
         # call executor to perform action
         try:
-            if self.executor.dropDb(dbName):
+            if self.executor.dropDb(dbName, options):
                 status = True
             else:
                 status = None
         except Exception as exc:
+            _LOG.error('Failure in executor: %s', exc)
             status = css.KEY_STATUS_FAILED_PFX + str(exc)
             raise
         finally:
@@ -330,7 +349,7 @@ class Watcher(object):
                 _LOG.info('Set CSS status for database %s = %s', dbName, status)
                 self.wcss.setDbStatus(dbName, status)
 
-    def _createTable(self, dbName, tableName):
+    def _createTable(self, dbName, tableName, options):
         """
         Create new database on all nodes.
         """
@@ -339,11 +358,12 @@ class Watcher(object):
 
         # call executor to perform action
         try:
-            if self.executor.createTable(dbName, tableName):
+            if self.executor.createTable(dbName, tableName, options):
                 status = css.KEY_STATUS_READY
             else:
                 status = None
         except Exception as exc:
+            _LOG.error('Failure in executor: %s', exc)
             status = css.KEY_STATUS_FAILED_PFX + str(exc)
             raise
         finally:
@@ -352,7 +372,7 @@ class Watcher(object):
                 _LOG.info('Set CSS status for table %s.%s = %s', dbName, tableName, status)
                 self.wcss.setTableStatus(dbName, tableName, status)
 
-    def _dropTable(self, dbName, tableName):
+    def _dropTable(self, dbName, tableName, options):
         """
         Drop existing database on all nodes.
         """
@@ -361,11 +381,12 @@ class Watcher(object):
 
         # call executor to perform action
         try:
-            if self.executor.dropTable(dbName, tableName):
+            if self.executor.dropTable(dbName, tableName, options):
                 status = True
             else:
                 status = None
         except Exception as exc:
+            _LOG.error('Failure in executor: %s', exc)
             status = css.KEY_STATUS_FAILED_PFX + str(exc)
             raise
         finally:
@@ -392,14 +413,14 @@ class QservExecutor(IExecutor):
         IExecutor.__init__(self)
 
         self.wcss = wcss
-        self.qmeta = QMeta.createFromConfig(qmetaConfig)
+        self.qmeta = qmeta.QMeta.createFromConfig(qmetaConfig)
 
-    def createDb(self, dbName):
+    def createDb(self, dbName, options):
         """
         Create new database, returns nothing, throws exceptions on errors.
         """
 
-        _LOG.info('Creating database %s', dbName)
+        _LOG.info('Creating database %s (options: %s)', dbName, options)
 
         czars, workers = self.wcss.getNodes()
         nodes = czars + workers
@@ -428,12 +449,12 @@ class QservExecutor(IExecutor):
         _LOG.info('Created databases on %d nodes out of %d', nCreated, len(nodes))
         return True
 
-    def dropDb(self, dbName):
+    def dropDb(self, dbName, options):
         """
         Drop a database, returns nothing, throws exceptions on errors.
         """
 
-        _LOG.info('Dropping database %s', dbName)
+        _LOG.info('Dropping database %s (options: %s)', dbName, options)
 
         # before we drop database we need to make sure that no queries are using it
         qids = self.qmeta.getQueriesForDb(dbName)
@@ -481,12 +502,12 @@ class QservExecutor(IExecutor):
         _LOG.info('Dropped databases on %d nodes out of %d', nDropped, len(nodes))
         return True
 
-    def createTable(self, dbName, tableName):
+    def createTable(self, dbName, tableName, options):
         """
         Create new table, returns nothing, throws exceptions on errors.
         """
 
-        _LOG.info('Creating table %s.%s', dbName, tableName)
+        _LOG.info('Creating table %s.%s (options: %s)', dbName, tableName, options)
 
         czars, workers = self.wcss.getNodes()
         nodes = czars + workers
@@ -515,12 +536,12 @@ class QservExecutor(IExecutor):
         _LOG.info('Created tables on %d nodes out of %d', nCreated, len(nodes))
         return True
 
-    def dropTable(self, dbName, tableName):
+    def dropTable(self, dbName, tableName, options):
         """
         Drop a table, returns nothing, throws exceptions on errors.
         """
 
-        _LOG.info('Dropping table %s.%s', dbName, tableName)
+        _LOG.info('Dropping table %s.%s (options: %s)', dbName, tableName, options)
 
         # before we drop table we need to make sure that no queries are using it
         qids = self.qmeta.getQueriesForTable(dbName, tableName)
@@ -554,4 +575,22 @@ class QservExecutor(IExecutor):
                         raise
 
         _LOG.info('Dropped tables on %d nodes out of %d', nDropped, len(nodes))
+
+        # if there is a QMeta info for this DROP TABLE query then mark it as done
+        for option in options.split(':'):
+            if option.startswith('qid='):
+                try:
+                    qid = int(option[4:])
+                except ValueError as ex:
+                    qid = 0
+                # qid=0 means there is no QMeta info
+                if qid:
+                    try:
+                        _LOG.debug('Updating QMeta status for qid=%s', qid)
+                        self.qmeta.completeQuery(qid, qmeta.QInfo.COMPLETED);
+                        self.qmeta.finishQuery(qid);
+                    except qmeta.Exception as ex:
+                        # should go on
+                        _LOG.warning('Failed to update QMeta status for DROP TABLE: %s', ex)
+
         return True

@@ -22,6 +22,15 @@ Access to the qmeta classes
 %include "std_string.i"
 %include "std_vector.i"
 
+// we need few types from stdint.h but SWIG provides incorrect typedef
+// for 64-bit types in its stdint.i so we cannot use that, need some manual defs
+namespace std {
+typedef int                     int32_t;
+typedef long int                int64_t;
+typedef unsigned int            uint32_t;
+typedef unsigned long int       uint64_t;
+}
+
 // Instantiate types
 %template(StringMap) std::map<std::string, std::string>;
 
