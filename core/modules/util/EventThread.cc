@@ -45,11 +45,11 @@ void EventThread::handleCmds() {
         Command::Ptr cmd = _q->getCmd();
         if (cmd != nullptr) {
             _q->commandStart(cmd);
-            if (cmd->action() == HALT) {
-                _loop = false;
-            }
+            cmd->action(this);
             _q->commandFinish(cmd);
-            cmd->resetFunc(); // Reset _func in case it has a captured Command::Ptr
+            // Reset _func in case it has a captured Command::Ptr,
+            // which would keep it alive indefinitely.
+            cmd->resetFunc();
         }
     }
     finishup();

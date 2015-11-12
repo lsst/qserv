@@ -75,7 +75,7 @@ Foreman::~Foreman() {
 wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                      std::shared_ptr<wbase::SendChannel> const& replyChannel) {
     auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-    auto func = [this, task](){
+    auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if(!msg.has_protocol() || msg.protocol() < resultProtocol) {

@@ -88,7 +88,7 @@ protected:
 
 /// An event driven thread.
 /// Thread must be started with run(). Stop the thread by calling queEnd().
-class EventThread {
+class EventThread : public CmdData {
 public:
     enum { HALT = -1000 };
     EventThread() {}
@@ -110,7 +110,12 @@ public:
     /// Queues and action that will stop the EventThread that answers it.
     virtual void queEnd() {
         struct MsgEnd : public Command {
-            int action() override { return HALT; }
+            void action(CmdData *data) override {
+                auto thisEventThread = dynamic_cast<EventThread*>(data);
+                if (thisEventThread != nullptr) {
+                    thisEventThread->_loop =false;
+                }
+            }
         };
         std::shared_ptr<MsgEnd> cmd = std::make_shared<MsgEnd>();
         queCmd(cmd);

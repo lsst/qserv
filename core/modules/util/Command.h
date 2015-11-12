@@ -53,22 +53,28 @@ private:
     std::condition_variable _trCV;
 };
 
+/// Base class to allow arbitrary data to be passed to or returned from
+/// Command::action.
+struct CmdData {
+    virtual ~CmdData() {};
+};
+
+
 /// Base class for commands. Can be used with functions as is or
 /// as a base class when data is needed.
 class Command {
 public:
     using Ptr = std::shared_ptr<Command>;
     Command() {};
-    Command(std::function<void()> func) : _func{func} {}
+    Command(std::function<void(CmdData*)> func) : _func{func} {}
     virtual ~Command() {};
-    virtual int action() {
-        _func();
-        return 0;
+    virtual void action(CmdData *data) {
+        _func(data);
     };
-    void setFunc(std::function<void()> func);
+    void setFunc(std::function<void(CmdData*)> func);
     void resetFunc();
 protected:
-    std::function<void()> _func = [](){;};
+    std::function<void(CmdData*)> _func = [](CmdData*){;};
 };
 
 /// Extension of Command that can notify other threads when its
@@ -77,12 +83,11 @@ class CommandTracked : public virtual Command, public virtual Tracker {
 public:
     using Ptr = std::shared_ptr<CommandTracked>;
     CommandTracked() {};
-    CommandTracked(std::function<void()> func) : Command{func} {}
+    CommandTracked(std::function<void(CmdData*)> func) : Command{func} {}
     virtual ~CommandTracked() {};
-    int action() override {
-        _func();
+    void action(CmdData *data) override {
+        _func(data);
         setComplete();
-        return 0;
     };
 };
 

@@ -56,9 +56,9 @@ void Tracker::waitComplete() {
 
 /// Change the function called when the Command is activated.
 /// nullptr is replaced with a nop function.
-void Command::setFunc(std::function<void()> func) {
+void Command::setFunc(std::function<void(CmdData*)> func) {
     if (func == nullptr) {
-        _func = [](){;};
+        _func = [](CmdData*){;};
     } else {
         _func = func;
     }

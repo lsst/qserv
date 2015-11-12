@@ -68,13 +68,13 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         int total{0};
         int cycles = 99; // Arbitrary number of times add message to queue.
         for (int j=1; j<cycles; j++) {
-            auto cmdSum = std::make_shared<Command>([&sum, j](){sum.add(j);});
+            auto cmdSum = std::make_shared<Command>([&sum, j](CmdData*){sum.add(j);});
             total += j;
             et.queCmd(cmdSum);
         }
         et.run();
         for (int j=1; j<cycles; j++) {
-            auto cmdSum = std::make_shared<Command>([&sum, j](){sum.add(j);});
+            auto cmdSum = std::make_shared<Command>([&sum, j](CmdData*){sum.add(j);});
             total += j;
             et.queCmd(cmdSum);
         }
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         BOOST_CHECK(pool->size() == sz);
 
         for (int j=1;j<2000;j++) {
-            auto cmdSum = std::make_shared<Command>([&poolSum, j](){poolSum.add(j);});
+            auto cmdSum = std::make_shared<Command>([&poolSum, j](CmdData*){poolSum.add(j);});
             total += j;
             poolQueue->queCmd(cmdSum);
         }
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         uint sz = 10;
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
-        auto func = [&sum](){
+        auto func = [&sum](CmdData*){
             for (int j=0; j<900000;j++) {
                 sum.add(1);
             }
@@ -155,12 +155,11 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
 
         class CommandData : public CommandTracked {
         public:
-            int action() override {
+            void action(CmdData*) override {
                 for (int j=0; j<900000;j++) {
                     total += 1;
                 }
                 setComplete();
-                return 0;
             };
             int total{0};
         };
