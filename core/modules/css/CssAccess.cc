@@ -61,6 +61,9 @@ std::string _mapGet(std::map<std::string, std::string> const& config,
     return iter->second;
 }
 
+// Name of sub-key used for packed data
+std::string const _packedKeyName(".packed.json");
+
 }
 
 namespace lsst {
@@ -198,11 +201,8 @@ CssAccess::getDbNames() const {
     std::string p = _prefix + "/DBS";
     auto names = _kvI->getChildren(p);
 
-    // remove names from packed keys
-    auto it = std::remove_if(names.begin(), names.end(),
-                             [](const std::string& name) {
-                                return name.size() > 5 and
-                                       name.compare(name.size()-5, name.size(), ".json") == 0; });
+    // databases cannot be packed, but just in case remove packed key if any
+    auto it = std::remove(names.begin(), names.end(), ::_packedKeyName);
     names.erase(it, names.end());
 
     return names;
@@ -215,15 +215,8 @@ CssAccess::getDbStatus() const {
     std::string p = _prefix + "/DBS";
     auto kvs = _kvI->getChildrenValues(p);
 
-    // remove names from packed keys
-    for (auto iter = kvs.begin(); iter != kvs.end(); ) {
-        auto& name = iter->first;
-        if (name.size() > 5 and name.compare(name.size()-5, name.size(), ".json") == 0) {
-            iter = kvs.erase(iter);
-        } else {
-            ++ iter;
-        }
-    }
+    // databases cannot be packed, but just in case remove packed key if any
+    kvs.erase(::_packedKeyName);
 
     return kvs;
 }
@@ -358,18 +351,12 @@ CssAccess::dropDb(std::string const& dbName) {
 
     std::string key = _prefix + "/DBS/" + dbName;
 
-    // key is supposed to exist and key.json is optional
+    // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: try to delete packed key: %s.json" % key);
-        _kvI->deleteKey(key + ".json");
-    } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: packed key is not found");
-    }
-    try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: try to delete regular key: %s" % key);
+        LOGF(_log, LOG_LVL_DEBUG, "dropDb: try to delete key: %s" % key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: regular key is not found");
+        LOGF(_log, LOG_LVL_DEBUG, "dropDb: key is not found: %s" % key);
         throw NoSuchDb(dbName);
     }
 }
@@ -388,11 +375,8 @@ CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
         _assertDbExists(dbName);
     }
 
-    // remove names from packed keys
-    auto it = std::remove_if(names.begin(), names.end(),
-                             [](const std::string& name) {
-                                return name.size() > 5 and
-                                       name.compare(name.size()-5, name.size(), ".json") == 0; });
+    // tables cannot be packed, but just in case remove packed key if any
+    auto it = std::remove(names.begin(), names.end(), ::_packedKeyName);
     names.erase(it, names.end());
 
     if (readyOnly and not names.empty()) {
@@ -422,15 +406,8 @@ CssAccess::getTableStatus(std::string const& dbName) const {
         _assertDbExists(dbName);
     }
 
-    // remove names from packed keys
-    for (auto iter = kvs.begin(); iter != kvs.end(); ) {
-        auto& name = iter->first;
-        if (name.size() > 5 and name.compare(name.size()-5, name.size(), ".json") == 0) {
-            iter = kvs.erase(iter);
-        } else {
-            ++ iter;
-        }
-    }
+    // tables cannot be packed, but just in case remove packed key if any
+    kvs.erase(::_packedKeyName);
 
     return kvs;
 
@@ -522,7 +499,7 @@ CssAccess::getPartTableParams(std::string const& dbName,
 
     PartTableParams params;
 
-    std::vector<std::string> subKeys{"partitioning", "partitioning.json", "partitioning/subChunks",
+    std::vector<std::string> subKeys{"partitioning", "partitioning/subChunks",
         "partitioning/dirDb", "partitioning/dirTable", "partitioning/dirColName", "partitioning/latColName",
         "partitioning/lonColName", "partitioning/overlap", "partitioning/secIndexColName"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
@@ -538,7 +515,7 @@ CssAccess::getPartTableParams(std::string const& dbName,
     params.dirColName = paramMap["partitioning/dirColName"];
     params.latColName = paramMap["partitioning/latColName"];
     params.lonColName = paramMap["partitioning/lonColName"];
-    params.partitioned = paramMap.count("partitioning") + paramMap.count("partitioning.json") > 0;
+    params.partitioned = paramMap.count("partitioning") > 0;
     try {
         auto iter = paramMap.find("partitioning/subChunks");
         if (iter != paramMap.end()) {
@@ -570,7 +547,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
         "partitioning/dirTable", "partitioning/dirColName", "partitioning/latColName",
         "partitioning/lonColName", "partitioning/overlap", "partitioning/secIndexColName",
         "match/dirTable1", "match/dirColName1", "match/dirTable2", "match/dirColName2",
-        "match/flagColName", "partitioning", "partitioning.json"};
+        "match/flagColName", "partitioning"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
@@ -589,8 +566,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
     params.partitioning.dirColName = paramMap["partitioning/dirColName"];
     params.partitioning.latColName = paramMap["partitioning/latColName"];
     params.partitioning.lonColName = paramMap["partitioning/lonColName"];
-    params.partitioning.partitioned =
-            paramMap.count("partitioning") + paramMap.count("partitioning.json") > 0;
+    params.partitioning.partitioned = paramMap.count("partitioning") > 0;
     try {
         auto iter = paramMap.find("partitioning/subChunks");
         if (iter != paramMap.end()) {
@@ -697,18 +673,12 @@ CssAccess::dropTable(std::string const& dbName, std::string const& tableName) {
 
     std::string const key = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
 
-    // key is supposed to exist and key.json is optional
+    // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: try to delete packed key: %s.json" % key);
-        _kvI->deleteKey(key + ".json");
-    } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: packed key is not found");
-    }
-    try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: try to delete regular key: %s" % key);
+        LOGF(_log, LOG_LVL_DEBUG, "dropTable: try to delete key: %s" % key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: regular key is not found");
+        LOGF(_log, LOG_LVL_DEBUG, "dropTable: key is not found: %s" % key);
         throw NoSuchTable(dbName, tableName);
     }
 }
@@ -719,17 +689,8 @@ CssAccess::getNodeNames() const {
     auto nodes = _kvI->getChildren(key);
     _checkVersion();
 
-    // Node name keys can be both packed or unpacked (meaning that one
-    // or both of /NODES/node and /NODES/node.json can exist)
-    for (auto& node: nodes) {
-        if (node.size() > 5 and node.compare(node.size()-5, node.size(), ".json") == 0) {
-            node.erase(node.size()-5, node.size());
-        }
-    }
-
-    // remove duplicates
-    std::sort(nodes.begin(), nodes.end());
-    auto it = std::unique(nodes.begin(), nodes.end());
+    // /NODES cannot have packed keys, but just in case remove packed key if any
+    auto it = std::remove(nodes.begin(), nodes.end(), ::_packedKeyName);
     nodes.erase(it, nodes.end());
 
     return nodes;
@@ -850,18 +811,12 @@ CssAccess::deleteNode(std::string const& nodeName) {
 
     std::string const key = _prefix + "/NODES/" + nodeName;
 
-    // key is supposed to exist and key.json is optional
+    // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: try to delete packed key: %s.json" % key);
-        _kvI->deleteKey(key + ".json");
-    } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: packed key is not found");
-    }
-    try {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: try to delete regular key: %s" % key);
+        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: try to delete key: %s" % key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: regular key is not found");
+        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: key is not found: %s" % key);
         throw NoSuchNode(nodeName);
     }
 }
@@ -917,14 +872,9 @@ CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
         std::vector<std::string> replicas;
         try {
             replicas = _kvI->getChildren(replicasKey);
-            // strip .json and remove duplicates
-            for (auto& replica: replicas) {
-                if (replica.size() > 5 and replica.compare(replica.size()-5, replica.size(), ".json") == 0) {
-                    replica.erase(replica.size()-5, replica.size());
-                }
-            }
-            std::sort(replicas.begin(), replicas.end());
-            auto it = std::unique(replicas.begin(), replicas.end());
+
+            // replicas cannot be packed, but just in case remove packed key if any
+            auto it = std::remove(replicas.begin(), replicas.end(), ::_packedKeyName);
             replicas.erase(it, replicas.end());
         } catch (std::exception const& exc) {
             LOGF(_log, LOG_LVL_DEBUG, "getChunks: replica key is missing: %s" % replicasKey);
@@ -973,7 +923,7 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
 
         if (parentKeys.count(parentKey) == 0) {
             parentKeys.insert(parentKey);
-            allKeys.push_back(parentKey + ".json");
+            allKeys.push_back(parentKey + "/" + ::_packedKeyName);
         }
 
         allKeys.push_back(key + "/" + subKey);
@@ -989,7 +939,7 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
     // unpack packed guys, and add unpacked keys to a key map, this does not overwrite
     // existing keys (meaning that regular key overrides same packed key)
     for (auto& parentKey: parentKeys) {
-        std::string const packedKey = parentKey + ".json";
+        std::string const packedKey = parentKey + "/" + ::_packedKeyName;
         auto iter = keyMap.find(packedKey);
         if (iter != keyMap.end()) {
             auto const packedMap = _unpackJson(iter->first, iter->second);
@@ -1068,7 +1018,7 @@ CssAccess::_storePacked(std::string const& key, std::map<std::string, std::strin
     std::replace(packed.begin(), packed.end(), '\n', ' ');
 
     // store it
-    _kvI->set(key+".json", packed);
+    _kvI->set(key + "/" + ::_packedKeyName, packed);
 }
 
 }}} // namespace lsst::qserv::css

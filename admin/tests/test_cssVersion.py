@@ -88,7 +88,7 @@ class TestCssVersion(unittest.TestCase):
         initData = """\
 /DBS\t\\N
 /DBS/TESTDB\tREADY
-/DBS/TESTDB.json\t\\N
+/DBS/TESTDB/.packed.json\t\\N
 /css_meta\t\\N
 /css_meta/version\t""" + str(css.VERSION)
         css_inst = _makeCss(initData)

@@ -91,10 +91,12 @@ class TestChunkMapping(unittest.TestCase):
 /DBS/{db}/TABLES/{table}/CHUNKS\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/333\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS\t\\N
-/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1.json\t{{"nodeName": "worker333"}}
+/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1\t\\N
+/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1/.packed.json\t{{"nodeName": "worker333"}}
 /DBS/{db}/TABLES/{table}/CHUNKS/765\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS\t\\N
-/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1.json\t{{"nodeName": "worker765"}}
+/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1\t\\N
+/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1/.packed.json\t{{"nodeName": "worker765"}}
 """
 
         workers = ['worker1', 'worker2']
@@ -133,10 +135,12 @@ class TestChunkMapping(unittest.TestCase):
 /DBS/{db}/TABLES/{table}/CHUNKS\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/333\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS\t\\N
-/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1.json\t{{"nodeName": "worker333"}}
+/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1\t\\N
+/DBS/{db}/TABLES/{table}/CHUNKS/333/REPLICAS/1/.packed.json\t{{"nodeName": "worker333"}}
 /DBS/{db}/TABLES/{table}/CHUNKS/765\t\\N
 /DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS\t\\N
-/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1.json\t{{"nodeName": "worker765"}}
+/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1\t\\N
+/DBS/{db}/TABLES/{table}/CHUNKS/765/REPLICAS/1/.packed.json\t{{"nodeName": "worker765"}}
 """
 
         workers = ['worker1', 'worker2']

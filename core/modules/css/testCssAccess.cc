@@ -77,18 +77,18 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001.json", R"({"nodeName": "worker1"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001/.packed.json", R"({"nodeName": "worker1"})"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002.json", R"({"nodeName": "worker2"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002/.packed.json", R"({"nodeName": "worker2"})"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001.json", R"({"nodeName": "worker1"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001/.packed.json", R"({"nodeName": "worker1"})"));
 
     p = "/DBS/dbB/TABLES";
     kv.push_back(make_pair(p, ""));
     kv.push_back(make_pair(p + "/Exposure", KEY_STATUS_READY));
-    kv.push_back(make_pair(p + "/Exposure.json", R"X({"schema": "(FLOAT X)"})X"));
+    kv.push_back(make_pair(p + "/Exposure/.packed.json", R"X({"schema": "(FLOAT X)"})X"));
     kv.push_back(make_pair(p + "/MyObject", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/MyObject/partitioning", ""));
     kv.push_back(make_pair(p + "/MyObject/partitioning/lonColName", "ra_PS"));
@@ -109,7 +109,8 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/RefMatch/match/dirColName2", "sourceId"));
     kv.push_back(make_pair(p + "/RefMatch/match/flagColName", "flag"));
     kv.push_back(make_pair(p + "/RefMatch2", KEY_STATUS_READY));
-    kv.push_back(make_pair(p + "/RefMatch2/match.json",
+    kv.push_back(make_pair(p + "/RefMatch2/match", ""));
+    kv.push_back(make_pair(p + "/RefMatch2/match/.packed.json",
                            R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag"})"));
     kv.push_back(make_pair(p + "/TempTable1", KEY_STATUS_IGNORE));
     kv.push_back(make_pair(p + "/TempTable2", "PENDING_CREATE:12345"));
@@ -118,7 +119,7 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p, ""));
     kv.push_back(make_pair(p + "/node1", "ACTIVE"));
     kv.push_back(make_pair(p + "/node2", "INACTIVE"));
-    kv.push_back(make_pair(p + "/node2.json", R"({"type": "worker", "host": "worker2", "port": 5012})"));
+    kv.push_back(make_pair(p + "/node2/.packed.json", R"({"type": "worker", "host": "worker2", "port": 5012})"));
     kv.push_back(make_pair(p + "/node3", "ACTIVE"));
     kv.push_back(make_pair(p + "/node3/type", "worker"));
     kv.push_back(make_pair(p + "/node3/host", "worker3"));

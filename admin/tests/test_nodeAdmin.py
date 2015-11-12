@@ -73,7 +73,7 @@ class TestWorkerAdmin(unittest.TestCase):
 /css_meta/version\t{version}
 /NODES\t\\N
 /NODES/worker\t\\N
-/NODES/worker.json\t{{"type": "worker", "host": "localhost", "port": 5012}}
+/NODES/worker/.packed.json\t{{"type": "worker", "host": "localhost", "port": 5012}}
 """
         initData = initData.format(version=css.VERSION)
         css_inst = _makeCss(initData)
