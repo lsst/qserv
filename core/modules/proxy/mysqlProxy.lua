@@ -6,6 +6,7 @@
 -- For questions, contact Jacek Becla or Daniel L. Wang
 
 require ("xmlrpc.http")
+require ("czarProxy")
 
 -- todos:
 --  * support DESCRIBE
@@ -362,6 +363,9 @@ function queryProcessing()
         hintsToPassArr["server_thread_id"] = proxy.connection.server.thread_id
         print ("proxy.connection.server.thread_id: " .. proxy.connection.server.thread_id)
         print ("Passing query: " .. queryToPassStr)
+
+        -- send query to czar
+        czarRes = czarProxy.submitQuery(queryToPassStr, hintsToPassArr)
 
         -- Build hint string
         hintsToPassStr = utils.tableToString(hintsToPassArr)

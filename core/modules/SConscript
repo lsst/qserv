@@ -80,6 +80,12 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                                'SHLIBPREFIX' : '',
                                'distDir' : pyDistRelative(env,"czar")},
 
+               "czarProxy" : {'mods' : """proxy""".split(),
+                             'shmods' : ['css'],
+                             'libs' : """log""".split(),
+                               'SHLIBPREFIX' : '',
+                               'distDir' : 'proxy'},
+
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
                             'libs' : "log boost_thread".split(),

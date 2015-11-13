@@ -176,6 +176,7 @@ def _setEnvWithDependencies():
             (PathVariable('LOG_LIB', 'log libraries path', os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LUA_INC', 'lua include path', os.path.join(env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
             )
     opts.Update(env)
 
