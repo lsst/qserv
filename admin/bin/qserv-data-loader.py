@@ -227,7 +227,7 @@ class Loader(object):
         # connect to all worker servers
         workerWmgrMap = {}
         for worker in self.args.workerNodes:
-            workerWmgrMap[worker] = self._wmgrConnect(worker, css)
+            workerWmgrMap[worker] = self._wmgrConnect(worker, css_inst)
 
         # instantiate loader
         self.loader = DataLoader(self.args.configFiles,
