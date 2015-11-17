@@ -66,4 +66,24 @@
     $1 = &temp;
 }
 
+// special typemap for log method which finds file name an line number from Lua
+%typemap(in,numinputs=0) (std::string const& filename, std::string const& funcname, unsigned lineno)
+                         (std::string tempFilename, std::string tempFuncname) {
+    lua_Debug ar;
+    lua_getstack(L, 1, &ar);
+    lua_getinfo(L, "nSl", &ar);
+
+    if (ar.source) {
+        tempFilename = ar.source;
+        // strip some of the file path to make it shorter
+        std::string::size_type p = tempFilename.rfind('/');
+        if (p != 0) p = tempFilename.rfind('/', p-1);
+        if (p != std::string::npos) tempFilename.erase(0, p+1);
+    }
+    $1 = &tempFilename;
+    if (ar.name) tempFuncname = ar.name;
+    $2 = &tempFuncname;
+    $3 = ar.currentline;
+}
+
 %include "proxy/czarProxy.h"

@@ -3,79 +3,25 @@
 -- for executing queries. While it has some responsibilities now, it
 -- should eventually act as a thin wrapper to delegating all
 -- functionality to a Qserv daemon.
--- For questions, contact Jacek Becla or Daniel L. Wang
 
-require ("xmlrpc.http")
 require ("czarProxy")
-
--- todos:
---  * support DESCRIBE
---
---  * communication with user, returning results etc
---
---  * improve error checking:
---    - enforce single bounding box
---    - check if there is "objectId=" or "objectId IN" in the section
---      of query which we are skipping
---    - block "SHOW" except "SHOW DATABASES" and "SHOW TABLES"
---
---  * supress errors "FUNCTION proxyTest.areaSpec_box does not exist"
---
---  * test what happens when I change db (use x; later use y)
-
--- API between lua and qserv:
---  * invoke(cleanQueryString, hintString)
---  * cleanQueryString is the query without special hints: objectId
---    related hints are passed through, but bounding boxes are not
---  * hintString: "box", "1,2,11,12", "box", "5,55,6,66",
---    "objectId", "3", "objectId", "5,6,7,8" and so on
-
--------------------------------------------------------------------------------
---                             debug tool                                    --
--------------------------------------------------------------------------------
-local DEBUG = os.getenv('DEBUG') or 0
-DEBUG = DEBUG + 0
-
-local MSG_ERROR = 2
-
-function print_debug(msg, level)
- level = level or 1
- if DEBUG >= level then
-     print ("DEBUG : "..msg)
- end
-end
 
 -------------------------------------------------------------------------------
 --                        global variables (yuck)                            --
 -------------------------------------------------------------------------------
-
-rpcHost = "127.0.0.1"
-defaultRpcPort = 7080
-
-local rpcPort = os.getenv("QSERV_RPC_PORT")
-if (rpcPort == nil) then
-   rpcPort = defaultRpcPort
-end
-czarRpcUrl = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
-print_debug("RPC url "..czarRpcUrl, 1)
 
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
 ERR_BAD_ARG        = -4002
 ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
-ERR_RPC_CALL       = -4005
 ERR_BAD_RES_TNAME  = -4006
 ERR_QSERV_GENERIC  = -4100
 ERR_QSERV_PARSE    = -4110
 ERR_QSERV_RUNTIME  = -4120
 
 SUCCESS            = 0
-
--- query string and array containing hints
--- These two will be passed to qserv
-queryToPassStr = ""
-hintsToPassArr = {}
+MSG_ERROR          = 2
 
 -- global variables have per-session(client) scope
 -- queryErrorCount -- number of run-time errors detected during query exec.
@@ -85,41 +31,38 @@ queryErrorCount = 0
 --                             error handling                                --
 -------------------------------------------------------------------------------
 
--- use line buffering to make it easier to read logs in case of errors
-io.stdout:setvbuf("line")
-
 function errors ()
     local self = { __errNo__ = 0, __errMsg__ = "" }
 
     ---------------------------------------------------------------------------
 
     local errNo = function()
-        return __errNo__
+        return self.__errNo__
     end
 
     ---------------------------------------------------------------------------
     local set = function(errNo, errMsg)
-        __errNo__  = errNo
-        __errMsg__ = errMsg
+        self.__errNo__  = errNo
+        self.__errMsg__ = errMsg
         return errNo
     end
 
     local append = function(errMsg)
-        __errMsg__ = __errMsg__ .. errMsg
+        self.__errMsg__ = self.__errMsg__ .. errMsg
         return errNo
     end
 
     ---------------------------------------------------------------------------
 
     local send = function()
-        local e = -1 * __errNo__ -- mysql doesn't like negative errors
+        local e = -1 * self.__errNo__ -- mysql doesn't like negative errors
         proxy.response = {
             type     = proxy.MYSQLD_PACKET_ERR,
-            errmsg   = __errMsg__,
+            errmsg   = self.__errMsg__,
             errcode  = e,
             sqlstate = 'Proxy',
         }
-        print ("ERROR errNo: "..e..": errMsg: "..__errMsg__)
+        czarProxy.log("mysql-proxy", "ERROR", "errNo: "..e..": errMsg: "..self.__errMsg__)
         return proxy.PROXY_SEND_RESULT
     end
 
@@ -150,7 +93,8 @@ function utilities()
 
     local tableToString = function(t)
         local s = ""
-        for k,v in pairs(t) do
+        local k, v
+        for k, v in pairs(t) do
             s = s .. '"' .. k .. '" "' .. v .. '" '
         end
         return s
@@ -189,9 +133,9 @@ function utilities()
     ---------------------------------------------------------------------------
 
     local removeLeadingComment = function (q)
-        qRet = q
-        x1 = string.find(q, '%/%*')
-        x2 = string.find(q, '%*%/')
+        local qRet = q
+        local x1 = string.find(q, '%/%*')
+        local x2 = string.find(q, '%*%/')
         if x1 and x2 then
             if x1 > 1 then
                 qRet = string.sub(q, 0, x1) .. string.sub(q, x2+2, string.len(q))
@@ -300,7 +244,8 @@ function queryType()
     ---------------------------------------------------------------------------
 
     local isIgnored = function(qU)
-        if string.find(qU, "^SET ")  then
+        -- SET is already in isLocal() so this laways returns false for now
+        if string.find(qU, "^SET ") then
             return true
         end
         return false
@@ -341,8 +286,7 @@ function queryProcessing()
 
     local self = { msgTableName = nil,
                    resultTableName = nil,
-                   orderByClause = nil,
-                   qservError = nil }
+                   orderByClause = nil }
 
     ---------------------------------------------------------------------------
 
@@ -352,58 +296,40 @@ function queryProcessing()
     --
     local sendToQserv = function(q, qU)
 
-        hintsToPassArr = {} -- Reset hints (it's global)
+        local hintsToPassArr = {}
         -- Force original query to delegate spatial work to qsmaster.
-        queryToPassStr = q
+        local queryToPassStr = q
         -- Add client db context
         hintsToPassArr["db"] = proxy.connection.client.default_db
 
         -- Need to save thread_id and reuse for killing query
         hintsToPassArr["client_dst_name"] = proxy.connection.client.dst.name
         hintsToPassArr["server_thread_id"] = proxy.connection.server.thread_id
-        print ("proxy.connection.server.thread_id: " .. proxy.connection.server.thread_id)
-        print ("Passing query: " .. queryToPassStr)
-
-        -- send query to czar
-        czarRes = czarProxy.submitQuery(queryToPassStr, hintsToPassArr)
+        czarProxy.log("mysql-proxy", "INFO", "proxy.connection.server.thread_id: " .. proxy.connection.server.thread_id)
+        czarProxy.log("mysql-proxy", "INFO", "Passing query: " .. queryToPassStr)
 
         -- Build hint string
-        hintsToPassStr = utils.tableToString(hintsToPassArr)
-        print ("Passing hints: " .. hintsToPassStr)
+        local hintsToPassStr = utils.tableToString(hintsToPassArr)
+        czarProxy.log("mysql-proxy", "INFO", "Passing hints: " .. hintsToPassStr)
 
-        local queryToPassProtect = "<![CDATA[" .. queryToPassStr .. "]]>"
-        -- Wrap this in a pcall so that a meaningful error can
-        -- be returned to the caller
-        local pcallStatus, xmlrpcStatus, res =
-           pcall(xmlrpc.http.call, czarRpcUrl,
-                 "submitQuery", queryToPassProtect, hintsToPassArr)
+        -- send query to czar
+        local res = czarProxy.submitQuery(queryToPassStr, hintsToPassArr)
 
-        -- if pcall failed then xmlrpcStatus contains the related error message
-        -- if pcall succeed then xmlrpcStatus contains the return code of
-        -- xmlrpc.http.call
-        if (not pcallStatus) then
-            err_msg = xmlrpcStatus
-            return err.set(ERR_RPC_CALL, "Unable to run lua xmlrpc client, message: " .. xmlrpcStatus)
-        elseif (not xmlrpcStatus) then
-            return err.set(ERR_RPC_CALL, "mysql-proxy RPC call failed for czar url: " .. czarRpcUrl)
-        end
-
-        qservError = res[1]
-        if qservError then
+        local qservError = res[1]
+        if qservError and qservError ~= "" then
            return err.set(ERR_QSERV_PARSE, "Query processing error: " .. qservError)
         end
 
-        resultTableName = res[2]
-        msgTableName = res[3]
+        self.resultTableName = res[2]
+        self.msgTableName = res[3]
+        self.orderByClause = ""
         if res[4] then
-            orderByClause = res[4]
-        else
-            orderByClause = ""
+            self.orderByClause = res[4]
         end
 
-        print ("Czar RPC response: [result: " .. resultTableName ..
-               ", message: " .. msgTableName ..
-               ", order_by: \"" .. orderByClause .. "\"]")
+        czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
+               ", message: " .. self.msgTableName ..
+               ", order_by: \"" .. self.orderByClause .. "\"]")
 
         return SUCCESS
      end
@@ -411,7 +337,7 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     local processLocally = function(q)
-        print ("Processing locally")
+        czarProxy.log("mysql-proxy", "INFO", "Processing locally: " .. q)
         return SUCCESS
     end
 
@@ -424,7 +350,7 @@ function queryProcessing()
            fields = {
               {
                  type = proxy.MYSQL_TYPE_STRING,
-                 name = command,
+                 name = "command",
               },
            },
            rows = {{"Ignoring meaningless command (in Qserv)."}}
@@ -434,34 +360,24 @@ function queryProcessing()
 
     ---------------------------------------------------------------------------
 
-    local killQservQuery = function(qU)
+    local killQservQuery = function(q, qU)
         -- Idea: "KILL QUERY <server.thread_id>" is in the parameter, so we
         -- just have to pass along qU and the original client id so
         -- that the server can differentiate among clients and kill
         -- the right query.
-        proxy.response.type = proxy.MYSQLD_PACKET_OK
-        local callError, ok, res =
-           pcall(xmlrpc.http.call,
-                 czarRpcUrl, "killQueryUgly", qU, proxy.connection.client.dst.name)
+        czarProxy.log("mysql-proxy", "INFO", "Killing query/connection: " .. q)
+        czarProxy.killQueryUgly(qU, proxy.connection.client.dst.name)
 
-        if (not callError) then
-           err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
-                          .. "Exception in RPC call: " .. ok)
-           return err.send()
-        elseif (not ok) then
-           print("\nKill query RPC failure: " .. res .. "---" .. proxy.connection.client.dst.name)
-           err.set(ERR_RPC_CALL, "rpc call failed for " .. czarRpcUrl)
-           return err.send()
-        end
         -- Assemble result
+        proxy.response.type = proxy.MYSQLD_PACKET_OK
         proxy.response.resultset = {
            fields = {
               {
                  type = proxy.MYSQL_TYPE_STRING,
-                 name = command,
+                 name = "command",
               },
            },
-           rows = {{"Trying to kill query..".. qU}}
+           rows = {{"Trying to kill query: ".. qU}}
         }
         return proxy.PROXY_SEND_RESULT
     end
@@ -469,23 +385,23 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     local prepForFetchingResults = function(proxy)
-        if not resultTableName then
-            return err.set(ERR_BAD_RES_TNAME, "Invalid result table name ")
+        if not self.resultTableName then
+            return err.set(ERR_BAD_RES_TNAME, "Invalid result table name")
         end
 
         -- Severity is stored in a MySQL enum
-        q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. msgTableName
+        local q1 = "SELECT chunkId, code, message, severity+0, timeStamp FROM " .. self.msgTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
-        q2 = "SELECT * FROM " .. resultTableName .. " " .. orderByClause
+        local q2 = "SELECT * FROM " .. self.resultTableName .. " " .. self.orderByClause
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
-        q3 = "DROP TABLE " .. msgTableName
+        local q3 = "DROP TABLE " .. self.msgTableName
         proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
                              {resultset_is_needed = true})
 
-        q4 = "DROP TABLE " .. resultTableName
+        local q4 = "DROP TABLE " .. self.resultTableName
         proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
                              {resultset_is_needed = true})
 
@@ -513,7 +429,7 @@ qProc = queryProcessing()
 
 function read_query(packet)
     if string.byte(packet) == proxy.COM_QUERY then
-        print("\n*******************\nIntercepted: " .. string.sub(packet, 2))
+        czarProxy.log("mysql-proxy", "INFO", "Intercepted: " .. string.sub(packet, 2))
 
         -- massage the query string to simplify its processing
         local q = utils.removeLeadingComment(string.sub(packet,2))
@@ -526,9 +442,9 @@ function read_query(packet)
         -- note we make no modifications to proxy.queries,
         -- so the packet will be sent as-is
         if qType.isLocal(qU) then
-           return qProc.processLocally(qU)
+            return qProc.processLocally(qU)
         elseif qType.isIgnored(qU) then
-           return qProc.processIgnored(qU)
+            return qProc.processIgnored(qU)
         elseif qType.shouldPassToResultDb(qU) then
             return -- Return nothing to indicate passthrough.
         end
@@ -540,14 +456,14 @@ function read_query(packet)
         if qType.isNotSupported(qU) then
             return err.send()
         elseif qType.isKill(qU) then
-           return qProc.killQservQuery(q, qU)
+            return qProc.killQservQuery(q, qU)
         end
         -- Reset error count
         queryErrorCount = 0
 
         -- process the query and send it to qserv
         local sendResult = qProc.sendToQserv(q, qU)
-        print ("Sendresult " .. sendResult)
+        czarProxy.log("mysql-proxy", "INFO", "Sendresult " .. sendResult)
         if sendResult < 0 then
             return err.send()
         end
@@ -564,8 +480,9 @@ end
 function read_query_result(inj)
     -- we injected query with the id=1 (for messaging and locking purposes)
     if (inj.type == 1) then
-        print("q1 - ignoring")
+        czarProxy.log("mysql-proxy", "INFO", "q1 - ignoring")
         local error_msg = ""
+        local row
         for row in inj.resultset.rows do
             severity = tonumber(row[4])
             if (severity == MSG_ERROR) then
@@ -576,7 +493,8 @@ function read_query_result(inj)
                     error_msg = "\n-- WARN multiple errors"
                 end
             else
-                print("   chunkId: " .. row[1] .. ", code: " .. row[2] .. ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
+                czarProxy.log("mysql-proxy", "INFO", "   chunkId: " .. row[1] .. ", code: " .. row[2] ..
+                              ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
             end
         end
         if (queryErrorCount > 0) then
@@ -591,19 +509,20 @@ function read_query_result(inj)
         -- (critical) proxy-plugin.c.303: got asked to send a resultset,
         --            but ignoring it as we already have sent 1 resultset(s).
         --            injection-id: 3
-        print("cleanup q(3,4) - ignoring")
+        czarProxy.log("mysql-proxy", "INFO", "cleanup q(3,4) - ignoring")
         return proxy.PROXY_IGNORE_RESULT
     elseif (queryErrorCount > 0) then
-        print("q2 - already have errors, ignoring")
+        czarProxy.log("mysql-proxy", "INFO", "q2 - already have errors, ignoring")
         return proxy.PROXY_IGNORE_RESULT
     elseif (inj.resultset.rows == nil) then
-        print("q2 - no resultset.")
+        czarProxy.log("mysql-proxy", "INFO", "q2 - no resultset.")
         return err.setAndSend(ERR_QSERV_RUNTIME,
         "Error executing query using qserv.")
     else
-        print("q2 - passing")
+        czarProxy.log("mysql-proxy", "INFO", "q2 - passing")
+        local row
         for row in inj.resultset.rows do
-            print("   " .. row[1])
+            czarProxy.log("mysql-proxy", "INFO", "   " .. row[1])
         end
     end
 end

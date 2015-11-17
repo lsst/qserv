@@ -217,7 +217,7 @@ UserQueryFactory::Impl::Impl(StringMap const& m) {
 
     // empty chunk path
     std::string emptyChunkPath = cm.get(
-        "partitioner.emptychunkpath",
+        "partitioner.emptyChunkPath",
         "Error, missing path for Empty chunk file, using '.'.",
         ".");
 

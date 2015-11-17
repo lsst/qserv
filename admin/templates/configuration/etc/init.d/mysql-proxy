@@ -62,6 +62,7 @@ LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 logfile=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
+QSERV_CONFIG=${QSERV_RUN_DIR}/etc/qserv-czar.cnf
 
 # WARNING : can only use the --user switch if running as root
 proxy_user_option=""
@@ -70,7 +71,7 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
-cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${DAEMON} \
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} QSERV_CONFIG=${QSERV_CONFIG} ${DAEMON} \
     $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option \
     --defaults-file=${PROXY_CONFIG} >> ${LUA_LOG_FILE} 2>&1 &"
 

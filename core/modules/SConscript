@@ -80,9 +80,9 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                                'SHLIBPREFIX' : '',
                                'distDir' : pyDistRelative(env,"czar")},
 
-               "czarProxy" : {'mods' : """proxy""".split(),
+               "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana query qdisp qproc rproc sg""".split(),
                              'shmods' : ['css'],
-                             'libs' : """log""".split(),
+                             'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
                                'SHLIBPREFIX' : '',
                                'distDir' : 'proxy'},
 
@@ -174,7 +174,7 @@ def findLibs(libList):
     return map(cheapCheckLib, libList)
 
 def makeSharedObjectCC(env, ccFile):
-    if str(ccFile).endswith(".cc"): return env.SharedObject(ccFile)[0]
+    if str(ccFile).endswith((".cc", ".cpp")): return env.SharedObject(ccFile)[0]
     else: return ccFile
 
 def getTests(env, mName):

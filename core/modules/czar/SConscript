@@ -73,4 +73,11 @@ for f in env.Glob("bin/*py"):
 _debug_dist_target()
 
 extraTgts["czarPy"] = distTgts
-Return('swigged_tgt')
+
+
+ccTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "czarLib_wrap.cc")
+
+# targets = ccTargets + swigged_tgt
+targets = ccTargets
+
+Return('targets')

@@ -58,10 +58,18 @@ std::vector<std::string> submitQuery(std::string const& query,
 /**
  * Process a kill query command (experimental).
  *
- * @param query: (client)proxy-provided "KILL QUERY ..." string
+ * @param query: (client)proxy-provided "KILL QUERY NNN" or "KILL NNN" string
  * @param clientId : client_dst_name from proxy"""
  */
 void killQueryUgly(std::string const& query, std::string const& clientId);
+
+/**
+ *  Send message to logging system. level is a string like "DEBUG".
+ */
+// NOTE: Do not change argument names, they are used by SWIG typemap
+void log(std::string const& loggername, std::string const& level,
+         std::string const& filename, std::string const& funcname,
+         unsigned lineno, std::string const& message);
 
 }}} // namespace lsst::qserv::proxy
 
