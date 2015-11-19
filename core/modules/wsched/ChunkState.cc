@@ -34,9 +34,6 @@ std::ostream& operator<<(std::ostream& os, ChunkState const& cs) {
     os << "(scan=";
     std::copy(cs._scan.begin(), cs._scan.end(),
               std::ostream_iterator<int>(os, ","));
-    os << "  cached=";
-    std::copy(cs._cached.begin(), cs._cached.end(),
-              std::ostream_iterator<int>(os, ","));
     os << ")";
     return os;
 }

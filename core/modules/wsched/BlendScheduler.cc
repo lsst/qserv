@@ -139,7 +139,14 @@ wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p) {
     return i->second;
 }
 
-/// Returns true when either scheduler has a command ready
+
+bool BlendScheduler::ready() {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    return _ready();
+}
+
+/// Returns true when either scheduler has a command ready.
+/// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
     auto groupReady = _group->ready();
     auto scanReady = _scan->ready();

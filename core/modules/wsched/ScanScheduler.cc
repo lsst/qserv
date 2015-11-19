@@ -47,13 +47,9 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-ScanScheduler* dbgScanScheduler = nullptr; ///< A symbol for gdb
 ChunkDisk* dbgChunkDisk1 = nullptr; ///< A symbol for gdb
 
 
-////////////////////////////////////////////////////////////////////////
-// class ScanScheduler
-////////////////////////////////////////////////////////////////////////
 ScanScheduler::ScanScheduler(int maxThreads)
     : _maxThreads{maxThreads},
       _disks{},
@@ -61,20 +57,17 @@ ScanScheduler::ScanScheduler(int maxThreads)
 {
     _disks.push_back(std::make_shared<ChunkDisk>(_logger));
     dbgChunkDisk1 = _disks.front().get();
-    dbgScanScheduler = this;
     assert(!_disks.empty());
 }
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    if (t == nullptr) {
+    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (task == nullptr) {
         LOGF_WARN("ScanScheduler::commandStart cmd failed conversion");
         return;
     }
-    LOGF_DEBUG("ScanScheduler::commandStart tSeq=%1%" % t->tSeq);
-    std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
-    assert(!_disks.empty());
-    _disks.front()->registerInflight(t);
+    LOGF_DEBUG("ScanScheduler::commandStart tSeq=%1%" % task->tSeq);
+    // task was registeredInflight on its disk when getCmd() was called.
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
@@ -85,9 +78,14 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     assert(!_disks.empty());
-    _disks.front()->removeInflight(t);
+    // If removeInflight finishes a scan, need to notify threads that
+    // they might be able to advance to the next chunk.
+    bool needNotify = _disks.front()->removeInflight(t);
     --_inFlight;
     LOGF_DEBUG("ScanScheduler::commandFinish inFlight= %1%" % _inFlight);
+    if (needNotify) {
+        _cv.notify_all();
+    }
 }
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.

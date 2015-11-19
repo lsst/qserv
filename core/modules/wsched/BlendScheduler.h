@@ -62,7 +62,9 @@ public:
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
 
-    static std::string getName()  { return std::string("BlendSched"); }
+    bool ready();
+
+    static std::string getName() { return std::string("BlendSched"); }
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
 private:
     bool _ready();

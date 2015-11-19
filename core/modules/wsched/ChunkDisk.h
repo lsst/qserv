@@ -49,13 +49,20 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-
+/// ChunkDisk is meant to keep disc i/o down by reading a single chunk at
+/// a time. It is meant to be connected to a single disk. It provides
+/// Tasks for a single chunk and once it is told that reading has completed,
+/// it advances to the next chunk.
+///
+/// It may be possible to improve performance by queuing Tasks on the
+/// active heap if the chunk was recently read in. There are pitfalls
+/// to doing this as continual requests could prevent ChunkDisk from
+/// advancing to the next chunk and no requests would finish.
 class ChunkDisk {
 public:
     using TaskSet = std::set<wbase::Task const*>;
 
-    ChunkDisk(LOG_LOGGER const& logger)
-        : _chunkState(2), _logger(logger) {}
+    ChunkDisk(LOG_LOGGER const& logger) : _logger(logger) {}
     TaskSet getInflight() const;
 
     // Queue management
@@ -68,7 +75,7 @@ public:
 
     // Inflight management
     void registerInflight(wbase::Task::Ptr const& e);
-    void removeInflight(wbase::Task::Ptr const& e);
+    bool removeInflight(wbase::Task::Ptr const& e);
 
     /// Class that keeps the minimum chunk id at the front of the heap.
     class MinHeap {
