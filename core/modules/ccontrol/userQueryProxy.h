@@ -49,9 +49,6 @@ class UserQuery;
 /// @return error description
 std::string UserQuery_getQueryProcessingError(int session);
 
-/// Add a chunk spec for execution
-void UserQuery_addChunk(int session, lsst::qserv::qproc::ChunkSpec const& cs);
-
 /// Dispatch all chunk queries for this query
 void UserQuery_submit(int session);
 

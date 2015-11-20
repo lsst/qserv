@@ -65,7 +65,6 @@ public:
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;
-    static LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv:control

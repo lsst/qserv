@@ -21,66 +21,71 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_USERQUERY_H
-#define LSST_QSERV_CCONTROL_USERQUERY_H
-/**
-  * @file
-  *
-  * @brief Umbrella container for user query state
-   *
-  * @author Daniel L. Wang, SLAC
-  */
+#ifndef LSST_QSERV_CCONTROL_USERQUERYINVALID_H
+#define LSST_QSERV_CCONTROL_USERQUERYINVALID_H
 
 // System headers
 #include <memory>
+#include <mutex>
 
 // Third-party headers
 
 // Qserv headers
-#include "ccontrol/QueryState.h"
+#include "ccontrol/UserQuery.h"
+#include "qdisp/MessageStore.h"
+#include "qmeta/types.h"
 
 // Forward decl
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-class MessageStore;
-}}}
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-/// UserQuery : interface for user query data. Not thread-safe, although
-/// its delegates are thread-safe as appropriate.
-class UserQuery {
+/// UserQueryInvalid : implementation of the UserQuery which is used
+/// to indicate invalid queries.
+class UserQueryInvalid : public UserQuery {
 public:
 
-    typedef std::shared_ptr<UserQuery> Ptr;
+    UserQueryInvalid(std::string const& message)
+        : _message(message),
+          _messageStore(std::make_shared<qdisp::MessageStore>()) {}
 
-    virtual ~UserQuery() {}
+    UserQueryInvalid(UserQueryInvalid const&) = delete;
+    UserQueryInvalid& operator=(UserQueryInvalid const&) = delete;
+
+    // Accessors
 
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
-    virtual std::string getError() const = 0;
+    virtual std::string getError() const override { return _message; }
 
     /// Begin execution of the query over all ChunkSpecs added so far.
-    virtual void submit() = 0;
+    virtual void submit() override {}
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
-    virtual QueryState join() = 0;
+    virtual QueryState join() override { return ERROR; }
 
     /// Stop a query in progress (for immediate shutdowns)
-    virtual void kill() = 0;
+    virtual void kill() override {}
 
     /// Release resources related to user query
-    virtual void discard() = 0;
+    virtual void discard() override {}
 
     // Delegate objects
-    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() = 0;
+    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
+        return _messageStore; }
+
+    void setSessionId(int session) { _sessionId = session; }
+
+private:
+
+    std::string const _message;
+    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    int _sessionId; ///< External reference number
 
 };
 
 }}} // namespace lsst::qserv:ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERY_H
+#endif // LSST_QSERV_CCONTROL_USERQUERYINVALID_H

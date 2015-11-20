@@ -85,18 +85,15 @@ typedef util::Error InfileMergerError;
 class InfileMergerConfig {
 public:
     InfileMergerConfig() {}
-    InfileMergerConfig(std::shared_ptr<qdisp::MessageStore> messageStore_,
-                       std::string const& targetDb_,
+    InfileMergerConfig(std::string const& targetDb_,
                        std::string const& targetTable_,
                        std::shared_ptr<query::SelectStmt> mergeStmt_,
                        std::string const& user_, std::string const& socket_)
-        :  messageStore(messageStore_),
-           targetDb(targetDb_),  targetTable(targetTable_),
+        :  targetDb(targetDb_),  targetTable(targetTable_),
            mergeStmt(mergeStmt_), user(user_), socket(socket_)
     {
     }
 
-    std::shared_ptr<qdisp::MessageStore> messageStore;
     std::string targetDb; // for final result, and imported result
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;

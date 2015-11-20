@@ -37,9 +37,6 @@
   * constraints so that we can apply them to see which chunks we
   * need. (done in Python)
   *
-  * UserQuery_addChunk(int session, ChunkSpec const& cs )
-  * // add the computed chunks to the query
-  *
   * UserQuery_submit(int session) // Trigger the dispatch of all chunk
   * queries for the UserQuery
   *
@@ -95,15 +92,6 @@ void UserQuery_kill(int session) {
     LOGF_INFO("EXECUTING UserQuery_kill(%1%)" % session);
     try {
         uqManager.get(session)->kill();
-    } catch (const std::exception& e) {
-        LOGF_WARN(e.what());
-    }
-}
-
-/// Add a chunk spec for execution
-void UserQuery_addChunk(int session, qproc::ChunkSpec const& cs) {
-    try {
-        uqManager.get(session)->addChunk(cs);
     } catch (const std::exception& e) {
         LOGF_WARN(e.what());
     }

@@ -34,6 +34,7 @@
 // System headers
 #include <iostream>
 #include <iterator>
+#include <string>
 #include <utility>
 
 // Third-party headers
@@ -85,16 +86,15 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os,
                                     IterableFormatter<Iter> const& self) {
-        typedef _item_fmt<typename std::iterator_traits<Iter>::value_type> item_fmt;
         os << self._open;
         auto it = self._begin;
         if (it != self._end) {
-            item_fmt::fmt(os, *it);
+            _item_fmt(os, *it);
             ++it;
         }
         for ( ; it != self._end; ++it) {
             os << self._sep;
-            item_fmt::fmt(os, *it);
+            _item_fmt(os, *it);
         }
         os << self._close;
         return os;
@@ -109,15 +109,19 @@ private:
 
     // generic item formatting
     template <typename T>
-    struct _item_fmt {
-        static void fmt(std::ostream& os, const T& item) { os << item; }
-    };
+    static void _item_fmt(std::ostream& os, T const& item) { os << item; }
+    // specialization for string
+    static void _item_fmt(std::ostream& os, std::string const& item) { os << '"' << item << '"'; }
+    static void _item_fmt(std::ostream& os, char const* item) { os << '"' << item << '"'; }
     // specialization for pair
     template <typename U, typename V>
-    struct _item_fmt<std::pair<U, V>> {
-        static void fmt(std::ostream& os, const std::pair<U, V>& item) {
-            os << '(' << item.first << ", " << item.second << ')'; }
-    };
+    static void _item_fmt(std::ostream& os, std::pair<U, V> const& item) {
+        os << '(';
+        _item_fmt(os, item.first);
+        os << ", ";
+        _item_fmt(os, item.second);
+        os << ')';
+    }
 
 };
 

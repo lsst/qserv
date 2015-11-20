@@ -123,7 +123,6 @@ class Czar:
         root.putChild(defaultHttpPath, HttpInterface(endpoints))
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
         reactor.suggestThreadPoolSize(concurrencyLimit)
-        reactor.addSystemEventTrigger('before', 'shutdown', self.ai.cancelEverything)
         reactor.listenTCP(self.port, twisted.web.server.Site(root))
         logger.inf("Starting Qserv interface on port: %d"% self.port)
         reactor.run() # won't return until reactor.stop() is called

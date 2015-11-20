@@ -87,7 +87,24 @@ BOOST_AUTO_TEST_CASE(Array) {
     auto formatable = util::printable( start, iterable.end(), "", "", "; ");
 
     output << formatable;
-    BOOST_REQUIRE(output.is_equal("3; 4; 5; 6"));
+    BOOST_REQUIRE(output.is_equal(R"("3"; "4"; "5"; "6")"));
+}
+
+/** @test
+ * Print a map
+ */
+BOOST_AUTO_TEST_CASE(Map) {
+
+    test::output_test_stream output;
+    std::map<std::string, int> mapping{
+        std::make_pair("a", 1),
+        std::make_pair("b", 2),
+        std::make_pair("x", 1001),
+    };
+    auto formatable = util::printable(mapping, "{", "}", "; ");
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal(R"({("a", 1); ("b", 2); ("x", 1001)})"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

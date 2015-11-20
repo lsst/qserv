@@ -105,7 +105,7 @@ class AppInterface:
                                        removed in order to get messages and results
                             - orderby: ORDER BY clause to be executed by the client, might be empty string.
                                        If userQuery contains an ORDER BY clause then client has to
-                                       re-order query results. Indeed MySQL doesn't garantee result order
+                                       re-order query results. Indeed MySQL doesn't guarantee result order
                                        for simple "SELECT *" clause
         """
         # FIXME: Need to fix task tracker, and return taskID for tracking
@@ -193,15 +193,6 @@ class AppInterface:
         a.invoke()
         return a.results
 
-    def results(self, taskId):
-        "Get results location for a query or task. Params: taskId."
-        return app.results(self.tracker, taskId)
-
     def resultTableString(self, table):
         """Get contents of a result table."""
         return app.getResultTable(table)
-
-    def cancelEverything(self):
-        """Try to kill the threads running underneath, e.g. xrootd or otherwise
-        children of app.  No Params."""
-        app.stopAll()
