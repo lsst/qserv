@@ -27,7 +27,6 @@
 // System headers
 #include <cassert>
 #include <cstdlib>
-#include <regex>
 #include <string>
 
 // Third-party headers
@@ -40,8 +39,9 @@
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/UserQueryDropTable.h"
 #include "ccontrol/UserQueryInvalid.h"
-#include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/userQueryProxy.h"
+#include "ccontrol/UserQuerySelect.h"
+#include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
 #include "mysql/MySqlConfig.h"
@@ -56,12 +56,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
-
-// Returns true if query is DROP TABLE
-bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName);
-
-// Returns true if query is SELECT
-bool isSelect(std::string const& query);
 
 }
 
@@ -104,7 +98,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& resultTable) {
     std::string dbName, tableName;
 
-    if (::isSelect(query)) {
+    if (UserQueryType::isSelect(query)) {
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
@@ -140,7 +134,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
             uq->setupChunking();
         }
         return std::make_pair(sessionId, qs->getProxyOrderBy());
-    } else if (::isDropTable(query, dbName, tableName)) {
+    } else if (UserQueryType::isDropTable(query, dbName, tableName)) {
         // processing DROP TABLE
         if (dbName.empty()) {
             dbName = defaultDb;
@@ -240,41 +234,3 @@ UserQueryFactory::Impl::Impl(StringMap const& m) {
 }
 
 }}} // lsst::qserv::ccontrol
-
-
-namespace {
-
-// regex for DROP TABLE [dbname.]table; both table and db names can be in quotes;
-// db name will be in group 3, table name in group 5.
-// Note that parens around whole string are not part of the regex but raw string literal
-std::regex _dropTableRe(R"(^drop\s+table\s+((["`]?)(\w+)\2[.])?(["`]?)(\w+)\4\s*;?\s*$)",
-                        std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
-
-bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
-    LOGF(_log, LOG_LVL_DEBUG, "isDropTable: %s" % query);
-    std::smatch sm;
-    bool match = regex_match(query, sm, _dropTableRe);
-    if (match) {
-        dbName = sm.str(3);
-        tableName = sm.str(5);
-        LOGF(_log, LOG_LVL_DEBUG, "isDropTable: match: %s.%s" % dbName % tableName);
-    }
-    return match;
-}
-
-// regex for SELECT *
-// Note that parens around whole string are not part of the regex but raw string literal
-std::regex _selectRe(R"(^select\s+.+$)",
-                     std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
-
-bool isSelect(std::string const& query) {
-    LOGF(_log, LOG_LVL_DEBUG, "isSelect: %s" % query);
-    std::smatch sm;
-    bool match = regex_match(query, sm, _selectRe);
-    if (match) {
-        LOGF(_log, LOG_LVL_DEBUG, "isSelect: match");
-    }
-    return match;
-}
-
-}
