@@ -60,11 +60,6 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
 
     LOGF_INFO("ProcessRequest, service=%1%" % sessName);
 
-    t.start();
-    BindRequest(req, this); // Step 5
-    t.stop();
-    LOGF_INFO("BindRequest took %1% seconds" % t.getElapsed());
-
     char *reqData = nullptr;
     int reqSize;
     t.start();
@@ -74,19 +69,28 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
 
     auto replyChannel = std::make_shared<ReplyChannel>(*this);
 
+    auto errorFunc = [this, &req, &replyChannel](std::string const& errStr, bool sendStr=true ) {
+        if (sendStr) {
+            replyChannel->sendError(errStr, EINVAL);
+        }
+        BindRequest(req, this);
+        ReleaseRequestBuffer();
+    };
+
     ResourceUnit ru(sessName);
     if (ru.unitType() != ResourceUnit::DBCHUNK) {
         std::ostringstream os;
         os << "Unexpected unit type in query db=" << ru.db() << " unitType=" << ru.unitType();
         LOGF_ERROR(os.str());
-        replyChannel->sendError(os.str().c_str(), EINVAL);
-        ReleaseRequestBuffer();
+        errorFunc(os.str());
         return;
     }
 
     if(!(*_validator)(ru)) {
-        LOGF_WARN("WARNING: unowned chunk query detected: %1%" % ru.path());
-        ReleaseRequestBuffer();
+        std::ostringstream os;
+        os << "WARNING: unowned chunk query detected:" << ru.path();
+        LOGF_WARN(os.str());
+        errorFunc(os.str(), false);
         return;
     }
 
@@ -96,32 +100,41 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
 
-    // Now that the request is decoded (successfully or not), release the
-    // xrootd request buffer. To avoid data races, this must happen before
-    // the task is handed off to another thread for processing, as there is a
-    // reference to this SsiSession inside the reply channel for the task.
-    ReleaseRequestBuffer();
-
     if (!ok) {
         std::ostringstream os;
         os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
         LOGF_ERROR(os.str());
-        replyChannel->sendError(os.str().c_str(), EINVAL);
+        errorFunc(os.str());
         return;
     }
 
-    if(!taskMsg->has_db() || !taskMsg->has_chunkid() || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
+    if (!taskMsg->has_db() || !taskMsg->has_chunkid()
+        || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
         std::ostringstream os;
         os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
         LOGF_ERROR(os.str());
-        replyChannel->sendError(os.str().c_str(), EINVAL);
+        errorFunc(os.str());
         return;
     }
 
-    t.start();
-    wbase::Task::Ptr task = _processor->processMsg(taskMsg, replyChannel);
+    // Once BindRequest has been called, we don't want to send errors back to xrootd
+    // if the task has been cancelled. Also, task needs to exist before binding
+    // to avoid any chance of missing the cancel call.
+    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
     _addTask(task);
+    t.start();
+    BindRequest(req, this); // Step 5
     t.stop();
+    // Now that the request is decoded (successfully or not), release the
+    // xrootd request buffer. To avoid data races, this must happen before
+    // the task is handed off to another thread for processing, as there is a
+    // reference to this SsiSession inside the reply channel for the task,
+    // and after the call to BindRequest.
+    ReleaseRequestBuffer();
+    t.start();
+    _processor->processTask(task); // Queues task to be run later.
+    t.stop();
+    LOGF_INFO("BindRequest took %1% seconds" % t.getElapsed());
     LOGF_INFO("Enqueued TaskMsg for %1% in %2% seconds" % ru % t.getElapsed());
 }
 
