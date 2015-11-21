@@ -18,5 +18,5 @@ shmux -c 'docker rm -f qserv; nohup docker run --name qserv --rm --net=host \
     '$WORKER_IMAGE' \
     > qserv.out 2> qserv.err < /dev/null &' $WORKERS
 
-shmux -c "docker exec qserv bash -c '. /qserv/stack/loadLSST.bash && setup qserv_distrib && \
+shmux -c "docker exec qserv bash -c '. /qserv/stack/loadLSST.bash && setup qserv_distrib -t qserv-dev && \
     echo \"$(cat nodes.example.css)\" | qserv-admin.py && qserv-test-integration.py'" $MASTER
