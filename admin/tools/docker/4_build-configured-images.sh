@@ -78,7 +78,7 @@ printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --no-cache=true --tag="$TAG" "$DOCKERDIR"
 docker push $TAG
 
-printf "Image %s built successfully\n" "$TAG"
+printf "Image %s built and pushed successfully\n" "$TAG"
 
 # Build the worker image
 
@@ -88,8 +88,8 @@ sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
 sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_worker_${MASTER}"
-printf "Building wroker image %s from %s\n" "$TAG" "$DOCKERDIR"
+printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --no-cache=true --tag="$TAG" "$DOCKERDIR"
 docker push $TAG
 
-printf "Image %s built successfully\n" "$TAG"
+printf "Image %s built and pushed successfully\n" "$TAG"
