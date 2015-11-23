@@ -41,7 +41,7 @@ oss.statlib -2 libXrdSsi.so
 # Set pathname for file location resolution.
 # i.e., pathname/somefile will be exported in the xroot URL:
 # xroot://manager:0000/somefile
-oss.localroot {{XROOTD_RUN_DIR}}
+#oss.localroot {{XROOTD_RUN_DIR}}
 
 # Qserv uses the xrootd XrdSsi, which needs the configuration to
 # force-disable asyncronous access.
