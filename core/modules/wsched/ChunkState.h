@@ -31,9 +31,7 @@
   */
 
 // System headers
-#include <algorithm>
-#include <deque>
-#include <ostream>
+#include <iosfwd>
 #include <set>
 
 
@@ -41,41 +39,28 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
+/// This class tracks current scans for a ChunkDisk.
 class ChunkState {
 public:
     typedef std::set<int> IntSet;
-    typedef std::deque<int> IntDeque;
 
-    explicit ChunkState(int cacheMax=2)
-        : _cacheMax(cacheMax), _last(-1) {
-    }
-
-    void setMax(int cacheMax) { _cacheMax = cacheMax; }
+    ChunkState() {}
 
     void addScan(int chunkId) {
         _scan.insert(chunkId);
         _last = chunkId;
-        _evictOldElements();
     }
 
-    void markComplete(int chunkId) {
-        if(std::find(_cached.begin(), _cached.end(), chunkId)
-           == _cached.end()) {
-            _cached.push_back(chunkId);
-        }
-        _scan.erase(chunkId);
-        _evictOldElements();
+    /// @Return true if the chunkId was erased from _scan.
+    bool markComplete(int chunkId) {
+        return _scan.erase(chunkId) > 0;
     }
-    bool isCached(int chunkId) const {
-        IntDeque::const_iterator found;
-        found = std::find(_cached.begin(), _cached.end(), chunkId);
-        return found != _cached.end();
-    }
+
     bool isScan(int chunkId) const {
         return _scan.end() != _scan.find(chunkId);
     }
     bool empty() const {
-        return _scan.empty() && _cached.empty();
+        return _scan.empty();
     }
 
     bool hasScan() const {
@@ -89,15 +74,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ChunkState const& cs);
 
 private:
-    inline void _evictOldElements() {
-        if(_cached.size() > _cacheMax) {
-            _cached.pop_front();
-        }
-    }
-    unsigned _cacheMax;
-    IntDeque _cached;
     IntSet _scan;
-    int _last;
+    int _last{-1};
 };
 
 }}} // namespace lsst::qserv::wsched

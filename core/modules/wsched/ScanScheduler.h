@@ -44,6 +44,21 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
+/// The purpose of the scan scheduler is to try to limit disk i/o.
+/// Tasks given to ScanScheduler are parts of user queries that are
+/// expected to touch most or all of the chunks on the worker.
+///
+/// It groups Tasks by chunk id and loops through chunks in
+/// ascending order running all Tasks for each chunk as it goes and
+//  wrapping back to the lowest chunk at the end.
+///
+/// It only advances to the next chunk after the current chunk
+/// has been read from disk. It waits for at least one query on the
+/// current chunk to finish as an indicator that the entire chunk
+/// was read from disk.
+///
+/// This is intended to be done for each disk in the system,
+/// but currently only supports a single disk.
 class ScanScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;

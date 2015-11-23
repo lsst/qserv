@@ -101,13 +101,10 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
         _activeTasks.push(a);
         state = "EMPTY";
     } else {
-        if(chunkId < _chunkState.lastScan()) {
+        // To keep from getting stuck  on this chunkId, put new requests for this chunk on pending.
+        if(chunkId <= _chunkState.lastScan()) {
             _pendingTasks.push(a);
             state = "PENDING";
-        } else if(_chunkState.isScan(chunkId)) {
-            // FIXME: If outside quantum, put on pending.
-            _activeTasks.push(a);
-            state = "ACTIVE";
         } else { // Ok to be part of scan. chunk not yet started
             _activeTasks.push(a);
             state = "ACTIVE";
@@ -136,14 +133,16 @@ bool ChunkDisk::_ready() {
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
     if(_activeTasks.empty() && !_pendingTasks.empty()) {
-        // Swap
         std::swap(_activeTasks, _pendingTasks);
         LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
     }
-    // If the pending was empty too, nothing to do.
+    // If _pendingTasks was empty too, nothing to do.
     if(_activeTasks.empty()) { return false; }
     wbase::Task::Ptr top = _activeTasks.top();
     int chunkId = taskChunkId(*top);
+    // TODO: A timeout should be added such that we can advance to the next chunkId if too much time has
+    // been spent on this chunkId, or we need a better method of determining when a chunk has been read than
+    // waiting for the a query on the chunk to finish.
     bool allowAdvance = !_busy() && !_empty();
     bool idle = !_chunkState.hasScan();
     bool inScan = _chunkState.isScan(chunkId);
@@ -165,6 +164,7 @@ wbase::Task::Ptr ChunkDisk::getTask() {
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk getTask: current= %1% candidate=%2% tSeq=%3%"
             % _chunkState % chunkId % task->tSeq);
     _chunkState.addScan(chunkId);
+    registerInflight(task); // consider the task inflight as soon as it's off the queue
     return task;
     // If next chunk is of a different chunk, only continue if current
     // chunk has completed a scan already.
@@ -216,7 +216,11 @@ void ChunkDisk::registerInflight(wbase::Task::Ptr const& e) {
     _inflight.insert(e.get());
 }
 
-void ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
+
+/// Remove the Task from the set of inflight Tasks.
+/// @Return true if a scan completed, which means that there is potential for
+/// new Tasks to be started.
+bool ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
     std::lock_guard<std::mutex> lock(_inflightMutex);
     int chunkId = e->msg->chunkid();
     LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk remove for %1% : %2%" % chunkId %
@@ -224,8 +228,8 @@ void ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
     _inflight.erase(e.get());
     {
         std::lock_guard<std::mutex> lock(_queueMutex);
-        _chunkState.markComplete(chunkId);
+        return _chunkState.markComplete(chunkId);
     }
 }
 
-}}} // namespace
+}}} // namespace lsst::qserv::wsched
