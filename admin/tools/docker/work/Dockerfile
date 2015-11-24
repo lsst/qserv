@@ -1,5 +1,7 @@
-FROM fjammes/qserv:dev
+FROM qserv/qserv:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
+
+USER root
 
 RUN apt-get update && apt-get -y install byobu git vim
 
@@ -12,17 +14,16 @@ COPY scripts/*.sh /home/dev/scripts/
 # 2nd : Workaround to install scisql plugin in mysql
 RUN chown -R dev:dev /home/dev/.eups && \
     chown -R dev:dev /home/dev/scripts && \
-    chmod g+w stack/ && \
-    chmod -R g+w stack/Linux64/mysql
+    chmod g+w /qserv/stack/ && \
+    chmod -R g+w /qserv/stack/Linux64/mysql
 
 USER dev
 
 WORKDIR /home/dev
-RUN mkdir src
 
 # Source code should be mounted from host to /home/dev/qserv using 'docker run -v'.
 
-# Having a initial qserv repository here will allow to performs 'eups declare -r ~/src/qserv -t git'.
-# But eups database doesn't seems to support uid/gid changes, so the previous
-# declare step needs to be delayed and performed at the end of change-uid.sh
-RUN git clone git://github.com/LSST/qserv src/qserv
+# Having a initial qserv directory here will allow to performs 'eups declare -r ~/src/qserv -t git'.
+# But eups database doesn't seems to support uid/gid changes, so this command
+# has to be delayed and performed at the end of change-uid.sh
+RUN mkdir -p src/qserv

@@ -54,7 +54,7 @@ while getopts hu: c ; do
 done
 shift `expr $OPTIND - 1`
 
-if [ $# -ne 1 ] ; then
+if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
