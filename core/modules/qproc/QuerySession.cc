@@ -124,6 +124,8 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _error = e.what();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
+    } catch(std::exception const& e) {
+        _error = std::string("analyzeQuery unexpected:") + e.what();
     }
 }
 

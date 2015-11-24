@@ -148,7 +148,7 @@ MySqlConnection::cancel() {
     }
     // KILL QUERY only, not KILL CONNECTION.
     int threadId = mysql_thread_id(_mysql);
-    std::string killSql = boost::str(boost::format("KILL QUERY ") % threadId);
+    std::string const killSql = "KILL QUERY " + std::to_string(threadId);
     rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
     mysql_close(killMysql);
     if(rc) {

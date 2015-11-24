@@ -41,6 +41,8 @@ oss.statlib -2 libXrdSsi.so
 # Qserv uses the xrootd XrdSsi, which needs the configuration to
 # force-disable asyncronous access.
 xrootd.async off
+ssi.trace all debug
+
 {{COMMENT_MONO_NODE}}fi
 
 ########################################

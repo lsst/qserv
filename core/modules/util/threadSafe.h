@@ -38,8 +38,8 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-/** Provide a thread safe method for incrementing a sequence number.
- */
+/// Provide a thread safe method for incrementing a sequence number.
+///
 template <class T>
 class Sequential {
 public:
@@ -59,8 +59,9 @@ private:
     T _seq;
 };
 
-/** A flag that can be set/read safely across threads.
- */
+
+/// A flag that can be set/read safely across threads.
+///
 template <class T>
 class Flag {
 public:
@@ -71,29 +72,31 @@ public:
     Flag(const Flag&) = delete;
     virtual ~Flag() {};
 
-    /** Sets flag value to 'val' and returns the old value of flag.
-     */
-    virtual T set(T val) {
+    /// Sets flag value to 'val' and returns the old value of flag.
+    virtual T exchange(T val) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto oldVal = _flag;
         _flag = val;
         return oldVal;
     }
-    T get() {
+
+    T get() const {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _flag;
     }
 
+    operator T() const { return get(); }
+
     std::recursive_mutex& getMutex() { return _mutex; }
 
 protected:
-    std::recursive_mutex _mutex;
+    mutable std::recursive_mutex _mutex;
     T _flag;
 };
 
-/** A flag that can be set safely across threads and can be
- * used to wake up threads waiting for a specific value.
- */
+/// A flag that can be set safely across threads and can be
+/// used to wake up threads waiting for a specific value.
+///
 template <class T>
 class FlagNotify {
 public:
@@ -102,7 +105,7 @@ public:
     /** Sets flag value to 'val' while notifying others of the change,
      * and returns the old value of flag.
      */
-    virtual T set(T val) {
+    virtual T exchange(T val) {
         std::lock_guard<std::mutex> lock(_mutex);
         auto oldVal = _flag;
         _flag = val;

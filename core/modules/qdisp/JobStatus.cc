@@ -66,62 +66,63 @@ void JobStatus::updateInfo(JobStatus::State s, int code, std::string const& desc
 }
 
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
-    char const* msg = 0;
+    char const* msg = "State error (unrecognized)";
     switch(state)
     {
     case JobStatus::UNKNOWN:
-         msg = "Unknown";
+        msg = "Unknown";
         break;
     case JobStatus::PROVISION:
-         msg = "Accessing resource";
+        msg = "Accessing resource";
         break;
     case JobStatus::PROVISION_NACK:
-         msg = "Error accessing resource (delayed)";
+        msg = "Error accessing resource (delayed)";
         break;
     case JobStatus::REQUEST:
-         msg = "Sending request to resource";
+        msg = "Sending request to resource";
         break;
     case JobStatus::REQUEST_ERROR:
-         msg = "Error sending request";
+        msg = "Error sending request";
         break;
     case JobStatus::RESPONSE_READY:
-         msg = "Response ready";
+        msg = "Response ready";
         break;
     case JobStatus::RESPONSE_ERROR:
-         msg = "Response error";
+        msg = "Response error";
         break;
     case JobStatus::RESPONSE_DATA:
-         msg = "Retrieving response data";
+        msg = "Retrieving response data";
         break;
     case JobStatus::RESPONSE_DATA_ERROR:
-         msg = "Error retrieving response data";
+        msg = "Error retrieving response data";
         break;
     case JobStatus::RESPONSE_DATA_ERROR_OK:
-         msg = "Error retrieving response, session is OK";
+        msg = "Error retrieving response, session is OK";
         break;
     case JobStatus::RESPONSE_DATA_ERROR_CORRUPT:
-         msg = "Error retrieving response session is corrupt";
+        msg = "Error retrieving response session is corrupt";
         break;
     case JobStatus::RESPONSE_DATA_NACK:
-         msg = "Error in response data";
+        msg = "Error in response data";
         break;
     case JobStatus::RESPONSE_DONE:
-         msg = "Finished retrieving result";
+        msg = "Finished retrieving result";
         break;
     case JobStatus::RESULT_ERROR:
-         msg = "Error in worker result data";
+        msg = "Error in worker result data";
         break;
     case JobStatus::MERGE_OK:
-         msg = "Merge complete";
+        msg = "Merge complete";
         break;
     case JobStatus::MERGE_ERROR:
-         msg = "Error merging result";
+        msg = "Error merging result";
         break;
     case JobStatus::COMPLETE:
-         msg = "Complete (success)";
+        msg = "Complete (success)";
         break;
-    default:
-         msg = "State error (unrecognized)";
+    case JobStatus::CANCEL:
+        msg = "CANCEL";
+        break;
     }
     os << msg;
     return os;

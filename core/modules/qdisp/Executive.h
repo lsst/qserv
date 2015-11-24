@@ -86,13 +86,14 @@ public:
     /// Notify the executive that an item has completed
     void markCompleted(int refNum, bool success);
 
-    /// Try to squash/abort an item in progress
-    void requestSquash(int refNum);
-
-    /// Squash everything. should we block?
+    /// Squash all the jobs.
     void squash();
 
     bool getEmpty() { return _empty; }
+
+    std::string& getId() { return _id; }
+
+    std::shared_ptr<JobQuery> getJobQuery(int id);
 
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
@@ -105,7 +106,10 @@ public:
 
     XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
 
-    std::shared_ptr<JobQuery> getJobQuery(int id);
+    bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
+                         std::shared_ptr<QueryResource> const& sourceQr);
+
+
 
 private:
     void _setup();
@@ -134,7 +138,7 @@ private:
     util::MultiError _multiError;
 
     int _requestCount; ///< Count of submitted jobs
-    std::atomic<bool> _cancelled {false}; ///< Has execution been cancelled?
+    util::Flag<bool> _cancelled {false}; ///< Has execution been cancelled.
 
     // Mutexes
     std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
@@ -143,8 +147,11 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    mutable std::mutex _jobsMutex;
+    mutable std::recursive_mutex _jobsMutex;
 
+    // Give this executive a reasonable identifier, to be replaced by a unique id.
+    std::string _id;
+    static std::atomic<int> _seq;
 };
 
 class MarkCompleteFunc {

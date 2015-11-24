@@ -66,6 +66,7 @@ public:
 
     static std::string getName() { return std::string("BlendSched"); }
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
+
 private:
     bool _ready();
 
