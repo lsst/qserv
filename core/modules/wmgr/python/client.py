@@ -659,7 +659,7 @@ class WmgrClient(object):
             response = requests.request(method, url, params=params, data=data, headers=headers,
                                         auth=self.auth)
             _log.debug('Received response: %s', response)
-            _log.debug('Response body: %s', response.text)
+            _log.debug('Response body: %s', response.content)
             response.raise_for_status()
             return response
         except requests.HTTPError as exc:
