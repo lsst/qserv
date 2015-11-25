@@ -250,8 +250,12 @@ void QueryRunner::_transmit(bool last) {
     }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
-    LOGF_INFO("_transmit last=%1% tSeq=%3% resultString=%2%" % last % util::prettyCharList(resultString, 5) % _task->tSeq);
-    _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
+    LOGF_DEBUG("_transmit last=%1% tSeq=%3% resultString=%2%" % last % util::prettyCharList(resultString, 5) % _task->tSeq);
+    if(!_cancelled) {
+        _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
+    } else {
+        LOG_DEBUG("_transmit cancelled");
+    }
 }
 
 /// Transmit the protoHeader
@@ -269,7 +273,11 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     // Make sure protoheader size can be encoded in a byte.
     assert(protoHeaderString.size() < 255);
     auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
-    _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+    if (!_cancelled) {
+        _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+    } else {
+        LOG_DEBUG("_transmitHeader cancelled");
+    }
 }
 
 class ChunkResourceRequest {
@@ -388,7 +396,7 @@ void QueryRunner::cancel() {
 QueryRunner::~QueryRunner() {
 }
 
-}}} // namespace
+}}} // namespace lsst::qserv::wdb
 
 // Future idea: Query cache
 // Pseudocode: Record query in query cache table

@@ -140,14 +140,10 @@ private:
     std::weak_ptr<TaskScheduler> _taskScheduler;
 };
 
-/// MsgProcessor implementations handle incoming TaskMsg objects by creating a Task to write their
-///results over a SendChannel
+/// MsgProcessor implementations handle incoming Task objects.
 struct MsgProcessor {
     virtual ~MsgProcessor() {}
-    /// @return a pointer to the Task so it can be cancelled or tracked.
-    virtual std::shared_ptr<Task> processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                             std::shared_ptr<SendChannel> const& replyChannel) = 0;
-
+    virtual void processTask(std::shared_ptr<wbase::Task> const& task) = 0;
 };
 
 }}} // namespace lsst::qserv::wbase

@@ -75,9 +75,7 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
-    wbase::Task::Ptr processMsg(
-        std::shared_ptr<proto::TaskMsg> const& taskMsg,
-        std::shared_ptr<wbase::SendChannel> const& replyChannel) override;
+    void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
 protected:
     std::shared_ptr<wdb::QueryRunner> _newQueryRunner(wbase::Task::Ptr const& t);

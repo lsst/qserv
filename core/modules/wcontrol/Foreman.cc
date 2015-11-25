@@ -71,23 +71,26 @@ Foreman::~Foreman() {
     _pool->endAll();
 }
 
-/// Create and queue a Task from a TaskMsg and a replyChannel.
-wbase::Task::Ptr Foreman::processMsg(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                     std::shared_ptr<wbase::SendChannel> const& replyChannel) {
-    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+/// Put the task on the scheduler to be run later.
+void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
+
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if(!msg.has_protocol() || msg.protocol() < resultProtocol) {
-            task->sendChannel->sendError("Unsupported wire protocol", 1);
+            LOGF_WARN("processMsg Unsupported wire protocol");
+            if (!task->getCancelled()) {
+                // We should not send anything back to xrootd if the task has been cancelled.
+                task->sendChannel->sendError("Unsupported wire protocol", 1);
+            }
         } else {
             auto qr = _newQueryRunner(task);
             qr->runQuery();
         }
     };
+
     task->setFunc(func);
     _scheduler->queCmd(task);
-    return task;
 }
 
 std::shared_ptr<wdb::QueryRunner> Foreman::_newQueryRunner(wbase::Task::Ptr const& t) {
