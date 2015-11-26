@@ -26,4 +26,5 @@ WORKDIR /home/dev
 # Having a initial qserv directory here will allow to performs 'eups declare -r ~/src/qserv -t git'.
 # But eups database doesn't seems to support uid/gid changes, so this command
 # has to be delayed and performed at the end of change-uid.sh
-RUN mkdir -p src/qserv
+RUN mkdir -p src/qserv/ups
+RUN touch src/qserv/ups/qserv.table

@@ -61,10 +61,17 @@ GIT_TAG=$1
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/tagged"
 
-# Build the image
-sed "s%{{GIT_TAG_OPT}}%${GIT_TAG}%g" "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERDIR/Dockerfile"
 
-# Docker tag doesn't stand '/'
+# Build the image
+
+TIMESTAMP=$(date --utc)
+DOCKERFILE="$DOCKERDIR/Dockerfile"
+cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
+sed -i "s%{{GIT_TAG_OPT}}%${GIT_TAG}%g" "$DOCKERFILE"
+# Force the build of the branch by changing timestamp
+sed -i "s%{{TIMESTAMP}}%${TIMESTAMP}%g" "$DOCKERFILE"
+
+# Docker tag must not contain '/'
 VERSION=$(echo ${GIT_TAG} | tr '/' '_')
 TAG="qserv/qserv:$VERSION"
 printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"

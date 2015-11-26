@@ -11,5 +11,5 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/
 # TODO: use consul to manage secret
 COPY wmgr.secret /qserv/run/etc/
 
-# 'tail -F' allow container not to exit
-CMD /qserv/run/bin/qserv-start.sh && tail -F /qserv/run/var/log/worker/xrootd.log
+# This script does not exit 
+CMD /qserv/scripts/qserv-start.bash
