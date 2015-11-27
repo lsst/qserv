@@ -22,7 +22,12 @@ USER qserv
 RUN bash -c ". /qserv/stack/loadLSST.bash && setup -r . && eupspkg -er config"
 
 USER root
-RUN apt-get install -y liblzma-dev
+RUN apt-get install -y liblzma-dev zlib1g-dev
 USER qserv
 RUN bash -c ". /qserv/stack/loadLSST.bash && setup -r . && eupspkg -er build"
+
+USER root
+RUN apt-get install -y vim
+USER qserv
 RUN bash -c ". /qserv/stack/loadLSST.bash && setup -r . && eupspkg -er install"
+RUN bash -c ". /qserv/stack/loadLSST.bash && setup -r . && eupspkg -er decl -t current"
