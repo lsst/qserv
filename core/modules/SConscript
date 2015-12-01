@@ -66,21 +66,8 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                            'distDir' : 'lib'
                            },
 
-               "_czarLib" : {'mods' : """ccontrol czar global
-                                         log
-                                         parser proto
-                                         qana qdisp qproc query
-                                         rproc sg""".split(),
-                             'shmods' : ['css'],
-                             'libs' : """ssl crypto antlr log
-                                      mysqlclient_r protobuf
-                                      XrdClient XrdPosix XrdSsi XrdUtils
-                                      boost_regex boost_thread boost_system
-                                      boost_signals""".split(),
-                               'SHLIBPREFIX' : '',
-                               'distDir' : pyDistRelative(env,"czar")},
-
-               "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana query qdisp qproc rproc sg""".split(),
+               "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana
+                                          query qdisp qproc rproc sg""".split(),
                              'shmods' : ['css'],
                              'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
                                'SHLIBPREFIX' : '',

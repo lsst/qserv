@@ -8,7 +8,7 @@
 
 # used by all
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-# used by mysql-proxy, xrootd, qserv-czar
+# used by mysql-proxy, xrootd
 QSERV_PID_DIR={{QSERV_PID_DIR}}
 QSERV_LOG_DIR={{QSERV_LOG_DIR}}
 # used by mysqld, mysql-proxy
@@ -37,9 +37,9 @@ LUA_DIR={{LUA_DIR}}
 
 # used by all
 export PATH={{PATH}}
-# used by qserv-czar
+# used by qserv-wmgr
 export PYTHONPATH={{PYTHONPATH}}
-# used by qserv-czar, xrootd
+# used by mysql-proxy, xrootd
 export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
 
@@ -50,8 +50,6 @@ export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 # Make sure core file is not discarded
 ulimit -c unlimited
 
-# used by qserv-czar
-export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 
