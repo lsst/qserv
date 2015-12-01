@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -31,7 +31,7 @@ set -x
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options]
+  Usage: $(basename "$0") [options]
 
   Available options:
     -h          this message
@@ -45,11 +45,11 @@ EOD
 # Get the options
 while getopts h c ; do
     case $c in
-            h) usage ; exit 0 ;;
-            \?) usage ; exit 2 ;;
+        h) usage ; exit 0 ;;
+        \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 0 ] ; then
     usage
@@ -59,10 +59,9 @@ fi
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/dev"
 
-# Docker tag doesn't stand '/'
 TAG="qserv/qserv:dev"
 printf "Building image with cutting edge dependencies (%s) from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push $TAG
+docker push "$TAG"
 
 printf "Image %s built successfully\n" "$TAG"

@@ -34,7 +34,7 @@ IMAGE="$DEFAULT_IMAGE"
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] DOCKERDIR
+  Usage: $(basename "$0") [options] DOCKERDIR
 
   Available options:
     -h          this message
@@ -57,7 +57,7 @@ while getopts hi: c ; do
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 0 ] ; then
     usage
@@ -73,10 +73,10 @@ TMP_DIR=$(mktemp -d -t docker_qserv_uid.XXXXXX)
 CID_FILE="$TMP_DIR"/cid
 
 set -x
-docker run --cidfile="$CID_FILE" -u root "$IMAGE" $SCRIPT $_UID $GID
+docker run --cidfile="$CID_FILE" -u root "$IMAGE" "$SCRIPT" "$_UID" "$GID"
 set +x
-CONTAINER_ID=$(cat $CID_FILE)
-rm $CID_FILE
+CONTAINER_ID=$(cat "$CID_FILE")
+rm "$CID_FILE"
 
 MSG="Change dev user (UID, GID) to ($UID, $GID)"
 DEST_IMAGE="$IMAGE-uid"
@@ -88,10 +88,10 @@ SCRIPT="/home/dev/scripts/eups-declare.sh"
 set -x
 docker run --cidfile="$CID_FILE" -u dev "$DEST_IMAGE" sh -c $SCRIPT
 set +x
-CONTAINER_ID=$(cat $CID_FILE)
-rm $CID_FILE
+CONTAINER_ID=$(cat "$CID_FILE")
+rm "$CID_FILE"
 
-MSG="Declare Qserv source directory to eups"                                                                                                                                                                 
-DEST_IMAGE="$IMAGE-uid"                                                                                                                                                                                            
-docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_IMAGE"                                                                                                                             
+MSG="Declare Qserv source directory to eups"
+DEST_IMAGE="$IMAGE-uid"
+docker commit --message="$MSG" --author="Fabrice Jammes" "$CONTAINER_ID" "$DEST_IMAGE"
 echo "Image $DEST_IMAGE created successfully"

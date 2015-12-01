@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -32,11 +32,11 @@ DOCKER_IMAGE="qserv/qserv:dev"
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host
+  Usage: $(basename "$0") [options] host
 
   Available options:
     -h          this message
-    -i          Docker image to be used as input, default to $DOCKER_IMAGE
+    -i image    Docker image to be used as input, default to $DOCKER_IMAGE
 
   Create docker images containing Qserv master and worker instances,
   use an existing Qserv Docker image as input.
@@ -53,7 +53,7 @@ while getopts hi: c ; do
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 1 ] ; then
     usage
@@ -76,7 +76,7 @@ sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
 TAG="${DOCKER_IMAGE}_master_${MASTER}"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push $TAG
+docker push "$TAG"
 
 printf "Image %s built and pushed successfully\n" "$TAG"
 
@@ -90,6 +90,6 @@ sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
 TAG="${DOCKER_IMAGE}_worker_${MASTER}"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push $TAG
+docker push "$TAG"
 
 printf "Image %s built and pushed successfully\n" "$TAG"

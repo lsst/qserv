@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -33,10 +33,12 @@ DOCKER_NAMESPACE=qserv
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options]
+  Usage: $(basename "$0") [options]
 
   Available options:
-    -h          this message
+    -h              this message
+    -u namespace    Docker namespace which prefix image name,
+	                default to $DOCKER_NAMESPACE 
 
   Create a docker image usable on a development workstation.
   Use a Docker image containing cutting-edge Qserv dependencies as input.
@@ -52,7 +54,7 @@ while getopts hu: c ; do
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 0 ] ; then
     usage
@@ -62,7 +64,6 @@ fi
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/work"
 
-# Docker tag doesn't stand '/'
 TAG="$DOCKER_NAMESPACE/qserv:work"
 printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"

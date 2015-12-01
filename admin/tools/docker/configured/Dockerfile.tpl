@@ -11,5 +11,5 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/
 # TODO: use consul to manage secret
 COPY wmgr.secret /qserv/run/etc/
 
-# This script does not exit 
+# This script does not exit
 CMD /qserv/scripts/qserv-start.bash

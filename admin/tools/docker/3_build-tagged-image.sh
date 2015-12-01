@@ -31,7 +31,7 @@ set -x
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] git-tag 
+  Usage: $(basename "$0") [options] git-tag 
 
   Available options:
     -h          this message
@@ -49,7 +49,7 @@ while getopts h c ; do
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 1 ] ; then
     usage
@@ -72,10 +72,10 @@ sed -i "s%{{GIT_TAG_OPT}}%${GIT_TAG}%g" "$DOCKERFILE"
 sed -i "s%{{TIMESTAMP}}%${TIMESTAMP}%g" "$DOCKERFILE"
 
 # Docker tag must not contain '/'
-VERSION=$(echo ${GIT_TAG} | tr '/' '_')
+VERSION=$(echo "$GIT_TAG" | tr '/' '_')
 TAG="qserv/qserv:$VERSION"
 printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push $TAG
+docker push "$TAG"
 
 printf "Image %s built successfully\n" "$TAG"
