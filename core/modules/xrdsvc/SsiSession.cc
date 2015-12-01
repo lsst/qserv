@@ -69,10 +69,8 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
 
     auto replyChannel = std::make_shared<ReplyChannel>(*this);
 
-    auto errorFunc = [this, &req, &replyChannel](std::string const& errStr, bool sendStr=true ) {
-        if (sendStr) {
-            replyChannel->sendError(errStr, EINVAL);
-        }
+    auto errorFunc = [this, &req, &replyChannel](std::string const& errStr) {
+        replyChannel->sendError(errStr, EINVAL);
         BindRequest(req, this);
         ReleaseRequestBuffer();
     };
@@ -90,7 +88,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         std::ostringstream os;
         os << "WARNING: unowned chunk query detected:" << ru.path();
         LOGF_WARN(os.str());
-        errorFunc(os.str(), false);
+        errorFunc(os.str());
         return;
     }
 
