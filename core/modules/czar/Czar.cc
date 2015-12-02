@@ -28,6 +28,7 @@
 #include <thread>
 
 // Third-party headers
+#include "boost/lexical_cast.hpp"
 #include "boost/property_tree/ini_parser.hpp"
 #include "boost/property_tree/ptree.hpp"
 
@@ -47,6 +48,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 // read configuration file
 lsst::qserv::StringMap readConfig(std::string const& configPath);
 
+// parse KILL query, return thread ID or -1
+int parseKillQuery(std::string const& query);
+
 }
 
 
@@ -57,7 +61,7 @@ namespace czar {
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
     : _czarName(czarName), _config(::readConfig(configPath)), _idCounter(),
-      _resultConfig(), _uqFactory() {
+      _resultConfig(), _uqFactory(), _clientToSessionId() {
 
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
@@ -108,6 +112,23 @@ Czar::submitQuery(std::string const& query,
     LOGF(_log, LOG_LVL_INFO, "new query: %s" % query);
     LOGF(_log, LOG_LVL_INFO, "hints: %s" % util::printable(hints));
 
+    // get some info from hints
+    std::string clientId;
+    int threadId = -1;
+
+    auto hintIter = hints.find("client_dst_name");
+    if (hintIter != hints.end()) clientId = hintIter->second;
+
+    hintIter = hints.find("server_thread_id");
+    if (hintIter != hints.end()) {
+        try {
+            threadId = boost::lexical_cast<int>(hintIter->second);
+        } catch (boost::bad_lexical_cast const& exc) {
+            // Not fatal, just means we cannot associate query with particular
+            // client/thread and will not be able to kill it later
+        }
+    }
+
     unsigned taskId = _idCounter++;
     LOGF(_log, LOG_LVL_DEBUG, "taskId: %s" % taskId);
 
@@ -123,7 +144,7 @@ Czar::submitQuery(std::string const& query,
     try {
         msgTable.lock();
     } catch (std::exception const& exc) {
-        result[0] = "Failed to lock message table: " + std::string(exc.what());
+        result[0] = exc.what();
         return result;
     }
 
@@ -142,26 +163,74 @@ Czar::submitQuery(std::string const& query,
     }
 
     // start execution
+    LOGF(_log, LOG_LVL_DEBUG, "submitting query: %s" % session);
     ccontrol::UserQuery_submit(session);
+
+    // pass session ID to message table guard
+    msgTable.setSessionId(session);
 
     // spawn background thread to wait until query finishes to unlock
     auto finalizer = [](int session, MessageTable msgTable) {
         ccontrol::UserQuery_join(session);
-        msgTable.unlock();
+        try {
+            msgTable.unlock();
+        } catch (std::exception const& exc) {
+            // TODO: if this fails there is no way to notify client, and client
+            // will likely hang because table will still be locked.
+        }
     };
+    LOGF(_log, LOG_LVL_DEBUG, "starting finalizer thread for session %s" % session);
     std::thread finalThread(finalizer, session, msgTable);
     finalThread.detach();
+
+    // remember session id in case we want to kill query
+    // TODO: the map grows indefinitely now, will have to do some cleanup
+    if (not clientId.empty() and threadId >= 0) {
+        ClientThreadId ctId(clientId, threadId);
+        _clientToSessionId.insert(std::make_pair(ctId, session));
+        LOGF(_log, LOG_LVL_DEBUG, "Remembering session: (%s, %s) -> %s (new map size: %s)" %
+             clientId % threadId % session % _clientToSessionId.size());
+    }
 
     // return all info to caller
     result[1] = resultName;
     result[2] = lockName;
     result[3] = orderBy;
+    LOGF(_log, LOG_LVL_DEBUG, "returning result to proxy: %s" % util::printable(result));
     return result;
 }
 
-void
-Czar::killQueryUgly(std::string const& query, std::string const& clientId) {
+std::string
+Czar::killQuery(std::string const& query, std::string const& clientId) {
 
+    LOGF(_log, LOG_LVL_INFO, "KILL query: '%s'" % query);
+    LOGF(_log, LOG_LVL_INFO, "client ID: '%s'" % clientId);
+
+    // the query can be one of:
+    //   "KILL QUERY NNN" - kills currently running query in thread NNN
+    //   "KILL CONNECTION NNN" - kills connection associated with thread NNN
+    //                           and all queries in that connection
+    //   "KILL NNN" - same as "KILL CONNECTION NNN"
+
+    int threadId = ::parseKillQuery(query);
+    LOGF(_log, LOG_LVL_INFO, "thread ID: %s" % threadId);
+    if (threadId < 0) {
+        return "Failed to parse query: " + query;
+    }
+
+    ClientThreadId ctId(clientId, threadId);
+
+    auto iter = _clientToSessionId.find(ctId);
+    if (iter == _clientToSessionId.end()) {
+        return "Unknown thread ID: " + query;
+    }
+
+    // assume this cannot fail or throw
+    int session = iter->second;
+    LOGF(_log, LOG_LVL_INFO, "Killing query for session: %s" % session);
+    ccontrol::UserQuery_kill(session);
+
+    return std::string();
 }
 
 }}} // namespace lsst::qserv::czar
@@ -190,6 +259,33 @@ readConfig(std::string const& configPath) {
     }
 
     return config;
+}
+
+int
+parseKillQuery(std::string const& aQuery) {
+    // the query that proxy passes us is all uppercase and spaces compressed
+    // but it may have trailing space which we strip first
+    std::string query = aQuery;
+    auto pos = query.find_last_not_of(' ');
+    query.erase(pos+1);
+
+    // try to match against one or another form of KILL
+    static const std::string prefixes[] = {"KILL QUERY ", "KILL CONNECTION ", "KILL "};
+    for (auto& prefix: prefixes) {
+        LOGF(_log, LOG_LVL_INFO, "checking prefix: '%s'" % prefix);
+        if (query.compare(0, prefix.size(), prefix) == 0) {
+            LOGF(_log, LOG_LVL_INFO, "match found");
+            try {
+                LOGF(_log, LOG_LVL_INFO, "thread id: '%s'" % query.substr(prefix.size()));
+                return boost::lexical_cast<int>(query.substr(prefix.size()));
+            } catch (boost::bad_lexical_cast const& exc) {
+                // error in query syntax
+                return -1;
+            }
+        }
+    }
+
+    return -1;
 }
 
 }

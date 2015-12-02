@@ -35,6 +35,7 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/userQueryProxy.h"
+#include "czar/CzarErrors.h"
 #include "sql/SqlConnection.h"
 #include "qdisp/MessageStore.h"
 
@@ -73,7 +74,11 @@ void
 MessageTable::lock() {
     std::string query = (boost::format(::createAndLockTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
+    LOGF(_log, LOG_LVL_DEBUG, "locking message table %s" % _tableName);
     if (not _sqlConn->runQuery(query, sqlErr)) {
+        SqlError exc(ERR_LOC, "Failure locking message table", sqlErr);
+        LOGF(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
     }
 }
 
@@ -83,7 +88,11 @@ MessageTable::unlock() {
     _saveQueryMessages();
 
     sql::SqlErrorObject sqlErr;
+    LOGF(_log, LOG_LVL_DEBUG, "unlocking message table %s" % _tableName);
     if (not _sqlConn->runQuery(::unlockTmpl, sqlErr)) {
+        SqlError exc(ERR_LOC, "Failure unlocking message table", sqlErr);
+        LOGF(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
     }
 
     /* We should not discard session here, but in the current
@@ -104,6 +113,7 @@ MessageTable::_saveQueryMessages() {
     auto& uq = ccontrol::UserQuery_get(_sessionId);
     auto msgStore = uq.getMessageStore();
 
+    // copy all messages from query message store to a message table
     int msgCount = msgStore->messageCount();
     for (int i = 0; i != msgCount; ++ i) {
         const qdisp::QueryMessage& qm = msgStore->getMessage(i);
@@ -115,7 +125,9 @@ MessageTable::_saveQueryMessages() {
             _sqlConn->escapeString(qm.description) % severity % qm.timestamp).str();
         sql::SqlErrorObject sqlErr;
         if (not _sqlConn->runQuery(query, sqlErr)) {
-
+            SqlError exc(ERR_LOC, "Failure updating message table", sqlErr);
+            LOGF(_log, LOG_LVL_ERROR, exc.message());
+            throw exc;
         }
     }
 }

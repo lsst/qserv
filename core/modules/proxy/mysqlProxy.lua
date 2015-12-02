@@ -366,7 +366,7 @@ function queryProcessing()
         -- that the server can differentiate among clients and kill
         -- the right query.
         czarProxy.log("mysql-proxy", "INFO", "Killing query/connection: " .. q)
-        czarProxy.killQueryUgly(qU, proxy.connection.client.dst.name)
+        czarProxy.killQuery(qU, proxy.connection.client.dst.name)
 
         -- Assemble result
         proxy.response.type = proxy.MYSQLD_PACKET_OK

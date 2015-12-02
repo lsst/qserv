@@ -67,6 +67,9 @@ public:
     /// Release lock on message table so that proxy can proceed
     void unlock();
 
+    /// Returns table name
+    std::string const& tableName() const { return _tableName; }
+
 protected:
 
 private:

@@ -86,17 +86,21 @@ public:
      * @param query: (client)proxy-provided "KILL QUERY ..." string
      * @param clientId : client name from proxy
      */
-    void killQueryUgly(std::string const& query, std::string const& clientId);
+    std::string killQuery(std::string const& query, std::string const& clientId);
 
 protected:
 
 private:
+
+    // combines client name (ID) and its thread ID into one unique ID
+    typedef std::pair<std::string, int> ClientThreadId;
 
     std::string _czarName;    ///< Unique czar name
     StringMap _config;        ///< Czar configuration (section.key -> value)
     std::atomic<unsigned> _idCounter;   ///< Query identifier for next query
     mysql::MySqlConfig _resultConfig;  ///< Configuration for result database
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
+    std::map<ClientThreadId, int> _clientToSessionId; ///< maps client ID to session ID
 };
 
 }}} // namespace lsst::qserv::czar

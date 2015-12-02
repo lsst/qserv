@@ -56,12 +56,12 @@ submitQuery(std::string const& query, std::map<std::string, std::string> const& 
     return czarInstance(hints).submitQuery(query, hints);
 }
 
-void
-killQueryUgly(std::string const& query, std::string const& clientId) {
+std::string
+killQuery(std::string const& query, std::string const& clientId) {
     static std::map<std::string, std::string> const hints{
         std::make_pair("client_dst_name", clientId)
     };
-    czarInstance(hints).killQueryUgly(query, clientId);
+    return czarInstance(hints).killQuery(query, clientId);
 }
 
 void log(std::string const& loggername, std::string const& level,

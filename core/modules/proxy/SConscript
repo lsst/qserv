@@ -6,8 +6,7 @@ Import('env')
 Import('extraSrcs')
 Import('extraTgts')
 
-proxyFiles = [env.File("mysqlProxy.lua"),
-              env.File("startMySQLProxy")]
+proxyFiles = [env.File("mysqlProxy.lua")]
 for p in proxyFiles:
     extraTgts["dist"].append(("proxy", p))
 
