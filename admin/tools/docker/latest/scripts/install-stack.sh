@@ -40,4 +40,4 @@ bash newinstall.sh < /tmp/answers.txt
 rm /tmp/answers.txt
 
 . ./loadLSST.bash
-eups distrib install qserv_distrib -t qserv
+eups distrib install qserv_distrib -t qserv_latest

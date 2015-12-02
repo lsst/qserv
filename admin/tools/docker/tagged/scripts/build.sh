@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LSST Data Management System
-# Copyright 2014 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,20 +20,52 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Run mono-node test against setup Qserv version 
-#
-# Launch commands below before running this script:
-# . /qserv/stack/loadLSST.bash
-# setup qserv_distrib -t <EUPS_TAG>
 
+# Build and install in-place Qserv version setup by default
 
-# @author  Fabrice Jammes, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
 
-QSERV_RUN_DIR=$HOME/qserv-run/mono-$(qserv-version.sh)
-qserv-configure.py --all --force -R $QSERV_RUN_DIR
-$QSERV_RUN_DIR/bin/qserv-start.sh
-qserv-test-integration.py
-$QSERV_RUN_DIR/bin/qserv-stop.sh
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options] git-tag 
+
+  Available options:
+    -h          this message
+
+  Clone, checkout, build and install Qserv version tagged with git-tag
+EOD
+}
+
+
+# get the options
+while getopts ht: c ; do
+    case $c in
+            h) usage ; exit 0 ;;
+            \?) usage ; exit 2 ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+if [ $# -ne 1 ] ; then
+    usage
+    exit 2
+fi
+
+GIT_TAG=$1
+
+. /qserv/scripts/params.sh
+
+. $INSTALL_DIR/loadLSST.bash
+
+mkdir src
+cd src
+git clone git://github.com/LSST/qserv
+cd qserv 
+git checkout $GIT_TAG 
+setup -r .
+echo "Build and install Qserv from source (QSERV_DIR: $QSERV_DIR)"
+eupspkg -er install
+

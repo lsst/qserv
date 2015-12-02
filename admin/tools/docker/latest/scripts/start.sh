@@ -22,6 +22,7 @@
 
 
 # Start Qserv on current node
+# and doesn't exit
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
@@ -30,4 +31,4 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . $DIR/params.sh
 
-$QSERV_RUN_DIR/bin/qserv-start.sh
+$QSERV_RUN_DIR/bin/qserv-start.sh && tail -F $(find  $QSERV_RUN_DIR/var/log -type f)
