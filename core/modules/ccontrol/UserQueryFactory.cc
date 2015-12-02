@@ -39,7 +39,6 @@
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/UserQueryDropTable.h"
 #include "ccontrol/UserQueryInvalid.h"
-#include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
@@ -92,7 +91,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     _impl->qMetaCzarId = _impl->queryMetadata->registerCzar(czarName);
 }
 
-std::pair<int,std::string>
+UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
@@ -125,33 +124,27 @@ UserQueryFactory::newUserQuery(std::string const& query,
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
             infileMergerConfig->targetTable = resultTable;
         }
-        auto uq = new UserQuerySelect(qs, messageStore, executive, infileMergerConfig,
-                                      _impl->secondaryIndex, _impl->queryMetadata,
-                                      _impl->qMetaCzarId, errorExtra);
-        int sessionId = UserQuery_takeOwnership(uq);
-        uq->setSessionId(sessionId);
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
+                                                    _impl->secondaryIndex, _impl->queryMetadata,
+                                                    _impl->qMetaCzarId, errorExtra);
         if(sessionValid) {
             uq->setupChunking();
         }
-        return std::make_pair(sessionId, qs->getProxyOrderBy());
+        return uq;
     } else if (UserQueryType::isDropTable(query, dbName, tableName)) {
         // processing DROP TABLE
         if (dbName.empty()) {
             dbName = defaultDb;
         }
-        auto uq = new UserQueryDropTable(_impl->css, dbName, tableName,
-                                         _impl->resultDbConn.get(), resultTable,
-                                         _impl->queryMetadata, _impl->qMetaCzarId);
-        int sessionId = UserQuery_takeOwnership(uq);
-        uq->setSessionId(sessionId);
-        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDropTable: %s.%s -> %s" % dbName % tableName % sessionId);
-        return std::make_pair(sessionId, std::string());
+        auto uq = std::make_shared<UserQueryDropTable>(_impl->css, dbName, tableName,
+                                                       _impl->resultDbConn.get(), resultTable,
+                                                       _impl->queryMetadata, _impl->qMetaCzarId);
+        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDropTable: %s.%s" % dbName % tableName);
+        return uq;
     } else {
         // something that we don't recognize
-        auto uq = new UserQueryInvalid("Invalid or unsupported query: " + query);
-        int sessionId = UserQuery_takeOwnership(uq);
-        uq->setSessionId(sessionId);
-        return std::make_pair(sessionId, std::string());
+        auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
+        return uq;
     }
 }
 

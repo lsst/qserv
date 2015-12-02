@@ -109,10 +109,11 @@ public:
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
 
+    /// @return ORDER BY part of SELECT statement to be executed by proxy
+    virtual std::string getProxyOrderBy() override;
+
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
-
-    void setSessionId(int session) { _sessionId = session; }
 
     void setupChunking();
 

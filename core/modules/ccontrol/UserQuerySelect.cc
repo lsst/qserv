@@ -185,6 +185,11 @@ void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
     }
 }
 
+std::string
+UserQuerySelect::getProxyOrderBy() {
+    return _qSession->getProxyOrderBy();
+}
+
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
     _qSession->finalize();

@@ -37,7 +37,6 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
-#include "ccontrol/userQueryProxy.h"
 #include "czar/MessageTable.h"
 #include "util/IterableFormatter.h"
 
@@ -61,12 +60,13 @@ namespace czar {
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
     : _czarName(czarName), _config(::readConfig(configPath)), _idCounter(),
-      _resultConfig(), _uqFactory(), _clientToSessionId() {
+      _resultConfig(), _uqFactory(), _clientToQuery() {
 
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
-    _idCounter = unsigned((tv.tv_sec % (60*60*24*365)) + tv.tv_usec/1000);
+    const int year = 60*60*24*365;
+    _idCounter = unsigned((tv.tv_sec % year)*1000 + tv.tv_usec/1000);
 
     ccontrol::ConfigMap cm(_config);
     std::string logConfig = cm.get("log.logConfig", "", "");
@@ -151,51 +151,46 @@ Czar::submitQuery(std::string const& query,
     // make new UserQuery
     ccontrol::ConfigMap cm(hints);
     std::string defDb = cm.get("db", "Failed to find default database, using empty string", "");
-    auto qPair = _uqFactory->newUserQuery(query, defDb, resultName);
-    auto session = qPair.first;
-    auto& orderBy = qPair.second;
+    auto uq = _uqFactory->newUserQuery(query, defDb, resultName);
 
     // check for errors
-    auto error = ccontrol::UserQuery_getQueryProcessingError(session);
+    auto error = uq->getError();
     if (not error.empty()) {
         result[0] = "Failed to instantiate query: " + error;
         return result;
     }
 
     // start execution
-    LOGF(_log, LOG_LVL_DEBUG, "submitting query: %s" % session);
-    ccontrol::UserQuery_submit(session);
-
-    // pass session ID to message table guard
-    msgTable.setSessionId(session);
+    LOGF(_log, LOG_LVL_DEBUG, "submitting new query");
+    uq->submit();
 
     // spawn background thread to wait until query finishes to unlock
-    auto finalizer = [](int session, MessageTable msgTable) {
-        ccontrol::UserQuery_join(session);
+    auto finalizer = [](ccontrol::UserQuery::Ptr uq, MessageTable msgTable) {
+        uq->join();
         try {
-            msgTable.unlock();
+            msgTable.unlock(uq);
         } catch (std::exception const& exc) {
             // TODO: if this fails there is no way to notify client, and client
             // will likely hang because table will still be locked.
         }
     };
-    LOGF(_log, LOG_LVL_DEBUG, "starting finalizer thread for session %s" % session);
-    std::thread finalThread(finalizer, session, msgTable);
+    LOGF(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
+    std::thread finalThread(finalizer, uq, msgTable);
     finalThread.detach();
 
-    // remember session id in case we want to kill query
+    // remember query (weak pointer) in case we want to kill query
     // TODO: the map grows indefinitely now, will have to do some cleanup
     if (not clientId.empty() and threadId >= 0) {
         ClientThreadId ctId(clientId, threadId);
-        _clientToSessionId.insert(std::make_pair(ctId, session));
-        LOGF(_log, LOG_LVL_DEBUG, "Remembering session: (%s, %s) -> %s (new map size: %s)" %
-             clientId % threadId % session % _clientToSessionId.size());
+        _clientToQuery.insert(std::make_pair(ctId, uq));
+        LOGF(_log, LOG_LVL_DEBUG, "Remembering query: (%s, %s) (new map size: %s)" %
+             clientId % threadId % _clientToQuery.size());
     }
 
     // return all info to caller
     result[1] = resultName;
     result[2] = lockName;
-    result[3] = orderBy;
+    result[3] = uq->getProxyOrderBy();
     LOGF(_log, LOG_LVL_DEBUG, "returning result to proxy: %s" % util::printable(result));
     return result;
 }
@@ -220,15 +215,15 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
 
     ClientThreadId ctId(clientId, threadId);
 
-    auto iter = _clientToSessionId.find(ctId);
-    if (iter == _clientToSessionId.end()) {
+    auto iter = _clientToQuery.find(ctId);
+    if (iter == _clientToQuery.end()) {
         return "Unknown thread ID: " + query;
     }
 
     // assume this cannot fail or throw
-    int session = iter->second;
-    LOGF(_log, LOG_LVL_INFO, "Killing query for session: %s" % session);
-    ccontrol::UserQuery_kill(session);
+    auto uq = iter->second.lock();
+    LOGF(_log, LOG_LVL_INFO, "Killing query for thread: %s" % threadId);
+    uq->kill();
 
     return std::string();
 }

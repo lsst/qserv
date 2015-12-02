@@ -29,6 +29,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "ccontrol/UserQuery.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 
@@ -61,24 +62,17 @@ public:
     /// Create and lock the table
     void lock();
 
-    /// Update session ID
-    void setSessionId(unsigned sessionId) { _sessionId = sessionId; }
-
     /// Release lock on message table so that proxy can proceed
-    void unlock();
-
-    /// Returns table name
-    std::string const& tableName() const { return _tableName; }
+    void unlock(ccontrol::UserQuery::Ptr const& userQuery);
 
 protected:
 
 private:
 
     /// store all messages from current session to the table
-    void _saveQueryMessages();
+    void _saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery);
 
     std::string const _tableName;
-    int _sessionId = 0;
     std::shared_ptr<sql::SqlConnection> _sqlConn;
 
 };

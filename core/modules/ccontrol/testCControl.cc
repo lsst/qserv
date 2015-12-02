@@ -33,23 +33,12 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQueryType.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
-
-BOOST_AUTO_TEST_CASE(UserQueryException) {
-    LOGF_INFO("UserQuery exception catching");
-    // Test that invalid session values do not crash the program.
-    int session = 1000;
-    ccontrol::UserQuery_getQueryProcessingError(session++);
-    ccontrol::UserQuery_kill(session++);
-    ccontrol::UserQuery_submit(session++);
-    ccontrol::UserQuery_join(session++);
-}
 
 BOOST_AUTO_TEST_CASE(testUserQueryType) {
     LOGF_INFO("testing UserQueryType class");

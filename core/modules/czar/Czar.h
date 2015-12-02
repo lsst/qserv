@@ -32,6 +32,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
@@ -100,7 +101,7 @@ private:
     std::atomic<unsigned> _idCounter;   ///< Query identifier for next query
     mysql::MySqlConfig _resultConfig;  ///< Configuration for result database
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
-    std::map<ClientThreadId, int> _clientToSessionId; ///< maps client ID to session ID
+    std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> _clientToQuery; ///< maps client ID to query
 };
 
 }}} // namespace lsst::qserv::czar

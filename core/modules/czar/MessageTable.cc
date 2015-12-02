@@ -34,7 +34,6 @@
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuery.h"
-#include "ccontrol/userQueryProxy.h"
 #include "czar/CzarErrors.h"
 #include "sql/SqlConnection.h"
 #include "qdisp/MessageStore.h"
@@ -84,8 +83,8 @@ MessageTable::lock() {
 
 // Release lock on message table so that proxy can proceed
 void
-MessageTable::unlock() {
-    _saveQueryMessages();
+MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
+    _saveQueryMessages(userQuery);
 
     sql::SqlErrorObject sqlErr;
     LOGF(_log, LOG_LVL_DEBUG, "unlocking message table %s" % _tableName);
@@ -98,20 +97,19 @@ MessageTable::unlock() {
     /* We should not discard session here, but in the current
       design the QueryMsg is contained in AsyncQueryMgr, so
      cannot discard until now. */
-    if (_sessionId != 0) {
-        ccontrol::UserQuery_discard(_sessionId);
+    if (userQuery) {
+        userQuery->discard();
     }
 }
 
 // store all messages from current session to the table
 void
-MessageTable::_saveQueryMessages() {
-    if (_sessionId == 0) {
+MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
+    if (not userQuery) {
         return;
     }
 
-    auto& uq = ccontrol::UserQuery_get(_sessionId);
-    auto msgStore = uq.getMessageStore();
+    auto msgStore = userQuery->getMessageStore();
 
     // copy all messages from query message store to a message table
     int msgCount = msgStore->messageCount();

@@ -42,6 +42,7 @@
 
 // Local headers
 #include "global/stringTypes.h"
+#include "ccontrol/UserQuery.h"
 
 namespace lsst {
 namespace qserv {
@@ -57,11 +58,11 @@ public:
     UserQueryFactory(std::map<std::string,std::string> const& m,
                      std::string const& czarName);
 
-    /// @return a handle to the new UserQuery object to be used with the
-    /// userQueryProxy interface.
-    std::pair<int,std::string> newUserQuery(std::string const& query,
-                                             std::string const& defaultDb,
-                                             std::string const& resultTable);
+    /// @return new UserQuery object
+    UserQuery::Ptr newUserQuery(std::string const& query,
+                                std::string const& defaultDb,
+                                std::string const& resultTable);
+
 private:
     class Impl;
     std::shared_ptr<Impl> _impl;
