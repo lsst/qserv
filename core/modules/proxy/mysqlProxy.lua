@@ -521,8 +521,14 @@ function read_query_result(inj)
     else
         czarProxy.log("mysql-proxy", "INFO", "q2 - passing")
         local row
+        local i = 0
         for row in inj.resultset.rows do
-            czarProxy.log("mysql-proxy", "INFO", "   " .. row[1])
+            i = i + 1
+            if (i > 32) then
+                czarProxy.log("mysql-proxy", "DEBUG", "   ... rest is not shown")
+                break
+            end
+            czarProxy.log("mysql-proxy", "DEBUG", "   " .. row[1])
         end
     end
 end

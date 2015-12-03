@@ -32,6 +32,7 @@
   */
 
 // System headers
+#include <cstdint>
 #include <memory>
 
 // Third-party headers
@@ -58,10 +59,15 @@ public:
     UserQueryFactory(std::map<std::string,std::string> const& m,
                      std::string const& czarName);
 
+    /// @param query:       Query text
+    /// @param defaultDb:   Default database name, may be empty
+    /// @param resultTable: Name of the table to store results
+    /// @param userQueryId: Unique ID for new query
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
                                 std::string const& defaultDb,
-                                std::string const& resultTable);
+                                std::string const& resultTable,
+                                uint64_t userQueryId);
 
 private:
     class Impl;

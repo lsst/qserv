@@ -50,7 +50,10 @@ lsst::qserv::StringMap readConfig(std::string const& configPath);
 // parse KILL query, return thread ID or -1
 int parseKillQuery(std::string const& query);
 
-}
+// make mysql config object from config map
+lsst::qserv::mysql::MySqlConfig mysqlConfig(lsst::qserv::StringMap const& config);
+
+} // namespace
 
 
 namespace lsst {
@@ -59,14 +62,15 @@ namespace czar {
 
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
-    : _czarName(czarName), _config(::readConfig(configPath)), _idCounter(),
-      _resultConfig(), _uqFactory(), _clientToQuery() {
+    : _czarName(czarName), _config(::readConfig(configPath)),
+      _resultConfig(::mysqlConfig(_config)), _idCounter(),
+      _uqFactory(), _clientToQuery(), _mutex() {
 
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
     const int year = 60*60*24*365;
-    _idCounter = unsigned((tv.tv_sec % year)*1000 + tv.tv_usec/1000);
+    _idCounter = uint64_t(tv.tv_sec % year)*1000 + tv.tv_usec/1000;
 
     ccontrol::ConfigMap cm(_config);
     std::string logConfig = cm.get("log.logConfig", "", "");
@@ -78,31 +82,6 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     LOGF(_log, LOG_LVL_DEBUG, "czar config: %s" % util::printable(_config));
 
     _uqFactory.reset(new ccontrol::UserQueryFactory(_config, _czarName));
-
-    _resultConfig.hostname = cm.get(
-        "resultdb.host",
-        "Error, resultdb.host not found. Using empty host name.",
-        "");
-    _resultConfig.port = cm.getTyped<unsigned>(
-        "resultdb.port",
-        "Error, resultdb.port not found. Using 0 for port.",
-        0U);
-    _resultConfig.username = cm.get(
-        "resultdb.user",
-        "Error, resultdb.user not found. Using qsmaster.",
-        "qsmaster");
-    _resultConfig.password = cm.get(
-        "resultdb.passwd",
-        "Error, resultdb.passwd not found. Using empty string.",
-        "");
-    _resultConfig.socket = cm.get(
-        "resultdb.unix_socket",
-        "Error, resultdb.unix_socket not found. Using empty string.",
-        "");
-    _resultConfig.dbName = cm.get(
-        "resultdb.db",
-        "Error, resultdb.db not found. Using qservMeta.",
-        "qservResult");
 }
 
 std::vector<std::string>
@@ -129,13 +108,14 @@ Czar::submitQuery(std::string const& query,
         }
     }
 
-    unsigned taskId = _idCounter++;
-    LOGF(_log, LOG_LVL_DEBUG, "taskId: %s" % taskId);
+    // this is atomic
+    uint64_t userQueryId = _idCounter++;
+    LOGF(_log, LOG_LVL_DEBUG, "userQueryId: %s" % userQueryId);
 
     // make table names
-    auto taskIdStr = std::to_string(taskId);
-    std::string const resultName = _resultConfig.dbName + ".result_" + taskIdStr;
-    std::string const lockName = _resultConfig.dbName + ".message_" + taskIdStr;
+    auto userQueryIdStr = std::to_string(userQueryId);
+    std::string const resultName = _resultConfig.dbName + ".result_" + userQueryIdStr;
+    std::string const lockName = _resultConfig.dbName + ".message_" + userQueryIdStr;
 
     std::vector<std::string> result(4);
 
@@ -151,7 +131,11 @@ Czar::submitQuery(std::string const& query,
     // make new UserQuery
     ccontrol::ConfigMap cm(hints);
     std::string defDb = cm.get("db", "Failed to find default database, using empty string", "");
-    auto uq = _uqFactory->newUserQuery(query, defDb, resultName);
+    ccontrol::UserQuery::Ptr uq;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        uq = _uqFactory->newUserQuery(query, defDb, resultName, userQueryId);
+    }
 
     // check for errors
     auto error = uq->getError();
@@ -164,27 +148,42 @@ Czar::submitQuery(std::string const& query,
     LOGF(_log, LOG_LVL_DEBUG, "submitting new query");
     uq->submit();
 
-    // spawn background thread to wait until query finishes to unlock
-    auto finalizer = [](ccontrol::UserQuery::Ptr uq, MessageTable msgTable) {
+    // spawn background thread to wait until query finishes to unlock,
+    // note that lambda stores copies of uq and msgTable.
+    auto finalizer = [uq, msgTable]() mutable {
         uq->join();
         try {
             msgTable.unlock(uq);
+            if (uq) uq->discard();
         } catch (std::exception const& exc) {
-            // TODO: if this fails there is no way to notify client, and client
-            // will likely hang because table will still be locked.
+            // TODO? if this fails there is no way to notify client, and client
+            // will likely hang because table may still be locked.
+            LOGF(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): %s" % exc.what());
         }
     };
     LOGF(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
-    std::thread finalThread(finalizer, uq, msgTable);
+    std::thread finalThread(finalizer);
     finalThread.detach();
 
-    // remember query (weak pointer) in case we want to kill query
-    // TODO: the map grows indefinitely now, will have to do some cleanup
-    if (not clientId.empty() and threadId >= 0) {
-        ClientThreadId ctId(clientId, threadId);
-        _clientToQuery.insert(std::make_pair(ctId, uq));
-        LOGF(_log, LOG_LVL_DEBUG, "Remembering query: (%s, %s) (new map size: %s)" %
-             clientId % threadId % _clientToQuery.size());
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        // first cleanup client query map from completed queries
+        for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
+            if (iter->second.expired()) {
+                iter = _clientToQuery.erase(iter);
+            } else {
+                ++ iter;
+            }
+        }
+
+        // remember query (weak pointer) in case we want to kill query
+        if (not clientId.empty() and threadId >= 0) {
+            ClientThreadId ctId(clientId, threadId);
+            _clientToQuery.insert(std::make_pair(ctId, uq));
+            LOGF(_log, LOG_LVL_DEBUG, "Remembering query: (%s, %s) (new map size: %s)" %
+                 clientId % threadId % _clientToQuery.size());
+        }
     }
 
     // return all info to caller
@@ -214,16 +213,24 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     }
 
     ClientThreadId ctId(clientId, threadId);
+    ccontrol::UserQuery::Ptr uq;
 
-    auto iter = _clientToQuery.find(ctId);
-    if (iter == _clientToQuery.end()) {
-        return "Unknown thread ID: " + query;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        // find it in the client map based in client/thread id
+        auto iter = _clientToQuery.find(ctId);
+        if (iter == _clientToQuery.end()) {
+            return "Unknown thread ID: " + query;
+        }
+        uq = iter->second.lock();
     }
 
     // assume this cannot fail or throw
-    auto uq = iter->second.lock();
     LOGF(_log, LOG_LVL_INFO, "Killing query for thread: %s" % threadId);
-    uq->kill();
+    if (uq) {
+        uq->kill();
+    }
 
     return std::string();
 }
@@ -267,11 +274,11 @@ parseKillQuery(std::string const& aQuery) {
     // try to match against one or another form of KILL
     static const std::string prefixes[] = {"KILL QUERY ", "KILL CONNECTION ", "KILL "};
     for (auto& prefix: prefixes) {
-        LOGF(_log, LOG_LVL_INFO, "checking prefix: '%s'" % prefix);
+        LOGF(_log, LOG_LVL_DEBUG, "checking prefix: '%s'" % prefix);
         if (query.compare(0, prefix.size(), prefix) == 0) {
-            LOGF(_log, LOG_LVL_INFO, "match found");
+            LOGF(_log, LOG_LVL_DEBUG, "match found");
             try {
-                LOGF(_log, LOG_LVL_INFO, "thread id: '%s'" % query.substr(prefix.size()));
+                LOGF(_log, LOG_LVL_DEBUG, "thread id: '%s'" % query.substr(prefix.size()));
                 return boost::lexical_cast<int>(query.substr(prefix.size()));
             } catch (boost::bad_lexical_cast const& exc) {
                 // error in query syntax
@@ -281,6 +288,42 @@ parseKillQuery(std::string const& aQuery) {
     }
 
     return -1;
+}
+
+// make mysql config object from config map
+lsst::qserv::mysql::MySqlConfig
+mysqlConfig(lsst::qserv::StringMap const& config) {
+
+    lsst::qserv::ccontrol::ConfigMap cm(config);
+
+    lsst::qserv::mysql::MySqlConfig mysqlConfig;
+
+    mysqlConfig.hostname = cm.get(
+        "resultdb.host",
+        "Error, resultdb.host not found. Using empty host name.",
+        "");
+    mysqlConfig.port = cm.getTyped<unsigned>(
+        "resultdb.port",
+        "Error, resultdb.port not found. Using 0 for port.",
+        0U);
+    mysqlConfig.username = cm.get(
+        "resultdb.user",
+        "Error, resultdb.user not found. Using qsmaster.",
+        "qsmaster");
+    mysqlConfig.password = cm.get(
+        "resultdb.passwd",
+        "Error, resultdb.passwd not found. Using empty string.",
+        "");
+    mysqlConfig.socket = cm.get(
+        "resultdb.unix_socket",
+        "Error, resultdb.unix_socket not found. Using empty string.",
+        "");
+    mysqlConfig.dbName = cm.get(
+        "resultdb.db",
+        "Error, resultdb.db not found. Using qservMeta.",
+        "qservResult");
+
+    return mysqlConfig;
 }
 
 }

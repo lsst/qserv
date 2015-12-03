@@ -24,8 +24,10 @@
 
 // System headers
 #include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -50,7 +52,7 @@ namespace czar {
  *
  */
 
-class Czar  {
+class Czar {
 public:
 
     /**
@@ -95,13 +97,16 @@ private:
 
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;
+    typedef std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> ClientToQuery;
 
-    std::string _czarName;    ///< Unique czar name
-    StringMap _config;        ///< Czar configuration (section.key -> value)
-    std::atomic<unsigned> _idCounter;   ///< Query identifier for next query
-    mysql::MySqlConfig _resultConfig;  ///< Configuration for result database
+    std::string const _czarName;        ///< Unique czar name
+    StringMap const _config;            ///< Czar configuration (section.key -> value)
+    mysql::MySqlConfig const _resultConfig;   ///< Configuration for result database
+
+    std::atomic<uint64_t> _idCounter;   ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
-    std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> _clientToQuery; ///< maps client ID to query
+    ClientToQuery _clientToQuery;       ///< maps client ID to query
+    std::mutex _mutex;                  ///< protects both _uqFactory and _clientToQuery
 };
 
 }}} // namespace lsst::qserv::czar

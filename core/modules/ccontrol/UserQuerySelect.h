@@ -32,6 +32,7 @@
   */
 
 // System headers
+#include <cstdint>
 #include <memory>
 #include <mutex>
 
@@ -81,6 +82,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
+                    uint64_t userQueryId,
                     std::string const& errorExtra);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
@@ -138,7 +140,7 @@ private:
     bool _killed;
     bool _submitted;                ///< True after submit() is completed
     std::mutex _killMutex;
-    int _sessionId;                 ///< External reference number
+    uint64_t _userQueryId;          ///< Unique query identifier
     int _sequence;                  ///< Sequence number for subtask ids
     std::string _errorExtra;        ///< Additional error information
 };

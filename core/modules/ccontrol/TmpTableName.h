@@ -38,7 +38,7 @@ namespace ccontrol {
 /// TmpTableName : a generator for temporary table names for chunk results.
 class TmpTableName {
 public:
-    TmpTableName(int sessionId, std::string const& query) {
+    TmpTableName(uint64_t sessionId, std::string const& query) {
         std::stringstream ss;
         ss << "r_" << sessionId
            << util::StringHash::getMd5Hex(query.data(), query.size())

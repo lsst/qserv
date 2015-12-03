@@ -94,7 +94,8 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
-                               std::string const& resultTable) {
+                               std::string const& resultTable,
+                               uint64_t userQueryId) {
     std::string dbName, tableName;
 
     if (UserQueryType::isSelect(query)) {
@@ -126,7 +127,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->qMetaCzarId, errorExtra);
+                                                    _impl->qMetaCzarId, userQueryId, errorExtra);
         if(sessionValid) {
             uq->setupChunking();
         }

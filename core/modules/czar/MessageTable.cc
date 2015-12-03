@@ -93,13 +93,6 @@ MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
         LOGF(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
-
-    /* We should not discard session here, but in the current
-      design the QueryMsg is contained in AsyncQueryMgr, so
-     cannot discard until now. */
-    if (userQuery) {
-        userQuery->discard();
-    }
 }
 
 // store all messages from current session to the table

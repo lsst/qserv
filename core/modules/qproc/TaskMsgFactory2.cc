@@ -75,7 +75,7 @@ flattenScanTables(StringVector& outputList,
 ////////////////////////////////////////////////////////////////////////
 class TaskMsgFactory2::Impl {
 public:
-    Impl(int session, std::string const& resultTable)
+    Impl(uint64_t session, std::string const& resultTable)
         : _session(session), _resultTable(resultTable) {
     }
     std::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
@@ -105,7 +105,7 @@ private:
         frag->mutable_subchunks()->CopyFrom(sc);
     }
 
-    int _session;
+    uint64_t _session;
     std::string _resultTable;
     std::shared_ptr<proto::TaskMsg> _taskMsg;
 };
@@ -162,7 +162,7 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
 ////////////////////////////////////////////////////////////////////////
 // class TaskMsgFactory2
 ////////////////////////////////////////////////////////////////////////
-TaskMsgFactory2::TaskMsgFactory2(int session)
+TaskMsgFactory2::TaskMsgFactory2(uint64_t session)
     : _impl(std::make_shared<Impl>(session, "Asdfasfd" )) {
 
 }
