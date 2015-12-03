@@ -1,4 +1,6 @@
-MASTER=ccqserv00.in2p3.fr
-WORKERS=$(echo ccqserv{01..03}.in2p3.fr)
+MASTER=clrqserv00
+WORKERS=$(echo clrqserv0{1..3})
 
-alias shmux=/usr/local/bin/shmux
+MASTER_IMAGE=fjammes/qserv:master_master_clrqserv00.in2p3.fr
+WORKER_IMAGE=fjammes/qserv:master_worker_clrqserv00.in2p3.fr
+#alias shmux=/usr/local/bin/shmux

@@ -1,28 +1,12 @@
-FROM fjammes/qserv:latest
+# dev and release are the same at release time
+FROM qserv/qserv:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
-RUN apt-get update && apt-get -y install byobu git vim
+USER qserv 
 
-RUN groupadd dev && useradd -m -g dev -G qserv dev && usermod -s /bin/bash dev
+WORKDIR /home/qserv
 
-COPY scripts/startup.py /home/dev/.eups/
-COPY scripts/*.sh /home/dev/scripts/
+# Update to latest qserv dependencies, need to be publish on distribution server
+# see https://confluence.lsstcorp.org/display/DM/Qserv+Release+Procedure
+RUN bash -c ". /qserv/stack/loadLSST.bash && eups distrib install qserv_distrib -t qserv-dev --onlydepend -vvv"
 
-# 1st chmod: Allow dev user to set eups lock
-# 2nd : Workaround to install scisql plugin in mysql
-RUN chown -R dev:dev /home/dev/.eups && \
-    chown -R dev:dev /home/dev/scripts && \
-    chmod g+w stack/ && \
-    chmod -R g+w stack/Linux64/mysql
-
-USER dev
-
-WORKDIR /home/dev
-RUN mkdir src
-
-# Source code should be mounted from host to /home/dev/qserv using 'docker run -v'.
-
-# Having a initial qserv repository here will allow to performs 'eups declare -r ~/src/qserv -t git'.
-# But eups database doesn't seems to support uid/gid changes, so the previous
-# declare step needs to be delayed and performed at the end of change-uid.sh
-RUN git clone git://github.com/LSST/qserv src/qserv

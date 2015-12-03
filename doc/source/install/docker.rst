@@ -6,23 +6,51 @@ Qserv is also available as a Docker image (see https://www.docker.com/).
 
 .. note::
 
-   This procedure was tested with Docker 1.6 and 1.8.
+   This procedure was tested with Docker 1.8.
 
-***********************
-Build main Qserv images
-***********************
+*****************************
+Build image for Qserv release
+*****************************
 
-Create two images:
+Create Qserv latest release image, with 3 names:
 
-- qserv:latest: Qserv latest release
-- qserv:dev: Allow to build/configure and run Qserv from sources
+- qserv:latest
+- qserv:dev
+- qserv:YYY_MM
 
 .. code-block:: bash
 
    . /path/to/lsst/stack/loadLSST.bash
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   ./build-images.sh
+   1_build-latest-image.sh 
+
+Create Qserv cutting-edge dependencies image, named qserv:dev:
+
+.. code-block:: bash
+
+   # cutting-edge dependencies needs to be tagged eups-dev
+   # on distribution server.
+   cd ${SRC_DIR}/qserv/admin/tools/docker
+   2_build-dev-image.sh 
+
+Create Qserv image for a given git tag/branch:
+
+.. code-block:: bash
+
+   # Code need to be pushed on github 
+   cd ${SRC_DIR}/qserv/admin/tools/docker
+   3_build-tagged-image.sh <git-tag/branch>
+   # Current Qserv version will have eups tag named qserv-dev 
    
+Create Qserv master and worker images from a given Qserv version:
+
+.. code-block:: bash
+
+   # Code need to be pushed on github
+   # eups tag named qserv-dev will be used to setup Qserv version 
+   cd ${SRC_DIR}/qserv/admin/tools/docker
+   3_build-tagged-image.sh <docker-image-name> 
+
 *********
 Use cases
 *********
@@ -41,6 +69,17 @@ Run mono-node integration test against latest Qserv release:
 
 Develop and test 
 ================
+
+Create Qserv image for a developer workstation:
+
+.. code-block:: bash
+
+   cd ${SRC_DIR}/qserv/admin/tools/docker
+   build-work-image.sh
+   # change uid in image so that it match host user id
+   # in order to mount rw user source code in container
+   change-uid.sh
+   
 
 Set uid in qserv:dev w.r.t your host machine user account. This creates a qserv:dev-uid image which can mount host source code in a container with correct permissions. 
 Host might be a development machine or a continuous integration server.
@@ -62,19 +101,6 @@ source and run directory located on a development machine.
    fjammes/qserv:dev-uid \
    /bin/sh -c "/home/dev/scripts/build.sh && /qserv/scripts/mono-node-test.sh"
 
-Create images for cluster deploiment 
-====================================
-
-Create two Qserv images
-
-- qserv:laster-master: Instance of Qserv latest release configured as master
-- qserv:laster-worker: Instance of Qserv latest release configured as worker
-
-.. code-block:: bash
-
-   cd ${SRC_DIR}/qserv/admin/tools/docker
-   ./build-configured-images.sh
- 
 ***************
 Useful commands
 ***************

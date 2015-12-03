@@ -25,63 +25,57 @@
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+set -x
+
 
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host
+  Usage: $(basename "$0") [options] git-tag 
 
   Available options:
     -h          this message
 
-  Create docker images containing Qserv master and worker instances,
+  Create a docker image from using a git-tagged Qserv version 
   use a Docker image containing latest Qserv stack as input.
-  Qserv master fqdn must be provided as unique argument.
 
-  Once completed, run an interactive session on this container with:
-  docker run -i --hostname="qserv-host" -t "fjammes/qserv:<VERSION>" /bin/bash
 EOD
 }
 
 # Get the options
-while getopts hi: c ; do
+while getopts h c ; do
     case $c in
             h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 1 ] ; then
     usage
     exit 2
 fi
 
-MASTER=$1
+GIT_TAG=$1
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-DOCKERDIR="$DIR/cfg"
+DOCKERDIR="$DIR/tagged"
 
-# Build the master image
 
-sed 's/{{NODE_TYPE_OPT}}/-m/g' cfg/Dockerfile.tpl | \
-    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
+# Build the image
 
-VERSION=master-${MASTER}
-TAG="fjammes/qserv:$VERSION"
+TIMESTAMP=$(date --utc)
+DOCKERFILE="$DOCKERDIR/Dockerfile"
+cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
+sed -i "s%{{GIT_TAG_OPT}}%${GIT_TAG}%g" "$DOCKERFILE"
+# Force the build of the branch by changing timestamp
+sed -i "s%{{TIMESTAMP}}%${TIMESTAMP}%g" "$DOCKERFILE"
+
+# Docker tag must not contain '/'
+VERSION=$(echo "$GIT_TAG" | tr '/' '_')
+TAG="qserv/qserv:$VERSION"
 printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-
-printf "Image %s built successfully\n" "$TAG"
-
-# Build the worker image
-
-sed 's/{{NODE_TYPE_OPT}}//g' cfg/Dockerfile.tpl | \
-    sed "s/{{MASTER_FQDN_OPT}}/${MASTER}/g" > $DOCKERDIR/Dockerfile
-
-VERSION=worker-${MASTER}
-TAG="fjammes/qserv:$VERSION"
-printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
+docker push "$TAG"
 
 printf "Image %s built successfully\n" "$TAG"

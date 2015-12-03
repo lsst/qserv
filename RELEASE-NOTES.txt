@@ -1,3 +1,24 @@
+R E L E A S E   2015_11
+=======================
+
+Release highlights:
+ * Progress with Implementing Database & Table Mgmt
+ * Improvements to query cancellation code
+
+Code improvements:
+ * DM-4138: Re-implement packed keys in CSS
+ * DM-2622: Modify czar to support table deletion
+ * DM-2624: Implement DROP table in watcher
+ * DM-2625: Create service for managing watcher
+ * DM-3945: Simplify task queuing / Runner code
+ * DM-3563: Add unit tests to exercise new scheduler
+ * DM-3564: Integrate Qserv code with cancellation-friendly xrdssi
+ * DM-4395: Update cmsd configuration for multi-node tests
+
+Bug fixes:
+ * DM-4206: wmgr should delete database from inventory when dropping it
+ * DM-4398: Fix regexp for gcc48
+
 R E L E A S E   2015_10
 =======================
 
@@ -16,10 +37,6 @@ Code improvements:
  * DM-3192: Re-implement watcher based on new CSS implementation
  * DM-3574: Replace qservAdmin.py use with CssAccess
  * DM-4145: Reduce scons output in qserv
-
-New features:
-
-Bug fixes:
 
 Documentation improvements:
  * DM-3910: Run and document multi-node test with docker

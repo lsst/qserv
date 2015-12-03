@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 # LSST Data Management System
-# Copyright 2014-2015 LSST Corporation.
+# Copyright 2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,59 +20,52 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-
-# Configure Qserv on current node
+# Create Docker images containing Qserv master and worker instances
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+set -x
+
+
+DOCKER_NAMESPACE=qserv
 
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host
+  Usage: $(basename "$0") [options]
 
   Available options:
-    -h          this message
-    -m          configure Qserv master, instead of worker by default
+    -h              this message
+    -u namespace    Docker namespace which prefix image name,
+	                default to $DOCKER_NAMESPACE 
 
-  Configure a Qserv worker/master in a docker image. Qserv master fqdn
-  must be provided.
+  Create a docker image usable on a development workstation.
+  Use a Docker image containing cutting-edge Qserv dependencies as input.
+
 EOD
 }
 
-NODE_TYPE="worker"
-
-# get the options
-while getopts hm c ; do
+# Get the options
+while getopts hu: c ; do
     case $c in
             h) usage ; exit 0 ;;
-            m) NODE_TYPE="master" ;;
+            u) DOCKER_NAMESPACE="$OPTARG" ;;
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
-if [ $# -ne 1 ] ; then
+if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
 
-MASTER=$1
-
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. $DIR/params.sh
+DOCKERDIR="$DIR/work"
 
-echo "Configure Qserv $NODE_TYPE"
-qserv-configure.py --init --force \
-                   --qserv-run-dir $QSERV_RUN_DIR \
-                   --qserv-data-dir $QSERV_DATA_DIR
+TAG="$DOCKER_NAMESPACE/qserv:work"
+printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
 
-# Customize meta configuration file
-sed -i "s/node_type = mono/node_type = $NODE_TYPE/" \
-    $QSERV_RUN_DIR/qserv-meta.conf
-sed -i "s/master = 127.0.0.1/master = $MASTER/" \
-    $QSERV_RUN_DIR/qserv-meta.conf
-
-qserv-configure.py --qserv-run-dir $QSERV_RUN_DIR --force
-
+printf "Image %s built successfully\n" "$TAG"
