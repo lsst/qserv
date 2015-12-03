@@ -24,6 +24,7 @@
 #include "wsched/ChunkState.h"
 
 // System headers
+#include <iostream>
 #include <iterator>
 
 namespace lsst {

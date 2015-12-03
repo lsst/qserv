@@ -25,6 +25,7 @@
 #define LSST_QSERV_WBASE_SENDCHANNEL_H
 
 // System headers
+#include <functional>
 #include <memory>
 #include <string>
 #include <stdexcept>

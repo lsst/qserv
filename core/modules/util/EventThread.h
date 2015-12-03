@@ -153,7 +153,8 @@ protected:
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
 public:
     using Ptr = std::shared_ptr<ThreadPool>;
-    static ThreadPool::Ptr newThreadPool(uint thrdCount, CommandQueue::Ptr const& q) {
+    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
+                                         CommandQueue::Ptr const& q) {
         Ptr thp{new ThreadPool{thrdCount, q}}; // private constructor
         thp->_resize();
         return thp;
@@ -161,22 +162,22 @@ public:
     virtual ~ThreadPool();
 
     CommandQueue::Ptr getQueue() {return _q;}
-    uint getTargetThrdCount() {
+    unsigned int getTargetThrdCount() {
         std::lock_guard<std::mutex> lock(_countMutex);
         return _targetThrdCount;
     }
-    uint size() {
+    unsigned int size() {
         std::lock_guard<std::mutex> lock(_poolMutex);
         return _pool.size();
     }
 
     void waitForResize(int millisecs);
     void endAll() { resize(0); }
-    void resize(uint targetThrdCount);
+    void resize(unsigned int targetThrdCount);
     PoolEventThread::Ptr release(PoolEventThread *thread);
 
 protected:
-    ThreadPool(uint thrdCount, CommandQueue::Ptr const& q) : _targetThrdCount{thrdCount}, _q{q} {
+    ThreadPool(unsigned int thrdCount, CommandQueue::Ptr const& q) : _targetThrdCount{thrdCount}, _q{q} {
         if (_q == nullptr) {
             _q = std::make_shared<CommandQueue>();
         }
@@ -185,7 +186,7 @@ protected:
 
     std::mutex _poolMutex; ///< Protects _pool
     std::vector<std::shared_ptr<PoolEventThread>> _pool; ///< All the threads in our pool.
-    uint _targetThrdCount{0}; ///< How many threads we want to have.
+    unsigned int _targetThrdCount{0}; ///< How many threads we want to have.
     std::mutex _countMutex; ///< protects _targetThrdCount
     std::condition_variable _countCV; ///< Notifies about changes to _pool size, uses _countMutex.
     CommandQueue::Ptr _q; ///< The queue used by all threads in the _pool.
