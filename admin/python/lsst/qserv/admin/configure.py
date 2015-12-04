@@ -37,7 +37,6 @@ import os
 import random
 import sys
 import string
-from twisted.python.procutils import which
 
 # ----------------------------
 # Imports for other modules --
@@ -205,11 +204,14 @@ def _get_template_params():
             _LOG.fatal("sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
             sys.exit(1)
 
-        python_bin_list = which("python")
-        if python_bin_list:
-            python_bin = python_bin_list[0]
-        else:
-            python_bin = "NOT-AVAILABLE"
+        # find python executable in $PATH
+        python_bin = "NOT-AVAILABLE"
+        path = os.environ.get('PATH', '')
+        for p in path.split(os.pathsep):
+            python = os.path.join(p, 'python')
+            if os.access(p, os.X_OK):
+                python_bin = python
+                break
 
         params_dict = {
         'COMMENT_MONO_NODE' : comment_mono_node,

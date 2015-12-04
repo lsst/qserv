@@ -27,8 +27,6 @@ extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
-detect.checkTwisted()
-
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
 # about different environments used to build files in shared components.
