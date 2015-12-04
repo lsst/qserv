@@ -227,7 +227,6 @@ def _get_template_params():
         'QSERV_LOG_DIR': config['qserv']['log_dir'],
         'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
         'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
-        'QSERV_RPC_PORT': config['qserv']['rpc_port'],
         'QSERV_USER': config['qserv']['user'],
         'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
         'LUA_DIR': os.path.join(config['lua']['base_dir']),

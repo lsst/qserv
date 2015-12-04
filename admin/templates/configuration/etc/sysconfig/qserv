@@ -13,8 +13,6 @@ QSERV_PID_DIR={{QSERV_PID_DIR}}
 QSERV_LOG_DIR={{QSERV_LOG_DIR}}
 # used by mysqld, mysql-proxy
 QSERV_UNIX_USER={{QSERV_UNIX_USER}}
-# used by mysql-proxy
-QSERV_RPC_PORT={{QSERV_RPC_PORT}}
 # used by xrootd
 NODE_TYPE={{NODE_TYPE}}
 MYSQLD_SOCK={{MYSQLD_SOCK}}
