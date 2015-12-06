@@ -25,6 +25,8 @@
 
 // System headers
 #include <cstdlib>
+#include <mutex>
+#include <stdexcept>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -41,8 +43,11 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.proxy.czarProxy");
 
-// return czar instance, hints may be used only for the first call
-lsst::qserv::czar::Czar& czarInstance(std::map<std::string, std::string> const& hints);
+std::shared_ptr<lsst::qserv::czar::Czar> _czar;
+
+// mutex is used for czar initialization only which could potentially
+// happen simultaneously from several threads.
+std::mutex _czarMutex;
 
 }
 
@@ -50,18 +55,53 @@ namespace lsst {
 namespace qserv {
 namespace proxy {
 
+void
+initCzar(std::string const& czarName) {
+
+    std::lock_guard<std::mutex> lock(_czarMutex);
+
+    // ignore repeated calls (they are hard to filter on mysql-proxy side)
+    if (::_czar) {
+        return;
+    }
+
+    // Find QSERV_CONFIG envvar value
+    auto qConfig = std::getenv("QSERV_CONFIG");
+    if (not qConfig or *qConfig == '\0') {
+        throw std::runtime_error("QSERV_CONFIG is not defined");
+    }
+
+    // get czar name from parameter, QSERV_CZAR_NAME can override
+    std::string name;
+    auto qName = std::getenv("QSERV_CZAR_NAME");
+    if (qName and *qName != '\0') {
+        name = qName;
+    } else {
+        name = czarName;
+        if (name.empty()) {
+            // if still unknown generate something ~unique
+            name = "czar." + std::to_string(getpid());
+        }
+    }
+
+    ::_czar = std::make_shared<lsst::qserv::czar::Czar>(qConfig, name);
+}
+
 // Constructors
 std::vector<std::string>
 submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {
-    return czarInstance(hints).submitQuery(query, hints);
+    if (not ::_czar) {
+        throw std::runtime_error("czarProxy/submitQuery(): czar instance not initialized");
+    }
+    return ::_czar->submitQuery(query, hints);
 }
 
 std::string
 killQuery(std::string const& query, std::string const& clientId) {
-    static std::map<std::string, std::string> const hints{
-        std::make_pair("client_dst_name", clientId)
-    };
-    return czarInstance(hints).killQuery(query, clientId);
+    if (not ::_czar) {
+        throw std::runtime_error("czarProxy/killQuery(): czar instance not initialized");
+    }
+    return ::_czar->killQuery(query, clientId);
 }
 
 void log(std::string const& loggername, std::string const& level,
@@ -73,37 +113,3 @@ void log(std::string const& loggername, std::string const& level,
 
 
 }}} // namespace lsst::qserv::proxy
-
-namespace {
-
-std::string qservConfig() {
-    auto qConfig = std::getenv("QSERV_CONFIG");
-    if (not qConfig or *qConfig == '\0') {
-        throw std::runtime_error("QSERV_CONFIG is not defined");
-    }
-    return qConfig;
-}
-
-std::string czarName(std::map<std::string, std::string> const& hints) {
-    // get czar name from hints, QSERV_CZAR_NAME can override
-    auto qName = std::getenv("QSERV_CZAR_NAME");
-    if (qName and *qName != '\0') {
-        return qName;
-    }
-    auto iter = hints.find("client_dst_name");
-    if (iter != hints.end()) {
-        // use proxy client id (which includes host name and port number of the
-        // proxy-side client connection)
-        return iter->second;
-    } else {
-        return "czar." + std::to_string(getpid());
-    }
-}
-
-lsst::qserv::czar::Czar&
-czarInstance(std::map<std::string, std::string> const& hints) {
-    static lsst::qserv::czar::Czar czar(qservConfig(), czarName(hints));
-    return czar;
-}
-
-}

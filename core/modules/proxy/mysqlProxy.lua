@@ -15,6 +15,7 @@ ERR_AND_EXPECTED   = -4001
 ERR_BAD_ARG        = -4002
 ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
+ERR_CZAR_EXCEPTION = -4005
 ERR_BAD_RES_TNAME  = -4006
 ERR_QSERV_GENERIC  = -4100
 ERR_QSERV_PARSE    = -4110
@@ -286,9 +287,26 @@ function queryProcessing()
 
     local self = { msgTableName = nil,
                    resultTableName = nil,
-                   orderByClause = nil }
+                   orderByClause = nil,
+                   initialized = false }
 
     ---------------------------------------------------------------------------
+
+    local initializeCzar = function()
+
+        if (not self.initialized) then
+            -- use proxy.connection.client.dst.name as czar name
+            local czarName = proxy.connection.client.dst.name
+            local ok, msg = pcall(czarProxy.initCzar, czarName)
+            czarProxy.log("mysql-proxy", "INFO", "Initializing czar using name '" .. czarName .. "'")
+            if (not ok) then
+                return err.set(ERR_CZAR_EXCEPTION, "Exception in call to czar method: " .. msg)
+            end
+            self.initialized = true
+        end
+        return 0
+
+    end
 
     -- q  - original query
     -- qU - original query but all uppercase
@@ -313,7 +331,10 @@ function queryProcessing()
         czarProxy.log("mysql-proxy", "INFO", "Passing hints: " .. hintsToPassStr)
 
         -- send query to czar
-        local res = czarProxy.submitQuery(queryToPassStr, hintsToPassArr)
+        local ok, res = pcall(czarProxy.submitQuery, queryToPassStr, hintsToPassArr)
+        if (not ok) then
+            return err.set(ERR_CZAR_EXCEPTION, "Exception in call to czar method: " .. res)
+        end
 
         local qservError = res[1]
         if qservError and qservError ~= "" then
@@ -366,7 +387,10 @@ function queryProcessing()
         -- that the server can differentiate among clients and kill
         -- the right query.
         czarProxy.log("mysql-proxy", "INFO", "Killing query/connection: " .. q)
-        czarProxy.killQuery(qU, proxy.connection.client.dst.name)
+        local ok, msg = pcall(czarProxy.killQuery, qU, proxy.connection.client.dst.name)
+        if (not ok) then
+            return err.set(ERR_CZAR_EXCEPTION, "Exception in call to czar method: " .. msg)
+        end
 
         -- Assemble result
         proxy.response.type = proxy.MYSQLD_PACKET_OK
@@ -411,6 +435,7 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     return {
+        initializeCzar = initializeCzar,
         sendToQserv = sendToQserv,
         killQservQuery = killQservQuery,
         processLocally = processLocally,
@@ -429,6 +454,12 @@ qProc = queryProcessing()
 
 function read_query(packet)
     if string.byte(packet) == proxy.COM_QUERY then
+
+        -- do one-time czar initialization
+        if (qProc.initializeCzar() < 0) then
+            return err.send()
+        end
+
         czarProxy.log("mysql-proxy", "INFO", "Intercepted: " .. string.sub(packet, 2))
 
         -- massage the query string to simplify its processing

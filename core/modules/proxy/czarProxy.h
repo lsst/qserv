@@ -46,6 +46,19 @@ namespace proxy {
  */
 
 /**
+ *  One-time czar initialization.
+ *
+ *  This method can be called many times, all other calls excepts first
+ *  are ignored.
+ *
+ *  @param czarName: name for czar instance, can be overriden via
+ *                   QSERV_CZAR_NAME, if this parameter is empty and
+ *                   QSERV_CZAR_NAME is not set then name is set to
+ *                   "czar.$PID".
+ */
+void initCzar(std::string const& czarName);
+
+/**
  *  Returns list of strings:
  *  [0] error message, empty if all is fine
  *  [1] result table name

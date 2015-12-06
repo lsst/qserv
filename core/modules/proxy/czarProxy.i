@@ -86,4 +86,13 @@
     $3 = ar.currentline;
 }
 
+%exception {
+    try {
+        $action
+    } catch (std::exception const& exc) {
+        lua_pushstring(L, exc.what());
+        SWIG_fail;
+    }
+}
+
 %include "proxy/czarProxy.h"
