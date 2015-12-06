@@ -87,8 +87,7 @@ initCzar(std::string const& czarName) {
     ::_czar = std::make_shared<lsst::qserv::czar::Czar>(qConfig, name);
 }
 
-// Constructors
-std::vector<std::string>
+czar::SubmitResult
 submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {
     if (not ::_czar) {
         throw std::runtime_error("czarProxy/submitQuery(): czar instance not initialized");

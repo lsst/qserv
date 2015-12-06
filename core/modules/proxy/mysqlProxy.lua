@@ -336,17 +336,14 @@ function queryProcessing()
             return err.set(ERR_CZAR_EXCEPTION, "Exception in call to czar method: " .. res)
         end
 
-        local qservError = res[1]
+        local qservError = res.errorMessage
         if qservError and qservError ~= "" then
            return err.set(ERR_QSERV_PARSE, "Query processing error: " .. qservError)
         end
 
-        self.resultTableName = res[2]
-        self.msgTableName = res[3]
-        self.orderByClause = ""
-        if res[4] then
-            self.orderByClause = res[4]
-        end
+        self.resultTableName = res.resultTable
+        self.msgTableName = res.messageTable
+        self.orderByClause = res.orderBy
 
         czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
                ", message: " .. self.msgTableName ..

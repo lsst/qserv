@@ -30,6 +30,7 @@
 // Third-party headers
 
 // Qserv headers
+#include "czar/SubmitResult.h"
 
 
 namespace lsst {
@@ -59,14 +60,15 @@ namespace proxy {
 void initCzar(std::string const& czarName);
 
 /**
- *  Returns list of strings:
- *  [0] error message, empty if all is fine
- *  [1] result table name
- *  [2] message table name
- *  [3] order by clause (optional)
+ * Submit query for execution.
+ *
+ * @param query: Query text.
+ * @param hints: Optional query hints, default database name should be
+ *               provided as "db" key.
+ * @return Structure with info about submitted query.
  */
-std::vector<std::string> submitQuery(std::string const& query,
-                                     std::map<std::string, std::string> const& hints);
+czar::SubmitResult submitQuery(std::string const& query,
+                               std::map<std::string, std::string> const& hints);
 
 /**
  * Process a kill query command (experimental).

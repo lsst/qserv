@@ -95,4 +95,5 @@
     }
 }
 
+%include "czar/SubmitResult.h"
 %include "proxy/czarProxy.h"

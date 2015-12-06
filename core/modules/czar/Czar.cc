@@ -84,7 +84,7 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     _uqFactory.reset(new ccontrol::UserQueryFactory(_config, _czarName));
 }
 
-std::vector<std::string>
+SubmitResult
 Czar::submitQuery(std::string const& query,
                   std::map<std::string, std::string> const& hints) {
 
@@ -117,14 +117,14 @@ Czar::submitQuery(std::string const& query,
     std::string const resultName = _resultConfig.dbName + ".result_" + userQueryIdStr;
     std::string const lockName = _resultConfig.dbName + ".message_" + userQueryIdStr;
 
-    std::vector<std::string> result(4);
+    SubmitResult result;
 
     // instantiate message table manager
     MessageTable msgTable(lockName, _resultConfig);
     try {
         msgTable.lock();
     } catch (std::exception const& exc) {
-        result[0] = exc.what();
+        result.errorMessage = exc.what();
         return result;
     }
 
@@ -140,7 +140,7 @@ Czar::submitQuery(std::string const& query,
     // check for errors
     auto error = uq->getError();
     if (not error.empty()) {
-        result[0] = "Failed to instantiate query: " + error;
+        result.errorMessage = "Failed to instantiate query: " + error;
         return result;
     }
 
@@ -187,10 +187,12 @@ Czar::submitQuery(std::string const& query,
     }
 
     // return all info to caller
-    result[1] = resultName;
-    result[2] = lockName;
-    result[3] = uq->getProxyOrderBy();
-    LOGF(_log, LOG_LVL_DEBUG, "returning result to proxy: %s" % util::printable(result));
+    result.resultTable = resultName;
+    result.messageTable = lockName;
+    result.orderBy = uq->getProxyOrderBy();
+    LOGF(_log, LOG_LVL_DEBUG, "returning result to proxy: resultTable=%s messageTable=%s orderBy=%s"
+         % result.resultTable % result.messageTable % result.orderBy);
+
     return result;
 }
 

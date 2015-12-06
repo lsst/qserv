@@ -36,6 +36,7 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
+#include "czar/SubmitResult.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 
@@ -70,18 +71,13 @@ public:
     /**
      * Submit query for execution.
      *
-     * Returns list of strings:
-     *  [0] error message, empty if all is fine
-     *  [1] result table name
-     *  [2] message table name
-     *  [3] order by clause (optional)
-     *
      * @param query: Query text.
      * @param hints: Optional query hints, default database name should be
      *               provided as "db" key.
+     * @return Structure with info about submitted query.
      */
-    std::vector<std::string> submitQuery(std::string const& query,
-                                         std::map<std::string, std::string> const& hints);
+    SubmitResult submitQuery(std::string const& query,
+                             std::map<std::string, std::string> const& hints);
 
     /**
      * Process a kill query command (experimental).
