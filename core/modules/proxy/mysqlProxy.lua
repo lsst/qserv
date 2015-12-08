@@ -553,7 +553,7 @@ function read_query_result(inj)
         for row in inj.resultset.rows do
             i = i + 1
             if (i > 32) then
-                czarProxy.log("mysql-proxy", "DEBUG", "   ... rest is not shown")
+                czarProxy.log("mysql-proxy", "DEBUG", " ... rest is not shown")
                 break
             end
             czarProxy.log("mysql-proxy", "DEBUG", "   " .. row[1])

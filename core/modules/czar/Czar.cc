@@ -328,4 +328,4 @@ mysqlConfig(lsst::qserv::StringMap const& config) {
     return mysqlConfig;
 }
 
-}
+} // namespace

@@ -35,8 +35,8 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuery.h"
 #include "czar/CzarErrors.h"
-#include "sql/SqlConnection.h"
 #include "qdisp/MessageStore.h"
+#include "sql/SqlConnection.h"
 
 namespace {
 
