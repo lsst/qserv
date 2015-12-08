@@ -17,18 +17,18 @@ Access to the qmeta classes
 
 %include typemaps.i
 %include cstring.i
+%include stdint.i
 %include "std_map.i"
 %include "std_shared_ptr.i"
 %include "std_string.i"
 %include "std_vector.i"
 
-// we need few types from stdint.h but SWIG provides incorrect typedef
-// for 64-bit types in its stdint.i so we cannot use that, need some manual defs
+// swig is missing typedefs for <cstdint>
 namespace std {
-typedef int                     int32_t;
-typedef long int                int64_t;
-typedef unsigned int            uint32_t;
-typedef unsigned long int       uint64_t;
+typedef ::int32_t  int32_t;
+typedef ::int64_t  int64_t;
+typedef ::uint32_t uint32_t;
+typedef ::uint64_t uint64_t;
 }
 
 // Instantiate types

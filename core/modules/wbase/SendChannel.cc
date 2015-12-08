@@ -23,6 +23,7 @@
 #include "wbase/SendChannel.h"
 
 // System headers
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <unistd.h>

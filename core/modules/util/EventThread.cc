@@ -109,7 +109,7 @@ PoolEventThread::Ptr ThreadPool::release(PoolEventThread *thrd) {
 }
 
 /// Change the size of the thread pool.
-void ThreadPool::resize(uint targetThrdCount) {
+void ThreadPool::resize(unsigned int targetThrdCount) {
     {
         std::lock_guard<std::mutex> lock(_countMutex);
         _targetThrdCount = targetThrdCount;

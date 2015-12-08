@@ -114,6 +114,12 @@ def generate(env):
 
         env.Append(LINKFLAGS=["-pthread"])
 
+        # SWIG handling of stdint.h types is broken by default and
+        # needs special flag to workaround inconsistent typedefs.
+        # This currently only applies to Linux, looks like clang/OSX
+        # works as expected
+        env['SWIGCOM'] = '$SWIG -DSWIGWORDSIZE64 -o $TARGET ${_SWIGOUTDIR} ${_SWIGINCFLAGS} $SWIGFLAGS $SOURCES'
+
     else:
 
         raise SCons.Errors.StopError('Unsupported platform or toolchain: %s/%s' % (platform, toolchain))
