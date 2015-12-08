@@ -37,7 +37,6 @@ import os
 import random
 import sys
 import string
-from twisted.python.procutils import which
 
 # ----------------------------
 # Imports for other modules --
@@ -205,11 +204,14 @@ def _get_template_params():
             _LOG.fatal("sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
             sys.exit(1)
 
-        python_bin_list = which("python")
-        if python_bin_list:
-            python_bin = python_bin_list[0]
-        else:
-            python_bin = "NOT-AVAILABLE"
+        # find python executable in $PATH
+        python_bin = "NOT-AVAILABLE"
+        path = os.environ.get('PATH', '')
+        for p in path.split(os.pathsep):
+            python = os.path.join(p, 'python')
+            if os.access(p, os.X_OK):
+                python_bin = python
+                break
 
         params_dict = {
         'COMMENT_MONO_NODE' : comment_mono_node,
@@ -225,7 +227,6 @@ def _get_template_params():
         'QSERV_LOG_DIR': config['qserv']['log_dir'],
         'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
         'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
-        'QSERV_RPC_PORT': config['qserv']['rpc_port'],
         'QSERV_USER': config['qserv']['user'],
         'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
         'LUA_DIR': os.path.join(config['lua']['base_dir']),

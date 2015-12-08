@@ -27,8 +27,6 @@ extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
-detect.checkTwisted()
-
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
 # about different environments used to build files in shared components.
@@ -66,19 +64,12 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                            'distDir' : 'lib'
                            },
 
-               "_czarLib" : {'mods' : """ccontrol czar global
-                                         log
-                                         parser proto
-                                         qana qdisp qproc query
-                                         rproc sg""".split(),
+               "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana
+                                          query qdisp qproc rproc sg""".split(),
                              'shmods' : ['css'],
-                             'libs' : """ssl crypto antlr log
-                                      mysqlclient_r protobuf
-                                      XrdClient XrdPosix XrdSsi XrdUtils
-                                      boost_regex boost_thread boost_system
-                                      boost_signals""".split(),
+                             'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : pyDistRelative(env,"czar")},
+                               'distDir' : 'proxy'},
 
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
@@ -168,7 +159,7 @@ def findLibs(libList):
     return map(cheapCheckLib, libList)
 
 def makeSharedObjectCC(env, ccFile):
-    if str(ccFile).endswith(".cc"): return env.SharedObject(ccFile)[0]
+    if str(ccFile).endswith((".cc", ".cpp")): return env.SharedObject(ccFile)[0]
     else: return ccFile
 
 def getTests(env, mName):

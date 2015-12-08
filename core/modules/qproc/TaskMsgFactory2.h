@@ -55,7 +55,7 @@ class ChunkQuerySpec;
 /// latency).
 class TaskMsgFactory2 {
 public:
-    TaskMsgFactory2(int session);
+    TaskMsgFactory2(uint64_t session);
 
     /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s,

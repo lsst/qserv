@@ -283,17 +283,6 @@ def importCustom(env, extraTgts):
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", [])
     return None
 
-def checkTwisted():
-    try:
-        import twisted.internet
-    except ImportError, e:
-        state.log.fail("Missing Twisted python library.\n" +
-                        "Check that Twisted is configured for Qserv Czar startup.")
-        return False
-    else:
-        state.log.info("Twisted python library found")
-        return True
-
 def checkGeom():
     try:
         import lsst.geom.geometry

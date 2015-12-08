@@ -76,13 +76,13 @@ public:
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
 
-    void setSessionId(int session) { _sessionId = session; }
+    /// @return ORDER BY part of SELECT statement to be executed by proxy
+    virtual std::string getProxyOrderBy() override { return std::string(); }
 
 private:
 
     std::string const _message;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-    int _sessionId; ///< External reference number
 
 };
 

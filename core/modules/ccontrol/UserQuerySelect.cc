@@ -146,11 +146,12 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  qmeta::CzarId czarId,
+                                 uint64_t userQueryId,
                                  std::string const& errorExtra)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _submitted(false), _sessionId(0), _sequence(0),
+       _killed(false), _submitted(false), _userQueryId(userQueryId), _sequence(0),
        _errorExtra(errorExtra) {
 }
 
@@ -162,7 +163,7 @@ std::string UserQuerySelect::getError() const {
 
 /// Attempt to kill in progress.
 void UserQuerySelect::kill() {
-    LOGF_INFO("UserQuerySelect kill");
+    LOG(getLogger(), LOG_LVL_INFO, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
     if(!_killed) {
         _killed = true;
@@ -185,6 +186,11 @@ void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
     }
 }
 
+std::string
+UserQuerySelect::getProxyOrderBy() {
+    return _qSession->getProxyOrderBy();
+}
+
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
     _qSession->finalize();
@@ -195,8 +201,8 @@ void UserQuerySelect::submit() {
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    qproc::TaskMsgFactory2 f(_sessionId);
-    TmpTableName ttn(_sessionId, _qSession->getOriginal());
+    qproc::TaskMsgFactory2 f(_userQueryId);
+    TmpTableName ttn(_userQueryId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
     LOG(getLogger(), LOG_LVL_INFO, "UserQuerySelect beginning submission");
@@ -287,7 +293,7 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGF_INFO("Discarded UserQuerySelect(%1%)" % _sessionId);
+    LOGF(getLogger(), LOG_LVL_INFO, "Discarded UserQuerySelect(%1%)" % _userQueryId);
 }
 
 /// Setup merger (for results handling and aggregation)
