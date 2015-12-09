@@ -35,8 +35,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/ConfigMap.h"
 #include "ccontrol/ConfigError.h"
+#include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQueryDropTable.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQuerySelect.h"

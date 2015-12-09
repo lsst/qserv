@@ -66,10 +66,10 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
 
                "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana
                                           query qdisp qproc rproc sg""".split(),
-                             'shmods' : ['css'],
-                             'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
-                               'SHLIBPREFIX' : '',
-                               'distDir' : 'proxy'},
+                              'shmods' : ['css'],
+                              'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
+                              'SHLIBPREFIX' : '',
+                              'distDir' : 'proxy'},
 
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
@@ -84,7 +84,6 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                               'extraSrcs' : ['qmeta'],
                               'SHLIBPREFIX' : '',
                               'distDir' : pyDistRelative(env, "qmeta")},
-
                }
 
 # external libs for shmods

@@ -42,8 +42,8 @@
 #include "lsst/log/Log.h"
 
 // Local headers
-#include "global/stringTypes.h"
 #include "ccontrol/UserQuery.h"
+#include "global/stringTypes.h"
 
 namespace lsst {
 namespace qserv {

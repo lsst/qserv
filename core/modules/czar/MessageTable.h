@@ -23,8 +23,8 @@
 #define LSST_QSERV_CZAR_MESSAGETABLE_H
 
 // System headers
-#include <string>
 #include <memory>
+#include <string>
 
 // Third-party headers
 
