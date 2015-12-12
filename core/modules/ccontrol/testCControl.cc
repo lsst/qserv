@@ -91,6 +91,41 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         BOOST_CHECK(not UserQueryType::isDropTable(test, db, table));
     }
 
+    struct {
+        const char* query;
+        const char* db;
+    } drop_db_ok[] = {
+        {"DROP DATABASE DB", "DB"},
+        {"DROP SCHEMA DB ", "DB"},
+        {"DROP DATABASE DB;", "DB"},
+        {"DROP SCHEMA DB ; ", "DB"},
+        {"DROP DATABASE `DB` ", "DB"},
+        {"DROP SCHEMA \"DB\"", "DB"},
+        {"drop\tdatabase\nd_b ;", "d_b"}
+    };
+    for (auto test: drop_db_ok) {
+        std::string db;
+        BOOST_CHECK(UserQueryType::isDropDb(test.query, db));
+        BOOST_CHECK_EQUAL(db, test.db);
+    }
+
+    const char* drop_db_fail[] = {
+        "DROP TABLE DB",
+        "DROP DB",
+        "DROP DATABASE",
+        "DROP DATABASE DB;;",
+        "DROP SCHEMA DB; DROP IT;",
+        "DROP SCHEMA DB.TABLE",
+        "DROP SCHEMA 'DB'",
+        "DROP DATABASE db%",
+        "UNDROP DATABASE X",
+        "UN DROP DATABASE X"
+    };
+    for (auto test: drop_db_fail) {
+        std::string db;
+        BOOST_CHECK(not UserQueryType::isDropDb(test, db));
+    }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

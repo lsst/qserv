@@ -40,18 +40,13 @@ namespace ccontrol {
  *  @ingroup ccontrol
  *
  *  @brief Helper class for parsing queries and determining their types.
- *
- *  The first sentence is a brief summary of what the class is for. It is 
- *  followed by more detailed information about how to use the class. 
- *  This doc comment must immediately precede the class definition.
- *
- *  Additional paragraphs with more details may follow; separate paragraphs
- *  with a blank line. The last paragraph before the tags (preceded by @) 
- *  should be the identification and copyright, as below.
  */
 
 class UserQueryType  {
 public:
+
+    /// Returns true if query is DROP DATABASE
+    static bool isDropDb(std::string const& query, std::string& dbName);
 
     /// Returns true if query is DROP TABLE
     static bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName);

@@ -37,6 +37,12 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
 
+// regex for DROP {DATABASE|SCHEMA} dbname; db name can be in quotes;
+// db name will be in group 3.
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _dropDbRe(R"(^drop\s+(database|schema)\s+(["`]?)(\w+)\2\s*;?\s*$)",
+                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 // regex for DROP TABLE [dbname.]table; both table and db names can be in quotes;
 // db name will be in group 3, table name in group 5.
 // Note that parens around whole string are not part of the regex but raw string literal
@@ -53,6 +59,19 @@ boost::regex _selectRe(R"(^select\s+.+$)",
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+
+/// Returns true if query is DROP DATABASE
+bool
+UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
+    LOGF(_log, LOG_LVL_DEBUG, "isDropDb: %s" % query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _dropDbRe);
+    if (match) {
+        dbName = sm.str(3);
+        LOGF(_log, LOG_LVL_DEBUG, "isDropDb: match: %s" % dbName);
+    }
+    return match;
+}
 
 /// Returns true if query is DROP TABLE
 bool

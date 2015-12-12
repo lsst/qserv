@@ -37,7 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
-#include "ccontrol/UserQueryDropTable.h"
+#include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
@@ -137,10 +137,17 @@ UserQueryFactory::newUserQuery(std::string const& query,
         if (dbName.empty()) {
             dbName = defaultDb;
         }
-        auto uq = std::make_shared<UserQueryDropTable>(_impl->css, dbName, tableName,
-                                                       _impl->resultDbConn.get(), resultTable,
-                                                       _impl->queryMetadata, _impl->qMetaCzarId);
-        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDropTable: %s.%s" % dbName % tableName);
+        auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, tableName,
+                                                  _impl->resultDbConn.get(), resultTable,
+                                                  _impl->queryMetadata, _impl->qMetaCzarId);
+        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDrop: %s.%s" % dbName % tableName);
+        return uq;
+    } else if (UserQueryType::isDropDb(query, dbName)) {
+        // processing DROP DATABASE
+        auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, std::string(),
+                                                  _impl->resultDbConn.get(), resultTable,
+                                                  _impl->queryMetadata, _impl->qMetaCzarId);
+        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=%s" % dbName);
         return uq;
     } else {
         // something that we don't recognize

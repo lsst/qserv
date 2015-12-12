@@ -392,7 +392,7 @@ class Watcher(object):
         finally:
             if status is True:
                 # update CSS
-                _LOG.info('Drop database %s.%s from CSS', dbName, tableName)
+                _LOG.info('Drop table %s.%s from CSS', dbName, tableName)
                 self.wcss.dropTable(dbName, tableName)
             elif status is not None:
                 _LOG.info('Set CSS status for table %s.%s = %s', dbName, tableName, status)

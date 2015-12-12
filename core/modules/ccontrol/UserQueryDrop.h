@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_USERQUERYDROPTABLE_H
-#define LSST_QSERV_CCONTROL_USERQUERYDROPTABLE_H
+#ifndef LSST_QSERV_CCONTROL_USERQUERYDROP_H
+#define LSST_QSERV_CCONTROL_USERQUERYDROP_H
 
 // System headers
 #include <memory>
@@ -52,29 +52,30 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-/// UserQueryDropTable : implementation of the UserQuery for regular SELECT statements.
-class UserQueryDropTable : public UserQuery {
+/// UserQueryDrop : implementation of the UserQuery for DROP statements.
+class UserQueryDrop : public UserQuery {
 public:
 
     /**
      *  @param css:           CSS interface
-     *  @param dbName:        Name of the database where table is
-     *  @param tableName:     Name of the table to drop
+     *  @param dbName:        Name of the database
+     *  @param tableName:     Name of the table to drop, if empty then drop
+     *                        entire database
      *  @param resultDbConn:  Connection to results database
      *  @param resultTable:   Name of the table for query results
      *  @param queryMetadata: QMeta interface
      *  @param qMetaCzarId:   Czar ID in QMeta database
      */
-    UserQueryDropTable(std::shared_ptr<css::CssAccess> const& css,
-                       std::string const& dbName,
-                       std::string const& tableName,
-                       sql::SqlConnection* resultDbConn,
-                       std::string const& resultTable,
-                       std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                       qmeta::CzarId qMetaCzarId);
+    UserQueryDrop(std::shared_ptr<css::CssAccess> const& css,
+                  std::string const& dbName,
+                  std::string const& tableName,
+                  sql::SqlConnection* resultDbConn,
+                  std::string const& resultTable,
+                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
+                  qmeta::CzarId qMetaCzarId);
 
-    UserQueryDropTable(UserQueryDropTable const&) = delete;
-    UserQueryDropTable& operator=(UserQueryDropTable const&) = delete;
+    UserQueryDrop(UserQueryDrop const&) = delete;
+    UserQueryDrop& operator=(UserQueryDrop const&) = delete;
 
     // Accessors
 
@@ -104,6 +105,9 @@ public:
 
 private:
 
+    /// Check the status of item to be dropped
+    bool _checkStatus();
+
     std::shared_ptr<css::CssAccess> const _css;
     std::string const _dbName;
     std::string const _tableName;
@@ -119,4 +123,4 @@ private:
 
 }}} // namespace lsst::qserv:ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYDROPTABLE_H
+#endif // LSST_QSERV_CCONTROL_USERQUERYDROP_H
