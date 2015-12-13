@@ -126,8 +126,40 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         BOOST_CHECK(not UserQueryType::isDropDb(test, db));
     }
 
+    struct {
+        const char* query;
+        const char* db;
+    } flush_empty_ok[] = {
+        {"FLUSH QSERV_CHUNKS_CACHE", ""},
+        {"FLUSH QSERV_CHUNKS_CACHE\t ", ""},
+        {"FLUSH QSERV_CHUNKS_CACHE;", ""},
+        {"FLUSH QSERV_CHUNKS_CACHE ; ", ""},
+        {"FLUSH QSERV_CHUNKS_CACHE FOR DB", "DB"},
+        {"FLUSH QSERV_CHUNKS_CACHE FOR `DB`", "DB"},
+        {"FLUSH QSERV_CHUNKS_CACHE FOR \"DB\"", "DB"},
+        {"FLUSH QSERV_CHUNKS_CACHE FOR DB ; ", "DB"},
+        {"flush qserv_chunks_cache for `d_b`", "d_b"},
+        {"flush\nqserv_chunks_CACHE\tfor \t d_b", "d_b"},
+    };
+    for (auto test: flush_empty_ok) {
+        std::string db;
+        BOOST_CHECK(UserQueryType::isFlushChunksCache(test.query, db));
+        BOOST_CHECK_EQUAL(db, test.db);
+    }
+
+    const char* flush_empty_fail[] = {
+        "FLUSH QSERV CHUNKS CACHE",
+        "UNFLUSH QSERV_CHUNKS_CACHE",
+        "FLUSH QSERV_CHUNKS_CACHE DB",
+        "FLUSH QSERV_CHUNKS_CACHE FOR",
+        "FLUSH QSERV_CHUNKS_CACHE FROM DB",
+        "FLUSH QSERV_CHUNKS_CACHE FOR DB.TABLE",
+    };
+    for (auto test: flush_empty_fail) {
+        std::string db;
+        BOOST_CHECK(not UserQueryType::isFlushChunksCache(test, db));
+    }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-

@@ -31,6 +31,9 @@
 #include <functional>
 #include <memory>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/ConfigError.h"
 #include "global/stringUtil.h"
@@ -39,6 +42,8 @@ using lsst::qserv::ConfigError;
 using lsst::qserv::IntSet;
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.css.EmptyChunks");
 
 std::string
 makeFilename(std::string const& db) {
@@ -50,12 +55,15 @@ populate(std::string const& path,
          std::string const& fallbackFile,
          IntSet& s,
          std::string const& db) {
-    std::string best = path + "/" + makeFilename(db);
+    std::string const best = path + "/" + makeFilename(db);
+    std::string fileName = best;
     std::ifstream rawStream(best.c_str());
     if(!rawStream.good()) { // On error, try using default filename
         rawStream.close();
         rawStream.open(fallbackFile.c_str());
+        fileName = fallbackFile;
     }
+    LOGF(_log, LOG_LVL_DEBUG, "Reading empty chunks for db %s from file %s" % db % fileName);
     if(!rawStream.good()) {
         throw ConfigError("No such empty chunks file: " + best
                           + " or " + fallbackFile);
@@ -88,6 +96,17 @@ bool
 EmptyChunks::isEmpty(std::string const& db, int chunk) const {
     IntSetConstPtr s = getEmpty(db);
     return s->end() != s->find(chunk);
+}
+
+void
+EmptyChunks::clearCache(std::string const& db) const {
+    if (db.empty()) {
+        LOGF(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
+        _sets.clear();
+    } else {
+        LOGF(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for database %s" % db);
+        _sets.erase(db);
+    }
 }
 
 }}} // namespace lsst::qserv::css

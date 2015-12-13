@@ -245,7 +245,7 @@ function queryType()
     ---------------------------------------------------------------------------
 
     local isIgnored = function(qU)
-        -- SET is already in isLocal() so this laways returns false for now
+        -- SET is already in isLocal() so this always returns false for now
         if string.find(qU, "^SET ") then
             return true
         end
@@ -257,7 +257,7 @@ function queryType()
     local isNotSupported = function(qU)
         if string.find(qU, "^EXPLAIN ") or
            string.find(qU, "^GRANT ") or
-           string.find(qU, "^FLUSH ") then
+           (string.find(qU, "^FLUSH ") and not string.find(qU, "^FLUSH QSERV")) then
             err.set(ERR_NOT_SUPPORTED,
                     "Sorry, this type of queries is not supported in DC3b.")
             return true

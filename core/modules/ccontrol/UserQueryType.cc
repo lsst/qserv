@@ -54,6 +54,12 @@ boost::regex _dropTableRe(R"(^drop\s+table\s+((["`]?)(\w+)\2[.])?(["`]?)(\w+)\4\
 boost::regex _selectRe(R"(^select\s+.+$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
+// regex for FLUSH QSERV_CHUNKS_CACHE [FOR database]
+// Note that parens around whole string are not part of the regex but raw string literal
+// db name will be in group 3.
+boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
+                           boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 }
 
 namespace lsst {
@@ -95,6 +101,19 @@ UserQueryType::isSelect(std::string const& query) {
     bool match = boost::regex_match(query, sm, _selectRe);
     if (match) {
         LOGF(_log, LOG_LVL_DEBUG, "isSelect: match");
+    }
+    return match;
+}
+
+/// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
+bool
+UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
+    LOGF(_log, LOG_LVL_DEBUG, "isFlushChunksCache: %s" % query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _flushEmptyRe);
+    if (match) {
+        dbName = sm.str(3);
+        LOGF(_log, LOG_LVL_DEBUG, "isFlushChunksCache: match: %s" % dbName);
     }
     return match;
 }
