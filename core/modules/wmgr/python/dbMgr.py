@@ -917,3 +917,46 @@ def getIndex(dbName, tblName, chunkId=None):
     _log.debug("retrieved %d index rows", len(result))
 
     return json.jsonify(result=dict(rows=result, description=descr))
+
+#
+# Resource /<dbName>/chunks represents sets of (non-empty) chunks in the
+# database. Currently this set is populated from "empty chunk list" file,
+# in the future it will likely be derived from other information such as
+# secondary index. Chunk set is cached in czar memory, when chunk set is
+# updated the cache needs to be reset.
+#
+# Currently we support only one operation on chunk set - resetting the cache
+# which is implemented via PUT method on /<dbName>/chunks/cache resource
+#
+
+@dbService.route('/<dbName>/chunks/cache', methods=['PUT'])
+def resetChunksCache(dbName):
+    """
+    Force czar to reset chunk cache.
+
+    This method only makes sense for czar wmgr, and unlike other methods it
+    interacts with czar (via mysql-proxy).
+    """
+
+    _log.debug('request: %s', request)
+    _log.debug('PUT => reset chunk cache')
+
+    # validate params
+    _validateDbName(dbName)
+
+    try:
+        dbConn = Config.instance().proxyConn()
+    except Exception as exc:
+        _log.error('Failed to connect to proxy: %s', exc)
+        raise ExceptionResponse(500, "ConnectFailed", "Failed to connect to qserv (mysql-proxy)", str(exc))
+
+    try:
+        cursor = dbConn.cursor()
+        query = "FLUSH QSERV_CHUNKS_CACHE FOR {}".format(dbName)
+        cursor.execute(query)
+    except Exception as exc:
+        _log.error('exception executing FLUSH QSERV_CHUNKS_CACHE: %s', exc)
+        raise ExceptionResponse(500, "FLushFailed", "FLUSH QSERV_CHUNKS_CACHE failed for database %s" % dbName,
+                                str(exc))
+
+    return json.jsonify(result=dict(status="OK"))

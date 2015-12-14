@@ -34,9 +34,16 @@ DB_PASSWD = ''
 DB_USER_PRIV = '{{MYSQLD_USER}}'
 DB_PASSWD_PRIV = '{{MYSQLD_PASS}}'
 
+# parameters for mysql-proxy connection, these are only useful
+# for czar wmgr instance
+PROXY_HOST = '127.0.0.1'
+PROXY_PORT = {{MYSQL_PROXY_PORT}}
+PROXY_USER = '{{QSERV_USER}}'
+PROXY_PASSWD = ''
+
 # CSS-related parameters
 # CSS_CONFIG is a dictionary as accepted by CssAccess.createFromConfig() method,
-# all values in a dictionary must bestrings even if represent numbers
+# all values in a dictionary must be strings even if they represent numbers
 USE_CSS = True
 CSS_CONFIG = {
     'technology': 'mysql',

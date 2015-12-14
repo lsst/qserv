@@ -38,6 +38,7 @@ import tempfile
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv import css
+import MySQLdb as sql
 
 #----------------------------------
 # Local non-exported definitions --
@@ -69,7 +70,7 @@ class Config(object):
         return Config._instance
 
     def __init__(self, appConfig):
-        """ Do not instanciate Config class directly, use init/instance methods """
+        """ Do not instantiate Config class directly, use init/instance methods """
         self.dbHost = appConfig.get('DB_HOST')
         self.dbPort = appConfig.get('DB_PORT')
         self.dbSocket = appConfig.get('DB_SOCKET')
@@ -79,6 +80,11 @@ class Config(object):
         # user/password for privileged account
         self.dbUserPriv = appConfig.get('DB_USER_PRIV')
         self.dbPasswdPriv = appConfig.get('DB_PASSWD_PRIV')
+        # parameters for mysql-proxy connection
+        self.proxyHost = appConfig.get('PROXY_HOST')
+        self.proxyPort = appConfig.get('PROXY_PORT')
+        self.proxyUser = appConfig.get('PROXY_USER')
+        self.proxyPasswd = appConfig.get('PROXY_PASSWD')
         # CSS connection info
         self.useCss = appConfig.get('USE_CSS', True)
         self.cssConfig = appConfig.get('CSS_CONFIG')
@@ -115,6 +121,22 @@ class Config(object):
         if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
         inst = getEngineFromArgs(**kwargs)
         return inst
+
+    def proxyConn(self):
+        """
+        Return mysql connection object for proxy.
+
+        Sqlalchemy drivers have trouble with qserv, so we have to limit
+        ourself to direct mysqldb.
+        """
+        kwargs = {}
+        if self.proxyHost: kwargs['host'] = self.proxyHost
+        if self.proxyPort: kwargs['port'] = self.proxyPort
+        if self.proxyUser: kwargs['user'] = self.proxyUser
+        _log.debug('creating new connection %s', kwargs)
+        if self.proxyPasswd: kwargs['passwd'] = self.proxyPasswd
+        conn = sql.connect(**kwargs)
+        return conn
 
     def cssAccess(self):
         """
