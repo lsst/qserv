@@ -76,7 +76,7 @@ public:
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::unique_ptr<sql::SqlConnection> resultDbConn;
-    qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
+    qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
 
 ////////////////////////////////////////////////////////////////////////
