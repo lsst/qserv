@@ -15,6 +15,7 @@ setupRequired(mysqlpython)
 setupRequired(partition)
 setupRequired(protobuf)
 setupRequired(scisql)
+setupRequired(sphgeom)
 setupRequired(swig)
 setupRequired(xrootd)
 

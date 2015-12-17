@@ -34,10 +34,10 @@
 #include <vector>
 
 // LSST headers
-#include "sg/Box.h"
-#include "sg/Circle.h"
-#include "sg/Ellipse.h"
-#include "sg/ConvexPolygon.h"
+#include "lsst/sphgeom/Box.h"
+#include "lsst/sphgeom/Circle.h"
+#include "lsst/sphgeom/Ellipse.h"
+#include "lsst/sphgeom/ConvexPolygon.h"
 
 // Qserv headers
 #include "css/StripingParams.h"
@@ -47,51 +47,51 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-inline std::shared_ptr<sg::Box>
+inline std::shared_ptr<lsst::sphgeom::Box>
 getBoxFromParams(std::vector<double> const& params) {
     if(params.size() != 4) {
         throw QueryProcessingError("Invalid number of parameters for box");
     }
-    return std::make_shared<sg::Box>(sg::Box::fromDegrees(params[0], params[1], params[2], params[3]));
+    return std::make_shared<lsst::sphgeom::Box>(lsst::sphgeom::Box::fromDegrees(params[0], params[1], params[2], params[3]));
 }
 
-inline std::shared_ptr<sg::Circle>
+inline std::shared_ptr<lsst::sphgeom::Circle>
 getCircleFromParams(std::vector<double> const& params) {
     // lon, lat radius_deg
     if(params.size() != 3) {
         throw QueryProcessingError("Invalid number of parameters for circle");
     }
-    sg::LonLat center = sg::LonLat::fromDegrees(params[0], params[1]);
-    sg::Angle a = sg::Angle::fromDegrees(params[2]);
-    return std::make_shared<sg::Circle>(sg::UnitVector3d(center), a);
+    lsst::sphgeom::LonLat center = lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]);
+    lsst::sphgeom::Angle a = lsst::sphgeom::Angle::fromDegrees(params[2]);
+    return std::make_shared<lsst::sphgeom::Circle>(lsst::sphgeom::UnitVector3d(center), a);
 }
 
-inline std::shared_ptr<sg::Ellipse>
+inline std::shared_ptr<lsst::sphgeom::Ellipse>
 getEllipseFromParams(std::vector<double> const& params) {
     // lon, lat, semimajang, semiminang, posangle
     if(params.size() != 5) {
         throw QueryProcessingError("Invalid number of parameters for ellips");
     }
-    sg::UnitVector3d center(sg::LonLat::fromDegrees(params[0], params[1]));
-    return std::make_shared<sg::Ellipse>(
+    lsst::sphgeom::UnitVector3d center(lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]));
+    return std::make_shared<lsst::sphgeom::Ellipse>(
         center,
-        sg::Angle::fromDegrees(params[2]),
-        sg::Angle::fromDegrees(params[3]),
-        sg::Angle::fromDegrees(params[4]));
+        lsst::sphgeom::Angle::fromDegrees(params[2]),
+        lsst::sphgeom::Angle::fromDegrees(params[3]),
+        lsst::sphgeom::Angle::fromDegrees(params[4]));
 }
 
-inline std::shared_ptr<sg::ConvexPolygon>
+inline std::shared_ptr<lsst::sphgeom::ConvexPolygon>
 getConvexPolyFromParams(std::vector<double> const& params) {
     // polygon vertices, min 3 vertices, must get even number of params
     if((params.size() <= 6) || ((params.size() & 1) != 0)) {
         throw QueryProcessingError("Invalid number of parameters for polygon");
     }
-    std::vector<sg::UnitVector3d> uv3;
+    std::vector<lsst::sphgeom::UnitVector3d> uv3;
     for(unsigned i=0; i < params.size(); i += 2) {
-        sg::LonLat vx = sg::LonLat::fromDegrees(params[i], params[i+1]);
-        uv3.push_back(sg::UnitVector3d(vx));
+        lsst::sphgeom::LonLat vx = lsst::sphgeom::LonLat::fromDegrees(params[i], params[i+1]);
+        uv3.push_back(lsst::sphgeom::UnitVector3d(vx));
     }
-    return std::make_shared<sg::ConvexPolygon>(uv3);
+    return std::make_shared<lsst::sphgeom::ConvexPolygon>(uv3);
 }
 
 }}} // namespace lsst::qserv::qproc

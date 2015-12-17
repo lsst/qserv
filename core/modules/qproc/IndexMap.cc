@@ -44,7 +44,7 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
-#include "sg/Chunker.h"
+#include "lsst/sphgeom/Chunker.h"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -57,12 +57,12 @@
 #include "util/IterableFormatter.h"
 
 using lsst::qserv::StringVector;
-using lsst::sg::Region;
-using lsst::sg::Box;
-using lsst::sg::Circle;
-using lsst::sg::Ellipse;
-using lsst::sg::ConvexPolygon;
-using lsst::sg::SubChunks;
+using lsst::sphgeom::Region;
+using lsst::sphgeom::Box;
+using lsst::sphgeom::Circle;
+using lsst::sphgeom::Ellipse;
+using lsst::sphgeom::ConvexPolygon;
+using lsst::sphgeom::SubChunks;
 
 typedef std::vector<SubChunks> SubChunksVector;
 
@@ -160,8 +160,8 @@ public:
             {}
     };
     explicit PartitioningMap(css::StripingParams const& sp) {
-        _chunker = std::make_shared<sg::Chunker>(sp.stripes,
-                                                 sp.subStripes);
+        _chunker = std::make_shared<lsst::sphgeom::Chunker>(sp.stripes,
+                                                            sp.subStripes);
 
     }
     /// @return un-canonicalized vector<SubChunks> of concatenated region
@@ -202,7 +202,7 @@ public:
         return csv;
     }
 private:
-    std::shared_ptr<sg::Chunker> _chunker;
+    std::shared_ptr<lsst::sphgeom::Chunker> _chunker;
 };
 
 ////////////////////////////////////////////////////////////////////////
