@@ -6,7 +6,7 @@ hooks.config.Eups.userTags += ["git"]
 def cmdHook(Eups, cmd, opts, args):
    if Eups and cmd == "setup":
        if not opts.tag:
-           opts.tag = ["git", "qserv"]
+           opts.tag = ["git", "qserv_latest"]
 
            if opts.verbose >= 0:
                import utils
