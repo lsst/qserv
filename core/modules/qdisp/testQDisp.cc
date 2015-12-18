@@ -288,12 +288,15 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     r->ProvisionDone(nullptr);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::PROVISION_NACK);
 
+    // Session is used by JobQuery/Resource destructors, needs to have longer lifetime than
+    // objects created below. To avoid lifetime issues we intentionally leak this instance.
     char buf[20];
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
-    qdisp::XrdSsiSessionMock xsMock(buf);
+    auto xsMock = new qdisp::XrdSsiSessionMock(buf);
+
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, nullptr, false);
     r = jqTest->getQueryResource();
-    r->ProvisionDone(&xsMock);
+    r->ProvisionDone(xsMock);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::REQUEST);
     BOOST_CHECK(jqTest->retryCalled == false);
 }
@@ -314,11 +317,15 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
     qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
+
+    // Session is used by JobQuery/Resource destructors, needs to have longer lifetime than
+    // objects created below. To avoid lifetime issues we intentionally leak this instance.
     char buf[20];
     strcpy(buf, "sessionMock");
-    qdisp::XrdSsiSessionMock sessionMock(buf);
+    auto sessionMock = new qdisp::XrdSsiSessionMock(buf);
+
     JobQueryTest::Ptr jqTest =
-        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 1");
     // Test that ProcessResponse detects !isOk and retries.
@@ -333,7 +340,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 
     LOGF_INFO("QueryRequest::ProcessResponse test 2");
     // Test that ProcessResponse detects XrdSsiRespInfo::isError.
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     int magicErrNum = 5678;
     rInfo.rType = XrdSsiRespInfo::isError;
@@ -346,7 +353,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     BOOST_CHECK(finishTest->finishCalled);
 
     LOGF_INFO("QueryRequest::ProcessResponse test 3");
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     rInfo.rType = XrdSsiRespInfo::isStream;
     finishTest->finishCalled = false;
@@ -358,7 +365,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // or coding around that function call for the test. Failure of the path will have high visibility.
     LOGF_INFO("QueryRequest::ProcessResponseData test 1");
     finishTest->finishCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     const char* ts="abcdefghijklmnop";
     char dataBuf[50];
@@ -369,7 +376,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 
     LOGF_INFO("QueryRequest::ProcessResponseData test 2");
     finishTest->finishCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic()+1, true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::MERGE_ERROR);
@@ -378,7 +385,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     LOGF_INFO("QueryRequest::ProcessResponseData test 3");
     finishTest->finishCalled = false;
     jqTest->retryCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, &sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic(), true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::COMPLETE);
@@ -423,11 +430,15 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     int jobId = 7;
     respReq = std::make_shared<ResponseHandlerTest>();
     qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
+
+    // Session is used by JobQuery/Resource destructors, needs to have longer lifetime than
+    // objects created below. To avoid lifetime issues we intentionally leak this instance.
     char buf[20];
     strcpy(buf, "sessionMock");
-    qdisp::XrdSsiSessionMock sessionMock(buf);
+    auto sessionMock = new qdisp::XrdSsiSessionMock(buf);
+
     qdisp::JobQuery::Ptr jqTest =
-        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, true, &sessionMock, true);
+        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, true, sessionMock, true);
     auto resource = jqTest->getQueryResource();
     auto request = jqTest->getQueryRequest();
     BOOST_CHECK(resource->isCancelled() == false);
