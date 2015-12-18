@@ -54,6 +54,9 @@ public:
     /// Returns true if query is SELECT
     static bool isSelect(std::string const& query);
 
+    /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
+    static bool isFlushChunksCache(std::string const& query, std::string& dbName);
+
 };
 
 }}} // namespace lsst::qserv::ccontrol

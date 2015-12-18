@@ -65,11 +65,17 @@ public:
     /// @return true if db/chunk is empty
     bool isEmpty(std::string const& db, int chunk) const;
 
+    /// Clear cache for empty chunk list so that on next call to above methods
+    /// empty chunk list is re-populated. If database name is empty then cache
+    // for all databases is cleared.
+    void clearCache(std::string const& db=std::string()) const;
+
+private:
+
     // Convenience types
     typedef std::shared_ptr<IntSet> IntSetPtr;
     typedef std::shared_ptr<IntSet const> IntSetConstPtr;
 
-private:
     typedef std::map<std::string, IntSetPtr> IntSetMap;
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks

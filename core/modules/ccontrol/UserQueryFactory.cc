@@ -38,6 +38,7 @@
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQueryDrop.h"
+#include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
@@ -148,6 +149,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                                   _impl->resultDbConn.get(), resultTable,
                                                   _impl->queryMetadata, _impl->qMetaCzarId);
         LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=%s" % dbName);
+        return uq;
+    } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
+        auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->css, dbName,
+                                                              _impl->resultDbConn.get(), resultTable);
+        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: %s" % dbName);
         return uq;
     } else {
         // something that we don't recognize

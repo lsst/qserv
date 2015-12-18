@@ -530,6 +530,23 @@ class WmgrClient(object):
                                    headers={'Content-Type': stream.content_type})
         return self._getKey(result, 'count')
 
+
+    def resetChunksCache(self, dbName):
+        """
+        Reset chunk cache (a.k.a. empty chunks list) for specified database name.
+
+        @param dbName:     Database name
+        @raise ClientException: in case of problems
+        """
+
+        _log.debug('reset chunk cache: %s', dbName)
+
+        # resource URL
+        resource = dbName + '/chunks/cache'
+
+        result = self._requestJSON('dbs', resource, method='PUT')
+
+
     def services(self):
         """
         Return the list of service names.
