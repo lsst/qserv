@@ -282,9 +282,11 @@ void QueryRunner::_transmitHeader(std::string& msg) {
 
 class ChunkResourceRequest {
 public:
-    ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> mgr,
+    ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> const& mgr,
                          proto::TaskMsg const& msg)
-        : _mgr{mgr}, _msg{msg} {}
+        // Use old-school member initializers because gcc 4.8.5
+        // miscompiles the code when using brace initializers (DM-4704).
+        : _mgr(mgr), _msg(msg) {}
 
     ChunkResource getResourceFragment(int i) {
         proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
