@@ -164,25 +164,6 @@ std::string hashToResultPath(std::string const& hash) {
 }
 
 //////////////////////////////////////////////////////////////////////
-// ScriptMeta
-//////////////////////////////////////////////////////////////////////
-ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
-    script = b.getStr();
-    hash = util::StringHash::getMd5Hex(script.data(), script.length());
-    dbName = "q_" + hash;
-    resultPath = hashToResultPath(hash);
-    chunkId = chunkId_;
-}
-
-ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
-    script = b.getStr();
-    hash = util::StringHash::getMd5Hex(script.data(), script.length());
-    dbName = "q_" + hash;
-    resultPath = hashToResultPath(hash);
-    chunkId = chunkId_;
-}
-
-//////////////////////////////////////////////////////////////////////
 // StringBuffer
 //////////////////////////////////////////////////////////////////////
 void StringBuffer::addBuffer(

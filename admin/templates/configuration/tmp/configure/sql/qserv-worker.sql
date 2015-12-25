@@ -13,13 +13,7 @@ CREATE DATABASE IF NOT EXISTS qservScratch;
 GRANT ALL ON qservScratch.* TO 'qsmaster'@'localhost';
 
 GRANT SELECT ON mysql.* TO 'qsmaster'@'localhost';
-GRANT ALL ON `q\_%`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'localhost';
 
 -- Subchunks databases
 GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'localhost';
-
--- Database for business (i.e. LSST) data
--- Has to be created by the dataloader in the long term
--- CREATE DATABASE IF NOT EXISTS LSST;
--- GRANT ALL ON LSST.* TO 'qsmaster'@'localhost';
--- INSERT INTO qservw_worker.Dbs VALUES('LSST');

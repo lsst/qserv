@@ -65,20 +65,6 @@ extern std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT;
 void updateResultPath(char const* resultPath=0);
 void clearResultPath();
 
-// Hashing-related
-std::string hashToPath(std::string const& hash);
-std::string hashToResultPath(std::string const& hash);
-
-struct ScriptMeta {
-    ScriptMeta(StringBuffer const& b, int chunkId_);
-    ScriptMeta(StringBuffer2 const& b, int chunkId_);
-    std::string script;
-    std::string hash;
-    std::string dbName;
-    std::string resultPath;
-    int chunkId;
-};
-
 class StringBuffer {
 public:
     StringBuffer() {}

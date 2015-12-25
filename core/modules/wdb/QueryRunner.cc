@@ -89,8 +89,7 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(QueryRunnerArg const& a) {
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(QueryRunnerArg const& a)
     : _task{a.task},
-      _chunkResourceMgr{a.mgr},
-      _dbName{a.task->dbName} {
+      _chunkResourceMgr{a.mgr} {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -135,13 +134,12 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     if (_task->getCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. "
-             << _task->dbName);
+        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. %1%" % _task->hash);
         return false;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "Exec in flight for Db = " << _task->dbName);
     _setDb();
+    LOGF(_log, LOG_LVL_DEBUG, "Exec in flight for Db = %1%" % _dbName);
     bool connOk = _initConnection();
     if (!connOk) { return false; }
 

@@ -118,7 +118,6 @@ public:
     TaskMsgPtr msg; ///< Protobufs Task spec
     std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
     std::string hash; ///< hash of TaskMsg
-    std::string dbName; ///< dominant db
     std::string user; ///< Incoming username
     time_t entryTime {0}; ///< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
