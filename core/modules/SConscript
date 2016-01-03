@@ -105,10 +105,6 @@ libProducts = dict((m, None) for m in
 # (those modules which do not define their own SConscript)
 defaultTgts = dict()
 
-def getSrcs(mName):
-    srcs = os.listdir(mName)
-    return map(lambda s: os.path.join(mName, s), srcs)
-
 def getTgts(mName):
     scriptPath = os.path.join(mName, "SConscript")
     if env.Glob(scriptPath): # os.access is faulty with VariantDir
@@ -256,13 +252,6 @@ for (pkg, opts) in shProducts.items():
     env.Alias("build", out)
     for f in out:
         extraTgts['dist'].append((opts['distDir'], f))
-
-#Runner wrapper
-import runner
-env["PYTHONPATH"] = extraTgts["PYTHONPATH"]
-target = "qsEnv.sh"
-env.Command(target, None, runner.makeRunner)
-extraTgts['dist'].append(('bin', env.File(target)))
 
 # Tests
 

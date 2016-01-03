@@ -282,15 +282,3 @@ def importCustom(env, extraTgts):
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", [])
     return None
-
-def checkGeom():
-    try:
-        import lsst.geom.geometry
-    except ImportError, e:
-        state.log.fail("Missing LSST Geometry python library.\n" +
-                        "To correct this please run 'export PYTHONPATH=${PYTHONPATH}:/path/to/geom/python'," +
-                        " assuming geometry.py is in /path/to/geom/python/lsst/geom/geometry.py")
-        return False
-    else:
-        state.log.info("LSST Geometry python library found")
-        return True

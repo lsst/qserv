@@ -1,1 +1,0 @@
-../admin/python/lsst/qserv/admin/path.py
