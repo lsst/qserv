@@ -48,30 +48,30 @@ class Api {
 public:
     Api() {
         mysql_init(&cursor);
-		mysql_options( &cursor, MYSQL_OPT_LOCAL_INFILE, 0 );
+        mysql_options( &cursor, MYSQL_OPT_LOCAL_INFILE, 0 );
     }
     ~Api() {
         mysql_close(&cursor);
     }
 
     void connect() {
-        mysql_real_connect(&cursor,
-				"localhost", // host
-				"qsmaster", // user
-				"", // pw
-				"", // db
-				0, // port
-				"/home/qserv/qserv-run/git/var/lib/mysql/mysql.sock", // socket
-				0); // client flag
-        if(!&cursor) {
+        MYSQL* conn = mysql_real_connect(&cursor,
+                "localhost", // host
+                "qsmaster", // user
+                "", // pw
+                "", // db
+                0, // port
+                "/home/qserv/qserv-run/git/var/lib/mysql/mysql.sock", // socket
+                0); // client flag
+        if(!conn) {
             std::cerr << "Failed to connect to MySQL: Error: "
-                      << mysql_error(&cursor) << std::endl;
-            assert(&cursor);
+                      << mysql_error(conn) << std::endl;
+            assert(conn);
         }
-		int result = mysql_query(&cursor, "show databases;");
-		if(result != 0) {
-			std::cerr << "Error executing :" << mysql_error(&cursor) << std::endl;
-		}
+        int result = mysql_query(&cursor, "show databases;");
+        if(result != 0) {
+            std::cerr << "Error executing :" << mysql_error(&cursor) << std::endl;
+        }
     }
     MYSQL* getMysql() { return &cursor; }
 
@@ -252,7 +252,7 @@ void checkDoubleTable() {
     Api a; // Source: will execute "select ..."
     a.connect();
     if(!a.exec("show databases;")) {
-        std::cerr << "error creating test.twofloats.\n";
+        std::cerr << "error running 'show databases'.\n";
         return;
     }
 

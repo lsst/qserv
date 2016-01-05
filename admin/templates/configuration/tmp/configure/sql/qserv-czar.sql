@@ -1,4 +1,4 @@
-CREATE OR REPLACE USER 'qsmaster'@'localhost';
+CREATE USER IF NOT EXISTS 'qsmaster'@'localhost';
 
 CREATE DATABASE IF NOT EXISTS qservResult;
 GRANT ALL ON qservResult.* TO 'qsmaster'@'localhost';
