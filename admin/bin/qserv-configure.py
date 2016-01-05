@@ -257,7 +257,7 @@ class Configurator(object):
                 pass
             self._template_to_symlink("qserv-client.conf", os.path.join(homedir, ".lsst", "qserv.conf"))
             self._template_to_symlink("logging.ini", os.path.join(homedir, ".lsst", "logging.ini"))
-        elif product == configure.MARIADB:
+        elif product == configure.MYSQL:
             self._template_to_symlink("my-client.cnf",
                                       os.path.join(homedir, ".lsst", ".my.cnf"))
         else:
@@ -383,7 +383,7 @@ class Configurator(object):
                         commons.run_command([cfg_script])
 
             if configure.CSS_WATCHER in self.args.step_list:
-                self._template_to_client_config(configure.MARIADB)
+                self._template_to_client_config(configure.MYSQL)
 
             if configure.CLIENT in self.args.step_list:
                 self._template_to_client_config(configure.QSERV)

@@ -7,6 +7,9 @@ setupRequired(log)
 setupRequired(log4cxx)
 setupRequired(lua)
 setupRequired(mariadb)
+# mysql-proxy isn't compliant with
+# MariaDB client
+setupRequired(mysqlclient)
 setupRequired(mysqlproxy)
 setupRequired(mysqlpython)
 setupRequired(partition)
