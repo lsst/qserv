@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,10 +56,7 @@ namespace qproc {
 
 namespace {
 
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
-    return logger;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
 enum QueryType { IN, BETWEEN };
 
@@ -133,7 +130,7 @@ private:
         QueryType const& query_type) {
 
 
-        LOGF(getLogger(), LOG_LVL_TRACE, "params: %s" % util::printable(params));
+        LOGS(_log, LOG_LVL_TRACE, "params: " << util::printable(params));
 
         std::string const& db = params[0];
         std::string const& table = params[1];
@@ -161,7 +158,7 @@ private:
                                                               % params[4]).str();
         }
 
-        LOGF(getLogger(), LOG_LVL_TRACE, "sql: %s" % sql);
+        LOGS(_log, LOG_LVL_TRACE, "sql: " << sql);
         return sql;
     }
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * Copyright 2008-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,6 +37,9 @@
 // Qserv headers
 #include "global/constants.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.MessageStore");
+}
 
 namespace lsst {
 namespace qserv {
@@ -47,11 +50,8 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 
 void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity) {
-    if (code < 0) {
-        LOGF_ERROR("Add msg: %1% %2% %3%" % chunkId % code % description);
-    } else {
-        LOGF_DEBUG("Add msg: %1% %2% %3%" % chunkId % code % description);
-    }
+    auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
+    LOGS(_log, level, "Add msg: " << chunkId << " " << code << " " << description);
     {
         std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),

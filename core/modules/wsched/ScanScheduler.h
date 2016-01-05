@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,9 +25,6 @@
 
 // System headers
 #include <mutex>
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "wcontrol/Foreman.h"
@@ -81,7 +78,6 @@ private:
 
     int _maxThreads;
     ChunkDiskList _disks;
-    LOG_LOGGER _logger;
     std::atomic<int> _inFlight{0};
 };
 

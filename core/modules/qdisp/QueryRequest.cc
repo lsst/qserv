@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,6 +44,10 @@
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -54,17 +58,17 @@ namespace qdisp {
 QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery) :
   _session(session), _jobQuery(jobQuery), _jobDesc(_jobQuery->getDescription()),
   _jobId(jobQuery->getId()) {
-    LOGF_INFO("New QueryRequest with payload(%1%)" % _jobDesc.payload().size());
-    LOGF_DEBUG("QueryRequest JQ_jobId=%1%" % _jobId);
+    LOGS(_log, LOG_LVL_DEBUG, "New QueryRequest with payload(" << _jobDesc.payload().size() << ")");
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRequest JQ_jobId=" << _jobId);
 }
 
 QueryRequest::~QueryRequest() {
-    LOGF_DEBUG("~QueryRequest JQ_jobId=%1%)" % _jobId);
+    LOGS(_log, LOG_LVL_DEBUG, "~QueryRequest JQ_jobId=" << _jobId);
     if(_session) {
           if(_session->Unprovision()) {
-              LOGF_DEBUG("Unprovision ok.");
+              LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");
           } else {
-              LOGF_ERROR("Error unprovisioning");
+              LOGS(_log, LOG_LVL_ERROR, "Error unprovisioning");
           }
       }
 }
@@ -72,14 +76,14 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     requestLength = _jobDesc.payload().size();
-    LOGF_DEBUG("Requesting, payload size: [%1%]" % requestLength);
+    LOGS(_log, LOG_LVL_DEBUG, "Requesting, payload size: [" << requestLength << "]");
     // Andy promises that his code won't corrupt it.
     return const_cast<char*>(_jobDesc.payload().data());
 }
 
 // Deleting the buffer (payload) would cause us problems, as this class is not the owner.
 void QueryRequest::RelRequestBuffer() {
-    LOGF_DEBUG("RelRequestBuffer");
+    LOGS(_log, LOG_LVL_DEBUG, "RelRequestBuffer");
 }
 // precondition: rInfo.rType != isNone
 // Must not throw exceptions: calling thread cannot trap them.
@@ -124,12 +128,12 @@ bool QueryRequest::_importStream() {
     bool success = false;
     // Pass ResponseHandler's buffer directly.
     std::vector<char>& buffer = _jobDesc.respHandler()->nextBuffer();
-    LOGF_DEBUG("QueryRequest::_importStream buffer.size=%1%" % buffer.size());
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_importStream buffer.size=" << buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
-    LOGF_DEBUG("_importStream->GetResponseData size=%1% %2% %3%" %
-              buffer.size() % pbuf % util::prettyCharList(buffer, 5));
+    LOGS(_log, LOG_LVL_DEBUG, "_importStream->GetResponseData size=" << buffer.size()
+               << " " << pbuf << " " << util::prettyCharList(buffer, 5));
     success = GetResponseData(&buffer[0], buffer.size());
-    LOGF_DEBUG("Initiated request %1%" % (success ? "ok" : "err"));
+    LOGS(_log, LOG_LVL_DEBUG, "Initiated request " << (success ? "ok" : "err"));
     if(!success) {
         _jobQuery->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
@@ -152,13 +156,14 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGF_INFO("ProcessResponseData with buflen=%1% %2%" % blen % (last ? "(last)" : "(more)"));
+    LOGS(_log, LOG_LVL_DEBUG, "ProcessResponseData with buflen=" << blen << " "
+               << (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         const char* chs = eInfo.Get(eCode);
         std::string reason = (chs == nullptr) ? "nullptr" : chs;
         _jobQuery->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
-        LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
+        LOGS(_log, LOG_LVL_ERROR, "ProcessResponse[data] error(" << eCode << ",\"" << reason << "\")");
         _jobDesc.respHandler()->errorFlush("Couldn't retrieve response data:" + reason, eCode);
         _errorFinish();
         return;
@@ -169,22 +174,22 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         if (last) {
             auto sz = _jobDesc.respHandler()->nextBuffer().size();
             if (last && sz != 0) {
-                LOGF_WARN("Connection closed when more information expected sz=%1%" % sz);
+                LOGS(_log, LOG_LVL_WARN, "Connection closed when more information expected sz=" << sz);
             }
             _jobQuery->getStatus()->updateInfo(JobStatus::COMPLETE);
             _finish();
         } else {
             std::vector<char>& buffer = _jobDesc.respHandler()->nextBuffer();
             const void* pbuf = (void*)(&buffer[0]);
-            LOGF_INFO("_importStream->GetResponseData size=%1% %2% %3%" %
-                      buffer.size() % pbuf % util::prettyCharList(buffer, 5));
+            LOGS(_log, LOG_LVL_DEBUG, "_importStream->GetResponseData size=" << buffer.size()
+                 << " " << pbuf << " " << util::prettyCharList(buffer, 5));
             if(!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
                 return;
             }
         }
     } else {
-        LOGF_INFO("ProcessResponse data flush failed");
+        LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
         ResponseHandler::Error err = _jobDesc.respHandler()->getError();
         _jobQuery->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
@@ -220,7 +225,7 @@ void QueryRequest::cleanup() {
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGF_DEBUG("Error finish");
+    LOGS(_log, LOG_LVL_DEBUG, "Error finish");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
@@ -229,9 +234,9 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         _finishStatus = ERROR;
         bool ok = Finished(shouldCancel);
         if(!ok) {
-            LOGF_ERROR("Error cleaning up QueryRequest");
+            LOGS(_log, LOG_LVL_ERROR, "Error cleaning up QueryRequest");
         } else {
-            LOGF_INFO("Request::Finished() with error (clean).");
+            LOGS(_log, LOG_LVL_DEBUG, "Request::Finished() with error (clean).");
         }
     }
     // Make the calls outside of the mutex lock.
@@ -261,9 +266,9 @@ void QueryRequest::_finish() {
         _finishStatus = FINISHED;
         bool ok = Finished();
         if(!ok) {
-            LOGF_ERROR("Error with Finished()");
+            LOGS(_log, LOG_LVL_ERROR, "Error with Finished()");
         } else {
-            LOGF_INFO("Finished() ok.");
+            LOGS(_log, LOG_LVL_DEBUG, "Finished() ok.");
         }
     }
 

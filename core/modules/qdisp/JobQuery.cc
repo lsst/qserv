@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,18 +41,30 @@ namespace qserv {
 namespace qdisp {
 
 namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
+
 void logErr(std::string const& msg, JobQuery* jq) {
-    std::ostringstream os;
-    os << msg << " " << *jq;
-    LOGF_ERROR("%1%" % os.str());
+    LOGS(_log, LOG_LVL_ERROR, msg << " " << *jq);
 }
+} // namespace
+
+JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
+                   JobStatus::Ptr const& jobStatus,
+                   std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
+    _executive(executive), _jobDescription(jobDescription),
+    _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
+    LOGS(_log, LOG_LVL_DEBUG, "JobQuery JQ_jobId=" << getId() << " desc=" << _jobDescription);
+}
+
+JobQuery::~JobQuery() {
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery JQ_jobId=" << getId());
 }
 
 /** Attempt to run the job on a worker.
  * @return - false if it can not setup the job or the maximum number of retries has been reached.
  */
 bool JobQuery::runJob() {
-    LOGF_DEBUG("runJob %1%" % toString());
+    LOGS(_log, LOG_LVL_DEBUG, "runJob " << toString());
     if (_executive == nullptr) {
         logErr("runJob failed _executive=nullptr", this);
         return false;
@@ -77,18 +89,15 @@ bool JobQuery::runJob() {
         _executive->getXrdSsiService()->Provision(_queryResourcePtr.get());
         return true;
     } else {
-        std::ostringstream os;
-        os << "JobQuery Failed to RunJob failed. cancelled=" << cancelled << " reset=" << handlerReset;
-        LOGF_WARN("%1%" % os.str());
+        LOGS(_log, LOG_LVL_WARN, "JobQuery Failed to RunJob failed. cancelled="
+             << cancelled << " reset=" << handlerReset);
     }
     return false;
 }
 
 void JobQuery::provisioningFailed(std::string const& msg, int code) {
-    std::ostringstream os;
-    os << "Error provisioning, jobId=" << getId() << " msg=" << msg << " code=" << code << " " << *this;
-    os << "\n    desc=" << _jobDescription;
-    LOGF_ERROR("%1%" % os.str());
+    LOGS(_log, LOG_LVL_ERROR, "Error provisioning, jobId=" << getId() << " msg=" << msg
+         << " code=" << code << " " << *this << "\n    desc=" << _jobDescription);
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
     _jobDescription.respHandler()->errorFlush(msg, code);
 }
@@ -113,7 +122,7 @@ void JobQuery::freeQueryResource(QueryResource* qr) {
     if (qr == _queryResourcePtr.get()) {
         _queryResourcePtr.reset();
     } else {
-        LOGF_ERROR("freeQueryResource called by wrong QueryResource.");
+        LOGS(_log, LOG_LVL_ERROR, "freeQueryResource called by wrong QueryResource.");
     }
 }
 
@@ -122,6 +131,7 @@ std::string JobQuery::toString() const {
     os << *this;
     return os.str();
 }
+
 std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
     return os << "{" << jq._jobDescription << " " << *jq._jobStatus << "}";
 }

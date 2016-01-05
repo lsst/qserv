@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,9 +56,7 @@ using std::string;
 using std::vector;
 
 namespace {
-
-    // logger instance for this module
-    LOG_LOGGER _logger = LOG_GET("lsst.qserv.css.KvInterfaceImplMem");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.css.KvInterfaceImplMem");
 }
 
 namespace lsst {
@@ -96,7 +94,7 @@ KvInterfaceImplMem::~KvInterfaceImplMem() {
 
 std::string
 KvInterfaceImplMem::create(string const& key, string const& value, bool unique) {
-    LOGF(_logger, LOG_LVL_DEBUG, "create(%1%, %2%, unique=%3%)" % key % value % int(unique));
+    LOGS(_log, LOG_LVL_DEBUG, "create(" << key << ", " << value << ", unique=" << int(unique));
 
     if (_readOnly) {
         throw ReadonlyCss();
@@ -132,7 +130,7 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
 void
 KvInterfaceImplMem::set(string const& key, string const& value) {
     // Should always succeed, as long as std::map works.
-    LOGF(_logger, LOG_LVL_DEBUG, "set(%1%, %2%)" % key % value);
+    LOGS(_log, LOG_LVL_DEBUG, "set(" << key << ", " << value << ")");
 
     if (_readOnly) {
         throw ReadonlyCss();
@@ -153,7 +151,7 @@ KvInterfaceImplMem::set(string const& key, string const& value) {
 bool
 KvInterfaceImplMem::exists(string const& key) {
     bool ret = _kvMap.find(key) != _kvMap.end();
-    LOGF(_logger, LOG_LVL_DEBUG, "exists(%1%): %2%" % key % (ret?"YES":"NO"));
+    LOGS(_log, LOG_LVL_DEBUG, "exists(" << key << "): " << (ret?"YES":"NO"));
     return ret;
 }
 
@@ -173,7 +171,7 @@ string
 KvInterfaceImplMem::_get(string const& key,
                          string const& defaultValue,
                          bool throwIfKeyNotFound) {
-    LOGF(_logger, LOG_LVL_DEBUG, "get(%1%)" % key);
+    LOGS(_log, LOG_LVL_DEBUG, "get(" << key << ")");
     if ( !exists(key) ) {
         if (throwIfKeyNotFound) {
             throw NoSuchKey(key);
@@ -181,13 +179,13 @@ KvInterfaceImplMem::_get(string const& key,
         return defaultValue;
     }
     string s = _kvMap[key];
-    LOGF(_logger, LOG_LVL_DEBUG, "got: '%1%'" % s);
+    LOGS(_log, LOG_LVL_DEBUG, "got: '" << s << "'");
     return s;
 }
 
 vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
-    LOGF(_logger, LOG_LVL_DEBUG, "getChildren(), key: %1%" % key);
+    LOGS(_log, LOG_LVL_DEBUG, "getChildren(), key: " << key);
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
@@ -196,22 +194,22 @@ KvInterfaceImplMem::getChildren(string const& key) {
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
         string fullKey = itrM->first;
-        LOGF(_logger, LOG_LVL_DEBUG, "fullKey: %1%" % fullKey);
+        LOGS(_log, LOG_LVL_DEBUG, "fullKey: " << fullKey);
         if (boost::starts_with(fullKey, pfx)) {
             string theChild = fullKey.substr(pfx.length());
             if (!theChild.empty() && (theChild.find("/") == string::npos)) {
-                LOGF(_logger, LOG_LVL_DEBUG, "child: %1%" % theChild);
+                LOGS(_log, LOG_LVL_DEBUG, "child: " << theChild);
                 retV.push_back(theChild);
             }
         }
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "got: %1% children: %2%" % retV.size() % util::printable(retV));
+    LOGS(_log, LOG_LVL_DEBUG, "got: " << retV.size() << " children: " << util::printable(retV));
     return retV;
 }
 
 std::map<std::string, std::string>
 KvInterfaceImplMem::getChildrenValues(std::string const& key) {
-    LOGF(_logger, LOG_LVL_DEBUG, "getChildrenValues(), key: %1%" % key);
+    LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues(), key: " << key);
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
@@ -219,22 +217,22 @@ KvInterfaceImplMem::getChildrenValues(std::string const& key) {
     std::map<std::string, std::string> retV;
     for (auto const& pair: _kvMap) {
         auto& fullKey = pair.first;
-        LOGF(_logger, LOG_LVL_DEBUG, "fullKey: %1%" % fullKey);
+        LOGS(_log, LOG_LVL_DEBUG, "fullKey: " << fullKey);
         if (boost::starts_with(fullKey, pfx)) {
             string theChild(fullKey, pfx.length());
             if (!theChild.empty() && (theChild.find("/") == string::npos)) {
-                LOGF(_logger, LOG_LVL_DEBUG, "child: %1%" % theChild);
+                LOGS(_log, LOG_LVL_DEBUG, "child: " << theChild);
                 retV.insert(std::make_pair(theChild, pair.second));
             }
         }
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "got: %1% children: %2%" % retV.size() % util::printable(retV));
+    LOGS(_log, LOG_LVL_DEBUG, "got: " << retV.size() << " children: " << util::printable(retV));
     return retV;
 }
 
 void
 KvInterfaceImplMem::deleteKey(string const& key) {
-    LOGF(_logger, LOG_LVL_DEBUG, "deleteKey(%1%)." % key);
+    LOGS(_log, LOG_LVL_DEBUG, "deleteKey(" << key << ")");
 
     if (_readOnly) {
         throw ReadonlyCss();
@@ -244,14 +242,14 @@ KvInterfaceImplMem::deleteKey(string const& key) {
     if (iter == _kvMap.end()) {
         throw NoSuchKey(key);
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "deleteKey: erasing key %s" % key);
+    LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing key " << key);
     _kvMap.erase(iter);
     // delete all children keys, not very efficient but we don't care
     std::string const keyPfx = key + "/";
     for (auto iter = _kvMap.begin(); iter != _kvMap.end(); ) {
         auto const& iterKey = iter->first;
         if (iterKey.size() > keyPfx.size() and iterKey.compare(0, keyPfx.size(), keyPfx) == 0) {
-            LOGF(_logger, LOG_LVL_DEBUG, "deleteKey: erasing child %s" % iterKey);
+            LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing child " << iterKey);
             iter = _kvMap.erase(iter);
         } else {
             ++ iter;

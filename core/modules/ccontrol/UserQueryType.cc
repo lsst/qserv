@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,7 +59,6 @@ boost::regex _selectRe(R"(^select\s+.+$)",
 // db name will be in group 3.
 boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
                            boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 }
 
 namespace lsst {
@@ -69,12 +68,12 @@ namespace ccontrol {
 /// Returns true if query is DROP DATABASE
 bool
 UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
-    LOGF(_log, LOG_LVL_DEBUG, "isDropDb: %s" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "isDropDb: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _dropDbRe);
     if (match) {
         dbName = sm.str(3);
-        LOGF(_log, LOG_LVL_DEBUG, "isDropDb: match: %s" % dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "isDropDb: match: " << dbName);
     }
     return match;
 }
@@ -82,13 +81,13 @@ UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
 /// Returns true if query is DROP TABLE
 bool
 UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
-    LOGF(_log, LOG_LVL_DEBUG, "isDropTable: %s" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "isDropTable: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _dropTableRe);
     if (match) {
         dbName = sm.str(3);
         tableName = sm.str(5);
-        LOGF(_log, LOG_LVL_DEBUG, "isDropTable: match: %s.%s" % dbName % tableName);
+        LOGS(_log, LOG_LVL_DEBUG, "isDropTable: match: " << dbName << "." << tableName);
     }
     return match;
 }
@@ -96,11 +95,11 @@ UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::s
 /// Returns true if query is SELECT
 bool
 UserQueryType::isSelect(std::string const& query) {
-    LOGF(_log, LOG_LVL_DEBUG, "isSelect: %s" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "isSelect: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _selectRe);
     if (match) {
-        LOGF(_log, LOG_LVL_DEBUG, "isSelect: match");
+        LOGS(_log, LOG_LVL_DEBUG, "isSelect: match");
     }
     return match;
 }
@@ -108,12 +107,12 @@ UserQueryType::isSelect(std::string const& query) {
 /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
 bool
 UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
-    LOGF(_log, LOG_LVL_DEBUG, "isFlushChunksCache: %s" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "isFlushChunksCache: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _flushEmptyRe);
     if (match) {
         dbName = sm.str(3);
-        LOGF(_log, LOG_LVL_DEBUG, "isFlushChunksCache: match: %s" % dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "isFlushChunksCache: match: " << dbName);
     }
     return match;
 }

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,14 +62,12 @@
 
 
 namespace { // File-scope helpers
-    std::string const UDF_PREFIX = "scisql_";
 
-    LOG_LOGGER getLogger() {
-        static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
-        return logger;
-    }
+std::string const UDF_PREFIX = "scisql_";
 
-    enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN };
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
+
+enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN };
 
 } // anonymous
 
@@ -172,8 +170,8 @@ query::QsRestrictor::Ptr newRestrictor(
         if (dirTable.empty()) {
             dirTable = cr->table;
             if (!dirDb.empty() && dirDb != cr->db) {
-                LOGF_ERROR("dirTable missing, but dirDb is set inconsistently for %1%.%2%"
-                           % cr->db % cr->table);
+                LOGS(_log, LOG_LVL_ERROR, "dirTable missing, but dirDb is set inconsistently for "
+                     << cr->db << "." << cr->table);
                 return query::QsRestrictor::Ptr();
             }
             dirDb = cr->db;
@@ -184,17 +182,19 @@ query::QsRestrictor::Ptr newRestrictor(
             // Lookup the name of the director column in the director table
             dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
             if (dirCol.empty()) {
-                LOGF_ERROR("dirCol missing for %1%.%2%" % dirDb % dirTable);
+                LOGS(_log, LOG_LVL_ERROR, "dirCol missing for " << dirDb << "." << dirTable);
                 return query::QsRestrictor::Ptr();
             }
         }
-        LOGF_DEBUG("Using dirDb %1%, dirTable %2%, dirCol %3% as sIndex for %4%.%5%.%6%" %
-                   dirDb % dirTable % dirCol % cr->db % cr->table % cr->column);
+        LOGS(_log, LOG_LVL_DEBUG, "Using dirDb " << dirDb << ", dirTable " << dirTable
+             << ", dirCol " << dirCol << " as sIndex for " << cr->db << "." << cr->table
+             << "." << cr->column);
         restrictor->_params.push_back(dirDb);
         restrictor->_params.push_back(dirTable);
         restrictor->_params.push_back(dirCol);
     } else {
-        LOGF_DEBUG("Using %1%, %2%, %3% as sIndex." % cr->db % cr->table % cr->column);
+        LOGS_DEBUG("Using " << cr->db << "." << cr->table <<  "." << cr->column
+                   << " as sIndex");
         restrictor->_params.push_back(cr->db);
         restrictor->_params.push_back(cr->table);
         restrictor->_params.push_back(cr->column);
@@ -235,7 +235,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 column_ref = resolveAsColumnRef(context, inPredicate->value);
                 if (column_ref && lookupSecIndex(context, column_ref)) {
                     restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
-                    LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: %s" % *restrictor);
+                    LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
                 }
             } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 // '=' predicate
@@ -254,11 +254,11 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                     query::ValueExprPtrVector cands(1, literalValue);
                     restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
                     if (restrictor) {
-                        LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: %s, for '=' predicate" % *restrictor);
+                        LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: "
+                             << *restrictor << " for '=' predicate");
                     } else {
-                        LOGF(getLogger(), LOG_LVL_TRACE, "No SECONDARY_INDEX_IN restrictor found");
+                        LOGS(_log, LOG_LVL_TRACE, "No SECONDARY_INDEX_IN restrictor found");
                     }
-
                 }
             } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
             // BETWEEN predicate
@@ -271,9 +271,10 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
 
                     restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
                     if (restrictor) {
-                        LOGF(getLogger(), LOG_LVL_TRACE, "Add SECONDARY_INDEX_BETWEEN restrictor: %s, for '=' predicate" % *restrictor);
+                        LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_BETWEEN restrictor: "
+                             << *restrictor << " for '=' predicate");
                     } else {
-                        LOGF(getLogger(), LOG_LVL_TRACE, "No SECONDARY_INDEX_BETWEEN restrictor found");
+                        LOGS(_log, LOG_LVL_TRACE, "No SECONDARY_INDEX_BETWEEN restrictor found");
                     }
                 }
             }
@@ -281,7 +282,6 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
             if (restrictor) {
                 result.push_back(restrictor);
             }
-
         }
     }
     return result;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,7 +63,7 @@ populate(std::string const& path,
         rawStream.open(fallbackFile.c_str());
         fileName = fallbackFile;
     }
-    LOGF(_log, LOG_LVL_DEBUG, "Reading empty chunks for db %s from file %s" % db % fileName);
+    LOGS(_log, LOG_LVL_DEBUG, "Reading empty chunks for db " << db << " from file " << fileName);
     if(!rawStream.good()) {
         throw ConfigError("No such empty chunks file: " + best
                           + " or " + fallbackFile);
@@ -101,10 +101,10 @@ EmptyChunks::isEmpty(std::string const& db, int chunk) const {
 void
 EmptyChunks::clearCache(std::string const& db) const {
     if (db.empty()) {
-        LOGF(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
+        LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
         _sets.clear();
     } else {
-        LOGF(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for database %s" % db);
+        LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for database " << db);
         _sets.erase(db);
     }
 }

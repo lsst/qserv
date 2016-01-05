@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -76,10 +76,7 @@ namespace rproc {
 
 namespace { // File-scope helpers
 
-LOG_LOGGER getLogger() {
-    static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.rproc.InfileMerger"));
-    return _logger;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
 
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
@@ -252,7 +249,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _sqlConfig(makeSqlConfig(c)),
       _isFinished(false),
       _needCreateTable(true) {
-    //LOGF_INFO("InfileMerger construct +++++++ ()%1%" % (void*) this");
+    //LOGS(_log, LOG_LVL_DEBUG, "InfileMerger construct +++++++ ()" << (void*) this");
     _fixupTargetName();
     if(_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
@@ -261,7 +258,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
 }
 
 InfileMerger::~InfileMerger() {
-    //LOGF_INFO("InfileMerger destruct ------- ()%1%" % (void*) this);
+    //LOGS(_log, LOG_LVL_DEBUG, "InfileMerger destruct ------- ()" << (void*) this);
 }
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
@@ -270,17 +267,17 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    LOGF(getLogger(), LOG_LVL_DEBUG,
-         "Executing InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%, errCode=%4%, hasErrorMsg=%5%)"
-         % static_cast<short>(response->headerSize)
-         % response->protoHeader.size()
-         % response->result.row_size()
-         % response->result.has_errorcode()
-         % response->result.has_errormsg());
+    LOGS(_log, LOG_LVL_DEBUG,
+         "Executing InfileMerger::merge("
+         << "sizes=" << static_cast<short>(response->headerSize)
+         << ", " << response->protoHeader.size()
+         << ", rowcount=" << response->result.row_size()
+         << ", errCode=" << response->result.has_errorcode()
+         << "hasErrorMsg=" << response->result.has_errormsg() << ")");
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
-        LOGF(getLogger(), LOG_LVL_ERROR, "Error in response data: %1%" % _error);
+        LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
         return false;
     }
     if(_needCreateTable) {
@@ -295,20 +292,20 @@ bool InfileMerger::finalize() {
     bool finalizeOk = _mgr->join();
     // TODO: Should check for error condition before continuing.
     if(_isFinished) {
-        LOGF_ERROR("InfileMerger::finalize(), but _isFinished == true");
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
     }
     if(_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().toString();
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " " + mergeSelect;
-        LOGF_INFO("Merging w/%1%" % createMerge);
+        LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge);
 
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
-        LOGF_INFO("Cleaning up %1%" % _mergeTable);
+        LOGS(_log, LOG_LVL_DEBUG, "Cleaning up " << _mergeTable);
 #if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
@@ -317,10 +314,10 @@ bool InfileMerger::finalize() {
         bool cleanupOk = true;
 #endif
         if(!cleanupOk) {
-            LOGF_INFO("Failure cleaning up table %1%" % _mergeTable);
+            LOGS(_log, LOG_LVL_DEBUG, "Failure cleaning up table " << _mergeTable);
         }
     }
-    LOGF_INFO("Merged %1% into %2%" % _mergeTable % _config.targetTable);
+    LOGS(_log, LOG_LVL_DEBUG, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
     return finalizeOk;
 }
@@ -343,18 +340,18 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
                            util::ErrorCode::MYSQLCONNECT);
             _sqlConn.reset();
-            LOGF_ERROR("InfileMerger error: %1%" % _error.getMsg());
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
             return false;
         }
-        LOGF_INFO("InfileMerger %1% connected to db." % (void*) this);
+        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger " << (void*) this << " connected to db");
     }
     if(not _sqlConn->runQuery(sql, errObj)) {
         _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
-        LOGF_ERROR("InfileMerger error: %1%" % _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
         return false;
     }
-    LOGF_DEBUG("InfileMerger query success: %1%" % sql);
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query success: " << sql);
     return true;
 }
 
@@ -428,19 +425,19 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             s.columns.push_back(scs);
         }
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
-        LOGF_DEBUG("InfileMerger query prepared: %1%" % createStmt);
+        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query prepared: " << createStmt);
 
         if(not _applySqlLocal(createStmt)) {
             _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table (" + _mergeTable + ")");
             _isFinished = true; // Cannot continue.
-            LOGF_ERROR("InfileMerger sql error: %1%" % _error.getMsg());
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
             return false;
         }
         _needCreateTable = false;
     } else {
         // Do nothing, table already created.
     }
-    LOGF_DEBUG("InfileMerger table %1% ready" % _mergeTable);
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger table " << _mergeTable << " ready");
     return true;
 }
 

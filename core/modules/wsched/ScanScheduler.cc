@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,10 +38,17 @@
 #include <mutex>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/Bug.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/ChunkDisk.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
+}
 
 namespace lsst {
 namespace qserv {
@@ -52,10 +59,9 @@ ChunkDisk* dbgChunkDisk1 = nullptr; ///< A symbol for gdb
 
 ScanScheduler::ScanScheduler(int maxThreads)
     : _maxThreads{maxThreads},
-      _disks{},
-      _logger{LOG_GET(getName())}
+      _disks{}
 {
-    _disks.push_back(std::make_shared<ChunkDisk>(_logger));
+    _disks.push_back(std::make_shared<ChunkDisk>());
     dbgChunkDisk1 = _disks.front().get();
     assert(!_disks.empty());
 }
@@ -63,17 +69,17 @@ ScanScheduler::ScanScheduler(int maxThreads)
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (task == nullptr) {
-        LOGF_WARN("ScanScheduler::commandStart cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
         return;
     }
-    LOGF_DEBUG("ScanScheduler::commandStart tSeq=%1%" % task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart tSeq=" << task->tSeq);
     // task was registeredInflight on its disk when getCmd() was called.
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGF_WARN("ScanScheduler::commandFinish cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion");
         return;
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
@@ -82,7 +88,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // they might be able to advance to the next chunk.
     bool needNotify = _disks.front()->removeInflight(t);
     --_inFlight;
-    LOGF_DEBUG("ScanScheduler::commandFinish inFlight= %1%" % _inFlight);
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight= " << _inFlight);
     if (needNotify) {
         _cv.notify_all();
     }
@@ -127,13 +133,13 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
 void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGF_WARN("ScanScheduler::queCmd could not be converted to Task or was nullptr");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::queCmd could not be converted to Task or was nullptr");
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     assert(!_disks.empty());
     assert(_disks.front());
-    LOGF_DEBUG("ScanScheduler::queCmd tSeq=%1%" % t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::queCmd tSeq=" << t->tSeq);
     _disks.front()->enqueue(t);
     util::CommandQueue::_cv.notify_all();
 }

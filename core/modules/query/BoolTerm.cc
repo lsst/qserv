@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,6 +45,10 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.BoolTerm");
+}
 
 namespace lsst {
 namespace qserv {
@@ -233,7 +237,7 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
 #if 0
         QueryTemplate qt;
         bf->renderTo(qt);
-        LOGF_DEBUG("reduced. %1%" % qt.generate());
+        LOGS(_log, LOG_LVL_DEBUG, "reduced. " << qt.generate());
 #endif
         return std::shared_ptr<BoolFactor>(bf);
     } else {

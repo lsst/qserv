@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,11 +53,13 @@
 #include "util/IterableFormatter.h"
 #include "util/MultiError.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.DuplSelectExprPlugin");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qana {
-
-LOG_LOGGER DuplSelectExprPlugin::_logger = LOG_GET("lsst.qserv.qana.DuplSelectExprPlugin");
 
 std::string const DuplSelectExprPlugin::EXCEPTION_MSG = "Duplicate names detected in select expression,"
         " rewrite SQL query using alias: ";
@@ -70,7 +72,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
 
     util::MultiError multiError;
 
-    LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % util::printable(v));
+    LOGS(_log, LOG_LVL_DEBUG, "Looking for duplicate fields in: " << util::printable(v));
 
     MultiMap mm;
     int pos;
@@ -98,7 +100,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
         }
     }
 
-    if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
           std::string msg;
           if (!multiError.empty()) {
               msg = "Duplicate select fields found:\n" + multiError.toString();
@@ -106,7 +108,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
           else {
               msg = "No duplicate select field.";
           }
-          LOGF(_logger, LOG_LVL_DEBUG, msg);
+          LOGS(_log, LOG_LVL_DEBUG, msg);
     }
     return multiError;
 }
@@ -117,10 +119,10 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     query::SelectList const& selectList = stmt.getSelectList();
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
-    if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::ostringstream stream;
         selectList.dbgPrint(stream);
-        LOGF(_logger, LOG_LVL_DEBUG, "Input stmt:\n%1%" % stream.str());
+        LOGS(_log, LOG_LVL_DEBUG, "Input stmt:\n" << stream.str());
     }
 
     StringVector selectExprNormalizedNames;

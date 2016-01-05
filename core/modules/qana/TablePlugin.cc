@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -72,6 +72,10 @@
 #include "query/WhereClause.h"
 #include "util/common.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qana {
@@ -82,7 +86,7 @@ public:
         : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
-        // LOGF_INFO("set: %1%->%2%.%3%" % alias % db % table);
+        // LOGS(_log, LOG_LVL_DEBUG, "set: " << alias << "->" << db << "." << table);
         _tableAlias.set(db, table, alias);
         _tableAliasReverse.set(db, table, alias);
     }
@@ -171,7 +175,7 @@ public:
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
             query::ValueFactor& t = *i->factor;
-            // LOGF_INFO("fixing factor: %1%" % *vep);
+            // LOGS(_log, LOG_LVL_DEBUG, "fixing factor: " << *vep);
             switch(t.getType()) {
             case query::ValueFactor::COLUMNREF:
                 // check columnref.
@@ -189,7 +193,7 @@ public:
             case query::ValueFactor::CONST:
                 break; // Constants don't need patching.
             default:
-                LOGF_WARN("Unhandled ValueFactor:%1%" % t);
+                LOGS(_log, LOG_LVL_WARN, "Unhandled ValueFactor:" << t);
                 break;
             }
         }

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,6 +59,9 @@
 // Anonymous helpers
 ////////////////////////////////////////////////////////////////////////
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.FromFactory");
+
 class ParamGenerator {
 public:
     struct Check {
@@ -79,13 +82,13 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            //LOGF_INFO("advancingX..: %1%" % current->getText());
+            //LOGS(_log, LOG_LVL_DEBUG, "advancingX..: " << current->getText());
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            //LOGF_INFO("advancing..: %1%" % current->getText());
+            //LOGS(_log, LOG_LVL_DEBUG, "advancing..: " << current->getText());
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -247,8 +250,8 @@ public:
             next();
             break;
         default:
-            // LOGF_INFO("next type is:%1% and text is:%2%"
-            //           % _cursor->getType % _cursor->getText());
+            // LOGS(_log, LOG_LVL_DEBUG, "next type is: "
+            //      << _cursor->getType << " and text is " << _cursor->getText());
             break;
         }
     }
@@ -547,9 +550,10 @@ FromFactory::_import(antlr::RefAST a) {
     std::shared_ptr<query::TableRefList> r = std::make_shared<query::TableRefList>();
     _list = std::make_shared<query::FromList>(r);
 
-    // LOGF_INFO("FROM starts with: %1% (%2%)" % a->getText() % a->getType());
+    // LOGS(_log, LOG_LVL_DEBUG, "FROM starts with: " << a->getText()
+    //      << " (" << a->getType() << ")");
     // std::stringstream ss;
-    // LOGF_INFO("FROM indented: %1%" % walkIndentedString(a));
+    // LOGS(_log, LOG_LVL_DEBUG, "FROM indented: " << walkIndentedString(a));
     assert(_bFactory);
     for(RefGenerator refGen(a, _aliases, *_bFactory);
         !refGen.isDone();
@@ -560,7 +564,7 @@ FromFactory::_import(antlr::RefAST a) {
     }
     // std::string s(ss.str());
     // if(s.size() > 0) {
-    //    LOGF_INFO("%1%" % s);
+    //    LOGS(_log, LOG_LVL_DEBUG, s);
     //}
 }
 

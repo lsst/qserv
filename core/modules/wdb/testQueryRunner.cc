@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -77,9 +77,8 @@ struct Fixture {
         std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         lsst::qserv::wbase::Task::Ptr t =
                 std::make_shared<lsst::qserv::wbase::Task>(msg, sc);
-        LOG_LOGGER w(LOG_GET("test"));
         std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
-        QueryRunnerArg a(w, t, crm);
+        QueryRunnerArg a(t, crm);
         return a;
     }
 };

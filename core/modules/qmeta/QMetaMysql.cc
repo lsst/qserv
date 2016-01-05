@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,8 +40,7 @@
 
 namespace {
 
-// logger instance for this module
-LOG_LOGGER _logger = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
 using lsst::qserv::qmeta::QInfo;
 
@@ -109,16 +108,16 @@ QMetaMysql::getCzarID(std::string const& name) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     std::string const query = "SELECT czarId FROM QCzar WHERE czar = '" + name +"'";
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -126,13 +125,13 @@ QMetaMysql::getCzarID(std::string const& name) {
 
     // check number of results and convert to integer
     if (ids.empty()) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Result set is empty");
+        LOGS(_log, LOG_LVL_DEBUG, "Result set is empty");
         return 0;
     } else if (ids.size() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name +
                                ": " + boost::lexical_cast<std::string>(ids.size()));
     } else {
-        LOGF(_logger, LOG_LVL_DEBUG, "Found czar ID: %1%" % ids[0]);
+        LOGS(_log, LOG_LVL_DEBUG, "Found czar ID: " << ids[0]);
         return boost::lexical_cast<CzarId>(ids[0]);
     }
 }
@@ -149,16 +148,16 @@ QMetaMysql::registerCzar(std::string const& name) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     std::string query = "SELECT czarId FROM QCzar WHERE czar = '" + name +"'";
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -170,30 +169,30 @@ QMetaMysql::registerCzar(std::string const& name) {
     } else if (ids.empty()) {
 
         // no such czar, make new one
-        LOGF(_logger, LOG_LVL_DEBUG, "Create new czar with name: %1%" % name);
+        LOGS(_log, LOG_LVL_DEBUG, "Create new czar with name: " << name);
         results.freeResults();
         query = "INSERT INTO QCzar (czar, active) VALUES ('" + name +"', b'1')";
-        LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn.runQuery(query, results, errObj)) {
-            LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
         auto newId = _conn.getInsertId();
-        LOGF(_logger, LOG_LVL_DEBUG, "Created czar ID: %1%" % newId);
+        LOGS(_log, LOG_LVL_DEBUG, "Created czar ID: " << newId);
         czarId = static_cast<CzarId>(newId);
 
     } else {
 
         // its exists, get its ID
         czarId = boost::lexical_cast<CzarId>(ids[0]);
-        LOGF(_logger, LOG_LVL_DEBUG, "Use existing czar with ID: %1%" % czarId);
+        LOGS(_log, LOG_LVL_DEBUG, "Use existing czar with ID: " << czarId);
 
         // make sure it's active
         results.freeResults();
         query = "UPDATE QCzar SET active = b'1' WHERE czarId = " + ids[0];
-        LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn.runQuery(query, results, errObj)) {
-            LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
@@ -217,9 +216,9 @@ QMetaMysql::setCzarActive(CzarId czarId, bool active) {
     std::string const query = "UPDATE QCzar SET active = b'" +
             std::string(active ? "1" : "0") +
             "' WHERE czarId = " + boost::lexical_cast<std::string>(czarId);
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -276,9 +275,9 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     query += ", 'EXECUTING')";
 
     // run query
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -297,9 +296,9 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
         query += _conn.escapeString(itr->second);
         query += "')";
 
-        LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn.runQuery(query, errObj)) {
-            LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
@@ -326,9 +325,9 @@ QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
         query += boost::lexical_cast<std::string>(*itr);
         query += ")";
 
-        LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn.runQuery(query, errObj)) {
-            LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
@@ -355,10 +354,10 @@ QMetaMysql::assignChunk(QueryId queryId,
     query += " AND chunk = ";
     query += boost::lexical_cast<std::string>(chunk);
 
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -390,10 +389,10 @@ QMetaMysql::finishChunk(QueryId queryId, int chunk) {
     query += " AND chunk = ";
     query += boost::lexical_cast<std::string>(chunk);
 
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -424,11 +423,11 @@ QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
     query += " WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
 
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -456,11 +455,11 @@ QMetaMysql::finishQuery(QueryId queryId) {
     std::string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
 
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -531,16 +530,16 @@ QMetaMysql::findQueries(CzarId czarId,
         }
         query += *itr;
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -570,16 +569,16 @@ QMetaMysql::getPendingQueries(CzarId czarId) {
     std::string query = "SELECT queryId FROM QInfo WHERE czarId = ";
     query += boost::lexical_cast<std::string>(czarId);
     query += " AND returned IS NULL";
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -608,9 +607,9 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned)"
             " FROM QInfo WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -665,16 +664,16 @@ QMetaMysql::getQueriesForDb(std::string const& dbName) {
     std::string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
     query += _conn.escapeString(dbName);
     query += "' AND QInfo.completed IS NULL";
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -707,16 +706,16 @@ QMetaMysql::getQueriesForTable(std::string const& dbName,
     query += "' AND QTable.tblName = '";
     query += _conn.escapeString(tableName);
     query += "' AND QInfo.completed IS NULL";
-    LOGF(_logger, LOG_LVL_DEBUG, "Executing query: %1%" % query);
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn.runQuery(query, results, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "SQL query failed: %1%" % query);
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     std::vector<std::string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -740,8 +739,8 @@ QMetaMysql::_checkDb() {
     sql::SqlErrorObject errObj;
     if (not _conn.listTables(tables, errObj)) {
         // likely failed to connect to server or database is missing
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to connect to query metadata database, check that "
-             "server is running and database %1% exists" % _conn.getActiveDbName());
+        LOGS(_log, LOG_LVL_ERROR, "Failed to connect to query metadata database, check that "
+             "server is running and database " << _conn.getActiveDbName() << " exists");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -751,7 +750,7 @@ QMetaMysql::_checkDb() {
     for (int i = 0; i != nTables; ++ i) {
         char const* const table = requiredTables[i];
         if (std::find(tables.begin(), tables.end(), table) == tables.end()) {
-            LOGF(_logger, LOG_LVL_ERROR, "Query metadata table is missing: %1%" % table);
+            LOGS(_log, LOG_LVL_ERROR, "Query metadata table is missing: " << table);
             throw MissingTableError(ERR_LOC, table);
         }
     }

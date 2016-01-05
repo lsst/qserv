@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -60,11 +60,7 @@ char const* getOrderStr(OrderByTerm::Order o) {
     }
 }
 
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.query.OrderByClause");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.OrderByClause");
 }
 
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
@@ -75,7 +71,7 @@ public:
             _qt.append(", ");
         }
         term.renderTo(_qt);
-        LOGF(getLogger(), LOG_LVL_TRACE, "Query Template: %1%" % _qt.toString());
+        LOGS(_log, LOG_LVL_TRACE, "Query Template: " << _qt.toString());
     }
     QueryTemplate& _qt;
     int _count;
@@ -145,7 +141,7 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
     if(_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
         for(OrderByTermVector::const_iterator term = _terms->begin(), e = _terms->end(); term != e; ++term) {
-            LOGF(getLogger(), LOG_LVL_TRACE, "Rendering term: %1%" % term->toString());
+            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term->toString());
             r(*term);
         }
     }

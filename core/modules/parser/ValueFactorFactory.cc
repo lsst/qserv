@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,6 +59,8 @@ using antlr::RefAST;
 ////////////////////////////////////////////////////////////////////////
 namespace {
 
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ValueFactorFactory");
+
 inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
     RefAST last = node;
     for(; node.get(); node = node->getNextSibling()) {
@@ -109,7 +111,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
     }
-    //LOGF_DEBUG("new ValueFactor: %1%" % tokenText(a));
+    //LOGS(_log, LOG_LVL_DEBUG, "new ValueFactor: " << tokenText(a));
     switch(a->getType()) {
     case SqlSQL2TokenTypes::COLUMN_REF:
         a = a->getFirstChild();
@@ -133,7 +135,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         break;
 
     default:
-        LOGF_DEBUG("Unhandled RefAST type in ValueFactor %1%" % a->getType());
+        LOGS(_log, LOG_LVL_DEBUG, "Unhandled RefAST type in ValueFactor " << a->getType());
         vt = newConstFactor(a);
         break;
     }
@@ -155,7 +157,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     std::shared_ptr<query::ValueFactor> vt = std::make_shared<query::ValueFactor>();
     std::shared_ptr<query::FuncExpr> fe;
     RefAST last;
-    // LOGF_INFO("colterm: %1% %2%" % t->getType() % t->getText());
+    // LOGS(_log, LOG_LVL_DEBUG, "colterm: " << t->getType() << " " << t->getText());
     int tType = t->getType();
     switch(tType) {
     case SqlSQL2TokenTypes::COLUMN_REF:
@@ -180,8 +182,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         }
         return vt;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
-        // LOGF_INFO("col child (fct): %1% %2%"
-        //           % child->getType() % child->getText());
+        // LOGS(_log, LOG_LVL_DEBUG, "col child (fct): "
+        //      << child->getType() << " " << child->getText());
         fe = std::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
@@ -194,8 +196,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             current.get(); current = current->getNextSibling()) {
             // Should be a * or a value expr.
             std::shared_ptr<query::ValueFactor> pvt;
-            // LOGF_INFO("fctspec param: %1% %2%"
-            //           % current->getType() % current->getText());
+            // LOGS(_log, LOG_LVL_DEBUG, "fctspec param: "
+            //      << current->getType() << " " << current->getText());
             switch(current->getType()) {
             case SqlSQL2TokenTypes::VALUE_EXP:
                 pvt = newFactor(current->getFirstChild());
@@ -227,7 +229,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
     // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
     std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
-    // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
+    // LOGS(_log, LOG_LVL_DEBUG, "set_fct_spec " << walkTreeString(expr));
     RefAST nNode = expr->getFirstChild();
     if(!nNode.get()) {
         throw ParseException("Missing name node of function spec", expr);
@@ -263,8 +265,8 @@ std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     assert(_columnRefNodeMap);
     std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
-    //LOGF_DEBUG("fspec: %1%" % walkIndentedString(fspec));
-    // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
+    // LOGS(_log, LOG_LVL_DEBUG("fspec: " << walkIndentedString(fspec));
+    // LOGS(_log, LOG_LVL_DEBUG("set_fct_spec " << walkTreeString(expr));
     RefAST nNode = fspec->getFirstChild();
     if(!nNode.get()) {
         throw ParseException("Missing name node of function spec", fspec);
@@ -312,7 +314,7 @@ ValueFactorFactory::_newSubFactor(antlr::RefAST s) {
     if(expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
         throw ParseException("Expected VALUE_EXP", expr);
     }
-    //LOGF_DEBUG("expr: %1%" % walkIndentedString(expr));
+    //LOGS(_log, LOG_LVL_DEBUG, "expr: " << walkIndentedString(expr));
     RefAST exprChild = expr->getFirstChild();
     std::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(exprChild);
     if(ve && ve->isFactor() && ve->getAlias().empty()) {

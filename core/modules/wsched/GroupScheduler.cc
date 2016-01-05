@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,9 +37,16 @@
 #include <mutex>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.GroupScheduler");
+}
 
 namespace lsst {
 namespace qserv {
@@ -88,7 +95,7 @@ wbase::Task::Ptr GroupQueue::getTask() {
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGF_WARN("GroupScheduler::queCmd could not be converted to Task or was nullptr");
+        LOGS(_log, LOG_LVL_WARN, "GroupScheduler::queCmd could not be converted to Task or was nullptr");
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
@@ -124,7 +131,7 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
 }
 
 GroupScheduler::GroupScheduler(int maxThreads, int maxGroupSize)
-  : _maxGroupSize{maxGroupSize}, _maxThreads{maxThreads},  _logger(LOG_GET(getName())) {
+  : _maxGroupSize{maxGroupSize}, _maxThreads{maxThreads} {
 }
 
 bool GroupScheduler::empty() {

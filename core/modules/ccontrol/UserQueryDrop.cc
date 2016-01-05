@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,12 +41,7 @@
 #include "util/IterableFormatter.h"
 
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.ccontrol.UserQueryDrop");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryDrop");
 }
 
 namespace lsst {
@@ -81,11 +76,11 @@ void UserQueryDrop::submit() {
     // Just mark this db/table in CSS with special status, watcher
     // will take care of the actual delete process
 
-    LOGF(getLogger(), LOG_LVL_INFO, "going to drop db or table - %s.%s" % _dbName % _tableName);
+    LOGS(_log, LOG_LVL_INFO, "About to drop: " << _dbName <<  "." << _tableName);
 
     // create result table first, exact schema does not matter but mysql
     // needs at least one column in table DDL
-    LOGF(getLogger(), LOG_LVL_DEBUG, "creating result table: %s" % _resultTable);
+    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << _resultTable);
     std::string sql = "CREATE TABLE " + _resultTable + " (CODE INT)";
     sql::SqlErrorObject sqlErr;
     if (not _resultDbConn->runQuery(sql, sqlErr)) {
@@ -119,13 +114,13 @@ void UserQueryDrop::submit() {
         qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     } catch (qmeta::Exception const& exc) {
         // not fatal, just print error message and continue
-        LOGF(getLogger(), LOG_LVL_WARN, "QMeta failure (non-fatal): %s" % exc.what());
+        LOGS(_log, LOG_LVL_WARN, "QMeta failure (non-fatal): " << exc.what());
     }
 
     // update status to trigger watcher
     std::string newStatus = css::KEY_STATUS_DROP_PFX + std::to_string(::time(nullptr)) +
             ":qid=" + std::to_string(qMetaQueryId);
-    LOGF(getLogger(), LOG_LVL_DEBUG, "new db/table status: %s" % newStatus);
+    LOGS(_log, LOG_LVL_DEBUG, "new db/table status: " << newStatus);
     try {
         // TODO: it's better to do it in one atomic operation with
         // getStatus, but CSS API does not have this option yet
@@ -137,18 +132,18 @@ void UserQueryDrop::submit() {
         _qState = SUCCESS;
     } catch (css::NoSuchDb const& exc) {
         // Has it disappeared already?
-        LOGF(getLogger(), LOG_LVL_ERROR, "database disappeared from CSS");
+        LOGS(_log, LOG_LVL_ERROR, "database disappeared from CSS");
         std::string message = "Unknown database " + _dbName;
         _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     } catch (css::NoSuchTable const& exc) {
         // Has it disappeared already?
-        LOGF(getLogger(), LOG_LVL_ERROR, "table disappeared from CSS");
+        LOGS(_log, LOG_LVL_ERROR, "table disappeared from CSS");
         std::string message = "Unknown table " + _dbName + "." + _tableName;
         _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     } catch (css::CssError const& exc) {
-        LOGF(getLogger(), LOG_LVL_ERROR, "CSS failure: %s" % exc.what());
+        LOGS(_log, LOG_LVL_ERROR, "CSS failure: " << exc.what());
         std::string message = "CSS error: " + std::string(exc.what());
         _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -161,7 +156,7 @@ void UserQueryDrop::submit() {
                 _queryMetadata->completeQuery(qMetaQueryId, qmeta::QInfo::FAILED);
             } catch (qmeta::Exception const& exc) {
                 // not fatal, just print error message and continue
-                LOGF(getLogger(), LOG_LVL_WARN, "QMeta failure (non-fatal): %s" % exc.what());
+                LOGS(_log, LOG_LVL_WARN, "QMeta failure (non-fatal): " << exc.what());
             }
         }
     }
@@ -184,14 +179,14 @@ bool UserQueryDrop::_checkStatus() {
         if (_tableName.empty()) {
             // check database status
             auto statusMap = _css->getDbStatus();
-            LOGF(getLogger(), LOG_LVL_DEBUG, "all db status: %s" % util::printable(statusMap));
+            LOGS(_log, LOG_LVL_DEBUG, "all db status: " << util::printable(statusMap));
             if (statusMap.count(_dbName) != 1) {
                 std::string message = "Unknown database " + _dbName;
                 _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
-            LOGF(getLogger(), LOG_LVL_DEBUG, "db status: %s" % statusMap[_dbName]);
+            LOGS(_log, LOG_LVL_DEBUG, "db status: " << statusMap[_dbName]);
             if (statusMap[_dbName] != css::KEY_STATUS_READY) {
                 std::string message = "Unexpected status for database: " + _dbName
                                 + ": " + statusMap[_dbName];
@@ -202,14 +197,14 @@ bool UserQueryDrop::_checkStatus() {
         } else {
             // check table status
             auto statusMap = _css->getTableStatus(_dbName);
-            LOGF(getLogger(), LOG_LVL_DEBUG, "all table status: %s" % util::printable(statusMap));
+            LOGS(_log, LOG_LVL_DEBUG, "all table status: " << util::printable(statusMap));
             if (statusMap.count(_tableName) != 1) {
                 std::string message = "Unknown table " + _dbName + "." + _tableName;
                 _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
-            LOGF(getLogger(), LOG_LVL_DEBUG, "table status: %s" % statusMap[_tableName]);
+            LOGS(_log, LOG_LVL_DEBUG, "table status: " << statusMap[_tableName]);
             if (statusMap[_tableName] != css::KEY_STATUS_READY) {
                 std::string message = "Unexpected status for table: " + _dbName + "."
                                 + _tableName + ": " + statusMap[_tableName];
@@ -219,7 +214,7 @@ bool UserQueryDrop::_checkStatus() {
             }
         }
     } catch (css::CssError const& exc) {
-        LOGF(getLogger(), LOG_LVL_ERROR, "css failure: %s" % exc.what());
+        LOGS(_log, LOG_LVL_ERROR, "css failure: " << exc.what());
         std::string message = "CSS error: " + std::string(exc.what());
         _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;

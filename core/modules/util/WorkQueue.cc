@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2015 AURA/LSST.
+ * Copyright 2009-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,10 +38,7 @@
 #include "lsst/log/Log.h"
 
 namespace {
-    LOG_LOGGER getLogger() {
-        static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.util.WorkQueue"));
-        return _logger;
-    }
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.WorkQueue");
 }
 
 namespace lsst {
@@ -64,7 +61,7 @@ public:
             (*c)();
             _c = 0;
             c = _w.getNextCallable();
-            LOGF(::getLogger(), LOG_LVL_DEBUG, "Runner running job");
+            LOGS(_log, LOG_LVL_DEBUG, "Runner running job");
         } // Keep running until we get poisoned.
         _w.signalDeath(this);
     }
@@ -148,12 +145,12 @@ void
 WorkQueue::signalDeath(Runner* r) {
     std::lock_guard<std::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
-    // LOGF_INFO("%1% dying" % (void*) r);
+    // LOGS(_log, LOG_LVL_DEBUG, (void*) r << " dying");
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
         if(*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
-            // LOGF_INFO("%1% runners left" % _runners.size());
+            // LOGS(_log, LOG_LVL_DEBUG(_runners.size() << " runners left");
             return;
         }
     }

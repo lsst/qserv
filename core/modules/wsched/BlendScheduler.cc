@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +38,9 @@
 #include <mutex>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
@@ -50,6 +53,11 @@ template <class Sched>
 inline Sched* other(Sched* notThis, Sched* a, Sched* b) {
     return (notThis == a) ? b : a;
 }
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.BlendScheduler");
+}
+
 namespace lsst {
 namespace qserv {
 namespace wsched {
@@ -61,7 +69,7 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 BlendScheduler::BlendScheduler(std::shared_ptr<GroupScheduler> group,
                                std::shared_ptr<ScanScheduler> scan)
-    : _group{group}, _scan{scan}, _logger{LOG_GET(getName())}
+    : _group{group}, _scan{scan}
 {
     dbgBlendScheduler = this;
     if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
@@ -72,32 +80,32 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     if(task == nullptr || task->msg == nullptr) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
-    LOGF_DEBUG("BlendScheduler::queCmd tSeq=%1%" % task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd tSeq=" << task->tSeq);
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
     assert(_group);
     assert(_scan);
     wcontrol::Scheduler* s = nullptr;
     if(task->msg->scantables_size() > 0) {
-        if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
+        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
             int size = task->msg->scantables_size();
             ss << "Blend chose scan for:";
             for(int i=0; i < size; ++i) {
                 ss << i << " " << task->msg->scantables(i);
             }
-            LOGF(_logger, LOG_LVL_DEBUG, "%1%" % ss.str());
+            LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
         s = _scan.get();
     } else {
-        LOGF(_logger, LOG_LVL_DEBUG, "Blend chose group");
+        LOGS(_log, LOG_LVL_DEBUG, "Blend chose group");
         s = _group.get();
     }
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
         _map[task.get()] = s;
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "Blend queCmd tSeq=%1%" % task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd tSeq=" << task->tSeq);
     s->queCmd(task);
     notify(true);
 }
@@ -105,11 +113,11 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
 void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGF(_logger, LOG_LVL_WARN, "BlendScheduler::commandStart cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandStart cmd failed conversion");
         return;
     }
     wcontrol::Scheduler* s = lookup(t);
-    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::commandStart tSeq=%1%" % t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart tSeq=" << t->tSeq);
     if(s == _group.get()) {
         _group->commandStart(t);
     } else {
@@ -120,7 +128,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGF(_logger, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
     wcontrol::Scheduler* s = lookup(t);
@@ -129,7 +137,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     } else {
         _scan->commandFinish(t);
     }
-    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::commandFinish tSeq=%1%" % t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish tSeq=" << t->tSeq);
 }
 
 /// @return ptr to scheduler that is tracking p
@@ -151,9 +159,13 @@ bool BlendScheduler::_ready() {
     auto groupReady = _group->ready();
     auto scanReady = _scan->ready();
     auto ready = groupReady || scanReady;
-    LOGF(_logger, LOG_LVL_DEBUG, "BlendScheduler::_ready() groups(r=%1%, q=%2%, flight=%3%) scan(r=%4%, q=%5%, flight=%6%)"
-            % groupReady % _group->getSize() % _group->getInFlight()
-            % scanReady %_scan->getSize() % _scan->getInFlight());
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::_ready() groups("
+         << "r=" << groupReady
+         << ", q=" << _group->getSize()
+         << ", flight=" << _group->getInFlight() << ") "
+         << "scan(r=" << scanReady
+         << ", q=" << _scan->getSize()
+         << ", flight=" <<_scan->getInFlight() << ")");
     return ready;
 }
 
@@ -186,9 +198,11 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             _lastCmdFromScan = false;
         }
     }
-    LOGF(_logger, LOG_LVL_DEBUG,
-         "BlendScheduler::getCmd: groupReady=%1% scanReady=%2% lastCmdFromScan=%3%"
-         % groupReady % scanReady % _lastCmdFromScan);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "BlendScheduler::getCmd: "
+         << "groupReady=" << groupReady
+         << " scanReady=" << scanReady
+         << " lastCmdFromScan=" << _lastCmdFromScan);
     return cmd;
 }
 

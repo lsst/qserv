@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,6 +51,10 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qana {
@@ -77,13 +81,7 @@ public:
 
     int _limit;
     std::shared_ptr<query::OrderByClause> _orderBy;
-
-private:
-    static LOG_LOGGER _logger;
 };
-
-
-LOG_LOGGER PostPlugin::_logger = LOG_GET("lsst.qserv.qana.PostPlugin");
 
 ////////////////////////////////////////////////////////////////////////
 // PostPluginFactory declaration+implementation
@@ -134,18 +132,19 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                           query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available)
-    LOGF(_logger, LOG_LVL_DEBUG, "Apply physical");
+    LOGS(_log, LOG_LVL_DEBUG, "Apply physical");
 
     if (_limit != NOTSET) {
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
         if (context.hasChunks()) {
-             LOGF(_logger, LOG_LVL_DEBUG, "Add merge operation");
+             LOGS(_log, LOG_LVL_DEBUG, "Add merge operation");
              context.needsMerge = true;
          }
     } else if (_orderBy) {
         // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
         // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
-        LOGF(_logger, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"%1%\"" % *_orderBy);
+        LOGS(_log, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \""
+             << *_orderBy << "\"");
         for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
             (**i).setOrderBy(nullptr);
         }

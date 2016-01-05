@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,6 +47,10 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ScanTablePlugin");
+}
 
 namespace lsst {
 namespace qserv {
@@ -126,7 +130,7 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = 2;
     if(context.chunkCount < scanThreshold) {
         context.scanTables.clear();
-        LOGF_INFO("Squash scan tables: <%1% chunks." % scanThreshold);
+        LOGS(_log, LOG_LVL_DEBUG, "Squash scan tables: <" << scanThreshold << " chunks.");
     }
 }
 
@@ -242,17 +246,17 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     // plugin's applyFinal
     if(hasSelectColumnRef || hasSelectStar) {
         if(hasSecondaryKey) {
-            LOGF_INFO("**** Not a scan ****");
+            LOGS(_log, LOG_LVL_DEBUG, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
         } else {
-            LOGF_INFO("**** SCAN (column ref, non-spatial-idx)****");
+            LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (column ref, non-spatial-idx)****");
             // Scan tables = all partitioned tables
             scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
         }
     } else if(hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
-        LOGF_INFO("**** SCAN (filter) ****");
+        LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (filter) ****");
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
     return scanTables;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,6 +28,8 @@
 #include <ctime>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
 
 /// ChunkDisk is a data structure that tracks a queue of pending tasks
 /// for a disk, and the state of a chunkId-ordered scan on a disk
@@ -55,6 +57,10 @@
 /// with high probability (>50%) while testing with a shared-scan load:
 /// multiple chunks are launched and some queries complete much earlier
 /// than others.
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ChunkDisk");
+}
 
 namespace lsst {
 namespace qserv {
@@ -110,14 +116,18 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
             state = "ACTIVE";
         }
     }
-    LOGF(_logger, LOG_LVL_DEBUG,
-         "ChunkDisk enqueue chunkId=%1% state=%2% tSeq=%3% lastScan=%4% active.sz=%5% pend.sz=%6%"
-         % chunkId % state % a->tSeq % _chunkState.lastScan()
-         % _activeTasks._tasks.size() % _pendingTasks._tasks.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         "ChunkDisk enqueue "
+         << "chunkId=" << chunkId
+         << " state=" << state
+         << " tSeq=" << a->tSeq
+         << " lastScan=" << _chunkState.lastScan()
+         << " active.sz=" << _activeTasks._tasks.size()
+         << " pend.sz=" << _pendingTasks._tasks.size());
     if(_activeTasks.empty()) {
-        LOGF(_logger, LOG_LVL_DEBUG, "Top of ACTIVE is now: (empty)");
+        LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: (empty)");
     } else {
-        LOGF(_logger, LOG_LVL_DEBUG, "Top of ACTIVE is now: %1%" % taskChunkId(*_activeTasks.top()));
+        LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: " << taskChunkId(*_activeTasks.top()));
     }
 }
 
@@ -134,7 +144,7 @@ bool ChunkDisk::_ready() {
     // Switch to the pending queue.
     if(_activeTasks.empty() && !_pendingTasks.empty()) {
         std::swap(_activeTasks, _pendingTasks);
-        LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
+        LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
     }
     // If _pendingTasks was empty too, nothing to do.
     if(_activeTasks.empty()) { return false; }
@@ -146,23 +156,24 @@ bool ChunkDisk::_ready() {
     bool allowAdvance = !_busy() && !_empty();
     bool idle = !_chunkState.hasScan();
     bool inScan = _chunkState.isScan(chunkId);
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk::_ready() allowAdvance=%1% idle=%2% inScan=%3%" % allowAdvance % idle % inScan);
-    return allowAdvance || idle || inScan ;
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk::_ready() " << "allowAdvance=" << allowAdvance
+         << " idle=" << idle << " inScan=" << inScan);
+    return allowAdvance || idle || inScan;
 }
 
 /// Return a Task that is ready to run, if available.
 wbase::Task::Ptr ChunkDisk::getTask() {
-    LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk::getTask start");
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk::getTask start");
     std::lock_guard<std::mutex> lock(_queueMutex);
     if (!_ready()) {
-        LOG(_logger, LOG_LVL_DEBUG, "ChunkDisk denying task");
+        LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk denying task");
         return nullptr;
     }
     // Check the chunkId.
     auto task = _activeTasks.pop();
     int chunkId = taskChunkId(*task);
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk getTask: current= %1% candidate=%2% tSeq=%3%"
-            % _chunkState % chunkId % task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk getTask: current= " << _chunkState
+         << " candidate=" << chunkId << " tSeq=" << task->tSeq);
     _chunkState.addScan(chunkId);
     registerInflight(task); // consider the task inflight as soon as it's off the queue
     return task;
@@ -183,7 +194,7 @@ bool ChunkDisk::_busy() const {
     // Simplistic view, only one chunk in flight.
     // We are busy if the inflight list is non-empty
     bool busy = _chunkState.hasScan();
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk busyness: %1%" % (busy ? "yes" : "no"));
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk busyness: " << (busy ? "yes" : "no"));
     return busy;
 
     // More advanced:
@@ -211,8 +222,10 @@ std::size_t ChunkDisk::getSize() const {
 
 void ChunkDisk::registerInflight(wbase::Task::Ptr const& e) {
     std::lock_guard<std::mutex> lock(_inflightMutex);
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk registering for %1% : %2% p=%3%" %
-            e->msg->chunkid() % e->msg->fragment(0).query(0) % (void*) e.get());
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk registering for "
+         << e->msg->chunkid() << ": "
+         << e->msg->fragment(0).query(0)
+         << " p=" << (void*) e.get());
     _inflight.insert(e.get());
 }
 
@@ -223,8 +236,8 @@ void ChunkDisk::registerInflight(wbase::Task::Ptr const& e) {
 bool ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
     std::lock_guard<std::mutex> lock(_inflightMutex);
     int chunkId = e->msg->chunkid();
-    LOGF(_logger, LOG_LVL_DEBUG, "ChunkDisk remove for %1% : %2%" % chunkId %
-            e->msg->fragment(0).query(0));
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk remove for "
+         << chunkId << ": " << e->msg->fragment(0).query(0));
     _inflight.erase(e.get());
     {
         std::lock_guard<std::mutex> lock(_queueMutex);

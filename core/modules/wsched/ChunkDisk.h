@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,13 +31,11 @@
   */
 
 // System headers
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <vector>
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "proto/worker.pb.h"
@@ -62,7 +60,6 @@ class ChunkDisk {
 public:
     using TaskSet = std::set<wbase::Task const*>;
 
-    ChunkDisk(LOG_LOGGER const& logger) : _logger(logger) {}
     TaskSet getInflight() const;
 
     // Queue management
@@ -109,7 +106,6 @@ private:
     ChunkState _chunkState;
     mutable std::mutex _inflightMutex;
     TaskSet _inflight;
-    LOG_LOGGER _logger;
 };
 
 }}} // namespace

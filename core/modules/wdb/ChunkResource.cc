@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,6 +53,9 @@
 #include "wdb/QuerySql.h"
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.ChunkResource");
+
 template <typename T>
 class ScScriptBuilder {
 public:
@@ -270,7 +273,7 @@ private:
 
     /// Run the 'query'. If it fails, terminate the program.
     void _execLockSql(std::string const& query) {
-        LOGF_DEBUG("execLockSql %1%" % query);
+        LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
         sql::SqlErrorObject err;
         if(!_sqlConn.runQuery(query, err)) {
             _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
@@ -285,22 +288,18 @@ private:
         if (!_sqlConn.runQuery(sql, results, err)) {
             // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
             // or we are about to try to lock. Failure to lock will cause the program to exit.
-            std::string msg = "memLockStatus query failed, assuming UNLOCKED. " + sql + " err=" + err.printErrMsg();
-            LOGF_WARN("%1%" % msg);
+            LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
             return UNLOCKED;
         }
         std::string uidStr;
         if (!results.extractFirstValue(uidStr, err)) {
-            std::string msg = "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" + err.printErrMsg();
-            LOGF_WARN("%1%" % msg);
+            LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
             return LOCKED_OTHER;
         }
         int uid = atoi(uidStr.c_str());
         if (uid != _uid) {
-            std::ostringstream msg;
-            msg << "memLockStatus LOCKED_OTHER wrong uid. Expected " << _uid << " got " << uid
-                << " err=" << err.printErrMsg();
-            LOGF_WARN("%1%" % msg.str());
+            LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
+                 << _uid << " got " << uid << " err=" << err.printErrMsg());
             return LOCKED_OTHER;
         }
         return LOCKED_OURS;
@@ -314,7 +313,7 @@ private:
         _lockDbTbl = _lockDb + "." + _lockTbl;
         LockStatus mls = _memLockStatus();
         if (mls != UNLOCKED) {
-            LOGF_WARN("Memory tables were not released cleanly! LockStatus=%1%" % mls);
+            LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
         }
 
         // Lock the memory tables.
@@ -360,9 +359,9 @@ private:
 
     /// Delete the memory lock database and everything in it.
     void _memLockRelease() {
-        LOGF_DEBUG("memLockRelease");
+        LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
         if (!_isFake && !_lockConflict) {
-            LOGF_INFO("memLockRelease releasing lock.");
+            LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
             std::string sql = "DROP DATABASE " + _lockDb + ";";
             _execLockSql(sql);
         }
@@ -371,7 +370,7 @@ private:
     /// Exit the program immediately to reduce minimize possible problems.
     void _exitDueToConflict(const std::string& msg) {
         _lockConflict = true;
-        LOGF_ERROR("%1%" % msg);
+        LOGS(_log, LOG_LVL_ERROR, msg);
         exit(EXIT_FAILURE);
     }
 

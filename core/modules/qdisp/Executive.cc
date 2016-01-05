@@ -68,10 +68,7 @@ extern XrdSsiProvider *XrdSsiProviderClient;
 
 namespace {
 
-LOG_LOGGER getLogger() {
-    static const LOG_LOGGER _logger(LOG_GET("lsst.qserv.qdisp.Executive"));
-    return _logger;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
 
 std::string getErrorText(XrdSsiErrInfo & e) {
     std::ostringstream os;
@@ -103,9 +100,10 @@ Executive::~Executive() {
 /** Add a new job to executive queue, if not already in. Not thread-safe.
  */
 void Executive::add(JobDescription const& jobDesc) {
-    LOGF(getLogger(), LOG_LVL_DEBUG, "Executive::add(%1%)" % jobDesc.toString());
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
     if(_cancelled) {
-        LOGF(getLogger(), LOG_LVL_INFO, "Executive already cancelled, ignoring add(%1%)" % jobDesc.id());
+        LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
+             << jobDesc.id() << ")");
         return;
     }
     // Create the JobQuery and put it in the map.
@@ -113,20 +111,23 @@ void Executive::add(JobDescription const& jobDesc) {
     MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
     JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf);
     if(!_addJobToMap(jobQuery)) {
-        LOGF(getLogger(), LOG_LVL_ERROR, "Executive ignoring duplicate job add(%1%)" % jobQuery->getId());
+        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add("
+             << jobQuery->getId() << ")");
         return;
     }
 
     if (!_track(jobQuery->getId(), jobQuery)) {
-        LOGF(getLogger(), LOG_LVL_ERROR, "Executive ignoring duplicate track add(%1%)" % jobQuery->getId());
+        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add("
+             << jobQuery->getId() << ")");
         return;
     }
     if (_empty.exchange(false)) {
-        LOGF(getLogger(), LOG_LVL_INFO, "Flag _empty set to false by jobId %1%" % jobQuery->getId());
+        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by jobId "
+             << jobQuery->getId());
     }
     ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
-    LOGF(getLogger(), LOG_LVL_INFO, "%1%" % msg);
+    LOGS(_log, LOG_LVL_DEBUG, msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
 
     jobQuery->runJob();
@@ -148,7 +149,7 @@ bool Executive::join() {
     struct successF {
         static bool f(Executive::JobMap::value_type const& entry) {
             JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
-            LOGF_INFO("entry state:%1% %2%)" % (void*)entry.second.get() % esI);
+            LOGS(_log, LOG_LVL_DEBUG, "entry state:" << (void*)entry.second.get() << " " << esI);
             return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
         }
     };
@@ -159,20 +160,23 @@ bool Executive::join() {
         sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
     }
     if(sCount == _requestCount) {
-        LOGF_INFO("Query execution succeeded: %1% jobs dispatched and completed." % _requestCount);
+        LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount
+             << " jobs dispatched and completed.");
     } else {
-        LOGF_ERROR("Query execution failed: %1% jobs dispatched, but only %2% jobs completed" % _requestCount % sCount);
+        LOGS(_log, LOG_LVL_ERROR, "Query execution failed: " << _requestCount
+             << " jobs dispatched, but only " << sCount << " jobs completed");
     }
     _updateProxyMessages();
     bool empty = (sCount == _requestCount);
     _empty.store(empty);
-    LOGF_DEBUG("Flag set to _empty=%1% sCount=%2% requestCount=%3%" % empty % sCount % _requestCount);
+    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << empty << ", sCount=" << sCount
+         << ", requestCount=" << _requestCount);
     return empty;
 }
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
-    LOGF(getLogger(), LOG_LVL_INFO, "Executive::markCompleted(%1%,%2%)" % jobId % success);
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted(" << jobId << "," << success << ")");
     if(!success) {
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
@@ -187,8 +191,8 @@ void Executive::markCompleted(int jobId, bool success) {
                 throw Bug(msg);
             }
         }
-        LOGF(getLogger(), LOG_LVL_ERROR,
-             "Executive: error executing jobId=%1%: %2% (status: %3%)" % jobId % err % err.getStatus());
+        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing jobId=" << jobId
+             << ": " << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::mutex> lock(_jobsMutex);
             _jobMap[jobId]->getStatus()->updateInfo(JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
@@ -196,14 +200,14 @@ void Executive::markCompleted(int jobId, bool success) {
         {
             std::lock_guard<std::mutex> lock(_errorsMutex);
             _multiError.push_back(err);
-            LOGF(getLogger(), LOG_LVL_TRACE, "Currently %2% registered errors: %1%" %
-                 _multiError % _multiError.size());
+            LOGS(_log, LOG_LVL_TRACE, "Currently " << _multiError.size()
+                 << " registered errors: " << _multiError);
         }
     }
     _unTrack(jobId);
     if(!success) {
-        LOGF(getLogger(), LOG_LVL_ERROR, "Executive: requesting squash, cause: jobId=%1% failed (code=%2% %3%)"
-             % jobId % err.getCode() % err.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: jobId="
+             << jobId << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
     }
 }
@@ -214,7 +218,7 @@ void Executive::requestSquash(int jobId) {
         std::lock_guard<std::mutex> lock(_jobsMutex);
         auto iter = _jobMap.find(jobId);
         if(iter == _jobMap.end()) {
-            LOGF_WARN("requestSquash invalid jobID %1%" % jobId);
+            LOGS(_log, LOG_LVL_WARN, "requestSquash invalid jobID " << jobId);
             return;
         }
         toSquash = iter->second;
@@ -226,11 +230,11 @@ void Executive::requestSquash(int jobId) {
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
     if(alreadyCancelled) {
-        LOGF_WARN("Executive::squash() already cancelled! refusing.");
+        LOGS(_log, LOG_LVL_WARN, "Executive::squash() already cancelled! refusing.");
         return;
     }
 
-    LOGF_INFO("Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_DEBUG, "Trying to cancel all queries...");
     {
         std::lock_guard<std::mutex> lock(_jobsMutex);
         for(auto const& jobEntry : _jobMap) {
@@ -258,7 +262,7 @@ std::string Executive::getProgressDesc() const {
         }
     }
     std::string msg_progress = os.str();
-    LOGF(getLogger(), LOG_LVL_ERROR, "%1%" % msg_progress);
+    LOGS(_log, LOG_LVL_ERROR, msg_progress);
     return msg_progress;
 }
 
@@ -274,8 +278,8 @@ void Executive::_setup() {
         _xrdSsiService = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
     }
     if(!_xrdSsiService) {
-        LOGF_ERROR("Error obtaining XrdSsiService in Executive: "
-                   %  getErrorText(eInfo));
+        LOGS(_log, LOG_LVL_ERROR, "Error obtaining XrdSsiService in Executive: "
+             << getErrorText(eInfo));
     }
     assert(_xrdSsiService);
 }
@@ -291,7 +295,8 @@ void Executive::_setup() {
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
-    LOGF(getLogger(), LOG_LVL_TRACE, "Attempt to add jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
+    LOGS(_log, LOG_LVL_TRACE, "Attempt to add jobId=" << jobId
+         << " to Executive (" << (void*) this << ") tracked jobs");
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         if(_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
@@ -299,7 +304,8 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
         }
         _incompleteJobs[jobId] = r;
     }
-    LOGF(getLogger(), LOG_LVL_TRACE, "Success in adding jobId=%2% to Executive (%1%) tracked jobs" % (void*)this % jobId);
+    LOGS(_log, LOG_LVL_TRACE, "Success in adding jobId=" << jobId
+         << " to Executive (" << (void*) this << " tracked jobs");
     return true;
 }
 
@@ -315,7 +321,7 @@ void Executive::_unTrack(int jobId) {
         }
     }
     if(untracked) {
-        LOGF_INFO("Executive (%1%) UNTRACKING id=%2%" % (void*)this % jobId);
+        LOGS(_log, LOG_LVL_DEBUG, "Executive (" << jobId << ") UNTRACKING id=" << (void*)this);
     }
 }
 
@@ -326,7 +332,8 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     for(auto iter=_incompleteJobs.begin(), e=_incompleteJobs.end(); iter != e;) {
         if(!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
-            LOGF_INFO("Executive (%1%) reaped requester for jobId=%2%" % (void*)this % iter->first);
+            LOGS(_log, LOG_LVL_DEBUG, "Executive (" << (void*) this
+                 << ") reaped requester for jobId=" << iter->first);
             iter = _incompleteJobs.erase(iter);
         } else {
             ++iter;
@@ -383,7 +390,7 @@ void Executive::_waitAllUntilEmpty() {
         if(count != lastCount) {
             lastCount = count;
             ++complainCount;
-            if (LOG_CHECK_INFO()) {
+            if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                 std::ostringstream os;
                 if(complainCount > moreDetailThreshold) {
                     _printState(os);
@@ -392,7 +399,7 @@ void Executive::_waitAllUntilEmpty() {
                 os << "Still " << count << " in flight.";
                 complainCount = 0;
                 lock.unlock(); // release the lock while we trigger logging.
-                LOGF_INFO("%1%" % os.str());
+                LOGS(_log, LOG_LVL_DEBUG, os.str());
                 lock.lock();
             }
         }

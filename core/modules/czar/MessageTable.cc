@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -73,10 +73,10 @@ void
 MessageTable::lock() {
     std::string query = (boost::format(::createAndLockTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
-    LOGF(_log, LOG_LVL_DEBUG, "locking message table %s" % _tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "locking message table " << _tableName);
     if (not _sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure locking message table", sqlErr);
-        LOGF(_log, LOG_LVL_ERROR, exc.message());
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -87,10 +87,10 @@ MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
     _saveQueryMessages(userQuery);
 
     sql::SqlErrorObject sqlErr;
-    LOGF(_log, LOG_LVL_DEBUG, "unlocking message table %s" % _tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
     if (not _sqlConn->runQuery(::unlockTmpl, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure unlocking message table", sqlErr);
-        LOGF(_log, LOG_LVL_ERROR, exc.message());
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -108,8 +108,9 @@ MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
     int msgCount = msgStore->messageCount();
     for (int i = 0; i != msgCount; ++ i) {
         const qdisp::QueryMessage& qm = msgStore->getMessage(i);
-        LOGF(_log, LOG_LVL_DEBUG, "Insert in message table: [%s, %s, %s, %s, %s]" %
-             qm.description % qm.chunkId % qm.code % qm.severity % qm.timestamp);
+        LOGS(_log, LOG_LVL_DEBUG, "Insert in message table: ["
+             << qm.description << ", " << qm.chunkId << ", " << qm.code
+             << ", " << qm.severity << ", " << qm.timestamp << "]");
 
         char const* severity = (qm.severity == MSG_INFO ? "INFO" : "ERROR");
         std::string query = (boost::format(::writeTmpl) % _tableName % qm.chunkId % qm.code %
@@ -117,7 +118,7 @@ MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
         sql::SqlErrorObject sqlErr;
         if (not _sqlConn->runQuery(query, sqlErr)) {
             SqlError exc(ERR_LOC, "Failure updating message table", sqlErr);
-            LOGF(_log, LOG_LVL_ERROR, exc.message());
+            LOGS(_log, LOG_LVL_ERROR, exc.message());
             throw exc;
         }
     }

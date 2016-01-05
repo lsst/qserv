@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,21 +53,26 @@
 // time or it will refuse to use the shared library. As the library is never
 // unloaded, the object does not need to be deleted.
 //
-XrdSsiProvider *XrdSsiProviderServer = 
+XrdSsiProvider *XrdSsiProviderServer =
                 new  lsst::qserv::xrdsvc::SsiProviderServer;
 
 XrdSsiProvider *XrdSsiProviderLookup = XrdSsiProviderServer;
-  
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiProvider");
+}
+
 /******************************************************************************/
 /*                            D e s t r u c t o r                             */
 /******************************************************************************/
-  
+
+
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
 SsiProviderServer::~SsiProviderServer() {}
-  
+
 /******************************************************************************/
 /*                                  I n i t                                   */
 /******************************************************************************/
@@ -100,7 +105,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
 
     // Herald our initialization
     //
-    LOG_INFO("SsiProvider initializing...");
+    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider initializing...");
     _logSsi->Msg("Qserv", "Provider Initializing");
 
     // Initialize the inventory. We need to be able to handle QueryResource()
@@ -120,7 +125,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";
         _chunkInventory->dbgPrint(ss);
-        LOGF_INFO("%1%" % ss.str());
+        LOGS(_log, LOG_LVL_DEBUG, ss.str());
         _logSsi->Msg("Qserv", ss.str().c_str());
     }
 
@@ -141,21 +146,21 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
     ResourceUnit ru(rName);
     if(ru.unitType() != ResourceUnit::DBCHUNK) {
         // FIXME: Do we need to support /result here?
-        LOGF_INFO("SsiProvider Query %1% invalid" % rName);
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");
         return notPresent;
     }
 
     // If the chunk exists on our node then tell he caller it is here.
     //
     if(_chunkInventory->has(ru.db(), ru.chunk())) {
-        LOGF_DEBUG("SsiProvider Query %1% present" % rName);
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
         return isPresent;
     }
 
     // Tell the caller we do not have the chunk.
     //
-    LOGF_DEBUG("SsiProvider Query %1% absent" % rName);
+    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
     return notPresent;
 }
-  
+
 }}} // namespace lsst::qserv::xrdsvc

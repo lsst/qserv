@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,9 +29,6 @@
 #define BOOST_TEST_MODULE CControl_1
 #include "boost/test/included/unit_test.hpp"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
 
@@ -41,8 +38,6 @@ using namespace lsst::qserv;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(testUserQueryType) {
-    LOGF_INFO("testing UserQueryType class");
-
     using lsst::qserv::ccontrol::UserQueryType;
 
     BOOST_CHECK(UserQueryType::isSelect("SELECT 1"));
@@ -159,7 +154,6 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         std::string db;
         BOOST_CHECK(not UserQueryType::isFlushChunksCache(test, db));
     }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

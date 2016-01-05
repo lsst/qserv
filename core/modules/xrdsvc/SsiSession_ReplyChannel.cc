@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +31,10 @@
 #include "util/Timer.h"
 #include "xrdsvc/ChannelStream.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiSession_ReplyChannel");
+}
+
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
@@ -39,7 +43,7 @@ bool
 SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
     Status s = _ssiSession.SetResponse(buf, bufLen);
     if(s != XrdSsiResponder::wasPosted) {
-        LOGF_ERROR("DANGER: Couldn't post response of length=%1%" % bufLen);
+        LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response of length=" << bufLen);
         return false;
     }
     return true;
@@ -49,7 +53,7 @@ bool
 SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
     Status s = _ssiSession.SetErrResponse(msg.c_str(), code);
     if(s != XrdSsiResponder::wasPosted) {
-        LOGF_ERROR("DANGER: Couldn't post error response %1%" % msg);
+        LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post error response " << msg);
         return false;
     }
     return true;
@@ -61,28 +65,28 @@ SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
     t.start();
     Status s = _ssiSession.SetResponse(fSize, fd);
     if(s == XrdSsiResponder::wasPosted) {
-        LOG_INFO("file posted ok");
+        LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
     } else {
         if(s == XrdSsiResponder::notActive) {
-            LOGF_ERROR("DANGER: Couldn't post response file of length=%1%"
-               " responder not active." % fSize);
+            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length="
+                 << fSize << ", responder not active.");
         } else {
-            LOGF_ERROR("DANGER: Couldn't post response file of length=%1%" % fSize);
+            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length=" << fSize);
         }
         release();
         sendError("Internal error posting response file", 1);
         return false; // sendError handles everything else.
     }
     t.stop();
-    LOGF_INFO("sendFile took %1% seconds" % t.getElapsed());
+    LOGS(_log, LOG_LVL_DEBUG, "sendFile took " << t.getElapsed() << " seconds");
     return true;
 }
 
 bool
 SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
     // Initialize streaming object if not initialized.
-    LOGF_INFO("sendStream, checking stream %1% len=%2% last=%3%" %
-            (void*) _stream % bufLen % last);
+    LOGS(_log, LOG_LVL_DEBUG, "sendStream, checking stream " << (void *) _stream
+         << " len=" << bufLen << " last=" << last);
     if(!_stream) {
         _initStream();
     } else if(_stream->closed()) {

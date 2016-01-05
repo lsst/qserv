@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,8 +63,6 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-LOG_LOGGER SelectList::_logger = LOG_GET("lsst.qserv.query.SelectList");
-
 template <typename T>
 struct renderWithSep {
     renderWithSep(QueryTemplate& qt_, std::string const& sep_)
@@ -75,7 +73,6 @@ struct renderWithSep {
     QueryTemplate& qt;
     std::string sep;
     int count;
-
 };
 
 void

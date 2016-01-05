@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,6 +30,9 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "util/common.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ProtoHeaderWrap");
+}
 
 namespace lsst {
 namespace qserv {
@@ -49,7 +52,7 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
         msgBuf +='0'; // pad the buffer
     }
-    LOGF_INFO("msgBuf size=%1% -> %2%" % msgBuf.size() % util::prettyCharList(msgBuf, 5));
+    LOGS(_log, LOG_LVL_DEBUG, "msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
     return msgBuf;
 }
 
@@ -59,10 +62,8 @@ bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vec
             response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }
-    LOGF_INFO("buffer size=%1% -> %2%" % buffer.size() % util::prettyCharList(buffer, 5));
+    LOGS(_log, LOG_LVL_DEBUG, "buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));
     return true;
 }
 
-
-}}} // end namespace
-
+}}} // namespace lsst::qserv::proto

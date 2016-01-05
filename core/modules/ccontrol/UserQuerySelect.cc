@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -93,11 +93,7 @@
 #include "util/IterableFormatter.h"
 
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
-    return logger;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 }
 
 namespace lsst {
@@ -163,7 +159,7 @@ std::string UserQuerySelect::getError() const {
 
 /// Attempt to kill in progress.
 void UserQuerySelect::kill() {
-    LOG(getLogger(), LOG_LVL_INFO, "UserQuerySelect kill");
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
     if(!_killed) {
         _killed = true;
@@ -205,7 +201,7 @@ void UserQuerySelect::submit() {
     TmpTableName ttn(_userQueryId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
-    LOG(getLogger(), LOG_LVL_INFO, "UserQuerySelect beginning submission");
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
     std::vector<int> chunks;
     // Writing query for each chunk
@@ -250,15 +246,15 @@ QueryState UserQuerySelect::join() {
     _discardMerger();
     if (not _submitted) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        LOG(getLogger(), LOG_LVL_ERROR, "Not fully submitted (failure!)");
+        LOGS(_log, LOG_LVL_ERROR, "Not fully submitted (failure!)");
         return ERROR;
     } else if(successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOG(getLogger(), LOG_LVL_INFO, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
         return SUCCESS;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        LOG(getLogger(), LOG_LVL_ERROR, "Joined everything (failure!)");
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         return ERROR;
     }
 }
@@ -293,18 +289,18 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGF(getLogger(), LOG_LVL_INFO, "Discarded UserQuerySelect(%1%)" % _userQueryId);
+    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect(" << _userQueryId << ")");
 }
 
 /// Setup merger (for results handling and aggregation)
 void UserQuerySelect::_setupMerger() {
-    LOG(getLogger(), LOG_LVL_TRACE, "Setup merger");
+    LOGS(_log, LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }
 
 void UserQuerySelect::setupChunking() {
-    LOG(getLogger(), LOG_LVL_TRACE, "Setup chunking");
+    LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
@@ -318,11 +314,11 @@ void UserQuerySelect::setupChunking() {
         eSet = _qSession->getEmptyChunks();
         if(!eSet) {
             eSet = std::make_shared<IntSet>();
-            LOGF(getLogger(), LOG_LVL_WARN, "Missing empty chunks info for %1%" % dominantDb);
+            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for " << dominantDb);
         }
     }
     // FIXME add operator<< for QuerySession
-    LOGF(getLogger(), LOG_LVL_TRACE, "_qSession: %1%" % _qSession);
+    LOGS(_log, LOG_LVL_TRACE, "_qSession: " << _qSession);
     if (_qSession->hasChunks()) {
         std::shared_ptr<query::ConstraintVector> constraints
             = _qSession->getConstraints();
@@ -336,7 +332,7 @@ void UserQuerySelect::setupChunking() {
             csv = im->getAllChunks();
         }
 
-        LOGF(getLogger(), LOG_LVL_TRACE, "Chunk specs: %1%" % util::printable(csv));
+        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
         // Filter out empty chunks
         for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
             i != e;
@@ -346,7 +342,7 @@ void UserQuerySelect::setupChunking() {
             }
         }
     } else {
-        LOG(getLogger(), LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
+        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
     }
 }
 

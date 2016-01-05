@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,9 +38,6 @@
 #include "boost/utility.hpp"
 #include "boost/lexical_cast.hpp"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Local headers
 #include "global/stringTypes.h"
 
@@ -66,7 +63,6 @@ public:
         if(i != _m.end()) {
             return i->second;
         } else {
-            LOGF_DEBUG("%1%" % errorMsg);
             return defaultValue;
         }
     }

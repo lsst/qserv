@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,13 +43,17 @@
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiSession_ReplyChannel.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiSession");
+}
+
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
 SsiSession::~SsiSession() {
     // XrdSsiSession::sessName is unmanaged, need to free()
-    LOGF_DEBUG("~SsiSession()");
+    LOGS(_log, LOG_LVL_DEBUG, "~SsiSession()");
     if(sessName) { ::free(sessName); sessName = 0; }
 }
 
@@ -58,14 +62,14 @@ SsiSession::~SsiSession() {
 void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     util::Timer t;
 
-    LOGF_INFO("ProcessRequest, service=%1%" % sessName);
+    LOGS(_log, LOG_LVL_DEBUG, "ProcessRequest, service=" << sessName);
 
     char *reqData = nullptr;
     int reqSize;
     t.start();
     reqData = req->GetRequest(reqSize);
     t.stop();
-    LOGF_INFO("GetRequest took %1% seconds" % t.getElapsed());
+    LOGS(_log, LOG_LVL_DEBUG, "GetRequest took " << t.getElapsed() << " seconds");
 
     auto replyChannel = std::make_shared<ReplyChannel>(*this);
 
@@ -79,7 +83,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     if (ru.unitType() != ResourceUnit::DBCHUNK) {
         std::ostringstream os;
         os << "Unexpected unit type in query db=" << ru.db() << " unitType=" << ru.unitType();
-        LOGF_ERROR(os.str());
+        LOGS(_log, LOG_LVL_ERROR, os);
         errorFunc(os.str());
         return;
     }
@@ -87,21 +91,21 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     if(!(*_validator)(ru)) {
         std::ostringstream os;
         os << "WARNING: unowned chunk query detected:" << ru.path();
-        LOGF_WARN(os.str());
+        LOGS(_log, LOG_LVL_WARN, os);
         errorFunc(os.str());
         return;
     }
 
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
-    LOGF_INFO("Decoding TaskMsg of size %1%" % reqSize);
+    LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
 
     if (!ok) {
         std::ostringstream os;
         os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGF_ERROR(os.str());
+        LOGS(_log, LOG_LVL_ERROR, os);
         errorFunc(os.str());
         return;
     }
@@ -110,7 +114,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
         std::ostringstream os;
         os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGF_ERROR(os.str());
+        LOGS(_log, LOG_LVL_ERROR, os);
         errorFunc(os.str());
         return;
     }
@@ -132,8 +136,8 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     t.start();
     _processor->processTask(task); // Queues task to be run later.
     t.stop();
-    LOGF_INFO("BindRequest took %1% seconds" % t.getElapsed());
-    LOGF_INFO("Enqueued TaskMsg for %1% in %2% seconds" % ru % t.getElapsed());
+    LOGS(_log, LOG_LVL_DEBUG, "BindRequest took " << t.getElapsed() << " seconds");
+    LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
 }
 
 /// Called by XrdSsi to free resources.
@@ -161,7 +165,7 @@ void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo
     }
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
-    LOGF_INFO("RequestFinished %1%" % type);
+    LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
 }
 
 bool SsiSession::Unprovision(bool forced) {

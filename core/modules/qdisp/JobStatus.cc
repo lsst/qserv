@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,13 +47,7 @@ namespace qserv {
 namespace qdisp {
 
 namespace {
-
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qdisp.JobStatus");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobStatus");
 }
 
 JobStatus::Info::Info()
@@ -64,7 +58,7 @@ JobStatus::Info::Info()
 void JobStatus::updateInfo(JobStatus::State s, int code, std::string const& desc) {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    LOGF(getLogger(), LOG_LVL_TRACE, "Updating %1% state to: %2%" % (void*)this % s);
+    LOGS(_log, LOG_LVL_TRACE, "Updating " << (void*) this << " state to: " << s);
     _info.stateTime = ::time(NULL);
     _info.state = s;
     _info.stateCode = code;

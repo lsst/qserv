@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 LSST Corporation.
+ * Copyright 2012-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,9 +32,6 @@
 // System headers
 #include <memory>
 #include <vector>
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Local headers
 #include "global/stringTypes.h"
@@ -87,8 +84,6 @@ private:
 
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
-
-    static LOG_LOGGER _logger;
 };
 
 }}} // namespace lsst::qserv::query
