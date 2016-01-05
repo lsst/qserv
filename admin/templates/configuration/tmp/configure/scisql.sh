@@ -17,15 +17,9 @@ export LD_LIBRARY_PATH='{{LD_LIBRARY_PATH}}'
 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start
 echo "-- Deploying sciSQL plugin in MySQL database"
-# password is given on stdin, so that is can't be catched by ps command
-PASSFILE=${QSERV_RUN_DIR}/tmp/pass.txt
-cat <<EOF > ${PASSFILE}
-${MYSQLD_PASS} 
-EOF
-"${SCISQL_DIR}/bin/scisql-deploy.py" --mysql-dir="$MYSQL_DIR" \
+echo "${MYSQLD_PASS}" | "${SCISQL_DIR}/bin/scisql-deploy.py" --mysql-dir="$MYSQL_DIR" \
 				 --mysql-socket="${MYSQLD_SOCK}" \
-				 --mysql-user="${MYSQLD_USER}" < "${PASSFILE}"
-rm "${PASSFILE}"
+				 --mysql-user="${MYSQLD_USER}"
 "${QSERV_RUN_DIR}/etc/init.d/mysqld" stop ||
 exit 1
 
