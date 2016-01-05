@@ -59,7 +59,7 @@ DIRTREE = 'directory-tree'
 ETC = 'etc'
 CLIENT = 'client'
 
-MARIADB = 'mariadb'
+MYSQL = 'mysql'
 XROOTD = 'xrootd'
 CSS_WATCHER = 'css-watcher'
 CZAR = 'qserv-czar'
@@ -67,7 +67,7 @@ WORKER = 'qserv-worker'
 QSERV = 'qserv'
 SCISQL =  'scisql'
 
-DB_COMPONENTS = [MARIADB, CZAR, WORKER, SCISQL]
+DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
 NODB_COMPONENTS = [XROOTD, CSS_WATCHER]
 COMPONENTS = NODB_COMPONENTS + DB_COMPONENTS
 CONFIGURATION_STEPS = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
@@ -80,7 +80,7 @@ ALL_STEPS_DOC = {
              "eventually create symbolic link from QSERV_RUN_DIR/var/lib to QSERV_DATA_DIR.",
     ETC: "Create Qserv configuration files in QSERV_RUN_DIR using values issued " +
          "from meta-config file QSERV_RUN_DIR/qserv-meta.conf",
-    MARIADB: "Remove MariaDB previous data, install db and set password",
+    MYSQL: "Remove MariaDB previous data, install db and set password",
     XROOTD: "Create xrootd query and result directories",
     CSS_WATCHER: "Configure CSS-watcher (i.e. MySQL credentials)",
     CZAR: "Initialize Qserv master database",
