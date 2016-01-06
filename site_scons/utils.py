@@ -17,16 +17,18 @@ import SCons.Script
 ##
 class Log(object):
 
-    def __init__(self):
-        self.traceback = False
-        self.verbose = True
+    def __init__(self, verbose, silent, traceback):
+        self.traceback = traceback
+        self.verbose = verbose
+        self.silent = silent
 
     def debug(self, message):
-        if self.verbose:
+        if self.verbose and not self.silent:
             print "DEBUG : " + message
 
     def info(self, message):
-        print "INFO : " + message
+        if not self.silent:
+            print "INFO : " + message
 
     def warn(self, message):
         if self.traceback:

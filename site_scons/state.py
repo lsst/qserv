@@ -117,13 +117,9 @@ def _initOptions():
 def _initLog():
     import utils
     global log
-    log = utils.Log()
-
-    #
-    # Process those arguments
-    #
-    log.verbose = SCons.Script.GetOption('verbose')
-    log.traceback = SCons.Script.GetOption('traceback')
+    log = utils.Log(SCons.Script.GetOption('verbose'),
+                    SCons.Script.GetOption('silent'),
+                    SCons.Script.GetOption('traceback'))
 
 def _setEnvWithDependencies():
 

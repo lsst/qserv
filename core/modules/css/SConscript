@@ -1,33 +1,31 @@
 # -*- python -*-
-# Qserv css module SConscript
 import distutils.sysconfig
-import pytarget
-import cctarget
 
 Import('env')
-Import('extraTgts')
-Import('extraSrcs')
+Import('standardModule')
+
+standardModule(env, unit_tests="testKvInterfaceImpl testCssAccess testEmptyChunks",
+               exclude='./cssLib_wrap.cc')
+
+build_data = DefaultEnvironment()['build_data']
 
 # this assumes that we use the same Python for scons and final products
 pythonInc = distutils.sysconfig.get_python_inc()
 
-cppPath = cctarget.getList(env, 'CPPPATH') + [pythonInc]
+cppPath = env['CPPPATH'] + [pythonInc]
 swigged = env.SharedObject(source="cssLib.i",
-                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-                            SWIGPATH=['..', pythonInc],
-                            CPPPATH=cppPath,
-                            LDMODULEPREFIX='_', LDMODULESUFFIX='.so'
-                            )
+                           SWIGFLAGS=['-python', '-c++', '-Iinclude'],
+                           SWIGPATH=['..', pythonInc],
+                           CPPPATH=cppPath,
+                           LDMODULEPREFIX='_', LDMODULESUFFIX='.so'
+                           )
 
-extraSrcs["css"] = swigged
+build_data['module_objects']['css:python'] = swigged
 
-# # Create entry for python file, which SCons SWIG builder ignores
+# Create entry for python file, which SCons SWIG builder ignores
 pySwig = env.File('cssLib.py')
-extraTgts["cssLib.py"] = pySwig
 
-pyFiles = pytarget.getPyTargets(env, ["lsst", "qserv", "css"], [pySwig])
-extraTgts['dist'].extend(pyFiles)
-
-defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "cssLib_wrap.cc")
-
-Return('defaultTargets')
+# install python file
+dst = "$prefix/$python_relative_prefix/lsst/qserv/css"
+py_installed = env.Install(dst, pySwig)
+build_data['install'] += py_installed

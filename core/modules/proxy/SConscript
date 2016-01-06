@@ -1,22 +1,18 @@
 # -*- python -*-
 
-import cctarget
-
 Import('env')
-Import('extraSrcs')
-Import('extraTgts')
+Import('standardModule')
 
-proxyFiles = [env.File("mysqlProxy.lua")]
-for p in proxyFiles:
-    extraTgts["dist"].append(("proxy", p))
+standardModule(env, exclude='./czarProxy_wrap.cc')
 
+build_data = DefaultEnvironment()['build_data']
 
+# install Lua file
+build_data['install'] += env.Install("$prefix/proxy", "mysqlProxy.lua")
+
+# SWIG -Lua wrapper
 swigged = env.SharedObject(source="czarProxy.i",
                            SWIGFLAGS=['-lua', '-c++', '-Iinclude'],
                            SWIGPATH=['..'])
 
-ccTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "czarProxy_wrap.cc")
-
-targets = ccTargets + swigged
-
-Return('targets')
+build_data['module_objects']['proxy'] += swigged

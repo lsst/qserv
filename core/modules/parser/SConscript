@@ -1,10 +1,11 @@
 # -*- python -*-
 ## SConscript for parser module
 Import('env')
-Import('extraTgts')
+Import('standardModule')
+
 import os
 
-myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"), env.Glob("*.cc"))
+standardModule(env)
 
 # Import SqlSQL2ImpTokenTypes.txt from query/
 tokenFile = env.Command("SqlSQL2ImpTokenTypes.txt",
@@ -21,9 +22,10 @@ antlrHdrs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_HSUFFIX')), antlr
 
 env.Depends(antlrSrcs[0], 'DmlSQL2.g')
 env.Depends(antlrSrcs[0], tokenFile)
-extraTgts['antlrHdrs'] = antlrHdrs
+
 #print "ANTLR srcs=", map(str, antlrSrcs)
 #print "ANTLR hdrs=", antlrHdrs
 # Ignore output antlr .txt files for now.
-outs = antlrSrcs + myDeps
-Return('outs')
+
+build_data = DefaultEnvironment()['build_data']
+build_data['module_objects']['parser'] += antlrSrcs

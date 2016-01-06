@@ -80,35 +80,18 @@ else:
 # Trigger the modules build
 ############################
 
-# computing install target paths
-#################################
-    def get_install_targets():
+    (installTargets, testTargets) = SConscript('core/modules/SConscript',
+                                               variant_dir=env['build_dir'],
+                                               duplicate=0,
+                                               exports=['env', 'ARGUMENTS'])
 
-        # Setup the #include paths
-        # env.Append(CPPPATH="modules")
+    state.log.debug("installTargets: %s" % map(str, installTargets))
+    env.Alias("dist-core", installTargets)
 
-        (coreFilesToInstall, testTargets) = SConscript('core/modules/SConscript',
-                                                       variant_dir=env['build_dir'],
-                                                       duplicate=0,
-                                                       exports=['env', 'ARGUMENTS'])
-        targetFiles = []
-        for (path, sourceNode) in coreFilesToInstall:
-            installPath = os.path.join(env['prefix'], path)
-            state.log.debug("%s %s" % (installPath, sourceNode))
-            targetFile = fileutils.replace_base_path(None, installPath, sourceNode, env)
-            env.InstallAs(targetFile, sourceNode)
-            targetFiles.append(targetFile)
+    if testTargets:
+        env.Alias("test", testTargets)
+        state.log.debug("Test tgts to build: %s" % map(str, testTargets))
 
-        installTargets = targetFiles
-        state.log.debug("installTargets: %s" % map(str, installTargets))
-
-        if testTargets:
-            env.Alias("test", testTargets)
-            state.log.debug("Test tgts to build: %s" % map(str, testTargets))
-
-        return installTargets
-
-    env.Alias("dist-core", get_install_targets())
 
 #########################################
 #

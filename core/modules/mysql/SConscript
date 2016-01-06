@@ -1,0 +1,4 @@
+Import('env')
+Import('standardModule')
+
+standardModule(env, unit_tests=[])
