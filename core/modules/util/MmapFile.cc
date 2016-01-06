@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * Copyright 2008-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +32,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.MmapFile");
+}
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -52,14 +59,16 @@ MmapFile::newMap(std::string const& filename, bool read, bool write) {
 MmapFile::~MmapFile() {
     if(_buf) {
         if(-1 == ::munmap(_buf, _fstat.st_size)) {
-            // LOGF_ERROR("Munmap failed (%1%, %2%). Memory corruption likely."
-            //            % (void*)_buf % _fstat.st_size);
+            // LOGS(_log, LOG_LVL_ERROR, "Mmap failed ("
+            //      << (void*)_buf << ", " << _fstat.st_size
+            //      << "). Memory corruption likely.");
         }
         _buf = 0;
     }
     if(_fd > 0) {
         if(-1 == close(_fd)) {
-            // LOGF_WARN("Warning, broken close of %1% (fd=%2%)" % _filename % _fd);
+            // LOGS(_log, LOG_LVL_WARN, "Warning, broken close of "
+            //      _filename << " (fd=" << _fd << ")");
         }
         _fd = 0;
     }
@@ -84,7 +93,7 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
     }
     _fd = ::open(_filename.c_str(), openFlags);
     if(_fd == -1) {
-        // LOGF_WARN("Error opening file.");
+        // LOGS(_log, LOG_LVL_WARN, "Error opening file.");
         _fd = 0;
     }
     if((-1 == ::fstat(_fd, &_fstat)) || // get filesize
@@ -93,7 +102,7 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
         )
        ) {
         if((MAP_FAILED == _buf) && _fstat.st_size > ((off_t)1ULL << 30)) {
-            // LOGF_WARN("file too big? (mmap failed)");
+            // LOGS(_log, LOG_LVL_WARN, "file too big? (mmap failed)");
         }
         _buf = 0; // reset buffer.
     }

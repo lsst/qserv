@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2015 AURA/LSST.
+ * Copyright 2009-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +40,8 @@
 
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.SqlInsertIter");
 
 // Helpers to make regex's
 boost::regex makeLockInsertRegex(std::string const& tableName) {
@@ -135,8 +137,8 @@ public:
         BufOff needSize = v.second + keepSize;
         if(needSize > (bufSize - offEnd)) {
             if(needSize > bufSize) {
-                LOGF_DEBUG("%1% is too small. sqliter Realloc to %2%" %
-                           bufSize % needSize);
+                LOGS(_log, LOG_LVL_DEBUG, bufSize << " is too small. "
+                     << "sqliter Realloc to " << needSize);
                 void* res = realloc(buffer, needSize);
                 if (!res) {
                     errno = ENOMEM;
@@ -198,8 +200,8 @@ SqlInsertIter::SqlInsertIter(util::PacketBuffer::Ptr p,
     // slide the unmatched to the beginning, memcpy the packetIter
     // data into our buffer, and setup the regex match again.
     // Continue.
-    LOGF_DEBUG("EXECUTING SqlInsertIter(PacketIter::Ptr, %1%, %2%)"
-               % tableName % allowNull);
+    LOGS(_log, LOG_LVL_DEBUG, "EXECUTING SqlInsertIter(PacketIter::Ptr, "
+         << tableName << ", " << allowNull << ")");
     boost::regex lockInsertExpr(makeLockInsertOpenRegex(tableName));
     boost::regex lockExpr(makeLockOpenRegex(tableName));
     bool found = false;
@@ -209,10 +211,10 @@ SqlInsertIter::SqlInsertIter(util::PacketBuffer::Ptr p,
         char const* bufEnd = _bufferMgr->getEnd();
         found = boost::regex_search(buf, bufEnd, _blockMatch, lockInsertExpr);
         if(found) {
-            LOGF_DEBUG("Matched Lock statement within SqlInsertIter");
+            LOGS(_log, LOG_LVL_DEBUG, "Matched Lock statement within SqlInsertIter");
             break;
         } else {
-            LOGF_DEBUG("Did not match Lock statement within SqlInsertIter");
+            LOGS(_log, LOG_LVL_DEBUG, "Did not match Lock statement within SqlInsertIter");
         }
         //Add next fragment, if available.
         if(!_bufferMgr->incrementFragment()) {

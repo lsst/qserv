@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -78,8 +78,8 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
-    LOGF(_log, LOG_LVL_INFO, "creating czar instance with name %s" % czarName);
-    LOGF(_log, LOG_LVL_DEBUG, "czar config: %s" % util::printable(_config));
+    LOGS(_log, LOG_LVL_INFO, "creating czar instance with name " << czarName);
+    LOGS(_log, LOG_LVL_INFO, "czar config: " << util::printable(_config));
 
     _uqFactory.reset(new ccontrol::UserQueryFactory(_config, _czarName));
 }
@@ -88,8 +88,8 @@ SubmitResult
 Czar::submitQuery(std::string const& query,
                   std::map<std::string, std::string> const& hints) {
 
-    LOGF(_log, LOG_LVL_INFO, "new query: %s" % query);
-    LOGF(_log, LOG_LVL_INFO, "hints: %s" % util::printable(hints));
+    LOGS(_log, LOG_LVL_INFO, "New query: " << query
+         << ", hints: " << util::printable(hints));
 
     // get some info from hints
     std::string clientId;
@@ -110,7 +110,7 @@ Czar::submitQuery(std::string const& query,
 
     // this is atomic
     uint64_t userQueryId = _idCounter++;
-    LOGF(_log, LOG_LVL_DEBUG, "userQueryId: %s" % userQueryId);
+    LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
 
     // make table names
     auto userQueryIdStr = std::to_string(userQueryId);
@@ -145,7 +145,7 @@ Czar::submitQuery(std::string const& query,
     }
 
     // start execution
-    LOGF(_log, LOG_LVL_DEBUG, "submitting new query");
+    LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
     uq->submit();
 
     // spawn background thread to wait until query finishes to unlock,
@@ -158,10 +158,10 @@ Czar::submitQuery(std::string const& query,
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
-            LOGF(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): %s" % exc.what());
+            LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
     };
-    LOGF(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
+    LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     std::thread finalThread(finalizer);
     finalThread.detach();
 
@@ -181,8 +181,8 @@ Czar::submitQuery(std::string const& query,
         if (not clientId.empty() and threadId >= 0) {
             ClientThreadId ctId(clientId, threadId);
             _clientToQuery.insert(std::make_pair(ctId, uq));
-            LOGF(_log, LOG_LVL_DEBUG, "Remembering query: (%s, %s) (new map size: %s)" %
-                 clientId % threadId % _clientToQuery.size());
+            LOGS(_log, LOG_LVL_DEBUG, "Remembering query: (" << clientId << ", "
+                 << threadId << ") (new map size: " << _clientToQuery.size() << ")");
         }
     }
 
@@ -190,8 +190,9 @@ Czar::submitQuery(std::string const& query,
     result.resultTable = resultName;
     result.messageTable = lockName;
     result.orderBy = uq->getProxyOrderBy();
-    LOGF(_log, LOG_LVL_DEBUG, "returning result to proxy: resultTable=%s messageTable=%s orderBy=%s"
-         % result.resultTable % result.messageTable % result.orderBy);
+    LOGS(_log, LOG_LVL_DEBUG, "returning result to proxy: resultTable="
+         << result.resultTable << " messageTable=" << result.messageTable
+         << " orderBy=" << result.orderBy);
 
     return result;
 }
@@ -199,8 +200,7 @@ Czar::submitQuery(std::string const& query,
 std::string
 Czar::killQuery(std::string const& query, std::string const& clientId) {
 
-    LOGF(_log, LOG_LVL_INFO, "KILL query: '%s'" % query);
-    LOGF(_log, LOG_LVL_INFO, "client ID: '%s'" % clientId);
+    LOGS(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
 
     // the query can be one of:
     //   "KILL QUERY NNN" - kills currently running query in thread NNN
@@ -209,7 +209,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     //   "KILL NNN" - same as "KILL CONNECTION NNN"
 
     int threadId = ::parseKillQuery(query);
-    LOGF(_log, LOG_LVL_INFO, "thread ID: %s" % threadId);
+    LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
     if (threadId < 0) {
         return "Failed to parse query: " + query;
     }
@@ -229,7 +229,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     }
 
     // assume this cannot fail or throw
-    LOGF(_log, LOG_LVL_INFO, "Killing query for thread: %s" % threadId);
+    LOGS(_log, LOG_LVL_DEBUG, "Killing query for thread: " << threadId);
     if (uq) {
         uq->kill();
     }
@@ -276,11 +276,11 @@ parseKillQuery(std::string const& aQuery) {
     // try to match against one or another form of KILL
     static const std::string prefixes[] = {"KILL QUERY ", "KILL CONNECTION ", "KILL "};
     for (auto& prefix: prefixes) {
-        LOGF(_log, LOG_LVL_DEBUG, "checking prefix: '%s'" % prefix);
+        LOGS(_log, LOG_LVL_DEBUG, "checking prefix: '" << prefix << "'");
         if (query.compare(0, prefix.size(), prefix) == 0) {
-            LOGF(_log, LOG_LVL_DEBUG, "match found");
+            LOGS(_log, LOG_LVL_DEBUG, "match found");
             try {
-                LOGF(_log, LOG_LVL_DEBUG, "thread id: '%s'" % query.substr(prefix.size()));
+                LOGS(_log, LOG_LVL_DEBUG, "thread id: '" << query.substr(prefix.size()) << "'");
                 return boost::lexical_cast<int>(query.substr(prefix.size()));
             } catch (boost::bad_lexical_cast const& exc) {
                 // error in query syntax

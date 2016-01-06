@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,6 +41,10 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/QueryRequest.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryResource");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -48,11 +52,11 @@ namespace qdisp {
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
   : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
       _jobQuery(jobQuery), _jobId(jobQuery->getId()) {
-  LOGF_DEBUG("QueryResource JQ_jobId=%1%" % _jobId);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryResource JQ_jobId=" << _jobId);
 }
 
 QueryResource::~QueryResource() {
-    LOGF_DEBUG("~QueryResource() JQ_jobId=%1%" % _jobId);
+    LOGS(_log, LOG_LVL_DEBUG, "~QueryResource() JQ_jobId=" << _jobId);
     std::free(const_cast<char*>(rName));
 }
 

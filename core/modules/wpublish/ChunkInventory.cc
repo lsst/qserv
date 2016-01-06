@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,6 +43,9 @@
 #include "wconfig/Config.h"
 
 namespace { // File-scope helpers
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkInventory");
+
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
@@ -77,13 +80,13 @@ void fetchDbs(std::string const& instanceName,
     std::string tableNameDbListing = getTableNameDbListing(instanceName);
 
     std::string listq = "SELECT db FROM " + tableNameDbListing;
-    LOGF_DEBUG("Launching query : %1%" % listq);
+    LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << listq);
     std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
     if(resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
-        LOG_ERROR("ChunkInventory can't get list of publishable dbs.");
-        LOGF_ERROR("%1%" % seo.printErrMsg());
+        LOGS(_log, LOG_LVL_ERROR, "ChunkInventory can't get list of publishable dbs.");
+        LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
         return;
     }
     bool nothing = true;
@@ -91,7 +94,9 @@ void fetchDbs(std::string const& instanceName,
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) { LOGF_WARN("TEST : No databases found to export: %1%" % listq); }
+    if(nothing) {
+        LOGS(_log, LOG_LVL_WARN, "TEST: No databases found to export: " << listq);
+    }
 }
 
 /// Functor to be called per-table name
@@ -161,7 +166,7 @@ public:
         SqlErrorObject sqlErrorObject;
         bool ok = _conn.listTables(tables,  sqlErrorObject, "", dbName);
         if(!ok) {
-            LOGF_ERROR("SQL error: %1%" % sqlErrorObject.errMsg());
+            LOGS(_log, LOG_LVL_ERROR, "SQL error: " << sqlErrorObject.errMsg());
             assert(ok);
         }
         ChunkInventory::ChunkMap& chunkMap = _existMap[dbName];
@@ -178,7 +183,7 @@ public:
         } else {
             // Verify that there is a dummy chunk entry
             if(chunkMap.find(lsst::qserv::DUMMY_CHUNK) == chunkMap.end()) {
-                LOGF_ERROR("Missing dummy chunk for db=%1%" % dbName);
+                LOGS(_log, LOG_LVL_ERROR, "Missing dummy chunk for db=" << dbName);
 
                 // FIXME enable once loader/installer can ensure that the
                 // dummy chunk exists exactly when appropriate

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,6 +56,9 @@
 
 // Anonymous helpers
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.WhereFactory");
+
 class ParamGenerator {
 public:
     struct Check {
@@ -76,13 +79,13 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            // LOGF_INFO("advancingX..: %1%" % current->getText());
+            // LOGS(_log, LOG_LVL_DEBUG, "advancingX..: " << current->getText());
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            // LOGF_INFO("advancing..: %1%" % current->getText());
+            // LOGS(_log, LOG_LVL_DEBUG, "advancing..: " << current->getText());
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -165,10 +168,10 @@ public:
     FromWhereH() {}
     virtual ~FromWhereH() {}
     virtual void operator()(antlr::RefAST fw) {
-        if (LOG_CHECK_INFO()) {
+        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::stringstream ss;
             printDigraph("fromwhere", ss, fw);
-            LOGF_INFO("fromwhere %1%" % ss.str());
+            LOGS(_log, LOG_LVL_DEBUG, "fromwhere " << ss.str());
         }
     }
 };
@@ -201,9 +204,9 @@ void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
     _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
-    // LOGF_INFO("WHERE starts with: %1% (%2%)"
-    //           % a->getText() % a->getType());
-    // LOGF_INFO("WHERE indented: %1%" % walkIndentedString(a));
+    // LOGS(_log, LOG_LVL_DEBUG, "WHERE starts with: "
+    //      << a->getText() << "(" << a->getType() << ")");
+    // LOGS(_log, LOG_LVL_DEBUG, "WHERE indented: " << walkIndentedString(a));
     if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
@@ -235,14 +238,14 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     // for(ParamGenerator::Iter it = pg.begin();
     //     it != pg.end();
     //     ++it) {
-    //     LOGF_INFO("iterating: %1%" % *it);
+    //     LOGS(_log, LOG_LVL_DEBUG, "iterating: " << *it);
     // }
     std::copy(pg.begin(), pg.end(), std::back_inserter(params));
-    if (LOG_CHECK_INFO()) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::stringstream ss;
         std::copy(params.begin(), params.end(),
                   std::ostream_iterator<std::string>(ss, ", "));
-        LOGF_INFO("Adding from %1%: %2%" % r % ss.str());
+        LOGS(_log, LOG_LVL_DEBUG, "Adding from " << r << ": " << ss.str());
     }
     if(!_clause->_restrs) {
         throw std::logic_error("Invalid WhereClause._restrs");
@@ -251,9 +254,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     // in order to mimic MySQL functions/procedures
     if (r != "sIndex") {
         std::transform(r.begin(), r.end(), r.begin(), ::tolower);
-        if (LOG_CHECK_DEBUG()) {
-            LOGF_DEBUG("Qserv restrictor changed to lower-case %1%:"% r);
-        }
+        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << r);
     }
     restr->_name = r;
     _clause->_restrs->push_back(restr);
@@ -295,7 +296,7 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     }
 
     walkTreeVisit(a, p);
-    // LOGF_INFO("Adding orsibs: %1%" % p.result);
+    // LOGS(_log, LOG_LVL_DEBUG, "Adding orsibs: " << p.result);
     // BoolTermFactory::tagPrint tp(LOG_STRM(Info), "addOr");
     // forEachSibs(a, tp);
     BoolTermFactory f(_vf);

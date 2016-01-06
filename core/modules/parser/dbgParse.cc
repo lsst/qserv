@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +31,9 @@
 #include "parser/parserBase.h"
 #include "parser/parseTreeUtil.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.dbgParse");
+}
 
 namespace lsst {
 namespace qserv {
@@ -41,8 +44,8 @@ public:
     virtual ~ColumnHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c, antlr::RefAST d) {
-        LOGF_INFO("col _%1%_ _%2%_ _%3%_ _%4%_" % tokenText(a)
-                  % tokenText(b) % tokenText(c) % tokenText(d));
+        LOGS(_log, LOG_LVL_DEBUG, "col _" << tokenText(a) << "_ _"
+             << tokenText(b) << "_ _" << tokenText(c) << "_ _" << tokenText(d) << "_");
         a->setText("AWESOMECOLUMN");
     }
 };
@@ -52,8 +55,8 @@ public:
     virtual ~TableHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c)  {
-        LOGF_INFO("qualname %1% %2% %3% " % tokenText(a)
-                  % tokenText(b) % tokenText(c));
+        LOGS(_log, LOG_LVL_DEBUG, "qualname " << tokenText(a)
+             << " " << tokenText(b) << " " << tokenText(c));
         a->setText("AwesomeTable");
     }
 };
@@ -63,7 +66,7 @@ public:
     virtual ~TestAliasHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
         if(b.get()) {
-            LOGF_INFO("Alias %1% = %2%" % tokenText(a) % tokenText(b));
+            LOGS(_log, LOG_LVL_DEBUG, "Alias " << tokenText(a) << " = " << tokenText(b));
         }
     }
 };
@@ -73,8 +76,8 @@ public:
     virtual ~TestSelectListHandler() {}
     virtual void operator()(antlr::RefAST a) {
         antlr::RefAST bound = parser::getLastSibling(a);
-        LOGF_INFO("SelectList %1%--From %2% to %3%"
-                  % walkTreeString(a) % a % bound);
+        LOGS(_log, LOG_LVL_DEBUG, "SelectList " << walkTreeString(a)
+             << "--From " << a << " to " << bound);
     }
 };
 
@@ -93,12 +96,12 @@ public:
     }
     virtual ~TestSetFuncHandler() {}
     virtual void operator()(antlr::RefAST a) {
-        LOGF_INFO("Got setfunc %1%" % walkTreeString(a));
+        LOGS(_log, LOG_LVL_DEBUG, "Got setfunc " << walkTreeString(a));
         //verify aggregation cmd.
         std::string origAgg = tokenText(a);
         MapConstIter i = _map.find(origAgg); // case-sensitivity?
         if(i == _map.end()) {
-            LOGF_INFO("%1% is not an aggregate." % origAgg);
+            LOGS(_log, LOG_LVL_DEBUG, origAgg << " is not an aggregate.");
             return; // Skip.  Actually, this would be a parser bug.
         }
         // Extract meaning and label parts.

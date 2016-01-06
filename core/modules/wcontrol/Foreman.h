@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * Copyright 2008-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,9 +27,6 @@
 // System headers
 #include <atomic>
 #include <memory>
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "util/EventThread.h"
@@ -83,7 +80,6 @@ protected:
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;
-    LOG_LOGGER _log {LOG_GET("Foreman")};
 };
 
 }}}  // namespace lsst::qserv::wcontrol

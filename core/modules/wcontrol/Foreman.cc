@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 AURA/LSST.
+ * Copyright 2008-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,6 +45,9 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
+}
 
 namespace lsst {
 namespace qserv {
@@ -60,12 +63,12 @@ Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize) : _scheduler{s} {
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
     assert(s); // Cannot operate without scheduler.
 
-    LOGF_DEBUG("poolSize=%1%" % poolSize);
+    LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize);
     _pool = util::ThreadPool::newThreadPool(poolSize, _scheduler);
 }
 
 Foreman::~Foreman() {
-    LOGF(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
+    LOGS(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
     // It will take significant effort to have xrootd shutdown cleanly and this will never get called
     // until that happens.
     _pool->endAll();
@@ -78,7 +81,7 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if(!msg.has_protocol() || msg.protocol() < resultProtocol) {
-            LOGF_WARN("processMsg Unsupported wire protocol");
+            LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
             if (!task->getCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
                 task->sendChannel->sendError("Unsupported wire protocol", 1);
@@ -94,7 +97,7 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
 }
 
 std::shared_ptr<wdb::QueryRunner> Foreman::_newQueryRunner(wbase::Task::Ptr const& t) {
-    wdb::QueryRunnerArg a(_log, t, _chunkResourceMgr);
+    wdb::QueryRunnerArg a(t, _chunkResourceMgr);
     auto qa = wdb::QueryRunner::newQueryRunner(a);
     return qa;
 }

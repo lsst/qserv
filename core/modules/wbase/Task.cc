@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,23 +46,25 @@
 
 namespace {
 
-    std::ostream&
-    dump(std::ostream& os,
-         lsst::qserv::proto::TaskMsg_Fragment const& f) {
-        os << "frag: "
-           << "q=";
-        for(int i=0; i < f.query_size(); ++i) {
-            os << f.query(i) << ",";
-        }
-        if(f.has_subchunks()) {
-            os << " sc=";
-            for(int i=0; i < f.subchunks().id_size(); ++i) {
-                os << f.subchunks().id(i) << ",";
-            }
-        }
-        os << " rt=" << f.resulttable();
-        return os;
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
+
+std::ostream&
+dump(std::ostream& os,
+    lsst::qserv::proto::TaskMsg_Fragment const& f) {
+    os << "frag: " << "q=";
+    for(int i=0; i < f.query_size(); ++i) {
+        os << f.query(i) << ",";
     }
+    if(f.has_subchunks()) {
+        os << " sc=";
+        for(int i=0; i < f.subchunks().id_size(); ++i) {
+            os << f.subchunks().id(i) << ",";
+        }
+    }
+    os << " rt=" << f.resulttable();
+    return os;
+}
+
 } // annonymous namespace
 
 namespace lsst {
@@ -92,7 +94,7 @@ IdSet Task::allTSeq{};
 Task::Task() {
     tSeq = sequence.incr();
     allTSeq.add(tSeq);
-    LOGF_DEBUG("Task tSeq=%1%  :%2%" % tSeq % allTSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "Task tSeq=" << tSeq << ": " << allTSeq);
 }
 
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
@@ -108,12 +110,12 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
 
     tSeq = sequence.incr();
     allTSeq.add(tSeq);
-    LOGF_DEBUG("Task(...) tSeq=%1%  :%2%" % tSeq % allTSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "Task(...) tSeq=" << tSeq << ": " << allTSeq);
 }
 
 Task::~Task() {
     allTSeq.remove(tSeq);
-    LOGF_DEBUG("~Task() tSeq=%1%  :%2%" % tSeq % allTSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "~Task() tSeq=" << tSeq << ": " << allTSeq);
 }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
@@ -143,7 +145,7 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {
-        LOGF_DEBUG("Task::freeTaskQueryRunner pointer didn't match!");
+        LOGS(_log, LOG_LVL_DEBUG, "Task::freeTaskQueryRunner pointer didn't match!");
     }
 }
 

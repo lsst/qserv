@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,6 +51,10 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "util/common.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.AggregatePlugin");
+}
 
 namespace lsst {
 namespace qserv {
@@ -233,10 +237,10 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     std::for_each(vlist->begin(), vlist->end(), ca);
     query::QueryTemplate qt;
     pList.renderTo(qt);
-    // LOGF_INFO("pass: %1%" % qt.dbgStr());
+    // LOGS(_log, LOG_LVL_DEBUG("pass: " << qt.dbgStr());
     qt.clear();
     mList.renderTo(qt);
-    // LOGF_INFO("fixup: %1%" % qt.dbgStr());
+    // LOGS(_log, LOG_LVL_DEBUG, "fixup: " << qt.dbgStr());
     // Also need to operate on GROUP BY.
     // update context.
     if(plan.stmtOriginal.getDistinct() || m.hasAggregate()) {

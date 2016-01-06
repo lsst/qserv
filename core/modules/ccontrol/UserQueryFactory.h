@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,9 +37,6 @@
 
 // Third-party headers
 #include "boost/utility.hpp"
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Local headers
 #include "ccontrol/UserQuery.h"

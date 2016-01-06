@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,8 +23,8 @@
 #ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
-// LSST headers
-#include "lsst/log/Log.h"
+// System headers
+#include <map>
 
 // Qserv headers
 #include "wcontrol/Foreman.h"
@@ -72,7 +72,6 @@ private:
     std::shared_ptr<GroupScheduler> _group;
     std::shared_ptr<ScanScheduler> _scan;
     bool _lastCmdFromScan{false};
-    LOG_LOGGER _logger;
     std::map<wbase::Task*, wcontrol::Scheduler*> _map;
     std::mutex _mapMutex;
 };

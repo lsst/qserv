@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -50,7 +50,7 @@ std::string initHostName() {
         char buf[_SC_HOST_NAME_MAX+1];
         buf[_SC_HOST_NAME_MAX] = '\0';
         if (gethostname(buf, sizeof buf - 1) != 0) {
-            LOGF_ERROR("gethostname failed errno=%1%" % errno);
+            LOGS_ERROR("gethostname failed errno=" << errno);
             return std::string("");
         }
         return std::string(buf);

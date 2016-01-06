@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
  * Print a MultiError object containing only one error
  */
 BOOST_AUTO_TEST_CASE(EventThreadTest) {
-    LOG_DEBUG("EventThread test");
+    LOGS_DEBUG("EventThread test");
 
     struct SumUnprotected {
         int total{0};
@@ -92,16 +92,16 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         uint sz = 10; // size of thread poo to create
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
-        LOGF_DEBUG("pool size=%1%" % sz);
+        LOGS_DEBUG("pool size=" << sz);
         BOOST_CHECK(pool->size() == sz);
         sz += 10; // test increase in size of thread pool.
         pool->resize(sz);
-        LOGF_DEBUG("pool size=%1%" % sz);
+        LOGS_DEBUG("pool size=" << sz);
         BOOST_CHECK(pool->size() == sz);
         sz = 5; // test decrease in size of thread pool.
         pool->resize(sz);
         pool->waitForResize(10000);
-        LOGF_DEBUG("pool size=%1%" % sz);
+        LOGS_DEBUG("pool size=" << sz);
         BOOST_CHECK(pool->size() == sz);
 
         /// Queue up a sum using the pool.
@@ -113,10 +113,10 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         Sum poolSum;
         int total = 0;
         auto poolQueue = pool->getQueue();
-        LOGF_DEBUG("Summing with pool");
+        LOGS_DEBUG("Summing with pool");
         sz = 20; // Want enough threads so that there are reasonable chance of collisions.
         pool->resize(sz);
-        LOGF_DEBUG("pool size=%1%" % sz);
+        LOGS_DEBUG("pool size=" << sz);
         BOOST_CHECK(pool->size() == sz);
 
         for (int j=1;j<2000;j++) {
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
             total += j;
             poolQueue->queCmd(cmdSum);
         }
-        LOGF_DEBUG("stopping all threads in pool");
+        LOGS_DEBUG("stopping all threads in pool");
         pool->endAll(); // These are added to end of queue, everything on queue should complete.
         pool->waitForResize(0);
         BOOST_CHECK(total == poolSum.total);
@@ -170,7 +170,8 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
 
         cmdSumUnprotected->waitComplete();
         commandData->waitComplete();
-        LOGF_DEBUG("cmdSumUnprotected=%1% commandData=%2%" % sum.total % commandData->total);
+        LOGS_DEBUG("cmdSumUnprotected=" << sum.total
+                   << " commandData=" << commandData->total);
         BOOST_CHECK(sum.total == commandData->total);
         pool->endAll();
     }

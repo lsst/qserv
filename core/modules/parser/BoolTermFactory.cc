@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,6 +44,11 @@
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "parser/ValueExprFactory.h"
 #include "query/Predicate.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.BoolTermFactory");
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -196,11 +201,11 @@ BoolTermFactory::newAndTerm(antlr::RefAST a) {
 query::BoolFactor::Ptr
 BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 #if 0
-    if (LOG_CHECK_INFO()) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::stringstream ss;
         spacePrint sp(ss);
         forEachSibs(a, sp);
-        LOGF_INFO("bool factor: %1%" % ss.str());
+        LOGS(_log, LOG_LVL_DEBUG, "bool factor: " << ss.str());
     }
 #endif
     query::BoolFactor::Ptr bf = std::make_shared<query::BoolFactor>();
@@ -211,7 +216,7 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 /// Construct an UnknownTerm(BoolTerm)
 query::UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
-    LOGF_INFO("unknown term: %1%" % walkTreeString(a));
+    LOGS(_log, LOG_LVL_DEBUG, "unknown term: " << walkTreeString(a));
     query::UnknownTerm::Ptr p = std::make_shared<query::UnknownTerm>();
     return p;
 }

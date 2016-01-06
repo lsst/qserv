@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -55,6 +55,9 @@
 
 class XrdPosixCallBack; // Forward.
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
+}
 
 namespace lsst {
 namespace qserv {
@@ -70,7 +73,7 @@ std::shared_ptr<sql::SqlConnection> makeSqlConnection() {
 
 
 SsiService::SsiService(XrdSsiLogger* log) {
-    LOG_INFO("SsiService starting...");
+    LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
     _configure();
     _initInventory();
@@ -96,13 +99,13 @@ SsiService::SsiService(XrdSsiLogger* log) {
 }
 
 SsiService::~SsiService() {
-    LOG_INFO("SsiService dying.");
+    LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
 }
 
 void SsiService::Provision(XrdSsiService::Resource* r,
                            unsigned short timeOut,
                            bool userConn) { // Step 2
-    LOGF_INFO("Got provision call where rName is: %1%" % r->rName);
+    LOGS(_log, LOG_LVL_DEBUG, "Got provision call where rName is: " << r->rName);
     XrdSsiSession* session = new SsiSession(r->rName, _chunkInventory->newValidator(), _foreman);
     r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
 }
@@ -115,7 +118,7 @@ void SsiService::_initInventory() {
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
-    LOGF_INFO(os.str());
+    LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
 void SsiService::_setupResultPath() {
@@ -127,7 +130,7 @@ void SsiService::_configure() {
     if(!wconfig::getConfig().getIsValid()) {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
-        LOG_FATAL(msg.c_str());
+        LOGS(_log, LOG_LVL_FATAL, msg);
         throw wconfig::ConfigError(msg);
     }
 }
@@ -143,14 +146,16 @@ bool SsiService::_setupScratchDb() {
     }
     sql::SqlErrorObject errObj;
     std::string dbName = wconfig::getConfig().getString("scratchDb");
-    LOGF_INFO("Cleaning up scratchDb: %1%." % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "Cleaning up scratchDb: " << dbName);
     if(!conn->dropDb(dbName, errObj, false)) {
-        LOGF_ERROR("Cfg error! couldn't drop scratchDb: %1% %2%." % dbName % errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: ."
+             << dbName << ", error: " << errObj.errMsg());
         return false;
     }
     errObj.reset();
     if(!conn->createDb(dbName, errObj, true)) {
-        LOGF_ERROR("Cfg error! couldn't create scratchDb: %1% %2%." % dbName % errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't create scratchDb: "
+             << dbName << ", error: " << errObj.errMsg());
         return false;
     }
     return true;

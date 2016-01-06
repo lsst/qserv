@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 LSST Corporation.
+ * Copyright 2014-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +34,11 @@
 #include "global/Bug.h"
 #include "global/debugUtil.h"
 #include "util/common.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.ChannelStream");
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -76,7 +81,7 @@ ChannelStream::ChannelStream()
 ChannelStream::~ChannelStream() {
 #if 0 // Enable to debug ChannelStream lifetime
     try {
-        LOGF_INFO("Stream (%1%) deleted" % (void*)this);
+        LOGS(_log, LOG_LVL_DEBUG, "Stream (" << (void *) this << ") deleted");
     } catch (...) {} // Destructors have nowhere to throw exceptions
 #endif
 }
@@ -87,11 +92,10 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
     if(_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    //LOGF_INFO("last=%1% %2%" % last % makeByteStreamAnnotated("StreamMsg", buf, bufLen));
-    LOGF_INFO("last=%1% %2%" % last % util::prettyCharBuf(buf, bufLen, 10));
+    LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
     {
         std::unique_lock<std::mutex> lock(_mutex);
-        LOG_INFO(" trying to append message (flowing)");
+        LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
 
         _msgs.push_back(std::string(buf, bufLen));
         _closed = last; // if last is true, then we are closed.
@@ -105,12 +109,12 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     std::unique_lock<std::mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
-        LOG_INFO("Waiting, no data ready");
+        LOGS(_log, LOG_LVL_DEBUG, "Waiting, no data ready");
         _hasDataCondition.wait(lock);
     }
     if(_msgs.empty() && _closed) { // We are closed and no more
         // msgs are available.
-        LOG_INFO("Not waiting, but closed");
+        LOGS(_log, LOG_LVL_DEBUG, "Not waiting, but closed");
         dlen = 0;
         eInfo.Set("Not an active stream", EOPNOTSUPP);
         return 0;
@@ -119,7 +123,7 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     dlen = _msgs.front().size();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
-    LOGF_INFO("returning buffer (%1%, %2%)" % dlen % (last ? "(last)" : "(more)"));
+    LOGS(_log, LOG_LVL_DEBUG, "returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
     return sb;
 }
 

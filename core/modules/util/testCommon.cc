@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,35 +62,35 @@ BOOST_AUTO_TEST_CASE(prettyPrint) {
     std::string expectedList{"[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, "
         "110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122]"};
     auto strList = util::prettyCharList(s);
-    LOGF_INFO("strList=%1%" % strList);
+    LOGS_DEBUG("strList=" << strList);
     BOOST_CHECK(strList.compare(expectedList) == 0);
 
     std::string expectedList13{"[[0]=97, [1]=98, [2]=99, [3]=100, [4]=101, [5]=102, [6]=103, [7]=104, "
         "[8]=105, [9]=106, [10]=107, [11]=108, [12]=109, [13]=110, [14]=111, [15]=112, [16]=113, "
         "[17]=114, [18]=115, [19]=116, [20]=117, [21]=118, [22]=119, [23]=120, [24]=121, [25]=122]"};
     auto strList13 = util::prettyCharList(s, 13);
-    LOGF_INFO("strList13=%1%" % strList13);
+    LOGS_DEBUG("strList13=" << strList13);
     BOOST_CHECK(strList13.compare(expectedList13) == 0);
     auto strList30 = util::prettyCharList(s, 30);
-    LOGF_INFO("strList30=%1%" % strList30);
+    LOGS_DEBUG("strList30=" << strList30);
     BOOST_CHECK(strList30.compare(expectedList13) == 0);
 
     std::string expectedList3{"[[0]=97, [1]=98, [2]=99, ..., [23]=120, [24]=121, [25]=122]"};
     auto strList3 = util::prettyCharList(s, 3);
-    LOGF_INFO("strList3=%1%" % strList3);
+    LOGS_DEBUG("strList3=" << strList3);
     BOOST_CHECK(strList3.compare(expectedList3) == 0);
 
     const char* buf = s.c_str();
     auto bufLen = strlen(buf);
     auto strBuf13 = util::prettyCharBuf(buf, bufLen, 13);
-    LOGF_INFO("strBuf13=%1%" % strBuf13);
+    LOGS_DEBUG("strBuf13=" << strBuf13);
     BOOST_CHECK(strBuf13.compare(expectedList13) == 0);
     auto strBuf30 = util::prettyCharBuf(buf, bufLen, 30);
-    LOGF_INFO("strBuf30=%1%" % strBuf30);
+    LOGS_DEBUG("strBuf30=" << strBuf30);
     BOOST_CHECK(strBuf30.compare(expectedList13) == 0);
 
     auto strBuf3 = util::prettyCharBuf(buf, bufLen, 3);
-    LOGF_INFO("strBuf3=%1%" % strBuf3);
+    LOGS_DEBUG("strBuf3=" << strBuf3);
     BOOST_CHECK(strBuf3.compare(expectedList3) == 0);
 }
 /*

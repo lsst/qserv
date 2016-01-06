@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2015 AURA/LSST.
+ * Copyright 2011-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +31,9 @@
 // Third-party headers
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/coded_stream.h>
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "proto/ProtoHeaderWrap.h"
@@ -170,13 +173,13 @@ BOOST_AUTO_TEST_CASE(ProtoHeaderWrap) {
     std::unique_ptr<proto::ProtoHeader> ph(makeProtoHeader());
     std::string str;
     ph->SerializeToString(&str);
-    LOGF_INFO("wrapping %1%" % str.size());
+    LOGS_DEBUG("wrapping " << str.size());
     std::string msgBuf = proto::ProtoHeaderWrap::wrap(str);
     std::vector<char> msgVect;
     std::copy(msgBuf.begin(), msgBuf.end(), std::back_inserter(msgVect));
     std::shared_ptr<proto::WorkerResponse> response(new proto::WorkerResponse());
     response->headerSize = msgBuf.size();
-    LOGF_INFO("unwrapping");
+    LOGS_DEBUG("unwrapping");
     bool worked = proto::ProtoHeaderWrap::unwrap(response, msgVect);
     BOOST_CHECK(worked);
     BOOST_CHECK(compareProtoHeaders(response->protoHeader, *ph));

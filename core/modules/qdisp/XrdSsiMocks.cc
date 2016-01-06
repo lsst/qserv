@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,6 +39,10 @@
 
 using namespace std;
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.XrdSsiMock");
+}
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -64,12 +68,12 @@ util::Sequential<int> XrdSsiServiceMock::_count(0);
  */
 void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut, bool userConn){
     if (resP == nullptr) {
-        LOGF_ERROR("XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
+        LOGS(_log, LOG_LVL_ERROR, "XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
         return;
     }
     QueryResource *qr = dynamic_cast<QueryResource*>(resP);
     if (qr == nullptr) {
-        LOGF_ERROR("XrdSsiServiceMock::Provision() unexpected resource type.");
+        LOGS(_log, LOG_LVL_ERROR, "XrdSsiServiceMock::Provision() unexpected resource type.");
         return;
     }
     _count.incr();
@@ -90,12 +94,25 @@ void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
     int millisecs = atoi(payload.c_str());
     // barrier for all threads when _go is false.
     _go.wait(true);
-    LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep begin");
+    LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep begin");
     usleep(1000*millisecs);
-    LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
+    LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep end");
     JobStatus::Ptr status = QueryResourceDebug::getStatus(*qr);
     status->updateInfo(JobStatus::RESPONSE_DONE);
     QueryResourceDebug::finish(*qr);
+}
+
+void XrdSsiSessionMock::ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut) {
+    std::string s = getMockString();
+    bool res = s.compare(sessName) == 0;
+    LOGS(_log, LOG_LVL_DEBUG, "sessName=" << sessName << " res=" << res);
+    // Normally, reqP->ProcessResponse() would be called, which invokes
+    // cleanup code that is necessary to avoid memory leaks. Instead,
+    // clean up the request manually.
+    QueryRequest * r = dynamic_cast<QueryRequest *>(reqP);
+    if (r) {
+        r->cleanup();
+    }
 }
 
 }}} // namespace

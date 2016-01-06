@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,6 +47,10 @@
 
 using antlr::RefAST;
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ValueExprFactory");
+}
+
 namespace lsst {
 namespace qserv {
 namespace parser {
@@ -65,13 +69,13 @@ ValueExprFactory::ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap)
 std::shared_ptr<query::ValueExpr>
 ValueExprFactory::newExpr(antlr::RefAST a) {
     std::shared_ptr<query::ValueExpr> expr = std::make_shared<query::ValueExpr>();
-    // LOGF_INFO("%1%" % walkIndentedString(a));
+    // LOGS(_log, LOG_LVL_DEBUG, walkIndentedString(a));
     while(a.get()) {
         query::ValueExpr::FactorOp newFactorOp;
         RefAST op = a->getNextSibling();
         newFactorOp.factor = _valueFactorFactory->newFactor(a);
         if(op.get()) { // No more ops?
-            // LOGF_INFO("expected op: %1%" tokenText(op));
+            // LOGS(_log, LOG_LVL_DEBUG, "expected op: " << tokenText(op));
             int eType = op->getType();
             switch(eType) {
             case SqlSQL2TokenTypes::PLUS_SIGN:
@@ -98,11 +102,11 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         expr->_factorOps.push_back(newFactorOp);
     }
 #if 0
-    if (LOG_CHECK_INFO()) {
+    if (LOG_CHECK_LVL(_log, _LOG_LVL_DEBUG)) {
         std::stringstream ss;
         std::copy(expr->_factorOps.begin(), expr->_factorOps.end(),
                   std::ostream_iterator<query::ValueExpr::FactorOp>(ss, ","));
-        LOGF_INFO("Imported expr: %1%" % ss.str());
+        LOGS(_log, LOG_LVL_DEBUG, "Imported expr: " << ss.str());
     }
 #endif
     if(expr->isFactor() && expr->getAlias().empty()) {

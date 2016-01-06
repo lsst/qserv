@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,10 +34,7 @@
 #include "Exceptions.h"
 
 namespace {
-
-// logger instance for this module
-LOG_LOGGER _logger = LOG_GET("lsst.qserv.qmeta.QMetaTransaction");
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaTransaction");
 }
 
 namespace lsst {
@@ -58,8 +55,8 @@ QMetaTransaction::~QMetaTransaction() {
     // if error happens. We cannot throw here but we can print a message.
     if (_trans.isActive()) {
         if (not _trans.abort(_errObj)) {
-            LOGF(_logger, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: (%1%) %2%" %
-                 _errObj.errNo() % _errObj.errMsg());
+            LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
+                 << _errObj.errNo() << ") " << _errObj.errMsg());
         }
     }
 }
@@ -68,8 +65,8 @@ QMetaTransaction::~QMetaTransaction() {
 void
 QMetaTransaction::commit() {
     if (not _trans.commit(_errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: (%1%) %2%" %
-             _errObj.errNo() % _errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: ("
+             << _errObj.errNo() << ") " << _errObj.errMsg());
         throw SqlError(ERR_LOC, _errObj);
     }
 }
@@ -78,8 +75,8 @@ QMetaTransaction::commit() {
 void
 QMetaTransaction::abort() {
     if (not _trans.abort(_errObj)) {
-        LOGF(_logger, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: (%1%) %2%" %
-             _errObj.errNo() % _errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
+             << _errObj.errNo() << ")" << _errObj.errMsg());
         throw SqlError(ERR_LOC, _errObj);
     }
 }

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 LSST Corporation.
+ * Copyright 2014-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,9 +37,6 @@
 #include <atomic>
 #include <memory>
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "mysql/MySqlConnection.h"
 #include "util/MultiError.h"
@@ -63,10 +60,9 @@ struct QueryRunnerArg {
 public:
     QueryRunnerArg() {}
 
-    QueryRunnerArg(LOG_LOGGER const& log_, wbase::Task::Ptr const &task_,
+    QueryRunnerArg(wbase::Task::Ptr const &task_,
                    ChunkResourceMgr::Ptr const& mgr_)
-        : log{log_}, task{task_}, mgr{mgr_} { }
-    LOG_LOGGER log; ///< Logging handle
+        : task{task_}, mgr{mgr_} { }
     wbase::Task::Ptr task; ///< Actual task
     ChunkResourceMgr::Ptr mgr; ///< Resource reservation
 };
@@ -100,7 +96,6 @@ private:
     void _transmit(bool last);
     void _transmitHeader(std::string& msg);
 
-    LOG_LOGGER _log;
     wbase::Task::Ptr _task;
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;

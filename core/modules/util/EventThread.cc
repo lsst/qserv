@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +34,10 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.EventThread");
+}
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -62,7 +66,7 @@ void EventThread::run() {
 }
 
 PoolEventThread::~PoolEventThread() {
-    LOGF_DEBUG("PoolEventThread::~PoolEventThread()");
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread()");
 }
 
 void PoolEventThread::finishup() {
@@ -75,7 +79,7 @@ void PoolEventThread::finishup() {
         std::thread t{f};
         t.detach();
     } else {
-        LOGF_WARN("The pool failed to find this PoolEventThread.");
+        LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
     }
 }
 
@@ -97,10 +101,10 @@ PoolEventThread::Ptr ThreadPool::release(PoolEventThread *thrd) {
         std::lock_guard<std::mutex> lock(_poolMutex);
         auto iter = std::find_if(_pool.begin(), _pool.end(), func);
         if (iter == _pool.end()) {
-            LOGF_WARN("ThreadPool::release thread not found %1%" % thrd);
+            LOGS(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
         } else {
             thrdPtr = *iter;
-            LOGF_DEBUG("ThreadPool::release erasing %1%" %thrd);
+            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
             _pool.erase(iter);
         }
     }
@@ -134,13 +138,13 @@ void ThreadPool::_resize() {
     if (target < _pool.size()) {
         auto thrd = _pool.front();
         if (thrd != nullptr) {
-            LOGF_DEBUG("ThreadPool::_resize sending thrd->queEnd()");
+            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize sending thrd->queEnd()");
             thrd->queEnd(); // Since all threads share the same queue, this could be answered by any thread.
         } else {
-            LOGF_WARN("ThreadPool::_resize thrd == nullptr");
+            LOGS(_log, LOG_LVL_WARN, "ThreadPool::_resize thrd == nullptr");
         }
     }
-    LOGF_DEBUG("_resize target=%1% size=%2%" % target % _pool.size());
+    LOGS(_log, LOG_LVL_DEBUG, "_resize target=" << target << " size=" << _pool.size());
     {
         std::unique_lock<std::mutex> countlock(_countMutex);
         _countCV.notify_all();

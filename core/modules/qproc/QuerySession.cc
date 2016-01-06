@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -70,12 +70,7 @@
 #include "util/IterableFormatter.h"
 
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.QuerySession");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.QuerySession");
 }
 
 namespace lsst {
@@ -110,8 +105,8 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _generateConcrete();
         _applyConcretePlugins();
 
-        LOGF(getLogger(), LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % *this);
-        LOGF(getLogger(), LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: %1%" % getProxyOrderBy());
+        LOGS(_log, LOG_LVL_DEBUG, "Query Plugins applied:\n " << *this);
+        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: " << getProxyOrderBy());
 
     } catch(QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
@@ -152,7 +147,7 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 
     if(p.get()) {
         cv = std::make_shared<query::ConstraintVector>(p->size());
-        LOGF(getLogger(), LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: %1%" % p->size());
+        LOGS(_log, LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: " << p->size());
         int i=0;
         query::QsRestrictor::PtrVector::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
@@ -166,9 +161,9 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
             (*cv)[i] = c;
             ++i;
         }
-        LOGF(getLogger(), LOG_LVL_TRACE, "Constraints: %1%" % util::printable(*cv));
+        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*cv));
     } else {
-        LOGF(getLogger(), LOG_LVL_TRACE, "No constraints.");
+        LOGS(_log, LOG_LVL_TRACE, "No constraints.");
     }
     return cv;
 }
@@ -183,7 +178,7 @@ std::string QuerySession::getProxyOrderBy() const {
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
-    LOGF(getLogger(), LOG_LVL_TRACE, "Add chunk: %s" % cs);
+    LOGS(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }
@@ -325,7 +320,8 @@ void QuerySession::_generateConcrete() {
     // WHERE(???). Conceptually, we want to copy the parts that are
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
-    LOGF(getLogger(), LOG_LVL_TRACE, "Merge statement initialized with: \"%1%\"" % _stmtMerge->getQueryTemplate().toString());
+    LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
+         << _stmtMerge->getQueryTemplate().toString() << "\"");
 
     // TableMerger needs to be integrated into this design.
 }
@@ -380,23 +376,23 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         queryTemplates.push_back((**i).getQueryTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        LOGF(getLogger(), LOG_LVL_INFO, "Non-subchunked");
+        LOGS(_log, LOG_LVL_DEBUG, "Non-subchunked");
 
         for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
         ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
-        //LOGF(getLogger(), LOG_LVL_INFO, "Subchunks: %1%" % util::printable(sVector));
+        //LOGS(_log, LOG_LVL_DEBUG, "Subchunks: " << util::printable(sVector));
         typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
         for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
             for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
-                LOGF(getLogger(), LOG_LVL_DEBUG, "adding query %1%" % _context->queryMapping->apply(*i, *j));
+                LOGS(_log, LOG_LVL_DEBUG, "adding query " << _context->queryMapping->apply(*i, *j));
                 q.push_back(_context->queryMapping->apply(*i, *j));
             }
         }
     }
-    //LOGF(getLogger(), LOG_LVL_DEBUG, "Returning chunk queries:\n%1%" % util::printable(q));
+    //LOGS(_log, LOG_LVL_DEBUG, "Returning chunk queries:\n" << util::printable(q));
     return q;
 }
 
@@ -425,8 +421,8 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != nullptr);
     _cache.db = _qs->_context->dominantDb;
-    // LOGF_INFO("scantables %1% empty"
-    //           % (_qs->_context->scanTables.empty() ? "is" : "is not"));
+    // LOGS(_log, LOG_LVL_DEBUG, "scantables "
+    //      << (_qs->_context->scanTables.empty() ? "is" : "is not") << " empty");
     _cache.scanTables = _qs->_context->scanTables;
     _cache.chunkId = _chunkSpecsIter->chunkId;
     _cache.nextFragment.reset();

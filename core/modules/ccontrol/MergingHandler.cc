@@ -48,6 +48,11 @@ using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::Result;
 using lsst::qserv::proto::WorkerResponse;
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -64,7 +69,7 @@ MergingHandler::MergingHandler(
 }
 
 MergingHandler::~MergingHandler() {
-    LOGF_DEBUG("~MergingHandler()");
+    LOGS(_log, LOG_LVL_DEBUG, "~MergingHandler()");
 }
 
 const char* MergingHandler::getStateStr(MsgState const& state) {
@@ -81,12 +86,12 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
 }
 
 bool MergingHandler::flush(int bLen, bool& last) {
-    LOGF_INFO("From:%4% flush state=%1% blen=%2% last=%3%" %
-              getStateStr(_state) % bLen % last % _wName);
+    LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
+         << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
         if(_state != MsgState::RESULT_EXTRA) {
-            LOGF_ERROR("MergingRequester size mismatch: expected %1% got %2%"
-                       % _buffer.size() % bLen);
+            LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected "
+                 << _buffer.size() << " got " << bLen);
             // Worker sent corrupted data, or there is some other error.
         }
     }
@@ -102,7 +107,8 @@ bool MergingHandler::flush(int bLen, bool& last) {
         if (_wName == "~") {
             _wName = _response->protoHeader.wname();
         }
-        LOGF_DEBUG("HEADER_SIZE_WAIT: From:%1% Resizing buffer to %2%" % _wName % _response->protoHeader.size());
+        LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
+             << "Resizing buffer to " <<  _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
@@ -110,21 +116,22 @@ bool MergingHandler::flush(int bLen, bool& last) {
     case MsgState::RESULT_WAIT:
         if(!_verifyResult()) { return false; }
         if(!_setResult()) { return false; }
-        LOGF_INFO("From:%1% _buffer %2%" % _wName % util::prettyCharList(_buffer, 5));
+        LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _buffer "
+             << util::prettyCharList(_buffer, 5));
         {
             bool msgContinues = _response->result.continues();
             _buffer.resize(0); // Nothing further needed
             _state = MsgState::RESULT_RECV;
             if(msgContinues) {
-                LOGF_INFO("Messages continues, waiting for next header.");
+                LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
                 _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
-                LOGF_INFO("Messages ends, setting last=true");
+                LOGS(_log, LOG_LVL_DEBUG, "Message ends, setting last=true");
                 last = true;
             }
-            LOGF_INFO("Flushed msgContinues=%1% last=%2% for tableName=%3%" %
-                    msgContinues % last % _tableName);
+            LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
+                 << " last=" << last << " for tableName=" << _tableName);
 
             auto success = _merge();
             if(msgContinues) {
@@ -139,7 +146,8 @@ bool MergingHandler::flush(int bLen, bool& last) {
             _state = MsgState::HEADER_ERR;
             return false;
         }
-        LOGF_INFO("RESULT_EXTRA: Resizing buffer to %1%" % _response->protoHeader.size());
+        LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
+             << _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
@@ -150,8 +158,9 @@ bool MergingHandler::flush(int bLen, bool& last) {
     case MsgState::RESULT_ERR:
          {
             std::ostringstream eos;
-            eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state) << " last=" << last;
-            LOGF_ERROR("%1%" % eos.str());
+            eos << "Unexpected message From:" << _wName << " flush state="
+                << getStateStr(_state) << " last=" << last;
+            LOGS(_log, LOG_LVL_ERROR, eos.str());
             _setError(ccontrol::MSG_RESULT_ERROR, eos.str());
          }
         return false;
@@ -166,7 +175,7 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
-    LOGF_ERROR("Error receiving result.");
+    LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
 bool MergingHandler::finished() const {
@@ -202,7 +211,7 @@ void MergingHandler::_initState() {
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
         if(job->isCancelled()) {
-            LOGF_INFO("MergingRequester::_merge(), but already cancelled");
+            LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
             return false;
         }
         if(_flushed) {
@@ -217,13 +226,12 @@ bool MergingHandler::_merge() {
         _response.reset();
         return success;
     }
-
-    LOGF_ERROR("MergingHandler::_merge() failed, jobQuery was NULL");
+    LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");
     return false;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
-    LOGF_INFO("setError: code: %1%, message: %2%" % code % msg);
+    LOGS(_log, LOG_LVL_DEBUG, "setError: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }

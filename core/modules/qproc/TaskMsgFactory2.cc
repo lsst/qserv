@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -50,6 +50,10 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory2");
+}
 
 namespace lsst {
 namespace qserv {
@@ -135,9 +139,9 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
     if(s.nextFragment.get()) {
         ChunkQuerySpec const* sPtr = &s;
         while(sPtr) {
-            LOGF_DEBUG("nextFragment");
+            LOGS(_log, LOG_LVL_DEBUG, "nextFragment");
             for(unsigned int t=0;t<(sPtr->queries).size();t++){
-                LOGF_DEBUG((sPtr->queries).at(t));
+                LOGS(_log, LOG_LVL_DEBUG, (sPtr->queries).at(t));
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
@@ -148,9 +152,9 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
             sPtr = sPtr->nextFragment.get();
         }
     } else {
-        LOGF_DEBUG("no nextFragment");
+        LOGS(_log, LOG_LVL_DEBUG, "no nextFragment");
         for(unsigned int t=0;t<(s.queries).size();t++){
-            LOGF_DEBUG("%1%" % (s.queries).at(t));
+            LOGS(_log, LOG_LVL_DEBUG, (s.queries).at(t));
         }
         addFragment(*_taskMsg, resultTable,
                     s.subChunkTables, s.subChunkIds, s.queries);

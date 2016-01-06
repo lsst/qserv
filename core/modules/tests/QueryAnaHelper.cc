@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2009-2015 AURA/LSST.
+ * Copyright 2009-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,14 +59,8 @@ namespace lsst {
 namespace qserv {
 namespace tests {
 
-
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
 }
 
 SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt) {
@@ -80,11 +74,11 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     querySession = std::make_shared<QuerySession>(qsTest);
     querySession->analyzeQuery(stmt);
 
-    if (LOG_CHECK_DEBUG()) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         ConstraintVec cv(querySession->getConstraints());
         std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
         if (cvRaw) {
-            LOGF_DEBUG("%1%, " % util::printable(*cvRaw));
+            LOGS(_log, LOG_LVL_DEBUG, util::printable(*cvRaw));
         }
     }
     return querySession;
@@ -99,8 +93,7 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
 
     ChunkQuerySpec& first = *i;
     std::string const & firstParallelQuery = first.queries[0];
-    LOGF(getLogger(), LOG_LVL_TRACE,
-         "First parallel query: %1%" % firstParallelQuery);
+    LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
     return firstParallelQuery;
 }
 

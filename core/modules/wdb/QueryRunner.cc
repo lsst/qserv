@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -66,6 +66,10 @@
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
+}
+
 namespace lsst {
 namespace qserv {
 namespace wdb {
@@ -84,7 +88,7 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(QueryRunnerArg const& a) {
 /// New instances need to be made with QueryRunner to ensure registration with the task
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(QueryRunnerArg const& a)
-    : _log{a.log}, _task{a.task},
+    : _task{a.task},
       _chunkResourceMgr{a.mgr},
       _dbName{a.task->dbName} {
     int rc = mysql_thread_init();
@@ -99,8 +103,9 @@ bool QueryRunner::_initConnection() {
     _mysqlConn.reset(new mysql::MySqlConnection(sc));
 
     if(!_mysqlConn->connect()) {
-        LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
-                % wconfig::getConfig().getString("mysqlSocket") % _task->user);
+        LOGS(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as "
+             << wconfig::getConfig().getString("mysqlSocket")
+             << " using " << _task->user);
         util::Error error(-1, "Unable to connect to MySQL as " + _task->user);
         _multiError.push_back(error);
         return false;
@@ -112,12 +117,12 @@ bool QueryRunner::_initConnection() {
 void QueryRunner::_setDb() {
     if(_task->msg->has_db()) {
         _dbName = _task->msg->db();
-        LOGF(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with %1%" % _dbName);
+        LOGS(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with " << _dbName);
     }
 }
 
 bool QueryRunner::runQuery() {
-    LOGF(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() tSeq=%1%" % _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() tSeq=" << _task->tSeq);
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -130,11 +135,12 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     if (_task->getCancelled()) {
-        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. %1%" % _task->dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. "
+             << _task->dbName);
         return false;
     }
 
-    LOGF(_log, LOG_LVL_DEBUG, "Exec in flight for Db = %1%" % _task->dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "Exec in flight for Db = " << _task->dbName);
     _setDb();
     bool connOk = _initConnection();
     if(!connOk) { return false; }
@@ -151,7 +157,7 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGF(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END tSeq=%1%" % _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END tSeq=" << _task->tSeq);
     return false;
 }
 
@@ -189,7 +195,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
         if(i->hasDefault) {
             cs->set_hasdefault(true);
             cs->set_defaultvalue(i->defaultValue);
-            LOGF(_log, LOG_LVL_INFO, "%1% has default." % i->name);
+            LOGS(_log, LOG_LVL_DEBUG, i->name << " has default.");
         } else {
             cs->set_hasdefault(false);
             cs->clear_defaultvalue();
@@ -223,10 +229,10 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
         // Each element needs to be mysql-sanitized
         if (size > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
             if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                LOGF_ERROR("Message single row too large to send using protobuffer");
+                LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
-            LOGF_INFO("Large message size=%1%, splitting message" % size);
+            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << size << ", splitting message");
             _transmit(false);
             size = 0;
             _initMsg();
@@ -239,28 +245,29 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last) {
-    LOGF_DEBUG("_transmit last=%1% tSeq=%2%" % last % _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " tSeq=" << _task->tSeq);
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
         std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
-        LOGF(_log, LOG_LVL_ERROR, msg);
+        LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
-    LOGF_DEBUG("_transmit last=%1% tSeq=%3% resultString=%2%" % last % util::prettyCharList(resultString, 5) % _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " tSeq=" << _task->tSeq
+         << " resultString=" << util::prettyCharList(resultString, 5));
     if(!_cancelled) {
         _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
     } else {
-        LOG_DEBUG("_transmit cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
 }
 
 /// Transmit the protoHeader
 void QueryRunner::_transmitHeader(std::string& msg) {
-    LOGF_DEBUG("_transmitHeader");
+    LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
     // Set header
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
     _protoHeader->set_size(msg.size());
@@ -276,7 +283,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     if (!_cancelled) {
         _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
     } else {
-        LOG_DEBUG("_transmitHeader cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
 }
 
@@ -369,28 +376,28 @@ bool QueryRunner::_dispatchChannel() {
 }
 
 void QueryRunner::cancel() {
-    LOGF(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
+    LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
     _cancelled.store(true);
     if(!_mysqlConn.get()) {
-    LOGF(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
+    LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
     }
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
-          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
+          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
           break;
       case 0:
-          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() success");
+          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() success");
           break;
       case 1:
-          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
+          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
           break;
       case 2:
-          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
+          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
           break;
       default:
-          LOGF(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
+          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
           break;
     }
 }

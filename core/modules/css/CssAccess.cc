@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -74,7 +74,7 @@ std::shared_ptr<CssAccess>
 CssAccess::createFromStream(std::istream& stream,
                             std::string const& emptyChunkPath,
                             bool readOnly) {
-    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in stream");
+    LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in stream");
     return std::shared_ptr<CssAccess>(new CssAccess(std::make_shared<KvInterfaceImplMem>(stream, readOnly),
                                                     std::make_shared<EmptyChunks>(emptyChunkPath)));
 }
@@ -84,7 +84,7 @@ std::shared_ptr<CssAccess>
 CssAccess::createFromData(std::string const& data,
                           std::string const& emptyChunkPath,
                           bool readOnly) {
-    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in string");
+    LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in string");
     std::istringstream str(data);
     return std::shared_ptr<CssAccess>(new CssAccess(std::make_shared<KvInterfaceImplMem>(str, readOnly),
                                                     std::make_shared<EmptyChunks>(emptyChunkPath)));
@@ -95,17 +95,17 @@ std::shared_ptr<CssAccess>
 CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
                             std::string const& emptyChunkPath,
                             bool readOnly) {
-    LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance from config map");
+    LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance from config map");
     auto iter = config.find("technology");
     if (iter == config.end()) {
-        LOGF(_log, LOG_LVL_DEBUG, "\"technology\" does not exist in configuration map");
+        LOGS(_log, LOG_LVL_DEBUG, "\"technology\" does not exist in configuration map");
         throw ConfigError("\"technology\" does not exist in configuration map");
     } else if (iter->second == "mem") {
         // optional data or file keys
         auto iterData = config.find("data");
         auto iterFile = config.find("file");
         if (iterData != config.end() and iterFile != config.end() ) {
-            LOGF(_log, LOG_LVL_DEBUG, "\"data\"  and \"file\" keys are mutually exclusive");
+            LOGS(_log, LOG_LVL_DEBUG, "\"data\"  and \"file\" keys are mutually exclusive");
             throw ConfigError("\"data\"  and \"file\" keys are mutually exclusive");
         }
         if (iterData != config.end()) {
@@ -115,17 +115,17 @@ CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
             // read data from file
             std::ifstream f(iterFile->second);
             if(f.fail()) {
-                LOGF(_log, LOG_LVL_DEBUG, "failed to open data file %s" % iterFile->second);
+                LOGS(_log, LOG_LVL_DEBUG, "failed to open data file " << iterFile->second);
                 throw ConfigError("failed to open data file " + iterFile->second);
             }
-            LOGF(_log, LOG_LVL_DEBUG,
-                 "Create CSS instance with memory store from data file %s" % iterFile->second);
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Create CSS instance with memory store from data file " << iterFile->second);
             auto kvi = std::make_shared<KvInterfaceImplMem>(f, readOnly);
             return std::shared_ptr<CssAccess>(new CssAccess(kvi,
                                                             std::make_shared<EmptyChunks>(emptyChunkPath)));
         } else {
             // no initial data
-            LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance with empty memory store");
+            LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with empty memory store");
             auto kvi = std::make_shared<KvInterfaceImplMem>(readOnly);
             return std::shared_ptr<CssAccess>(new CssAccess(kvi,
                                                             std::make_shared<EmptyChunks>(emptyChunkPath)));
@@ -144,15 +144,15 @@ CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
             // tried to use std::stoi() here but it returns OK for strings like "0xFSCK"
             mysqlConfig.port = boost::lexical_cast<unsigned>(portStr);
         } catch (boost::bad_lexical_cast const& exc) {
-            LOGF(_log, LOG_LVL_DEBUG, "failed to convert \"port\" to number: %s" % portStr);
+            LOGS(_log, LOG_LVL_DEBUG, "failed to convert \"port\" to number: " << portStr);
             throw ConfigError("failed to convert \"port\" to number " + portStr);
         }
 
-        LOGF(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store");
+        LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store");
         auto kvi = std::make_shared<KvInterfaceImplMySql>(mysqlConfig, readOnly);
         return std::shared_ptr<CssAccess>(new CssAccess(kvi, std::make_shared<EmptyChunks>(emptyChunkPath)));
     } else {
-        LOGF(_log, LOG_LVL_DEBUG, "Unexpected value of \"technology\" key: %s" % iter->second);
+        LOGS(_log, LOG_LVL_DEBUG, "Unexpected value of \"technology\" key: " << iter->second);
         throw ConfigError("Unexpected value of \"technology\" key: " + iter->second);
     }
 }
@@ -184,7 +184,8 @@ CssAccess::_checkVersion(bool mustExist) const {
     auto version = _kvI->get(VERSION_KEY, "");
     if (not version.empty()) {
         if (version != VERSION_STR) {
-            LOGF(_log, LOG_LVL_DEBUG, "version mismatch, expected: %s, found: %s" % VERSION_STR % version);
+            LOGS(_log, LOG_LVL_DEBUG, "version mismatch, expected: "
+                 << VERSION_STR << ", found: " << version);
             throw VersionMismatchError(VERSION_STR, version);
         } else {
             _versionOk = true;
@@ -223,7 +224,7 @@ CssAccess::getDbStatus() const {
 
 void
 CssAccess::setDbStatus(std::string const& dbName, std::string const& status) {
-    LOGF(_log, LOG_LVL_DEBUG, "setDbStatus(%1%, %2%)" % dbName % status);
+    LOGS(_log, LOG_LVL_DEBUG, "setDbStatus(" << dbName << ", " << status << ")");
     _checkVersion();
 
     _assertDbExists(dbName);
@@ -235,18 +236,18 @@ bool
 CssAccess::containsDb(std::string const& dbName) const {
     _checkVersion();
     if (dbName.empty()) {
-        LOGF(_log, LOG_LVL_DEBUG, "Empty database name passed.");
+        LOGS(_log, LOG_LVL_DEBUG, "Empty database name passed.");
         return false;
     }
     std::string p = _prefix + "/DBS/" + dbName;
     bool ret = _kvI->exists(p);
-    LOGF(_log, LOG_LVL_DEBUG, "containsDb(%1%): %2%" % dbName % ret);
+    LOGS(_log, LOG_LVL_DEBUG, "containsDb(" << dbName << "): " << ret);
     return ret;
 }
 
 StripingParams
 CssAccess::getDbStriping(std::string const& dbName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getDbStriping(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "getDbStriping(" << dbName << ")");
     _checkVersion();
 
     StripingParams striping;
@@ -279,7 +280,7 @@ CssAccess::getDbStriping(std::string const& dbName) const {
             striping.overlap = std::stod(iter->second);
         }
     } catch (std::exception const& exc) {
-        LOGF(_log, LOG_LVL_ERROR, "one of the keys is not numeric: %s" % util::printable(keyMap));
+        LOGS(_log, LOG_LVL_ERROR, "one of the keys is not numeric: " << util::printable(keyMap));
         throw KeyValueError(pKey, "one of the keys is not numeric: " + std::string(exc.what()));
     }
 
@@ -291,7 +292,7 @@ CssAccess::createDb(std::string const& dbName,
                     StripingParams const& striping,
                     std::string const& storageClass,
                     std::string const& releaseStatus) {
-    LOGF(_log, LOG_LVL_DEBUG, "createDb(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "createDb(" << dbName << ")");
     _checkVersion(false);
 
     std::string partId;
@@ -328,7 +329,7 @@ CssAccess::createDb(std::string const& dbName,
 void
 CssAccess::createDbLike(std::string const& dbName,
                         std::string const& templateDbName) {
-    LOGF(_log, LOG_LVL_DEBUG, "createDbLike(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "createDbLike(" << dbName << ")");
     _checkVersion();
 
     std::vector<std::string> subKeys{"partitioningId", "releaseStatus", "storageClass"};
@@ -346,24 +347,24 @@ CssAccess::createDbLike(std::string const& dbName,
 
 void
 CssAccess::dropDb(std::string const& dbName) {
-    LOGF(_log, LOG_LVL_DEBUG, "dropDb(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "dropDb(" << dbName << ")");
     _checkVersion();
 
     std::string key = _prefix + "/DBS/" + dbName;
 
     // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: try to delete key: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "dropDb: try to delete key: " << key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropDb: key is not found: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "dropDb: key is not found: " << key);
         throw NoSuchDb(dbName);
     }
 }
 
 std::vector<std::string>
 CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getTableNames(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "getTableNames(" << dbName << ")");
     _checkVersion();
 
     std::string key = _prefix + "/DBS/" + dbName + "/TABLES";
@@ -371,7 +372,7 @@ CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
     try {
         names = _kvI->getChildren(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "getTableNames: key is not found: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "getTableNames: key is not found: " << key);
         _assertDbExists(dbName);
     }
 
@@ -394,7 +395,7 @@ CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
 
 std::map<std::string, std::string>
 CssAccess::getTableStatus(std::string const& dbName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getTableStatus(%1%)" % dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "getTableStatus(" << dbName << ")");
     _checkVersion();
 
     std::string key = _prefix + "/DBS/" + dbName + "/TABLES";
@@ -402,7 +403,7 @@ CssAccess::getTableStatus(std::string const& dbName) const {
     try {
         kvs = _kvI->getChildrenValues(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "getTableNames: key is not found: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "getTableNames: key is not found: " << key);
         _assertDbExists(dbName);
     }
 
@@ -417,7 +418,8 @@ void
 CssAccess::setTableStatus(std::string const& dbName,
                           std::string const& tableName,
                           std::string const& status) {
-    LOGF(_log, LOG_LVL_DEBUG, "setTableStatus(%1%, %2%, %3%)" % dbName % tableName % status);
+    LOGS(_log, LOG_LVL_DEBUG, "setTableStatus(" << dbName << ", "
+         << tableName << ", " << status << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -427,7 +429,7 @@ CssAccess::setTableStatus(std::string const& dbName,
 
 bool
 CssAccess::containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly) const {
-    LOGF(_log, LOG_LVL_DEBUG, "containsTable(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "containsTable(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const key = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -436,10 +438,10 @@ CssAccess::containsTable(std::string const& dbName, std::string const& tableName
     if (val == "DOES_NOT_EXIST") {
         // table key is not there at all, throw if database name is not good
         _assertDbExists(dbName);
-        LOGF(_log, LOG_LVL_DEBUG, "containsTable: key is not found: %1%" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "containsTable: key not found: " << key);
         return false;
     }
-    LOGF(_log, LOG_LVL_DEBUG, "containsTable: key value: %1%" % val);
+    LOGS(_log, LOG_LVL_DEBUG, "containsTable: key value: " << val);
     // if key value is not "READY" it likely means table is in the process
     // of being deleted, which is the same as if it does not exist
     if (readyOnly) return val == "READY";
@@ -448,7 +450,7 @@ CssAccess::containsTable(std::string const& dbName, std::string const& tableName
 
 std::string
 CssAccess::getTableSchema(std::string const& dbName, std::string const& tableName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getTableSchema(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "getTableSchema(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -464,7 +466,7 @@ CssAccess::getTableSchema(std::string const& dbName, std::string const& tableNam
 MatchTableParams
 CssAccess::getMatchTableParams(std::string const& dbName,
                                std::string const& tableName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getMatchTableParams(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "getMatchTableParams(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -492,7 +494,7 @@ CssAccess::getMatchTableParams(std::string const& dbName,
 PartTableParams
 CssAccess::getPartTableParams(std::string const& dbName,
                               std::string const& tableName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getPartTableParams(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "getPartTableParams(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -526,7 +528,8 @@ CssAccess::getPartTableParams(std::string const& dbName,
             params.overlap = std::stod(iter->second);
         }
     } catch (std::exception const& exc) {
-        LOGF(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: %s" % util::printable(paramMap));
+        LOGS(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: "
+             << util::printable(paramMap));
         throw KeyValueError(tableKey + "/partitioning", "one of the sub-keys is not numeric: " +
                             std::string(exc.what()));
     }
@@ -536,7 +539,7 @@ CssAccess::getPartTableParams(std::string const& dbName,
 
 TableParams
 CssAccess::getTableParams(std::string const& dbName, std::string const& tableName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getTableParams(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "getTableParams(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -577,7 +580,8 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
             params.partitioning.overlap = std::stod(iter->second);
         }
     } catch (std::exception const& exc) {
-        LOGF(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: %s" % util::printable(paramMap));
+        LOGS(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: "
+             << util::printable(paramMap));
         throw KeyValueError(tableKey + "/partitioning", "one of the sub-keys is not numeric: " +
                             std::string(exc.what()));
     }
@@ -590,7 +594,7 @@ CssAccess::createTable(std::string const& dbName,
                        std::string const& tableName,
                        std::string const& schema,
                        PartTableParams const& partParams) {
-    LOGF(_log, LOG_LVL_DEBUG, "createTable(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "createTable(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -598,7 +602,7 @@ CssAccess::createTable(std::string const& dbName,
     try {
         _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "createTable: key already exists: %s" % tableKey);
+        LOGS(_log, LOG_LVL_DEBUG, "createTable: key already exists: " << tableKey);
         throw TableExists(dbName, tableName);
     }
 
@@ -631,7 +635,7 @@ CssAccess::createMatchTable(std::string const& dbName,
                             std::string const& tableName,
                             std::string const& schema,
                             MatchTableParams const& matchParams) {
-    LOGF(_log, LOG_LVL_DEBUG, "createMatchTable(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "createMatchTable(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -639,7 +643,7 @@ CssAccess::createMatchTable(std::string const& dbName,
     try {
         _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "createMatchTable: key already exists: %s" % tableKey);
+        LOGS(_log, LOG_LVL_DEBUG, "createMatchTable: key already exists: " << tableKey);
         throw TableExists(dbName, tableName);
     }
 
@@ -668,17 +672,17 @@ CssAccess::createMatchTable(std::string const& dbName,
 
 void
 CssAccess::dropTable(std::string const& dbName, std::string const& tableName) {
-    LOGF(_log, LOG_LVL_DEBUG, "dropTable(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "dropTable(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const key = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
 
     // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: try to delete key: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "dropTable: try to delete key: " << key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "dropTable: key is not found: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "dropTable: key is not found: " << key);
         throw NoSuchTable(dbName, tableName);
     }
 }
@@ -698,7 +702,7 @@ CssAccess::getNodeNames() const {
 
 NodeParams
 CssAccess::getNodeParams(std::string const& nodeName) const {
-    LOGF(_log, LOG_LVL_DEBUG, "getNodeParams(%1%)" % nodeName);
+    LOGS(_log, LOG_LVL_DEBUG, "getNodeParams(" << nodeName << ")");
     _checkVersion();
 
     std::string const key = _prefix + "/NODES";
@@ -723,7 +727,8 @@ CssAccess::getNodeParams(std::string const& nodeName) const {
             params.port = std::stoi(iter->second);
         }
     } catch (std::exception const& exc) {
-        LOGF(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: %s" % util::printable(paramMap));
+        LOGS(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: "
+             << util::printable(paramMap));
         throw KeyValueError(key + "/" + nodeName,
                             "one of the sub-keys is not numeric: " + std::string(exc.what()));
     }
@@ -733,7 +738,7 @@ CssAccess::getNodeParams(std::string const& nodeName) const {
 
 std::map<std::string, NodeParams>
 CssAccess::getAllNodeParams() const {
-    LOGF(_log, LOG_LVL_DEBUG, "getAllParams()");
+    LOGS(_log, LOG_LVL_DEBUG, "getAllParams()");
     _checkVersion();
 
     std::string const key = _prefix + "/NODES";
@@ -745,7 +750,7 @@ CssAccess::getAllNodeParams() const {
         try {
             result.insert(std::make_pair(node, getNodeParams(node)));
         } catch (NoSuchNode const& exc) {
-            LOGF(_log, LOG_LVL_DEBUG, "node disappeared");
+            LOGS(_log, LOG_LVL_DEBUG, "node disappeared");
         }
     }
 
@@ -754,7 +759,7 @@ CssAccess::getAllNodeParams() const {
 
 void
 CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParams) {
-    LOGF(_log, LOG_LVL_DEBUG, "addNode(%1%)" % nodeName);
+    LOGS(_log, LOG_LVL_DEBUG, "addNode(" << nodeName << ")");
     _checkVersion(false);
 
     std::string const key = _prefix + "/NODES/" + nodeName;
@@ -762,7 +767,7 @@ CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParams) {
     try {
         _kvI->create(key, "CREATING");
     } catch (KeyExistsError const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "addNode: key already exists: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "addNode: key already exists: " << key);
         throw NodeExists(nodeName);
     }
 
@@ -778,13 +783,13 @@ CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParams) {
 }
 
 void CssAccess::setNodeState(std::string const& nodeName, std::string const& newState) {
-    LOGF(_log, LOG_LVL_DEBUG, "setNodeState(%1%, %2%)" % nodeName % newState);
+    LOGS(_log, LOG_LVL_DEBUG, "setNodeState(" << nodeName << ", " << newState << ")");
     _checkVersion();
 
     std::string const key = _prefix + "/NODES/" + nodeName;
 
     if (not _kvI->exists(key)) {
-        LOGF(_log, LOG_LVL_DEBUG, "setNodeState: key does not exist: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "setNodeState: key does not exist: " << key);
         throw NoSuchNode(nodeName);
     }
 
@@ -793,7 +798,7 @@ void CssAccess::setNodeState(std::string const& nodeName, std::string const& new
 
 void
 CssAccess::deleteNode(std::string const& nodeName) {
-    LOGF(_log, LOG_LVL_DEBUG, "deleteNode(%1%)" % nodeName);
+    LOGS(_log, LOG_LVL_DEBUG, "deleteNode(" << nodeName << ")");
     _checkVersion();
 
     // check if the node is used by any chunk
@@ -813,10 +818,10 @@ CssAccess::deleteNode(std::string const& nodeName) {
 
     // key is supposed to exist
     try {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: try to delete key: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "deleteNode: try to delete key: " << key);
         _kvI->deleteKey(key);
     } catch (NoSuchKey const& exc) {
-        LOGF(_log, LOG_LVL_DEBUG, "deleteNode: key is not found: %s" % key);
+        LOGS(_log, LOG_LVL_DEBUG, "deleteNode: key is not found: " << key);
         throw NoSuchNode(nodeName);
     }
 }
@@ -826,7 +831,8 @@ CssAccess::addChunk(std::string const& dbName,
                     std::string const& tableName,
                     int chunk,
                     std::vector<std::string> const& nodeNames) {
-    LOGF(_log, LOG_LVL_DEBUG, "addChunk(%1%, %2%, %3%)" % dbName % tableName % chunk);
+    LOGS(_log, LOG_LVL_DEBUG, "addChunk(" << dbName << ", "
+         << tableName << ", " << chunk << ")");
     _checkVersion();
 
     std::string const key = _prefix + (boost::format("/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS") %
@@ -834,7 +840,7 @@ CssAccess::addChunk(std::string const& dbName,
 
     for (auto& node: nodeNames) {
         auto path = _kvI->create(key + "/", "", true);
-        LOGF(_log, LOG_LVL_DEBUG, "addChunk: New chunk replica key: %s" % path);
+        LOGS(_log, LOG_LVL_DEBUG, "addChunk: New chunk replica key: " << path);
         std::map<std::string, std::string> chunkMap{std::make_pair("nodeName", node)};
         _storePacked(path, chunkMap);
     }
@@ -842,7 +848,7 @@ CssAccess::addChunk(std::string const& dbName,
 
 std::map<int, std::vector<std::string>>
 CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
-    LOGF(_log, LOG_LVL_DEBUG, "getChunks(%1%, %2%)" % dbName % tableName);
+    LOGS(_log, LOG_LVL_DEBUG, "getChunks(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -855,7 +861,7 @@ CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
         chunks = _kvI->getChildren(chunksKey);
     } catch (NoSuchKey const& exc) {
         if (not _kvI->exists(tableKey)) throw NoSuchTable(dbName, tableName);
-        LOGF(_log, LOG_LVL_DEBUG, "getChunks: No CHUNKS sub-key for: %s" % tableKey);
+        LOGS(_log, LOG_LVL_DEBUG, "getChunks: No CHUNKS sub-key for: " << tableKey);
         return result;
     }
 
@@ -864,7 +870,7 @@ CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
         try {
             chunkId = std::stoi(chunk);
         } catch (std::exception const& exc) {
-            LOGF(_log, LOG_LVL_DEBUG, "getChunks: non-numeric chunk key: %s" % chunk);
+            LOGS(_log, LOG_LVL_DEBUG, "getChunks: non-numeric chunk key: " << chunk);
             continue;
         }
 
@@ -877,7 +883,7 @@ CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
             auto it = std::remove(replicas.begin(), replicas.end(), ::_packedKeyName);
             replicas.erase(it, replicas.end());
         } catch (std::exception const& exc) {
-            LOGF(_log, LOG_LVL_DEBUG, "getChunks: replica key is missing: %s" % replicasKey);
+            LOGS(_log, LOG_LVL_DEBUG, "getChunks: replica key is missing: " << replicasKey);
             continue;
         }
 
@@ -897,14 +903,14 @@ CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
 void
 CssAccess::_assertDbExists(std::string const& dbName) const {
     if (!containsDb(dbName)) {
-        LOGF(_log, LOG_LVL_DEBUG, "Db '%1%' not found." % dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "Db '" << dbName << "' not found.");
         throw NoSuchDb(dbName);
     }
 }
 
 std::map<std::string, std::string>
 CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& subKeys) const {
-    LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys(%s, %s)" % key % util::printable(subKeys));
+    LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys(" << key << ", " << util::printable(subKeys) << ")");
 
     std::set<std::string> parentKeys;
 
@@ -928,13 +934,13 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
 
         allKeys.push_back(key + "/" + subKey);
     }
-    LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys: parent keys: %s" % util::printable(parentKeys));
-    LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys: looking for keys: %s" % util::printable(allKeys));
+    LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys: parent keys: " << util::printable(parentKeys));
+    LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys: looking for keys: " << util::printable(allKeys));
 
     // get everything in one call from KV store, this is
     // supposed to be consistent set of values
     auto keyMap = _kvI->getMany(allKeys);
-    LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys: kvI returned: %s" % util::printable(keyMap));
+    LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys: kvI returned: " << util::printable(keyMap));
 
     // unpack packed guys, and add unpacked keys to a key map, this does not overwrite
     // existing keys (meaning that regular key overrides same packed key)
@@ -943,8 +949,8 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
         auto iter = keyMap.find(packedKey);
         if (iter != keyMap.end()) {
             auto const packedMap = _unpackJson(iter->first, iter->second);
-            LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys: packed keys: %s -> %s" %
-                 packedKey % util::printable(packedMap));
+            LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys: packed keys: "
+                 << packedKey << " -> " << util::printable(packedMap));
             for (auto& packed: packedMap) {
                 keyMap.insert(std::make_pair(parentKey + "/" + packed.first, packed.second));
             }
@@ -961,7 +967,7 @@ CssAccess::_getSubkeys(std::string const& key, std::vector<std::string> const& s
         }
     }
 
-    LOGF(_log, LOG_LVL_DEBUG, "_getSubkeys: result: %s" % util::printable(result));
+    LOGS(_log, LOG_LVL_DEBUG, "_getSubkeys: result: " << util::printable(result));
     return result;
 }
 
@@ -975,7 +981,7 @@ CssAccess::_unpackJson(std::string const& key, std::string const& data) {
         try {
             ptree::read_json(input, pt);
         } catch (ptree::ptree_error const& exc) {
-            LOGF(_log, LOG_LVL_ERROR, "unpackJson error: %s data=\"%s\"" % exc.what() % data);
+            LOGS(_log, LOG_LVL_ERROR, "unpackJson error: " << exc.what() << " data=\"" << data << "\"");
             throw lsst::qserv::css::KeyValueError(key, "json unpacking failed: " + std::string(exc.what()));
         }
     }
@@ -1008,7 +1014,8 @@ CssAccess::_storePacked(std::string const& key, std::map<std::string, std::strin
     try {
         ptree::write_json(output, pt, false);
     } catch (ptree::ptree_error const& exc) {
-        LOGF(_log, LOG_LVL_ERROR, "storePacked error: %s data=\"%s\"" % exc.what() % util::printable(data));
+        LOGS(_log, LOG_LVL_ERROR, "storePacked error: " << exc.what()
+             << " data=\"" << util::printable(data) << "\"");
         throw lsst::qserv::css::KeyValueError(key, "json packing failed: " + std::string(exc.what()));
     }
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,11 +54,7 @@ namespace query {
 
 namespace {
 
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.query.QueryTemplate");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryTemplate");
 
 struct SpacedOutput {
 
@@ -70,7 +66,7 @@ struct SpacedOutput {
             throw std::invalid_argument("NULL QueryTemplate::Entry");
         }
         std::string const& entryStr = entry->getValue();
-        LOGF(getLogger(), LOG_LVL_TRACE, "entry: %1%" % entryStr);
+        LOGS(_log, LOG_LVL_TRACE, "entry: " << entryStr);
         if(entryStr.empty()) {
             return;
         }

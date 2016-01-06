@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -67,10 +67,7 @@ using lsst::sg::SubChunks;
 typedef std::vector<SubChunks> SubChunksVector;
 
 namespace {
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qproc.IndexMap");
-    return logger;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.IndexMap");
 }
 
 namespace { // File-scope helpers
@@ -130,7 +127,7 @@ std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
     std::shared_ptr<Region> covered_region = nullptr;
     FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
     if(i != funcMap.fMap.end()) {
-        LOGF(getLogger(), LOG_LVL_TRACE, "Region for %1%: %2%" % c % i->first);
+        LOGS(_log, LOG_LVL_TRACE, "Region for " << c << ": " << i->first);
         covered_region = i->second(c.params);
     }
     return covered_region;
@@ -234,9 +231,9 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
     bool hasRegion = true;
     try {
         indexSpecs = _si->lookup(cv);
-        LOGF(getLogger(), LOG_LVL_TRACE, "Index specs: %1%" % util::printable(indexSpecs));
+        LOGS(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
     } catch(SecondaryIndex::NoIndexConstraint& e) {
-        LOGF(getLogger(), LOG_LVL_DEBUG, "No secondary index constraint");
+        LOGS(_log, LOG_LVL_DEBUG, "No secondary index constraint");
         hasIndex = false; // Ok if no index constraints
     }
 

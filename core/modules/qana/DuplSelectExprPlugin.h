@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,9 +40,6 @@
 // System headers
 
 // Third-party headers
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "query/QueryContext.h"
@@ -114,9 +111,6 @@ private:
      *         position in the select list
      */
     util::MultiError getDuplicateAndPosition(StringVector const& v) const;
-
-private:
-    static LOG_LOGGER _logger;
 };
 
 }}} // namespace lsst::qserv::qana

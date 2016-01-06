@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,9 +31,6 @@
 #include <memory>
 #include <mutex>
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "qdisp/Executive.h"
 #include "qdisp/JobDescription.h"
@@ -60,10 +57,8 @@ public:
         return jq;
     }
 
-    virtual ~JobQuery() {
-        LOGF_DEBUG("~JobQuery JQ_jobId=%1%" % getId());
-    }
-   
+    virtual ~JobQuery();
+
     virtual bool runJob();
 
     int getId() const { return _jobDescription.id(); }
@@ -98,11 +93,8 @@ public:
 protected:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     JobQuery(Executive* executive, JobDescription const& jobDescription,
-        JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
-        _executive(executive), _jobDescription(jobDescription),
-        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
-        LOGF_DEBUG("JobQuery JQ_jobId=%1% desc=%2%" % getId() % _jobDescription);
-    }
+             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc);
+
     void _setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());
     }

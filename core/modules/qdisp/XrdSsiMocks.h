@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,7 +33,6 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
-#include "lsst/log/Log.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/QueryResource.h"
 #include "util/threadSafe.h"
@@ -72,18 +71,8 @@ public:
     static const char* getMockString() {
         return "MockTrue";
     }
-    virtual void ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut){
-        std::string s = getMockString();
-        bool res = s.compare(sessName) == 0;
-        LOGF_INFO("sessName=%1% res=%2%" % sessName % res);
-        // Normally, reqP->ProcessResponse() would be called, which invokes
-        // cleanup code that is necessary to avoid memory leaks. Instead,
-        // clean up the request manually.
-        QueryRequest * r = dynamic_cast<QueryRequest *>(reqP);
-        if (r) {
-            r->cleanup();
-        }
-    };
+    virtual void ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut);
+
     virtual bool Unprovision(bool forced=false){return true;};
 
 protected:

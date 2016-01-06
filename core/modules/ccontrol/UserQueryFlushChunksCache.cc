@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,12 +36,7 @@
 #include "sql/SqlErrorObject.h"
 
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.ccontrol.UserQueryFlushChunksCache");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFlushChunksCache");
 }
 
 namespace lsst {
@@ -69,11 +64,11 @@ void UserQueryFlushChunksCache::kill() {
 // Submit or execute the query.
 void UserQueryFlushChunksCache::submit() {
 
-    LOGF(getLogger(), LOG_LVL_INFO, "going to flush empty chunks - db: %s" % _dbName);
+    LOGS(_log, LOG_LVL_INFO, "Flushing empty chunks for db: " << _dbName);
 
     // create result table first, exact schema does not matter but mysql
     // needs at least one column in table DDL
-    LOGF(getLogger(), LOG_LVL_DEBUG, "creating result table: %s" % _resultTable);
+    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << _resultTable);
     std::string sql = "CREATE TABLE " + _resultTable + " (CODE INT)";
     sql::SqlErrorObject sqlErr;
     if (not _resultDbConn->runQuery(sql, sqlErr)) {

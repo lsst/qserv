@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,9 +54,7 @@
 #include "sql/SqlConnection.h"
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
-
 }
 
 namespace lsst {
@@ -110,11 +108,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
             qs->analyzeQuery(query);
         } catch (...) {
             errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
-            LOGF(_log, LOG_LVL_ERROR, errorExtra);
+            LOGS(_log, LOG_LVL_ERROR, errorExtra);
             sessionValid = false;
         }
         if(!qs->getError().empty()) {
-            LOGF(_log, LOG_LVL_ERROR, "Invalid query: %1%" % qs->getError());
+            LOGS(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
             sessionValid = false;
         }
 
@@ -141,19 +139,19 @@ UserQueryFactory::newUserQuery(std::string const& query,
         auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, tableName,
                                                   _impl->resultDbConn.get(), resultTable,
                                                   _impl->queryMetadata, _impl->qMetaCzarId);
-        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDrop: %s.%s" % dbName % tableName);
+        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: " << dbName << "." << tableName);
         return uq;
     } else if (UserQueryType::isDropDb(query, dbName)) {
         // processing DROP DATABASE
         auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, std::string(),
                                                   _impl->resultDbConn.get(), resultTable,
                                                   _impl->queryMetadata, _impl->qMetaCzarId);
-        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=%s" % dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=" << dbName);
         return uq;
     } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
         auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->css, dbName,
                                                               _impl->resultDbConn.get(), resultTable);
-        LOGF(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: %s" % dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: " << dbName);
         return uq;
     } else {
         // something that we don't recognize

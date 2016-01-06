@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +34,9 @@
 #include <memory>
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/TableInfoPool.h"
@@ -52,12 +55,7 @@
 #include "query/WhereClause.h"
 
 namespace {
-
-LOG_LOGGER getLogger() {
-    static LOG_LOGGER logger = LOG_GET("lsst.qserv.qana.RelationGraph");
-    return logger;
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.RelationGraph");
 }
 
 namespace lsst {
@@ -959,14 +957,14 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         return;
     }
     if (empty()) {
-        LOGF(getLogger(), LOG_LVL_TRACE, "Input query only involves unpartitioned tables");
+        LOGS(_log, LOG_LVL_TRACE, "Input query only involves unpartitioned tables");
         // The input query only involves unpartitioned tables -
         // there is nothing to do.
         outputs.push_back(_query->clone());
         return;
     }
 
-    LOGF(getLogger(), LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
+    LOGS(_log, LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
     mapping.insertChunkEntry(TableInfo::CHUNK_TAG);
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.
