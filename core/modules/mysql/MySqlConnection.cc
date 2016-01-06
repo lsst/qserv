@@ -200,6 +200,7 @@ MYSQL* MySqlConnection::_connectHelper() {
         janitor.reset(new MySqlThreadJanitor);
     }
     unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
+    mysql_options( m, MYSQL_OPT_LOCAL_INFILE, 0 );
     MYSQL* c = mysql_real_connect(
         m,
         _sqlConfig->socket.empty() ?_sqlConfig->hostname.c_str() : 0,

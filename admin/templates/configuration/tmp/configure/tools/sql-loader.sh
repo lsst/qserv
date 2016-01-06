@@ -12,7 +12,7 @@ SQL_DIR="${QSERV_RUN_DIR}/tmp/configure/sql"
 for file_name in ${SQL_FILE}; do
     echo "-- Loading ${file_name} in MySQL"
     "${MYSQL_DIR}"/bin/mysql --no-defaults -vvv --user="${MYSQLD_USER}" \
-    --password="${MYSQLD_PASS}" --sock="${MYSQLD_SOCK}" < "${SQL_DIR}/${file_name}"
+    --password="${MYSQLD_PASS}" --socket="${MYSQLD_SOCK}" < "${SQL_DIR}/${file_name}"
 done &&
 "${QSERV_RUN_DIR}"/etc/init.d/mysqld stop ||
 {

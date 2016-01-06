@@ -1,6 +1,7 @@
--- Used by xrootd Qserv plugin:
+CREATE USER IF NOT EXISTS 'qsmaster'@'localhost';
 
---   to publish LSST databases
+-- Used by xrootd Qserv plugin:
+-- to publish LSST databases
 DROP DATABASE IF EXISTS qservw_worker;
 CREATE DATABASE qservw_worker;
 GRANT SELECT ON qservw_worker.* TO 'qsmaster'@'localhost';

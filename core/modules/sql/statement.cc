@@ -27,9 +27,23 @@
 
 // Third-party headers
 
+
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/Bug.h"
 #include "sql/Schema.h"
+
+namespace {
+
+    LOG_LOGGER getLogger() {
+        static LOG_LOGGER logger = LOG_GET("lsst.qserv.sql.statement");
+        return logger;
+    }
+
+
+} // anonymous
 
 namespace lsst {
 namespace qserv {
@@ -70,10 +84,10 @@ std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
 
 std::string formLoadInfile(std::string const& table,
                            std::string const& virtFile) {
-    std::ostringstream os;
-    os << "LOAD DATA LOCAL INFILE '" << virtFile << "' INTO TABLE "
-       << table << " FIELDS ENCLOSED BY '\\\''";
-    return os.str();
+    auto sql = "LOAD DATA LOCAL INFILE '" + virtFile + "' INTO TABLE " + table
+            + " FIELDS ENCLOSED BY '\\\''";
+    LOGF(getLogger(), LOG_LVL_TRACE, "Load query: %1% " % sql);
+    return sql;
 }
 
 inline bool needClause(InsertColumnVector const& icv) {

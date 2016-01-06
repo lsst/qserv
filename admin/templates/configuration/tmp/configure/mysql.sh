@@ -2,14 +2,14 @@
 
 set -e
 
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-QSERV_UNIX_USER={{QSERV_UNIX_USER}}
-PATH={{PATH}}
-MYSQLD_SOCK={{MYSQLD_SOCK}}
 MYSQLD_DATA_DIR={{MYSQLD_DATA_DIR}}
 MYSQLD_HOST={{MYSQLD_HOST}}
 MYSQLD_PORT={{MYSQLD_PORT}}
-
+MYSQLD_SOCK={{MYSQLD_SOCK}}
+MYSQL_DIR={{MYSQL_DIR}}
+PATH={{PATH}}
+QSERV_RUN_DIR={{QSERV_RUN_DIR}}
+QSERV_UNIX_USER={{QSERV_UNIX_USER}}
 SQL_DIR=${QSERV_RUN_DIR}/tmp/configure/sql
 
 is_socket_available() {
@@ -40,25 +40,25 @@ echo "-- Removing previous data."
 rm -rf ${MYSQLD_DATA_DIR}/*
 echo "-- ."
 echo "-- Installing mysql database files."
-mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${QSERV_UNIX_USER} >/dev/null ||
+"${MYSQL_DIR}/scripts/mysql_install_db" --basedir="${MYSQL_DIR}" --defaults-file="${QSERV_RUN_DIR}/etc/my.cnf" --user=${QSERV_UNIX_USER} >/dev/null ||
 {
     echo "ERROR : mysql_install_db failed, exiting"
     exit 1
 }
-echo "-- Starting mysql server."
+echo "-- Starting mariadb server."
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start
 sleep 5
-echo "-- Changing mysql root password."
+echo "-- Changing mariadb root password."
 mysql --no-defaults -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql ||
 {
-    echo -n "ERROR : Failed to set mysql root user password."
-    echo "Please set the mysql root user password with : "
+    echo -n "ERROR : Failed to set mariadb root user password."
+    echo "Please set the MariaDB root user password with : "
     echo "mysqladmin -S ${QSERV_RUN_DIR}/var/lib/mysql/mysql.sock -u root password <password>"
     echo "mysqladmin -u root -h ${MYSQLD_HOST} -P${MYSQLD_PASS} password <password>"
     exit 1
 }
 rm ${SQL_DIR}/mysql-password.sql
-echo "-- Shutting down mysql server."
+echo "-- Shutting down mariadb server."
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop
 
-echo "INFO: MySQL initialization SUCCESSFUL"
+echo "INFO: MariaDB initialization SUCCESSFUL"

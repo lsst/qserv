@@ -48,33 +48,37 @@ class Api {
 public:
     Api() {
         mysql_init(&cursor);
+        mysql_options( &cursor, MYSQL_OPT_LOCAL_INFILE, 0 );
     }
     ~Api() {
         mysql_close(&cursor);
     }
 
     void connect() {
-        MYSQL* cur = mysql_real_connect(&cursor,
-                                        "localhost", // host
-                                        "danielw", // user
-                                        "", // pw
-                                        "", // db
-                                        0, // port
-                                        "/u1/local/mysql.sock", // socket
-                                        0); // client flag
-        if(!cur) {
-            std::cout << "Failed to connect to MySQL: Error: "
-                      << mysql_error(cur) << std::endl;
-            assert(cur);
+        MYSQL* conn = mysql_real_connect(&cursor,
+                "localhost", // host
+                "qsmaster", // user
+                "", // pw
+                "", // db
+                0, // port
+                "/home/qserv/qserv-run/git/var/lib/mysql/mysql.sock", // socket
+                0); // client flag
+        if(!conn) {
+            std::cerr << "Failed to connect to MySQL: Error: "
+                      << mysql_error(conn) << std::endl;
+            assert(conn);
+        }
+        int result = mysql_query(&cursor, "show databases;");
+        if(result != 0) {
+            std::cerr << "Error executing :" << mysql_error(&cursor) << std::endl;
         }
     }
     MYSQL* getMysql() { return &cursor; }
 
     bool _sendQuery(std::string const& query) {
-//   mysql_real_query(MYSQL*, char* query, int qlen) -> 0 success, nonzero error via mysql_error(mysql*)
         int result = mysql_real_query(&cursor, query.c_str(), query.size());
         if(result != 0) {
-            std::cout << "error executing " << query << "  " << mysql_error(&cursor)
+            std::cerr << "Error executing '" << query << "' :" << mysql_error(&cursor)
                  << std::endl;
             return false;
         } else {
@@ -247,9 +251,13 @@ void playRead() {
 void checkDoubleTable() {
     Api a; // Source: will execute "select ..."
     a.connect();
+    if(!a.exec("show databases;")) {
+        std::cerr << "error running 'show databases'.\n";
+        return;
+    }
 
     if(!a.exec("create table test.twofloats (one float, two float);")) {
-        std::cout << "error creating test.twofloats.\n";
+        std::cerr << "error creating test.twofloats.\n";
         return;
     }
 

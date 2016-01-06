@@ -10,7 +10,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "mysqlclient_r boost_thread boost_system ssl crypto".split()
+extDeps = "mysqlclient_r boost_thread boost_system log log4cxx ssl crypto".split()
 
 modDeps = 'mysql sql'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))

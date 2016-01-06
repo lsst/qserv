@@ -80,7 +80,7 @@ ALL_STEPS_DOC = {
              "eventually create symbolic link from QSERV_RUN_DIR/var/lib to QSERV_DATA_DIR.",
     ETC: "Create Qserv configuration files in QSERV_RUN_DIR using values issued " +
          "from meta-config file QSERV_RUN_DIR/qserv-meta.conf",
-    MYSQL: "Remove MySQL previous data, install db and set password",
+    MYSQL: "Remove MariaDB previous data, install db and set password",
     XROOTD: "Create xrootd query and result directories",
     CSS_WATCHER: "Configure CSS-watcher (i.e. MySQL credentials)",
     CZAR: "Initialize Qserv master database",
