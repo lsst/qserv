@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,12 +23,12 @@
 /// msgCode.h maintains message codes used by the query messaging system
 /// within the C++ layer of Qesrv.
 
-#ifndef LSST_QSERV_LOG_MSGCODE_H
-#define LSST_QSERV_LOG_MSGCODE_H
+#ifndef LSST_QSERV_CCONTROL_MSGCODE_H
+#define LSST_QSERV_CCONTROL_MSGCODE_H
 
 namespace lsst {
 namespace qserv {
-namespace log {
+namespace ccontrol {
 
 // Codes for czar C++ layer are >= 1000.
 // (<1000 reserved for Python layer.)
@@ -45,7 +45,7 @@ const int MSG_ERASED        = 1600;
 const int MSG_EXEC_SQUASHED = 1990;
 const int MSG_FINALIZED     = 2000;
 
-}}} // namespace lsst::qserv::log
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_LOG_MSGCODE_H
+#endif // LSST_QSERV_CCONTROL_MSGCODE_H
 

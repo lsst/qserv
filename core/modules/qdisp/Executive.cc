@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -55,9 +55,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "ccontrol/msgCode.h"
 #include "global/Bug.h"
 #include "global/ResourceUnit.h"
-#include "log/msgCode.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryResource.h"
@@ -127,7 +127,7 @@ void Executive::add(JobDescription const& jobDesc) {
     ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
     LOGF(getLogger(), LOG_LVL_INFO, "%1%" % msg);
-    _messageStore->addMessage(jobDesc.resource().chunk(), log::MSG_MGR_ADD, msg);
+    _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
 
     jobQuery->runJob();
 }

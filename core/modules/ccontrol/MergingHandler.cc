@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,10 +31,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "ccontrol/msgCode.h"
 #include "global/Bug.h"
 #include "global/debugUtil.h"
 #include "global/MsgReceiver.h"
-#include "log/msgCode.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
@@ -95,7 +95,7 @@ bool MergingHandler::flush(int bLen, bool& last) {
         _response->headerSize = static_cast<unsigned char>(_buffer[0]);
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
             std::string s = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
-            _setError(log::MSG_RESULT_DECODE, s);
+            _setError(ccontrol::MSG_RESULT_DECODE, s);
             _state = MsgState::HEADER_ERR;
             return false;
         }
@@ -134,8 +134,8 @@ bool MergingHandler::flush(int bLen, bool& last) {
         }
     case MsgState::RESULT_EXTRA:
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
-            _setError(log::MSG_RESULT_DECODE,
-                    std::string("Error decoding proto header for ") + getStateStr(_state));
+            _setError(ccontrol::MSG_RESULT_DECODE,
+                      std::string("Error decoding proto header for ") + getStateStr(_state));
             _state = MsgState::HEADER_ERR;
             return false;
         }
@@ -152,13 +152,13 @@ bool MergingHandler::flush(int bLen, bool& last) {
             std::ostringstream eos;
             eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state) << " last=" << last;
             LOGF_ERROR("%1%" % eos.str());
-            _setError(log::MSG_RESULT_ERROR, eos.str());
+            _setError(ccontrol::MSG_RESULT_ERROR, eos.str());
          }
         return false;
     default:
         break;
     }
-    _setError(log::MSG_RESULT_ERROR, "Unexpected message (invalid)");
+    _setError(ccontrol::MSG_RESULT_ERROR, "Unexpected message (invalid)");
     return false;
 }
 
@@ -211,7 +211,7 @@ bool MergingHandler::_merge() {
         bool success = _infileMerger->merge(_response);
         if(!success) {
             rproc::InfileMergerError const& err = _infileMerger->getError();
-            _setError(log::MSG_RESULT_ERROR, err.getMsg());
+            _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
             _state = MsgState::RESULT_ERR;
         }
         _response.reset();
@@ -230,7 +230,7 @@ void MergingHandler::_setError(int code, std::string const& msg) {
 
 bool MergingHandler::_setResult() {
     if(!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
-        _setError(log::MSG_RESULT_DECODE, "Error decoding result msg");
+        _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
     }
@@ -238,7 +238,7 @@ bool MergingHandler::_setResult() {
 }
 bool MergingHandler::_verifyResult() {
     if(_response->protoHeader.md5() != util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
-        _setError(log::MSG_RESULT_MD5, "Result message MD5 mismatch");
+        _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;
         return false;
     }
