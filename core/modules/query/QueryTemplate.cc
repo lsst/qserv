@@ -48,10 +48,6 @@
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryTemplate");
@@ -61,7 +57,7 @@ struct SpacedOutput {
     SpacedOutput(std::ostream& os_, std::string sep_=" ")
         : os(os_), sep(sep_) {}
 
-    void operator()(std::shared_ptr<QueryTemplate::Entry> entry) {
+    void operator()(std::shared_ptr<lsst::qserv::query::QueryTemplate::Entry> entry) {
         if(!entry) {
             throw std::invalid_argument("NULL QueryTemplate::Entry");
         }
@@ -70,7 +66,10 @@ struct SpacedOutput {
         if(entryStr.empty()) {
             return;
         }
-        if(!lastEntry.empty() && sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
+        if(!lastEntry.empty() &&
+           lsst::qserv::sql::sqlShouldSeparate(lastEntry,
+                                               *lastEntry.rbegin(),
+                                               entryStr.at(0))) {
             os << sep;
         }
         os << entryStr;
@@ -83,6 +82,10 @@ struct SpacedOutput {
 };
 
 } // annonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 struct MappingWrapper {
     MappingWrapper(QueryTemplate::EntryMapping const& em_,

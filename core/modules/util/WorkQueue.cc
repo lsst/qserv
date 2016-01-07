@@ -145,16 +145,13 @@ void
 WorkQueue::signalDeath(Runner* r) {
     std::lock_guard<std::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
-    // LOGS(_log, LOG_LVL_DEBUG, (void*) r << " dying");
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
         if(*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
-            // LOGS(_log, LOG_LVL_DEBUG(_runners.size() << " runners left");
             return;
         }
     }
-    //std::cerr << "couldn't find self to remove\n";
 }
 
 void

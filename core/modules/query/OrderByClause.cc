@@ -45,11 +45,11 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.OrderByClause");
+
+using lsst::qserv::query::OrderByTerm;
 
 char const* getOrderStr(OrderByTerm::Order o) {
     switch(o) {
@@ -60,8 +60,11 @@ char const* getOrderStr(OrderByTerm::Order o) {
     }
 }
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.query.OrderByClause");
-}
+} // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
 public:

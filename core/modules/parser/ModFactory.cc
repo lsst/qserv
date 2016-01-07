@@ -54,13 +54,13 @@
 #include "query/HavingClause.h"  // Clauses
 #include "query/OrderByClause.h" // Clauses
 
-namespace lsst {
-namespace qserv {
-namespace parser {
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ModFactory");
 }
+
+namespace lsst {
+namespace qserv {
+namespace parser {
 
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::LimitH
@@ -81,7 +81,6 @@ class ModFactory::OrderByH : public VoidOneRefFunc {
 public:
     OrderByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
-        //LOGS(_log, LOG_LVL_DEBUG, "Importing Orderby: " << walkIndentedString(n));
         _mf._importOrderBy(n);
     }
 private:
@@ -197,7 +196,6 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = std::make_shared<query::GroupByClause>();
     // GROUP BY takes a column reference (expression?)
-    //LOGS(_log, LOG_LVL_DEBUG, "groupby got " << walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importGroupBy(NULL)");
     }
@@ -237,7 +235,6 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importHaving(NULL)");
     }
-    //LOGS(_log, LOG_LVL_DEBUG, "having got " << walkTreeString(a));
     // For now, we will silently traverse and recognize but ignore.
 
     // TODO:

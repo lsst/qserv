@@ -69,7 +69,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
 enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_BETWEEN };
 
-} // anonymous
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {

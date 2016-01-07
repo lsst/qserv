@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 AURA/LSST.
+ * Copyright 2008-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,13 +35,10 @@
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlResults.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
-
 namespace {
 void
-populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
+populateErrorObject(lsst::qserv::mysql::MySqlConnection& m,
+                    lsst::qserv::sql::SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
     if(mysql == nullptr) {
         o.setErrNo(-999);
@@ -53,6 +50,10 @@ populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
     }
 }
 } // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 ////////////////////////////////////////////////////////////////////////
 // class SqlResultIter

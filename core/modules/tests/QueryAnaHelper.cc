@@ -55,13 +55,13 @@ using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::util::printable;
 
-namespace lsst {
-namespace qserv {
-namespace tests {
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
 }
+
+namespace lsst {
+namespace qserv {
+namespace tests {
 
 SelectParser::Ptr QueryAnaHelper::getParser(const std::string& stmt) {
     SelectParser::Ptr p = SelectParser::newInstance(stmt);

@@ -59,16 +59,11 @@ MmapFile::newMap(std::string const& filename, bool read, bool write) {
 MmapFile::~MmapFile() {
     if(_buf) {
         if(-1 == ::munmap(_buf, _fstat.st_size)) {
-            // LOGS(_log, LOG_LVL_ERROR, "Mmap failed ("
-            //      << (void*)_buf << ", " << _fstat.st_size
-            //      << "). Memory corruption likely.");
         }
         _buf = 0;
     }
     if(_fd > 0) {
         if(-1 == close(_fd)) {
-            // LOGS(_log, LOG_LVL_WARN, "Warning, broken close of "
-            //      _filename << " (fd=" << _fd << ")");
         }
         _fd = 0;
     }
@@ -93,7 +88,6 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
     }
     _fd = ::open(_filename.c_str(), openFlags);
     if(_fd == -1) {
-        // LOGS(_log, LOG_LVL_WARN, "Error opening file.");
         _fd = 0;
     }
     if((-1 == ::fstat(_fd, &_fstat)) || // get filesize
@@ -101,9 +95,6 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
                                      mapProt, MAP_SHARED, _fd, 0))
         )
        ) {
-        if((MAP_FAILED == _buf) && _fstat.st_size > ((off_t)1ULL << 30)) {
-            // LOGS(_log, LOG_LVL_WARN, "file too big? (mmap failed)");
-        }
         _buf = 0; // reset buffer.
     }
     // _fd and _buf will get closed/munmapped as necessary in destructor.

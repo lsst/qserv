@@ -50,10 +50,6 @@
 #include "sql/SqlConnection.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
@@ -61,6 +57,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 enum QueryType { IN, BETWEEN };
 
 } // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace qproc {
 
 class SecondaryIndex::Backend {
 public:

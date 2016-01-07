@@ -36,17 +36,17 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/QueryResource.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
 
-void logErr(std::string const& msg, JobQuery* jq) {
+void logErr(std::string const& msg, lsst::qserv::qdisp::JobQuery* jq) {
     LOGS(_log, LOG_LVL_ERROR, msg << " " << *jq);
 }
-} // namespace
+} // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace qdisp {
 
 
 JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,

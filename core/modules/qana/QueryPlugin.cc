@@ -39,10 +39,6 @@
 // Qserv headers
 #include "qana/PluginNotFoundError.h"
 
-namespace lsst {
-namespace qserv {
-namespace qana {
-
 namespace { // File-scope helpers
 
 struct Registry {
@@ -59,6 +55,9 @@ Registry& registry() {
 
 } // anonymous namespace
 
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 QueryPlugin::Ptr QueryPlugin::newInstance(std::string const& name) {
     Registry& r = registry();

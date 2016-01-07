@@ -60,7 +60,6 @@ namespace query {
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
     return bt.putStream(os);
 }
-
 std::ostream& OrTerm::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
@@ -285,11 +284,9 @@ std::shared_ptr<BoolTerm> BoolFactor::clone() const {
     copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
-
 std::shared_ptr<BoolTerm> UnknownTerm::clone() const {
     return  std::make_shared<UnknownTerm>(); // TODO what is unknown now?
 }
-
 BoolFactorTerm::Ptr PassListTerm::clone() const {
     PassListTerm* p = new PassListTerm;
     std::copy(_terms.begin(), _terms.end(), std::back_inserter(p->_terms));
@@ -300,7 +297,6 @@ BoolFactorTerm::Ptr BoolTermFactor::clone() const {
     if(_term) { p->_term = _term->clone(); }
     return BoolFactorTerm::Ptr(p);
 }
-
 // copySyntax
 std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     std::shared_ptr<OrTerm> ot = std::make_shared<OrTerm>();
@@ -317,7 +313,6 @@ std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
-
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
     p->_text = _text;
