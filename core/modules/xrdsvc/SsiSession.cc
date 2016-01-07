@@ -83,7 +83,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     if (ru.unitType() != ResourceUnit::DBCHUNK) {
         std::ostringstream os;
         os << "Unexpected unit type in query db=" << ru.db() << " unitType=" << ru.unitType();
-        LOGS(_log, LOG_LVL_ERROR, os);
+        LOGS(_log, LOG_LVL_ERROR, os.str());
         errorFunc(os.str());
         return;
     }
@@ -91,7 +91,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     if(!(*_validator)(ru)) {
         std::ostringstream os;
         os << "WARNING: unowned chunk query detected:" << ru.path();
-        LOGS(_log, LOG_LVL_WARN, os);
+        LOGS(_log, LOG_LVL_WARN, os.str());
         errorFunc(os.str());
         return;
     }
@@ -105,7 +105,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     if (!ok) {
         std::ostringstream os;
         os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGS(_log, LOG_LVL_ERROR, os);
+        LOGS(_log, LOG_LVL_ERROR, os.str());
         errorFunc(os.str());
         return;
     }
@@ -114,7 +114,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
         std::ostringstream os;
         os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGS(_log, LOG_LVL_ERROR, os);
+        LOGS(_log, LOG_LVL_ERROR, os.str());
         errorFunc(os.str());
         return;
     }
