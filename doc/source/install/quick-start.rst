@@ -57,15 +57,15 @@ First, log in with a **non-root user account**.
 Install Qserv distribution
 ==========================
 
-Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``qserv`` to install current Qserv release.
+Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``qserv_latest`` to install current Qserv release.
 
 .. code-block:: bash
 
    # First, define RELEASE, here we install current Qserv release
-   RELEASE="qserv"
+   RELEASE="qserv_latest"
    # loadLSST.bash must have been sourced before running this (see above)
    eups distrib install --tag $RELEASE qserv_distrib
-   setup qserv_distrib
+   setup qserv_distrib -t $RELEASE
 
 .. _quick-start-configuration:
 
