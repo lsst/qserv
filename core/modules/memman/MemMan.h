@@ -61,7 +61,7 @@ public:
 
     TableInfo(std::string const &tabName,
               LockOptions optData=MUSTLOCK,
-              LockOptions optIndex=FLEXIBLE)
+              LockOptions optIndex=NOLOCK)
              : tableName(tabName), theData(optData), theIndex(optIndex)
              {}
 };
@@ -75,6 +75,20 @@ public:
 
 class MemMan {
 public:
+
+    //-----------------------------------------------------------------------------
+    //! @brief Create a memory manager and initialize for processing.
+    //!
+    //! @param  maxBytes   - Maximum amount of memory that can be used
+    //! @param  dbPath     - Path to directory where the database resides
+    //!
+    //! @return !0: The pointer to the memory manager.
+    //! @return  0: A manager could not be created.
+    //-----------------------------------------------------------------------------
+
+    static MemMan *create(unsigned long long maxBytes,
+                          std::string const &dbPath
+                         );
 
     //-----------------------------------------------------------------------------
     //! @brief Lock a set of tables in memory for a particular chunk.
@@ -118,21 +132,6 @@ public:
     virtual void  unlockAll() = 0;
 
     //-----------------------------------------------------------------------------
-    //! @brief Create a memory manager and initialize for processing.
-    //!
-    //! @param  maxBytes   - Maximum amount of memory that can be used
-    //! @param  dbPath     - Path to directory where the database resides
-    //!
-    //! @return !0: The pointer to the memory manager.
-    //! @return  0: A manager could not be created.
-    //-----------------------------------------------------------------------------
-
-    static MemMan *create(unsigned long long maxBytes,
-                          std::string const &dbPath
-                         );
-
-
-    //-----------------------------------------------------------------------------
     //! @brief Obtain statistics about this memory manager.
     //!
     //! @return The statistics.
@@ -170,7 +169,7 @@ public:
     MemMan(const MemMan&) = delete;
 
                   MemMan() {}
-    virtual      ~Memman() {}
+    virtual      ~MemMan() {}
 };
 
 }}} // namespace lsst:qserv:memman
