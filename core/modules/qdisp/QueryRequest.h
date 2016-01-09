@@ -111,32 +111,36 @@ public:
 
     void cancel();
     bool isCancelled();
-
+    void doNotRetry() { _retried.store(true); }
+    std::string getXrootdErr(int *eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.
 
+    friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     void _callMarkComplete(bool success);
-    bool _importStream();
+    bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
     void _errorFinish(bool shouldCancel=false);
     void _finish();
 
     XrdSsiSession* _session;
 
-    std::shared_ptr<JobQuery> _jobQuery; ///< Job information.
-    JobDescription& _jobDesc; ///< Convenience reference to JobDescription inside _jobQuery.
+    /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
+    /// A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with _finishStatusMutex
+    /// as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
+    std::shared_ptr<JobQuery> _jobQuery;
 
     std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 
                                         /// single QueryRequest.
     std::atomic<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
                                                    /// from a single QueryRequest.
 
-    std::mutex _finishStatusMutex;
+    std::mutex _finishStatusMutex; ///< used to protect _cancelled, _finishStatus, and _jobQuery.
     enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus {ACTIVE}; // _finishStatusMutex
     bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
-    int _jobId {-1}; ///< for debugging only. TODO delete in DM-3946
+    std::string _jobId {"jobId=-1"}; ///< for debugging only.
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

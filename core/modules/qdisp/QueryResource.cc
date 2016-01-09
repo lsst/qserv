@@ -51,8 +51,8 @@ namespace qdisp {
 
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
   : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
-      _jobQuery(jobQuery), _jobId(jobQuery->getId()) {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryResource JQ_jobId=" << _jobId);
+      _jobQuery(jobQuery), _jobId(jobQuery->getIdStr()) {
+    LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryResource JQ_jobId");
 }
 
 QueryResource::~QueryResource() {
@@ -63,6 +63,7 @@ QueryResource::~QueryResource() {
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
 void QueryResource::ProvisionDone(XrdSsiSession* s) {
+    LOGF_DEBUG("QueryResource::ProvisionDone JQ_jobId=%1%" % _jobId);
     struct Destroyer {
         Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
         : _job{job},  _qr{qr} {}

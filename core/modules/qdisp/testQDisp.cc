@@ -71,7 +71,7 @@ public:
                  qdisp::JobDescription const& jobDescription,
                  qdisp::JobStatus::Ptr jobStatus,
                  qdisp::MarkCompleteFunc::Ptr markCompleteFunc)
-        : qdisp::JobQuery{executive, jobDescription, jobStatus, markCompleteFunc} {}
+        : qdisp::JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, "ExecTest"} {}
 
     virtual ~JobQueryTest() {}
     virtual bool runJob() override {
@@ -234,8 +234,8 @@ BOOST_AUTO_TEST_CASE(Executive) {
     BOOST_CHECK(ex.getEmpty() == true);
 
     // Test that we can detect ex._empty == false.
-    LOGS_DEBUG("Executive test 3");
-    qdisp::XrdSsiServiceMock::_go.set(false);
+    LOGF_INFO("Executive test 3");
+    qdisp::XrdSsiServiceMock::_go.exchange(false);
     executiveTest(ex, sequence, chunkId, millis, 5);
     jobs += 5;
     while (qdisp::XrdSsiServiceMock::_count.get() < jobs) {
@@ -244,11 +244,11 @@ BOOST_AUTO_TEST_CASE(Executive) {
         usleep(10000);
     }
     BOOST_CHECK(ex.getEmpty() == false);
-    qdisp::XrdSsiServiceMock::_go.set(true);
+    qdisp::XrdSsiServiceMock::_go.exchange(true);
     ex.join();
     LOGS_DEBUG("ex.join() joined");
     BOOST_CHECK(ex.getEmpty() == true);
-    done.set(true);
+    done.exchange(true);
     timeoutT.join();
     LOGS_DEBUG("Executive test end");
 }
@@ -344,6 +344,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // Test that ProcessResponse detects XrdSsiRespInfo::isError.
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
+    qrq->doNotRetry();
     int magicErrNum = 5678;
     rInfo.rType = XrdSsiRespInfo::isError;
     rInfo.eNum = magicErrNum;
@@ -357,6 +358,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     LOGS_DEBUG("QueryRequest::ProcessResponse test 3");
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
+    qrq->doNotRetry();
     rInfo.rType = XrdSsiRespInfo::isStream;
     finishTest->finishCalled = false;
     qrq->ProcessResponse(rInfo, true);
@@ -369,6 +371,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     finishTest->finishCalled = false;
     jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
+    qrq->doNotRetry();
     const char* ts="abcdefghijklmnop";
     char dataBuf[50];
     strcpy(dataBuf, ts);
@@ -412,6 +415,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     ResourceUnit ru;
     std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
     qdisp::JobQuery::Ptr jq;
+    qdisp::XrdSsiServiceMock::_go.exchange(false); // Can't let jobs run or they are untracked before squash
     for (int jobId=first; jobId<=last; ++jobId) {
         qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
         ex.add(jobDesc);
@@ -425,6 +429,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         jq = ex.getJobQuery(jobId);
         BOOST_CHECK(jq->isCancelled() == true);
     }
+    qdisp::XrdSsiServiceMock::_go.exchange(true);
     ex.join(); // XrdSsiMock doesn't pay attention to cancel, need to wait for all to finish.
 
     LOGS_DEBUG("Check that QueryResource and QueryRequest detect the cancellation of a job.");
