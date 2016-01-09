@@ -58,11 +58,7 @@ public:
         return jq;
     }
 
-
-    virtual ~JobQuery() {
-        LOGS(_log, LOG_LVL_DEBUG, "~JobQuery JQ_jobId=" << getIdStr());
-    }
-   
+    virtual ~JobQuery();
     virtual bool runJob();
 
     int getIdInt() const { return _jobDescription.id(); }
@@ -99,12 +95,7 @@ protected:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     JobQuery(Executive* executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-        std::string const& executiveId) :
-        _executive(executive), _jobDescription(jobDescription),
-        _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
-        _idStr{executiveId + "_" + std::to_string(getIdInt())} {
-        LOGS(_log, LOG_LVL_DEBUG, "JobQuery JQ_jobId=" << getIdStr() << " desc=" << _jobDescription);
-    }
+        std::string const& executiveId);
 
     void _setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());

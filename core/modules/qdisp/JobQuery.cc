@@ -48,16 +48,19 @@ void logErr(std::string const& msg, JobQuery* jq) {
 }
 } // namespace
 
+
 JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
-                   std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc) :
-    _executive(executive), _jobDescription(jobDescription),
-    _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus) {
-    LOGS(_log, LOG_LVL_DEBUG, "JobQuery JQ_jobId=" << getId() << " desc=" << _jobDescription);
+                   std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
+                   std::string const& executiveId) :
+  _executive(executive), _jobDescription(jobDescription),
+  _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
+  _idStr(executiveId + "_" + std::to_string(getIdInt())) {
+    LOGS(_log, LOG_LVL_DEBUG, "JobQuery JQ_jobId=" << getIdStr() << " desc=" << _jobDescription);
 }
 
 JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery JQ_jobId=" << getId());
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery JQ_jobId=" << getIdStr());
 }
 
 /** Attempt to run the job on a worker.

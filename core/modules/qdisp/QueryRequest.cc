@@ -89,7 +89,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 
 // Deleting the buffer (payload) would cause us problems, as this class is not the owner.
 void QueryRequest::RelRequestBuffer() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobID << " RelRequestBuffer");
+    LOGS(_log, LOG_LVL_DEBUG, _jobId << " RelRequestBuffer");
 }
 // precondition: rInfo.rType != isNone
 // Must not throw exceptions: calling thread cannot trap them.
@@ -153,7 +153,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " _importStream buffer.size=" << buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " _importStream->GetResponseData size="
-         << buffer.size() " " << pbuf << " " util::prettyCharList(buffer, 5));
+         << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
     success = GetResponseData(&buffer[0], buffer.size());
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " Initiated request " << (success ? "ok" : "err"));
 
@@ -308,7 +308,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         // new QueryResource object which is used to create a new QueryRequest object
         // which will replace this one in _jobQuery. The replacement could show up
         // before this one's cleanup is called, so this will keep this alive.
-        LOGS(_log, LOG_LVL_DEBUG, _jobId " QueryRequest::_errorFinish retrying");
+        LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::_errorFinish retrying");
         _keepAlive = _jobQuery->getQueryRequest(); // shared pointer to this
         if (!_jobQuery->runJob()) {
             // Retry failed, nothing left to try.

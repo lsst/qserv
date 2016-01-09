@@ -52,7 +52,7 @@ namespace qdisp {
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
   : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
       _jobQuery(jobQuery), _jobId(jobQuery->getIdStr()) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobID << " QueryResource JQ_jobId");
+    LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryResource JQ_jobId");
 }
 
 QueryResource::~QueryResource() {

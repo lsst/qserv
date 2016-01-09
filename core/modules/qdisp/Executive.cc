@@ -194,7 +194,7 @@ bool Executive::join() {
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
-    LOGF(getLogger(), LOG_LVL_INFO, "Executive::markCompleted " << _id << "_" << jobId
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << _id << "_" << jobId
             << " " << success);
     if(!success) {
         {
@@ -347,7 +347,7 @@ void Executive::_unTrack(int jobId) {
     if(untracked) {
         LOGS(_log, LOG_LVL_DEBUG, os.str());
     } else {
-        LOGS(_log, LOG_LVL__WARN, os.str());
+        LOGS(_log, LOG_LVL_WARN, os.str());
     }
 }
 
