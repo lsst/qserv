@@ -151,6 +151,8 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsDir)),
         (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"),
                       PathVariable.PathIsDir)),
+        (PathVariable('SPHGEOM_DIR', 'sphgeom library install dir', _findPrefixFromName('SPHGEOM'),
+                      PathVariable.PathIsDir)),
         (PathVariable('python_relative_prefix',
                       'qserv install directory for python modules, relative to prefix',
                       os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
@@ -177,6 +179,8 @@ def _setEnvWithDependencies():
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('LUA_INC', 'lua include path', os.path.join(env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('SPHGEOM_INC', 'sphgeom include path', os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path', os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
             )
     opts.Update(env)
 

@@ -47,14 +47,14 @@ header = env.HeaderKvmap('testMap')
 
 
 # deps on other modules
-modDeps = """css global log rproc qana query parser proto mysql sql tests util sg""".split()
+modDeps = """css global log rproc qana query parser proto mysql sql tests util""".split()
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = map(lambda i:i, deps) # un-chain
 deps = cacheObjs(env, deps, ".o")
 
 myDeps = filter(lambda i: not os.path.basename(str(i)).startswith("test"), env.Glob("*.cc"))
 myDeps = map(env.Object, myDeps)
-extDeps = "antlr boost_filesystem boost_regex boost_thread pthread boost_system protobuf ssl crypto log log4cxx XrdPosix XrdClient XrdPosixPreload XrdUtils mysqlclient_r".split()
+extDeps = "antlr boost_filesystem boost_regex boost_thread pthread boost_system protobuf ssl crypto log log4cxx sphgeom XrdPosix XrdClient XrdPosixPreload XrdUtils mysqlclient_r".split()
 p = env.Program(["testChunkSpec.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 

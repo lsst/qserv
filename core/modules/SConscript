@@ -45,7 +45,7 @@ if not env.GetOption('clean'):
 # all modules
 allModules = """ccontrol css czar global log mysql obsolete
                 parser proto proxy qana qdisp qmeta qproc query
-                rproc sql sg
+                rproc sql
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched wmgr
                 xrdsvc""".split()
@@ -65,9 +65,9 @@ shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                            },
 
                "czarProxy" : {'mods' : """ccontrol czar global parser proto proxy qana
-                                          query qdisp qproc rproc sg""".split(),
+                                          query qdisp qproc rproc""".split(),
                               'shmods' : ['css'],
-                              'libs' : """antlr log protobuf XrdSsi boost_regex""".split(),
+                              'libs' : """antlr log protobuf XrdSsi boost_regex sphgeom""".split(),
                               'SHLIBPREFIX' : '',
                               'distDir' : 'proxy'},
 
