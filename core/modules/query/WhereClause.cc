@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -45,23 +45,23 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 
+namespace {
+
+lsst::qserv::query::BoolTerm::Ptr
+skipTrivialOrTerms(lsst::qserv::query::BoolTerm::Ptr& tree) {
+    lsst::qserv::query::OrTerm * ot = dynamic_cast<lsst::qserv::query::OrTerm *>(tree.get());
+    while (ot && ot->_terms.size() == 1) {
+        tree = ot->_terms.front();
+        ot = dynamic_cast<lsst::qserv::query::OrTerm *>(tree.get());
+    }
+    return tree;
+}
+
+} // anonymous namespace
+
 namespace lsst {
 namespace qserv {
 namespace query {
-
-namespace {
-
-    BoolTerm::Ptr skipTrivialOrTerms(BoolTerm::Ptr tree) {
-        OrTerm * ot = dynamic_cast<OrTerm *>(tree.get());
-        while (ot && ot->_terms.size() == 1) {
-            tree = ot->_terms.front();
-            ot = dynamic_cast<OrTerm *>(tree.get());
-        }
-        return tree;
-    }
-
-}
-
 
 ////////////////////////////////////////////////////////////////////////
 // WhereClause

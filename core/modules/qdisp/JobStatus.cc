@@ -42,13 +42,13 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobStatus");
 }
+
+namespace lsst {
+namespace qserv {
+namespace qdisp {
 
 JobStatus::Info::Info()
     : state(UNKNOWN), stateCode(0) {

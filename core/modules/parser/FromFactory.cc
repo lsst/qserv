@@ -82,13 +82,11 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            //LOGS(_log, LOG_LVL_DEBUG, "advancingX..: " << current->getText());
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            //LOGS(_log, LOG_LVL_DEBUG, "advancing..: " << current->getText());
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -250,8 +248,6 @@ public:
             next();
             break;
         default:
-            // LOGS(_log, LOG_LVL_DEBUG, "next type is: "
-            //      << _cursor->getType << " and text is " << _cursor->getText());
             break;
         }
     }
@@ -550,22 +546,13 @@ FromFactory::_import(antlr::RefAST a) {
     std::shared_ptr<query::TableRefList> r = std::make_shared<query::TableRefList>();
     _list = std::make_shared<query::FromList>(r);
 
-    // LOGS(_log, LOG_LVL_DEBUG, "FROM starts with: " << a->getText()
-    //      << " (" << a->getType() << ")");
-    // std::stringstream ss;
-    // LOGS(_log, LOG_LVL_DEBUG, "FROM indented: " << walkIndentedString(a));
     assert(_bFactory);
     for(RefGenerator refGen(a, _aliases, *_bFactory);
         !refGen.isDone();
         refGen.next()) {
         query::TableRef::Ptr p = refGen.get();
-        //ss << "Found ref:" << *p << "\n";
         _list->_tableRefs->push_back(p);
     }
-    // std::string s(ss.str());
-    // if(s.size() > 0) {
-    //    LOGS(_log, LOG_LVL_DEBUG, s);
-    //}
 }
 
 }}} // namespace lsst::qserv::parser

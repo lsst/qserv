@@ -69,13 +69,11 @@ ValueExprFactory::ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap)
 std::shared_ptr<query::ValueExpr>
 ValueExprFactory::newExpr(antlr::RefAST a) {
     std::shared_ptr<query::ValueExpr> expr = std::make_shared<query::ValueExpr>();
-    // LOGS(_log, LOG_LVL_DEBUG, walkIndentedString(a));
     while(a.get()) {
         query::ValueExpr::FactorOp newFactorOp;
         RefAST op = a->getNextSibling();
         newFactorOp.factor = _valueFactorFactory->newFactor(a);
         if(op.get()) { // No more ops?
-            // LOGS(_log, LOG_LVL_DEBUG, "expected op: " << tokenText(op));
             int eType = op->getType();
             switch(eType) {
             case SqlSQL2TokenTypes::PLUS_SIGN:

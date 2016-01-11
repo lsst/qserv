@@ -79,13 +79,11 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            // LOGS(_log, LOG_LVL_DEBUG, "advancingX..: " << current->getText());
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            // LOGS(_log, LOG_LVL_DEBUG, "advancing..: " << current->getText());
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -204,9 +202,6 @@ void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
     _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
-    // LOGS(_log, LOG_LVL_DEBUG, "WHERE starts with: "
-    //      << a->getText() << "(" << a->getType() << ")");
-    // LOGS(_log, LOG_LVL_DEBUG, "WHERE indented: " << walkIndentedString(a));
     if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
@@ -235,11 +230,6 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     query::QsRestrictor::Ptr restr = std::make_shared<query::QsRestrictor>();
     StringVector& params = restr->_params;
 
-    // for(ParamGenerator::Iter it = pg.begin();
-    //     it != pg.end();
-    //     ++it) {
-    //     LOGS(_log, LOG_LVL_DEBUG, "iterating: " << *it);
-    // }
     std::copy(pg.begin(), pg.end(), std::back_inserter(params));
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::stringstream ss;
@@ -296,9 +286,6 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     }
 
     walkTreeVisit(a, p);
-    // LOGS(_log, LOG_LVL_DEBUG, "Adding orsibs: " << p.result);
-    // BoolTermFactory::tagPrint tp(LOG_STRM(Info), "addOr");
-    // forEachSibs(a, tp);
     BoolTermFactory f(_vf);
     _clause->_tree = f.newOrTerm(a);
     _clause->_original = p.result;

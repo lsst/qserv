@@ -37,10 +37,6 @@
 // Third-party headers
 #include "boost/algorithm/string/predicate.hpp"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
-
 namespace { // File-scope helpers
 struct InsensitiveCompare {
     bool operator() (std::string const& a, std::string const& b) const {
@@ -65,6 +61,10 @@ struct CompareMap {
 CompareMap _cMap;
 
 } // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 bool
 sqlShouldSeparate(std::string const& s, int last, int next) {

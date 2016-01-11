@@ -104,9 +104,7 @@ void inplaceReplace(std::string& s, std::string const& old,
     if(rplc.size() < rplcSize) { // do padding for in-place
         rplc += std::string(rplcSize - rplc.size(), ' ');
     }
-    //LOGS(_log, LOG_LVL_DEBUG, "rplc " << rplc << " old=" << s.substr(pos-1, rplcSize+2));
     s.replace(pos, rplcSize, rplc);
-    //LOGS(_log, _LOG_LVL_DEBUG, "newnew: " << s.substr(pos-5, rplcSize+10));
     return;
 }
 

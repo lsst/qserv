@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,11 +32,10 @@
 // Qserv headers
 #include "query/ColumnRef.h"
 
-namespace lsst {
-namespace qserv {
-namespace qana {
-
 namespace {
+
+using lsst::qserv::qana::ColumnRefConstPtr;
+using lsst::qserv::query::ColumnRef;
 
 /// `appendColumnRefs` appends all possible references to the given
 /// column to `columnRefs`. At most 3 references are appended.
@@ -50,24 +49,24 @@ void appendColumnRefs(std::string const& column,
         return;
     }
     std::string const _; // an empty string
-    refs.push_back(std::make_shared<query::ColumnRef>(_, _, column));
+    refs.push_back(std::make_shared<lsst::qserv::query::ColumnRef>(_, _, column));
     if (!tableAlias.empty()) {
         // If a table alias has been introduced, then it is an error to
         // refer to a column using table.column or db.table.column
-        refs.push_back(
-            std::make_shared<query::ColumnRef>(_, tableAlias, column));
+        refs.push_back(std::make_shared<ColumnRef>(_, tableAlias, column));
     } else if (!table.empty()) {
-        refs.push_back(
-            std::make_shared<query::ColumnRef>(_, table, column));
+        refs.push_back(std::make_shared<ColumnRef>(_, table, column));
         if (!database.empty()) {
-            refs.push_back(
-                std::make_shared<query::ColumnRef>(database, table, column));
+            refs.push_back(std::make_shared<ColumnRef>(database, table, column));
         }
     }
 }
 
-} // unnamed namespace
+} // anonymous namespace
 
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 std::string const TableInfo::CHUNK_TAG("%CC%");
 std::string const TableInfo::SUBCHUNK_TAG("%SS%");

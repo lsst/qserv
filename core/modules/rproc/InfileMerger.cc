@@ -69,21 +69,21 @@
 #include "util/StringHash.h"
 #include "util/WorkQueue.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace rproc {
-
 namespace { // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
+
+using lsst::qserv::mysql::MySqlConfig;
+using lsst::qserv::rproc::InfileMergerConfig;
+using lsst::qserv::rproc::InfileMergerError;
+using lsst::qserv::util::ErrorCode;
 
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, nullptr);
     if (rc != 0) {
-        throw InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
+        throw InfileMergerError(ErrorCode::INTERNAL, "Failed to get timestamp.");
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -93,8 +93,9 @@ std::string getTimeStampId() {
     // guaranteed to be unique.
 }
 
-std::shared_ptr<mysql::MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
-    std::shared_ptr<mysql::MySqlConfig> sc = std::make_shared<mysql::MySqlConfig>();
+std::shared_ptr<MySqlConfig>
+makeSqlConfig(InfileMergerConfig const& c) {
+    auto sc = std::make_shared<MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -104,6 +105,9 @@ std::shared_ptr<mysql::MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
 
 } // anonymous namespace
 
+namespace lsst {
+namespace qserv {
+namespace rproc {
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
@@ -249,7 +253,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _sqlConfig(makeSqlConfig(c)),
       _isFinished(false),
       _needCreateTable(true) {
-    //LOGS(_log, LOG_LVL_DEBUG, "InfileMerger construct +++++++ ()" << (void*) this");
     _fixupTargetName();
     if(_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
@@ -258,7 +261,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
 }
 
 InfileMerger::~InfileMerger() {
-    //LOGS(_log, LOG_LVL_DEBUG, "InfileMerger destruct ------- ()" << (void*) this);
 }
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {

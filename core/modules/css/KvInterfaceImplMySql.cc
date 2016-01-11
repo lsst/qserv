@@ -61,14 +61,15 @@ using std::map;
 using std::string;
 using std::vector;
 
-namespace lsst {
-namespace qserv {
-namespace css {
-
 namespace {
+
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.KvInterfaceImplMySql");
 
 const char KEY_PATH_DELIMITER('/');
+
+using lsst::qserv::sql::SqlErrorObject;
+using lsst::qserv::sql::SqlResults;
+using lsst::qserv::css::CssError;
 
 /**
  * @brief Helper for getting the value from an INT row
@@ -76,14 +77,14 @@ const char KEY_PATH_DELIMITER('/');
  * @param value the output var to return the result
  * @return true if an int result could be obtained else false
  */
-bool extractIntValueFromSqlResults(sql::SqlResults* results, unsigned int* value) {
+bool extractIntValueFromSqlResults(SqlResults* results, unsigned int* value) {
     // ideally results would be a sql::SqlResults const*, but extractFirstValue is non-const
     if (NULL == results || NULL == value) {
         throw CssError("null inout variable");
     }
 
     std::string resStr;
-    sql::SqlErrorObject errObj;
+    SqlErrorObject errObj;
     results->extractFirstValue(resStr, errObj);
     if (errObj.isSet()) {
         return false;
@@ -95,7 +96,11 @@ bool extractIntValueFromSqlResults(sql::SqlResults* results, unsigned int* value
     }
     return true;
 }
-} // namespace
+} // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace css {
 
 // this is copied more or less directly from QMetaTransaction. Refactor to shared location?
 // proper place is to port it into db module

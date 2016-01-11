@@ -53,8 +53,7 @@ int parseKillQuery(std::string const& query);
 // make mysql config object from config map
 lsst::qserv::mysql::MySqlConfig mysqlConfig(lsst::qserv::StringMap const& config);
 
-} // namespace
-
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {

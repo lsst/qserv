@@ -86,7 +86,6 @@ public:
         : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
-        // LOGS(_log, LOG_LVL_DEBUG, "set: " << alias << "->" << db << "." << table);
         _tableAlias.set(db, table, alias);
         _tableAliasReverse.set(db, table, alias);
     }
@@ -175,7 +174,6 @@ public:
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
             query::ValueFactor& t = *i->factor;
-            // LOGS(_log, LOG_LVL_DEBUG, "fixing factor: " << *vep);
             switch(t.getType()) {
             case query::ValueFactor::COLUMNREF:
                 // check columnref.

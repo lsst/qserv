@@ -385,7 +385,6 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         }
     } else { // subchunked:
         ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
-        //LOGS(_log, LOG_LVL_DEBUG, "Subchunks: " << util::printable(sVector));
         typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
         for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
             for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
@@ -394,7 +393,6 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
             }
         }
     }
-    //LOGS(_log, LOG_LVL_DEBUG, "Returning chunk queries:\n" << util::printable(q));
     return q;
 }
 
@@ -423,8 +421,6 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != nullptr);
     _cache.db = _qs->_context->dominantDb;
-    // LOGS(_log, LOG_LVL_DEBUG, "scantables "
-    //      << (_qs->_context->scanTables.empty() ? "is" : "is not") << " empty");
     _cache.scanTables = _qs->_context->scanTables;
     _cache.chunkId = _chunkSpecsIter->chunkId;
     _cache.nextFragment.reset();

@@ -320,7 +320,7 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
     return std::make_pair(l, r);
 }
 
-} // unnamed namespace
+} // anonymous namespace
 
 
 /// `_addOnEqEdges` adds a graph edge for each admissible top-level equality
@@ -876,7 +876,7 @@ void resetVertices(std::list<Vertex>& vertices)
     }
 }
 
-} // unnamed namespace
+} // anonymous namespace
 
 
 /// `_validate` searches for a graph traversal that proves the input query

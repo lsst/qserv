@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,6 +41,12 @@
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 
+namespace {
+lsst::qserv::query::JoinRef::Ptr
+joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
+    return r->clone();
+}
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
@@ -110,12 +116,6 @@ void TableRef::apply(TableRef::FuncC& f) const {
         j.getRight()->apply(f);
     }
 }
-
-namespace {
-JoinRef::Ptr joinRefClone(JoinRef::Ptr const& r) {
-    return r->clone();
-}
-} // anonymous
 
 TableRef::Ptr TableRef::clone() const {
     TableRef::Ptr newCopy = std::make_shared<TableRef>(_db, _table, _alias);
