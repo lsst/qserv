@@ -85,11 +85,11 @@ public:
         }
         Iter& operator++() {
             Check c;
-            if(nextCache.get()) {
+            if (nextCache.get()) {
                 current = nextCache;
             } else {
                 current = lsst::qserv::parser::findSibling(current, c);
-                if(current.get()) {
+                if (current.get()) {
                     // Move to next value
                     current = current->getNextSibling();
                 }
@@ -99,7 +99,7 @@ public:
 
         std::string operator*() {
             Check c;
-            if(!current) {
+            if (!current) {
                 throw std::logic_error("Corrupted ParamGenerator::Iter");
             }
             lsst::qserv::parser::CompactPrintVisitor<antlr::RefAST> p;
@@ -119,7 +119,7 @@ public:
     };
     ParamGenerator(RefAST a) {
         _beginIter.start = a;
-        if(a.get() && (a->getType() == SqlSQL2TokenTypes::LEFT_PAREN)) {
+        if (a.get() && (a->getType() == SqlSQL2TokenTypes::LEFT_PAREN)) {
             _beginIter.current = a->getNextSibling(); // Move past paren.
         } else { // else, set current as end.
             _beginIter.current = RefAST();
@@ -202,22 +202,22 @@ void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
     _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
-    if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
+    if (a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
     RefAST first = a->getFirstChild();
-    if(!first.get()) {
+    if (!first.get()) {
         throw ParseException("Missing subtree from WHERE node", a);
     }
     while(first.get()
           && (first->getType() == SqlSQL2TokenTypes::QSERV_FCT_SPEC)) {
         _addQservRestrictor(first->getFirstChild());
         first = first->getNextSibling();
-        if(first.get() && (first->getType() == SqlSQL2TokenTypes::SQL2RW_and)) {
+        if (first.get() && (first->getType() == SqlSQL2TokenTypes::SQL2RW_and)) {
             first = first->getNextSibling();
         }
     }
-    if(first.get()
+    if (first.get()
        && (first->getType() == SqlSQL2TokenTypes::OR_OP)) {
         _addOrSibs(first->getFirstChild());
     }
@@ -237,7 +237,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
                   std::ostream_iterator<std::string>(ss, ", "));
         LOGS(_log, LOG_LVL_DEBUG, "Adding from " << r << ": " << ss.str());
     }
-    if(!_clause->_restrs) {
+    if (!_clause->_restrs) {
         throw std::logic_error("Invalid WhereClause._restrs");
     }
     // Add case insensitive behavior
@@ -255,14 +255,14 @@ struct PrintExcept : public PrintVisitor<antlr::RefAST> {
 public:
     PrintExcept(Check& c_) : c(c_) {}
     void operator()(antlr::RefAST a) {
-        if(!c(a)) PrintVisitor<antlr::RefAST>::operator()(a);
+        if (!c(a)) PrintVisitor<antlr::RefAST>::operator()(a);
     }
     Check& c;
 };
 
 struct MetaCheck {
     bool operator()(antlr::RefAST a) {
-        if(!a.get()) return false;
+        if (!a.get()) return false;
         switch(a->getType()) {
         case SqlSQL2TokenTypes::OR_OP:
         case SqlSQL2TokenTypes::AND_OP:
@@ -281,7 +281,7 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     MetaCheck mc;
     PrintExcept<MetaCheck> p(mc);
 
-    if(!_clause.get()) {
+    if (!_clause.get()) {
         throw std::logic_error("Expected valid WhereClause");
     }
 

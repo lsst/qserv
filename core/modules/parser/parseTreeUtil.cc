@@ -52,7 +52,7 @@ public:
     }
     std::string stringify(AnAst const& a) {
         typename AstMap::const_iterator e(ids.end());
-        if(ids.find(a) == e) {
+        if (ids.find(a) == e) {
             std::stringstream t;
             t << lsst::qserv::parser::tokenText(a) << "[" << ++i << "]";
             ids[a] = t.str();
@@ -116,23 +116,23 @@ bool
 substituteWithMap(std::string& s,
                   std::map<std::string, std::string>  const& m,
                   int minMatch) {
-    if(s.empty()) return false;
-    if(minMatch < 0) {
+    if (s.empty()) return false;
+    if (minMatch < 0) {
         throw std::invalid_argument("substituteWithMap needs minMatch >= 0");
     }
     bool did = false;
     std::map<std::string, std::string>::const_iterator i = m.find(s);
-    if(i != m.end()) {
+    if (i != m.end()) {
         s = i->second;
         did = true;
-    } else if(s.size() >= static_cast<unsigned>(minMatch)) {
+    } else if (s.size() >= static_cast<unsigned>(minMatch)) {
         // more aggressively for larger tokens.
         for(i=m.begin(); i != m.end(); ++i) {
             std::string orig = i->first;
             std::string repl = i->second;
             for(std::string::size_type j=0; j < s.size(); ++j) {
                 std::string::size_type f = s.find(orig, j);
-                if(f == std::string::npos) break;
+                if (f == std::string::npos) break;
                 s.replace(f, orig.size(), repl);
                 j += repl.size() - 1;
                 did = true;

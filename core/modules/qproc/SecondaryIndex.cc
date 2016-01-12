@@ -91,7 +91,7 @@ public:
                 _sqlLookup(output, i->params, BETWEEN);
             }
         }
-        if(!hasIndex) {
+        if (!hasIndex) {
             throw SecondaryIndex::NoIndexConstraint();
         }
         normalize(output);
@@ -214,7 +214,7 @@ public:
     FakeBackend() {}
     virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) {
         ChunkSpecVector dummy;
-        if(_hasSecondary(cv)) {
+        if (_hasSecondary(cv)) {
             for(int i=100; i < 103; ++i) {
                 int bogus[] = {1,2,3};
                 std::vector<int> subChunks(bogus, bogus+3);

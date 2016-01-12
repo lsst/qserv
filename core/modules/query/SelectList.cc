@@ -68,7 +68,7 @@ struct renderWithSep {
     renderWithSep(QueryTemplate& qt_, std::string const& sep_)
         : qt(qt_),sep(sep_),count(0) {}
     void operator()(T const& t) {
-        if(++count > 1) qt.append(sep);
+        if (++count > 1) qt.append(sep);
     }
     QueryTemplate& qt;
     std::string sep;
@@ -77,7 +77,7 @@ struct renderWithSep {
 
 void
 SelectList::addStar(std::string const& table) {
-    if(!_valueExprList) {
+    if (!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
 
@@ -88,7 +88,7 @@ SelectList::addStar(std::string const& table) {
 
 void
 SelectList::dbgPrint(std::ostream& os) const {
-    if(!_valueExprList) {
+    if (!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
     for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),

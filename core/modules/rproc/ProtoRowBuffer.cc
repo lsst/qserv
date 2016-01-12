@@ -116,11 +116,11 @@ private:
     int _copyRowBundle(T& dest, proto::RowBundle const& rb) {
         int sizeBefore = dest.size();
         for(int ci=0, ce=rb.column_size(); ci != ce; ++ci) {
-            if(ci != 0) {
+            if (ci != 0) {
                 dest.insert(dest.end(), _colSep.begin(), _colSep.end());
             }
 
-            if(!rb.isnull(ci)) {
+            if (!rb.isnull(ci)) {
                 copyColumn(dest, rb.column(ci));
             } else {
                 dest.insert(dest.end(), _nullToken.begin(), _nullToken.end() );
@@ -149,7 +149,7 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
       _rowTotal(res.row_size()),
       _currentRow(0) {
     _initSchema();
-    if(_result.row_size() > 0) {
+    if (_result.row_size() > 0) {
         _initCurrentRow();
     }
 }
@@ -157,18 +157,18 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
 /// Fetch a up to a single row from from the Result message
 unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetched = 0;
-    if(bufLen <= _currentRow.size()) {
+    if (bufLen <= _currentRow.size()) {
         memcpy(buffer, &_currentRow[0], bufLen);
         _currentRow.erase(_currentRow.begin(), _currentRow.begin() + bufLen);
         fetched = bufLen;
     } else { // Want more than we have.
-        if(_currentRow.size()) {
+        if (_currentRow.size()) {
             memcpy(buffer, &_currentRow[0], _currentRow.size());
             fetched = _currentRow.size();
             _currentRow.clear();
         }
     }
-    if((_currentRow.size() == 0) && (_rowIdx < _rowTotal)) {
+    if ((_currentRow.size() == 0) && (_rowIdx < _rowTotal)) {
         _readNextRow();
     }
     return fetched;
@@ -181,15 +181,15 @@ void ProtoRowBuffer::_initSchema() {
     for(int i=0, e=prs.columnschema_size(); i != e; ++i) {
         proto::ColumnSchema const& pcs = prs.columnschema(i);
         sql::ColSchema cs;
-        if(pcs.has_name()) {
+        if (pcs.has_name()) {
             cs.name = pcs.name();
         }
         cs.hasDefault = pcs.has_defaultvalue();
-        if(cs.hasDefault) {
+        if (cs.hasDefault) {
             cs.defaultValue = pcs.defaultvalue();
         }
         cs.colType.sqlType = pcs.sqltype();
-        if(pcs.has_mysqltype()) {
+        if (pcs.has_mysqltype()) {
             cs.colType.mysqlType = pcs.mysqltype();
         }
         _schema.columns.push_back(cs);
@@ -198,7 +198,7 @@ void ProtoRowBuffer::_initSchema() {
 /// Import the next row into the buffer
 void ProtoRowBuffer::_readNextRow() {
     ++_rowIdx;
-    if(_rowIdx >= _rowTotal) {
+    if (_rowIdx >= _rowTotal) {
         return;
     }
     _currentRow.clear();

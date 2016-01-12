@@ -59,13 +59,13 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
     return os << qt.toString();
 }
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
-    if(isInconsistent(*this)) {
+    if (isInconsistent(*this)) {
         throw std::logic_error("Inconsistent JoinSpec with ON and USING");
     }
-    if(_onTerm) {
+    if (_onTerm) {
         qt.append("ON");
         _onTerm->renderTo(qt);
-    } else if(_usingColumn) {
+    } else if (_usingColumn) {
         qt.append("USING");
         qt.append("(");
         qt.append(*_usingColumn); // FIXME: update to support column lists
@@ -76,10 +76,10 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
 }
 
 JoinSpec::Ptr JoinSpec::clone() const {
-    if(isInconsistent(*this)) {
+    if (isInconsistent(*this)) {
         throw std::logic_error("Can't clone JoinSpec with ON and USING");
     }
-    if(_usingColumn) {
+    if (_usingColumn) {
         std::shared_ptr<ColumnRef> col = std::make_shared<ColumnRef>(*_usingColumn);
         return std::make_shared<JoinSpec>(col);
     } else {

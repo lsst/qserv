@@ -67,12 +67,12 @@ std::string validateMysql(Config const& c) {
     sc.dbName = c.getString("scratchDb");
     sc.port = 9999;
     sc.socket = c.getString("mysqlSocket");
-    if(!sc.isValid()) return "Invalid MySQL config:" + sc.asString();
+    if (!sc.isValid()) return "Invalid MySQL config:" + sc.asString();
 
     { // Check connection
         lsst::qserv::sql::SqlConnection scn(sc);
         lsst::qserv::sql::SqlErrorObject eo;
-        if(!scn.connectToDb(eo)) {
+        if (!scn.connectToDb(eo)) {
             return "Unable to connect to MySQL with config:" + sc.asString();
         }
     }
@@ -96,7 +96,7 @@ Config::Config() {
 int Config::getInt(std::string const& key, int defVal) const {
     int ret = defVal;
     StringMap::const_iterator i = _map.find(key);
-    if(i == _map.end()) {
+    if (i == _map.end()) {
         return defVal;
     }
     // coerce the string to int.
@@ -108,7 +108,7 @@ int Config::getInt(std::string const& key, int defVal) const {
 std::string const& Config::getString(std::string const& key) const {
     static const std::string n;
     StringMap::const_iterator i = _map.find(key);
-    if(i == _map.end()) {
+    if (i == _map.end()) {
         return n;
     }
     return i->second;
@@ -124,7 +124,7 @@ MySqlConfig const& Config::getSqlConfig() const {
 char const* Config::_getEnvDefault(char const* varName,
                                    char const* defVal) {
     char const* s = ::getenv(varName);
-    if(s != nullptr) {
+    if (s != nullptr) {
         return s;
     } else {
         return defVal;

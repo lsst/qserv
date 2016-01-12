@@ -263,7 +263,7 @@ QservPathStructure::listDir(const std::string& dir,
                             std::vector<std::string>& files) {
     DIR *dp;
     struct dirent *dirp;
-    if((dp = opendir(dir.c_str())) == nullptr) {
+    if ((dp = opendir(dir.c_str())) == nullptr) {
         std::cout << "Error(" << errno << ") opening " << dir << std::endl;
         return false;
     }

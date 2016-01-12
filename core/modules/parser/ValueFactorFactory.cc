@@ -64,7 +64,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ValueFactorFactory");
 inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
     RefAST last = node;
     for(; node.get(); node = node->getNextSibling()) {
-        if(node->getType() == typeId) return last;
+        if (node->getType() == typeId) return last;
         last = node;
     }
     return RefAST();
@@ -74,7 +74,7 @@ inline std::string getSiblingStringBounded(RefAST left, RefAST right) {
     lsst::qserv::parser::CompactPrintVisitor<RefAST> p;
     for(; left.get(); left = left->getNextSibling()) {
         p(left);
-        if(left == right) break;
+        if (left == right) break;
     }
     return p.result;
 }
@@ -104,11 +104,11 @@ ValueFactorFactory::ValueFactorFactory(
 /* TERM   (TERM_OP TERM)*  */
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::newFactor(antlr::RefAST a) {
-    if(!_columnRefNodeMap) {
+    if (!_columnRefNodeMap) {
         throw std::logic_error("ValueFactorFactory missing _columnRefNodeMap");
     }
     std::shared_ptr<query::ValueFactor> vt;
-    if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
+    if (a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
     }
     switch(a->getType()) {
@@ -138,7 +138,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         vt = newConstFactor(a);
         break;
     }
-    if(!vt) {
+    if (!vt) {
         throw std::logic_error("Faled to construct ValueFactor");
     }
     return vt;
@@ -149,7 +149,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     assert(_columnRefNodeMap);
     ColumnRefNodeMap& cMap = *_columnRefNodeMap;
     RefAST child = t->getFirstChild();
-    if(t->getType() == SqlSQL2TokenTypes::FACTOR) {
+    if (t->getType() == SqlSQL2TokenTypes::FACTOR) {
         t = child;
         child = t->getFirstChild();
     }
@@ -166,7 +166,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         // make column ref. (no further children)
         {
             ColumnRefNodeMap::Map::const_iterator it = cMap.map.find(t);
-            if(it == cMap.map.end()) {
+            if (it == cMap.map.end()) {
                 throw std::logic_error("Expected to find REGULAR_ID in table map");
             }
             ColumnRefNodeMap::Ref r = it->second;
@@ -184,7 +184,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
-        if(!last.get()) {
+        if (!last.get()) {
             throw ParseException("Expected LEFT_PAREN", last);
         }
         // Now fill params.
@@ -224,14 +224,14 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
     std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
     RefAST nNode = expr->getFirstChild();
-    if(!nNode.get()) {
+    if (!nNode.get()) {
         throw ParseException("Missing name node of function spec", expr);
     }
     fe->name = nNode->getText();
     // Now fill params.
     antlr::RefAST current = nNode->getFirstChild();
     // Aggregation functions can only have one param.
-    if(current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
+    if (current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
         throw ParseException("Expected LEFT_PAREN", current);
     }
     current = current->getNextSibling();
@@ -247,7 +247,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     default: break;
     }
     current = current->getNextSibling();
-    if(current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
+    if (current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
         throw ParseException("Expected RIGHT_PAREN", current);
     }
     fe->params.push_back(query::ValueExpr::newSimple(pvt));
@@ -259,36 +259,36 @@ ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     assert(_columnRefNodeMap);
     std::shared_ptr<query::FuncExpr> fe = std::make_shared<query::FuncExpr>();
     RefAST nNode = fspec->getFirstChild();
-    if(!nNode.get()) {
+    if (!nNode.get()) {
         throw ParseException("Missing name node of function spec", fspec);
     }
     fe->name = nNode->getText();
     // Now fill params.
     antlr::RefAST current = nNode->getNextSibling();
     // Aggregation functions can only have one param.
-    if(current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
+    if (current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
         throw ParseException("Expected LEFT_PAREN", current);
     }
     current = current->getNextSibling();
-    if(!current.get()) {
+    if (!current.get()) {
         throw ParseException("Expected parameter in function", fspec);
     }
     while(current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
         // Should be a value expression
-        if(current->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
+        if (current->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
             throw ParseException("Expected VALUE_EXP for parameter", current);
         }
         RefAST child = current->getFirstChild();
         std::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(child);
         fe->params.push_back(ve);
         current = current->getNextSibling();
-        if(!current.get()) {
+        if (!current.get()) {
             throw ParseException("Expected COMMA,VALUE_EXP,RIGHT_PAREN", fspec);
         }
-        if(current->getType() == SqlSQL2TokenTypes::COMMA) {
+        if (current->getType() == SqlSQL2TokenTypes::COMMA) {
             current = current->getNextSibling();
         }
-        if(!current.get()) {
+        if (!current.get()) {
             throw ParseException("Expected VALUE_EXP,RIGHT_PAREN", fspec);
         }
     }
@@ -302,12 +302,12 @@ ValueFactorFactory::_newSubFactor(antlr::RefAST s) {
     RefAST lparen = s;
     RefAST expr = s->getNextSibling();
     RefAST rparen = expr->getNextSibling();
-    if(expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
+    if (expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
         throw ParseException("Expected VALUE_EXP", expr);
     }
     RefAST exprChild = expr->getFirstChild();
     std::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(exprChild);
-    if(ve && ve->isFactor() && ve->getAlias().empty()) {
+    if (ve && ve->isFactor() && ve->getAlias().empty()) {
         return ve->getFactorOps().front().factor;
     }
     return query::ValueFactor::newExprFactor(ve);

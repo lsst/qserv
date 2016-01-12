@@ -126,7 +126,7 @@ static FuncMap funcMap;
 std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
     std::shared_ptr<Region> covered_region = nullptr;
     FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
-    if(i != funcMap.fMap.end()) {
+    if (i != funcMap.fMap.end()) {
         LOGS(_log, LOG_LVL_TRACE, "Region for " << c << ": " << i->first);
         covered_region = i->second(c.params);
     }
@@ -173,7 +173,7 @@ public:
         for(RegionPtrVector::const_iterator i=rv.begin(), e=rv.end();
             i != e;
             ++i) {
-            if(*i) {
+            if (*i) {
                 SubChunksVector area = getCoverage(**i);
                 scv.insert(scv.end(), area.begin(), area.end());
                 hasRegion = true;
@@ -182,7 +182,7 @@ public:
                 continue;
             }
         }
-        if(!hasRegion) {
+        if (!hasRegion) {
             throw NoRegion();
         }
         return scv;
@@ -223,7 +223,7 @@ ChunkSpecVector IndexMap::getAllChunks() {
 ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
 
     // Secondary Index lookups
-    if(!_si) {
+    if (!_si) {
         throw Bug("Invalid SecondaryIndex in IndexMap. Check IndexMap(...)");
     }
     ChunkSpecVector indexSpecs;
@@ -255,15 +255,15 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
                    std::back_inserter(regionSpecs), convertSgSubChunks);
 
     // FIXME: Index and spatial lookup are supported in AND format only right now.
-    if(hasIndex && hasRegion) {
+    if (hasIndex && hasRegion) {
         // Perform AND with index and spatial
         normalize(indexSpecs);
         normalize(regionSpecs);
         intersectSorted(indexSpecs, regionSpecs);
         return indexSpecs;
-    } else if(hasIndex) {
+    } else if (hasIndex) {
         return indexSpecs;
-    } else if(hasRegion) {
+    } else if (hasRegion) {
         return regionSpecs;
     } else {
         return getAllChunks();

@@ -61,7 +61,7 @@ ValueFactorPtr ValueFactor::newColumnRefFactor(std::shared_ptr<ColumnRef const> 
 ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = STAR;
-    if(!table.empty()) {
+    if (!table.empty()) {
         term->_tableStar = table;
     }
     return term;
@@ -118,13 +118,13 @@ void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
 ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr = std::make_shared<ValueFactor>(*this);
     // Clone refs.
-    if(_columnRef.get()) {
+    if (_columnRef.get()) {
         expr->_columnRef = std::make_shared<ColumnRef>(*_columnRef);
     }
-    if(_funcExpr.get()) {
+    if (_funcExpr.get()) {
         expr->_funcExpr = _funcExpr->clone();
     }
-    if(_valueExpr.get()) {
+    if (_valueExpr.get()) {
         expr->_valueExpr = _valueExpr->clone();
     }
     return expr;
@@ -137,7 +137,7 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     case ValueFactor::AGGFUNC: os << "AGGFUNC: " << *(ve._funcExpr); break;
     case ValueFactor::STAR:
         os << "<";
-        if(!ve._tableStar.empty()) os << ve._tableStar << ".";
+        if (!ve._tableStar.empty()) os << ve._tableStar << ".";
         os << "*>";
         break;
     case ValueFactor::CONST:
@@ -146,12 +146,12 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     case ValueFactor::EXPR: os << "EXPR: " << *(ve._valueExpr); break;
     default: os << "UnknownFactor"; break;
     }
-    if(!ve._alias.empty()) { os << " [" << ve._alias << "]"; }
+    if (!ve._alias.empty()) { os << " [" << ve._alias << "]"; }
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
-    if(!ve) return os << "<NULL>";
+    if (!ve) return os << "<NULL>";
     return os << *ve;
 }
 
@@ -161,7 +161,7 @@ void ValueFactor::render::operator()(ValueFactor const& ve) {
     case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::STAR:
-        if(!ve._tableStar.empty()) {
+        if (!ve._tableStar.empty()) {
             _qt.append(ColumnRef("",ve._tableStar, "*"));
         } else {
             _qt.append("*");
@@ -175,7 +175,7 @@ void ValueFactor::render::operator()(ValueFactor const& ve) {
         break;
     default: break;
     }
-    if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+    if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
 }}} // namespace lsst::qserv::query

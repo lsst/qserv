@@ -49,7 +49,7 @@ SqlFragmenter::SqlFragmenter(std::string const& query)
 
 SqlFragmenter::Piece const&
 SqlFragmenter::getNextPiece() {
-    if(_pNext == _qEnd) {
+    if (_pNext == _qEnd) {
         _current.first = 0;
         return _current;
     }
@@ -63,16 +63,16 @@ SqlFragmenter::_advance() {
     std::string::size_type end;
     std::string::size_type searchTarget;
     searchTarget = begin + _sizeTarget;
-    if(searchTarget < _qEnd) {  // Is it worth splitting?
+    if (searchTarget < _qEnd) {  // Is it worth splitting?
         end = _query.rfind(_delimiter, searchTarget);
 
         // Did we find a split-point?
-        if((end > begin) && (end != std::string::npos)) {
+        if ((end > begin) && (end != std::string::npos)) {
             end += _delimiter.size();
         } else {
             // Look forward instead of backward.
             end = _query.find(_delimiter, begin + _sizeTarget);
-            if(end != std::string::npos) { // Found?
+            if (end != std::string::npos) { // Found?
                 end += _delimiter.size();
             } else { // Not found bkwd/fwd. Use end.
                 end = _qEnd;
@@ -87,7 +87,7 @@ SqlFragmenter::_advance() {
     while((c == '\0') || (c == '\n')
           || (c == ' ') || (c == '\t')) { c = _query[--pos];}
     // Watch out for queries not terminated by semicolon.
-    if(c!= ';') {++pos;} // A non-semicolon, non-whitespace-->valuable.
+    if (c!= ';') {++pos;} // A non-semicolon, non-whitespace-->valuable.
 
     if (pos > (int)begin) {
         // create piece:
@@ -96,7 +96,7 @@ SqlFragmenter::_advance() {
     }
     _pNext = end; // Advance for next iteration
     // Catch empty strings.
-    if(_current.second && _current.first[0] != '\0') {
+    if (_current.second && _current.first[0] != '\0') {
         ++_count;
     } else {
         _advance();

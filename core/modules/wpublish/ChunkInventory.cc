@@ -83,7 +83,7 @@ void fetchDbs(std::string const& instanceName,
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << listq);
     std::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
-    if(resultP->getErrorObject().isSet()) {
+    if (resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
         LOGS(_log, LOG_LVL_ERROR, "ChunkInventory can't get list of publishable dbs.");
         LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
@@ -94,7 +94,7 @@ void fetchDbs(std::string const& instanceName,
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) {
+    if (nothing) {
         LOGS(_log, LOG_LVL_WARN, "TEST: No databases found to export: " << listq);
     }
 }
@@ -106,7 +106,7 @@ public:
         : _regex(regex), _chunkMap(chunkMap) {}
     void operator()(std::string const& tableName) {
         boost::smatch what;
-        if(boost::regex_match(tableName, what, _regex)) {
+        if (boost::regex_match(tableName, what, _regex)) {
             //std::cout << "Found chunk table: " << what[1]
             //<< "(" << what[2] << ")" << std::endl;
             // Get chunk# slot. Append/set table name.
@@ -165,7 +165,7 @@ public:
         std::vector<std::string> tables;
         SqlErrorObject sqlErrorObject;
         bool ok = _conn.listTables(tables,  sqlErrorObject, "", dbName);
-        if(!ok) {
+        if (!ok) {
             LOGS(_log, LOG_LVL_ERROR, "SQL error: " << sqlErrorObject.errMsg());
             assert(ok);
         }
@@ -177,12 +177,12 @@ public:
         // Partitioned databases should already have acceptable dummy chunk
         // partitioned tables (e.g., Object_1234567890, Source_1234567890)
         // Non-partitioned databases need a dummy chunk anyway.
-        if(chunkMap.empty()) {
+        if (chunkMap.empty()) {
             // No partitioned tables in this db. Publish an empty chunk anyway.
             chunkMap[lsst::qserv::DUMMY_CHUNK];
         } else {
             // Verify that there is a dummy chunk entry
-            if(chunkMap.find(lsst::qserv::DUMMY_CHUNK) == chunkMap.end()) {
+            if (chunkMap.find(lsst::qserv::DUMMY_CHUNK) == chunkMap.end()) {
                 LOGS(_log, LOG_LVL_ERROR, "Missing dummy chunk for db=" << dbName);
 
                 // FIXME enable once loader/installer can ensure that the
@@ -229,13 +229,13 @@ ChunkInventory::ChunkInventory(std::string const& name,
 bool ChunkInventory::has(std::string const& db, int chunk,
                          std::string table) const {
     ExistMap::const_iterator di = _existMap.find(db);
-    if(di == _existMap.end()) { return false; }
+    if (di == _existMap.end()) { return false; }
 
     ChunkMap const& cm = di->second;
     ChunkMap::const_iterator ci = cm.find(chunk);
-    if(ci == cm.end()) { return false; }
+    if (ci == cm.end()) { return false; }
 
-    if(table.empty()) {
+    if (table.empty()) {
         return true;
     } else {
         StringSet const& si = ci->second;
@@ -253,7 +253,7 @@ void ChunkInventory::dbgPrint(std::ostream& os) {
     bool firstDb = true;
     for(i=_existMap.begin(), e=_existMap.end();
         i != e; ++i) {
-        if(!firstDb) {
+        if (!firstDb) {
             os << std::endl;
             firstDb = false;
         }
@@ -262,7 +262,7 @@ void ChunkInventory::dbgPrint(std::ostream& os) {
         bool firstChunk = true;
         for(ci=i->second.begin(), ce=i->second.end();
             ci != ce; ++ci) {
-            if(!firstChunk) {
+            if (!firstChunk) {
                 os << "; ";
                 firstChunk = false;
             }

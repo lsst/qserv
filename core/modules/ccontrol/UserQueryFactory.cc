@@ -111,7 +111,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
             LOGS(_log, LOG_LVL_ERROR, errorExtra);
             sessionValid = false;
         }
-        if(!qs->getError().empty()) {
+        if (!qs->getError().empty()) {
             LOGS(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
             sessionValid = false;
         }
@@ -119,7 +119,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         auto messageStore = std::make_shared<qdisp::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
-        if(sessionValid) {
+        if (sessionValid) {
             executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
             infileMergerConfig->targetTable = resultTable;
@@ -127,7 +127,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->qMetaCzarId, userQueryId, errorExtra);
-        if(sessionValid) {
+        if (sessionValid) {
             uq->setupChunking();
         }
         return uq;

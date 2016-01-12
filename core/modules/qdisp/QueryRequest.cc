@@ -64,8 +64,8 @@ QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> co
 
 QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " ~QueryRequest");
-    if(_session) {
-          if(_session->Unprovision()) {
+    if (_session) {
+          if (_session->Unprovision()) {
               LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");
           } else {
               LOGS(_log, LOG_LVL_ERROR, "Unprovision Error.");
@@ -98,7 +98,7 @@ void QueryRequest::RelRequestBuffer() {
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " ProcessResponse");
     std::string errorDesc = _jobId + " ";
-    if(isCancelled()) {
+    if (isCancelled()) {
         LOGS(_log, LOG_LVL_WARN, _jobId << " QueryRequest::ProcessResponse job already cancelled");
         cancel(); // calls _errorFinish()
         return true;
@@ -114,7 +114,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
             return true;
         }
     }
-    if(!isOk) {
+    if (!isOk) {
         std::ostringstream os;
         os << _jobId << "ProcessResponse request failed " << getXrootdErr(nullptr);
         jq->getDescription().respHandler()->errorFlush(os.str(), -1);
@@ -157,7 +157,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     success = GetResponseData(&buffer[0], buffer.size());
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " Initiated request " << (success ? "ok" : "err"));
 
-    if(!success) {
+    if (!success) {
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
             jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR_OK);
@@ -197,7 +197,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             return;
         }
     }
-    if(blen < 0) { // error, check errinfo object.
+    if (blen < 0) { // error, check errinfo object.
         int eCode;
         auto reason = getXrootdErr(&eCode);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
@@ -209,7 +209,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     }
     jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
     bool flushOk = jq->getDescription().respHandler()->flush(blen, last);
-    if(flushOk) {
+    if (flushOk) {
         if (last) {
             auto sz = jq->getDescription().respHandler()->nextBuffer().size();
             if (last && sz != 0) {
@@ -223,7 +223,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             const void* pbuf = (void*)(&buffer[0]);
             LOGS(_log, LOG_LVL_DEBUG, _jobId << "_importStream->GetResponseData size=" << buffer.size()
                  << " " << pbuf << " " << util::prettyCharList(buffer, 5));
-            if(!GetResponseData(&buffer[0], buffer.size())) {
+            if (!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
                 return;
             }
@@ -243,7 +243,7 @@ void QueryRequest::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::cancel");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if(_cancelled) {
+        if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, _jobId <<" QueryRequest::cancel already cancelled, ignoring");
             return; // Don't do anything if already cancelled.
         }
@@ -297,7 +297,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 
     // Make the calls outside of the mutex lock.
     bool ok = Finished(shouldCancel);
-    if(!ok) {
+    if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, _jobId << " QueryRequest::_errorFinish !ok " << getXrootdErr(nullptr));
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::_errorFinish ok");
@@ -335,7 +335,7 @@ void QueryRequest::_finish() {
         _finishStatus = FINISHED;
     }
     bool ok = Finished();
-    if(!ok) {
+    if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, _jobId << " QueryRequest::finish Finished() !ok " << getXrootdErr(nullptr));
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::finish Finished() ok.");

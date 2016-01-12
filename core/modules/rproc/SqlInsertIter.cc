@@ -80,7 +80,7 @@ void printInserts(char const* buf, off_t bufSize,
                   << (void*)i->first << "  --->  "
                   << (void*)i->second << "  "
                   << *i;
-        if(i.isNullInsert()) {
+        if (i.isNullInsert()) {
             std::cout << "Null match";
         }
         std::cout << "\n";
@@ -102,7 +102,7 @@ public:
         : pacBuffer(p) {_setup(); }
 
     ~BufferMgr() {
-        if(buffer) {
+        if (buffer) {
             ::free(buffer);
             buffer = 0;
         }
@@ -130,13 +130,13 @@ public:
     bool incrementFragment() {
         // Advance iterator.
         ++(*pacBuffer);
-        if(pacBuffer->isDone()) return false; // Any more?
+        if (pacBuffer->isDone()) return false; // Any more?
         util::PacketBuffer::Value v = **pacBuffer;
         // Make sure there is room in the buffer
         BufOff keepSize = offEnd - offStart;
         BufOff needSize = v.second + keepSize;
-        if(needSize > (bufSize - offEnd)) {
-            if(needSize > bufSize) {
+        if (needSize > (bufSize - offEnd)) {
+            if (needSize > bufSize) {
                 LOGS(_log, LOG_LVL_DEBUG, bufSize << " is too small. "
                      << "sqliter Realloc to " << needSize);
                 void* res = realloc(buffer, needSize);
@@ -210,18 +210,18 @@ SqlInsertIter::SqlInsertIter(util::PacketBuffer::Ptr p,
         char const* buf = _bufferMgr->getStart();
         char const* bufEnd = _bufferMgr->getEnd();
         found = boost::regex_search(buf, bufEnd, _blockMatch, lockInsertExpr);
-        if(found) {
+        if (found) {
             LOGS(_log, LOG_LVL_DEBUG, "Matched Lock statement within SqlInsertIter");
             break;
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Did not match Lock statement within SqlInsertIter");
         }
         //Add next fragment, if available.
-        if(!_bufferMgr->incrementFragment()) {
+        if (!_bufferMgr->incrementFragment()) {
             // Verify presence of Lock statement.
             buf = _bufferMgr->getStart();
             bufEnd = _bufferMgr->getEnd();
-            if(boost::regex_search(buf, bufEnd, _blockMatch, lockExpr)) {
+            if (boost::regex_search(buf, bufEnd, _blockMatch, lockExpr)) {
                 return;
             } else {
                 errno = ENOTRECOVERABLE;
@@ -254,7 +254,7 @@ void SqlInsertIter::_init(char const* buf, off_t bufSize,
     assert(buf < (buf+bufSize));
     _blockFound = boost::regex_search(buf, buf+bufSize,
                                       _blockMatch, lockInsertRegex);
-    if(_blockFound) {
+    if (_blockFound) {
         _initRegex(tableName);
         _iter = Iter(_blockMatch[2].first, _blockMatch[3].second,
                      _insExpr);
@@ -266,7 +266,7 @@ void SqlInsertIter::_init(char const* buf, off_t bufSize,
 
 bool SqlInsertIter::isNullInsert() const {
     // Avoid constructing a string > 1MB just to check for null.
-    if(_iter->length() > (1<<20)) return false;
+    if (_iter->length() > (1<<20)) return false;
     return boost::regex_match(_iter->str(), _nullExpr);
 }
 
@@ -278,7 +278,7 @@ SqlInsertIter& SqlInsertIter::operator++() {
 }
 
 bool SqlInsertIter::isDone() const {
-    if(_bufferMgr) {
+    if (_bufferMgr) {
         return (_iter == _nullIter) || _bufferMgr->isDone();
     } else {
         return _iter == _nullIter;
@@ -291,7 +291,7 @@ bool SqlInsertIter::isDone() const {
 /// iterating over the dump in "packets", we may need to advance
 /// the packet iterator.
 void SqlInsertIter::_increment() {
-    if(_bufferMgr) {
+    if (_bufferMgr) {
         // Set _pBufStart to end of last match.
         _bufferMgr->advanceTo(const_cast<char*>((*_iter)[0].second));
         //_pBufStart = static_cast<BufOff>((*_iter)[0].second - _pBuffer);
@@ -303,7 +303,7 @@ void SqlInsertIter::_increment() {
         // Either we found an insert or there are no more packets.
     } else { // If fully buffered.
         ++_iter;
-        if(_iter != _nullIter) {
+        if (_iter != _nullIter) {
             _lastUsed = (*_iter)[0].second;
         }
     }

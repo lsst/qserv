@@ -49,9 +49,9 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
 operator<<(std::ostream& os, HavingClause const& c) {
-    if(c._tree.get()) {
+    if (c._tree.get()) {
         std::string generated = c.getGenerated();
-        if(!generated.empty()) { os << "HAVING " << generated; }
+        if (!generated.empty()) { os << "HAVING " << generated; }
     }
     return os;
 }
@@ -63,7 +63,7 @@ HavingClause::getGenerated() const {
 }
 void
 HavingClause::renderTo(QueryTemplate& qt) const {
-    if(_tree.get()) {
+    if (_tree.get()) {
         _tree->renderTo(qt);
     }
 }
@@ -71,7 +71,7 @@ HavingClause::renderTo(QueryTemplate& qt) const {
 std::shared_ptr<HavingClause>
 HavingClause::clone() const {
     std::shared_ptr<HavingClause> hc = std::make_shared<HavingClause>();
-    if(_tree) {
+    if (_tree) {
         hc->_tree = _tree->clone();
     }
     return hc;

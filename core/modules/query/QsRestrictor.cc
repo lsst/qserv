@@ -52,13 +52,13 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
 ////////////////////////////////////////////////////////////////////////
 void
 QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
-    if(p.get()) {
+    if (p.get()) {
         qt.append(p->_name);
         qt.append("(");
         StringVector::const_iterator i;
         int c=0;
         for(i=p->_params.begin(); i != p->_params.end(); ++i) {
-            if(++c > 1) qt.append(",");
+            if (++c > 1) qt.append(",");
             qt.append(*i);
         }
         qt.append(")");

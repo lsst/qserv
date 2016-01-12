@@ -103,12 +103,12 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
     ::ctime_r(&a->entryTime, a->timestr);
 
     const char* state = "";
-    if(_chunkState.empty()) {
+    if (_chunkState.empty()) {
         _activeTasks.push(a);
         state = "EMPTY";
     } else {
         // To keep from getting stuck  on this chunkId, put new requests for this chunk on pending.
-        if(chunkId <= _chunkState.lastScan()) {
+        if (chunkId <= _chunkState.lastScan()) {
             _pendingTasks.push(a);
             state = "PENDING";
         } else { // Ok to be part of scan. chunk not yet started
@@ -124,7 +124,7 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
          << " lastScan=" << _chunkState.lastScan()
          << " active.sz=" << _activeTasks._tasks.size()
          << " pend.sz=" << _pendingTasks._tasks.size());
-    if(_activeTasks.empty()) {
+    if (_activeTasks.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: (empty)");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: " << taskChunkId(*_activeTasks.top()));
@@ -142,12 +142,12 @@ bool ChunkDisk::ready() {
 bool ChunkDisk::_ready() {
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
-    if(_activeTasks.empty() && !_pendingTasks.empty()) {
+    if (_activeTasks.empty() && !_pendingTasks.empty()) {
         std::swap(_activeTasks, _pendingTasks);
         LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
     }
     // If _pendingTasks was empty too, nothing to do.
-    if(_activeTasks.empty()) { return false; }
+    if (_activeTasks.empty()) { return false; }
     wbase::Task::Ptr top = _activeTasks.top();
     int chunkId = taskChunkId(*top);
     // TODO: A timeout should be added such that we can advance to the next chunkId if too much time has

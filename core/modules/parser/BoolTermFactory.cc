@@ -96,7 +96,7 @@ void forEachSibs(antlr::RefAST a, F& f) {
     struct spacePrint {
         spacePrint(std::ostream& os_) : os(os_), count(0) {}
         void operator()(antlr::RefAST a) {
-            if(++count > 1) os << " ";
+            if (++count > 1) os << " ";
             os << tokenText(a);
         }
         std::ostream& os;

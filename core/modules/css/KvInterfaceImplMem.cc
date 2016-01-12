@@ -276,7 +276,7 @@ std::string KvInterfaceImplMem::dumpKV() {
 }
 
 void KvInterfaceImplMem::_init(std::istream& mapStream) {
-    if(mapStream.fail()) {
+    if (mapStream.fail()) {
         throw ConnError();
     }
     string line;

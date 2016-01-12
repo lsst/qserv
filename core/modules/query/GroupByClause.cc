@@ -63,14 +63,14 @@ public:
 ////////////////////////////////////////////////////////////////////////
 GroupByTerm GroupByTerm::cloneValue() const {
     GroupByTerm t;
-    if(_expr) { t._expr = _expr->clone(); }
+    if (_expr) { t._expr = _expr->clone(); }
     t._collate = _collate;
     return t;
 }
 
 GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
-    if(this != &gb) {
-        if(gb._expr) { _expr = gb._expr->clone(); }
+    if (this != &gb) {
+        if (gb._expr) { _expr = gb._expr->clone(); }
         _collate = gb._collate;
     }
     return *this;
@@ -78,7 +78,7 @@ GroupByTerm& GroupByTerm::operator=(GroupByTerm const& gb) {
 
 std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
     os << *(t._expr);
-    if(!t._collate.empty()) os << " COLLATE " << t._collate;
+    if (!t._collate.empty()) os << " COLLATE " << t._collate;
     return os;
 }
 
@@ -86,7 +86,7 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
 // GroupByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, GroupByClause const& c) {
-    if(c._terms.get()) {
+    if (c._terms.get()) {
         os << "GROUP BY ";
         std::copy(c._terms->begin(),c._terms->end(),
               std::ostream_iterator<GroupByTerm>(os,", "));
@@ -101,7 +101,7 @@ std::string GroupByClause::getGenerated() {
 }
 
 void GroupByClause::renderTo(QueryTemplate& qt) const {
-   if(_terms.get() && _terms->size() > 0) {
+   if (_terms.get() && _terms->size() > 0) {
         List const& terms = *_terms;
         std::for_each(terms.begin(), terms.end(), GroupByTerm::render(qt));
     }

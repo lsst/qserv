@@ -42,7 +42,7 @@ namespace xrdsvc {
 bool
 SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
     Status s = _ssiSession.SetResponse(buf, bufLen);
-    if(s != XrdSsiResponder::wasPosted) {
+    if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response of length=" << bufLen);
         return false;
     }
@@ -52,7 +52,7 @@ SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
 bool
 SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
     Status s = _ssiSession.SetErrResponse(msg.c_str(), code);
-    if(s != XrdSsiResponder::wasPosted) {
+    if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post error response " << msg);
         return false;
     }
@@ -64,10 +64,10 @@ SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
     util::Timer t;
     t.start();
     Status s = _ssiSession.SetResponse(fSize, fd);
-    if(s == XrdSsiResponder::wasPosted) {
+    if (s == XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
     } else {
-        if(s == XrdSsiResponder::notActive) {
+        if (s == XrdSsiResponder::notActive) {
             LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length="
                  << fSize << ", responder not active.");
         } else {
@@ -87,9 +87,9 @@ SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
     // Initialize streaming object if not initialized.
     LOGS(_log, LOG_LVL_DEBUG, "sendStream, checking stream " << (void *) _stream
          << " len=" << bufLen << " last=" << last);
-    if(!_stream) {
+    if (!_stream) {
         _initStream();
-    } else if(_stream->closed()) {
+    } else if (_stream->closed()) {
         return false;
     }
     _stream->append(buf, bufLen, last);

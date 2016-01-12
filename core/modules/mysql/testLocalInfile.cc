@@ -63,13 +63,13 @@ public:
                 0, // port
                 "/home/qserv/qserv-run/git/var/lib/mysql/mysql.sock", // socket
                 0); // client flag
-        if(!conn) {
+        if (!conn) {
             std::cerr << "Failed to connect to MySQL: Error: "
                       << mysql_error(conn) << std::endl;
             assert(conn);
         }
         int result = mysql_query(&cursor, "show databases;");
-        if(result != 0) {
+        if (result != 0) {
             std::cerr << "Error executing :" << mysql_error(&cursor) << std::endl;
         }
     }
@@ -77,7 +77,7 @@ public:
 
     bool _sendQuery(std::string const& query) {
         int result = mysql_real_query(&cursor, query.c_str(), query.size());
-        if(result != 0) {
+        if (result != 0) {
             std::cerr << "Error executing '" << query << "' :" << mysql_error(&cursor)
                  << std::endl;
             return false;
@@ -88,7 +88,7 @@ public:
 
     bool exec(std::string query) {
         bool success = _sendQuery(query);
-        if(success) {
+        if (success) {
             getResultUnbuf();
         }
         return success;
@@ -96,7 +96,7 @@ public:
 
     MYSQL_RES* execStart(std::string query) {
         bool success = _sendQuery(query);
-        if(!success) {
+        if (!success) {
             return 0;
         }
         MYSQL_RES* result = mysql_use_result(&cursor);
@@ -119,7 +119,7 @@ public:
         os << "CREATE TABLE " << table << " (";
         ColumnsIter b, i, e;
         for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
-            if(i != b) {
+            if (i != b) {
                 os << ",\n";
             }
             os << *i;
@@ -152,7 +152,7 @@ public:
         std::cout << rowcount
              << " records found.\n";
 
-        if(result) { // rows?
+        if (result) { // rows?
 
             int num_fields = mysql_num_fields(result);
             std::cout << num_fields << " fields per row\n";
@@ -165,7 +165,7 @@ public:
             }
             mysql_free_result(result);
         } else  { // mysql_store_result() returned nothing
-            if(mysql_field_count(&cursor) > 0) {
+            if (mysql_field_count(&cursor) > 0) {
                 // mysql_store_result() should have returned data
                 std::cout <<  "Error getting records: "
                      << mysql_error(&cursor) << std::endl;
@@ -179,7 +179,7 @@ public:
         MYSQL_RES* result = mysql_use_result(&cursor);
         // call after mysql_store_result
         //uint64_t rowcount = mysql_affected_rows(&cursor);
-        if(result) { // rows?
+        if (result) { // rows?
             Schema s = SchemaFactory::newFromResult(result);
             std::cout << "Schema is "
                       << formCreateStatement("hello", s) << "\n";
@@ -197,7 +197,7 @@ public:
             }
             mysql_free_result(result);
         } else  { // mysql_store_result() returned nothing
-            if(mysql_field_count(&cursor) > 0) {
+            if (mysql_field_count(&cursor) > 0) {
                 // mysql_store_result() should have returned data
                 std::cout <<  "Error getting records: "
                      << mysql_error(&cursor) << std::endl;
@@ -251,12 +251,12 @@ void playRead() {
 void checkDoubleTable() {
     Api a; // Source: will execute "select ..."
     a.connect();
-    if(!a.exec("show databases;")) {
+    if (!a.exec("show databases;")) {
         std::cerr << "error running 'show databases'.\n";
         return;
     }
 
-    if(!a.exec("create table test.twofloats (one float, two float);")) {
+    if (!a.exec("create table test.twofloats (one float, two float);")) {
         std::cerr << "error creating test.twofloats.\n";
         return;
     }

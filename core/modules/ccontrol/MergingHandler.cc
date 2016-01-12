@@ -88,8 +88,8 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
 bool MergingHandler::flush(int bLen, bool& last) {
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    if((bLen < 0) || (bLen != (int)_buffer.size())) {
-        if(_state != MsgState::RESULT_EXTRA) {
+    if ((bLen < 0) || (bLen != (int)_buffer.size())) {
+        if (_state != MsgState::RESULT_EXTRA) {
             LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected "
                  << _buffer.size() << " got " << bLen);
             // Worker sent corrupted data, or there is some other error.
@@ -114,15 +114,15 @@ bool MergingHandler::flush(int bLen, bool& last) {
         return true;
 
     case MsgState::RESULT_WAIT:
-        if(!_verifyResult()) { return false; }
-        if(!_setResult()) { return false; }
+        if (!_verifyResult()) { return false; }
+        if (!_setResult()) { return false; }
         LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _buffer "
              << util::prettyCharList(_buffer, 5));
         {
             bool msgContinues = _response->result.continues();
             _buffer.resize(0); // Nothing further needed
             _state = MsgState::RESULT_RECV;
-            if(msgContinues) {
+            if (msgContinues) {
                 LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
                 _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
@@ -134,7 +134,7 @@ bool MergingHandler::flush(int bLen, bool& last) {
                  << " last=" << last << " for tableName=" << _tableName);
 
             auto success = _merge();
-            if(msgContinues) {
+            if (msgContinues) {
                 _response.reset(new WorkerResponse());
             }
             return success;
@@ -187,7 +187,7 @@ bool MergingHandler::reset() {
     // to reset to a fresh state. For now, we will just fail if we've already
     // begun merging. If we implement the ability to retract a partial result
     // merge, then we can use it and do something better.
-    if(_flushed) {
+    if (_flushed) {
         return false; // Can't reset if we have already pushed state.
     }
     _initState();
@@ -210,15 +210,15 @@ void MergingHandler::_initState() {
 
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
-        if(job->isCancelled()) {
+        if (job->isCancelled()) {
             LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
             return false;
         }
-        if(_flushed) {
+        if (_flushed) {
             throw Bug("MergingRequester::_merge : already flushed");
         }
         bool success = _infileMerger->merge(_response);
-        if(!success) {
+        if (!success) {
             rproc::InfileMergerError const& err = _infileMerger->getError();
             _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
             _state = MsgState::RESULT_ERR;
@@ -237,7 +237,7 @@ void MergingHandler::_setError(int code, std::string const& msg) {
 }
 
 bool MergingHandler::_setResult() {
-    if(!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
+    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
@@ -245,7 +245,7 @@ bool MergingHandler::_setResult() {
     return true;
 }
 bool MergingHandler::_verifyResult() {
-    if(_response->protoHeader.md5() != util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
+    if (_response->protoHeader.md5() != util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
         _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;
         return false;

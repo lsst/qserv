@@ -37,7 +37,7 @@ int seekMagic(int start, char* buffer, int term) {
     // Find magic sequence
     const char m[] = "####"; // MAGIC!
     for(int p = start; p < term; ++p) {
-        if(((term - p) > 4) &&
+        if (((term - p) > 4) &&
            (buffer[p+0] == m[0]) && (buffer[p+1] == m[1]) &&
            (buffer[p+2] == m[2]) && (buffer[p+3] == m[3])) {
             return p;
@@ -64,7 +64,7 @@ TransactionSpec::Reader::Reader(std::string const& file) {
 }
 
 TransactionSpec::Reader::~Reader() {
-    if(_rawContents) delete[] _rawContents; // cleanup
+    if (_rawContents) delete[] _rawContents; // cleanup
     _cleanupMmap();
 }
 
@@ -76,7 +76,7 @@ void TransactionSpec::Reader::_readWholeFile(std::string const& file) {
     // get length of file:
     is.seekg(0, std::ios::end);
     _rawLength = is.tellg();
-    if(_rawLength <= 0) {
+    if (_rawLength <= 0) {
         _rawContents = nullptr;
         return;
     }
@@ -109,7 +109,7 @@ void TransactionSpec::Reader::_setupMmap(std::string const& file) {
     _mmapChunk = nullptr;
     _mmapChunk = (char*)mmap(nullptr, _mmapDefaultSize, PROT_READ, MAP_PRIVATE,
                              _mmapFd, _mmapOffset);
-    if(_mmapChunk == (void*)-1) {
+    if (_mmapChunk == (void*)-1) {
         perror("error mmaping.");
     }
     assert(_mmapChunk != (void*)-1);
@@ -117,17 +117,17 @@ void TransactionSpec::Reader::_setupMmap(std::string const& file) {
 
 void TransactionSpec::Reader::_advanceMmap() {
     int distToEnd = _rawLength - _mmapOffset;
-    if(distToEnd > _mmapDefaultSize) { // Non-last chunk?
+    if (distToEnd > _mmapDefaultSize) { // Non-last chunk?
         int posInChunk = _pos - _mmapOffset;
         int distToBorder = _mmapDefaultSize - posInChunk;
-        if(distToBorder < _mmapMinimum) {
+        if (distToBorder < _mmapMinimum) {
             munmap(_mmapChunk, _mmapDefaultSize);
             _mmapOffset += _mmapDefaultSize - _mmapMinimum;
             _mmapChunk = (char*)mmap(nullptr, _mmapDefaultSize, PROT_READ,
                                      MAP_PRIVATE, _mmapFd, _mmapOffset);
             assert(_mmapChunk != (void*)-1);
 
-            if((_rawLength - _mmapOffset) < _mmapDefaultSize) {
+            if ((_rawLength - _mmapOffset) < _mmapDefaultSize) {
                 // Chunk exceeds end of file.
                 // Overwrite mmap chunk size
                 _mmapChunkSize = _rawLength - _mmapOffset;
@@ -137,10 +137,10 @@ void TransactionSpec::Reader::_advanceMmap() {
 }
 
 void TransactionSpec::Reader::_cleanupMmap() {
-    if(_mmapChunk) {
+    if (_mmapChunk) {
         munmap(_mmapChunk, _mmapChunkSize);
     }
-    if(_mmapFd != -1) {
+    if (_mmapFd != -1) {
         close(_mmapFd);
     }
 }
@@ -158,17 +158,17 @@ TransactionSpec TransactionSpec::Reader::getSpec() {
 
     //beginPath = seekMagic(_pos, _rawContents, bufEnd);
     beginPath = seekMagic(_pos-_mmapOffset, _mmapChunk, bufEnd);
-    if(beginPath == bufEnd) return ts;
+    if (beginPath == bufEnd) return ts;
     beginPath += magicLength; // Start after magic sequence.
 
     //endPath = seekMagic(beginPath, _rawContents, bufEnd);
     endPath = seekMagic(beginPath, _mmapChunk, bufEnd);
-    if(endPath == bufEnd) return ts;
+    if (endPath == bufEnd) return ts;
     beginQuery = endPath + magicLength;
 
     //endQuery = seekMagic(beginQuery, _rawContents, bufEnd);
     endQuery = seekMagic(beginQuery, _mmapChunk, bufEnd);
-    if(endQuery == bufEnd) return ts;
+    if (endQuery == bufEnd) return ts;
     // ts.path = std::string(_rawContents + beginPath, endPath - beginPath);
     // ts.query = std::string(_rawContents + beginQuery, endQuery - beginQuery);
     ts.path = std::string(_mmapChunk + beginPath, endPath - beginPath);

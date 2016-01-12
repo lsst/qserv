@@ -128,7 +128,7 @@ ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
 void
 ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = 2;
-    if(context.chunkCount < scanThreshold) {
+    if (context.chunkCount < scanThreshold) {
         context.scanTables.clear();
         LOGS(_log, LOG_LVL_DEBUG, "Squash scan tables: <" << scanThreshold << " chunks.");
     }
@@ -138,7 +138,7 @@ struct getPartitioned : public query::TableRef::FuncC {
     getPartitioned(StringPairVector& sVector_) : sList(sVector_) {}
     virtual void operator()(query::TableRef const& tRef) {
         StringPair entry(tRef.getDb(), tRef.getTable());
-        if(found.end() != found.find(entry)) return;
+        if (found.end() != found.find(entry)) return;
         sList.push_back(entry);
         found.insert(entry);
     }
@@ -192,12 +192,12 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                   // coverage, e.g., via objectId=123
                                   // or objectId IN (123,133) ?
 
-    if(stmt.hasWhereClause()) {
+    if (stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
 
         // Look for column refs
         std::shared_ptr<query::ColumnRef::Vector const> crl = wc.getColumnRefs();
-        if(crl) {
+        if (crl) {
             hasWhereColumnRef = !crl->empty();
 #if 0
             // FIXME: Detect secondary key reference by Qserv
@@ -206,12 +206,12 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
             // secondary key--spatial selects can still be part of
             // scans if they involve >k chunks.
             std::shared_ptr<AndTerm> aterm = wc.getRootAndTerm();
-            if(aterm) {
+            if (aterm) {
                 // Look for secondary key matches
                 typedef BoolTerm::PtrList PtrList;
                 for(PtrList::iterator i = aterm->iterBegin();
                     i != aterm->iterEnd(); ++i) {
-                    if(testIfSecondary(**i)) {
+                    if (testIfSecondary(**i)) {
                         hasSecondaryKey = true;
                         break;
                     }
@@ -223,7 +223,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     query::SelectList& sList = stmt.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
 
-    if(sVexpr) {
+    if (sVexpr) {
         query::ColumnRef::Vector cList; // For each expr, get column refs.
 
         typedef query::ValueExprPtrVector::const_iterator Iter;
@@ -244,8 +244,8 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     // Right now, queries involving less than a threshold number of
     // chunks have their scanTables squashed as non-scanning in the
     // plugin's applyFinal
-    if(hasSelectColumnRef || hasSelectStar) {
-        if(hasSecondaryKey) {
+    if (hasSelectColumnRef || hasSelectStar) {
+        if (hasSecondaryKey) {
             LOGS(_log, LOG_LVL_DEBUG, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
         } else {
@@ -253,7 +253,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
             // Scan tables = all partitioned tables
             scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
         }
-    } else if(hasWhereColumnRef) {
+    } else if (hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
         LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (filter) ****");

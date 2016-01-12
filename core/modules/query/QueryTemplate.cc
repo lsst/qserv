@@ -58,15 +58,15 @@ struct SpacedOutput {
         : os(os_), sep(sep_) {}
 
     void operator()(std::shared_ptr<lsst::qserv::query::QueryTemplate::Entry> entry) {
-        if(!entry) {
+        if (!entry) {
             throw std::invalid_argument("NULL QueryTemplate::Entry");
         }
         std::string const& entryStr = entry->getValue();
         LOGS(_log, LOG_LVL_TRACE, "entry: " << entryStr);
-        if(entryStr.empty()) {
+        if (entryStr.empty()) {
             return;
         }
-        if(!lastEntry.empty() &&
+        if (!lastEntry.empty() &&
            lsst::qserv::sql::sqlShouldSeparate(lastEntry,
                                                *lastEntry.rbegin(),
                                                entryStr.at(0))) {
@@ -103,7 +103,7 @@ struct MappingWrapper {
 ////////////////////////////////////////////////////////////////////////
 std::string QueryTemplate::TableEntry::getValue() const {
     std::stringstream ss;
-    if(!db.empty()) { ss << db << "."; }
+    if (!db.empty()) { ss << db << "."; }
     ss << table;
     return ss.str();
 }
@@ -115,8 +115,8 @@ public:
     }
     virtual std::string getValue() const {
         std::stringstream ss;
-        if(!db.empty()) { ss << db << "."; }
-        if(!table.empty()) { ss << table << "."; }
+        if (!db.empty()) { ss << db << "."; }
+        if (!table.empty()) { ss << table << "."; }
         ss << column;
         return ss.str();
     }

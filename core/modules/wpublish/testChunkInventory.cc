@@ -63,7 +63,7 @@ struct ChunkSql : public MockSql {
                             SqlErrorObject& errObj,
                             std::string const& prefixed,
                             std::string const& dbName) {
-        if(dbName == "LSST") {
+        if (dbName == "LSST") {
             v.insert(v.begin(), _tablesBegin, _tablesEnd);
             return true;
         } else {
@@ -74,7 +74,7 @@ struct ChunkSql : public MockSql {
         return std::string("LSST");
     }
     virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
-        if(startswith(query, "SELECT db FROM")) {
+        if (startswith(query, "SELECT db FROM")) {
             std::shared_ptr<SqlIter> it;
             it = std::make_shared<SqlIter>(_selectDbTuples.begin(),
                                            _selectDbTuples.end());

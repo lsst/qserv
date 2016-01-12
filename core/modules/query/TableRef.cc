@@ -63,13 +63,13 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
 }
 
 void TableRef::render::operator()(TableRef const& ref) {
-    if(_count++ > 0) _qt.append(",");
+    if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
 }
 
 std::ostream& TableRef::putStream(std::ostream& os) const {
     os << "Table(" << _db << "." << _table << ")";
-    if(!_alias.empty()) { os << " AS " << _alias; }
+    if (!_alias.empty()) { os << " AS " << _alias; }
     typedef JoinRefPtrVector::const_iterator Iter;
     for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
@@ -79,12 +79,12 @@ std::ostream& TableRef::putStream(std::ostream& os) const {
 }
 
 void TableRef::putTemplate(QueryTemplate& qt) const {
-    if(!_db.empty()) {
+    if (!_db.empty()) {
         qt.append(_db); // Use TableEntry?
         qt.append(".");
     }
     qt.append(_table);
-    if(!_alias.empty()) {
+    if (!_alias.empty()) {
         qt.append("AS");
         qt.append(_alias);
     }

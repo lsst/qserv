@@ -63,7 +63,7 @@ QueryPlugin::Ptr QueryPlugin::newInstance(std::string const& name) {
     Registry& r = registry();
     std::lock_guard<std::mutex> guard(r.mutex);
     Registry::FactoryMap::iterator e = r.map.find(name);
-    if(e == r.map.end()) {
+    if (e == r.map.end()) {
         throw PluginNotFoundError(name);
     } else {
         return e->second->newInstance();

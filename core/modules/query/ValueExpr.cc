@@ -89,7 +89,7 @@ operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
 ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
-    if(!vt) {
+    if (!vt) {
         throw std::invalid_argument("Unexpected NULL ValueFactor");
     }
     std::shared_ptr<ValueExpr> ve = std::make_shared<ValueExpr>();
@@ -131,11 +131,11 @@ void ValueExpr::dbgPrint(std::ostream& os) {
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     std::shared_ptr<ColumnRef> cr;
-    if(_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
+    if (_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
     std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     cr = factor->getColumnRef();
-    if(cr) {
+    if (cr) {
         cr = std::make_shared<ColumnRef>(*cr);  // Make a copy
     }
     return cr;
@@ -144,11 +144,11 @@ std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
 std::string ValueExpr::copyAsLiteral() const{
     std::string s;
     // Make sure there is only one factor.
-    if(_factorOps.empty() || (_factorOps.size() > 1)) { return s; }
+    if (_factorOps.empty() || (_factorOps.size() > 1)) { return s; }
 
     std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
-    if(factor->getType() != ValueFactor::CONST) { return s; }
+    if (factor->getType() != ValueFactor::CONST) { return s; }
     return factor->getTableStar();
 }
 
@@ -205,9 +205,9 @@ ColumnRef::Ptr ValueExpr::getColumnRef() const {
 
 /// @return true if holding a single ValueFactor, and that factor is a *
 bool ValueExpr::isStar() const {
-    if(!_factorOps.empty() && _factorOps.size() == 1) {
+    if (!_factorOps.empty() && _factorOps.size() == 1) {
         std::shared_ptr<ValueFactor const> vf = getFactor();
-        if(!vf) {
+        if (!vf) {
             throw std::invalid_argument("ValueExpr::isStar null ValueFactor");
         }
         return vf->getType() == ValueFactor::STAR;
@@ -221,7 +221,7 @@ bool ValueExpr::isFactor() const {
 }
 /// @return first ValueFactorPtr held. Useful when isFactor() == true
 std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
-    if(_factorOps.empty()) {
+    if (_factorOps.empty()) {
         throw std::logic_error("ValueExpr::getFactor no factors");
     }
     return _factorOps.front().factor;
@@ -229,9 +229,9 @@ std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
 
 /// @return true if holding a single ValueFactor
 bool ValueExpr::isColumnRef() const {
-    if(_factorOps.size() == 1) {
+    if (_factorOps.size() == 1) {
         ValueFactor const& factor = *_factorOps.front().factor;
-        if(factor.getType() == ValueFactor::COLUMNREF) {
+        if (factor.getType() == ValueFactor::COLUMNREF) {
             return true;
         }
     }
@@ -271,17 +271,17 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
 }
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
-    if(!ve) return os << "<NULL>";
+    if (!ve) return os << "<NULL>";
     return os << *ve;
 }
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
 void ValueExpr::render::operator()(ValueExpr const& ve) {
-    if(_needsComma && _count++ > 0) { _qt.append(","); }
+    if (_needsComma && _count++ > 0) { _qt.append(","); }
     ValueFactor::render render(_qt);
     bool needsClose = false;
-    if(!_isProtected && ve._factorOps.size() > 1) { // Need opening parenthesis
+    if (!_isProtected && ve._factorOps.size() > 1) { // Need opening parenthesis
         _qt.append("(");
         needsClose = true;
     }
@@ -302,10 +302,10 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
             throw ss.str();
         }
     }
-    if(needsClose) { // Need closing parenthesis
+    if (needsClose) { // Need closing parenthesis
         _qt.append(")");
     }
-    if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+    if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
 // Miscellaneous

@@ -44,7 +44,7 @@ namespace query {
 std::ostream&
 operator<<(std::ostream& os, FromList const& fl) {
     os << "FROM ";
-    if(fl._tableRefs.get() && fl._tableRefs->size() > 0) {
+    if (fl._tableRefs.get() && fl._tableRefs->size() > 0) {
         TableRefList const& refList = *(fl._tableRefs);
         std::copy(refList.begin(), refList.end(),
                   std::ostream_iterator<TableRef::Ptr>(os,", "));
@@ -56,19 +56,19 @@ operator<<(std::ostream& os, FromList const& fl) {
 
 bool
 FromList::isJoin() const {
-    if(_tableRefs) {
+    if (_tableRefs) {
         int count = 0;
         typedef TableRefList::const_iterator Iter;
         for(Iter i=_tableRefs->begin(), e=_tableRefs->end();
             i != e;
             ++i) {
 
-            if(*i) {
-                if((**i).isSimple()) { ++count; }
+            if (*i) {
+                if ((**i).isSimple()) { ++count; }
             } else {
                 count += 2;
             }
-            if(count > 1) { return true; }
+            if (count > 1) { return true; }
         }
     }
     return false;
@@ -100,7 +100,7 @@ FromList::getGenerated() {
 
 void
 FromList::renderTo(QueryTemplate& qt) const {
-    if(_tableRefs.get() && _tableRefs->size() > 0) {
+    if (_tableRefs.get() && _tableRefs->size() > 0) {
         TableRefList const& refList = *_tableRefs;
         std::for_each(refList.begin(), refList.end(), TableRef::render(qt));
     }

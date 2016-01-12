@@ -147,7 +147,7 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
     std::shared_ptr<query::ConstraintVector> cv;
     std::shared_ptr<query::QsRestrictor::PtrVector const> p = _context->restrictors;
 
-    if(p.get()) {
+    if (p.get()) {
         cv = std::make_shared<query::ConstraintVector>(p->size());
         LOGS(_log, LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: " << p->size());
         int i=0;
@@ -230,7 +230,7 @@ QuerySession::getEmptyChunks() {
 /// If a post-execution merge fixup is not needed, return a NULL pointer.
 std::shared_ptr<query::SelectStmt>
 QuerySession::getMergeStmt() const {
-    if(_context->needsMerge) {
+    if (_context->needsMerge) {
         return _stmtMerge;
     } else {
         return std::shared_ptr<query::SelectStmt>();
@@ -238,7 +238,7 @@ QuerySession::getMergeStmt() const {
 }
 
 void QuerySession::finalize() {
-    if(_isFinal) {
+    if (_isFinal) {
         return;
     }
     QueryPluginPtrVector::iterator i;
@@ -246,7 +246,7 @@ void QuerySession::finalize() {
         (**i).applyFinal(*_context);
     }
     // Make up for no chunks (chunk-less query): add the dummy chunk.
-    if(_chunks.empty()) {
+    if (_chunks.empty()) {
         setDummy();
     }
 }
@@ -347,7 +347,7 @@ void QuerySession::print(std::ostream& os) const {
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par.toString() << "\n";
     os << "  merge statement: " << mer.toString() << std::endl;
-    if(!_context->scanTables.empty()) {
+    if (!_context->scanTables.empty()) {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
@@ -359,11 +359,11 @@ void QuerySession::print(std::ostream& os) const {
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
     std::vector<std::string> q;
     // This logic may be pushed over to the qserv worker in the future.
-    if(_stmtParallel.empty() || !_stmtParallel.front()) {
+    if (_stmtParallel.empty() || !_stmtParallel.front()) {
         throw QueryProcessingBug("Attempted buildChunkQueries without _stmtParallel");
     }
 
-    if(!_context->queryMapping) {
+    if (!_context->queryMapping) {
         throw QueryProcessingBug("Missing QueryMapping in _context");
     }
     qana::QueryMapping const& queryMapping = *_context->queryMapping;
@@ -377,7 +377,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         i != e; ++i) {
         queryTemplates.push_back((**i).getQueryTemplate());
     }
-    if(!queryMapping.hasSubChunks()) { // Non-subchunked?
+    if (!queryMapping.hasSubChunks()) { // Non-subchunked?
         LOGS(_log, LOG_LVL_DEBUG, "Non-subchunked");
 
         for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
@@ -406,7 +406,7 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 ////////////////////////////////////////////////////////////////////////
 QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecVector::iterator i)
     : _qs(&qs), _chunkSpecsIter(i), _dirty(true) {
-    if(!qs._context) {
+    if (!qs._context) {
         throw QueryProcessingBug("NULL QuerySession");
     }
     _hasChunks = qs._context->hasChunks();
@@ -414,7 +414,7 @@ QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecVector::iterator i)
 }
 
 ChunkQuerySpec& QuerySession::Iter::dereference() const {
-    if(_dirty) { _updateCache(); }
+    if (_dirty) { _updateCache(); }
     return _cache;
 }
 
@@ -431,10 +431,10 @@ void QuerySession::Iter::_buildCache() const {
     _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
                                  sTables.begin(), sTables.end());
     // Build queries.
-    if(!_hasSubChunks) {
+    if (!_hasSubChunks) {
         _cache.queries = _qs->_buildChunkQueries(*_chunkSpecsIter);
     } else {
-        if(_chunkSpecsIter->shouldSplit()) {
+        if (_chunkSpecsIter->shouldSplit()) {
             ChunkSpecFragmenter frag(*_chunkSpecsIter);
             ChunkSpec s = frag.get();
             _cache.queries = _qs->_buildChunkQueries(s);
@@ -454,7 +454,7 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     std::shared_ptr<ChunkQuerySpec> first;
     std::shared_ptr<ChunkQuerySpec> last;
     while(!f.isDone()) {
-        if(last.get()) {
+        if (last.get()) {
             last->nextFragment = std::make_shared<ChunkQuerySpec>();
             last = last->nextFragment;
         } else {

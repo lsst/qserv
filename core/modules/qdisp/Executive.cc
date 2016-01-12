@@ -106,7 +106,7 @@ Executive::~Executive() {
 ///
 void Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
-    if(_cancelled) {
+    if (_cancelled) {
         LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
              << jobDesc.id() << ")");
         return;
@@ -115,7 +115,7 @@ void Executive::add(JobDescription const& jobDesc) {
     JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
     MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
     JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
-    if(!_addJobToMap(jobQuery)) {
+    if (!_addJobToMap(jobQuery)) {
         LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
         return;
     }
@@ -177,7 +177,7 @@ bool Executive::join() {
         std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
         sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
     }
-    if(sCount == _requestCount) {
+    if (sCount == _requestCount) {
         LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount
              << " jobs dispatched and completed.");
     } else {
@@ -196,11 +196,11 @@ void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << _id << "_" << jobId
             << " " << success);
-    if(!success) {
+    if (!success) {
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
-            if(iter != _incompleteJobs.end()) {
+            if (iter != _incompleteJobs.end()) {
                 err = iter->second->getDescription().respHandler()->getError();
             } else {
                 std::string msg =
@@ -224,7 +224,7 @@ void Executive::markCompleted(int jobId, bool success) {
         }
     }
     _unTrack(jobId);
-    if(!success) {
+    if (!success) {
         LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: jobId="
              << jobId << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
@@ -234,7 +234,7 @@ void Executive::markCompleted(int jobId, bool success) {
 
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
-    if(alreadyCancelled) {
+    if (alreadyCancelled) {
         LOGS(_log, LOG_LVL_DEBUG, _id << " Executive::squash() already cancelled! refusing.");
         return;
     }
@@ -266,7 +266,7 @@ std::string Executive::getProgressDesc() const {
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
-            if(!first) { os << "\n"; }
+            if (!first) { os << "\n"; }
             first = false;
             os << "Ref=" << entry.first << " " << job;
 
@@ -288,7 +288,7 @@ void Executive::_setup() {
     } else {
         _xrdSsiService = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
     }
-    if(!_xrdSsiService) {
+    if (!_xrdSsiService) {
         LOGS(_log, LOG_LVL_DEBUG, _id << " Error obtaining XrdSsiService in Executive: "
              <<  getErrorText(eInfo));
     }
@@ -310,7 +310,7 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
          << _id << "_" << jobId << " to Executive ("<< this <<") tracked jobs");
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
-        if(_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
+        if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
             return false;
         }
         _incompleteJobs[jobId] = r;
@@ -328,10 +328,10 @@ void Executive::_unTrack(int jobId) {
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
-        if(i != _incompleteJobs.end()) {
+        if (i != _incompleteJobs.end()) {
             _incompleteJobs.erase(i);
             untracked = true;
-            if(_incompleteJobs.empty()) _allJobsComplete.notify_all();
+            if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         size = _incompleteJobs.size();
         // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
@@ -344,7 +344,7 @@ void Executive::_unTrack(int jobId) {
     std::ostringstream os;
     os << "Executive (" << this << ") UNTRACKING jobId=" << _id << "_" << jobId << " size=" << size << " " << (untracked ? "success":"failed");
     os << "::" << s.str();
-    if(untracked) {
+    if (untracked) {
         LOGS(_log, LOG_LVL_DEBUG, os.str());
     } else {
         LOGS(_log, LOG_LVL_WARN, os.str());
@@ -356,7 +356,7 @@ void Executive::_unTrack(int jobId) {
 // markCompleted() does the cleanup, while we are waiting (in _waitAllUntilEmpty()).
 void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     for(auto iter=_incompleteJobs.begin(), e=_incompleteJobs.end(); iter != e;) {
-        if(!iter->second->getDescription().respHandler()->getError().isNone()) {
+        if (!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
             LOGS(_log, LOG_LVL_DEBUG, "Executive (" << (void*) this
                  << ") reaped requester for jobId=" << iter->first);
@@ -382,7 +382,7 @@ void Executive::_updateProxyMessages() {
             auto const& info = job->getStatus()->getInfo();
             std::ostringstream os;
             os << info.state << " " << info.stateCode;
-            if(!info.stateDesc.empty()) {
+            if (!info.stateDesc.empty()) {
                 os << " (" << info.stateDesc << ")";
             }
             os << " " << info.stateTime;
@@ -412,12 +412,12 @@ void Executive::_waitAllUntilEmpty() {
     while(!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
         _reapRequesters(lock);
-        if(count != lastCount) {
+        if (count != lastCount) {
             lastCount = count;
             ++complainCount;
             if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                 std::ostringstream os;
-                if(complainCount > moreDetailThreshold) {
+                if (complainCount > moreDetailThreshold) {
                     _printState(os);
                     os << "\n";
                 }
@@ -443,7 +443,7 @@ void Executive::_printState(std::ostream& os) {
     bool first = false;
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
-        if(!first) {
+        if (!first) {
             os << "\n";
         }
         os << *job;

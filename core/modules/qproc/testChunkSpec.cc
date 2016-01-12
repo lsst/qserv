@@ -104,11 +104,11 @@ BOOST_AUTO_TEST_CASE(Intersect) {
     c3.subChunks.push_back(3);
 
     for(int i=10; i < 20; ++i) {
-        if(forC1 > 0) {
+        if (forC1 > 0) {
             c1.subChunks.push_back(i);
             --forC1;
         }
-        if(forC2 > 0) {
+        if (forC2 > 0) {
             c2.subChunks.push_back(i);
             --forC2;
         }

@@ -72,7 +72,7 @@ public:
     ColumnAliasH(std::shared_ptr<ParseAliasMap> map) : _map(map) {}
     virtual ~ColumnAliasH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
-        if(b.get()) {
+        if (b.get()) {
             b->setType(SqlSQL2TokenTypes::COLUMN_ALIAS_NAME);
             _map->addAlias(b, a);
         }
@@ -116,13 +116,13 @@ SelectListFactory::import(RefAST selectRoot) {
         RefAST child = selectRoot->getFirstChild();
         switch(selectRoot->getType()) {
         case SqlSQL2TokenTypes::SELECT_COLUMN:
-            if(!child.get()) {
+            if (!child.get()) {
                 throw ParseException("Expected select column", selectRoot);
             }
             _addSelectColumn(child);
             break;
         case SqlSQL2TokenTypes::SELECT_TABLESTAR:
-            if(!child.get()) {
+            if (!child.get()) {
                 throw ParseException("Missing table.*", selectRoot);
             }
             _addSelectStar(child);
@@ -148,14 +148,14 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
     // std::cout << "SelectCol Type of:" << expr->getText()
     //           << "(" << expr->getType() << ")" << std::endl;
-    if(!expr.get()) {
+    if (!expr.get()) {
         throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
     }
-    if(expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
+    if (expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
         throw ParseException("Expected VALUE_EXP", expr);
     }
     RefAST child = expr->getFirstChild();
-    if(!child.get()) {
+    if (!child.get()) {
         throw ParseException("Missing VALUE_EXP child", expr);
     }
     //    std::cout << "child is " << child->getType() << std::endl;
@@ -163,7 +163,7 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
 
     // Annotate if alias found.
     RefAST alias = _aliases->getAlias(expr);
-    if(alias.get()) {
+    if (alias.get()) {
         ve->setAlias(tokenText(alias));
     }
     _valueExprList->push_back(ve);
@@ -177,11 +177,11 @@ SelectListFactory::_addSelectStar(RefAST child) {
     // table.* expressions).
     query::ValueFactorPtr vt;
     std::string tableName;
-    if(child.get()) {
+    if (child.get()) {
         // child should be QUALIFIED_NAME, so its child should be a
         // table name.
         RefAST table = child->getFirstChild();
-        if(!table.get()) {
+        if (!table.get()) {
             throw ParseException("Missing name node.", child);
         }
         tableName = tokenText(table);

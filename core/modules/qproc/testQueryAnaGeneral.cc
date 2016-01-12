@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
     BOOST_CHECK(!context->restrictors);
-    if(context->restrictors) {
+    if (context->restrictors) {
         QsRestrictor& r = *context->restrictors->front();
         std::cout << "front restr is " << r << "\n";
     }
@@ -525,7 +525,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
         BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
         BOOST_CHECK(!context->restrictors);
         BOOST_CHECK_EQUAL(context->scanTables.size(), 1U);
-        if(context->scanTables.size() >= 1) {
+        if (context->scanTables.size() >= 1) {
             StringPair p = context->scanTables.front();
             BOOST_CHECK_EQUAL(p.first, "LSST");
             BOOST_CHECK_EQUAL(p.second, "Object");

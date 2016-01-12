@@ -135,7 +135,7 @@ ChunkResource& ChunkResource::operator=(ChunkResource const& cr) {
 }
 
 ChunkResource::~ChunkResource() {
-    if(_info.get()) {
+    if (_info.get()) {
         _mgr->release(*_info);
     }
 }
@@ -181,7 +181,7 @@ public:
     typedef std::shared_ptr<Backend> Ptr;
     bool load(ScTableVector const& v, sql::SqlErrorObject& err) {
         using namespace lsst::qserv::wbase;
-        if(_isFake) {
+        if (_isFake) {
             std::cout << "Pretending to load:";
             std::copy(v.begin(), v.end(),
                       std::ostream_iterator<ScTable>(std::cout, ","));
@@ -191,7 +191,7 @@ public:
             for(ScTableVector::const_iterator i=v.begin(), e=v.end();
                 i != e; ++i) {
                 std::string const* createScript = nullptr;
-                if(i->chunkId == DUMMY_CHUNK) {
+                if (i->chunkId == DUMMY_CHUNK) {
                     createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
                 } else {
                     createScript = &CREATE_SUBCHUNK_SCRIPT;
@@ -200,7 +200,7 @@ public:
                     (boost::format(*createScript)
                      % i->db % i->table % SUB_CHUNK_COLUMN
                      % i->chunkId % i->subChunkId).str();
-                if(!_sqlConn.runQuery(create, err)) {
+                if (!_sqlConn.runQuery(create, err)) {
                     _discard(v.begin(), i);
                     return false;
                 }
@@ -254,7 +254,7 @@ private:
 
     void _discard(ScTableVector::const_iterator begin,
                   ScTableVector::const_iterator end) {
-        if(_isFake) {
+        if (_isFake) {
             std::cout << "Pretending to discard:";
             std::copy(begin, end, std::ostream_iterator<ScTable>(std::cout, ","));
             std::cout << std::endl;
@@ -264,7 +264,7 @@ private:
                 std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
                      % i->db % i->table  % i->chunkId % i->subChunkId).str();
                 sql::SqlErrorObject err;
-                if(!_sqlConn.runQuery(discard, err)) {
+                if (!_sqlConn.runQuery(discard, err)) {
                     throw err;
                 }
             }
@@ -275,7 +275,7 @@ private:
     void _execLockSql(std::string const& query) {
         LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
         sql::SqlErrorObject err;
-        if(!_sqlConn.runQuery(query, err)) {
+        if (!_sqlConn.runQuery(query, err)) {
             _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
         }
     }
@@ -416,7 +416,7 @@ public:
             for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                 SubChunkMap::iterator it = scm.find(*i);
                 int last = 0;
-                if(it == scm.end()) {
+                if (it == scm.end()) {
                     needed.push_back(ScTable(db, _chunkId, *ti, *i));
                 } else {
                     last = it->second;
@@ -426,10 +426,10 @@ public:
         } // All tables
         // For now, every other user of this chunk must wait while
         // we fetch the resource.
-        if(needed.size() > 0) {
+        if (needed.size() > 0) {
             sql::SqlErrorObject err;
             bool loadOk = backend->load(needed, err);
-            if(!loadOk) {
+            if (!loadOk) {
                 // Release
                 _release(needed);
                 throw err;
@@ -450,7 +450,7 @@ public:
                 IntVector::const_iterator i, e;
                 for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                     SubChunkMap::iterator it = scm.find(*i); // Should be there
-                    if(it == scm.end()) {
+                    if (it == scm.end()) {
                         throw Bug("ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
                     }
                     scm[*i] = it->second - 1; // write new value
@@ -474,12 +474,12 @@ public:
             SubChunkMap& scm = ti->second;
             SubChunkMap::iterator si, se;
             for(si=scm.begin(), se=scm.end(); si != se; ++si) {
-                if(si->second == 0) {
+                if (si->second == 0) {
                     discardable.push_back(ScTable(db, _chunkId,
                                                   ti->first,
                                                   si->first));
                     mapDiscardable.push_back(si->first);
-                } else if(si->second < 0) {
+                } else if (si->second < 0) {
                     throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
                 }
             } // All subchunks
@@ -492,7 +492,7 @@ public:
             }
         } // All tables
         // Delegate actual table dropping to the backend.
-        if(discardable.size() > 0) {
+        if (discardable.size() > 0) {
             backend->discard(discardable);
         }
     }
@@ -537,7 +537,7 @@ public:
     }
 
     virtual void release(ChunkResource::Info const& i) {
-        if(_isFake) {
+        if (_isFake) {
             std::cout << "Releasing: " << i << std::endl;
         }
         {
@@ -548,7 +548,7 @@ public:
         }
     }
     virtual void acquireUnit(ChunkResource::Info const& i) {
-        if(_isFake) {
+        if (_isFake) {
             std::cout << "Acquiring: " << i << std::endl;
         }
         {
@@ -570,7 +570,7 @@ private:
     /// Get the ChunkEntry map for a db, creating if necessary
     Map& _getMap(std::string const& db) {
         DbMap::iterator it = _dbMap.find(db);
-        if(it == _dbMap.end()) {
+        if (it == _dbMap.end()) {
             DbMap::value_type v(db, Map());
             _dbMap.insert(v);
             it = _dbMap.find(db);
@@ -581,7 +581,7 @@ private:
     /// Get the ChunkEntry for a chunkId, creating if necessary
     ChunkEntry& _getChunkEntry(Map& m, int chunkId) {
         Map::iterator it = m.find(chunkId); // Select chunkId
-        if(it == m.end()) { // Insert if not exist
+        if (it == m.end()) { // Insert if not exist
             Map::value_type v(
                               chunkId,
                               std::make_shared<ChunkEntry>(chunkId)

@@ -68,7 +68,7 @@ namespace sql {
 
 bool
 sqlShouldSeparate(std::string const& s, int last, int next) {
-    if(_cMap.isSeparatingWord(s)) return true;
+    if (_cMap.isSeparatingWord(s)) return true;
     bool lastAlnum = isalnum(last);
     bool nextAlnum = isalnum(next);
     return (lastAlnum && nextAlnum) // adjoining alnums

@@ -161,7 +161,7 @@ std::string UserQuerySelect::getError() const {
 void UserQuerySelect::kill() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
-    if(!_killed) {
+    if (!_killed) {
         _killed = true;
         try {
             _executive->squash();
@@ -177,7 +177,7 @@ void UserQuerySelect::kill() {
 void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
     // If this is not a chunked query, only accept the dummy chunk.
     // This should collapse out when chunk geometry coverage is moved from Python to C++.
-    if(_qSession->hasChunks() || cs.chunkId == DUMMY_CHUNK) {
+    if (_qSession->hasChunks() || cs.chunkId == DUMMY_CHUNK) {
         _qSession->addChunk(cs);
     }
 }
@@ -215,7 +215,7 @@ void UserQuerySelect::submit() {
         std::string msg = ss.str();
 
         pi(msg.data(), msg.size());
-        if(pi.getNumAccepted() != msgCount) {
+        if (pi.getNumAccepted() != msgCount) {
             throw UserQueryBug("Error serializing TaskMsg.");
         }
 
@@ -248,7 +248,7 @@ QueryState UserQuerySelect::join() {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
         LOGS(_log, LOG_LVL_ERROR, "Not fully submitted (failure!)");
         return ERROR;
-    } else if(successful) {
+    } else if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
         return SUCCESS;
@@ -262,7 +262,7 @@ QueryState UserQuerySelect::join() {
 /// Release resources held by the merger
 void UserQuerySelect::_discardMerger() {
     _infileMergerConfig.reset();
-    if(_infileMerger && !_infileMerger->isFinished()) {
+    if (_infileMerger && !_infileMerger->isFinished()) {
         throw UserQueryError("merger unfinished, cannot discard");
     }
     _infileMerger.reset();
@@ -272,12 +272,12 @@ void UserQuerySelect::_discardMerger() {
 void UserQuerySelect::discard() {
     {
         std::lock_guard<std::mutex> lock(_killMutex);
-        if(_killed) {
+        if (_killed) {
             return;
         }
     }
     // Make sure resources are released.
-    if(_executive && _executive->getNumInflight() > 0) {
+    if (_executive && _executive->getNumInflight() > 0) {
         throw UserQueryError("Executive unfinished, cannot discard");
     }
     _executive.reset();
@@ -304,7 +304,7 @@ void UserQuerySelect::setupChunking() {
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
-    if(dominantDb.empty() || !_qSession->validateDominantDb()) {
+    if (dominantDb.empty() || !_qSession->validateDominantDb()) {
         // TODO: Revisit this for L3
         throw UserQueryError("Couldn't determine dominantDb for dispatch");
     }
@@ -312,7 +312,7 @@ void UserQuerySelect::setupChunking() {
     std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
         eSet = _qSession->getEmptyChunks();
-        if(!eSet) {
+        if (!eSet) {
             eSet = std::make_shared<IntSet>();
             LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for " << dominantDb);
         }
@@ -326,7 +326,7 @@ void UserQuerySelect::setupChunking() {
 
         im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
-        if(constraints) {
+        if (constraints) {
             csv = im->getChunks(*constraints);
         } else { // Unconstrained: full-sky
             csv = im->getAllChunks();
@@ -337,7 +337,7 @@ void UserQuerySelect::setupChunking() {
         for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
             i != e;
             ++i) {
-            if(eSet->count(i->chunkId) == 0) { // chunk not in empty?
+            if (eSet->count(i->chunkId) == 0) { // chunk not in empty?
                 _qSession->addChunk(*i);
             }
         }

@@ -81,7 +81,7 @@ std::ostream& PassListTerm::putStream(std::ostream& os) const {
     return os;
 }
 std::ostream& BoolTermFactor::putStream(std::ostream& os) const {
-    if(_term) { return _term->putStream(os); }
+    if (_term) { return _term->putStream(os); }
     return os;
 }
 
@@ -94,8 +94,8 @@ namespace {
         int count=0;
         typename Plist::const_iterator i;
         for(i = lst.begin(); i != lst.end(); ++i) {
-            if(!sep.empty() && ++count > 1) { qt.append(sep); }
-            if(!*i) { throw std::logic_error("Bad list term"); }
+            if (!sep.empty() && ++count > 1) { qt.append(sep); }
+            if (!*i) { throw std::logic_error("Bad list term"); }
             BoolTerm *asBoolTerm = dynamic_cast<BoolTerm*>(&**i);
             BoolTerm::OpPrecedence termOpPrecedence = asBoolTerm
                 ? asBoolTerm->getOpPrecedence()
@@ -129,7 +129,7 @@ void PassListTerm::renderTo(QueryTemplate& qt) const {
     StringVector::const_iterator i;
     bool isFirst=true;
     for(i=_terms.begin(); i != _terms.end(); ++i) {
-        if(!isFirst) {
+        if (!isFirst) {
             qt.append(",");
         }
         qt.append(*i);
@@ -138,14 +138,14 @@ void PassListTerm::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 void BoolTermFactor::renderTo(QueryTemplate& qt) const {
-    if(_term) { _term->renderTo(qt); }
+    if (_term) { _term->renderTo(qt); }
 }
 
 std::shared_ptr<BoolTerm> OrTerm::getReduced() {
     // Can I eliminate myself?
-    if(_terms.size() == 1) {
+    if (_terms.size() == 1) {
         std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
-        if(reduced) { return reduced; }
+        if (reduced) { return reduced; }
         else { return _terms.front(); }
     } else { // Get reduced versions of my children.
         // FIXME: Apply reduction on each term.
@@ -156,9 +156,9 @@ std::shared_ptr<BoolTerm> OrTerm::getReduced() {
 
 std::shared_ptr<BoolTerm> AndTerm::getReduced() {
     // Can I eliminate myself?
-    if(_terms.size() == 1) {
+    if (_terms.size() == 1) {
         std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
-        if(reduced) { return reduced; }
+        if (reduced) { return reduced; }
         else { return _terms.front(); }
     } else { // Get reduced versions of my children.
         // FIXME: Apply reduction on each term.
@@ -175,12 +175,12 @@ bool BoolFactor::_reduceTerms(BoolFactorTerm::PtrVector& newTerms,
         BoolFactorTerm& term = **i;
         BoolTermFactor* btf = dynamic_cast<BoolTermFactor*>(&term);
 
-        if(btf) {
-            if(btf->_term) {
+        if (btf) {
+            if (btf->_term) {
                 std::shared_ptr<BoolTerm> reduced = btf->_term->getReduced();
-                if(reduced) {
+                if (reduced) {
                     BoolFactor* f =  dynamic_cast<BoolFactor*>(reduced.get());
-                    if(f) { // factor in a term in a factor --> factor
+                    if (f) { // factor in a term in a factor --> factor
                         newTerms.insert(newTerms.end(),
                                         f->_terms.begin(), f->_terms.end());
                         hasReduction = true;
@@ -208,13 +208,13 @@ bool BoolFactor::_reduceTerms(BoolFactorTerm::PtrVector& newTerms,
 }
 
 bool BoolFactor::_checkParen(BoolFactorTerm::PtrVector& terms) {
-    if(terms.size() != 3) { return false; }
+    if (terms.size() != 3) { return false; }
 
     PassTerm* pt = dynamic_cast<PassTerm*>(terms.front().get());
-    if(!pt || (pt->_text != "(")) { return false; }
+    if (!pt || (pt->_text != "(")) { return false; }
 
     pt = dynamic_cast<PassTerm*>(terms.back().get());
-    if(!pt || (pt->_text != ")")) { return false; }
+    if (!pt || (pt->_text != ")")) { return false; }
 
     return true;
 }
@@ -225,12 +225,12 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     bool hasReduction = false;
     hasReduction = _reduceTerms(newTerms, _terms);
     // Parentheses reduction
-    if(_checkParen(newTerms)) {
+    if (_checkParen(newTerms)) {
         newTerms.erase(newTerms.begin());
         newTerms.pop_back();
         hasReduction = true;
     }
-    if(hasReduction) {
+    if (hasReduction) {
         BoolFactor* bf = new BoolFactor();
         bf->_terms = newTerms;
 #if 0
@@ -294,7 +294,7 @@ BoolFactorTerm::Ptr PassListTerm::clone() const {
 }
 BoolFactorTerm::Ptr BoolTermFactor::clone() const {
     BoolTermFactor* p = new BoolTermFactor;
-    if(_term) { p->_term = _term->clone(); }
+    if (_term) { p->_term = _term->clone(); }
     return BoolFactorTerm::Ptr(p);
 }
 // copySyntax
@@ -325,7 +325,7 @@ BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
 }
 BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
-    if(_term) { p->_term = _term->copySyntax(); }
+    if (_term) { p->_term = _term->copySyntax(); }
     return BoolFactorTerm::Ptr(p);
 }
 
