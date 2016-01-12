@@ -229,7 +229,7 @@ private:
             return (c.name == "sIndex" || c.name == "sIndexBetween"); }
     };
     bool _hasSecondary(query::ConstraintVector const& cv) {
-        return cv.end() != std::find_if (cv.begin(), cv.end(), _checkIndex());
+        return cv.end() != std::find_if(cv.begin(), cv.end(), _checkIndex());
     }
 };
 

@@ -418,31 +418,31 @@ private:
             // Some parse tree verification is unnecessary because the
             // grammer will enforce it. Should we trim it?
             if (!token.get()
-               || token->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
+                || token->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
                 break;
             }
             token = token->getNextSibling();
             if (!token.get()
-               || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
+                || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
                 break;
             }
             js = std::make_shared<query::JoinSpec>(
                     _processColumn(token->getFirstChild()));
             token = token->getNextSibling();
             if (!token.get()
-               || token->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
+                || token->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
                 break;
             }
             return js;
         case SqlSQL2TokenTypes::JOIN_CONDITION:
             token = specToken->getFirstChild();
             if (!token.get()
-               || token->getType() != SqlSQL2TokenTypes::SQL2RW_on) {
+                || token->getType() != SqlSQL2TokenTypes::SQL2RW_on) {
                 throw ParseException("Expected ON in join condition", specToken);
             }
             token = token->getNextSibling();
              if (!token.get()
-               || token->getType() != SqlSQL2TokenTypes::OR_OP) {
+                 || token->getType() != SqlSQL2TokenTypes::OR_OP) {
                 throw ParseException("Expected OR_OP in join condition", specToken);
             }
             bt = _bFactory.newOrTerm(token);
@@ -490,9 +490,11 @@ private:
     /// ;
     std::shared_ptr<query::ColumnRef> _processColumn(RefAST sib) const {
         if (!sib.get()) {
-            throw ParseException("NULL column node", sib); }
+            throw ParseException("NULL column node", sib);
+        }
         if (sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
-            throw ParseException("Bad column node for USING", sib); }
+            throw ParseException("Bad column node for USING", sib);
+        }
         std::shared_ptr<query::ColumnRef> c =
                 std::make_shared<query::ColumnRef>("", "", tokenText(sib));
         return c;
