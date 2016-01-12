@@ -1,0 +1,2 @@
+CREATE NODE worker1 type=worker port=5012 host=fjammes-qserv-2;
+CREATE NODE worker2 type=worker port=5012 host=fjammes-qserv-3;
