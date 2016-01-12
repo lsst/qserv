@@ -72,7 +72,7 @@ LocalInfile::LocalInfile(char const* filename,
 }
 
 LocalInfile::~LocalInfile() {
-    if(_buffer) {
+    if (_buffer) {
         delete[] _buffer;
     }
 }
@@ -82,8 +82,8 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
     // Read into *buf
     unsigned copySize = bufLen;
     unsigned copied = 0;
-    if(_leftoverSize) { // Try the leftovers first
-        if(copySize > _leftoverSize) {
+    if (_leftoverSize) { // Try the leftovers first
+        if (copySize > _leftoverSize) {
             copySize = _leftoverSize;
         }
         ::memcpy(buf, _leftover, copySize);
@@ -93,15 +93,15 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
         _leftover += copySize;
         _leftoverSize -= copySize;
     }
-    if(bufLen > 0) { // continue?
+    if (bufLen > 0) { // continue?
         // Leftover couldn't satisfy bufLen, so it's empty.
         // Re-fill the buffer.
 
         unsigned fetchSize = _rowBuffer->fetch(_buffer, _bufferSize);
-        if(fetchSize == 0) {
+        if (fetchSize == 0) {
             return copied;
         }
-        if(fetchSize > bufLen) { // Fetched more than the buffer
+        if (fetchSize > bufLen) { // Fetched more than the buffer
             copySize = bufLen;
         } else {
             copySize = fetchSize;
@@ -119,7 +119,7 @@ int LocalInfile::getError(char* buf, unsigned int bufLen) {
     /// mysql docs indicate that this is called only when an init() or
     /// read() fails.
     char const initFailedMsg[] = "Failure initializing LocalInfile";
-    if(!isValid()) {
+    if (!isValid()) {
         ::strncpy(buf, initFailedMsg, bufLen);
         return -1;
     }
@@ -140,7 +140,7 @@ public:
     }
 
     void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> rb) {
-        if(get(s)) {
+        if (get(s)) {
             throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
         }
         _set(s, rb);//RowBuffer::newResRowBuffer(result));
@@ -149,7 +149,7 @@ public:
     std::shared_ptr<RowBuffer> get(std::string const& s) {
         std::lock_guard<std::mutex> lock(_mapMutex);
         RowBufferMap::iterator i = _map.find(s);
-        if(i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
+        if (i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
         return i->second;
     }
 
@@ -220,7 +220,7 @@ int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *
     assert(rb);
     LocalInfile* lf = new LocalInfile(filename, rb);
     *ptr = lf;
-    if(!lf->isValid()) {
+    if (!lf->isValid()) {
         return 1;
     }
     return 0;

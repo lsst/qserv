@@ -83,7 +83,7 @@ private:
     void _makeRecord(query::ValueExpr const& e) {
         std::string origAlias = e.getAlias();
 
-        if(!e.hasAggregation()) {
+        if (!e.hasAggregation()) {
             // Compute aliases as necessary to protect select list
             // elements so that result tables can be dumped and the
             // columns can be re-referenced in merge queries.
@@ -91,14 +91,14 @@ private:
             // If there is no user alias, the expression is unprotected
             // * cannot be protected--can't alias a set of columns
             // simple column names are already legal column names
-            if(origAlias.empty() && !e.isStar() && !e.isColumnRef()) {
+            if (origAlias.empty() && !e.isStar() && !e.isColumnRef()) {
                     interName = aMgr.getAggName("PASS");
             }
             query::ValueExprPtr par(e.clone());
             par->setAlias(interName);
             pList.push_back(par);
 
-            if(!interName.empty()) {
+            if (!interName.empty()) {
                 query::ValueExprPtr mer = newExprFromAlias(interName);
                 mList.push_back(mer);
                 mer->setAlias(origAlias);
@@ -120,17 +120,17 @@ private:
         for(query::ValueExpr::FactorOpVector::const_iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
-            if(newFactor->getType() != query::ValueFactor::AGGFUNC) {
+            if (newFactor->getType() != query::ValueFactor::AGGFUNC) {
                 pList.push_back(query::ValueExpr::newSimple(newFactor));
             } else {
                 query::AggRecord r;
                 r.orig = newFactor;
-                if(!newFactor->getFuncExpr()) {
+                if (!newFactor->getFuncExpr()) {
                     throw std::logic_error("Missing FuncExpr in AggRecord");
                 }
                 query::AggRecord::Ptr p =
                     aMgr.applyOp(newFactor->getFuncExpr()->name, *newFactor);
-                if(!p) {
+                if (!p) {
                     throw std::logic_error("Couldn't process AggRecord");
                 }
                 pList.insert(pList.end(), p->parallel.begin(), p->parallel.end());
@@ -222,7 +222,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     query::SelectList& mList = plan.stmtMerge.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
-    if(!vlist) {
+    if (!vlist) {
         throw std::invalid_argument("No select list in original SelectStmt");
     }
 
@@ -240,7 +240,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     mList.renderTo(qt);
     // Also need to operate on GROUP BY.
     // update context.
-    if(plan.stmtOriginal.getDistinct() || m.hasAggregate()) {
+    if (plan.stmtOriginal.getDistinct() || m.hasAggregate()) {
         context.needsMerge = true;
     }
 
@@ -250,14 +250,14 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
         parallel_query != end; ++parallel_query) {
 
         // Strip ORDER BY from parallel queries if merging.
-        if(context.needsMerge && not plan.stmtOriginal.hasLimit()) {
+        if (context.needsMerge && not plan.stmtOriginal.hasLimit()) {
             (*parallel_query)->setOrderBy(_nullptr);
         }
 
         // Deep-copy select list of first parallel query to all other parallel queries
         // i.e. make the select lists of other statements in the parallel
         // portion the same.
-        if(parallel_query != first) {
+        if (parallel_query != first) {
             (*parallel_query)->setSelectList(pList.clone());
         }
     }

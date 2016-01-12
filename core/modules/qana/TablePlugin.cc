@@ -113,14 +113,14 @@ public:
         : context(c), firstDb(firstDb_), firstTable(firstTable_)
         {}
     void operator()(query::TableRef::Ptr t) {
-        if(t.get()) { t->apply(*this); }
+        if (t.get()) { t->apply(*this); }
     }
     void operator()(query::TableRef& t) {
         std::string table = t.getTable();
-        if(table.empty()) { throw std::logic_error("No table in TableRef"); }
-        if(t.getDb().empty()) { t.setDb(context.defaultDb); }
-        if(firstDb.empty()) { firstDb = t.getDb(); }
-        if(firstTable.empty()) { firstTable = table; }
+        if (table.empty()) { throw std::logic_error("No table in TableRef"); }
+        if (t.getDb().empty()) { t.setDb(context.defaultDb); }
+        if (firstDb.empty()) { firstDb = t.getDb(); }
+        if (firstTable.empty()) { firstTable = table; }
     }
     query::QueryContext const& context;
     std::string& firstDb;
@@ -132,12 +132,12 @@ class addAlias : public query::TableRef::Func {
 public:
     addAlias(G g, A a) : _generate(g), _addMap(a) {}
     void operator()(query::TableRef::Ptr t) {
-        if(t.get()) { t->apply(*this); }
+        if (t.get()) { t->apply(*this); }
     }
     void operator()(query::TableRef& t) {
         // If no alias, then add one.
         std::string alias = t.getAlias();
-        if(alias.empty()) {
+        if (alias.empty()) {
             alias = _generate();
             t.setAlias(alias);
         }
@@ -163,14 +163,14 @@ public:
         _defaultDb(db), _tableAliasReverse(r) {}
 
     void operator()(query::ValueExprPtr& vep) {
-        if(!vep.get()) {
+        if (!vep.get()) {
             return;
         }
         // For each factor in the expr, patch for aliasing:
         query::ValueExpr::FactorOpVector& factorOps = vep->getFactorOps();
         for(query::ValueExpr::FactorOpVector::iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
-            if(!i->factor) {
+            if (!i->factor) {
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
             query::ValueFactor& t = *i->factor;
@@ -200,7 +200,7 @@ public:
 private:
     void _patchColumnRef(query::ColumnRef& ref) {
         std::string newAlias = _getAlias(ref.db, ref.table);
-        if(newAlias.empty()) { return; } //  Ignore if no replacement
+        if (newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
 
         // Eliminate db. Replace table with aliased table.
@@ -217,7 +217,7 @@ private:
         // TODO: No support for <db>.<table>.* in framework
         // Only <table>.* is supported.
         std::string newAlias = _getAlias("", vt.getTableStar());
-        if(newAlias.empty()) { return; } //  Ignore if no replacement
+        if (newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
         else { vt.setTableStar(newAlias); }
     }
@@ -330,28 +330,28 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     std::for_each(exprList.begin(), exprList.end(), fixExprAlias(
         context.defaultDb, context.tableAliasReverses));
     // where clause,
-    if(stmt.hasWhereClause()) {
+    if (stmt.hasWhereClause()) {
         query::ValueExprPtrVector e;
         stmt.getWhereClause().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // group by clause,
-    if(stmt.hasGroupBy()) {
+    if (stmt.hasGroupBy()) {
         query::ValueExprPtrVector e;
         stmt.getGroupBy().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // having clause,
-    if(stmt.hasHaving()) {
+    if (stmt.hasHaving()) {
         query::ValueExprPtrVector e;
         stmt.getHaving().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // order by clause,
-    if(stmt.hasOrderBy()) {
+    if (stmt.hasOrderBy()) {
         query::ValueExprPtrVector e;
         stmt.getOrderBy().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(

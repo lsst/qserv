@@ -40,7 +40,7 @@ void
 populateErrorObject(lsst::qserv::mysql::MySqlConnection& m,
                     lsst::qserv::sql::SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
-    if(mysql == nullptr) {
+    if (mysql == nullptr) {
         o.setErrNo(-999);
         o.addErrMsg("Error connecting to mysql with config:"
                     + m.getConfig().asString());
@@ -60,7 +60,7 @@ namespace sql {
 ////////////////////////////////////////////////////////////////////////
 SqlResultIter::SqlResultIter(mysql::MySqlConfig const& sqlConfig,
                              std::string const& query) {
-    if(!_setup(sqlConfig, query)) { return; }
+    if (!_setup(sqlConfig, query)) { return; }
     // if not error, prime the iterator
     ++(*this);
 }
@@ -68,13 +68,13 @@ SqlResultIter::SqlResultIter(mysql::MySqlConfig const& sqlConfig,
 SqlResultIter&
 SqlResultIter::operator++() {
     MYSQL_RES* result = _connection->getResult();
-    if(!_columnCount) {
+    if (!_columnCount) {
         _columnCount = mysql_num_fields(result);
         _current.resize(_columnCount);
     }
 
     MYSQL_ROW row = mysql_fetch_row(result);
-    if(!row) {
+    if (!row) {
         _connection->freeResult();
         return *this;
     }
@@ -93,11 +93,11 @@ SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
                       std::string const& query) {
     _columnCount = 0;
     _connection = std::make_shared<mysql::MySqlConnection>(sqlConfig);
-    if(!_connection->connect()) {
+    if (!_connection->connect()) {
         populateErrorObject(*_connection, _errObj);
         return false;
     }
-    if(!_connection->queryUnbuffered(query)) {
+    if (!_connection->queryUnbuffered(query)) {
         populateErrorObject(*_connection, _errObj);
         return false;
     }
@@ -127,8 +127,8 @@ SqlConnection::~SqlConnection() {
 bool
 SqlConnection::connectToDb(SqlErrorObject& errObj) {
     assert(_connection.get());
-    if(_connection->connected()) return true;
-    if(!_connection->connect()) {
+    if (_connection->connected()) return true;
+    if (!_connection->connect()) {
         _setErrorObject(errObj);
         return false;
     } else {
@@ -146,7 +146,7 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
         return errObj.addErrMsg(std::string("Can't switch to db ")
                                  + dbName + " (it does not exist).");
     }
-    if(!_connection->selectDb(dbName)) {
+    if (!_connection->selectDb(dbName)) {
         _setErrorObject(errObj, "Problem selecting db " + dbName + ".");
         return false;
     }

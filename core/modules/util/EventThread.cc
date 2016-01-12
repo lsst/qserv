@@ -99,7 +99,7 @@ PoolEventThread::Ptr ThreadPool::release(PoolEventThread *thrd) {
     PoolEventThread::Ptr thrdPtr;
     {
         std::lock_guard<std::mutex> lock(_poolMutex);
-        auto iter = std::find_if(_pool.begin(), _pool.end(), func);
+        auto iter = std::find_if (_pool.begin(), _pool.end(), func);
         if (iter == _pool.end()) {
             LOGS(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
         } else {

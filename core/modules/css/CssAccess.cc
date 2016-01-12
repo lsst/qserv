@@ -114,7 +114,7 @@ CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
         } else if (iterFile != config.end()) {
             // read data from file
             std::ifstream f(iterFile->second);
-            if(f.fail()) {
+            if (f.fail()) {
                 LOGS(_log, LOG_LVL_DEBUG, "failed to open data file " << iterFile->second);
                 throw ConfigError("failed to open data file " + iterFile->second);
             }

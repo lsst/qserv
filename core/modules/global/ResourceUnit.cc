@@ -83,7 +83,7 @@ ResourceUnit::path() const {
     case DBCHUNK: // For now, DBCHUNK is handled the same as CQUERY
     case CQUERY:
         ss << _pathSep << _db;
-        if(_chunk != -1) {
+        if (_chunk != -1) {
             ss << _pathSep << _chunk;
         }
         break;
@@ -103,7 +103,7 @@ ResourceUnit::path() const {
 std::string
 ResourceUnit::var(std::string const& key) const {
     VarMap::const_iterator ci = _vars.find(key);
-    if(ci != _vars.end()) {
+    if (ci != _vars.end()) {
         return ci->second;
     }
     return std::string();
@@ -141,7 +141,7 @@ ResourceUnit::setAsCquery(std::string const& db, int chunk) {
 }
 
 bool ResourceUnit::_markGarbageIfDone(Tokenizer& t) {
-    if(t.done()) {
+    if (t.done()) {
         _unitType = GARBAGE;
         return true;
     }
@@ -152,50 +152,50 @@ void
 ResourceUnit::_setFromPath(std::string const& path) {
     std::string rTypeString;
     Tokenizer t(path, _pathSep);
-    if(!t.token().empty()) { // Expect leading separator (should start with /)
+    if (!t.token().empty()) { // Expect leading separator (should start with /)
         _unitType = UNKNOWN;
         return;
     }
-    if(_markGarbageIfDone(t)) { return; } // Consider using GOTO structure.
+    if (_markGarbageIfDone(t)) { return; } // Consider using GOTO structure.
     t.next();
     rTypeString = t.token();
-    if(rTypeString == prefix(DBCHUNK)) {
+    if (rTypeString == prefix(DBCHUNK)) {
         // XrdSsi query
-        if(_markGarbageIfDone(t)) { return; }
+        if (_markGarbageIfDone(t)) { return; }
         _unitType = DBCHUNK;
         t.next();
         _db = t.token();
-        if(_db.empty()) {
+        if (_db.empty()) {
             _unitType = GARBAGE;
             return;
         }
-        if(_markGarbageIfDone(t)) { return; }
+        if (_markGarbageIfDone(t)) { return; }
         t.next();
-        if(t.token().empty()) { _unitType = GARBAGE; return; }
+        if (t.token().empty()) { _unitType = GARBAGE; return; }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
-    } else if(rTypeString == prefix(CQUERY)) {
+    } else if (rTypeString == prefix(CQUERY)) {
         // Import as chunk query
         _unitType = CQUERY;
-        if(_markGarbageIfDone(t)) { return; }
+        if (_markGarbageIfDone(t)) { return; }
         t.next();
         _db = t.token();
-        if(_db.empty()) {
+        if (_db.empty()) {
             _unitType = GARBAGE;
             return;
         }
-        if(_markGarbageIfDone(t)) { return; }
+        if (_markGarbageIfDone(t)) { return; }
         t.next();
-        if(t.token().empty()) { _unitType = GARBAGE; return; }
+        if (t.token().empty()) { _unitType = GARBAGE; return; }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
 
-    } else if(rTypeString == prefix(RESULT)) {
+    } else if (rTypeString == prefix(RESULT)) {
         _unitType = RESULT;
-        if(_markGarbageIfDone(t)) { return; }
+        if (_markGarbageIfDone(t)) { return; }
         t.next();
         _hashName = t.token();
-        if(_hashName.empty()) { _unitType = GARBAGE; return; }
+        if (_hashName.empty()) { _unitType = GARBAGE; return; }
     } else {
         _unitType = GARBAGE;
     }
@@ -209,7 +209,7 @@ ResourceUnit::_ingestLeafAndKeys(std::string const& leafPlusKeys) {
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
 
-    if(start == std::string::npos) { // No keys found
+    if (start == std::string::npos) { // No keys found
         return;
     }
     ++start;
@@ -225,7 +225,7 @@ void
 ResourceUnit::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;
     equalsPos = keyStr.find_first_of('=');
-    if(equalsPos == std::string::npos) { // No = clause, value-less key.
+    if (equalsPos == std::string::npos) { // No = clause, value-less key.
         _vars[keyStr] = std::string(); // empty insert.
     } else {
         _vars[keyStr.substr(0,equalsPos)] = keyStr.substr(equalsPos+1);

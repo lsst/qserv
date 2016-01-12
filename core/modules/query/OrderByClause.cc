@@ -87,12 +87,12 @@ void
 OrderByTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, true);
     r(_expr);
-    if(!_collate.empty()) {
+    if (!_collate.empty()) {
         qt.append("COLLATE");
         qt.append(_collate);
     }
     char const* orderStr = getOrderStr(_order);
-    if(orderStr && orderStr[0] != '\0') {
+    if (orderStr && orderStr[0] != '\0') {
         qt.append(orderStr);
     }
 }
@@ -106,9 +106,9 @@ std::string OrderByTerm::toString() const {
 std::ostream&
 operator<<(std::ostream& os, OrderByTerm const& t) {
     os << *(t._expr);
-    if(!t._collate.empty()) os << " COLLATE " << t._collate;
+    if (!t._collate.empty()) os << " COLLATE " << t._collate;
     char const* orderStr = getOrderStr(t._order);
-    if(orderStr && orderStr[0] != '\0') {
+    if (orderStr && orderStr[0] != '\0') {
         os << " " << orderStr;
     }
     return os;
@@ -141,7 +141,7 @@ std::string OrderByClause::toString() const {
 
 void
 OrderByClause::renderTo(QueryTemplate& qt) const {
-    if(_terms.get() && _terms->size() > 0) {
+    if (_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
         for(OrderByTermVector::const_iterator term = _terms->begin(), e = _terms->end(); term != e; ++term) {
             LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term->toString());

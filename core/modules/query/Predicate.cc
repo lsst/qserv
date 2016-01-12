@@ -46,12 +46,12 @@ namespace qserv {
 namespace query {
 
 void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) {
-    if(left) { left->findColumnRefs(vector); }
-    if(right) { right->findColumnRefs(vector); }
+    if (left) { left->findColumnRefs(vector); }
+    if (right) { right->findColumnRefs(vector); }
 }
 
 void InPredicate::findColumnRefs(ColumnRef::Vector& vector) {
-    if(value) { value->findColumnRefs(vector); }
+    if (value) { value->findColumnRefs(vector); }
     std::vector<std::shared_ptr<ValueExpr> >::iterator i;
     for(i=cands.begin(); i != cands.end(); ++i) {
         (**i).findColumnRefs(vector);
@@ -59,18 +59,18 @@ void InPredicate::findColumnRefs(ColumnRef::Vector& vector) {
 }
 
 void BetweenPredicate::findColumnRefs(ColumnRef::Vector& vector) {
-    if(value) { value->findColumnRefs(vector); }
-    if(minValue) { minValue->findColumnRefs(vector); }
-    if(maxValue) { maxValue->findColumnRefs(vector); }
+    if (value) { value->findColumnRefs(vector); }
+    if (minValue) { minValue->findColumnRefs(vector); }
+    if (maxValue) { maxValue->findColumnRefs(vector); }
 }
 
 void LikePredicate::findColumnRefs(ColumnRef::Vector& vector) {
-    if(value) { value->findColumnRefs(vector); }
-    if(charValue) { charValue->findColumnRefs(vector); }
+    if (value) { value->findColumnRefs(vector); }
+    if (charValue) { charValue->findColumnRefs(vector); }
 }
 
 void NullPredicate::findColumnRefs(ColumnRef::Vector& vector) {
-    if(value) { value->findColumnRefs(vector); }
+    if (value) { value->findColumnRefs(vector); }
 }
 
 std::ostream& CompPredicate::putStream(std::ostream& os) const {
@@ -135,7 +135,7 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
     qt.append("IS");
-    if(hasNot) { qt.append("NOT"); }
+    if (hasNot) { qt.append("NOT"); }
     qt.append("NULL");
 }
 
@@ -167,13 +167,13 @@ void NullPredicate::findValueExprs(ValueExprPtrVector& vector) {
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
     case '<':
-        if(op[1] == '\0') { return SqlSQL2Tokens::LESS_THAN_OP; }
-        else if(op[1] == '>') { return SqlSQL2Tokens::NOT_EQUALS_OP; }
-        else if(op[1] == '=') { return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP; }
+        if (op[1] == '\0') { return SqlSQL2Tokens::LESS_THAN_OP; }
+        else if (op[1] == '>') { return SqlSQL2Tokens::NOT_EQUALS_OP; }
+        else if (op[1] == '=') { return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP; }
         else { throw std::invalid_argument("Invalid op string <?"); }
     case '>':
-        if(op[1] == '\0') { return SqlSQL2Tokens::GREATER_THAN_OP; }
-        else if(op[1] == '=') { return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP; }
+        if (op[1] == '\0') { return SqlSQL2Tokens::GREATER_THAN_OP; }
+        else if (op[1] == '=') { return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP; }
         else { throw std::invalid_argument("Invalid op string >?"); }
     case '=':
         return SqlSQL2Tokens::EQUALS_OP;
@@ -184,9 +184,9 @@ int CompPredicate::lookupOp(char const* op) {
 
 BoolFactorTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
-    if(left) p->left = left->clone();
+    if (left) p->left = left->clone();
     p->op = op;
-    if(right) p->right = right->clone();
+    if (right) p->right = right->clone();
     return BoolFactorTerm::Ptr(p);
 }
 
@@ -205,7 +205,7 @@ namespace {
 
 BoolFactorTerm::Ptr InPredicate::clone() const {
     InPredicate::Ptr p  = std::make_shared<InPredicate>();
-    if(value) p->value = value->clone();
+    if (value) p->value = value->clone();
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
                    valueExprCopy());
@@ -214,22 +214,22 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
-    if(value) p->value = value->clone();
-    if(minValue) p->minValue = minValue->clone();
-    if(maxValue) p->maxValue = maxValue->clone();
+    if (value) p->value = value->clone();
+    if (minValue) p->minValue = minValue->clone();
+    if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
 }
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
     LikePredicate::Ptr p = std::make_shared<LikePredicate>();
-    if(value) p->value = value->clone();
-    if(charValue) p->charValue = charValue->clone();
+    if (value) p->value = value->clone();
+    if (charValue) p->charValue = charValue->clone();
     return BoolFactorTerm::Ptr(p);
 }
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     NullPredicate::Ptr p = std::make_shared<NullPredicate>();
-    if(value) p->value = value->clone();
+    if (value) p->value = value->clone();
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }

@@ -54,9 +54,9 @@ std::string
 makeUrl(char const* hostport, char const* typeStr,
         std::string const& s, char mode) {
     // typeStr is either "query" or "result"
-    if(!hostport) {
+    if (!hostport) {
         hostport = ::getenv("QSERV_XRD");
-        if(!hostport) {
+        if (!hostport) {
             // use local host name if nothing is specified
             hostport = "localhost:1094";
         }
@@ -71,9 +71,9 @@ makeUrl(char const* hostport, char const* typeStr,
     std::string user("qsmaster");
     std::string tstr;
     std::string ret;
-    if(typeStr) tstr = typeStr;
+    if (typeStr) tstr = typeStr;
 
-    if(mode != '\0') {
+    if (mode != '\0') {
         user += ".";
         user += mode;
     }
@@ -84,7 +84,7 @@ makeUrl(char const* hostport, char const* typeStr,
     ret += "@";
     ret += hostport;
     ret += "/";
-    if(typeStr) {
+    if (typeStr) {
         ret += "/";
         ret += typeStr;
         ret += "/";

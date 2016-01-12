@@ -50,20 +50,20 @@ MmapFile::newMap(std::string const& filename, bool read, bool write) {
     std::shared_ptr<MmapFile> m(new MmapFile());
     assert(m.get());
     m->_init(filename, read, write);
-    if(!m->isValid()) {
+    if (!m->isValid()) {
         m.reset();
     }
     return m;
 }
 
 MmapFile::~MmapFile() {
-    if(_buf) {
-        if(-1 == ::munmap(_buf, _fstat.st_size)) {
+    if (_buf) {
+        if (-1 == ::munmap(_buf, _fstat.st_size)) {
         }
         _buf = 0;
     }
-    if(_fd > 0) {
-        if(-1 == close(_fd)) {
+    if (_fd > 0) {
+        if (-1 == close(_fd)) {
         }
         _fd = 0;
     }
@@ -75,9 +75,9 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
     int openFlags = 0;
     int mapProt = 0;
 
-    if(!(read_ || write_)) { return; } // refuse to init for no access
+    if (!(read_ || write_)) { return; } // refuse to init for no access
 
-    if(read_ && write_) {
+    if (read_ && write_) {
         openFlags |= O_RDWR;
         mapProt |= PROT_READ | PROT_WRITE;
     } else {
@@ -87,10 +87,10 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
         mapProt |= write_ ? PROT_WRITE : 0;
     }
     _fd = ::open(_filename.c_str(), openFlags);
-    if(_fd == -1) {
+    if (_fd == -1) {
         _fd = 0;
     }
-    if((-1 == ::fstat(_fd, &_fstat)) || // get filesize
+    if ((-1 == ::fstat(_fd, &_fstat)) || // get filesize
        (MAP_FAILED == (_buf = ::mmap(0, _fstat.st_size,  // map file
                                      mapProt, MAP_SHARED, _fd, 0))
         )

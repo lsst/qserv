@@ -66,9 +66,9 @@ flattenScanTables(StringVector& outputList,
     outputList.clear();
     for(StringPairVector::const_iterator i=scanTables.begin(),
         e=scanTables.end() ; i != e; ++i) {
-        if(db.empty()) {
+        if (db.empty()) {
             db = i->first;
-        } else if(db != i->first) {
+        } else if (db != i->first) {
             throw QueryProcessingBug("Multiple dbs prohibited");
         }
         outputList.push_back(db + "." + i->second);
@@ -118,7 +118,7 @@ std::shared_ptr<proto::TaskMsg>
 TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
                                std::string const& chunkResultName) {
     std::string resultTable = _resultTable;
-    if(!chunkResultName.empty()) { resultTable = chunkResultName; }
+    if (!chunkResultName.empty()) { resultTable = chunkResultName; }
     _taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
     _taskMsg->set_session(_session);
@@ -136,7 +136,7 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
     _taskMsg->set_chunkid(s.chunkId);
     // per-fragment
     // TODO refactor to simplify
-    if(s.nextFragment.get()) {
+    if (s.nextFragment.get()) {
         ChunkQuerySpec const* sPtr = &s;
         while(sPtr) {
             LOGS(_log, LOG_LVL_DEBUG, "nextFragment");

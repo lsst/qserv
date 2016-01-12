@@ -54,7 +54,7 @@ namespace mysql {
 ////////////////////////////////////////////////////////////////////////
 inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
     unsigned rowSize = r.minRowSize();
-    if(lastRowSize < rowSize) {
+    if (lastRowSize < rowSize) {
         return rowSize;
     }
     return lastRowSize;
@@ -95,7 +95,7 @@ inline int maxColFootprint(int columnLength, std::string const& sep) {
 
 inline int addColumn(char* cursor, char* colData, int colSize) {
     int added = 0;
-    if(colData) {
+    if (colData) {
         // Sanitize field.
         // Don't need mysql_real_escape_string, because we can
         // use the simple LOAD DATA INFILE escaping rules
@@ -141,10 +141,10 @@ ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
 unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetchSize = 0;
     unsigned estRowSize = 0;
-    if(bufLen <= 0) {
+    if (bufLen <= 0) {
         throw LocalInfileError("ResRowBuffer::fetch Can't fetch non-positive bytes");
     }
-    if(_useLargeRow) {
+    if (_useLargeRow) {
         return _fetchFromLargeRow(buffer, bufLen);
     }
     // Loop for full rows until buffer is full, or we've detected
@@ -153,11 +153,11 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
         // Try to fetch to fill the buffer.
         Row r;
         bool fetchOk = _fetchRow(r);
-        if(!fetchOk) {
+        if (!fetchOk) {
             return fetchSize;
         }
         estRowSize = updateEstRowSize(estRowSize, r);
-        if(estRowSize > static_cast<unsigned>(largeRowThreshold)) {
+        if (estRowSize > static_cast<unsigned>(largeRowThreshold)) {
             _initializeLargeRow(r);
             unsigned largeFetchSize = _fetchFromLargeRow(buffer + fetchSize,
                                                          bufLen - fetchSize);
@@ -166,7 +166,7 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
             unsigned rowFetch = _addRow(r,
                                         buffer + fetchSize,
                                         bufLen - fetchSize);
-            if(!rowFetch) {
+            if (!rowFetch) {
                 break;
             }
             fetchSize += rowFetch;
@@ -186,14 +186,14 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
     // null-terminator for mysql_real_escape_string
     unsigned allocRowSize
         = (2*r.minRowSize()) + ((r.numFields-1) * sepSize) + 1;
-    if(allocRowSize > static_cast<unsigned>(remaining)) {
+    if (allocRowSize > static_cast<unsigned>(remaining)) {
         // Make buffer size in LocalInfile larger than largest
         // row.
         // largeRowThreshold should prevent this.
         throw LocalInfileError("ResRowBuffer::_addRow: Buffer too small for row");
     }
     for(int i=0; i < r.numFields; ++i) {
-        if(i) {  // add separator
+        if (i) {  // add separator
             cursor += addString(cursor, _sep);
         }
         cursor +=  addColumn(cursor, r.row[i], r.lengths[i]);
@@ -205,7 +205,7 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
 /// Fetch a row from _result and fill the caller-supplied Row.
 bool ResRowBuffer::_fetchRow(Row& r) {
     MYSQL_ROW mysqlRow = mysql_fetch_row(_result);
-    if(!mysqlRow) {
+    if (!mysqlRow) {
         return false;
     }
     r.row = mysqlRow;
@@ -237,8 +237,8 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
         cursor += addLength;
         remaining -= addLength;
         ++_fieldOffset;
-        if(_fieldOffset >= _numFields) {
-            if(!_fetchRow(_largeRow)) {
+        if (_fieldOffset >= _numFields) {
+            if (!_fetchRow(_largeRow)) {
                 break;
                 // no more rows, return what we have
             }
@@ -246,7 +246,7 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
         }
         // FIXME: unfinished
     }
-    if(cursor == buffer) { // Were we able to put anything in?
+    if (cursor == buffer) { // Were we able to put anything in?
         throw LocalInfileError("ResRowBuffer::_fetchFromLargeRow: Buffer too small for single column!");
     }
     return bufLen - remaining;

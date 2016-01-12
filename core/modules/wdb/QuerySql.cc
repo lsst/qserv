@@ -100,7 +100,7 @@ QuerySql::QuerySql(std::string const& db,
                    std::string const& defaultResultTable) {
 
     std::string resultTable;
-    if(f.has_resulttable()) { resultTable = f.resulttable(); }
+    if (f.has_resulttable()) { resultTable = f.resulttable(); }
     else { resultTable = defaultResultTable; }
     assert(!resultTable.empty());
 
@@ -108,7 +108,7 @@ QuerySql::QuerySql(std::string const& db,
     // Obsolete when results marshalling is implemented
     std::stringstream ss;
     for(int i=0; i < f.query_size(); ++i) {
-        if(needCreate) {
+        if (needCreate) {
             ss << "CREATE TABLE " + resultTable + " ";
             needCreate = false;
         } else {
@@ -120,7 +120,7 @@ QuerySql::QuerySql(std::string const& db,
     }
 
     std::string table("unknown");
-    if(f.has_subchunks()) {
+    if (f.has_subchunks()) {
         proto::TaskMsg_Subchunk const& sc = f.subchunks();
         for(int i=0; i < sc.table_size(); ++i) {
 //            std::cout << "Building subchunks for table=" << sc.table(i) << std::endl;

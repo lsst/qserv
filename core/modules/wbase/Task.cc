@@ -55,7 +55,7 @@ dump(std::ostream& os,
     for(int i=0; i < f.query_size(); ++i) {
         os << f.query(i) << ",";
     }
-    if(f.has_subchunks()) {
+    if (f.has_subchunks()) {
         os << " sc=";
         for(int i=0; i < f.subchunks().id_size(); ++i) {
             os << f.subchunks().id(i) << ",";
@@ -73,16 +73,16 @@ namespace wbase {
 
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
-    if(!x || !y) { return false; }
-    if((!x->msg) || (!y->msg)) { return false; }
+    if (!x || !y) { return false; }
+    if ((!x->msg) || (!y->msg)) { return false; }
     return x->msg->has_chunkid() && y->msg->has_chunkid()
         && x->msg->chunkid()  == y->msg->chunkid();
 }
 
 // Task::PtrChunkIdGreater functor
 bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
-    if(!x || !y) { return false; }
-    if((!x->msg) || (!y->msg)) { return false; }
+    if (!x || !y) { return false; }
+    if ((!x->msg) || (!y->msg)) { return false; }
     return x->msg->chunkid()  > y->msg->chunkid();
 }
 
@@ -101,7 +101,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc} {
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
-    if(t->has_user()) {
+    if (t->has_user()) {
         user = t->user();
     } else {
         user = defaultUser;

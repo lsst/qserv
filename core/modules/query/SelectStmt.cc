@@ -62,7 +62,7 @@ template <typename T>
 inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
                            char const prefix[],
                            std::shared_ptr<T> t) {
-    if(t.get()) {
+    if (t.get()) {
         qt.append(prefix);
         t->renderTo(qt);
     }
@@ -70,12 +70,12 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 template <typename T>
 inline void
 cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if(source.get()) dest = source->clone();
+    if (source.get()) dest = source->clone();
 }
 template <typename T>
 inline void
 copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if(source.get()) dest = source->copySyntax();
+    if (source.get()) dest = source->copySyntax();
 }
 } // namespace
 
@@ -94,7 +94,7 @@ QueryTemplate
 SelectStmt::getQueryTemplate() const {
     QueryTemplate qt;
     std::string selectQuant = "SELECT";
-    if(_hasDistinct) {
+    if (_hasDistinct) {
         selectQuant += " DISTINCT";
     }
     renderTemplate(qt, selectQuant.c_str(), _selectList);
@@ -104,7 +104,7 @@ SelectStmt::getQueryTemplate() const {
     renderTemplate(qt, "HAVING", _having);
     renderTemplate(qt, "ORDER BY", _orderBy);
 
-    if(_limit != -1) {
+    if (_limit != -1) {
         std::stringstream ss;
         ss << _limit;
         qt.append("LIMIT");
@@ -179,14 +179,14 @@ namespace {
 
 template <typename OS, typename T>
 inline OS& print(OS& os, char const label[], std::shared_ptr<T> t) {
-    if(t.get()) {
+    if (t.get()) {
         os << label << ": " << *t << std::endl;
     }
     return os;
 }
 template <typename OS, typename T>
 inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
-    if(t.get()) {
+    if (t.get()) {
         os << label << " " << t->getGenerated() << std::endl;
     }
     return os;
@@ -213,14 +213,14 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
 
     nil_string_helper(os, selectStmt._selectList);
     nil_string_helper(os, selectStmt._fromList);
-    if(selectStmt._hasDistinct) {
+    if (selectStmt._hasDistinct) {
         os << "DISTINCT ";
     }
     nil_string_helper(os, selectStmt._whereClause);
     nil_string_helper(os, selectStmt._groupBy);
     nil_string_helper(os, selectStmt._having);
     nil_string_helper(os, selectStmt._orderBy);
-    if(selectStmt._limit != -1) {
+    if (selectStmt._limit != -1) {
         os << "LIMIT " << selectStmt._limit;
     }
     return os;

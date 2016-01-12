@@ -88,8 +88,8 @@ MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig)
 }
 
 MySqlConnection::~MySqlConnection() {
-    if(_mysql) {
-        if(_mysql_res) {
+    if (_mysql) {
+        if (_mysql_res) {
             MYSQL_ROW row;
             while((row = mysql_fetch_row(_mysql_res))); // Drain results.
             _mysql_res = nullptr;
@@ -119,10 +119,10 @@ MySqlConnection::queryUnbuffered(std::string const& query) {
         _interrupted = false;
     }
     rc = mysql_real_query(_mysql, query.c_str(), query.length());
-    if(rc) { return false; }
+    if (rc) { return false; }
     _mysql_res = mysql_use_result(_mysql);
     _isExecuting = false;
-    if(!_mysql_res) { return false; }
+    if (!_mysql_res) { return false; }
     return true;
 }
 
@@ -135,7 +135,7 @@ int
 MySqlConnection::cancel() {
     std::lock_guard<std::mutex> lock(_interruptMutex);
     int rc;
-    if(!_isExecuting || _interrupted) {
+    if (!_isExecuting || _interrupted) {
         // Should we log this?
         return -1; // No further action needed.
     }
@@ -151,7 +151,7 @@ MySqlConnection::cancel() {
     std::string const killSql = "KILL QUERY " + std::to_string(threadId);
     rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
     mysql_close(killMysql);
-    if(rc) {
+    if (rc) {
         return 2;
     }
     return 0;
@@ -159,7 +159,7 @@ MySqlConnection::cancel() {
 
 bool
 MySqlConnection::selectDb(std::string const& dbName) {
-    if(!dbName.empty() &&
+    if (!dbName.empty() &&
        mysql_select_db(_mysql, dbName.c_str())) {
         return false;
     }

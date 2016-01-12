@@ -91,11 +91,11 @@ public:
         Size remain = fSize;
         while(remain > 0) {
             Size frag = ::read(fd, buf.data(), remain);
-            if(frag < 0) {
+            if (frag < 0) {
                 std::cout << "ERROR reading from fd during "
                           << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;
-            } else if(frag == 0) {
+            } else if (frag == 0) {
                 std::cout << "ERROR unexpected 0==read() during "
                           << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;

@@ -43,13 +43,13 @@ namespace query {
 /// @return the concrete (db,table), based on current context.
 DbTablePair
 QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
-    if(!cr) { return DbTablePair(); }
+    if (!cr) { return DbTablePair(); }
 
     // If alias, retrieve real reference.
-    if(cr->db.empty() && !cr->table.empty()) {
+    if (cr->db.empty() && !cr->table.empty()) {
         DbTablePair concrete = tableAliases.get(cr->table);
-        if(!concrete.empty()) {
-            if(concrete.db.empty()) {
+        if (!concrete.empty()) {
+            if (concrete.db.empty()) {
                 concrete.db = defaultDb;
             }
             return concrete;
@@ -57,17 +57,17 @@ QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     }
     // Set default db and table.
     DbTablePair p;
-    if(cr->table.empty()) { // No db or table: choose first resolver pair
+    if (cr->table.empty()) { // No db or table: choose first resolver pair
         p = resolverTables[0];
         // TODO: We can be fancy and check the column name against the
         // schema for the entries on the resolverTables, and choose
         // the matching entry.
-    } else if(cr->db.empty()) { // Table, but not alias.
+    } else if (cr->db.empty()) { // Table, but not alias.
         // Match against resolver stack
         for(DbTableVector::const_iterator i=resolverTables.begin(),
                 e=resolverTables.end();
             i != e; ++i) {
-            if(i->table == cr->table) {
+            if (i->table == cr->table) {
                 p = *i;
                 break;
             }
@@ -76,7 +76,7 @@ QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     } else { // both table and db exist, so return them
         return DbTablePair(cr->db, cr->table);
     }
-    if(p.db.empty()) {
+    if (p.db.empty()) {
         // Fill partially-resolved empty db with user db context
         p.db = defaultDb;
     }

@@ -57,7 +57,7 @@ inline std::string makeCreateTable(std::string const& t) {
 inline std::string makeShowTables(std::string const& dbName=std::string()) {
     std::stringstream ss;
     ss <<  "SHOW TABLES ";
-    if(!dbName.empty()) { ss << "IN " << dbName; }
+    if (!dbName.empty()) { ss << "IN " << dbName; }
     return ss.str();
 }
 class createIntTable {

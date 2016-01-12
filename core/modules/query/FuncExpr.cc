@@ -75,7 +75,7 @@ void
 FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) {
     for(ValueExprPtrVector::iterator i=params.begin();
         i != params.end(); ++i) {
-        if(*i) {
+        if (*i) {
             (**i).findColumnRefs(outputRefs);
         }
     }
