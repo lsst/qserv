@@ -76,14 +76,14 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
 
     bool compareSubchunk(lsst::qserv::proto::TaskMsg_Subchunk const& s1,
                          lsst::qserv::proto::TaskMsg_Subchunk const& s2) {
-        if(s1.database() != s2.database()) { return false; }
-        if(s1.table_size() != s2.table_size()) { return false; }
+        if (s1.database() != s2.database()) { return false; }
+        if (s1.table_size() != s2.table_size()) { return false; }
         for(int i=0; i < s1.table_size(); ++i) {
-            if(s1.table(i) != s2.table(i)) return false;
+            if (s1.table(i) != s2.table(i)) return false;
         }
-        if(s1.id_size() != s2.id_size()) { return false; }
+        if (s1.id_size() != s2.id_size()) { return false; }
         for(int i=0; i < s1.id_size(); ++i) {
-            if(s1.id(i) != s2.id(i)) return false;
+            if (s1.id(i) != s2.id(i)) return false;
         }
         return true;
     }
@@ -91,17 +91,17 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
     bool compareFragment(lsst::qserv::proto::TaskMsg_Fragment const& f1,
                          lsst::qserv::proto::TaskMsg_Fragment const& f2) {
         bool qEqual = true;
-        if(f1.query_size() == f2.query_size()) {
+        if (f1.query_size() == f2.query_size()) {
             for(int i=0; i < f1.query_size(); ++i) {
-                if(f1.query(i) != f2.query(i)) return false;
+                if (f1.query(i) != f2.query(i)) return false;
             }
         } else { return false; }
         bool sEqual = true;
-        if(f1.has_subchunks()) {
-            if(f2.has_subchunks()) {
+        if (f1.has_subchunks()) {
+            if (f2.has_subchunks()) {
                 sEqual = sEqual && compareSubchunk(f1.subchunks(), f2.subchunks());
             } else { sEqual = false; }
-        } else if(f2.has_subchunks()) { sEqual = false; }
+        } else if (f2.has_subchunks()) { sEqual = false; }
         return qEqual && sEqual;
     }
 

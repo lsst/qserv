@@ -88,7 +88,7 @@ public:
     Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
         : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
         _chunkString = boost::lexical_cast<std::string>(s.chunkId);
-        if(!_subChunks.empty()) {
+        if (!_subChunks.empty()) {
             _subChunkString = boost::lexical_cast<std::string>(_subChunks.front());
         }
         _initMap(m);
@@ -108,11 +108,11 @@ public:
         Map::const_iterator i;
 
         // FIXME see if this works
-        //if(!e.isDynamic()) {return newE; }
+        //if (!e.isDynamic()) {return newE; }
 
         for(i=_map.begin(); i != _map.end(); ++i) {
             newE->s = replace(newE->s, i->pat, i->tgt);
-            if(i->param == QueryMapping::SUBCHUNK) {
+            if (i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,
                     // so we know to iterate over subchunks.
                     // Or... the plugins could signal that subchunks
@@ -149,7 +149,7 @@ private:
     }
     void _nextSubChunk() {
         _subChunks.pop_front();
-        if(_subChunks.empty()) return;
+        if (_subChunks.empty()) return;
         _subChunkString = boost::lexical_cast<std::string>(_subChunks.front());
     }
 
@@ -184,8 +184,8 @@ QueryMapping::update(QueryMapping const& m) {
     ParameterMap::const_iterator i;
     for(i=m._subs.begin(); i != m._subs.end(); ++i) {
         ParameterMap::const_iterator f = _subs.find(i->first);
-        if(f != _subs.end()) {
-            if(f->second != i->second) {
+        if (f != _subs.end()) {
+            if (f->second != i->second) {
                 throw std::logic_error("Conflict during update in QueryMapping");
                 // Not sure what to do.
                 // This is a big parse error, or a flaw in parsing logic.
@@ -201,7 +201,7 @@ bool
 QueryMapping::hasParameter(Parameter p) const {
     ParameterMap::const_iterator i;
     for(i=_subs.begin(); i != _subs.end(); ++i) {
-        if(i->second == p) return true;
+        if (i->second == p) return true;
     }
     return false;
 }

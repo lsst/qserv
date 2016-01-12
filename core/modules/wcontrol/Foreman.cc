@@ -80,7 +80,7 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
-        if(!msg.has_protocol() || msg.protocol() < resultProtocol) {
+        if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
             if (!task->getCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.

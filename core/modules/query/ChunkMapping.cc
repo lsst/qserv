@@ -61,7 +61,7 @@ ChunkMapping::getMapping(int chunk, int subChunk) {
         m.insert(MapValue(i->first, i->first + c));
         m.insert(MapValue(i->first + "_so", i->first + soc));
         m.insert(MapValue(i->first + "_fo", i->first + foc));
-        if(i->second == CHUNK) {
+        if (i->second == CHUNK) {
             // No additional work needed
         } else if (i->second == CHUNK_WITH_SUB) {
             m.insert(MapValue(i->first + _subPrefix + one,
@@ -94,8 +94,8 @@ ChunkMapping::setFromMeta(qdisp::ChunkMeta const& m) {
         // Discard i->db since it's not in the mapping.
         // Ignore collisions if tables (of different dbs)
         // have different partitioning.
-        if(i->getChunkLevel() == 1) addChunkKey(i->getTable());
-        else if(i->getChunkLevel() == 2) addSubChunkKey(i->getTable());
+        if (i->getChunkLevel() == 1) addChunkKey(i->getTable());
+        else if (i->getChunkLevel() == 2) addSubChunkKey(i->getTable());
     }
 }
 

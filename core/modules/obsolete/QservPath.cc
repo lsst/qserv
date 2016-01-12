@@ -69,9 +69,9 @@ std::string
 QservPath::path() const {
     std::stringstream ss;
     ss << _pathSep << prefix(_requestType);
-    if(_requestType == CQUERY) {
+    if (_requestType == CQUERY) {
         ss << _pathSep << _db;
-        if(_chunk != -1) {
+        if (_chunk != -1) {
             ss << _pathSep << _chunk;
         }
     }
@@ -81,7 +81,7 @@ QservPath::path() const {
 std::string
 QservPath::var(std::string const& key) const {
     VarMap::const_iterator ci = _vars.find(key);
-    if(ci != _vars.end()) {
+    if (ci != _vars.end()) {
         return ci->second;
     }
     return std::string();
@@ -123,32 +123,32 @@ void
 QservPath::_setFromPath(std::string const& path) {
     std::string rTypeString;
     Tokenizer t(path, _pathSep);
-    if(!t.token().empty()) { // Expect leading separator (should start with /)
+    if (!t.token().empty()) { // Expect leading separator (should start with /)
         _requestType = UNKNOWN;
         return;
     }
     t.next();
     rTypeString = t.token();
-    if(rTypeString == prefix(CQUERY)) {
+    if (rTypeString == prefix(CQUERY)) {
         // Import as chunk query
         _requestType = CQUERY;
         t.next();
         _db = t.token();
-        if(_db.empty()) {
+        if (_db.empty()) {
             _requestType = GARBAGE;
             return;
         }
         t.next();
         _chunk = t.tokenAsInt();
-    } else if(rTypeString == prefix(RESULT)) {
+    } else if (rTypeString == prefix(RESULT)) {
         _requestType = RESULT;
         t.next();
         _hashName = t.token();
-    } else if(rTypeString == prefix(OLDQ1)) {
+    } else if (rTypeString == prefix(OLDQ1)) {
         _requestType = OLDQ1;
         t.next();
         _chunk = t.tokenAsInt();
-    } else if(rTypeString == prefix(OLDQ2)) {
+    } else if (rTypeString == prefix(OLDQ2)) {
         _requestType = OLDQ2;
         t.next();
         _chunk = t.tokenAsInt();
@@ -163,7 +163,7 @@ QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
 
-    if(start == std::string::npos) { // No keys found
+    if (start == std::string::npos) { // No keys found
         return; //leafPlusKeys;
     }
     ++start;
@@ -177,7 +177,7 @@ void
 QservPath::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;
     equalsPos = keyStr.find_first_of('=');
-    if(equalsPos == std::string::npos) { // No = clause, value-less key.
+    if (equalsPos == std::string::npos) { // No = clause, value-less key.
         _vars[keyStr] = std::string(); // empty insert.
     } else {
         _vars[keyStr.substr(0,equalsPos)] = keyStr.substr(equalsPos+1);

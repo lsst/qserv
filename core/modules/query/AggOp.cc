@@ -185,7 +185,7 @@ AggOp::Mgr::Mgr() : _hasAggregate(false) {
 AggOp::Ptr
 AggOp::Mgr::getOp(std::string const& name) {
     OpMap::const_iterator i = _map.find(name);
-    if(i != _map.end()) return i->second;
+    if (i != _map.end()) return i->second;
     else return AggOp::Ptr();
 }
 
@@ -194,7 +194,7 @@ AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
     std::string n(name);
     std::transform(name.begin(), name.end(), n.begin(), ::toupper);
     AggOp::Ptr p = getOp(n);
-    if(!p) {
+    if (!p) {
         throw std::invalid_argument("Missing AggOp in applyOp()");
     }
     _hasAggregate = true; // Mark existence of real aggregation record

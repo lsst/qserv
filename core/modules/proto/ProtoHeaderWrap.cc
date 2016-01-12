@@ -58,7 +58,7 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
 
 bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
     response->headerSize = static_cast<unsigned char const>(buffer[0]);
-    if(!ProtoImporter<ProtoHeader>::setMsgFrom(
+    if (!ProtoImporter<ProtoHeader>::setMsgFrom(
             response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }

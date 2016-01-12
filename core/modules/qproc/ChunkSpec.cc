@@ -79,11 +79,11 @@ void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
             ++ai;
         }
 
-        if(ai->chunkId == di->chunkId) {
+        if (ai->chunkId == di->chunkId) {
             ChunkSpec cs = *di;
             // On a match, perform the intersection.
             cs.restrict(*ai);
-            if(di->chunkId != ChunkSpec::CHUNKID_INVALID) {
+            if (di->chunkId != ChunkSpec::CHUNKID_INVALID) {
                 tmp.push_back(cs);
             }
         }
@@ -142,7 +142,7 @@ ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
 }
 
 void ChunkSpec::restrict(ChunkSpec const& rhs) {
-    if(chunkId != rhs.chunkId) {
+    if (chunkId != rhs.chunkId) {
         throw Bug("ChunkSpec::merge with different chunkId");
     }
     Int32Vector output;
@@ -155,7 +155,7 @@ void ChunkSpec::restrict(ChunkSpec const& rhs) {
 }
 
 void ChunkSpec::mergeUnion(ChunkSpec const& rhs) {
-    if(chunkId != rhs.chunkId) {
+    if (chunkId != rhs.chunkId) {
         throw Bug("ChunkSpec::merge with different chunkId");
     }
     Int32Vector output(subChunks.size() + rhs.subChunks.size());
@@ -175,20 +175,20 @@ void ChunkSpec::normalize() {
 bool ChunkSpec::operator<(ChunkSpec const& rhs) const {
     typedef std::vector<int32_t>::const_iterator VecIter;
 
-    if(chunkId < rhs.chunkId) return true;
-    else if(chunkId > rhs.chunkId) return false;
+    if (chunkId < rhs.chunkId) return true;
+    else if (chunkId > rhs.chunkId) return false;
     else {
         // Ideally, we would use std::mismatch(f1,l1,f2,l2), but that algo is
         // unavailable until c++14
-        if(subChunks.size() != rhs.subChunks.size()) {
+        if (subChunks.size() != rhs.subChunks.size()) {
             return subChunks.size() < rhs.subChunks.size();
         }
         std::pair<VecIter,VecIter> mism
             = std::mismatch(subChunks.begin(), subChunks.end(),
                             rhs.subChunks.begin());
-        if(mism.first == subChunks.end()) {
+        if (mism.first == subChunks.end()) {
             return mism.second != rhs.subChunks.end();
-        } else if(mism.second == rhs.subChunks.end()) {
+        } else if (mism.second == rhs.subChunks.end()) {
             return false;
         } else { // both are valid;
             return ((*mism.first) < (*mism.second));
@@ -197,7 +197,7 @@ bool ChunkSpec::operator<(ChunkSpec const& rhs) const {
 }
 
 bool ChunkSpec::operator==(ChunkSpec const& rhs) const {
-    if(chunkId != rhs.chunkId) return false;
+    if (chunkId != rhs.chunkId) return false;
     return subChunks == rhs.subChunks;
 }
 
@@ -205,7 +205,7 @@ ChunkSpec ChunkSpec::makeFake(int chunkId, bool withSubChunks) {
     ChunkSpec cs;
     cs.chunkId = chunkId;
     assert(chunkId < 1000000);
-    if(withSubChunks) {
+    if (withSubChunks) {
         int base = 1000 * chunkId;
         cs.subChunks.push_back(base);
         cs.subChunks.push_back(base+10);
@@ -225,7 +225,7 @@ ChunkSpec ChunkSpecFragmenter::get() const {
     c.chunkId = _original.chunkId;
     Iter posEnd = _pos + GOOD_SUBCHUNK_COUNT;
     Iter end = _original.subChunks.end();
-    if(posEnd >= end) {
+    if (posEnd >= end) {
         posEnd = end;
     }
     c.subChunks.resize(posEnd - _pos);
@@ -246,7 +246,7 @@ bool ChunkSpecFragmenter::isDone() {
 // precondition: !spec.subChunks.empty()
 ChunkSpecSingle::Vector ChunkSpecSingle::makeVector(ChunkSpec const& spec) {
     Vector vector;
-    if(spec.subChunks.empty()) {
+    if (spec.subChunks.empty()) {
         throw Bug("Attempted subchunk spec list without subchunks.");
     }
     ChunkSpecSingle s;

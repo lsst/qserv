@@ -119,7 +119,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     // them here. This is kludgy and should be corrected when we transition to a
     // single shared memory inventory object which should do this by itself.
     //
-    if(clsP && clsP->DataContext()) {
+    if (clsP && clsP->DataContext()) {
         _service.reset(new SsiService(logP));
     } else {
         std::ostringstream ss;
@@ -144,7 +144,7 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
     // Extract db and chunk from path and validate result
     //
     ResourceUnit ru(rName);
-    if(ru.unitType() != ResourceUnit::DBCHUNK) {
+    if (ru.unitType() != ResourceUnit::DBCHUNK) {
         // FIXME: Do we need to support /result here?
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");
         return notPresent;
@@ -152,7 +152,7 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
 
     // If the chunk exists on our node then tell he caller it is here.
     //
-    if(_chunkInventory->has(ru.db(), ru.chunk())) {
+    if (_chunkInventory->has(ru.db(), ru.chunk())) {
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
         return isPresent;
     }

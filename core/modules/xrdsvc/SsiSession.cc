@@ -54,7 +54,7 @@ namespace xrdsvc {
 SsiSession::~SsiSession() {
     // XrdSsiSession::sessName is unmanaged, need to free()
     LOGS(_log, LOG_LVL_DEBUG, "~SsiSession()");
-    if(sessName) { ::free(sessName); sessName = 0; }
+    if (sessName) { ::free(sessName); sessName = 0; }
 }
 
 // Step 4
@@ -88,7 +88,7 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         return;
     }
 
-    if(!(*_validator)(ru)) {
+    if (!(*_validator)(ru)) {
         std::ostringstream os;
         os << "WARNING: unowned chunk query detected:" << ru.path();
         LOGS(_log, LOG_LVL_WARN, os.str());
@@ -147,7 +147,7 @@ void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo
     // release response resources (e.g. buf)
     {
         std::lock_guard<std::mutex> lock(_tasksMutex);
-        if(cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled
+        if (cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled
             for (auto task: _tasks) {
                 task->cancel();
             }

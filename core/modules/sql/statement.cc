@@ -50,14 +50,14 @@ namespace qserv {
 namespace sql {
 
 std::string formCreateTable(std::string const& table, sql::Schema const& s) {
-    if(table.empty()) {
+    if (table.empty()) {
         throw Bug("sql/statement.cc: No table name for CREATE TABLE");
     }
     std::ostringstream os;
     os << "CREATE TABLE " << table << " (";
     ColumnsIter b, i, e;
     for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
-        if(i != b) {
+        if (i != b) {
             os << ",\n";
         }
         os << *i;
@@ -72,7 +72,7 @@ std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
     for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         InsertColumn ic;
         ic.column = i->name;
-        if(i->colType.sqlType.find("BLOB") != std::string::npos) {
+        if (i->colType.sqlType.find("BLOB") != std::string::npos) {
             std::ostringstream os;
             os << "blobtmp" << icv->size();
             ic.hexColumn = os.str();
@@ -93,7 +93,7 @@ std::string formLoadInfile(std::string const& table,
 inline bool needClause(InsertColumnVector const& icv) {
     for(InsertColumnVector::const_iterator i=icv.begin(), e=icv.end();
         i != e; ++i) {
-        if(!i->hexColumn.empty()) {
+        if (!i->hexColumn.empty()) {
             return true;
         }
     }
@@ -112,7 +112,7 @@ std::string formLoadInfile(std::string const& table,
     // SET column3=UNHEX(@hexColumn3);"
 
     // Check icv to see if we need to hex/unhex
-    if(!needClause(icv)) {
+    if (!needClause(icv)) {
         return formLoadInfile(table, virtFile); // Use simpler version
     }
     std::ostringstream os;
@@ -121,10 +121,10 @@ std::string formLoadInfile(std::string const& table,
     InsertColumnVector setColumns;
     InsertColumnVector::const_iterator i, b, e;
     for(i=b=icv.begin(), e=icv.end(); i != e; ++i) {
-        if(i != b) {
+        if (i != b) {
             os << ",";
         }
-        if(!i->hexColumn.empty()) {
+        if (!i->hexColumn.empty()) {
             setColumns.push_back(*i);
             os << "@" << i->hexColumn;
         } else {
@@ -134,7 +134,7 @@ std::string formLoadInfile(std::string const& table,
     os << ") ";
     // Fixup SET statements
     for(i=b=setColumns.begin(), e=setColumns.end(); i != e; ++i) {
-        if(i != b) {
+        if (i != b) {
             os << ", ";
         }
         os << "SET ";

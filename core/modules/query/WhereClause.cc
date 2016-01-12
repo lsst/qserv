@@ -72,18 +72,18 @@ operator<<(std::ostream& os, WhereClause const& wc) {
     return os;
 }
 void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
-    if(f) {
+    if (f) {
         f->findColumnRefs(vector);
     }
 }
 void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
-    if(!t) { return; }
+    if (!t) { return; }
     BoolTerm::PtrVector::iterator i = t->iterBegin();
     BoolTerm::PtrVector::iterator e = t->iterEnd();
-    if(i == e) { // Leaf.
+    if (i == e) { // Leaf.
         // Bool factor?
         std::shared_ptr<BoolFactor> bf = std::dynamic_pointer_cast<BoolFactor>(t);
-        if(bf) {
+        if (bf) {
             findColumnRefs(bf, vector);
         } else {
             std::ostringstream os;
@@ -132,11 +132,11 @@ WhereClause::getGenerated() const {
     return qt.toString();
 }
 void WhereClause::renderTo(QueryTemplate& qt) const {
-    if(_restrs.get()) {
+    if (_restrs.get()) {
         std::for_each(_restrs->begin(), _restrs->end(),
                       QsRestrictor::render(qt));
     }
-    if(_tree.get()) {
+    if (_tree.get()) {
         _tree->renderTo(qt);
     }
 }
@@ -145,10 +145,10 @@ std::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
     std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
-    if(_tree.get()) {
+    if (_tree.get()) {
         newC->_tree = _tree->copySyntax();
     }
-    if(_restrs.get()) {
+    if (_restrs.get()) {
         newC->_restrs = std::make_shared<QsRestrictor::PtrVector>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
@@ -159,7 +159,7 @@ std::shared_ptr<WhereClause> WhereClause::clone() const {
 std::shared_ptr<WhereClause> WhereClause::copySyntax() {
     std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
-    if(_tree.get()) {
+    if (_tree.get()) {
         newC->_tree = _tree->copySyntax();
     }
     // For the other fields, default-copied versions are okay.
@@ -175,24 +175,24 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 
     // FIXME: Should deal with case where AndTerm is not found.
     AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
-    if(!rootAnd) {
+    if (!rootAnd) {
         std::shared_ptr<AndTerm> a = std::make_shared<AndTerm>();
         std::shared_ptr<BoolTerm> oldTree(_tree);
         _tree = a;
-        if(oldTree.get()) { // Only add oldTree root if non-NULL
+        if (oldTree.get()) { // Only add oldTree root if non-NULL
             a->_terms.push_back(oldTree);
         }
         rootAnd = a.get();
 
     }
-    if(!rootAnd) {
+    if (!rootAnd) {
         // For now, the root AND should be there by construction. No
         // code has been written that would eliminate the root AND term.
         throw std::logic_error("Couldn't find root AND term");
     }
 
     AndTerm* incomingTerms = dynamic_cast<AndTerm*>(t.get());
-    if(incomingTerms) {
+    if (incomingTerms) {
         // Insert its elements then.
         rootAnd->_terms.insert(rootAnd->_terms.begin(),
                                incomingTerms->_terms.begin(),

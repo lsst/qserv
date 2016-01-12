@@ -65,7 +65,7 @@ class TestAliasHandler : public VoidTwoRefFunc {
 public:
     virtual ~TestAliasHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
-        if(b.get()) {
+        if (b.get()) {
             LOGS(_log, LOG_LVL_DEBUG, "Alias " << tokenText(a) << " = " << tokenText(b));
         }
     }
@@ -100,7 +100,7 @@ public:
         //verify aggregation cmd.
         std::string origAgg = tokenText(a);
         MapConstIter i = _map.find(origAgg); // case-sensitivity?
-        if(i == _map.end()) {
+        if (i == _map.end()) {
             LOGS(_log, LOG_LVL_DEBUG, origAgg << " is not an aggregate.");
             return; // Skip.  Actually, this would be a parser bug.
         }

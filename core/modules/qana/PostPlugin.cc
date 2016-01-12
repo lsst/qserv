@@ -122,7 +122,7 @@ void
 PostPlugin::applyLogical(query::SelectStmt& stmt,
                          query::QueryContext& context) {
     _limit = stmt.getLimit();
-    if(stmt.hasOrderBy()) {
+    if (stmt.hasOrderBy()) {
         _orderBy = stmt.getOrderBy().clone();
     }
 }

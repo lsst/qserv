@@ -52,7 +52,7 @@ namespace parser {
 std::shared_ptr<query::CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
     std::shared_ptr<query::CompPredicate> p = std::make_shared<query::CompPredicate>();
-    if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) {
+    if (a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST left = a;
@@ -66,7 +66,7 @@ PredicateFactory::newCompPredicate(antlr::RefAST a) {
 
 std::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
     std::shared_ptr<query::BetweenPredicate> p = std::make_shared<query::BetweenPredicate>();
-    if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) {
+    if (a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST betweenToken = a->getNextSibling();
@@ -82,7 +82,7 @@ std::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(a
 std::shared_ptr<query::InPredicate>
 PredicateFactory::newInPredicate(antlr::RefAST a) {
     std::shared_ptr<query::InPredicate> p = std::make_shared<query::InPredicate>();
-    if(a->getType() == SqlSQL2TokenTypes::IN_PREDICATE) {
+    if (a->getType() == SqlSQL2TokenTypes::IN_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST value = a;
@@ -93,7 +93,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
     for(RefAST i=firstElement;
         i.get() && i->getType() != SqlSQL2TokenTypes::RIGHT_PAREN;
         i = i->getNextSibling()) {
-        if(i->getType() == SqlSQL2TokenTypes::COMMA) {
+        if (i->getType() == SqlSQL2TokenTypes::COMMA) {
             i = i->getNextSibling();
         }
         p->cands.push_back(_vf.newExpr(i->getFirstChild()));
@@ -105,7 +105,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
 std::shared_ptr<query::LikePredicate>
 PredicateFactory::newLikePredicate(antlr::RefAST a) {
     std::shared_ptr<query::LikePredicate> p = std::make_shared<query::LikePredicate>();
-    if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) {
+    if (a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST value = a;
@@ -122,13 +122,13 @@ std::shared_ptr<query::NullPredicate>
 PredicateFactory::newNullPredicate(antlr::RefAST a) {
     std::shared_ptr<query::NullPredicate> p = std::make_shared<query::NullPredicate>();
 
-    if(a->getType() == SqlSQL2TokenTypes::NULL_PREDICATE) { a = a->getFirstChild(); }
+    if (a->getType() == SqlSQL2TokenTypes::NULL_PREDICATE) { a = a->getFirstChild(); }
     RefAST value = a;
     RefAST isToken = value->getNextSibling();
     RefAST nullToken = isToken->getNextSibling();
     std::string notCand = tokenText(nullToken);
     boost::to_upper(notCand);
-    if(notCand == "NOT") {
+    if (notCand == "NOT") {
         p->hasNot = true;
         nullToken = nullToken->getNextSibling();
     } else {

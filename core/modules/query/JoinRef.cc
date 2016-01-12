@@ -35,28 +35,28 @@ std::ostream& JoinRef::putStream(std::ostream& os) const {
     _putJoinTemplate(t);
     os << "Join(";
     os << " " + t.toString() + " ";
-    if(_right) {_right->putStream(os); }
+    if (_right) {_right->putStream(os); }
     else { os << "<BROKEN_JOIN>";}
-    if(_spec) { _spec->putStream(os << " "); }
+    if (_spec) { _spec->putStream(os << " "); }
     return os;
 }
 
 void JoinRef::putTemplate(QueryTemplate& qt) const {
     _putJoinTemplate(qt);
     _right->putTemplate(qt);
-    if(_spec) { _spec->putTemplate(qt); }
+    if (_spec) { _spec->putTemplate(qt); }
 }
 
 JoinRef::Ptr JoinRef::clone() const {
     TableRef::Ptr r;
-    if(_right) { r = _right->clone(); }
+    if (_right) { r = _right->clone(); }
     JoinSpec::Ptr s;
-    if(_spec) { s = _spec->clone(); }
+    if (_spec) { s = _spec->clone(); }
     return std::make_shared<JoinRef>(r, _joinType, _isNatural, s);
 }
 
 void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
-    if(_isNatural) { qt.append("NATURAL"); }
+    if (_isNatural) { qt.append("NATURAL"); }
 
     switch(_joinType) {
     case DEFAULT: break;

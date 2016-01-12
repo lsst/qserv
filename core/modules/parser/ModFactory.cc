@@ -117,7 +117,7 @@ ModFactory::ModFactory(std::shared_ptr<ValueExprFactory> vf)
     : _vFactory(vf),
       _limit(NOTSET)
 {
-    if(!vf) {
+    if (!vf) {
         throw std::invalid_argument("ModFactory requires ValueExprFactory");
     }
 }
@@ -132,7 +132,7 @@ void ModFactory::attachTo(SqlSQL2Parser& p) {
 void ModFactory::_importLimit(antlr::RefAST a) {
     // Limit always has an int.
     LOGS(_log, LOG_LVL_DEBUG, "Limit got " << walkTreeString(a));
-    if(!a.get()) {
+    if (!a.get()) {
         throw std::invalid_argument("Cannot _importLimit(NULL)");
     }
     std::stringstream ss(a->getText());
@@ -140,18 +140,18 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 }
 
 void ModFactory::_importOrderBy(antlr::RefAST a) {
-    if(!a.get()) {
+    if (!a.get()) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
     _orderBy = std::make_shared<query::OrderByClause>();
     // ORDER BY takes a column ref (expression)
     LOGS(_log, LOG_LVL_DEBUG, "ORDER BY got " << walkTreeString(a));
     while(a.get()) {
-        if(a->getType() == SqlSQL2TokenTypes::COMMA) {
+        if (a->getType() == SqlSQL2TokenTypes::COMMA) {
             a = a->getNextSibling();
             continue;
         }
-        if(a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
+        if (a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
             LOGS(_log, LOG_LVL_ERROR, "ORDER BY expected sort spec and got " << a->getText());
             throw std::logic_error("Expected SORT_SPEC token)");
         }
@@ -159,17 +159,17 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         query::OrderByTerm ob;
         ob._order = query::OrderByTerm::DEFAULT;
         std::shared_ptr<query::ValueExpr> ve;
-        if(key->getType() == SqlSQL2TokenTypes::SORT_KEY) {
+        if (key->getType() == SqlSQL2TokenTypes::SORT_KEY) {
             ob._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
-            if(sib.get()
+            if (sib.get()
                && (sib->getType() == SqlSQL2TokenTypes::COLLATE_CLAUSE)) {
                 RefAST cc = sib->getFirstChild();
                 ob._collate = walkTreeString(cc);
                 //orderby.addCollateClause(cc);
                 sib = sib->getNextSibling();
             }
-            if(sib.get()) {
+            if (sib.get()) {
                 switch(sib->getType()) {
                 case SqlSQL2TokenTypes::SQL2RW_asc:
                     ob._order = query::OrderByTerm::ASC;
@@ -183,7 +183,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
                 }
             }
             _orderBy->_addTerm(ob);
-        } else if(key->getType() == SqlSQL2TokenTypes::UNSIGNED_INTEGER) {
+        } else if (key->getType() == SqlSQL2TokenTypes::UNSIGNED_INTEGER) {
             throw ParseException("positional order-by not allowed", a);
         } else {
             throw ParseException("unknown order-by syntax", a);
@@ -196,20 +196,20 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = std::make_shared<query::GroupByClause>();
     // GROUP BY takes a column reference (expression?)
-    if(!a.get()) {
+    if (!a.get()) {
         throw std::invalid_argument("Cannot _importGroupBy(NULL)");
     }
     while(a.get()) {
-        if((a->getType() != SqlSQL2TokenTypes::GROUPING_COLUMN_REF)) {
+        if ((a->getType() != SqlSQL2TokenTypes::GROUPING_COLUMN_REF)) {
             throw std::logic_error("Attempting _import of non-grouping column");
         }
         query::GroupByTerm gb;
         RefAST key = a->getFirstChild();
         std::shared_ptr<query::ValueExpr> ve;
-        if(key->getType() == SqlSQL2TokenTypes::COLUMN_REF) {
+        if (key->getType() == SqlSQL2TokenTypes::COLUMN_REF) {
             gb._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
-            if(sib.get()
+            if (sib.get()
                && (sib->getType() == SqlSQL2TokenTypes::COLLATE_CLAUSE)) {
                 RefAST cc = sib->getFirstChild();
                 gb._collate = walkTreeString(cc);
@@ -232,7 +232,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // and only one boolean, so this code will only accept single
     // aggregation, single boolean expressions.
     // e.g. HAVING count(obj.ra_PS_sigma) > 0.04
-    if(!a.get()) {
+    if (!a.get()) {
         throw std::invalid_argument("Cannot _importHaving(NULL)");
     }
     // For now, we will silently traverse and recognize but ignore.
@@ -241,12 +241,12 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // Find boolean statement. Use it.
     // Record a failure if multiple boolean statements are found.
     // Render the bool terms just like WhereClause bool terms.
-    if(a.get() && (a->getType() == SqlSQL2TokenTypes::OR_OP)) {
+    if (a.get() && (a->getType() == SqlSQL2TokenTypes::OR_OP)) {
         antlr::RefAST first = a->getFirstChild();
-        if(first.get()
+        if (first.get()
            && (first->getType() == SqlSQL2TokenTypes::AND_OP)) {
             antlr::RefAST second = first->getFirstChild();
-            if(second.get()) {
+            if (second.get()) {
                 BoolTermFactory f(_vFactory);
                 _having->_tree = f.newBoolTerm(a);
                 return;

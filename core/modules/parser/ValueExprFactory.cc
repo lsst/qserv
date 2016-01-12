@@ -73,7 +73,7 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         query::ValueExpr::FactorOp newFactorOp;
         RefAST op = a->getNextSibling();
         newFactorOp.factor = _valueFactorFactory->newFactor(a);
-        if(op.get()) { // No more ops?
+        if (op.get()) { // No more ops?
             int eType = op->getType();
             switch(eType) {
             case SqlSQL2TokenTypes::PLUS_SIGN:
@@ -107,9 +107,9 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         LOGS(_log, LOG_LVL_DEBUG, "Imported expr: " << ss.str());
     }
 #endif
-    if(expr->isFactor() && expr->getAlias().empty()) {
+    if (expr->isFactor() && expr->getAlias().empty()) {
         // Singleton factor? Check inside for optimization opportunities.
-        if(expr->getFactor()->getType() == query::ValueFactor::EXPR) {
+        if (expr->getFactor()->getType() == query::ValueFactor::EXPR) {
             // Pop the value expr out.
             return expr->getFactorOps().front().factor->getExpr();
         }

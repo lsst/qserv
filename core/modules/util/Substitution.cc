@@ -61,7 +61,7 @@ Substitution::transform(Mapping const& m) {
         result += _template.substr(pos, i->position - pos);
         // Copy substitution
         Mapping::const_iterator s = m.find(i->name);
-        if(s == m.end()) {
+        if (s == m.end()) {
             result += i->name; // passthrough.
         } else {
             result += s->second; // perform substitution
@@ -70,7 +70,7 @@ Substitution::transform(Mapping const& m) {
         pos = i->position + i->length;
     }
     // Copy remaining.
-    if(pos < _template.length()) {
+    if (pos < _template.length()) {
         result += _template.substr(pos);
     }
     return result;
@@ -91,7 +91,7 @@ Substitution::_build(std::string const& delim) {
         pos = _template.find(delim, pos+1)) {
         unsigned endpos = _template.find(delim, pos + delimLength);
         Item newItem;
-        if(_shouldFinalize) {
+        if (_shouldFinalize) {
             newItem.position = pos;
             newItem.length = (endpos - pos) + delimLength;
         } else {

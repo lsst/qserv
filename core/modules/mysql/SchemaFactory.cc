@@ -110,8 +110,8 @@ private:
     void _setDecimal(MYSQL_FIELD const& f) {
         // See mysql src sql/field.cc:Field_decimal::sql_type()
         unsigned int tmp = f.length;
-        if(_hasFlagUnsigned(f)) --tmp;
-        if(f.decimals > 0) --tmp;
+        if (_hasFlagUnsigned(f)) --tmp;
+        if (f.decimals > 0) --tmp;
         std::ostringstream os;
         os << "DECIMAL(" << tmp << "," << f.decimals << ")";
         sqlType = os.str();
@@ -148,7 +148,7 @@ private:
 void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
     cs.name = f.name;
     cs.hasDefault = false;
-    if(f.def_length) {
+    if (f.def_length) {
         // If there is a default value stored, record it.
         // There is probably a default value.
         cs.defaultValue = std::string(f.def, f.def_length);
@@ -171,7 +171,7 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
         break;
     }
     // ...and if the flag is set, then you really can't have a default value.
-    if(f.flags & NO_DEFAULT_VALUE_FLAG) {
+    if (f.flags & NO_DEFAULT_VALUE_FLAG) {
         cs.hasDefault = false;
     }
 }

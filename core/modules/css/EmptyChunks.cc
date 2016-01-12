@@ -58,13 +58,13 @@ populate(std::string const& path,
     std::string const best = path + "/" + makeFilename(db);
     std::string fileName = best;
     std::ifstream rawStream(best.c_str());
-    if(!rawStream.good()) { // On error, try using default filename
+    if (!rawStream.good()) { // On error, try using default filename
         rawStream.close();
         rawStream.open(fallbackFile.c_str());
         fileName = fallbackFile;
     }
     LOGS(_log, LOG_LVL_DEBUG, "Reading empty chunks for db " << db << " from file " << fileName);
-    if(!rawStream.good()) {
+    if (!rawStream.good()) {
         throw ConfigError("No such empty chunks file: " + best
                           + " or " + fallbackFile);
     }
@@ -82,7 +82,7 @@ std::shared_ptr<IntSet const>
 EmptyChunks::getEmpty(std::string const& db) const {
     std::lock_guard<std::mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
-    if(i != _sets.end()) {
+    if (i != _sets.end()) {
         IntSetConstPtr readOnly = i->second;
         return readOnly;
     }

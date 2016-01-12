@@ -89,7 +89,7 @@ ChannelStream::~ChannelStream() {
 /// Push in a data packet
 void
 ChannelStream::append(char const* buf, int bufLen, bool last) {
-    if(_closed) {
+    if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
     LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
@@ -112,7 +112,7 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
         LOGS(_log, LOG_LVL_DEBUG, "Waiting, no data ready");
         _hasDataCondition.wait(lock);
     }
-    if(_msgs.empty() && _closed) { // We are closed and no more
+    if (_msgs.empty() && _closed) { // We are closed and no more
         // msgs are available.
         LOGS(_log, LOG_LVL_DEBUG, "Not waiting, but closed");
         dlen = 0;

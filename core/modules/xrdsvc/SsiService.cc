@@ -79,7 +79,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     _initInventory();
     _setupResultPath();
 
-    if(!_setupScratchDb()) {
+    if (!_setupScratchDb()) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
@@ -127,7 +127,7 @@ void SsiService::_setupResultPath() {
 }
 
 void SsiService::_configure() {
-    if(!wconfig::getConfig().getIsValid()) {
+    if (!wconfig::getConfig().getIsValid()) {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
         LOGS(_log, LOG_LVL_FATAL, msg);
@@ -141,19 +141,19 @@ void SsiService::_configure() {
 /// @return true if cleanup was successful, false otherwise.
 bool SsiService::_setupScratchDb() {
     std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
-    if(!conn) {
+    if (!conn) {
         return false;
     }
     sql::SqlErrorObject errObj;
     std::string dbName = wconfig::getConfig().getString("scratchDb");
     LOGS(_log, LOG_LVL_DEBUG, "Cleaning up scratchDb: " << dbName);
-    if(!conn->dropDb(dbName, errObj, false)) {
+    if (!conn->dropDb(dbName, errObj, false)) {
         LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: ."
              << dbName << ", error: " << errObj.errMsg());
         return false;
     }
     errObj.reset();
-    if(!conn->createDb(dbName, errObj, true)) {
+    if (!conn->createDb(dbName, errObj, true)) {
         LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't create scratchDb: "
              << dbName << ", error: " << errObj.errMsg());
         return false;

@@ -72,12 +72,12 @@ BlendScheduler::BlendScheduler(std::shared_ptr<GroupScheduler> group,
     : _group{group}, _scan{scan}
 {
     dbgBlendScheduler = this;
-    if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
+    if (!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
 }
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    if(task == nullptr || task->msg == nullptr) {
+    if (task == nullptr || task->msg == nullptr) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd tSeq=" << task->tSeq);
@@ -86,7 +86,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     assert(_group);
     assert(_scan);
     wcontrol::Scheduler* s = nullptr;
-    if(task->msg->scantables_size() > 0) {
+    if (task->msg->scantables_size() > 0) {
         if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
             int size = task->msg->scantables_size();
@@ -118,7 +118,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     }
     wcontrol::Scheduler* s = lookup(t);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart tSeq=" << t->tSeq);
-    if(s == _group.get()) {
+    if (s == _group.get()) {
         _group->commandStart(t);
     } else {
         _scan->commandStart(t);
@@ -132,7 +132,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     wcontrol::Scheduler* s = lookup(t);
-    if(s == _group.get()) {
+    if (s == _group.get()) {
         _group->commandFinish(t);
     } else {
         _scan->commandFinish(t);

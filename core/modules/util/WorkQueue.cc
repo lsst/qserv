@@ -67,7 +67,7 @@ public:
     }
 
     void terminate() {
-        if(_c) {
+        if (_c) {
             _c->abort();
         }
     }
@@ -102,7 +102,7 @@ WorkQueue::~WorkQueue() {
 void
 WorkQueue::add(std::shared_ptr<WorkQueue::Callable> c) {
     std::lock_guard<std::mutex> lock(_mutex);
-    if(_isDead && !isPoison(c.get())) {
+    if (_isDead && !isPoison(c.get())) {
         //std::cerr << "Queue refusing work: dead\n";
     } else {
         _queue.push_back(c);
@@ -146,7 +146,7 @@ WorkQueue::signalDeath(Runner* r) {
     std::lock_guard<std::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
-        if(*i == r) {
+        if (*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
             return;
@@ -172,7 +172,7 @@ void
 WorkQueue::_dropQueue(bool final) {
     std::lock_guard<std::mutex> lock(_mutex);
     _queue.clear();
-    if(final) _isDead = true;
+    if (final) _isDead = true;
 }
 
 }}} // namespace lsst::qserv:util
@@ -200,7 +200,7 @@ public:
         ss.str() = "";
         ts.tv_sec = (long)_spinTime;
         ts.tv_nsec = (long)((1e9)*(_spinTime - ts.tv_sec));
-        if(-1 == nanosleep(&ts, &rem)) {
+        if (-1 == nanosleep(&ts, &rem)) {
             ss << "Interrupted ";
         }
 

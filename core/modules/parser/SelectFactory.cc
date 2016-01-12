@@ -123,7 +123,7 @@ public:
               case SqlSQL2TokenTypes::SELECT_LIST:
                   child = a->getFirstChild();
 
-                  if(!child.get()) {
+                  if (!child.get()) {
                       throw ParseException("Expected select list", a);
                   } else {
                       _slf.import(child);

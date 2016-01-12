@@ -88,11 +88,11 @@ public:
         }
         Iter& operator++() {
             Check c;
-            if(nextCache.get()) {
+            if (nextCache.get()) {
                 current = nextCache;
             } else {
                 current = lsst::qserv::parser::findSibling(current, c);
-                if(current.get()) {
+                if (current.get()) {
                     // Move to next value
                     current = current->getNextSibling();
                 }
@@ -102,7 +102,7 @@ public:
 
         std::string operator*() {
             Check c;
-            if(!current) {
+            if (!current) {
                 throw std::invalid_argument("Invalid _current in iteration");
             }
             lsst::qserv::parser::CompactPrintVisitor<antlr::RefAST> p;
@@ -122,7 +122,7 @@ public:
     };
     ParamGenerator(RefAST a) {
         _beginIter.start = a;
-        if(a.get() && (a->getType() == SqlSQL2TokenTypes::LEFT_PAREN)) {
+        if (a.get() && (a->getType() == SqlSQL2TokenTypes::LEFT_PAREN)) {
             _beginIter.current = a->getNextSibling(); // Move past paren.
         } else { // else, set current as end.
             _beginIter.current = RefAST();
@@ -197,7 +197,7 @@ public:
     virtual ~TableRefAuxH() {}
     virtual void operator()(antlr::RefAST name, antlr::RefAST sub,
                             antlr::RefAST as, antlr::RefAST alias)  {
-        if(alias.get()) {
+        if (alias.get()) {
             _map->addAlias(alias, name);
         }
         // Save column ref for pass/fixup computation,
@@ -210,7 +210,7 @@ class QualifiedName {
 public:
     QualifiedName(antlr::RefAST qn) {
         for(; qn.get(); qn = qn->getNextSibling()) {
-            if(qn->getType() == SqlSQL2TokenTypes::PERIOD) continue;
+            if (qn->getType() == SqlSQL2TokenTypes::PERIOD) continue;
             names.push_back(qn->getText());
         }
     }
@@ -234,7 +234,7 @@ public:
         //std::cout << *_aliases << "\n";
     }
     query::TableRef::Ptr get() const {
-        if(_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
+        if (_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
             throw std::logic_error("_cursor is not a TABLE_REF");
         }
         RefAST node = _cursor->getFirstChild();
@@ -242,7 +242,7 @@ public:
     }
     void next() {
         _cursor = _cursor->getNextSibling();
-        if(!_cursor.get()) return; // Iteration complete
+        if (!_cursor.get()) return; // Iteration complete
         switch(_cursor->getType()) {
         case SqlSQL2TokenTypes::COMMA:
             next();
@@ -257,7 +257,7 @@ public:
 private:
     inline query::TableRef::Ptr _generate(RefAST node) const {
         query::TableRef::Ptr tn;
-        if(node->getType() == SqlSQL2TokenTypes::TABLE_REF_AUX) {
+        if (node->getType() == SqlSQL2TokenTypes::TABLE_REF_AUX) {
             tn = _processTableRefAux(node->getFirstChild());
         } else {
             throw ParseException("Expected TABLE_REF_AUX, got", node);
@@ -289,7 +289,7 @@ private:
     }
     void _setup() {
         // Sanity check: make sure we were constructed with a TABLE_REF
-        if(_cursor->getType() == SqlSQL2TokenTypes::TABLE_REF) {
+        if (_cursor->getType() == SqlSQL2TokenTypes::TABLE_REF) {
             // Nothing else to do
         } else {
             _cursor = RefAST(); // Clear out cursor so that isDone == true
@@ -309,7 +309,7 @@ private:
     /// ( "inner" | outer_join_type ("outer")? )? "join" table_ref join_spec
     // Takes ownership of @param left
     query::JoinRef::Ptr _makeJoinWithSpec(RefAST sib) const {
-        if(!sib.get()) {
+        if (!sib.get()) {
             throw ParseException("Null JOIN_WITH_SPEC sibling", sib); }
 
         query::JoinRef::Type j = _convertToJoinType(sib);
@@ -329,7 +329,7 @@ private:
     }
     /// "natural" ( "inner" | outer_join_type ("outer")? )? "join" table_ref
     query::JoinRef::Ptr _makeJoinNoSpec(RefAST sib) const {
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_natural) {
             throw ParseException("Invalid NATURAL token", sib); }
         sib = sib->getNextSibling();
@@ -339,7 +339,7 @@ private:
             sib = sib->getNextSibling();
         }
         sib = sib->getNextSibling(); // next is TABLE_REF
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::TABLE_REF) {
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
@@ -355,15 +355,15 @@ private:
     }
     /// "union" "join" table_ref
     query::JoinRef::Ptr _makeUnionJoin(RefAST sib) const {
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_union) {
             throw ParseException("Invalid UNION token", sib); }
         sib = sib->getNextSibling();
-        if(!sib.get()
+        if (!sib.get()
                || sib->getType() != SqlSQL2TokenTypes::SQL2RW_join) {
             throw ParseException("Invalid token, expected JOIN", sib); }
         sib = sib->getNextSibling();
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::TABLE_REF) {
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
@@ -377,15 +377,15 @@ private:
     }
     /// "cross" "join" table_ref
     query::JoinRef::Ptr _makeCrossJoin(RefAST sib) const {
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_cross) {
             throw ParseException("Invalid CROSS token", sib); }
         sib = sib->getNextSibling();
-        if(!sib.get()
+        if (!sib.get()
                || sib->getType() != SqlSQL2TokenTypes::SQL2RW_join) {
             throw ParseException("Invalid token, expected JOIN", sib); }
         sib = sib->getNextSibling();
-        if(!sib.get()
+        if (!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::TABLE_REF) {
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
@@ -406,7 +406,7 @@ private:
         std::shared_ptr<query::JoinSpec> js;
         // std::cout << "remaining join spec: " << walkIndentedString(specToken)
         // << "\n";
-        if(!specToken.get()) {
+        if (!specToken.get()) {
             throw ParseException("Null join spec", specToken);
         }
         RefAST token = specToken;
@@ -417,31 +417,31 @@ private:
             token = token->getNextSibling(); // Advance to LEFT_PAREN
             // Some parse tree verification is unnecessary because the
             // grammer will enforce it. Should we trim it?
-            if(!token.get()
+            if (!token.get()
                || token->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
                 break;
             }
             token = token->getNextSibling();
-            if(!token.get()
+            if (!token.get()
                || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
                 break;
             }
             js = std::make_shared<query::JoinSpec>(
                     _processColumn(token->getFirstChild()));
             token = token->getNextSibling();
-            if(!token.get()
+            if (!token.get()
                || token->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
                 break;
             }
             return js;
         case SqlSQL2TokenTypes::JOIN_CONDITION:
             token = specToken->getFirstChild();
-            if(!token.get()
+            if (!token.get()
                || token->getType() != SqlSQL2TokenTypes::SQL2RW_on) {
                 throw ParseException("Expected ON in join condition", specToken);
             }
             token = token->getNextSibling();
-             if(!token.get()
+             if (!token.get()
                || token->getType() != SqlSQL2TokenTypes::OR_OP) {
                 throw ParseException("Expected OR_OP in join condition", specToken);
             }
@@ -461,7 +461,7 @@ private:
 
     query::JoinRef::Type _convertToJoinType(RefAST joinSequence) const {
         while(1) {
-            if(!joinSequence.get()) {
+            if (!joinSequence.get()) {
                 throw ParseException("Null token for join type", joinSequence);
             }
             switch(joinSequence->getType()) {
@@ -489,9 +489,9 @@ private:
     ///    column_name (COMMA column_name)*
     /// ;
     std::shared_ptr<query::ColumnRef> _processColumn(RefAST sib) const {
-        if(!sib.get()) {
+        if (!sib.get()) {
             throw ParseException("NULL column node", sib); }
-        if(sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
+        if (sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
             throw ParseException("Bad column node for USING", sib); }
         std::shared_ptr<query::ColumnRef> c =
                 std::make_shared<query::ColumnRef>("", "", tokenText(sib));
@@ -501,10 +501,10 @@ private:
         RefAST qnStub = n;
         RefAST aliasN = _aliases->getAlias(qnStub);
         std::string alias;
-        if(aliasN.get()) alias = aliasN->getText();
+        if (aliasN.get()) alias = aliasN->getText();
         QualifiedName qn(n->getFirstChild());
         std::string db;
-        if(qn.names.size() > 1) db = qn.getQual(1);
+        if (qn.names.size() > 1) db = qn.getQual(1);
         return std::make_shared<query::TableRef>(
                 db,
                 qn.getName(),

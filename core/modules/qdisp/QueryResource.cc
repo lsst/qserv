@@ -76,14 +76,14 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
         QueryResource* _qr;
     };
     Destroyer destroyer(_jobQuery, this);
-    if(!s) {
+    if (!s) {
         // Check eInfo in resource for error details
         int code = 0;
         std::string msg = eInfoGet(code);
         _jobQuery->provisioningFailed(msg, code);
         return;
     }
-    if(isCancelled()) {
+    if (isCancelled()) {
         return; // Don't bother doing anything if the job is cancelled.
     }
     _xrdSsiSession = s;

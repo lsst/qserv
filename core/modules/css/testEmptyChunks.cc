@@ -80,7 +80,7 @@ struct DummyFile {
     }
     void writeFile(char const* dbname, int begin, int end) {
         std::string filename = _path;
-        if(dbname) {
+        if (dbname) {
             filename = filename + "/empty_" + dbname + ".txt";
         }  else {
             filename = _fallback;

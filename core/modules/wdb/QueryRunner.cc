@@ -102,7 +102,7 @@ bool QueryRunner::_initConnection() {
     sc.username = _task->user.c_str(); // Override with czar-passed username.
     _mysqlConn.reset(new mysql::MySqlConnection(sc));
 
-    if(!_mysqlConn->connect()) {
+    if (!_mysqlConn->connect()) {
         LOGS(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as "
              << wconfig::getConfig().getString("mysqlSocket")
              << " using " << _task->user);
@@ -115,7 +115,7 @@ bool QueryRunner::_initConnection() {
 
 /// Override _dbName with _msg->db() if available.
 void QueryRunner::_setDb() {
-    if(_task->msg->has_db()) {
+    if (_task->msg->has_db()) {
         _dbName = _task->msg->db();
         LOGS(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with " << _dbName);
     }
@@ -143,9 +143,9 @@ bool QueryRunner::runQuery() {
     LOGS(_log, LOG_LVL_DEBUG, "Exec in flight for Db = " << _task->dbName);
     _setDb();
     bool connOk = _initConnection();
-    if(!connOk) { return false; }
+    if (!connOk) { return false; }
 
-    if(_task->msg->has_protocol()) {
+    if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
         case 2:
             return _dispatchChannel(); // Run the query and send the results back.
@@ -163,7 +163,7 @@ bool QueryRunner::runQuery() {
 
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
-        if(!queryOk) {
+        if (!queryOk) {
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
             _multiError.push_back(error);
             return nullptr;
@@ -180,7 +180,7 @@ void QueryRunner::_initMsg() {
     _result = std::make_shared<proto::Result>();
     _result->mutable_rowschema();
     _result->set_continues(0);
-    if(_task->msg->has_session()) {
+    if (_task->msg->has_session()) {
         _result->set_session(_task->msg->session());
     }
 }
@@ -192,7 +192,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
         cs->set_name(i->name);
-        if(i->hasDefault) {
+        if (i->hasDefault) {
             cs->set_hasdefault(true);
             cs->set_defaultvalue(i->defaultValue);
             LOGS(_log, LOG_LVL_DEBUG, i->name << " has default.");
@@ -216,7 +216,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
         for(int i=0; i < numFields; ++i) {
-            if(row[i]) {
+            if (row[i]) {
                 rawRow->add_column(row[i], lengths[i]);
                 rawRow->add_isnull(false);
             } else {
@@ -258,7 +258,7 @@ void QueryRunner::_transmit(bool last) {
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " tSeq=" << _task->tSeq
          << " resultString=" << util::prettyCharList(resultString, 5));
-    if(!_cancelled) {
+    if (!_cancelled) {
         _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
@@ -297,7 +297,7 @@ public:
 
     ChunkResource getResourceFragment(int i) {
         proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
-        if(!fragment.has_subchunks()) {
+        if (!fragment.has_subchunks()) {
             StringVector tables(_msg.scantables().begin(),
                                 _msg.scantables().end());
             assert(_msg.has_db());
@@ -309,7 +309,7 @@ public:
         StringVector tables(sc.table().begin(),
                             sc.table().end());
         IntVector subchunks(sc.id().begin(), sc.id().end());
-        if(sc.has_database()) { db = sc.database(); }
+        if (sc.has_database()) { db = sc.database(); }
         else { db = _msg.db(); }
         return _mgr->acquire(db, _msg.chunkid(), tables, subchunks);
 
@@ -325,7 +325,7 @@ bool QueryRunner::_dispatchChannel() {
     bool firstResult = true;
     bool erred = false;
     int numFields = -1;
-    if(m.fragment_size() < 1) {
+    if (m.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
@@ -340,11 +340,11 @@ bool QueryRunner::_dispatchChannel() {
             // Use query fragment as-is, funnel results.
             for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
                 MYSQL_RES* res = _primeResult(fragment.query(qi));
-                if(!res) {
+                if (!res) {
                     erred = true;
                     continue;
                 }
-                if(firstResult) {
+                if (firstResult) {
                     _fillSchema(res);
                     firstResult = false;
                     numFields = mysql_num_fields(res);
@@ -353,7 +353,7 @@ bool QueryRunner::_dispatchChannel() {
                 // TODO fritzm: revisit this error strategy
                 // (see pull-request for DM-216)
                 // Now get rows...
-                if(!_fillRows(res, numFields)) {
+                if (!_fillRows(res, numFields)) {
                     erred = true;
                 }
                 _mysqlConn->freeResult();
@@ -363,7 +363,7 @@ bool QueryRunner::_dispatchChannel() {
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
     }
-    if(!_cancelled) {
+    if (!_cancelled) {
         // Send results.
         _transmit(true);
     } else {
@@ -378,7 +378,7 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
     _cancelled.store(true);
-    if(!_mysqlConn.get()) {
+    if (!_mysqlConn.get()) {
     LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
     }

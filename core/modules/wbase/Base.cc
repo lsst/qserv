@@ -124,12 +124,12 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
 //
 
 void updateResultPath(char const* resultPath) {
-    if(checkWritablePath(resultPath)) {
+    if (checkWritablePath(resultPath)) {
         DUMP_BASE.assign(resultPath);
         return;
     }
     char* path =::getenv("QSW_RESULTPATH");
-    if(checkWritablePath(path)) {
+    if (checkWritablePath(path)) {
         DUMP_BASE.assign(path);
     }
 }
@@ -140,7 +140,7 @@ void clearResultPath() {
     std::string globstr(DUMP_BASE);
     globstr += "/*";
     // Glob, with no special opts, no error function
-    if(0 == glob(globstr.c_str(), 0, nullptr, &globbuf)) {
+    if (0 == glob(globstr.c_str(), 0, nullptr, &globbuf)) {
         char** s = globbuf.gl_pathv;
         while(nullptr != *s) {
             unlink(*s++); // delete file, ignore errors.
@@ -203,7 +203,7 @@ std::string StringBuffer::getStr() const {
     char* accStr = new char[_totalSize];
     assert(accStr);
     int cursor=0;
-    if(false) {
+    if (false) {
         // Cast away const to perform a sort (doesn't logically change state)
         FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
         std::sort(nonConst.begin(), nonConst.end(), offsetLess<Fragment>());
@@ -236,7 +236,7 @@ std::string StringBuffer::getDigest() const {
         Fragment const& p = *bi;
         ss << "Offset=" << p.offset << "\n";
         int fragsize = 100;
-        if(fragsize > p.bufferSize) fragsize = p.bufferSize;
+        if (fragsize > p.bufferSize) fragsize = p.bufferSize;
         ss << std::string(p.buffer, fragsize) << "\n";
     }
     return ss.str();
@@ -262,7 +262,7 @@ void StringBuffer::reset() {
 void StringBuffer2::addBuffer(
     StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
     std::unique_lock<std::mutex> lock(_mutex);
-    if(_bufferSize < offset+bufferSize) {
+    if (_bufferSize < offset+bufferSize) {
         _setSize(offset+bufferSize);
     }
      memcpy(_buffer+offset, buffer, bufferSize);
@@ -293,7 +293,7 @@ StringBufferOffset StringBuffer2::getLength() const {
 
 void StringBuffer2::reset() {
     std::unique_lock<std::mutex> lock(_mutex);
-    if(_buffer) {
+    if (_buffer) {
         delete[] _buffer;
         _buffer = 0;
         _bufferSize = 0;
@@ -302,8 +302,8 @@ void StringBuffer2::reset() {
 }
 
 void StringBuffer2::_setSize(unsigned size) {
-    if(size==0) {
-        if(_buffer) {
+    if (size==0) {
+        if (_buffer) {
             delete[] _buffer;
             _buffer = 0;
             _bufferSize = 0;
@@ -311,7 +311,7 @@ void StringBuffer2::_setSize(unsigned size) {
         return;
     }
     char* newBuffer = new char[size];
-    if(_buffer) {
+    if (_buffer) {
         memcpy(newBuffer, _buffer, _bufferSize);
         delete[] _buffer;
     }
