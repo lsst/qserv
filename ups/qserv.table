@@ -7,9 +7,6 @@ setupRequired(log)
 setupRequired(log4cxx)
 setupRequired(lua)
 setupRequired(mariadb)
-# mysql-proxy isn't compliant with
-# MariaDB client
-setupRequired(mysqlclient)
 setupRequired(mysqlproxy)
 setupRequired(mysqlpython)
 setupRequired(partition)
@@ -21,5 +18,4 @@ setupRequired(xrootd)
 
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
-envPrepend(PATH, ${MYSQLCLIENT_DIR}/bin)
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib/python)
