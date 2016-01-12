@@ -175,7 +175,7 @@ bool Executive::join() {
     int sCount = 0;
     {
         std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
-        sCount = std::count_if (_jobMap.begin(), _jobMap.end(), successF::f);
+        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
     }
     if (sCount == _requestCount) {
         LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount

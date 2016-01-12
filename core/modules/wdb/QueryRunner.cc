@@ -379,7 +379,7 @@ void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call, experimental");
     _cancelled.store(true);
     if (!_mysqlConn.get()) {
-    LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
+        LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
     }
     int status = _mysqlConn->cancel();
