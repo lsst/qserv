@@ -3,6 +3,8 @@ MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 WORKDIR /qserv
 
+COPY scripts/configure.sh scripts/configure.sh
+
 USER qserv
 
 RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}"
@@ -10,6 +12,8 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/
 # WARNING: Unsafe because it is pushed in Docker Hub
 # TODO: use consul to manage secret
 COPY wmgr.secret /qserv/run/etc/
+
+COPY scripts/*.sh scripts/
 
 # This script does not exit
 CMD /qserv/scripts/start.sh
