@@ -19,12 +19,13 @@ shmux -c "docker rm -f qserv; \
     -p 1094:1094 -p 5012:5012 \
     $WORKER_IMAGE" $WORKERS
 
+# Wait for Qserv services to be up and running
+shmux -S all -c "docker exec qserv /qserv/scripts/wait.sh" "$MASTER" $WORKERS
+
 CSS_INFO=$(cat "$CSS_FILE")
 
 ssh "$MASTER" "docker exec qserv bash -c '. /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
-   echo \"$CSS_INFO\" | qserv-admin.py'"
+   echo \"$CSS_INFO\" | qserv-admin.py && \
+   qserv-test-integration.py'"
 
-ssh "$MASTER" "docker exec qserv bash -c '. /qserv/stack/loadLSST.bash && \
-    setup qserv_distrib -t qserv-dev && \
-    qserv-test-integration.py'"

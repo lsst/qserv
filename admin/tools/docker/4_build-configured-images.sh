@@ -25,7 +25,6 @@
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
-set -x
 
 DOCKER_IMAGE="qserv/qserv:dev"
 

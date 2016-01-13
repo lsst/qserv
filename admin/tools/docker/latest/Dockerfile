@@ -27,7 +27,3 @@ COPY scripts/install-stack.sh scripts/install-stack.sh
 RUN /bin/bash /qserv/scripts/install-stack.sh 2>&1 /qserv/STACK_INSTALL.out || echo 'INSTALL FAILED' > /qserv/STACK_INSTALL.err
 
 COPY scripts/*.sh scripts/
-
-USER root
-
-RUN chown -R qserv:qserv /qserv/scripts/
