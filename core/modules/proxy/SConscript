@@ -3,7 +3,7 @@
 Import('env')
 Import('standardModule')
 
-standardModule(env, exclude='./czarProxy_wrap.cc')
+standardModule(env)
 
 build_data = DefaultEnvironment()['build_data']
 
@@ -13,6 +13,7 @@ build_data['install'] += env.Install("$prefix/proxy", "mysqlProxy.lua")
 # SWIG -Lua wrapper
 swigged = env.SharedObject(source="czarProxy.i",
                            SWIGFLAGS=['-lua', '-c++', '-Iinclude'],
-                           SWIGPATH=['..'])
+                           SWIGPATH=['..'],
+                           SWIGCXXFILESUFFIX='_wrap.c++')
 
 build_data['module_objects']['proxy'] += swigged

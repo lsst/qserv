@@ -4,8 +4,7 @@ import distutils.sysconfig
 Import('env')
 Import('standardModule')
 
-standardModule(env, unit_tests="testKvInterfaceImpl testCssAccess testEmptyChunks",
-               exclude='./cssLib_wrap.cc')
+standardModule(env, unit_tests="testKvInterfaceImpl testCssAccess testEmptyChunks")
 
 build_data = DefaultEnvironment()['build_data']
 
@@ -13,12 +12,12 @@ build_data = DefaultEnvironment()['build_data']
 pythonInc = distutils.sysconfig.get_python_inc()
 
 cppPath = env['CPPPATH'] + [pythonInc]
+# Use special C++ file suffix to avoid mix with standardModule()
 swigged = env.SharedObject(source="cssLib.i",
                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
                            SWIGPATH=['..', pythonInc],
                            CPPPATH=cppPath,
-                           LDMODULEPREFIX='_', LDMODULESUFFIX='.so'
-                           )
+                           SWIGCXXFILESUFFIX='_wrap.c++')
 
 build_data['module_objects']['css:python'] = swigged
 
