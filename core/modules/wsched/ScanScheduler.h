@@ -27,6 +27,7 @@
 #include <mutex>
 
 // Qserv headers
+#include "memman/MemMan.h"
 #include "wcontrol/Foreman.h"
 
 // Forward declarations
@@ -59,25 +60,33 @@ namespace wsched {
 class ScanScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
-    typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;
+    //typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList; &&& delete
 
-    ScanScheduler(int maxThreads);
+    ScanScheduler(std::string name, int maxThreads, memman::MemMan::Ptr const& memman);
     virtual ~ScanScheduler() {}
 
+    // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
-    void commandStart(util::Command::Ptr const& cmd) override;
-    void commandFinish(util::Command::Ptr const& cmd) override;
-    int getInFlight() { return _inFlight; }
+    void commandStart (util::Command::Ptr const& cmd) override;
+    void commandFinish (util::Command::Ptr const& cmd) override;
 
-    static std::string getName()  { return std::string("ScanSched"); }
-    bool ready();
-    std::size_t getSize();
+    // wcontrol::Scheduler overrides
+    int getInFlight() const override { return _inFlight; }
+    std::string getName() const override { return _name; }
+    bool ready() override;
+    std::size_t getSize() const override ;
+    void maxThreadAdjust(int tempMax) override;
+
 private:
     bool _ready();
+    int _maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
-    int _maxThreads;
-    ChunkDiskList _disks;
+    std::string _name{""};
+    int _maxThreads{1};
+    int _maxThreadsAdj{1}; //< This must be used carefully as not protected.
+    std::shared_ptr<ChunkDisk> _disk; //< Constrains access to files.
+    memman::MemMan::Ptr _memMan;
     std::atomic<int> _inFlight{0};
 };
 

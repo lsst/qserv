@@ -61,9 +61,15 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
             && (t1.chunkid() == t2.chunkid())
             && (t1.db() == t2.db());
 
-        bool sTablesEq = t1.scantables_size() == t2.scantables_size();
-        for(int i=0; i < t1.scantables_size(); ++i) {
-            sTablesEq = sTablesEq && (t1.scantables(i) == t2.scantables(i));
+        bool sTablesEq = t1.scantable_size() == t2.scantable_size();
+        for(int i=0; i < t1.scantable_size(); ++i) {
+            auto const& sTbl1 = t1.scantable(i);
+            auto const& sTbl2 = t2.scantable(i);
+            bool eq = (sTbl1.db().compare(sTbl2.db()) == 0
+                       && sTbl1.table().compare(sTbl2.table()) == 0
+                       && sTbl1.lockinmemory() == sTbl2.lockinmemory()
+                       && sTbl1.scanspeed() == sTbl2.scanspeed());
+            sTablesEq = sTablesEq && eq;
         }
 
         bool fEqual = (t1.fragment_size() == t2.fragment_size());
@@ -165,7 +171,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "4c6e5ad217891467addaa0db015eef80";
+    std::string expected = "90b402f90adf1db044b79f9e1f82742f";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 

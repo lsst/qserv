@@ -30,6 +30,8 @@
 // Third-party headers
 
 // Qserv headers
+#include "memman/MemManNone.h"
+#include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wsched/ChunkDisk.h"
@@ -80,13 +82,24 @@ struct SchedulerFixture {
     }
 
     TaskMsgPtr newTaskMsgSimple(int seq) {
-            TaskMsgPtr t = std::make_shared<TaskMsg>();
-            t->set_session(123456);
-            t->set_chunkid(seq);
-            t->set_db("moose");
-            ++counter;
-            return t;
-        }
+        TaskMsgPtr t = std::make_shared<TaskMsg>();
+        t->set_session(123456);
+        t->set_chunkid(seq);
+        t->set_db("moose");
+        ++counter;
+        return t;
+    }
+
+    TaskMsgPtr newTaskMsgScan(int seq, int priority) {
+        auto taskMsg = newTaskMsg(seq);
+        taskMsg->set_scanpriority(priority);
+        auto sTbl = taskMsg->add_scantable();
+        sTbl->set_db("elephant");
+        sTbl->set_table("whatever");
+        sTbl->set_scanspeed(priority);
+        sTbl->set_lockinmemory(true);
+        return taskMsg;
+    }
 
     Task::Ptr queMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId) {
         Task::Ptr t = makeTask(newTaskMsg(chunkId));
@@ -100,33 +113,9 @@ struct SchedulerFixture {
 
 BOOST_FIXTURE_TEST_SUITE(FifoSchedulerSuite, SchedulerFixture)
 
-BOOST_AUTO_TEST_CASE(Fifo) {
-    wsched::FifoScheduler fs;
-    Task::Ptr first = makeTask(nextTaskMsg());
-    fs.queCmd(first);
-
-    Task::Ptr second = makeTask(nextTaskMsg());
-    fs.queCmd(second);
-
-    Task::Ptr third = makeTask(nextTaskMsg());
-    fs.queCmd(third);
-
-    auto t1 = fs.getCmd();
-    auto t2 = fs.getCmd();
-    auto t3 = fs.getCmd();
-
-    BOOST_CHECK_EQUAL(first.get(), t1.get());
-    BOOST_CHECK_EQUAL(second.get(), t2.get());
-    BOOST_CHECK_EQUAL(third.get(), t3.get());
-
-    auto t4 = fs.getCmd(false);
-    BOOST_CHECK(t4 == nullptr);
-}
-
-
 BOOST_AUTO_TEST_CASE(Grouping) {
     // Test grouping by chunkId. Max entries added to a single group set to 3.
-    wsched::GroupScheduler gs{100, 3};
+    wsched::GroupScheduler gs{"GroupSchedA", 100, 3};
     // chunk Ids
     int a = 50;
     int b = 11;
@@ -207,7 +196,7 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
-    wsched::GroupScheduler gs{3, 100};
+    wsched::GroupScheduler gs{"GroupSchedB", 3, 100};
     int a = 42;
     Task::Ptr a1 = queMsgWithChunkId(gs, a);
     Task::Ptr a2 = queMsgWithChunkId(gs, a);
@@ -269,21 +258,21 @@ BOOST_AUTO_TEST_CASE(ChunkDiskTest) {
     BOOST_CHECK(cDisk.empty() == true);
     BOOST_CHECK(cDisk.getSize() == 0);
     BOOST_CHECK(cDisk.busy() == false);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
 
     Task::Ptr a47 = makeTask(newTaskMsg(47));
     cDisk.enqueue(a47); // should go on active
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 1);
     BOOST_CHECK(cDisk.busy() == false);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
 
     Task::Ptr a42 = makeTask(newTaskMsg(42));
     cDisk.enqueue(a42); // should go on active
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 2);
     BOOST_CHECK(cDisk.busy() == false);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
     BOOST_CHECK(cDisk.getInflight().size() == 0);
 
     Task::Ptr b42 = makeTask(newTaskMsg(42));
@@ -291,14 +280,14 @@ BOOST_AUTO_TEST_CASE(ChunkDiskTest) {
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.busy() == false);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
 
-    auto aa42 = cDisk.getTask();
+    auto aa42 = cDisk.getTask(true);
     BOOST_CHECK(aa42.get() == a42.get());
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 2);
     BOOST_CHECK(cDisk.busy() == true);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
     BOOST_CHECK(cDisk.getInflight().size() == 1);
 
     Task::Ptr a18 = makeTask(newTaskMsg(18));
@@ -306,61 +295,61 @@ BOOST_AUTO_TEST_CASE(ChunkDiskTest) {
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.busy() == true);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
 
     // Test that active tasks from the same chunk can be started.
-    auto bb42 = cDisk.getTask();
+    auto bb42 = cDisk.getTask(true);
     BOOST_CHECK(bb42.get() == b42.get());
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.busy() == true);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
     BOOST_CHECK(cDisk.getInflight().size() == 2);
 
     // Check that completing all tasks on chunk 42 lets us move to chunk 47
     cDisk.removeInflight(bb42);
     BOOST_CHECK(cDisk.getInflight().size() == 1);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
 
-    auto aa47 = cDisk.getTask();
+    auto aa47 = cDisk.getTask(true);
     BOOST_CHECK(aa47.get() == a47.get());
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 1);
     BOOST_CHECK(cDisk.busy() == true);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
     BOOST_CHECK(cDisk.getInflight().size() == 2);
 
     // finishing a47 should let us get a18
     cDisk.removeInflight(a47);
     BOOST_CHECK(cDisk.getInflight().size() == 1);
-    BOOST_CHECK(cDisk.ready() == true);
+    BOOST_CHECK(cDisk.ready(true) == true);
     BOOST_CHECK(cDisk.busy() == false);
 
-    auto aa18 = cDisk.getTask();
+    auto aa18 = cDisk.getTask(true);
     BOOST_CHECK(aa18.get() == a18.get());
     BOOST_CHECK(cDisk.empty() == true);
     BOOST_CHECK(cDisk.getSize() == 0);
     BOOST_CHECK(cDisk.busy() == true);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
     BOOST_CHECK(cDisk.getInflight().size() == 2);
 
     cDisk.removeInflight(a18);
     BOOST_CHECK(cDisk.getInflight().size() == 1);
     BOOST_CHECK(cDisk.empty() == true);
     BOOST_CHECK(cDisk.getSize() == 0);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
     BOOST_CHECK(cDisk.busy() == false);
 
     cDisk.removeInflight(a42);
     BOOST_CHECK(cDisk.getInflight().size() == 0);
     BOOST_CHECK(cDisk.empty() == true);
     BOOST_CHECK(cDisk.getSize() == 0);
-    BOOST_CHECK(cDisk.ready() == false);
+    BOOST_CHECK(cDisk.ready(true) == false);
     BOOST_CHECK(cDisk.busy() == false);
 }
 
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
-    wsched::ScanScheduler sched{2};
+    wsched::ScanScheduler sched{"ScanSchedA", 2};
 
     // Test ready state as Tasks added and removed.
     BOOST_CHECK(sched.ready() == false);
@@ -417,9 +406,13 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     // max 2 inflight and group size 3. Not testing that functionality here, so arbitrary.
-    auto group = std::make_shared<wsched::GroupScheduler>(2, 3);
-    auto scan = std::make_shared<wsched::ScanScheduler>(2);
-    wsched::BlendScheduler blend(group, scan);
+    auto memMan = std::make_shared<memman::MemManNone>(1);
+    auto group = std::make_shared<wsched::GroupScheduler>("GroupSchedC", 2, 3);
+    auto scanFast = std::make_shared<wsched::ScanScheduler>("ScanFast", 2, memMan);
+    auto scanMed  = std::make_shared<wsched::ScanScheduler>("ScanMed", 2, memMan);
+    auto scanSlow = std::make_shared<wsched::ScanScheduler>("ScanSlow", 2, memMan);
+    int maxSubThreads = 3;
+    wsched::BlendScheduler blend("blendSched", maxSubThreads, group, scanFast, scanMed, scanSlow);
 
     BOOST_CHECK(blend.ready() == false);
 
@@ -430,26 +423,62 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(group->ready() == true);
     BOOST_CHECK(blend.ready() == true);
 
+    // Make a message with a scantable so it goes to scanFast.
+    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Priority::FAST);
+    Task::Ptr sF = makeTask(taskMsg);
+    blend.queCmd(sF);
+    BOOST_CHECK(scanFast->getSize() == 1);
+    BOOST_CHECK(scanFast->ready() == true);
+    BOOST_CHECK(blend.ready() == true);
+
+    taskMsg = newTaskMsgScan(35, lsst::qserv::proto::ScanInfo::Priority::SLOW );
+    Task::Ptr sS = makeTask(taskMsg);
+    blend.queCmd(sS);
+    BOOST_CHECK(scanSlow->getSize() == 1);
+    BOOST_CHECK(scanSlow->ready() == true);
+    BOOST_CHECK(blend.ready() == true);
+
+    taskMsg = newTaskMsgScan(35, lsst::qserv::proto::ScanInfo::Priority::MEDIUM );
+    Task::Ptr sM = makeTask(taskMsg);
+    blend.queCmd(sM);
+    BOOST_CHECK(scanMed->getSize() == 1);
+    BOOST_CHECK(scanMed->ready() == true);
+    BOOST_CHECK(blend.ready() == true);
+
+    // Group has highest priority and is handled first.
     auto aa40 = blend.getCmd(false);
     blend.commandStart(aa40);
     blend.commandFinish(aa40);
     BOOST_CHECK(aa40.get() == a40.get());
     BOOST_CHECK(group->ready() == false);
-    BOOST_CHECK(blend.ready() == false);
-
-    // Make a message with a scantable so it goes to scan.
-    Task::Ptr s1 = makeTask(newTaskMsg(27));
-    blend.queCmd(s1); // should go to scan
-    BOOST_CHECK(group->getSize() == 1);
-    BOOST_CHECK(group->ready() == true);
     BOOST_CHECK(blend.ready() == true);
 
-    auto ss1 = blend.getCmd(false);
-    blend.commandStart(ss1);
-    blend.commandFinish(ss1);
-    BOOST_CHECK(ss1.get() == ss1.get());
-    BOOST_CHECK(group->ready() == false);
+    // Fast has priority and should be first.
+    auto sFC = blend.getCmd(false);
+    blend.commandStart(sFC);
+    blend.commandFinish(sFC);
+    BOOST_CHECK(sFC.get() == sF.get());
+    BOOST_CHECK(scanFast->ready() == false);
+    BOOST_CHECK(blend.ready() == true);
+
+    // Then medium
+    auto sMC = blend.getCmd(false);
+    blend.commandStart(sMC);
+    blend.commandFinish(sMC);
+    BOOST_CHECK(sMC.get() == sM.get());
+    BOOST_CHECK(scanMed->ready() == false);
+    BOOST_CHECK(blend.ready() == true);
+
+    // Then slow
+    auto sSC = blend.getCmd(false);
+    blend.commandStart(sSC);
+    blend.commandFinish(sSC);
+    BOOST_CHECK(sSC.get() == sS.get());
+    BOOST_CHECK(scanFast->ready() == false);
     BOOST_CHECK(blend.ready() == false);
+
+    auto badPtr = blend.getCmd(false);
+    BOOST_CHECK(badPtr == nullptr);
 
 }
 

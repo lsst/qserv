@@ -54,16 +54,11 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-ChunkDisk* dbgChunkDisk1 = nullptr; ///< A symbol for gdb
 
-
-ScanScheduler::ScanScheduler(int maxThreads)
-    : _maxThreads{maxThreads},
-      _disks{}
+ScanScheduler::ScanScheduler(std::string name, int maxThreads, memman::MemMan::Ptr const& memMan)
+    : _name(name), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads), _memMan(memMan)
 {
-    _disks.push_back(std::make_shared<ChunkDisk>());
-    dbgChunkDisk1 = _disks.front().get();
-    assert(!_disks.empty());
+    _disk = std::make_shared<ChunkDisk>(_memMan);
 }
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
@@ -83,16 +78,16 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
-    assert(!_disks.empty());
     // If removeInflight finishes a scan, need to notify threads that
     // they might be able to advance to the next chunk.
-    bool needNotify = _disks.front()->removeInflight(t);
+    bool needNotify = _disk->removeInflight(t);
     --_inFlight;
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight= " << _inFlight);
     if (needNotify) {
         _cv.notify_all();
     }
 }
+
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
@@ -103,29 +98,69 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
-    // FIXME: Select disk based on chunk location. Currently only ever 1 element in _disks.
-    // FIXME: Pass most appropriate disk to getCmd().
-    // Check disks for candidate ones.
-    // Pick one. Prefer a less-loaded disk: want to make use of i/o
-    // from both disks. (for multi-disk support)
-    assert(!_disks.empty());
-    assert(_disks.front());
-    auto rdy = _disks.front()->ready();
-    return rdy && _inFlight < _maxThreads;
+    bool useFlexibleLock = (_inFlight < 1);
+    auto rdy = _disk->ready(useFlexibleLock);
+    return rdy && _inFlight < _maxInFlight();
+
+    // Check with resource manager if resources are available for the task
+    /* &&&
+    auto task = _queue.front()->peekTask();
+    if (!task->hasMemHandle) {
+        TableInfo::LockOptions lckOptTbl = TableInfo::LockOptions::MUSTLOCK;
+        TableInfo::LockOPtions lckOptIdx = TableInfo::LockOptions::NOLOCK;
+        if (_inFlight < 1) lckOptTbl = TableInfo::FLEXIBLE;
+        auto tblVect = task->getTableVector(lckOptTbl, lckOptIdx); // &&& no so thrilled with putting this in Task
+        auto chunkId = task->getChunkId();
+        Handle handle = _memMgr->lock(tblVect, chunkId); // &&& what happens if tblVect is empty?
+        if (handle == 0) {
+            switch (_memMgr->errno) {
+            case MemMan::ENOMEM:
+                _resourceStarved = true;
+                return false;
+            case MemMan::ENOENT:
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found");
+                // &&& is the correct course of action to go ahead and run the query.
+                // &&& ??? It should get a mysql error, causing a msg to czar to run it somewhere else.
+                // &&& ??? or cancel the task and then continue on ???
+                break;
+            case MemMan::EFAULT:
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=EFAULT");
+                // &&& appropropriate course of action with file system fault is ???
+                // &&& throw error or
+                return false;
+            }
+        }
+        task->setMemHandle(handle);
+    }
+    */
 }
 
-std::size_t ScanScheduler::getSize() {
+
+/// Sets the value of _maxThreadsAdj and must be set while in the
+/// same critical region as the _ready() calls that use it.
+/// The BlendScheduler must maintain the lock on its mutex to use this.
+// &&& basically duplicate of same thing in GroupScheduler. Move to wcontrol::Scheduler along with maxThreads, maxThreadsAdj, and _maxInFlight()?
+void ScanScheduler::maxThreadAdjust(int tempMax) {
+    _maxThreadsAdj = tempMax;
+}
+
+
+std::size_t ScanScheduler::getSize() const {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    // When more disks are available, the total will need to be found.
-    return _disks.front()->getSize();
+    return _disk->getSize();
 }
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+    } else {
+        if (!_ready()) {
+            return nullptr;
+        }
     }
-    auto task =  _disks.front()->getTask();;
+    bool useFlexibleLock = (_inFlight < 1);
+    auto task = _disk->getTask(useFlexibleLock);
     ++_inFlight; // in flight as soon as it is off the queue.
     return task;
 }
@@ -133,14 +168,12 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
 void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::queCmd could not be converted to Task or was nullptr");
+        LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    assert(!_disks.empty());
-    assert(_disks.front());
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::queCmd tSeq=" << t->tSeq);
-    _disks.front()->enqueue(t);
+    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd tSeq=" << t->tSeq);
+    _disk->enqueue(t);
     util::CommandQueue::_cv.notify_all();
 }
 

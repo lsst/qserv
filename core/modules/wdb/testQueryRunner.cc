@@ -67,7 +67,11 @@ struct Fixture {
         t->set_session(123456);
         t->set_chunkid(3240); // hardcoded
         t->set_db("LSST"); // hardcoded
-        t->add_scantables("Object");
+        auto scanTbl = t->add_scantable();
+        scanTbl->set_db("LSST");
+        scanTbl->set_table("Object");
+        scanTbl->set_lockinmemory(false);
+        scanTbl->set_scanspeed(1);
         lsst::qserv::proto::TaskMsg::Fragment* f = t->add_fragment();
         f->add_query("SELECT AVG(yFlux_PS) from LSST.Object_3240");
         return t;

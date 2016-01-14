@@ -38,6 +38,7 @@
 
 // Local headers
 #include "global/stringTypes.h"
+#include "proto/ScanTableInfo.h"
 
 
 namespace lsst {
@@ -53,7 +54,7 @@ public:
     // Contents could change
     std::string db; ///< dominant db
     int chunkId;
-    StringPairVector scanTables; ///< shared-scan candidates
+    proto::ScanInfo scanInfo; ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;

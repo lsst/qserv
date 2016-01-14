@@ -83,7 +83,7 @@ public:
 protected:
     std::deque<Command::Ptr> _qu{};
     std::condition_variable  _cv{};
-    std::mutex               _mx{};
+    mutable std::mutex       _mx{};
 };
 
 /// An event driven thread.

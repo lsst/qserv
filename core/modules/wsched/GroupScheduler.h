@@ -40,6 +40,7 @@ public:
     explicit GroupQueue(int maxAccepted, wbase::Task::Ptr const& task);
     bool queTask(wbase::Task::Ptr const& task);
     wbase::Task::Ptr getTask();
+    wbase::Task::Ptr peekTask();
     bool isEmpty() { return _tasks.empty(); }
 
 protected:
@@ -57,25 +58,33 @@ class GroupScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(int maxThreads, int maxGroupSize);
+    GroupScheduler(std::string const& name, int maxThreads, int maxGroupSize);
     virtual ~GroupScheduler() {}
 
-    static std::string getName()  { return std::string("GroupSched"); }
     bool empty();
-    bool ready();
-    std::size_t getSize();
-    int getInFlight() { return _inFlight; }
 
+    // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
-    void commandFinish(util::Command::Ptr const&) override {--_inFlight;}
+    void commandFinish(util::Command::Ptr const&) override { --_inFlight; }
+
+    // wcontrol::Scheduler overrides
+    int getInFlight() const override { return _inFlight; }
+    std::string getName() const override { return _name; }
+    bool ready() override;
+    std::size_t getSize() const override;
+    void maxThreadAdjust(int tempMax) override;
 
 private:
     bool _ready();
+    int _maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
+
+    std::string _name;
 
     std::deque<GroupQueue::Ptr> _queue;
     int _maxGroupSize{1};
     int _maxThreads{1};
+    int _maxThreadsAdj{1}; //< This must be used carefully as not protected.
     std::atomic<int> _inFlight{0};
 };
 

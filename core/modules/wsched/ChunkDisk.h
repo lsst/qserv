@@ -38,6 +38,7 @@
 #include <vector>
 
 // Qserv headers
+#include "memman/MemMan.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wsched/ChunkState.h"
@@ -47,32 +48,31 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-/// ChunkDisk is meant to keep disc i/o down by reading a single chunk at
-/// a time. It is meant to be connected to a single disk. It provides
-/// Tasks for a single chunk and once it is told that reading has completed,
-/// it advances to the next chunk.
-///
-/// It may be possible to improve performance by queuing Tasks on the
-/// active heap if the chunk was recently read in. There are pitfalls
-/// to doing this as continual requests could prevent ChunkDisk from
-/// advancing to the next chunk and no requests would finish.
+/// Limits Tasks to running when resources are available.
+/// TODO: DM-4943 Merge this class into ScanScheduler.
 class ChunkDisk {
 public:
     using TaskSet = std::set<wbase::Task const*>;
+
+    ChunkDisk(memman::MemMan::Ptr const& memMan) : _memMan(memMan) {}
+    ChunkDisk(ChunkDisk const&) = delete;
+    ChunkDisk& operator=(ChunkDisk const&) = delete;
 
     TaskSet getInflight() const;
 
     // Queue management
     void enqueue(wbase::Task::Ptr const& a);
-    wbase::Task::Ptr getTask();
+    wbase::Task::Ptr getTask(bool useFlexibleLock);
     bool busy() const; /// Busy scanning a chunk?
     bool empty() const;
-    bool ready();
+    bool ready(bool useFlexibleLock);
     std::size_t getSize() const;
 
     // Inflight management
     void registerInflight(wbase::Task::Ptr const& e);
     bool removeInflight(wbase::Task::Ptr const& e);
+
+    void setResourceStarved(bool starved);
 
     /// Class that keeps the minimum chunk id at the front of the heap.
     class MinHeap {
@@ -98,14 +98,16 @@ public:
 private:
     bool _busy() const;
     bool _empty() const;
-    bool _ready();
+    bool _ready(bool useFlexibleLock);
 
-    mutable std::mutex _queueMutex;
+    mutable std::mutex _queueMutex; // &&& is this needed or is another mutex always locked when this is locked?
     MinHeap _activeTasks;
     MinHeap _pendingTasks;
     ChunkState _chunkState;
+    memman::MemMan::Ptr _memMan;
     mutable std::mutex _inflightMutex;
     TaskSet _inflight;
+    bool _resourceStarved;
 };
 
 }}} // namespace

@@ -32,6 +32,8 @@
 // Parent class
 #include "qana/QueryPlugin.h"
 
+// System headers
+#include <algorithm>
 
 // Third-party headers
 
@@ -40,6 +42,7 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
+#include "proto/ScanTableInfo.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QsRestrictor.h"
@@ -80,9 +83,9 @@ public:
     virtual void applyFinal(query::QueryContext& context);
 
 private:
-    StringPairVector _findScanTables(query::SelectStmt& stmt,
-                                   query::QueryContext& context);
-    StringPairVector _scanTables;
+    proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
+                                                 query::QueryContext& context);
+    proto::ScanInfo _scanInfo;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -121,15 +124,16 @@ registerPlugin registerScanTablePlugin;
 void
 ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
                               query::QueryContext& context) {
-    _scanTables = _findScanTables(stmt, context);
-    context.scanTables = _scanTables;
+    _scanInfo = _findScanTables(stmt, context);
+    context.scanInfo = _scanInfo;
 }
 
 void
 ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = 2;
     if (context.chunkCount < scanThreshold) {
-        context.scanTables.clear();
+        context.scanInfo.infoTables.clear();
+        context.scanInfo.priority = 0;
         LOGS(_log, LOG_LVL_DEBUG, "Squash scan tables: <" << scanThreshold << " chunks.");
     }
 }
@@ -158,7 +162,8 @@ filterPartitioned(query::TableRefList const& tList) {
     return vector;
 }
 
-StringPairVector
+
+proto::ScanInfo
 ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                  query::QueryContext& context) {
     // Might be better as a separate plugin
@@ -259,7 +264,23 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (filter) ****");
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
-    return scanTables;
+
+    // Ask css if any of the tables should be locked in memory and their scan speed.
+    // Use this information to determine scanPriority.
+    proto::ScanInfo scanInfo;
+    int inMemoryCount = 0;
+    for (auto& pair : scanTables) {
+        proto::ScanTableInfo info(pair.first, pair.second);
+        css::ScanTableParams const params = context.css->getScanTableParams(info.db, info.table);
+        info.lockInMemory = params.lockInMem;
+        if (info.lockInMemory) inMemoryCount++;
+        info.scanSpeed = params.scanSpeed;
+        scanInfo.infoTables.push_back(info);
+        scanInfo.priority = std::max(scanInfo.priority, info.scanSpeed);
+    }
+    if (inMemoryCount > 2) scanInfo.priority++;
+
+    return scanInfo;
 }
 
 }}} // namespace lsst::qserv::qana

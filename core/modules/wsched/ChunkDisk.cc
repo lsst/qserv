@@ -26,10 +26,14 @@
 
 // System headers
 #include <ctime>
+#include <errno.h>
+#include <exception>
 #include <sstream>
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 
 /// ChunkDisk is a data structure that tracks a queue of pending tasks
 /// for a disk, and the state of a chunkId-ordered scan on a disk
@@ -132,14 +136,14 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
 }
 
 /// Return true if this disk is ready to provide a Task from its queue.
-bool ChunkDisk::ready() {
+bool ChunkDisk::ready(bool useFlexibleLock) {
     std::lock_guard<std::mutex> lock(_queueMutex);
-    return _ready();
+    return _ready(useFlexibleLock);
 }
 
 /// Precondition: _queueMutex must be locked
 /// Return true if this disk is ready to provide a Task from its queue.
-bool ChunkDisk::_ready() {
+bool ChunkDisk::_ready(bool useFlexibleLock) {
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
     if (_activeTasks.empty() && !_pendingTasks.empty()) {
@@ -147,25 +151,72 @@ bool ChunkDisk::_ready() {
         LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk active-pending swap");
     }
     // If _pendingTasks was empty too, nothing to do.
-    if (_activeTasks.empty()) { return false; }
-    wbase::Task::Ptr top = _activeTasks.top();
-    int chunkId = taskChunkId(*top);
+    if(_activeTasks.empty()) { return false; }
+
+    wbase::Task::Ptr task = _activeTasks.top();
+    // Try to get memHandle for the task if doesn't have one.
+    if (!task->hasMemHandle()) {
+        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::MUSTLOCK;
+        memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
+        if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
+        // auto tblVect = task->getTableVector(lckOptTbl, lckOptIdx); // &&& no so thrilled with putting this in Task &&& delete
+        auto scanInfo = task-> getScanInfo();
+        auto chunkId = task->getChunkId();
+        std::vector<memman::TableInfo> tblVect;
+        for (auto const& tbl : scanInfo.infoTables) {
+            memman::TableInfo ti(tbl.db + "." + tbl.table, lckOptTbl, lckOptIdx);
+            tblVect.push_back(ti);
+        }
+        // If tblVect is empty, we should get the empty handle
+        memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
+        if (handle == 0) {
+            switch (errno) {
+            case ENOMEM:
+                setResourceStarved(true);
+                return false;
+            case ENOENT:
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found tSeq=" << task->tSeq);
+                // Not sure if this is the best course of action, but it should just need one
+                // logic path. The query should fail from the missing tables
+                // and the czar must be able to handle that with appropriate retries.
+                handle = memman::MemMan::HandleType::ISEMPTY;
+                break;
+            default:
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock file system error tSeq=" << task->tSeq);
+                // Any error reading the file system is probably fatal for the worker.
+                throw std::bad_exception();
+                return false;
+            }
+        }
+        task->setMemHandle(handle);
+        setResourceStarved(false);
+    }
+    return true;
+
+    // &&& ready if we've got a handle from MemMan for the top task
+    // &&& add argument to _ready() and getTask() to indicate FLEXIBLE lock should be used.
+
+    // &&& delete from here to end of function
+    /* &&& delete
     // TODO: A timeout should be added such that we can advance to the next chunkId if too much time has
     // been spent on this chunkId, or we need a better method of determining when a chunk has been read than
     // waiting for the a query on the chunk to finish.
+    wbase::Task::Ptr top = _activeTasks.top();
+    int chunkId = taskChunkId(*top);
     bool allowAdvance = !_busy() && !_empty();
     bool idle = !_chunkState.hasScan();
     bool inScan = _chunkState.isScan(chunkId);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk::_ready() " << "allowAdvance=" << allowAdvance
          << " idle=" << idle << " inScan=" << inScan);
     return allowAdvance || idle || inScan;
+    */
 }
 
 /// Return a Task that is ready to run, if available.
-wbase::Task::Ptr ChunkDisk::getTask() {
+wbase::Task::Ptr ChunkDisk::getTask(bool useFlexibleLock) {
     LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk::getTask start");
     std::lock_guard<std::mutex> lock(_queueMutex);
-    if (!_ready()) {
+    if (!_ready(useFlexibleLock)) {
         LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk denying task");
         return nullptr;
     }
@@ -183,6 +234,15 @@ wbase::Task::Ptr ChunkDisk::getTask() {
     // FIXME: If time for chunk has expired, advance to next chunk
     // Get the next chunk from the queue.
 }
+
+// TODO: DM-4943 add statistics.
+void ChunkDisk::setResourceStarved(bool starved) {
+    if (starved != _resourceStarved) {
+        _resourceStarved = starved;
+        LOGS(_log, LOG_LVL_DEBUG, "resourceStarved changed to " << _resourceStarved);
+    }
+}
+
 
 bool ChunkDisk::busy() const {
     std::lock_guard<std::mutex> lock(_queueMutex);

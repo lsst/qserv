@@ -31,9 +31,9 @@ message TaskMsg {
     // Future: might have multiple db/chunk dependencies.
     optional string db = 2;
     optional int32 chunkid = 3;
-    repeated string scantables = 4;
     optional string user = 6;
     optional int32 protocol = 7; // Null or 1: original mysqldump, 2: row-based result
+    optional int32 scanpriority = 8;
     message Subchunk {
         optional string database = 1; // database (unused)
         repeated string table = 2; // subchunked tables
@@ -52,7 +52,14 @@ message TaskMsg {
         // contributing fragments' rows.
     }
     repeated Fragment fragment = 5;
-
+    message ScanTable {
+        required string db = 1;
+        required string table = 2;
+        required bool lockInMemory = 3;
+        required int32 scanSpeed = 4;
+    }
+    repeated ScanTable scantable = 4;
+    
 }
 
 // Result message received from worker

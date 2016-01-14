@@ -41,7 +41,7 @@ public:
     FifoScheduler() {};
     virtual ~FifoScheduler() {}
 
-    static std::string getName() { return std::string("FifoSched"); }
+    std::string getName() const override { return std::string("FifoSched"); }
 };
 
 }}} // namespace lsst::qserv::wsched

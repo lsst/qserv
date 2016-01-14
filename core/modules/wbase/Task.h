@@ -35,6 +35,8 @@
 #include <string>
 
 // Qserv headers
+#include "memman/MemMan.h"
+#include "proto/ScanTableInfo.h"
 #include "util/EventThread.h"
 #include "util/threadSafe.h"
 
@@ -123,20 +125,30 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     void cancel();
-    bool getCancelled(){ return _cancelled; }
+    bool getCancelled()   { return _cancelled; }
+
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
+
+    // Shared scan information
+    int getChunkId();
+    proto::ScanInfo& getScanInfo() { return _scanInfo; }
+    bool hasMemHandle() { return _memHandle != memman::MemMan::HandleType::INVALID; }
+    memman::MemMan::Handle getMemHandle() { return _memHandle; }
+    void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
 
     static util::Sequential<int> sequence; // for debugging only
     static IdSet allTSeq; // set of all task sequence numbers that are not complete.
     int tSeq{-1}; // for debugging only
 
 private:
-    std::atomic<bool> _cancelled{false};
+    std::atomic<bool> _cancelled {false};
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
+    proto::ScanInfo _scanInfo;
+    std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
 };
 
 /// MsgProcessor implementations handle incoming Task objects.
