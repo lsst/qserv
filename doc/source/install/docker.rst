@@ -8,9 +8,11 @@ Qserv is also available as a Docker image (see https://www.docker.com/).
 
    This procedure was tested with Docker 1.8.
 
-*****************************
-Build image for Qserv release
-*****************************
+.. _docker-github:
+
+**************************************
+Build Qserv image from a Github branch
+**************************************
 
 Create Qserv latest release image, with 3 names:
 
@@ -49,7 +51,7 @@ Create Qserv master and worker images from a given Qserv version:
    # Code need to be pushed on github
    # eups tag named qserv-dev will be used to setup Qserv version 
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   3_build-tagged-image.sh <docker-image-name> 
+   4_build-configured-image.sh -i <docker-image-name> <master-node-fqdn>
 
 *********
 Use cases
