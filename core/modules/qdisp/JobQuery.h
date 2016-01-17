@@ -88,7 +88,6 @@ public:
         return _queryResourcePtr;
     }
 
-    std::string toString() const ;
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
 protected:

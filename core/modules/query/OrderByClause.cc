@@ -74,7 +74,7 @@ public:
             _qt.append(", ");
         }
         term.renderTo(_qt);
-        LOGS(_log, LOG_LVL_TRACE, "Query Template: " << _qt.toString());
+        LOGS(_log, LOG_LVL_TRACE, "Query Template: " << _qt);
     }
     QueryTemplate& _qt;
     int _count;
@@ -144,7 +144,7 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
     if (_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
         for(OrderByTermVector::const_iterator term = _terms->begin(), e = _terms->end(); term != e; ++term) {
-            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term->toString());
+            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << *term);
             r(*term);
         }
     }

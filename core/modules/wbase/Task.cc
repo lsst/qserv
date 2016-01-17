@@ -164,12 +164,6 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
     return os;
 }
 
-std::string IdSet::toString() {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
 std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
     os << "count=" << idSet._ids.size() << " ";
     bool first = true;

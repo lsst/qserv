@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,12 +32,6 @@
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-
-std::string JobDescription::toString() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
 
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
     os << "job(id=" << jd._id << " payload.len=" << jd._payload.length()

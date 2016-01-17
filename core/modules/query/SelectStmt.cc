@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -199,13 +199,6 @@ void nil_string_helper(std::ostream& oss,
 }
 
 } // anonymous
-
-// Return a string representation of the object
-std::string SelectStmt::toString() {
-    std::ostringstream oss;
-    oss << *this;
-    return oss.str();
-}
 
 // Output operator for SelectStmt
 std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
