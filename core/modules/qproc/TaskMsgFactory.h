@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,18 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_QPROC_TASKMSGFACTORY2_H
-#define LSST_QSERV_QPROC_TASKMSGFACTORY2_H
+#ifndef LSST_QSERV_QPROC_TASKMSGFACTORY_H
+#define LSST_QSERV_QPROC_TASKMSGFACTORY_H
 /**
   * @file
   *
-  * @brief TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects. The "2"
-  * differentiates it from the TaskMsgFactory in the Python layer (which has
-  * been deprecated).
-  *
-  * TODO: When the Python layer no longer has any need to produce protocol
-  * messages, we can eliminate the Python TaskMsgFactory and rename this one to
-  * TaskMsgFactory.
+  * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -47,15 +41,10 @@ namespace qproc {
 
 class ChunkQuerySpec;
 
-/// TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects.
-/// This functionality exists in the python later as TaskMsgFactory,
-/// but we are pushing the functionality to C++ so that we can avoid
-/// the Python/C++ for each chunk query. This should dramatically
-/// improve query dispatch speed (and also reduce overall user query
-/// latency).
-class TaskMsgFactory2 {
+/// TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
+class TaskMsgFactory {
 public:
-    TaskMsgFactory2(uint64_t session);
+    TaskMsgFactory(uint64_t session);
 
     /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s,
@@ -69,5 +58,5 @@ private:
 
 }}} // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_TASKMSGFACTORY2_H
+#endif // LSST_QSERV_QPROC_TASKMSGFACTORY_H
 

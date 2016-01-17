@@ -24,18 +24,13 @@
 /**
   * @file
   *
-  * @brief TaskMsgFactory2 is a factory for TaskMsg (protobuf)
-  * objects. This functionality exists in the python later as
-  * TaskMsgFactory, but we are pushing the functionality to C++ so
-  * that we can avoid the Python/C++ for each chunk query. This should
-  * dramatically improve query dispatch speed (and also reduce overall
-  * user query latency).
+  * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
   *
   * @author Daniel L. Wang, SLAC
   */
 
 // Class header
-#include "qproc/TaskMsgFactory2.h"
+#include "qproc/TaskMsgFactory.h"
 
 // System headers
 #include <stdexcept>
@@ -52,7 +47,7 @@
 #include "util/common.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory2");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
 }
 
 namespace lsst {
@@ -75,9 +70,9 @@ flattenScanTables(StringVector& outputList,
     }
 }
 ////////////////////////////////////////////////////////////////////////
-// class TaskMsgFactory2::Impl
+// class TaskMsgFactory::Impl
 ////////////////////////////////////////////////////////////////////////
-class TaskMsgFactory2::Impl {
+class TaskMsgFactory::Impl {
 public:
     Impl(uint64_t session, std::string const& resultTable)
         : _session(session), _resultTable(resultTable) {
@@ -115,8 +110,8 @@ private:
 };
 
 std::shared_ptr<proto::TaskMsg>
-TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
-                               std::string const& chunkResultName) {
+TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
+                              std::string const& chunkResultName) {
     std::string resultTable = _resultTable;
     if (!chunkResultName.empty()) { resultTable = chunkResultName; }
     _taskMsg = std::make_shared<proto::TaskMsg>();
@@ -164,15 +159,15 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
 
 
 ////////////////////////////////////////////////////////////////////////
-// class TaskMsgFactory2
+// class TaskMsgFactory
 ////////////////////////////////////////////////////////////////////////
-TaskMsgFactory2::TaskMsgFactory2(uint64_t session)
+TaskMsgFactory::TaskMsgFactory(uint64_t session)
     : _impl(std::make_shared<Impl>(session, "Asdfasfd" )) {
-
 }
-void TaskMsgFactory2::serializeMsg(ChunkQuerySpec const& s,
-                                   std::string const& chunkResultName,
-                                   std::ostream& os) {
+
+void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
+                                  std::string const& chunkResultName,
+                                  std::ostream& os) {
     std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName);
     m->SerializeToOstream(&os);
 }
