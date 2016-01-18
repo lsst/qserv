@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +23,7 @@
 
 // Qserv Headers
 #include "MemManNone.h"
+#include "MemManReal.h"
 
 namespace lsst {
 namespace qserv {
@@ -32,12 +33,11 @@ namespace memman {
 /*                                C r e a t e                                 */
 /******************************************************************************/
   
-MemMan *MemMan::create(unsigned long long maxBytes, std::string const &dbPath) {
-    (void)dbPath;
+MemMan *MemMan::create(size_t maxBytes, std::string const &dbPath) {
 
-    // As of now we simply return a memory manager that does nothing
+    // Return a memory manager implementation
     //
-    return new MemManNone(maxBytes);
+    return new MemManReal(dbPath, maxBytes);
 }
 }}} // namespace lsst:qserv:memman
 

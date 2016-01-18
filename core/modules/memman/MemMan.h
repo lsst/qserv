@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,14 +42,14 @@ public:
 
     std::string tableName;    //< Name of the table
 
-    enum LockOptions {
+    enum class LockType {
         NOLOCK,               //< Item should not be locked
         MUSTLOCK,             //< Item must be locked or declare failure
         FLEXIBLE              //< Item may be locked if possible
     };
 
-    LockOptions theData;      //< Lock options for the table's data
-    LockOptions theIndex;     //< Lock options for the table's index, if any
+    LockType theData;         //< Lock options for the table's data
+    LockType theIndex;        //< Lock options for the table's index, if any
 
     //-----------------------------------------------------------------------------
     //! Constructor
@@ -59,9 +59,9 @@ public:
     //! @param  optIndex  lock options for the table's index
     //-----------------------------------------------------------------------------
 
-    TableInfo(std::string const &tabName,
-              LockOptions optData=MUSTLOCK,
-              LockOptions optIndex=NOLOCK)
+    TableInfo(std::string const& tabName,
+              LockType optData=LockType::MUSTLOCK,
+              LockType optIndex=LockType::NOLOCK)
              : tableName(tabName), theData(optData), theIndex(optIndex)
              {}
 };
@@ -86,9 +86,7 @@ public:
     //! @return  0: A manager could not be created.
     //-----------------------------------------------------------------------------
 
-    static MemMan *create(unsigned long long maxBytes,
-                          std::string const &dbPath
-                         );
+    static MemMan* create(size_t maxBytes, std::string const& dbPath);
 
     //-----------------------------------------------------------------------------
     //! @brief Lock a set of tables in memory for a particular chunk.
@@ -98,17 +96,20 @@ public:
     //!
     //! @return =0     - Nothing was locked. The errno variable holds the
     //!                  reason, as follows:
-    //!                  EFAULT - filesystem or memory error
+    //!                  xxxxxx - filesystem or memory error
     //!                  ENOENT - a chunk was missing
     //!                  ENOMEM - insufficient memory to fully satisfy request
     //! @return !0     - Is the resource handle associated with this request.
     //-----------------------------------------------------------------------------
 
-    typedef unsigned int Handle;
+    using Handle = uint64_t;
 
-    virtual Handle lock(std::vector<TableInfo> const& tables,
-                        unsigned int chunk
-                       ) = 0;
+    struct HandleType {
+           static const Handle INVALID=0;
+           static const Handle ISEMPTY=1;
+    };
+
+    virtual Handle lock(std::vector<TableInfo> const& tables, int chunk) = 0;
 
     //-----------------------------------------------------------------------------
     //! @brief Unlock a set of tabes previously locked by the lock() method.
@@ -118,7 +119,7 @@ public:
     //! @return false: The resource was not found.
     //! @return true:  The the memory associated with the resource has been
     //!                release. If this is the last usage of the resource,
-    //!                the memory associated wih the resource us unlocked.
+    //!                the memory associated with the resource is unlocked.
     //-----------------------------------------------------------------------------
 
     virtual bool  unlock(Handle handle) = 0;
@@ -138,10 +139,12 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Statistics {
-        unsigned long long bytesLockMax;//< Maximum number of bytes to lock
-        unsigned long long bytesLocked; //< Current number of bytes locked
-        unsigned int       numLocks;    //< Number of calls to lock()
-        unsigned int       numErrors;   //< Number of calls that failed
+        size_t   bytesLockMax; //< Maximum number of bytes to lock
+        size_t   bytesLocked;  //< Current number of bytes locked
+        uint32_t numFSets;     //< Global  number of active file sets
+        uint32_t numFiles;     //< Global  number of active files
+        uint32_t numLocks;     //< Number of calls to lock()
+        uint32_t numErrors;    //< Number of calls that failed
     };
 
     virtual Statistics getStatistics() = 0;
@@ -156,9 +159,9 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Status {
-        unsigned long long bytesLock; //< Number of resource bytes locked
-        unsigned int       numTables; //< Number of tables resource has
-        unsigned int       chunk;     //< Chunk number associated with resource
+        size_t   bytesLock; //< Number of resource bytes locked
+        uint32_t numFiles;  //< Number of files resource has
+        int      chunk;     //< Chunk number associated with resource
     };
 
     virtual Status getStatus(Handle handle) = 0;
