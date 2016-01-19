@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 AURA/LSST.
+ * Copyright 2008-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,8 +41,8 @@ ChunkMapping::Map
 ChunkMapping::getMapping(int chunk, int subChunk) {
     Map m;
     ModeMap::const_iterator end = _map.end();
-    std::string chunkStr = _toString(chunk);
-    std::string subChunkStr = _toString(subChunk);
+    std::string chunkStr = std::to_string(chunk);
+    std::string subChunkStr = std::to_string(subChunk);
     static const std::string one("1");
     static const std::string two("2");
     // Insert mapping for: plainchunk, plainsubchunk1, plainsubchunk2
