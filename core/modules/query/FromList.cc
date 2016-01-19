@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -95,7 +95,7 @@ std::string
 FromList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.toString();
+    return qt.sqlFragment();
 }
 
 void

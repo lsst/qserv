@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -54,7 +54,6 @@ public:
     ResourceUnit const& resource() const { return _resource; }
     std::string const& payload() const { return _payload; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
-    std::string toString() const;
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 private:
     int _id; // Job's Id number.

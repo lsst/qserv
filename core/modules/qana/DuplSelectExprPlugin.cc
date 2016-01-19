@@ -103,12 +103,10 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
           std::string msg;
           if (!multiError.empty()) {
-              msg = "Duplicate select fields found:\n" + multiError.toString();
+              LOGS(_log, LOG_LVL_DEBUG,  "Duplicate select fields found:\n" << multiError);
+          } else {
+              LOGS(_log, LOG_LVL_DEBUG,  "No duplicate select field.");
           }
-          else {
-              msg = "No duplicate select field.";
-          }
-          LOGS(_log, LOG_LVL_DEBUG, msg);
     }
     return multiError;
 }
@@ -141,7 +139,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
         } else if (ve.isColumnRef()) {
             name = ve.getColumnRef()->column;
         } else {
-            name = ve.toString();
+            name = ve.sqlFragment();
         }
         boost::algorithm::to_lower(name);
         selectExprNormalizedNames.push_back(name);

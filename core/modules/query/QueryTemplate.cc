@@ -133,7 +133,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 
 // Return a string representation of the object
-std::string QueryTemplate::toString() const {
+std::string QueryTemplate::sqlFragment() const {
     std::ostringstream oss;
     oss << *this;
     return oss.str();
@@ -173,7 +173,7 @@ std::string
 QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
     std::for_each(_entries.begin(), _entries.end(), MappingWrapper(em, newQt));
-    return newQt.toString();
+    return newQt.sqlFragment();
 }
 
 void

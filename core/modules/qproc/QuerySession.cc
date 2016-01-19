@@ -174,7 +174,7 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 std::string QuerySession::getProxyOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
-        orderBy = _stmt->getOrderBy().toString();
+        orderBy = _stmt->getOrderBy().sqlFragment();
     }
     return orderBy;
 }
@@ -323,7 +323,7 @@ void QuerySession::_generateConcrete() {
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
-         << _stmtMerge->getQueryTemplate().toString() << "\"");
+         << _stmtMerge->getQueryTemplate() << "\"");
 
     // TableMerger needs to be integrated into this design.
 }
@@ -345,8 +345,8 @@ void QuerySession::print(std::ostream& os) const {
     os << "  has chunks: " << this->hasChunks() << "\n";
     os << "  chunks: " << util::printable(this->_chunks) << "\n";
     os << "  needs merge: " << this->needsMerge() << "\n";
-    os << "  1st parallel statement: " << par.toString() << "\n";
-    os << "  merge statement: " << mer.toString() << std::endl;
+    os << "  1st parallel statement: " << par << "\n";
+    os << "  merge statement: " << mer << std::endl;
     if (!_context->scanTables.empty()) {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();

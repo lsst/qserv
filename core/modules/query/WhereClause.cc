@@ -129,7 +129,7 @@ std::string
 WhereClause::getGenerated() const {
     QueryTemplate qt;
     renderTo(qt);
-    return qt.toString();
+    return qt.sqlFragment();
 }
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if (_restrs.get()) {

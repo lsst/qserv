@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,8 +33,7 @@ namespace query {
 std::ostream& JoinRef::putStream(std::ostream& os) const {
     QueryTemplate t;
     _putJoinTemplate(t);
-    os << "Join(";
-    os << " " + t.toString() + " ";
+    os << "Join( " << t << " ";
     if (_right) {_right->putStream(os); }
     else { os << "<BROKEN_JOIN>";}
     if (_spec) { _spec->putStream(os << " "); }

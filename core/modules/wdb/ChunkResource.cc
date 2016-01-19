@@ -214,18 +214,6 @@ public:
     }
 
     enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
-    static std::string toStringLockStatus(LockStatus ls) {
-        std::string s = "unknown";
-        switch (ls) {
-        case UNLOCKED: s = "UNLOCKED";
-            break;
-        case LOCKED_OTHER: s = "LOCKED_OTHER";
-            break;
-        case LOCKED_OURS: s = "LOCKED_OURS";
-            break;
-        }
-        return s;
-    }
 
     void memLockRequireOwnership() {
         if (!_isFake && _memLockStatus() != LOCKED_OURS) {
@@ -249,8 +237,6 @@ private:
         : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
         _memLockAcquire();
     }
-
-
 
     void _discard(ScTableVector::const_iterator begin,
                   ScTableVector::const_iterator end) {
@@ -386,7 +372,18 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, const Backend::LockStatus& ls) {
-    os << Backend::toStringLockStatus(ls);
+    switch (ls) {
+    case Backend::UNLOCKED:
+        os << "UNLOCKED";
+        break;
+    case Backend::LOCKED_OTHER:
+        os << "LOCKED_OTHER";
+        break;
+    case Backend::LOCKED_OURS:
+        os << "LOCKED_OURS";
+        break;
+    }
+    os << "unknown";
     return os;
 }
 

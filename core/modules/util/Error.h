@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -79,7 +79,6 @@ public:
         _code(code), _msg(msg), _status(status) {
     }
 
-    std::string toString() const;
 
     /** Overload output operator for current class
      *

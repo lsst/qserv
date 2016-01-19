@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2015 LSST Corporation.
+ * Copyright 2009-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -71,13 +71,6 @@ private:
     enum Mode {UNKNOWN, CHUNK, CHUNK_WITH_SUB};
     typedef std::map<std::string, Mode> ModeMap;
     typedef ModeMap::value_type ModeMapValue;
-
-    template <typename T>
-    std::string _toString(T const& t) {
-        std::ostringstream oss;
-        oss << t;
-        return oss.str();
-    }
 
     ModeMap _map;
     Map _instanceMap;

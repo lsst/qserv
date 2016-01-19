@@ -67,7 +67,7 @@ JobQuery::~JobQuery() {
  * @return - false if it can not setup the job or the maximum number of retries has been reached.
  */
 bool JobQuery::runJob() {
-    LOGS(_log, LOG_LVL_DEBUG, "runJob " << toString());
+    LOGS(_log, LOG_LVL_DEBUG, "runJob " << *this);
     if (_executive == nullptr) {
         logErr("runJob failed _executive=nullptr", this);
         return false;
@@ -146,12 +146,6 @@ void JobQuery::freeQueryResource(QueryResource* qr) {
     } else {
         LOGS(_log, LOG_LVL_WARN, "freeQueryResource called by wrong QueryResource.");
     }
-}
-
-std::string JobQuery::toString() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
 }
 
 std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -133,15 +133,6 @@ public:
     void setHaving(std::shared_ptr<HavingClause> h) { _having = h; }
 
     // Helpers, for debugging
-
-    /** Return a string representation of the object
-     *
-     * Used only for debugging, or logging
-     * Use getQueryTemplate().toString() to get the actual SQL query
-     *
-     * @return a string representation of the object
-     */
-    std::string toString();
 
     /** Output operator for SelectStmt
      *

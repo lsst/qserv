@@ -362,14 +362,14 @@ void UserQuerySelect::_qMetaRegister()
                 // special token
                 qTemplate += " /*QSEPARATOR*/; ";
             }
-            qTemplate += stmt->getQueryTemplate().toString();
+            qTemplate += stmt->getQueryTemplate().sqlFragment();
         }
     }
 
     std::string qMerge;
     auto mergeStmt = _qSession->getMergeStmt();
     if (mergeStmt) {
-        qMerge = mergeStmt->getQueryTemplate().toString();
+        qMerge = mergeStmt->getQueryTemplate().sqlFragment();
     }
     std::string proxyOrderBy = _qSession->getProxyOrderBy();
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),

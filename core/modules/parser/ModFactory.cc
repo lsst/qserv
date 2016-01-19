@@ -190,7 +190,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         }
         a = a->getNextSibling();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "ORDER BY AST branch processed: " << _orderBy->toString());
+    LOGS(_log, LOG_LVL_DEBUG, "ORDER BY AST branch processed: " << *_orderBy);
 }
 
 void ModFactory::_importGroupBy(antlr::RefAST a) {

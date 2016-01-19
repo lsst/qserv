@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -56,7 +56,7 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
     QueryTemplate qt;
     putTemplate(qt);
-    return os << qt.toString();
+    return os << qt;
 }
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
     if (isInconsistent(*this)) {

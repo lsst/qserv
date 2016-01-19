@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,16 +30,6 @@
 namespace lsst {
 namespace qserv {
 namespace util {
-
-/** Return a string representation of the object
- *
- * @return a string representation of the object
- */
-std::string Error::toString() const {
-    std::ostringstream str;
-    str << *this;
-    return str.str();
-}
 
 /** Overload output operator for this class
  *

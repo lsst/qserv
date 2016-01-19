@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -254,7 +254,7 @@ ValueExprPtr ValueExpr::clone() const {
  *
  * @return a string representation of the object
  */
-std::string ValueExpr::toString() const {
+std::string ValueExpr::sqlFragment() const {
     std::ostringstream oss;
 
     oss << *this;
@@ -266,7 +266,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     QueryTemplate qt;
     ValueExpr::render render(qt, false);
     render(ve);
-    os << qt.toString();
+    os << qt;
     return os;
 }
 

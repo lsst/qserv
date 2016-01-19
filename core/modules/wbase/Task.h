@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2015 LSST Corporation.
+ * Copyright 2011-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -82,7 +82,6 @@ public:
 struct IdSet {
     void add(int id) { std::lock_guard<std::mutex> lock(mx); _ids.insert(id); }
     void remove(int id) { std::lock_guard<std::mutex> lock(mx); _ids.erase(id); }
-    std::string toString();
     friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
 private:
     std::set<int> _ids;
