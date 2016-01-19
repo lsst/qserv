@@ -1,5 +1,5 @@
 #################
-Docker containers 
+Docker containers
 #################
 
 Qserv is also available as a Docker image (see https://www.docker.com/).
@@ -24,7 +24,7 @@ Create Qserv latest release image, with 3 names:
 
    . /path/to/lsst/stack/loadLSST.bash
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   1_build-latest-image.sh 
+   1_build-latest-image.sh
 
 Create Qserv cutting-edge dependencies image, named qserv:dev:
 
@@ -33,23 +33,23 @@ Create Qserv cutting-edge dependencies image, named qserv:dev:
    # cutting-edge dependencies needs to be tagged eups-dev
    # on distribution server.
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   2_build-dev-image.sh 
+   2_build-dev-image.sh
 
 Create Qserv image for a given git tag/branch:
 
 .. code-block:: bash
 
-   # Code need to be pushed on github 
+   # Code need to be pushed on github
    cd ${SRC_DIR}/qserv/admin/tools/docker
    3_build-tagged-image.sh <git-tag/branch>
-   # Current Qserv version will have eups tag named qserv-dev 
-   
+   # Current Qserv version will have eups tag named qserv-dev
+
 Create Qserv master and worker images from a given Qserv version:
 
 .. code-block:: bash
 
    # Code need to be pushed on github
-   # eups tag named qserv-dev will be used to setup Qserv version 
+   # eups tag named qserv-dev will be used to setup Qserv version
    cd ${SRC_DIR}/qserv/admin/tools/docker
    4_build-configured-image.sh -i <docker-image-name> <master-node-fqdn>
 
@@ -69,7 +69,7 @@ Run mono-node integration test against latest Qserv release:
    fjammes/qserv:latest \
    /qserv/scripts/mono-node-test.sh
 
-Develop and test 
+Develop and test
 ================
 
 Create Qserv image for a developer workstation:
@@ -81,17 +81,17 @@ Create Qserv image for a developer workstation:
    # change uid in image so that it match host user id
    # in order to mount rw user source code in container
    change-uid.sh
-   
 
-Set uid in qserv:dev w.r.t your host machine user account. This creates a qserv:dev-uid image which can mount host source code in a container with correct permissions. 
+
+Set uid in qserv:dev w.r.t your host machine user account. This creates a qserv:dev-uid image which can mount host source code in a container with correct permissions.
 Host might be a development machine or a continuous integration server.
 
 .. code-block:: bash
 
    ./change-uid.sh
- 
+
 Build, configure and run Qserv from source in qserv:dev-uid container using
-source and run directory located on a development machine. 
+source and run directory located on a development machine.
 
 .. code-block:: bash
 
@@ -107,7 +107,7 @@ source and run directory located on a development machine.
 Useful commands
 ***************
 
-.. literalinclude:: ../../../admin/tools/docker/useful-cmd.sh 
+.. literalinclude:: ../../../admin/tools/docker/useful-cmd.sh
    :language: bash
    :linenos:
 
