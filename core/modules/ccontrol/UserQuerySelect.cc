@@ -84,7 +84,7 @@
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
-#include "qproc/TaskMsgFactory2.h"
+#include "qproc/TaskMsgFactory.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
 #include "query/SelectStmt.h"
@@ -197,7 +197,7 @@ void UserQuerySelect::submit() {
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    qproc::TaskMsgFactory2 f(_userQueryId);
+    qproc::TaskMsgFactory f(_userQueryId);
     TmpTableName ttn(_userQueryId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
