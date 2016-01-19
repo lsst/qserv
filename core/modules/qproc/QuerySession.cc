@@ -174,7 +174,7 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 std::string QuerySession::getProxyOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
-        orderBy = _stmt->getOrderBy().toString();
+        orderBy = _stmt->getOrderBy().sqlFragment();
     }
     return orderBy;
 }

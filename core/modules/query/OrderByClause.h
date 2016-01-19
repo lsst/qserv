@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -65,7 +65,7 @@ public:
 
     ~OrderByTerm() {}
 
-    std::string toString() const;
+    std::string sqlFragment() const;
     std::shared_ptr<ValueExpr>& getExpr() { return _expr; }
     Order getOrder() const;
     std::string getCollate() const;
@@ -90,7 +90,7 @@ public:
     OrderByClause() : _terms(std::make_shared<OrderByTermVector>()) {}
     ~OrderByClause() {}
 
-    std::string toString() const;
+    std::string sqlFragment() const;
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();

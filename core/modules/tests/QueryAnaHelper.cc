@@ -107,7 +107,7 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     queries.push_back(sql);
 
     if (querySession->needsMerge()) {
-        sql = querySession->getMergeStmt()->getQueryTemplate().toString();
+        sql = querySession->getMergeStmt()->getQueryTemplate().sqlFragment();
     }
     else {
         sql = "";

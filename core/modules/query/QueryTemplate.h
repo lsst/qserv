@@ -119,7 +119,7 @@ public:
      * @return a string representation of the object.
      *
      */
-    std::string toString() const;
+    std::string sqlFragment() const;
 
     /** Output operator for QueryTemplate
      *

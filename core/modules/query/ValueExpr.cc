@@ -254,7 +254,7 @@ ValueExprPtr ValueExpr::clone() const {
  *
  * @return a string representation of the object
  */
-std::string ValueExpr::toString() const {
+std::string ValueExpr::sqlFragment() const {
     std::ostringstream oss;
 
     oss << *this;

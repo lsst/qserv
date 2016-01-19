@@ -97,7 +97,7 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
     }
 }
 
-std::string OrderByTerm::toString() const {
+std::string OrderByTerm::sqlFragment() const {
     std::ostringstream oss;
     oss << *this;
     return oss.str();
@@ -133,7 +133,7 @@ operator<<(std::ostream& out, OrderByClause const& clause) {
     return out;
 }
 
-std::string OrderByClause::toString() const {
+std::string OrderByClause::sqlFragment() const {
     std::ostringstream oss;
     oss << *this;
     return oss.str();

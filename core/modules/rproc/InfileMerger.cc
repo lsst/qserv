@@ -298,7 +298,7 @@ bool InfileMerger::finalize() {
     }
     if (_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
-        std::string mergeSelect = _config.mergeStmt->getQueryTemplate().toString();
+        std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " " + mergeSelect;
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
