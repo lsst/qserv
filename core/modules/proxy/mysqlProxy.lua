@@ -200,13 +200,12 @@ function queryType()
 
     -- Detects if query can be handled locally without sending it to qserv
     local isLocal = function(qU)
-        if string.find(qU, "^SELECT @@") or
-           string.find(qU, "^SHOW ") or
+        if string.find(qU, "^SHOW ") or
            string.find(qU, "^SET ") or
            string.find(qU, "^DESCRIBE ") or
            string.find(qU, "^DESC ") or
            string.find(qU, "^ROLLBACK") or
-           string.find(qU, "^SELECT CURRENT_USER()") then
+           (string.find(qU, "^SELECT ") and not string.find(qU, "^SELECT .* FROM ")) then
             return true
         end
         return false
@@ -309,7 +308,6 @@ function queryProcessing()
     end
 
     -- q  - original query
-    -- qU - original query but all uppercase
     --
     --
     local sendToQserv = function(q, qU)
@@ -512,7 +510,7 @@ function read_query_result(inj)
         local error_msg = ""
         local row
         for row in inj.resultset.rows do
-            severity = tonumber(row[4])
+            local severity = tonumber(row[4])
             if (severity == MSG_ERROR) then
                 queryErrorCount  = queryErrorCount + 1
                 error_msg = error_msg .. "\n" .. tostring(row[3])
