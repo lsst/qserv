@@ -21,15 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class Header
+#include "memman/Memory.h"
+
 // System Headers
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-// Class Header
-#include "memman/Memory.h"
 
 namespace lsst {
 namespace qserv {
@@ -41,15 +41,20 @@ namespace memman {
   
 MemInfo Memory::fileInfo(std::string const& fPath) {
 
-MemInfo     fInfo;
-struct stat sBuff;
+    MemInfo     fInfo;
+    struct stat sBuff;
 
     // Simply issue a stat() to get the size
     //
-    if (stat(fPath.c_str(), &sBuff)) fInfo._errCode = errno;
-       else {if (sBuff.st_size > 0) fInfo._memSize = sBuff.st_size;
-                else fInfo._errCode = ESPIPE;
-            }
+    if (stat(fPath.c_str(), &sBuff)) {
+        fInfo._errCode = errno;
+    } else {
+        if (sBuff.st_size > 0) {
+            fInfo._memSize = static_cast<uint64_t>(sBuff.st_size);
+        } else {
+            fInfo._errCode = ESPIPE;
+        }
+    }
 
     // Return file information
     //
@@ -63,7 +68,7 @@ struct stat sBuff;
 std::string Memory::filePath(std::string const& dbTable,
                              int chunk, bool isIndex) {
 
-std::string fPath;
+    std::string fPath;
 
     // Construct name and return it. The format here is DB-specific and may need 
     // to change if something other than mySQL is being used.
@@ -82,27 +87,31 @@ std::string fPath;
 /*                               m e m L o c k                                */
 /******************************************************************************/
   
-MemInfo Memory::memLock(std::string const& fPath) {
+MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
 
-MemInfo     mInfo;
-struct stat sBuff;
-int         fdNum;
+    MemInfo     mInfo;
+    struct stat sBuff;
+    int         fdNum;
 
     // We first open the file. we currently open this R/W because we want to
     // disable copy on write operations when we memory map the file.
     //
-    if ((fdNum = open(fPath.c_str(), O_RDWR)) < 0 || fstat(fdNum, &sBuff))
-       {mInfo.setErrCode(errno);
+    fdNum = open(fPath.c_str(), O_RDWR);
+    if (fdNum < 0 || fstat(fdNum, &sBuff)) {
+        mInfo.setErrCode(errno);
+        if (fdNum >= 0) close(fdNum);
         return mInfo;
-       }
+    }
 
     // Verify the size of the file
     //
-    if (sBuff.st_size > 0) mInfo._memSize = sBuff.st_size;
-       else {close(fdNum);
-             mInfo.setErrCode(ESPIPE);
-             return mInfo;
-            }
+    if (sBuff.st_size > 0) {
+        mInfo._memSize = static_cast<uint64_t>(sBuff.st_size);
+    } else {
+        close(fdNum);
+        mInfo.setErrCode(ESPIPE);
+        return mInfo;
+    }
 
     // Map the file into memory
     //
@@ -110,12 +119,18 @@ int         fdNum;
 
     // Diagnose any errors or update statistics. If succeeded, try locking it.
     //
-    if (mInfo._memAddr == MAP_FAILED) mInfo.setErrCode(errno);
-       else if (!mlock(mInfo._memAddr, mInfo._memSize)) _lokBytes += mInfo._memSize;
-               else {int rc = (errno == EAGAIN ? ENOMEM : errno);
-                     munmap( mInfo._memAddr, mInfo._memSize);
-                     mInfo.setErrCode(rc);
-                    }
+    if (mInfo._memAddr == MAP_FAILED) {
+        mInfo.setErrCode(errno);
+    } else {
+        if (!mlock(mInfo._memAddr, mInfo._memSize)) {
+            _lokBytes += mInfo._memSize;
+            if (isFlex) _flexNum++;
+        } else {
+            int rc = (errno == EAGAIN ? ENOMEM : errno);
+            munmap( mInfo._memAddr, mInfo._memSize);
+            mInfo.setErrCode(rc);
+        }
+    }
 
     // Close the file and return result
     //
@@ -131,11 +146,11 @@ void Memory::memRel(MemInfo& mInfo) {
 
     // If this is a valid object then unlock it (munmap does it for us).
     //
-    if (mInfo._memSize > 0 && mInfo._memAddr != MAP_FAILED)
-       {munmap(mInfo._memAddr, mInfo._memSize);
+    if (mInfo._memSize > 0 && mInfo._memAddr != MAP_FAILED) {
+        munmap(mInfo._memAddr, mInfo._memSize);
         _lokBytes -= mInfo._memSize;
         mInfo._memSize = 0;
-       }
+    }
 }
 }}} // namespace lsst:qserv:memman
 

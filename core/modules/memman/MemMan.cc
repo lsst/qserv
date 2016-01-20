@@ -22,8 +22,8 @@
  */
 
 // Qserv Headers
-#include "MemManNone.h"
-#include "MemManReal.h"
+#include "memman/MemManNone.h"
+#include "memman/MemManReal.h"
 
 namespace lsst {
 namespace qserv {
@@ -33,7 +33,7 @@ namespace memman {
 /*                                C r e a t e                                 */
 /******************************************************************************/
   
-MemMan *MemMan::create(size_t maxBytes, std::string const &dbPath) {
+MemMan *MemMan::create(uint64_t maxBytes, std::string const &dbPath) {
 
     // Return a memory manager implementation
     //

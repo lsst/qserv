@@ -35,7 +35,7 @@ namespace lsst {
 namespace qserv {
 namespace memman {
 
-// This class define a memory manager implementation that basically does
+// This class defines a memory manager implementation that basically does
 // nothing. If a table needs to be locked it says that there is no memory to
 // do so. However, flexible locking is allowed. Eventually, this will be
 // replaced by an actual implementation. For now, this allows testing.
@@ -45,13 +45,13 @@ public:
 
     Handle lock(std::vector<TableInfo> const& tables, int chunk) override {
                (void)chunk;
-                   for (auto it=tables.begin() ; it != tables.end(); it++) {
-                       if (it->theData  == TableInfo::LockType::MUSTLOCK
-                       ||  it->theIndex == TableInfo::LockType::MUSTLOCK)
-                          {errno = ENOMEM; return 0;}
-                   }
-                   return 1;
+               for (auto it=tables.begin() ; it != tables.end(); it++) {
+                   if (it->theData  == TableInfo::LockType::MUSTLOCK
+                   ||  it->theIndex == TableInfo::LockType::MUSTLOCK)
+                      {errno = ENOMEM; return 0;}
                }
+               return 1;
+           }
 
     bool  unlock(Handle handle) override {(void)handle; return true;}
 
@@ -64,17 +64,18 @@ public:
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 
-          MemManNone(size_t maxBytes)
-                    {memset(&_myStats, 0, sizeof(_myStats));
-                     _myStats.bytesLockMax = maxBytes;
-                     _myStats.bytesLocked  = maxBytes;
-                     memset(&_status, 0, sizeof(_status));
-                    }
-         ~MemManNone() override {}
+    MemManNone(uint64_t maxBytes)
+              {memset(&_myStats, 0, sizeof(_myStats));
+               _myStats.bytesLockMax = maxBytes;
+               _myStats.bytesLocked  = maxBytes;
+               memset(&_status, 0, sizeof(_status));
+              }
+
+    ~MemManNone() override {}
 
 private:
-Statistics _myStats;
-Status     _status;
+    Statistics _myStats;
+    Status     _status;
 };
 
 }}} // namespace lsst:qserv:memman

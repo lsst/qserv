@@ -26,7 +26,9 @@
 
 // System Headers
 #include <errno.h>
+#include <mutex>
 #include <string.h>
+#include <unordered_map>
 
 // Qserv Headers
 #include "memman/MemFile.h"
@@ -45,7 +47,7 @@ std::unordered_map<lsst::qserv::memman::MemMan::Handle,
 
 lsst::qserv::memman::MemMan::Handle handleNum
                              = lsst::qserv::memman::MemMan::HandleType::ISEMPTY;
-};
+}
 
 namespace lsst {
 namespace qserv {
@@ -57,20 +59,24 @@ namespace memman {
   
 MemMan::Statistics MemManReal::getStatistics() {
 
-Statistics stats;
+    Statistics stats;
 
     // Get all the needed information and return it
     //
     stats.bytesLockMax = _memory.bytesMax();
     stats.bytesLocked  = _memory.bytesLocked();
+    stats.numFlexLock  = _memory.flexNum();
     stats.numLocks     = _numLocks;
     stats.numErrors    = _numErrors;
+    stats.numFiles     = MemFile::numFiles();
     stats.numFiles     = MemFile::numFiles();
 
     // The following requires a lock
     //
     hanMutex.lock();
     stats.numFSets = hanCache.size();
+    stats.numReqdFiles = _numReqdFiles;
+    stats.numFlexFiles = _numFlexFiles;
     hanMutex.unlock();
     return stats;
 }
@@ -81,21 +87,21 @@ Statistics stats;
 
 MemMan::Status MemManReal::getStatus(Handle handle) {
 
-Status status;
+    Status status;
 
     // First check if this is a valid handle and, if so, find it in our cache.
     // Once found, get its real status from the file set object.
     //
-    if (handle != HandleType::INVALID && handle != HandleType::ISEMPTY)
-       {hanMutex.lock();
-        auto it = hanCache.find(handle);
-        if (it != hanCache.end() && it->second->isOwner(_memory))
-           {status = it->second->status();
-            hanMutex.unlock();
-            return status;
-           }
-        hanMutex.unlock();
+    if (handle != HandleType::INVALID && handle != HandleType::ISEMPTY) {
+       hanMutex.lock();
+       auto it = hanCache.find(handle);
+       if (it != hanCache.end() && it->second->isOwner(_memory)) {
+          status = it->second->status();
+          hanMutex.unlock();
+          return status;
        }
+       hanMutex.unlock();
+     }
 
     // Return null status
     //
@@ -109,29 +115,18 @@ Status status;
   
 MemMan::Handle MemManReal::lock(std::vector<TableInfo> const& tables, int chunk) {
 
-MemFileSet* fileSet;
-Handle      myHandle = HandleType::INVALID;
-int         lockNum, flexNum, retc = 0;
-bool        mustLock;
-
-    // Make sure a table was specified
-    //
-    _numLocks++;
-    if (tables.size() == 0)
-       {_numErrors++;
-        errno = EINVAL;
-        return HandleType::INVALID;
-       }
+    int  lockNum, flexNum, retc = 0;
+    bool mustLock;
 
     // Pass 1: determine the number of files needed in the file set
     //
     lockNum = flexNum = 0;
-    for (auto&& tab : tables)
-        {if (        tab.theData  == TableInfo::LockType::MUSTLOCK) lockNum++;
+    for (auto&& tab : tables) {
+        if (         tab.theData  == TableInfo::LockType::MUSTLOCK) lockNum++;
             else if (tab.theData  == TableInfo::LockType::FLEXIBLE) flexNum++;
-         if (        tab.theIndex == TableInfo::LockType::MUSTLOCK) lockNum++;
+        if (         tab.theIndex == TableInfo::LockType::MUSTLOCK) lockNum++;
             else if (tab.theIndex == TableInfo::LockType::FLEXIBLE) flexNum++;
-        }
+    }
 
     // If we don't need to lock anything then indicate success but return a
     // a special file handle that indicates the file set is empty.
@@ -140,39 +135,42 @@ bool        mustLock;
 
     // Allocate an empty file set sized to handle this request
     //
-    fileSet = new MemFileSet(_memory, lockNum, flexNum, chunk);
+    MemFileSet* fileSet = new MemFileSet(_memory, lockNum, flexNum, chunk);
 
     // Pass 2: Add required files to the file set
     //
-    for (auto&& tab : tables)
-        {mustLock =      tab.theData  == TableInfo::LockType::MUSTLOCK;
-         if (mustLock || tab.theData  == TableInfo::LockType::FLEXIBLE)
-            {retc = fileSet->add(tab.tableName, chunk, false, mustLock);
-             if (retc) break;
-            }
-         mustLock =      tab.theIndex == TableInfo::LockType::MUSTLOCK;
-         if (mustLock || tab.theIndex == TableInfo::LockType::FLEXIBLE)
-            {retc = fileSet->add(tab.tableName, chunk, true,  mustLock);
-             if (retc) break;
-            }
+    for (auto&& tab : tables) {
+        mustLock =      tab.theData  == TableInfo::LockType::MUSTLOCK;
+        if (mustLock || tab.theData  == TableInfo::LockType::FLEXIBLE) {
+           retc = fileSet->add(tab.tableName, chunk, false, mustLock);
+            if (retc) break;
         }
+        mustLock =      tab.theIndex == TableInfo::LockType::MUSTLOCK;
+        if (mustLock || tab.theIndex == TableInfo::LockType::FLEXIBLE) {
+           retc = fileSet->add(tab.tableName, chunk, true,  mustLock);
+           if (retc) break;
+        }
+     }
 
     // If we ended with no errors then try to memlock the file set. We do this
     // with a global mutex to make sure we have a predictable view of memory.
     //
-    if (retc == 0)
-       {std::lock_guard<std::mutex> gaurd(hanMutex);
+    if (retc == 0) {
+       std::lock_guard<std::mutex> guard(hanMutex);
 
        // Lock all required tables and any flexible tables we can. Upon success
-       // generate a file handle, add it to the handle set, and return.
+       // (with global lock held) update statistics, generate a file handle,
+       // add it to the handle cache, and return the handle.
        //
        retc = fileSet->lockAll();
-       if (retc == 0)
-          {handleNum++;
-           hanCache.insert({handleNum, fileSet});
-           return handleNum;
-          }
+       if (retc == 0) {
+          _numReqdFiles += lockNum;
+          _numFlexFiles += flexNum;
+          handleNum++;
+          hanCache.insert({handleNum, fileSet});
+          return handleNum;
        }
+    }
 
     // If we wind up here we failed to perform the operation; return an error.
     //
@@ -188,7 +186,7 @@ bool        mustLock;
 
 bool MemManReal::unlock(Handle handle) {
 
-std::lock_guard<std::mutex> gaurd(hanMutex);
+    std::lock_guard<std::mutex> guard(hanMutex);
 
     // If this is a nill handle, then we need not do anything more. If this is
     // a bad handle, return failure.
@@ -214,19 +212,19 @@ std::lock_guard<std::mutex> gaurd(hanMutex);
   
 void MemManReal::unlockAll() {
 
-std::lock_guard<std::mutex> gaurd(hanMutex);
+    std::lock_guard<std::mutex> guard(hanMutex);
 
     // Delete all of the file set entries that we own via handle cache. The
     // file set destructor will unlock any memory that it needs to unlock.
     //
     auto it = hanCache.begin();
 
-    while(it != hanCache.end())
-         {if (it->second->isOwner(_memory))
-             {delete it->second;
-              hanCache.erase(it++);
-             } else it++;
-         }
+    while(it != hanCache.end()) {
+         if (it->second->isOwner(_memory)) {
+            delete it->second;
+            it = hanCache.erase(it);
+         } else it++;
+    }
 }
 }}} // namespace lsst:qserv:memman
 

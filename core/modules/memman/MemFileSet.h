@@ -25,6 +25,7 @@
 #define LSST_QSERV_MEMMAN_MEMFILESET_H
 
 // System headers
+#include <cstdint>
 #include <string>
 #include <unistd.h>
 
@@ -69,7 +70,7 @@ public:
     //! @return false Ownership does not match.
     //-----------------------------------------------------------------------------
 
-    bool    isOwner(Memory const& memory) {return &memory == &_memory;}
+    bool   isOwner(Memory const& memory) {return &memory == &_memory;}
 
     //-----------------------------------------------------------------------------
     //! @bried Lock all of the required tables in a table set and as many
@@ -98,22 +99,21 @@ public:
     //! @param  chunk   - The associated chunk number.
     //-----------------------------------------------------------------------------
 
-           MemFileSet(Memory& memory, int numLock, int numFlex, int chunk)
-                     : _memory(memory), _lockBytes(0),
-                       _numFiles(0), _chunk(chunk) {
-                       _lockFiles.reserve(numLock);
-                       _flexFiles.reserve(numFlex);
-                      }
+    MemFileSet(Memory& memory, int numLock, int numFlex, int chunk)
+              : _memory(memory), _lockBytes(0), _numFiles(0), _chunk(chunk) {
+                _lockFiles.reserve(numLock);
+                _flexFiles.reserve(numFlex);
+              }
 
-          ~MemFileSet();
+    ~MemFileSet();
 
 private:
-Memory&               _memory;
-std::vector<MemFile*> _lockFiles;
-std::vector<MemFile*> _flexFiles;
-size_t                _lockBytes; // Total bytes locked
-int                   _numFiles;
-int                   _chunk;
+    Memory&               _memory;
+    std::vector<MemFile*> _lockFiles;
+    std::vector<MemFile*> _flexFiles;
+    uint64_t              _lockBytes;     // Total bytes locked
+    uint32_t              _numFiles;
+    int                   _chunk;
 };
 
 }}} // namespace lsst:qserv:memman

@@ -25,6 +25,7 @@
 #define LSST_QSERV_MEMMAN_MEMMAN_H
 
 // System headers
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -86,7 +87,7 @@ public:
     //! @return  0: A manager could not be created.
     //-----------------------------------------------------------------------------
 
-    static MemMan* create(size_t maxBytes, std::string const& dbPath);
+    static MemMan* create(uint64_t maxBytes, std::string const& dbPath);
 
     //-----------------------------------------------------------------------------
     //! @brief Lock a set of tables in memory for a particular chunk.
@@ -105,8 +106,8 @@ public:
     using Handle = uint64_t;
 
     struct HandleType {
-           static const Handle INVALID=0;
-           static const Handle ISEMPTY=1;
+        static const Handle INVALID=0;
+        static const Handle ISEMPTY=1;
     };
 
     virtual Handle lock(std::vector<TableInfo> const& tables, int chunk) = 0;
@@ -139,12 +140,15 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Statistics {
-        size_t   bytesLockMax; //< Maximum number of bytes to lock
-        size_t   bytesLocked;  //< Current number of bytes locked
-        uint32_t numFSets;     //< Global  number of active file sets
-        uint32_t numFiles;     //< Global  number of active files
-        uint32_t numLocks;     //< Number of calls to lock()
-        uint32_t numErrors;    //< Number of calls that failed
+        uint64_t bytesLockMax; //!< Maximum number of bytes to lock
+        uint64_t bytesLocked;  //!< Current number of bytes locked
+        uint32_t numFSets;     //!< Global  number of active file sets
+        uint32_t numFiles;     //!< Global  number of active files
+        uint32_t numReqdFiles; //!< Number  required files encountered
+        uint32_t numFlexFiles; //!< Number  flexible files encountered
+        uint32_t numFlexLock;  //!< Number  flexible files that were locked
+        uint32_t numLocks;     //!< Number of calls to lock()
+        uint32_t numErrors;    //!< Number of calls that failed
     };
 
     virtual Statistics getStatistics() = 0;
@@ -159,9 +163,9 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Status {
-        size_t   bytesLock; //< Number of resource bytes locked
-        uint32_t numFiles;  //< Number of files resource has
-        int      chunk;     //< Chunk number associated with resource
+        uint64_t bytesLock; //!< Number of resource bytes locked
+        uint32_t numFiles;  //!< Number of files resource has
+        int      chunk;     //!< Chunk number associated with resource
     };
 
     virtual Status getStatus(Handle handle) = 0;

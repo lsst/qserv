@@ -57,16 +57,19 @@ public:
     MemManReal & operator=(const MemManReal&) = delete;
     MemManReal(const MemManReal&) = delete;
 
-    MemManReal(std::string const& dbPath, size_t maxBytes)
-              : _memory(dbPath, maxBytes), _numLocks(0), _numErrors(0) {}
+    MemManReal(std::string const& dbPath, uint64_t maxBytes)
+              : _memory(dbPath, maxBytes), _numLocks(0), _numErrors(0),
+                _numReqdFiles(0), _numFlexFiles(0) {}
 
-   ~MemManReal() override {unlockAll();}
+    ~MemManReal() override {unlockAll();}
 
 private:
 
-Memory           _memory;
-std::atomic_uint _numLocks;
-std::atomic_uint _numErrors;
+    Memory           _memory;
+    std::atomic_uint _numLocks;
+    std::atomic_uint _numErrors;
+    uint32_t         _numReqdFiles;  // Under control of hanMutex
+    uint32_t         _numFlexFiles;  // Ditto
 };
 
 }}} // namespace lsst:qserv:memman

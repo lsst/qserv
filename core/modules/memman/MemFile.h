@@ -25,16 +25,14 @@
 #define LSST_QSERV_MEMMAN_MEMFILE_H
 
 // System headers
+#include <atomic>
+#include <cstdint>
 #include <mutex>
 #include <string>
 #include <unistd.h>
 
 // Qserv headers
 #include "memman/Memory.h"
-
-// System headers
-#include <atomic>
-#include <string>
 
 namespace lsst {
 namespace qserv {
@@ -48,34 +46,27 @@ class MemFile {
 public:
 
     //-----------------------------------------------------------------------------
-    //! @brief Get file path for this table.
-    //!
-    //! @return The filename.
-    //-----------------------------------------------------------------------------
-
-    std::string filePath() {return _fPath;}
-
-    //-----------------------------------------------------------------------------
     //! @brief Lock database file in memory.
     //!
-    //! @param  maxBytes- maximum file size       for locking the table file.
+    //! @param  maxBytes- maximum file size for locking the table file.
     //!                   A value of zero skips the check.
     //! @param  minRefs - minimum reference count for locking the table file.
     //!
     //! @return MLResult  When bLocked > 0 this number of bytes locked.
     //!                   When bLocked = 0 no bytes were locked and retc holds
-    //!                   the reason as follows:
-    //! @return =0        retc = 0 the file did not meet minRefs restriction;
-    //!                   otherwise, it holds the errno failure code.
+    //!                   the reason. When retc = 0 the file did not meet the
+    //!                   minRefs restriction. Otherwise, retc is the errno
+    //!                   value indicating the reason for the failure.
     //-----------------------------------------------------------------------------
 
-    struct MLResult {size_t bLocked;
-                     int    retc;
-                     MLResult() {}
-                     MLResult(size_t lksz, int rc) : bLocked(lksz), retc(rc) {}
-                    };
+    struct MLResult {
+        uint64_t bLocked;
+        int      retc;
+        MLResult() {}
+        MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
+    };
 
-    MLResult    memLock(size_t maxBytes=0, int minRefs=0);
+    MLResult    memLock(uint64_t maxBytes=0, int minRefs=0);
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -91,18 +82,20 @@ public:
     //! @param  rc      - Reference to the place for an error code.
     //! @param  fPath   - The path to the file.
     //! @param  mem     - Reference to the memory object to use for the file.
+    //! @param  isFlex  - Tag file as flexible or not (only if new file).
     //!
     //! @return MFResult  When mfP is zero or retc is not zero, the MemFile
     //!                   object could not be obtained and retc holds errno.
     //-----------------------------------------------------------------------------
 
-    struct MFResult {MemFile* mfP;
-                     int      retc;
-                     MFResult() {}
-                     MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
-                    };
+    struct MFResult {
+        MemFile* mfP;
+        int      retc;
+        MFResult() {}
+        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
+    };
 
-    static MFResult obtain(std::string const& fPath, Memory& mem);
+    static MFResult obtain(std::string const& fPath, Memory& mem, bool isFlex);
 
     //-----------------------------------------------------------------------------
     //! @brief Release this table. Upon return it may not be references by
@@ -118,19 +111,23 @@ private:
     //! @param  fPath   - The path to the file.
     //! @param  mem     - Reference to the associated memory object.
     //! @param  mInfo   - Initial value of the MemInfo object for the file.
+    //! @param  isFlex  - Tag file as flexible or not (for statistical reasons).
     //-----------------------------------------------------------------------------
 
-           MemFile(std::string const& fPath, Memory& mem, MemInfo const& minfo)
-                   : _fPath(fPath), _memory(mem), _memInfo(minfo),
-                     _refs(1), _isLocked(0) {}
+    MemFile(std::string const& fPath,
+            Memory&            mem,
+            MemInfo const&     minfo,
+            bool               isFlex)
+           : _fPath(fPath), _memory(mem), _memInfo(minfo), _isFlex(isFlex) {}
 
-          ~MemFile() {}
+   ~MemFile() {}
 
-std::string _fPath;
-Memory&     _memory;
-MemInfo     _memInfo;
-int         _refs;      // Protected by cacheMutex
-bool        _isLocked;  // Ditto
+    std::string _fPath;
+    Memory&     _memory;
+    MemInfo     _memInfo;
+    int         _refs = 1;           // Protected by cacheMutex
+    bool        _isLocked = false;   // Ditto
+    bool        _isFlex;             // Set once at object creation
 };
 
 }}} // namespace lsst:qserv:memman

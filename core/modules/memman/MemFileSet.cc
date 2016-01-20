@@ -56,17 +56,20 @@ MemFileSet::~MemFileSet() {
 int MemFileSet::add(std::string const& tabname, int chunk,
                     bool iFile, bool mustLK) {
 
-std::string fPath(_memory.filePath(tabname, chunk, iFile));
+    std::string fPath(_memory.filePath(tabname, chunk, iFile));
 
     // Obtain a memory file object for this table and chunk
     //
-    MemFile::MFResult mfResult = MemFile::obtain(fPath, _memory);
+    MemFile::MFResult mfResult = MemFile::obtain(fPath, _memory, !mustLK);
     if (mfResult.mfP == 0) return mfResult.retc;
 
     // Add to the appropriate file set
     //
-    if (mustLK) _lockFiles.push_back(mfResult.mfP);
-       else     _flexFiles.push_back(mfResult.mfP);
+    if (mustLK) {
+        _lockFiles.push_back(mfResult.mfP);
+    } else {
+        _flexFiles.push_back(mfResult.mfP);
+    }
     _numFiles++;
     return 0;
 }
@@ -77,8 +80,8 @@ std::string fPath(_memory.filePath(tabname, chunk, iFile));
 
 int MemFileSet::lockAll() {
 
-MemFile::MLResult mlResult;
-size_t bytesLocked, bytesMax, freeBytes;
+    MemFile::MLResult mlResult;
+    uint64_t bytesLocked, bytesMax, freeBytes;
 
     // Calculate the number of bytes available at this point. Note that we force
     // freeBytes to be atleast 1 to make memlock check before it tries locking
@@ -87,30 +90,39 @@ size_t bytesLocked, bytesMax, freeBytes;
     //
     bytesMax    = _memory.bytesMax();
     bytesLocked = _memory.bytesLocked();
-    if (bytesMax <= bytesLocked) freeBytes = 1;
-       else freeBytes = bytesMax - bytesLocked;
+    if (bytesMax <= bytesLocked) {
+        freeBytes = 1;
+    } else {
+        freeBytes = bytesMax - bytesLocked;
+    }
 
     // Try to lock all of the required tables
     //
-    for (auto mfP : _lockFiles)
-        {mlResult = mfP->memLock(freeBytes);
-         if (mlResult.retc != 0) return mlResult.retc;
-         _lockBytes += mlResult.bLocked;
-         if (freeBytes > mlResult.bLocked) freeBytes -= mlResult.bLocked;
-            else freeBytes = 1;
+    for (auto mfP : _lockFiles) {
+        mlResult = mfP->memLock(freeBytes);
+        if (mlResult.retc != 0) return mlResult.retc;
+        _lockBytes += mlResult.bLocked;
+        if (freeBytes  > mlResult.bLocked) {
+            freeBytes -= mlResult.bLocked;
+        } else {
+            freeBytes = 1;
         }
+    }
 
     // Try locking as many flexible files as we can. We only lock the file table
     // if the reference count >= 2 to optimize memory usage. At some point we
     // will place unlocked flex files on a "want to lock" queue. FUTURE!!!
     //
-    for (auto mfP : _flexFiles)
-        {mlResult = mfP->memLock(freeBytes, 2);
-         if (mlResult.bLocked == 0) continue;
-         _lockBytes += mlResult.bLocked;
-         if (freeBytes > mlResult.bLocked) freeBytes -= mlResult.bLocked;
-            else freeBytes = 1;
+    for (auto mfP : _flexFiles) {
+        mlResult = mfP->memLock(freeBytes, 2);
+        if (mlResult.bLocked == 0) continue;
+        _lockBytes += mlResult.bLocked;
+        if (freeBytes  > mlResult.bLocked) {
+            freeBytes -= mlResult.bLocked;
+        } else {
+            freeBytes = 1;
         }
+    }
 
     // All done
     //
@@ -123,9 +135,9 @@ size_t bytesLocked, bytesMax, freeBytes;
   
 MemMan::Status MemFileSet::status() {
 
-MemMan::Status myStatus;
+    MemMan::Status myStatus;
 
-    // Fill out status informatiuon and return it.
+    // Fill out status information and return it.
     //
     myStatus.bytesLock = _lockBytes;
     myStatus.numFiles  = _numFiles;

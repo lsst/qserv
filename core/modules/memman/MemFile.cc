@@ -38,53 +38,53 @@ namespace memman {
 /******************************************************************************/
   
 namespace {
-std::mutex                                 cacheMutex;
-std::unordered_map<std::string, MemFile *> fileCache;
-};
+std::mutex                                cacheMutex;
+std::unordered_map<std::string, MemFile*> fileCache;
+}
 
 /******************************************************************************/
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
-MemFile::MLResult MemFile::memLock(size_t maxBytes, int minRefs) {
+MemFile::MLResult MemFile::memLock(uint64_t maxBytes, int minRefs) {
 
-MemInfo mInfo;
-std::lock_guard<std::mutex> gaurd(cacheMutex);
+    std::lock_guard<std::mutex> guard(cacheMutex);
 
     // If the file is already locked, indicate success
     //
-    if (_isLocked)
-       {MLResult aokResult(_memInfo.size(), 0);
+    if (_isLocked) {
+        if (_isFlex) _memory.flexNum(1);
+        MLResult aokResult(_memInfo.size(), 0);
         return aokResult;
-       }
+    }
 
-    // If the file doesn't meet the refcount restrictio, don't lock it
+    // If the file doesn't meet the refcount restriction, don't lock it
     //
-    if (_refs < minRefs)
-       {MLResult nilResult(0,0);
+    if (_refs < minRefs) {
+        MLResult nilResult(0,0);
         return nilResult;
-       }
+    }
 
-    // If a space is wanted, do so now before we attemptto lock the file
+    // If space is wanted, check now before we attempt to lock the file
     //
-    if (maxBytes != 0 && _memInfo.size() > maxBytes)
-       {MLResult bigResult(0, ENOMEM);
+    if (maxBytes != 0 && _memInfo.size() > maxBytes) {
+        MLResult bigResult(0, ENOMEM);
         return bigResult;
-       }
+    }
 
     // Lock this table in memory if possible.
     //
-    mInfo = _memory.memLock(_fPath);
+    MemInfo mInfo = _memory.memLock(_fPath, _isFlex);
 
     // If we successfully locked this file, then indicate so, update the
     // memory information and return.
     //
-    if (mInfo.isValid())
-       {MLResult aokResult(mInfo.size(),0);
+    if (mInfo.isValid()) {
+        MLResult aokResult(mInfo.size(),0);
         _isLocked = 1;
         _memInfo = mInfo;
         return aokResult;
-       }
+    }
 
     // Diagnose any errors
     //
@@ -98,7 +98,7 @@ std::lock_guard<std::mutex> gaurd(cacheMutex);
 
 uint32_t MemFile::numFiles() {
 
-std::lock_guard<std::mutex> gaurd(cacheMutex);
+    std::lock_guard<std::mutex> guard(cacheMutex);
 
     // Simply return the size of our file cache
     //
@@ -109,38 +109,37 @@ std::lock_guard<std::mutex> gaurd(cacheMutex);
 /*                                o b t a i n                                 */
 /******************************************************************************/
   
-MemFile::MFResult MemFile::obtain(std::string const& fPath, Memory& mem) {
+MemFile::MFResult MemFile::obtain(std::string const& fPath,
+                                  Memory& mem, bool isFlex) {
 
-MemFile *mfP;
-MemInfo  mInfo;
-std::lock_guard<std::mutex> gaurd(cacheMutex);
+    std::lock_guard<std::mutex> guard(cacheMutex);
 
     // First look up if this table already exists in our cache and is using the
     // the same memory object (error if not). If so, up the reference count and
-    // return the object as it may be shared.
+    // return the object as it may be shared. Note: it->second == MemFile*!
     //
     auto it = fileCache.find(fPath);
-    if (it != fileCache.end())
-       {if (&(it->second->_memory) != &mem)
-           {MFResult errResult(0, EXDEV);
+    if (it != fileCache.end()) {
+        if (&(it->second->_memory) != &mem) {
+            MFResult errResult(nullptr, EXDEV);
             return errResult;
-           }
+        }
         it->second->_refs++;
-        MFResult aokResult(&(*(it->second)),0);
+        MFResult aokResult(it->second,0);
         return aokResult;
-       }
+    }
 
     // Validate the file and get its size
     //
-    mInfo = mem.fileInfo(fPath);
-    if (!mInfo.isValid())
-       {MFResult errResult(0, mInfo.errCode());
+    MemInfo mInfo = mem.fileInfo(fPath);
+    if (!mInfo.isValid()) {
+        MFResult errResult(nullptr, mInfo.errCode());
         return errResult;
-       }
+    }
 
     // Get a new file object and insert it into the map
     //
-    mfP = new MemFile(fPath, mem, mInfo);
+    MemFile* mfP = new MemFile(fPath, mem, mInfo, isFlex);
     fileCache.insert({fPath, mfP});
 
     // Return the pointer to the file object
@@ -155,7 +154,7 @@ std::lock_guard<std::mutex> gaurd(cacheMutex);
 
 void MemFile::release() {
 
-std::lock_guard<std::mutex> gaurd(cacheMutex);
+    std::lock_guard<std::mutex> guard(cacheMutex);
 
     // Decrease the reference count. If there are still references, return
     //

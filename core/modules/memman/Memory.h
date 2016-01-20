@@ -26,6 +26,7 @@
 
 // System headers
 #include <atomic>
+#include <cstdint>
 #include <string>
 #include <unistd.h>
 
@@ -73,14 +74,14 @@ friend class Memory;
     //! @return =0 this object is not valid.
     //-----------------------------------------------------------------------------
 
-    size_t size() {return _memSize;}
+    uint64_t size() {return _memSize;}
 
     MemInfo() : _memAddr((void *)-1), _memSize(0) {}
    ~MemInfo() {}
 
 private:
 union {void  *_memAddr; int _errCode;};
-size_t        _memSize;  //!< If contains 0 then _errCode is valid.
+uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
 };
 
 //-----------------------------------------------------------------------------
@@ -96,7 +97,7 @@ public:
     //! @return The number of bytes locked.
     //-----------------------------------------------------------------------------
 
-    size_t bytesLocked() {return _lokBytes;}
+    uint64_t bytesLocked() {return _lokBytes;}
 
     //-----------------------------------------------------------------------------
     //! Obtain number of bytes in memory.
@@ -104,7 +105,7 @@ public:
     //! @return The number of bytes in memory.
     //-----------------------------------------------------------------------------
 
-    size_t bytesMax() {return _maxBytes;}
+    uint64_t bytesMax() {return _maxBytes;}
 
     //-----------------------------------------------------------------------------
     //! @brief Get file information.
@@ -134,15 +135,27 @@ public:
                         );
 
     //-----------------------------------------------------------------------------
+    //! Obtain and optionally update of flexible files that were locked.
+    //!
+    //! @return The number of flexible files that were locked.
+    //-----------------------------------------------------------------------------
+
+    uint32_t flexNum(uint32_t cnt=0) {
+                    if (cnt != 0) _flexNum += cnt;
+                    return _flexNum;
+                    }
+
+    //-----------------------------------------------------------------------------
     //! @brief Lock a database file in memory.
     //!
     //! @param  fPath  - Path of the database file to be locked in memory.
+    //! @param  isFlex - When true this is a flexible file request.
     //!
     //! @return A MemInfo object corresponding to the file. Use the MemInfo
     //!         methods to determine if the file pages were actually locked.
     //-----------------------------------------------------------------------------
 
-    MemInfo memLock(std::string const& fPath);
+    MemInfo memLock(std::string const& fPath, bool isFlex=false);
 
     //-----------------------------------------------------------------------------
     //! @brief Unlock a memory object.
@@ -158,15 +171,18 @@ public:
     //! @param  dbDir  - Directory path to where managed files reside.
     //! @param  memSZ  - Size of memory to manage.
     //-----------------------------------------------------------------------------
-            Memory(std::string const& dbDir, size_t memSZ)
-                  : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0) {}
 
-           ~Memory() {}
+    Memory(std::string const& dbDir, uint64_t memSZ)
+          : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0), _flexNum(0) {}
+
+    ~Memory() {}
+
 private:
 
-std::string        _dbDir;
-size_t             _maxBytes;
-std::atomic_ullong _lokBytes;
+    std::string        _dbDir;
+    uint64_t           _maxBytes;
+    std::atomic_ullong _lokBytes;
+    std::atomic_uint   _flexNum;
 };
 }}} // namespace lsst:qserv:memman
 #endif  // LSST_QSERV_MEMMAN_MEMORY_H
