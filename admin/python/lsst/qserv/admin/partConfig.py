@@ -1,5 +1,5 @@
 # LSST Data Management System
-# Copyright 2014 AURA/LSST.
+# Copyright 2014-2016 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -184,6 +184,8 @@ class PartConfig(UserDict.UserDict):
             options['subChunks'] = bool(int(self.get('part.subChunks', 1)))
             options['dirDb'] = self['dirDb']
             options['dirTable'] = self['dirTable']
+            options['lockInMem'] = bool(self.get('sharedScan.lockInMem', False))
+            options['scanSpeed'] = int(self.get('sharedScan.scanSpeed', 0))
             if 'dirColName' in self:
                 options['dirColName'] = self['dirColName']
             else:

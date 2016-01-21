@@ -473,21 +473,16 @@ CssAccess::getMatchTableParams(std::string const& dbName,
 
     MatchTableParams params;
 
-    std::vector<std::string> subKeys{"dirTable1", "dirColName1", "dirTable2", "dirColName2", "flagColName"};
-    auto paramMap = _getSubkeys(tableKey + "/match", subKeys);
+    std::vector<std::string> subKeys{"match/dirTable1", "match/dirColName1", "match/dirTable2",
+            "match/dirColName2", "match/flagColName"};
+    auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
         if (not _kvI->exists(tableKey)) throw NoSuchTable(dbName, tableName);
         return params;
     }
 
-    // fill the structure
-    params.dirTable1 = paramMap["dirTable1"];
-    params.dirColName1 = paramMap["dirColName1"];
-    params.dirTable2 = paramMap["dirTable2"];
-    params.dirColName2 = paramMap["dirColName2"];
-    params.flagColName = paramMap["flagColName"];
-
+    _fillMatchTableParams(paramMap, params);
     return params;
 }
 
@@ -511,29 +506,29 @@ CssAccess::getPartTableParams(std::string const& dbName,
         return params;
     }
 
-    // fill the structure
-    params.dirDb = paramMap["partitioning/dirDb"];
-    params.dirTable = paramMap["partitioning/dirTable"];
-    params.dirColName = paramMap["partitioning/dirColName"];
-    params.latColName = paramMap["partitioning/latColName"];
-    params.lonColName = paramMap["partitioning/lonColName"];
-    params.partitioned = paramMap.count("partitioning") > 0;
-    try {
-        auto iter = paramMap.find("partitioning/subChunks");
-        if (iter != paramMap.end()) {
-            params.subChunks = std::stoi(iter->second);
-        }
-        iter = paramMap.find("partitioning/overlap");
-        if (iter != paramMap.end()) {
-            params.overlap = std::stod(iter->second);
-        }
-    } catch (std::exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: "
-             << util::printable(paramMap));
-        throw KeyValueError(tableKey + "/partitioning", "one of the sub-keys is not numeric: " +
-                            std::string(exc.what()));
+    _fillPartTableParams(paramMap, params, tableKey);
+    return params;
+}
+
+ScanTableParams
+CssAccess::getScanTableParams(std::string const& dbName,
+                              std::string const& tableName) const {
+    LOGS(_log, LOG_LVL_DEBUG, "getScanTableParams(" << dbName << ", " << tableName << ")");
+    _checkVersion();
+
+    std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+
+    ScanTableParams params;
+
+    std::vector<std::string> subKeys{"sharedScan/lockInMem", "sharedScan/scanSpeed"};
+    auto paramMap = _getSubkeys(tableKey, subKeys);
+    if (paramMap.empty()) {
+        // check table key
+        if (not _kvI->exists(tableKey)) throw NoSuchTable(dbName, tableName);
+        return params;
     }
 
+    _fillScanTableParams(paramMap, params, tableKey);
     return params;
 }
 
@@ -549,6 +544,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
     std::vector<std::string> subKeys{"partitioning/subChunks", "partitioning/dirDb",
         "partitioning/dirTable", "partitioning/dirColName", "partitioning/latColName",
         "partitioning/lonColName", "partitioning/overlap", "partitioning/secIndexColName",
+        "sharedScann/lockInMem", "sharedScan/scanSpeed",
         "match/dirTable1", "match/dirColName1", "match/dirTable2", "match/dirColName2",
         "match/flagColName", "partitioning"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
@@ -559,32 +555,9 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
     }
 
     // fill the structure
-    params.match.dirTable1 = paramMap["match/dirTable1"];
-    params.match.dirColName1 = paramMap["match/dirColName1"];
-    params.match.dirTable2 = paramMap["match/dirTable2"];
-    params.match.dirColName2 = paramMap["match/dirColName2"];
-    params.match.flagColName = paramMap["match/flagColName"];
-    params.partitioning.dirDb = paramMap["partitioning/dirDb"];
-    params.partitioning.dirTable = paramMap["partitioning/dirTable"];
-    params.partitioning.dirColName = paramMap["partitioning/dirColName"];
-    params.partitioning.latColName = paramMap["partitioning/latColName"];
-    params.partitioning.lonColName = paramMap["partitioning/lonColName"];
-    params.partitioning.partitioned = paramMap.count("partitioning") > 0;
-    try {
-        auto iter = paramMap.find("partitioning/subChunks");
-        if (iter != paramMap.end()) {
-            params.partitioning.subChunks = std::stoi(iter->second);
-        }
-        iter = paramMap.find("partitioning/overlap");
-        if (iter != paramMap.end()) {
-            params.partitioning.overlap = std::stod(iter->second);
-        }
-    } catch (std::exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "one of the sub-keys is not numeric: "
-             << util::printable(paramMap));
-        throw KeyValueError(tableKey + "/partitioning", "one of the sub-keys is not numeric: " +
-                            std::string(exc.what()));
-    }
+    _fillMatchTableParams(paramMap, params.match);
+    _fillPartTableParams(paramMap, params.partitioning, tableKey);
+    _fillScanTableParams(paramMap, params.sharedScan, tableKey);
 
     return params;
 }
@@ -593,7 +566,8 @@ void
 CssAccess::createTable(std::string const& dbName,
                        std::string const& tableName,
                        std::string const& schema,
-                       PartTableParams const& partParams) {
+                       PartTableParams const& partParams,
+                       ScanTableParams const& scanParams) {
     LOGS(_log, LOG_LVL_DEBUG, "createTable(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
@@ -624,6 +598,19 @@ CssAccess::createTable(std::string const& dbName,
             partMap.insert(std::make_pair("overlap", std::to_string(partParams.overlap)));
         }
         _storePacked(tableKey + "/partitioning", partMap);
+
+        // save shared scan info. Only store values different from default
+        if (scanParams.lockInMem or scanParams.scanSpeed != 0) {
+            std::map<std::string, std::string> scanMap;
+            if (scanParams.lockInMem) {
+                scanMap.insert(std::make_pair("lockInMem", "1"));
+            };
+            if (scanParams.scanSpeed != 0) {
+                scanMap.insert(std::make_pair("scanSpeed",
+                                              std::to_string(scanParams.scanSpeed)));
+            }
+            _storePacked(tableKey + "/sharedScan", scanMap);
+        }
     }
 
     // done
@@ -1026,6 +1013,64 @@ CssAccess::_storePacked(std::string const& key, std::map<std::string, std::strin
 
     // store it
     _kvI->set(key + "/" + ::_packedKeyName, packed);
+}
+
+void
+CssAccess::_fillPartTableParams(std::map<std::string, std::string>& paramMap,
+                                PartTableParams& params,
+                                std::string const& tableKey) const {
+    params.dirDb = paramMap["partitioning/dirDb"];
+    params.dirTable = paramMap["partitioning/dirTable"];
+    params.dirColName = paramMap["partitioning/dirColName"];
+    params.latColName = paramMap["partitioning/latColName"];
+    params.lonColName = paramMap["partitioning/lonColName"];
+    params.partitioned = paramMap.count("partitioning") > 0;
+    try {
+        auto iter = paramMap.find("partitioning/subChunks");
+        if (iter != paramMap.end()) {
+            params.subChunks = std::stoi(iter->second);
+        }
+        iter = paramMap.find("partitioning/overlap");
+        if (iter != paramMap.end()) {
+            params.overlap = std::stod(iter->second);
+        }
+    } catch (std::exception const& exc) {
+        LOGS(_log, LOG_LVL_ERROR, "One of the sub-keys is not numeric: "
+             << util::printable(paramMap));
+        throw KeyValueError(tableKey + "/partitioning", "one of the sub-keys is not numeric: " +
+                            std::string(exc.what()));
+    }
+}
+
+void
+CssAccess::_fillMatchTableParams(std::map<std::string, std::string>& paramMap,
+                                 MatchTableParams& params) const {
+    params.dirTable1 = paramMap["match/dirTable1"];
+    params.dirColName1 = paramMap["match/dirColName1"];
+    params.dirTable2 = paramMap["match/dirTable2"];
+    params.dirColName2 = paramMap["match/dirColName2"];
+    params.flagColName = paramMap["match/flagColName"];
+}
+
+void
+CssAccess::_fillScanTableParams(std::map<std::string, std::string>& paramMap,
+                                ScanTableParams& params,
+                                std::string const& tableKey) const {
+    try {
+        auto iter = paramMap.find("sharedScan/lockInMem");
+        if (iter != paramMap.end()) {
+            params.lockInMem = std::stoi(paramMap["sharedScan/lockInMem"]);
+        }
+        iter = paramMap.find("sharedScan/scanSpeed");
+        if (iter != paramMap.end()) {
+            params.scanSpeed = std::stoi(paramMap["sharedScan/scanSpeed"]);
+        }
+    } catch (std::exception const& exc) {
+        LOGS(_log, LOG_LVL_ERROR, "One of the sub-keys is not numeric: "
+             << util::printable(paramMap));
+        throw KeyValueError(tableKey + "/sharedScan", "one of the sub-keys is not numeric: " +
+                            std::string(exc.what()));
+    }
 }
 
 }}} // namespace lsst::qserv::css

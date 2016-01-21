@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,6 +29,7 @@
 // Qserv headers
 #include "css/MatchTableParams.h"
 #include "css/PartTableParams.h"
+#include "css/ScanTableParams.h"
 
 namespace lsst {
 namespace qserv {
@@ -41,14 +42,15 @@ namespace css {
  *
  *  @brief Class defining a set of table partitioning parameters.
  *
- *  This class is just a combination of the PartTableParams and
- *  MatchTableParams.
+ *  This class is just a combination of the PartTableParams,
+ *  MatchTableParams and ScanTableParams.
  */
 
 struct TableParams {
 
     MatchTableParams match;          ///< match metadata
     PartTableParams partitioning;    ///< partitioning metadata
+    ScanTableParams sharedScan;      ///< shared scan metadata
 
 };
 

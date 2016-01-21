@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +36,7 @@
 #include "css/MatchTableParams.h"
 #include "css/NodeParams.h"
 #include "css/PartTableParams.h"
+#include "css/ScanTableParams.h"
 #include "css/StripingParams.h"
 #include "css/TableParams.h"
 
@@ -304,6 +305,19 @@ public:
                                        std::string const& tableName) const;
 
     /**
+     * @brief Returns shared scan table metadata.
+     *
+     * Deprecated: use getTableParams() instead to get a consistent set of all table parameters.
+     *
+     * @param dbName: database name
+     * @param tableName: table name
+     * @throws NoSuchTable: if table (or database) does not exist
+     * @throws CssError: for all other errors
+     */
+    ScanTableParams getScanTableParams(std::string const& dbName,
+                                       std::string const& tableName) const;
+
+    /**
      * @brief Returns complete table metadata.
      *
      * @param dbName: database name
@@ -323,6 +337,7 @@ public:
      * @param schema: table schema
      * @param partParams: table partitioning parameters, if this is
      *        default-constructed object then table is not partitioned.
+     * @param scanParams: table shared can parameters.
      * @throws TableExists: if CSS already has this table
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
@@ -330,7 +345,8 @@ public:
     void createTable(std::string const& dbName,
                      std::string const& tableName,
                      std::string const& schema,
-                     PartTableParams const& partParams);
+                     PartTableParams const& partParams,
+                     ScanTableParams const& scanParams);
 
     /**
      * @brief Create new table in a database.
@@ -505,6 +521,17 @@ protected:
      *  is missing and mustExist is true it throws VersionMissingError.
      */
     void _checkVersion(bool mustExist=true) const;
+
+private:
+
+    void _fillPartTableParams(std::map<std::string, std::string>& paramMap,
+                              PartTableParams& params,
+                              std::string const& tableKey) const;
+    void _fillMatchTableParams(std::map<std::string, std::string>& paramMap,
+                               MatchTableParams& params) const;
+    void _fillScanTableParams(std::map<std::string, std::string>& paramMap,
+                              ScanTableParams& params,
+                              std::string const& tableKey) const;
 
 private:
 
