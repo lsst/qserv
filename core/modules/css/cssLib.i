@@ -1,7 +1,7 @@
 // -*- lsst-c++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2014-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -142,6 +142,7 @@ class ConfigError(CssError):
 %include "css/MatchTableParams.h"
 %include "css/NodeParams.h"
 %include "css/PartTableParams.h"
+%include "css/ScanTableParams.h"
 %include "css/StripingParams.h"
 %include "css/TableParams.h"
 %include "css/CssAccess.h"

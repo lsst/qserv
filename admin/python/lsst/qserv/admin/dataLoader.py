@@ -1,5 +1,5 @@
 # LSST Data Management System
-# Copyright 2014-2015 AURA/LSST.
+# Copyright 2014-2016 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -691,12 +691,14 @@ class DataLoader(object):
         else:
             if 'dirTable' in options:
                 # partitioned table
-                params = css.PartTableParams(options['dirDb'], options['dirTable'], options['dirColName'],
-                                             options['latColName'], options['lonColName'],
-                                             options['overlap'], True, options['subChunks'])
+                pParams = css.PartTableParams(options['dirDb'], options['dirTable'], options['dirColName'],
+                                              options['latColName'], options['lonColName'],
+                                              options['overlap'], True, options['subChunks'])
+                sParams = css.ScanTableParams(options['lockInMem'], options['scanSpeed'])
             else:
-                params = css.PartTableParams()
-            self.css.createTable(database, table, schema, params)
+                pParams = css.PartTableParams()
+                sParams = css.ScanTableParams()
+            self.css.createTable(database, table, schema, pParams, sParams)
 
         # save chunk mapping too
         self._log.info('Saving updated chunk map to CSS')

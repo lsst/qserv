@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,7 +49,7 @@ struct PartTableParams {
     PartTableParams() : overlap(0.0), partitioned(false), subChunks(false) {}
     PartTableParams(std::string const& dirDb_, std::string const& dirTable_,
                     std::string const& dirColName_, std::string const& latColName_,
-                    std::string const& lonColName_,  double overlap_, bool partitioned_,
+                    std::string const& lonColName_, double overlap_, bool partitioned_,
                     bool subChunks_) :
                         dirDb(dirDb_), dirTable(dirTable_), dirColName(dirColName_),
                         latColName(latColName_), lonColName(lonColName_),

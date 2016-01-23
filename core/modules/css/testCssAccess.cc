@@ -61,16 +61,22 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/Object/partitioning/latColName", "decl_PS"));
     kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
     kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objectId"));
+    kv.push_back(make_pair(p + "/Object/sharedScan/lockInMem", "1"));
+    kv.push_back(make_pair(p + "/Object/sharedScan/scanSpeed", "1"));
     kv.push_back(make_pair(p + "/Source", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Source/partitioning", ""));
     kv.push_back(make_pair(p + "/Source/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/Source/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/Source/partitioning/subChunks", "0"));
+    kv.push_back(make_pair(p + "/Source/sharedScan/lockInMem", "1"));
+    kv.push_back(make_pair(p + "/Source/sharedScan/scanSpeed", "2"));
     kv.push_back(make_pair(p + "/FSource", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/FSource/partitioning", ""));
     kv.push_back(make_pair(p + "/FSource/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/FSource/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/FSource/partitioning/subChunks", "0"));
+    kv.push_back(make_pair(p + "/FSource/sharedScan/lockInMem", "0"));
+    kv.push_back(make_pair(p + "/FSource/sharedScan/scanSpeed", "3"));
     kv.push_back(make_pair(p + "/Exposure", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Exposure/schema", "(I INT)"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS", ""));
@@ -469,9 +475,29 @@ BOOST_AUTO_TEST_CASE(testGetTableParams) {
     BOOST_CHECK_THROW(params = getTableParams("dbC", "NoRefMatch"), NoSuchTable);
 }
 
+BOOST_AUTO_TEST_CASE(testGetPartTableParams4Scans) {
+    ScanTableParams params;
+    params = getScanTableParams("dbA", "Exposure");
+    BOOST_CHECK_EQUAL(params.lockInMem, false);
+    BOOST_CHECK_EQUAL(params.scanSpeed, 0);
+
+    params = getScanTableParams("dbA", "Object");
+    BOOST_CHECK_EQUAL(params.lockInMem, true);
+    BOOST_CHECK_EQUAL(params.scanSpeed, 1);
+
+    params = getScanTableParams("dbA", "Source");
+    BOOST_CHECK_EQUAL(params.lockInMem, true);
+    BOOST_CHECK_EQUAL(params.scanSpeed, 2);
+
+    params = getScanTableParams("dbA", "FSource");
+    BOOST_CHECK_EQUAL(params.lockInMem, false);
+    BOOST_CHECK_EQUAL(params.scanSpeed, 3);
+}
+
 BOOST_AUTO_TEST_CASE(testCreateTable) {
-    PartTableParams params0;
-    createTable("dbA", "NewTable", "(INT I)", params0);
+    PartTableParams pParams;
+    ScanTableParams sParams;
+    createTable("dbA", "NewTable", "(INT I)", pParams, sParams);
     BOOST_CHECK(containsTable("dbA", "NewTable"));
 
     BOOST_CHECK_EQUAL(getTableSchema("dbA", "NewTable"), "(INT I)");
@@ -491,10 +517,10 @@ BOOST_AUTO_TEST_CASE(testCreateTable) {
     BOOST_CHECK_EQUAL(params.partitioning.overlap, 0.0);
     BOOST_CHECK_EQUAL(params.partitioning.subChunks, false);
 
-    BOOST_CHECK_THROW(createTable("dbA", "NewTable", "(INT I)", params0), TableExists);
+    BOOST_CHECK_THROW(createTable("dbA", "NewTable", "(INT I)", pParams, sParams), TableExists);
 
     PartTableParams params1{"dbA", "SomeTable", "dirColName", "latColName", "lonColName", 0.012, true, true};
-    createTable("dbA", "NewTable2", "(INT J)", params1);
+    createTable("dbA", "NewTable2", "(INT J)", params1, sParams);
     BOOST_CHECK(containsTable("dbA", "NewTable2"));
 
     BOOST_CHECK_EQUAL(getTableSchema("dbA", "NewTable2"), "(INT J)");
@@ -515,8 +541,8 @@ BOOST_AUTO_TEST_CASE(testCreateTable) {
 }
 
 BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
-    MatchTableParams params0;
-    createMatchTable("dbA", "MatchTable", "(INT I)", params0);
+    MatchTableParams mParams;
+    createMatchTable("dbA", "MatchTable", "(INT I)", mParams);
     BOOST_CHECK(containsTable("dbA", "MatchTable"));
 
     BOOST_CHECK_EQUAL(getTableSchema("dbA", "MatchTable"), "(INT I)");
@@ -536,7 +562,7 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     BOOST_CHECK_EQUAL(params.partitioning.overlap, 0.0);
     BOOST_CHECK_EQUAL(params.partitioning.subChunks, false);
 
-    BOOST_CHECK_THROW(createMatchTable("dbA", "MatchTable", "(INT I)", params0), TableExists);
+    BOOST_CHECK_THROW(createMatchTable("dbA", "MatchTable", "(INT I)", mParams), TableExists);
 
     MatchTableParams params1{"dirTable1", "dirCol1", "dirTable2", "dirCol2", "flagCol"};
     createMatchTable("dbA", "MatchTable2", "(INT X)", params1);
@@ -560,8 +586,9 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
 }
 
 BOOST_AUTO_TEST_CASE(testDropTable) {
-    PartTableParams params0;
-    createTable("dbA", "NewTable", "(INT I)", params0);
+    PartTableParams pParams;
+    ScanTableParams sParams;
+    createTable("dbA", "NewTable", "(INT I)", pParams, sParams);
     BOOST_CHECK(containsTable("dbA", "NewTable"));
 
     dropTable("dbA", "NewTable");
