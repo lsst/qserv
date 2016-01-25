@@ -1,8 +1,7 @@
 # -*- python -*-
 Import('env')
-Import('extraTgts')
+
 import os
-#import export_deps
 
 # Construct proto env (add protoc Builder)
 proto = File("worker.proto")
@@ -13,30 +12,17 @@ pFiles = env.Protoc(
     PROTOC_PYOUT='.',
     )
 
-# Handle non Protobufs sources
-sources = filter(lambda f: ("pb" not in os.path.basename(str(f))) and
-                 (not os.path.basename(str(f)).startswith("test")),
-                 Glob("*.cc"))
+# collect all *.cc files
+sources = [f for f in Glob("*.cc") 
+           if not os.path.basename(str(f)).startswith("test")]
+
 #print "sources", sources, type(sources)
-sourceObjs = []
+objects = []
 for s in sources:
-    #print "sources s=",s
-    #sObj = env.Object(s)
-    if str(s) == "TaskMsgDigest.cc":
-        headerDep = filter(lambda s: "worker.pb.h" in str(s), pFiles)
-        #print "headerDep", headerDep
-        env.Depends(s, headerDep)
-    sourceObjs.append(s)
-extraTgts["protoPy"] = filter(lambda s: "worker_pb2.py" in str(s), pFiles)
-extraTgts["protoHdr"] = filter(lambda s: "worker.pb.h" in str(s), pFiles)
+    CPPPATH = env['CPPPATH']
+    if 'worker.pb.cc' in str(s):
+        CPPPATH += ['../..']
+    objects.append(env.SharedObject(s, CPPPATH=CPPPATH))
 
-# Special handling because protobufs creates .pb.cc using
-# an include path relative to bld/..
-pbCC = filter(lambda s: "worker.pb.cc" in str(s), pFiles)[0]
-pbOs = env.SharedObject(pbCC, CPPPATH=env['CPPPATH'] + ['../..'])
-libObjs = sourceObjs + pbOs
-
-Return('libObjs')
-
-
-
+build_data = DefaultEnvironment()['build_data']
+build_data['module_objects']['proto'] = objects
