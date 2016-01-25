@@ -67,7 +67,7 @@ The sharding scheme described above has a problem with locating data by objectId
 
     SELECT * from Object WHERE objectId = <id>
 
-behind the scene, it willbe executed as:
+behind the scene, it will be executed as:
 
     SELECT chunkId FROM IdToChunkMapping WHERE objectId = <id>
 
@@ -76,6 +76,26 @@ which is a quick index lookup, followed by
     SELECT * from Object_<chunkId> WHERE objectId = <id>
 
 which is another quick index lookup inside one small chunk.
+
+The '=' operator below can be replaced with the 'BETWEEN' operator:
+
+    SELECT * from Object WHERE objectId BETWEEN <id_1> and <id_2>
+
+This will be executed as:
+
+    SELECT chunkId FROM IdToChunkMapping WHERE objectId BETWEEN <id_1> and <id_2>
+
+followed by one parallel query on each returned chunkId:
+
+    SELECT * from Object_<chunkId_i> WHERE objectId BETWEEN <id_1> and <id_2>
+    ...
+    SELECT * from Object_<chunkId_j> WHERE objectId BETWEEN <id_1> and <id_2>
+
+Then all the returned rows will be returned to users as one unique result.
+
+<aside class="warning">
+The '!=', '>', '>=', '<', '<=' operators are not supported and cause undefined behaviour.
+</aside>
 
 By the way, do not attempt to issues queries directly on our internal chunk tables. It is blocked.
 
