@@ -77,25 +77,7 @@ which is a quick index lookup, followed by
 
 which is another quick index lookup inside one small chunk.
 
-The '=' operator below can be replaced with the 'BETWEEN' operator:
-
-    SELECT * from Object WHERE objectId BETWEEN <id_1> and <id_2>
-
-This will be executed as:
-
-    SELECT chunkId FROM IdToChunkMapping WHERE objectId BETWEEN <id_1> and <id_2>
-
-followed by one parallel query on each returned chunkId:
-
-    SELECT * from Object_<chunkId_i> WHERE objectId BETWEEN <id_1> and <id_2>
-    ...
-    SELECT * from Object_<chunkId_j> WHERE objectId BETWEEN <id_1> and <id_2>
-
-Then all the returned rows will be returned to users as one unique result.
-
-<aside class="warning">
-The '!=', '>', '>=', '<', '<=' operators are not supported and cause undefined behaviour.
-</aside>
+Note that the use of secondary index has some restrictions, as explained in the restrictions section below.
 
 By the way, do not attempt to issues queries directly on our internal chunk tables. It is blocked.
 
@@ -212,15 +194,17 @@ is valid, but
 is not allowed. We expect to remove this restriction in the future, see [DM-2888](https://jira.lsstcorp.org/browse/DM-2888).
 
 
-### objectId constraint must be expressed through "=" on "IN"
+### Secondary index constraint must be expressed through "=", "IN", or "BETWEEN"
 
-If the query has objectId constraint, it should be expressed in one of these two forms:
+If the query has objectId constraint, it should be expressed in one of these three forms:
 
     SELECT * FROM Object WHERE objectId = 123
 
     SELECT * FROM Object WHERE objectId IN (123, 453, 3465)
 
-E.g., don't try to express it as "WHERE objectId BETWEEN 1 AND 2" etc.
+    SELECT * FROM Object WHERE objectId BETWEEN 123 AND 130
+
+E.g., don't try to express it as "WHERE objectId != 1", or WHERE objectId > 123 etc.
 
 Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See [DM-2889](https://jira.lsstcorp.org/browse/DM-2889).
 
