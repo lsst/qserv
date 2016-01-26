@@ -1,5 +1,5 @@
 ###########################################
-Run multinode test inside Docker containers 
+Run multinode test inside Docker containers
 ###########################################
 
 .. note::
@@ -33,9 +33,9 @@ Pre-requisites
 
   .. code-block:: bash
 
-     sudo usermod -a -G docker myuser 
-  
-****************** 
+     sudo usermod -a -G docker myuser
+
+******************
 Run multinode test
 ******************
 
@@ -44,24 +44,24 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
 .. code-block:: bash
 
    git clone git@github.com:lsst/qserv.git
-   cd ${SRC_DIR}/qserv/admin/tools/docker/shmux
+   cd ${SRC_DIR}/qserv/admin/tools/docker/integration-tests
 
 create and adapt next example scripts to prepare multinode test execution:
 
 In :file:`env.sh`, prepare your host list and set the name of your images:
 
-.. literalinclude:: ../../../admin/tools/docker/shmux/env.example.sh
+.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/env.example.sh
    :language: bash
    :linenos:
- 
+
 In :file:`nodes.css`, add worker nodes to css configuration:
 
-.. literalinclude:: ../../../admin/tools/docker/shmux/nodes.example.css
+.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/nodes.example.css
    :linenos:
 
-In :file:`run-multinode-tests.sh`, download docker images and run multinode test: 
+In :file:`run-multinode-tests.sh`, download docker images and run multinode test:
 
-.. literalinclude:: ../../../admin/tools/docker/shmux/run-multinode-tests.sh
+.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/run-multinode-tests.sh
    :language: bash
    :linenos:
 
