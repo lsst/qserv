@@ -1,30 +1,27 @@
 # -*- python -*-
-import distutils.sysconfig
+import os
 
 Import('env')
 Import('standardModule')
 
-standardModule(env, unit_tests=[])
-
-build_data = DefaultEnvironment()['build_data']
-
-# this assumes that we use the same Python for scons and final products
-pythonInc = distutils.sysconfig.get_python_inc()
-
+# PYTHON_INC_DIR is set by pymod tool
+pythonInc = env['PYTHON_INC_DIR']
 cppPath = env['CPPPATH'] + [pythonInc]
+
 # Use special C++ file suffix to avoid mix with standardModule()
+# Python module is generated in python/ directory for standardModule()
 swigged = env.SharedObject(source="qmetaLib.i",
                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
                            SWIGPATH=['..', pythonInc],
                            CPPPATH=cppPath,
-                           SWIGCXXFILESUFFIX='_wrap.c++')
+                           SWIGCXXFILESUFFIX='_wrap.c++',
+                           SWIGOUTDIR=env.Dir("python"))
 
+build_data = DefaultEnvironment()['build_data']
 build_data['module_objects']['qmeta:python'] = swigged
 
 # Create entry for python file, which SCons SWIG builder ignores
-pySwig = env.File('qmetaLib.py')
+pySwig = env.File(os.path.join('python', 'qmetaLib.py'))
 
-# install python file
-dst = "$prefix/$python_relative_prefix/lsst/qserv/qmeta"
-py_installed = env.Install(dst, pySwig)
-build_data['install'] += py_installed
+# runs standard stuff _after_ above to install Python module
+standardModule(env, unit_tests=[])
