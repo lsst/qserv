@@ -97,6 +97,13 @@ void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
     int millisecs = atoi(payload.c_str());
     // barrier for all threads when _go is false.
     _go.wait(true);
+    // No attempt should be made to cancel a mock job after _go is set to true.
+    if (qr->getJobQuery()->isCancelled()) {
+        LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest job cancelled");
+        // markComplete() should have been called by JobQuery::cancel(), shouldn't
+        // call again due to possible race condition where Executive is already deleted.
+        return;
+    }
     LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep begin");
     usleep(1000*millisecs);
     LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep end");
