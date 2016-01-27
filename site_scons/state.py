@@ -151,7 +151,7 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsDir)),
         (PathVariable('python_relative_prefix',
                       'qserv install directory for python modules, relative to prefix',
-                      os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
+                      os.path.join("lib", "python"), PathVariable.PathAccept))
     )
     opts.Update(env)
 
@@ -181,7 +181,7 @@ def _setEnvWithDependencies():
     opts.Update(env)
 
     opts.AddVariables(
-            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathIsDirCreate))
+            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathAccept))
 	    )
     opts.Update(env)
 
@@ -235,6 +235,7 @@ def _setBuildEnv():
     env.Tool('protoc')
     env.Tool('antlr')
     env.Tool('unittest')
+    env.Tool('dirclean')
 
 # TODO : where to save this file ?
 def _saveState():
