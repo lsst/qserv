@@ -30,8 +30,37 @@
 #include <sstream>
 
 // Third-party headers
+#ifdef __APPLE__
+#define COMMON_DIGEST_FOR_OPENSSL
+#include <CommonCrypto/CommonDigest.h>
+
+// On OS X MD5() is CC_MD5() the size argument CC_LONG is a uint32_t
+// and the data argument is a const void *.
+
+// unsigned char *   MD5(const unsigned char *, size_t, unsigned char *);
+// vs
+// unsigned char *CC_MD5(const          void *, CC_LONG,unsigned char *);
+
+unsigned char * MD5(const unsigned char * data,
+                    size_t len,
+                    unsigned char * md) {
+  return CC_MD5(data, len, md);
+}
+unsigned char * SHA1(const unsigned char * data,
+                    size_t len,
+                    unsigned char * md) {
+  return CC_SHA1(data, len, md);
+}
+unsigned char * SHA256(const unsigned char * data,
+                    size_t len,
+                    unsigned char * md) {
+  return CC_SHA256(data, len, md);
+}
+
+#else
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+#endif
 
 namespace {
 template <unsigned char *dFunc(const unsigned char *,
