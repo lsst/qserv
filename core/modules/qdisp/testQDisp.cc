@@ -430,7 +430,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         BOOST_CHECK(jq->isCancelled() == true);
     }
     qdisp::XrdSsiServiceMock::_go.exchange(true);
-    ex.join(); // XrdSsiMock doesn't pay attention to cancel, need to wait for all to finish.
+    usleep(250000); // Give mock threads a quarter second to complete.
 
     LOGS_DEBUG("Check that QueryResource and QueryRequest detect the cancellation of a job.");
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
