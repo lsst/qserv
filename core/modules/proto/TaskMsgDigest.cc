@@ -27,6 +27,10 @@
 // System headers
 #ifdef __SUNPRO_CC
 #include <sys/md5.h>
+#elif __APPLE__
+#define COMMON_DIGEST_FOR_OPENSSL
+#include <CommonCrypto/CommonDigest.h>
+#define MD5 CC_MD5
 #else // Linux?
 #include <openssl/md5.h>
 #endif
