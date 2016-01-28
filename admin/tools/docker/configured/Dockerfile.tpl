@@ -7,6 +7,14 @@ COPY scripts/configure.sh scripts/configure.sh
 
 USER qserv
 
+# Respectively qserv-watcher xrootd ports
+# Used on both worker and master
+EXPOSE 5012 1094
+
+# Respectively cmsd mysql-proxy ports
+# Used on master only
+{{COMMENT_ON_WORKER_OPT}}EXPOSE 2131 4040
+
 RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}"
 
 # WARNING: Unsafe because it is pushed in Docker Hub

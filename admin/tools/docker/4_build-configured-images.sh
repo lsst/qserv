@@ -26,7 +26,7 @@
 
 set -e
 
-DOCKER_IMAGE="qserv/qserv:dev"
+DEFAULT_DOCKER_IMAGE="qserv/qserv:dev"
 
 usage() {
   cat << EOD
@@ -35,7 +35,7 @@ usage() {
 
   Available options:
     -h          this message
-    -i image    Docker image to be used as input, default to $DOCKER_IMAGE
+    -i image    Docker image to be used as input, default to $DEFAULT_DOCKER_IMAGE
 
   Create docker images containing Qserv master and worker instances,
   use an existing Qserv Docker image as input.
@@ -45,6 +45,7 @@ EOD
 }
 
 # Get the options
+DOCKER_IMAGE="$DEFAULT_DOCKER_IMAGE"
 while getopts hi: c ; do
     case $c in
             h) usage ; exit 0 ;;
@@ -71,6 +72,7 @@ cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
 sed -i 's%{{NODE_TYPE_OPT}}%-m%g' "$DOCKERFILE"
 sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
 sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
+sed -i 's%{{COMMENT_ON_WORKER_OPT}}%%g' "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_master_${MASTER}"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
@@ -85,6 +87,7 @@ cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
 sed -i 's%{{NODE_TYPE_OPT}}%%g' "$DOCKERFILE"
 sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
 sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
+sed -i 's%{{COMMENT_ON_WORKER_OPT}}%# %g' "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_worker_${MASTER}"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
