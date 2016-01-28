@@ -4,6 +4,7 @@
 # using Docker containers
 
 set -x
+set -e
 
 . ./env.sh
 
