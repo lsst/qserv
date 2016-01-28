@@ -1,3 +1,3 @@
-CREATE NODE worker1 type=worker port=5012 host=clrqserv01;
-CREATE NODE worker2 type=worker port=5012 host=clrqserv02;
-CREATE NODE worker3 type=worker port=5012 host=clrqserv03;
+CREATE NODE worker1 type=worker port=5012 host=qserv01.domain.org;
+CREATE NODE worker2 type=worker port=5012 host=qserv02.domain.org;
+CREATE NODE worker2 type=worker port=5012 host=qserv03.domain.org;

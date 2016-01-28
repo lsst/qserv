@@ -20,14 +20,19 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+# Docker utility:
+# return when all Qserv services are up and running
 
-# Report Qserv status on current node
-
-# @author  Fabrice Jammes, IN2P3/SLAC
+# @author  Fabrice JAMMES, IN2P3
 
 set -e
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
-. $DIR/params.sh
+QSERV_RUN_DIR=/qserv/run
 
-$QSERV_RUN_DIR/bin/qserv-status.sh
+# Wait for Qserv services to be up and running
+while ! "$QSERV_RUN_DIR"/bin/qserv-status.sh > /dev/null
+    do
+    sleep 1
+done
+
+echo "Qserv is up on $(hostname)"

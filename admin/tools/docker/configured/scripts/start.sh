@@ -21,6 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
+# Docker utility
 # Start Qserv on current node
 # and doesn't exit
 

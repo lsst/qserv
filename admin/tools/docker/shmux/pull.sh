@@ -1,4 +1,4 @@
 . ./env.sh
 
-shmux -c "docker pull ${MASTER_IMAGE}" $MASTER 
-shmux -c "docker pull ${WORKER_IMAGE}" $WORKERS 
+ssh "$MASTER" "docker pull ${MASTER_IMAGE}"
+shmux -S all -c "docker pull ${WORKER_IMAGE}" $WORKERS
