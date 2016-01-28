@@ -187,7 +187,7 @@ env.AlwaysBuild(versionFile)  # Always rebuild this.
 shlibs = {}
 
 # library used by other shared libs
-shlibs["qserv_common"] = dict(mods="""global proto mysql sql util""",
+shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
                               libs="""log protobuf mysqlclient_r boost_thread crypto""")
 
 # library implementing xrootd services (worker side)
