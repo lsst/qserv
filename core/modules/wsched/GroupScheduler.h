@@ -25,7 +25,7 @@
 
 // Qserv headers
 #include "util/EventThread.h"
-#include "wcontrol/Foreman.h"
+#include "wsched/SchedulerBase.h"
 
 namespace lsst {
 namespace qserv {
@@ -54,11 +54,11 @@ protected:
 /// GroupScheduler -- A scheduler that is a cross between FIFO and shared scan.
 /// Tasks are ordered as they come in, except that queries for the
 /// same chunks are grouped together.
-class GroupScheduler : public wcontrol::Scheduler {
+class GroupScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(std::string const& name, int maxThreads, int maxGroupSize);
+    GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize);
     virtual ~GroupScheduler() {}
 
     bool empty();
@@ -68,24 +68,18 @@ public:
     util::Command::Ptr getCmd(bool wait) override;
     void commandFinish(util::Command::Ptr const&) override { --_inFlight; }
 
-    // wcontrol::Scheduler overrides
-    int getInFlight() const override { return _inFlight; }
-    std::string getName() const override { return _name; }
+    // SchedulerBase overrides
     bool ready() override;
     std::size_t getSize() const override;
-    void maxThreadAdjust(int tempMax) override;
+
 
 private:
     bool _ready();
-    int _maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
     std::string _name;
 
     std::deque<GroupQueue::Ptr> _queue;
     int _maxGroupSize{1};
-    int _maxThreads{1};
-    int _maxThreadsAdj{1}; //< This must be used carefully as not protected.
-    std::atomic<int> _inFlight{0};
 };
 
 }}} // namespace lsst::qserv::wsched

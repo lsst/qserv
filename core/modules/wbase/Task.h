@@ -125,7 +125,7 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     void cancel();
-    bool getCancelled()   { return _cancelled; }
+    bool getCancelled() { return _cancelled; }
 
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
@@ -144,7 +144,7 @@ public:
     int tSeq{-1}; // for debugging only
 
 private:
-    std::atomic<bool> _cancelled {false};
+    std::atomic<bool> _cancelled{false};
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;

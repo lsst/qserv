@@ -115,12 +115,11 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     // Determine which major tables this task will use.
     int size = msg->scantable_size();
 
-    for(int j=0; j< size; ++j) {
+    for(int j=0; j < size; ++j) {
         proto::TaskMsg_ScanTable const& scanTbl = msg->scantable(j);
         _scanInfo.infoTables.push_back(proto::ScanTableInfo(scanTbl.db(), scanTbl.table(),
-                                         scanTbl.lockinmemory(), scanTbl.scanspeed()));
+                                       scanTbl.lockinmemory(), scanTbl.scanspeed()));
     }
-
     _scanInfo.priority = msg->scanpriority();
 }
 

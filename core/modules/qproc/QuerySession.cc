@@ -346,13 +346,12 @@ void QuerySession::print(std::ostream& os) const {
     os << "  chunks: " << util::printable(this->_chunks) << "\n";
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par << "\n";
-    os << "  merge statement: " << mer << std::endl;
+    os << "  merge statement: " << mer << "\n";
     os << "  scan Piority:" << _context->scanInfo.priority;
     for (auto const& tbl : _context->scanInfo.infoTables) {
         os << "  ScanTable: " << tbl.db << "." << tbl.table
-           << " lock=" << tbl.lockInMemory << " sp=" << tbl.scanSpeed << std::endl;
+           << " lock=" << tbl.lockInMemory << " sp=" << tbl.scanSpeed << "\n";
     }
-
 }
 
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {

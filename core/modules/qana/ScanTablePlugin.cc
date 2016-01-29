@@ -84,7 +84,7 @@ public:
 
 private:
     proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
-                                                 query::QueryContext& context);
+                                    query::QueryContext& context);
     proto::ScanInfo _scanInfo;
 };
 

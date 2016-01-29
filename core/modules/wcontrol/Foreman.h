@@ -53,20 +53,12 @@ public:
     using Ptr = std::shared_ptr<Scheduler>;
     virtual ~Scheduler() {}
 
-    virtual std::size_t getSize() const =0; //< @return the number of tasks in the queue (not in flight).
-    virtual int getInFlight() const =0; //< @return the number of tasks in flight.
-    virtual std::string getName() const =0; //< @return the name of the scheduler.
-
-    virtual bool ready()=0; //< @return true if the scheduler is ready to provide a Task.
-
-    /// Temporarily reduce the maximum number of threads the scheduler is allowed to use.
-    virtual void maxThreadAdjust(int tempMax)=0;
+    virtual std::string getName() const = 0; //< @return the name of the scheduler.
 
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
     virtual void taskCancelled(wbase::Task *task) { return; }
-
 };
 
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.

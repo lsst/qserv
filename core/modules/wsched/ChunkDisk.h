@@ -34,14 +34,12 @@
 #include <algorithm>
 #include <memory>
 #include <mutex>
-#include <set>
 #include <vector>
 
 // Qserv headers
 #include "memman/MemMan.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
-#include "wsched/ChunkState.h"
 
 
 namespace lsst {
@@ -49,28 +47,20 @@ namespace qserv {
 namespace wsched {
 
 /// Limits Tasks to running when resources are available.
-/// TODO: DM-4943 Merge this class into ScanScheduler.
+/// TODO: DM-4943 Maybe merge this class into ScanScheduler.
 class ChunkDisk {
 public:
-    using TaskSet = std::set<wbase::Task const*>;
 
     ChunkDisk(memman::MemMan::Ptr const& memMan) : _memMan(memMan) {}
     ChunkDisk(ChunkDisk const&) = delete;
     ChunkDisk& operator=(ChunkDisk const&) = delete;
 
-    TaskSet getInflight() const;
-
     // Queue management
     void enqueue(wbase::Task::Ptr const& a);
     wbase::Task::Ptr getTask(bool useFlexibleLock);
-    bool busy() const; /// Busy scanning a chunk?
     bool empty() const;
     bool ready(bool useFlexibleLock);
     std::size_t getSize() const;
-
-    // Inflight management
-    void registerInflight(wbase::Task::Ptr const& e);
-    bool removeInflight(wbase::Task::Ptr const& e);
 
     void setResourceStarved(bool starved);
 
@@ -96,17 +86,15 @@ public:
     };
 
 private:
-    bool _busy() const;
     bool _empty() const;
     bool _ready(bool useFlexibleLock);
 
-    mutable std::mutex _queueMutex; // &&& is this needed or is another mutex always locked when this is locked?
+    mutable std::mutex _queueMutex;
     MinHeap _activeTasks;
     MinHeap _pendingTasks;
-    ChunkState _chunkState;
+    int _lastChunk{-100}; // initialize to much too impossible small value;
     memman::MemMan::Ptr _memMan;
     mutable std::mutex _inflightMutex;
-    TaskSet _inflight;
     bool _resourceStarved;
 };
 

@@ -27,7 +27,7 @@
 #include <map>
 
 // Qserv headers
-#include "wcontrol/Foreman.h"
+#include "wsched/SchedulerBase.h"
 
 // Forward declarations
 namespace lsst {
@@ -75,7 +75,7 @@ namespace wsched {
 /// Secondly, the ScanScheduler schedulers are only allowed to advance to a new chunk
 /// if resources are available to read the chunk into memory, or if the sub-scheduler
 /// has no Tasks inFlight (same thing as having zero threads).
-class BlendScheduler : public wcontrol::Scheduler {
+class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
@@ -93,21 +93,20 @@ public:
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
 
-    // wcontrol::Scheduler virtual methods.
+    // SchedulerBase overrides methods.
     std::size_t getSize() const override;
     int getInFlight() const override;
-    std::string getName() const override { return _name; }
     bool ready() override;
-    void maxThreadAdjust(int tempMax) override {;} //< does nothing
+    int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
+    int calcAvailableTheads();
 
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
 
-    std::string _name; //< Name of this scheduler.
-    int _subSchedMaxThreads; //< maximum number of threads allowed in a sub-scheduler.
+    int _schedMaxThreads; //< maximum number of threads that can run.
 
     // Sub-schedulers.
     std::shared_ptr<GroupScheduler> _group;
@@ -115,9 +114,9 @@ private:
     std::shared_ptr<ScanScheduler> _scanMedium;
     std::shared_ptr<ScanScheduler> _scanSlow;
     // List of schedulers in order of priority.
-    std::vector<wcontrol::Scheduler*> _schedulers;
+    std::vector<SchedulerBase*> _schedulers;
     bool _lastCmdFromScan{false};
-    std::map<wbase::Task*, wcontrol::Scheduler*> _map;
+    std::map<wbase::Task*, SchedulerBase*> _map;
     std::mutex _mapMutex;
 };
 

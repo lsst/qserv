@@ -59,7 +59,6 @@ public:
         LOGF_DEBUG("QueryResourceDebug::finish");
         qr.getJobQuery()->getMarkCompleteFunc()->operator ()(true);
     }
-
 };
 
 util::FlagNotify<bool> XrdSsiServiceMock::_go(true);

@@ -86,19 +86,21 @@ SsiService::SsiService(XrdSsiLogger* log) {
 
     // TODO: DM-4943 use MemManReal
     // Memory available is meaningless for MemManNone
-    memman::MemMan::Ptr memMan = std::make_shared<memman::MemManNone>(1);
+    memman::MemMan::Ptr memMan = std::make_shared<memman::MemManNone>(1, false);
 
     // TODO: set poolSize and all maxThreads values from config file.
-    uint poolSize = std::max(static_cast<uint>(14), std::thread::hardware_concurrency());
+    uint poolSize = std::max(static_cast<uint>(15), std::thread::hardware_concurrency());
     // TODO: set GroupScheduler group size from configuration file
     // TODO: Consider limiting the number of chunks being accessed at a time
     //       by GroupScheduler and ScanScheduler
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
-    uint maxThread = poolSize - 3;
-    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, 10);
-    auto fast  = std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, memMan);
-    auto med   = std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, memMan);
-    auto slow  = std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, memMan);
+    //uint maxThread = poolSize - 3;
+    uint maxThread = poolSize;
+    int maxReserve = 2;
+    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve, 10);
+    auto fast  = std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, maxReserve, memMan);
+    auto med   = std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, maxReserve, memMan);
+    auto slow  = std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, maxReserve, memMan);
 
     _foreman = wcontrol::Foreman::newForeman(
             std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread,

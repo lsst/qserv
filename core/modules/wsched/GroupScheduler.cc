@@ -139,8 +139,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     return cmd;
 }
 
-GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxGroupSize)
-  : _name(name), _maxGroupSize(maxGroupSize), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads) {
+GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize)
+  : SchedulerBase(name, maxThreads, maxReserve), _maxGroupSize(maxGroupSize){
 }
 
 bool GroupScheduler::empty() {
@@ -157,15 +157,9 @@ bool GroupScheduler::ready() {
 /// Precondition: _mx must be locked.
 bool GroupScheduler::_ready() {
     // GroupScheduler is not limited by resource availability.
-    return !_queue.empty() && _inFlight < _maxInFlight();
+    return !_queue.empty() && _inFlight < maxInFlight();
 }
 
-/// Sets the value of _maxThreadsAdj and must be set while in the
-/// same critical region as the _ready() calls that use it.
-/// The BlendScheduler must maintain the lock on its mutex to use this.
-void GroupScheduler::maxThreadAdjust(int tempMax) {
-    _maxThreadsAdj = tempMax;
-}
 
 /// Return the number of groups (not Tasks) in the queue.
 std::size_t GroupScheduler::getSize() const {

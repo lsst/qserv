@@ -73,13 +73,6 @@ namespace wsched {
 // Helpers
 ////////////////////////////////////////////////////////////////////////
 
-/// @return chunkId of task
-inline int taskChunkId(wbase::Task const& e) {
-    assert(e.msg);
-    assert(e.msg->has_chunkid());
-    return e.msg->chunkid();
-}
-
 void ChunkDisk::MinHeap::push(wbase::Task::Ptr const& task) {
     _tasks.push_back(task);
     std::push_heap(_tasks.begin(), _tasks.end(), compareFunc);
@@ -94,44 +87,35 @@ wbase::Task::Ptr ChunkDisk::MinHeap::pop() {
     return task;
 }
 
-ChunkDisk::TaskSet ChunkDisk::getInflight() const {
-    std::lock_guard<std::mutex> lock(_inflightMutex);
-    return TaskSet(_inflight);
-}
 
 void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
     std::lock_guard<std::mutex> lock(_queueMutex);
-    int chunkId = taskChunkId(*a);
+    int chunkId = a->getChunkId();
     time(&a->entryTime);
     /// Compute entry time to reduce spurious valgrind errors
     ::ctime_r(&a->entryTime, a->timestr);
 
     const char* state = "";
-    if (_chunkState.empty()) {
+    // To keep from getting stuck  on this chunkId, put new requests for this chunkId on pending.
+    if (chunkId <= _lastChunk) {
+        _pendingTasks.push(a);
+        state = "PENDING";
+    } else { // Ok to be part of scan. chunk not yet started
         _activeTasks.push(a);
-        state = "EMPTY";
-    } else {
-        // To keep from getting stuck  on this chunkId, put new requests for this chunk on pending.
-        if (chunkId <= _chunkState.lastScan()) {
-            _pendingTasks.push(a);
-            state = "PENDING";
-        } else { // Ok to be part of scan. chunk not yet started
-            _activeTasks.push(a);
-            state = "ACTIVE";
-        }
+        state = "ACTIVE";
     }
     LOGS(_log, LOG_LVL_DEBUG,
          "ChunkDisk enqueue "
          << "chunkId=" << chunkId
          << " state=" << state
          << " tSeq=" << a->tSeq
-         << " lastScan=" << _chunkState.lastScan()
+         << " lastChunk=" << _lastChunk
          << " active.sz=" << _activeTasks._tasks.size()
          << " pend.sz=" << _pendingTasks._tasks.size());
     if (_activeTasks.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: (empty)");
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: " << taskChunkId(*_activeTasks.top()));
+        LOGS(_log, LOG_LVL_DEBUG, "Top of ACTIVE is now: " << _activeTasks.top()->getChunkId());
     }
 }
 
@@ -159,16 +143,18 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::MUSTLOCK;
         memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
         if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
-        // auto tblVect = task->getTableVector(lckOptTbl, lckOptIdx); // &&& no so thrilled with putting this in Task &&& delete
         auto scanInfo = task-> getScanInfo();
         auto chunkId = task->getChunkId();
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "." + tbl.table, lckOptTbl, lckOptIdx);
+            LOGS(_log,LOG_LVL_DEBUG, "cunkId=" << chunkId << " ti=" << ti.tableName
+                                     << " lock=" << (int)ti.theData);
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
         memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
+        LOGS(_log,LOG_LVL_DEBUG, "handle=" << handle);
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:
@@ -190,26 +176,12 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         }
         task->setMemHandle(handle);
         setResourceStarved(false);
+        // Once the chunk has been granted, everything equal and below must go on pending.
+        // Otherwise there's a risk of a Task with lower or same chunkId getting in front
+        // of this one and needing the resources this Task has been promised.
+        _lastChunk = chunkId;
     }
     return true;
-
-    // &&& ready if we've got a handle from MemMan for the top task
-    // &&& add argument to _ready() and getTask() to indicate FLEXIBLE lock should be used.
-
-    // &&& delete from here to end of function
-    /* &&& delete
-    // TODO: A timeout should be added such that we can advance to the next chunkId if too much time has
-    // been spent on this chunkId, or we need a better method of determining when a chunk has been read than
-    // waiting for the a query on the chunk to finish.
-    wbase::Task::Ptr top = _activeTasks.top();
-    int chunkId = taskChunkId(*top);
-    bool allowAdvance = !_busy() && !_empty();
-    bool idle = !_chunkState.hasScan();
-    bool inScan = _chunkState.isScan(chunkId);
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk::_ready() " << "allowAdvance=" << allowAdvance
-         << " idle=" << idle << " inScan=" << inScan);
-    return allowAdvance || idle || inScan;
-    */
 }
 
 /// Return a Task that is ready to run, if available.
@@ -222,17 +194,10 @@ wbase::Task::Ptr ChunkDisk::getTask(bool useFlexibleLock) {
     }
     // Check the chunkId.
     auto task = _activeTasks.pop();
-    int chunkId = taskChunkId(*task);
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk getTask: current= " << _chunkState
+    int chunkId = task->getChunkId();
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk getTask: current=" << _lastChunk
          << " candidate=" << chunkId << " tSeq=" << task->tSeq);
-    _chunkState.addScan(chunkId);
-    registerInflight(task); // consider the task inflight as soon as it's off the queue
     return task;
-    // If next chunk is of a different chunk, only continue if current
-    // chunk has completed a scan already.
-
-    // FIXME: If time for chunk has expired, advance to next chunk
-    // Get the next chunk from the queue.
 }
 
 // TODO: DM-4943 add statistics.
@@ -243,27 +208,6 @@ void ChunkDisk::setResourceStarved(bool starved) {
     }
 }
 
-
-bool ChunkDisk::busy() const {
-    std::lock_guard<std::mutex> lock(_queueMutex);
-    return _busy();
-}
-
-/// Precondition: _queueMutex must be locked
-bool ChunkDisk::_busy() const {
-    // Simplistic view, only one chunk in flight.
-    // We are busy if the inflight list is non-empty
-    bool busy = _chunkState.hasScan();
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk busyness: " << (busy ? "yes" : "no"));
-    return busy;
-
-    // More advanced:
-    // If we have finished one task on the current chunk, we are
-    // non-busy. We infer that the resource is non-busy, assuming that
-    // the chunk is now cached.
-
-    // Should track which tables are loaded.
-}
 
 bool ChunkDisk::empty() const {
     std::lock_guard<std::mutex> lock(_queueMutex);
@@ -278,31 +222,6 @@ bool ChunkDisk::_empty() const {
 std::size_t ChunkDisk::getSize() const {
     std::lock_guard<std::mutex> lock(_queueMutex);
     return _activeTasks._tasks.size() + _pendingTasks._tasks.size();
-}
-
-void ChunkDisk::registerInflight(wbase::Task::Ptr const& e) {
-    std::lock_guard<std::mutex> lock(_inflightMutex);
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk registering for "
-         << e->msg->chunkid() << ": "
-         << e->msg->fragment(0).query(0)
-         << " p=" << (void*) e.get());
-    _inflight.insert(e.get());
-}
-
-
-/// Remove the Task from the set of inflight Tasks.
-/// @Return true if a scan completed, which means that there is potential for
-/// new Tasks to be started.
-bool ChunkDisk::removeInflight(wbase::Task::Ptr const& e) {
-    std::lock_guard<std::mutex> lock(_inflightMutex);
-    int chunkId = e->msg->chunkid();
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk remove for "
-         << chunkId << ": " << e->msg->fragment(0).query(0));
-    _inflight.erase(e.get());
-    {
-        std::lock_guard<std::mutex> lock(_queueMutex);
-        return _chunkState.markComplete(chunkId);
-    }
 }
 
 }}} // namespace lsst::qserv::wsched

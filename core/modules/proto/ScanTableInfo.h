@@ -21,15 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_PROTO_SCANTABLEINFO_H_
-#define LSST_QSERV_PROTO_SCANTABLEINFO_H_
-
-/*
- * ScanTableInfo.h
- *
- *  Created on: Jan 22, 2016
- *      Author: jgates
- */
+#ifndef LSST_QSERV_PROTO_SCANTABLEINFO_H
+#define LSST_QSERV_PROTO_SCANTABLEINFO_H
 
 // System headers
 #include <string>
@@ -54,7 +47,6 @@ struct ScanTableInfo {
     std::string table {""};
     bool lockInMemory {false};
     int  scanSpeed    {0};
-
 };
 
 struct ScanInfo {
@@ -67,4 +59,4 @@ struct ScanInfo {
 
 }}} // namespace lsst::qserv::proto
 
-#endif /* CORE_MODULES_PROTO_SCANTABLEINFO_H_ */
+#endif // LSST_QSERV_PROTO_SCANTABLEINFO_H

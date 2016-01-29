@@ -44,6 +44,7 @@ class MemManNone : public MemMan {
 public:
 
     Handle lock(std::vector<TableInfo> const& tables, int chunk) override {
+               if (_alwaysLock) return true;
                (void)chunk;
                for (auto it=tables.begin() ; it != tables.end(); it++) {
                    if (it->theData  == TableInfo::LockType::MUSTLOCK
@@ -64,7 +65,7 @@ public:
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 
-    MemManNone(uint64_t maxBytes)
+    MemManNone(uint64_t maxBytes, bool alwaysLock) : _alwaysLock(alwaysLock)
               {memset(&_myStats, 0, sizeof(_myStats));
                _myStats.bytesLockMax = maxBytes;
                _myStats.bytesLocked  = maxBytes;
@@ -76,6 +77,7 @@ public:
 private:
     Statistics _myStats;
     Status     _status;
+    int        _alwaysLock{false};
 };
 
 }}} // namespace lsst:qserv:memman

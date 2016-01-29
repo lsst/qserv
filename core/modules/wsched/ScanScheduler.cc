@@ -55,9 +55,9 @@ namespace qserv {
 namespace wsched {
 
 
-ScanScheduler::ScanScheduler(std::string name, int maxThreads, memman::MemMan::Ptr const& memMan)
-    : _name(name), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads), _memMan(memMan)
-{
+ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve,
+                             memman::MemMan::Ptr const& memMan)
+    : SchedulerBase(name, maxThreads, maxReserve), _memMan(memMan) {
     _disk = std::make_shared<ChunkDisk>(_memMan);
 }
 
@@ -68,7 +68,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         return;
     }
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart tSeq=" << task->tSeq);
-    // task was registeredInflight on its disk when getCmd() was called.
+    // task was registered Inflight when getCmd() was called.
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
@@ -78,14 +78,19 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
-    // If removeInflight finishes a scan, need to notify threads that
-    // they might be able to advance to the next chunk.
-    bool needNotify = _disk->removeInflight(t);
     --_inFlight;
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight= " << _inFlight);
-    if (needNotify) {
-        _cv.notify_all();
+
+    if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        _memMan->unlock(_memManHandleToUnlock);
     }
+    if (_disk->getSize() != 0) {
+        _memManHandleToUnlock = t->getMemHandle();
+    } else {
+        _memMan->unlock(t->getMemHandle());
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
+    // Whenever a Task finishes, threads need to check if resources are available to run new Tasks.
+    _cv.notify_all();
 }
 
 
@@ -98,50 +103,18 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
-    bool useFlexibleLock = (_inFlight < 1);
-    auto rdy = _disk->ready(useFlexibleLock);
-    return rdy && _inFlight < _maxInFlight();
-
-    // Check with resource manager if resources are available for the task
-    /* &&&
-    auto task = _queue.front()->peekTask();
-    if (!task->hasMemHandle) {
-        TableInfo::LockOptions lckOptTbl = TableInfo::LockOptions::MUSTLOCK;
-        TableInfo::LockOPtions lckOptIdx = TableInfo::LockOptions::NOLOCK;
-        if (_inFlight < 1) lckOptTbl = TableInfo::FLEXIBLE;
-        auto tblVect = task->getTableVector(lckOptTbl, lckOptIdx); // &&& no so thrilled with putting this in Task
-        auto chunkId = task->getChunkId();
-        Handle handle = _memMgr->lock(tblVect, chunkId); // &&& what happens if tblVect is empty?
-        if (handle == 0) {
-            switch (_memMgr->errno) {
-            case MemMan::ENOMEM:
-                _resourceStarved = true;
-                return false;
-            case MemMan::ENOENT:
-                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found");
-                // &&& is the correct course of action to go ahead and run the query.
-                // &&& ??? It should get a mysql error, causing a msg to czar to run it somewhere else.
-                // &&& ??? or cancel the task and then continue on ???
-                break;
-            case MemMan::EFAULT:
-                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=EFAULT");
-                // &&& appropropriate course of action with file system fault is ???
-                // &&& throw error or
-                return false;
-            }
-        }
-        task->setMemHandle(handle);
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight=" << _inFlight
+            << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj);
+    if (_inFlight >= maxInFlight()) {
+        return false;
     }
-    */
-}
-
-
-/// Sets the value of _maxThreadsAdj and must be set while in the
-/// same critical region as the _ready() calls that use it.
-/// The BlendScheduler must maintain the lock on its mutex to use this.
-// &&& basically duplicate of same thing in GroupScheduler. Move to wcontrol::Scheduler along with maxThreads, maxThreadsAdj, and _maxInFlight()?
-void ScanScheduler::maxThreadAdjust(int tempMax) {
-    _maxThreadsAdj = tempMax;
+    bool useFlexibleLock = (_inFlight < 1);
+    auto rdy = _disk->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
+    if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        _memMan->unlock(_memManHandleToUnlock);
+        _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
+    }
+    return rdy;
 }
 
 
@@ -154,10 +127,8 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
-    } else {
-        if (!_ready()) {
-            return nullptr;
-        }
+    } else if (!_ready()) {
+        return nullptr;
     }
     bool useFlexibleLock = (_inFlight < 1);
     auto task = _disk->getTask(useFlexibleLock);

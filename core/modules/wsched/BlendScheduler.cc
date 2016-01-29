@@ -68,12 +68,12 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
 BlendScheduler::BlendScheduler(std::string const& name,
-                               int subSchedMaxThreads,
+                               int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
                                std::shared_ptr<ScanScheduler> const& scanFast,
                                std::shared_ptr<ScanScheduler> const& scanMedium,
                                std::shared_ptr<ScanScheduler> const& scanSlow)
-    : _name(name), _subSchedMaxThreads(subSchedMaxThreads),
+    : SchedulerBase(name, 0, 0), _schedMaxThreads(schedMaxThreads),
       _group(group), _scanFast(scanFast), _scanMedium(scanMedium), _scanSlow(scanSlow)
 {
     dbgBlendScheduler = this;
@@ -98,7 +98,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     // Check for scan tables
     assert(_group);
     assert(_scanFast);
-    wcontrol::Scheduler* s = nullptr;
+    SchedulerBase* s = nullptr;
     proto::ScanTableInfo::ListOf &scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {
         int scanPriority = task->getScanInfo().priority;
@@ -154,14 +154,17 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     wcontrol::Scheduler* s = lookup(t);
+
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found tSeq=" << t->tSeq);
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish tSeq=" << t->tSeq);
-    // &&& free resources.
-    // &&& If any resources freed, notify all threads that they might be able to do something.
+
+    // TODO: DM-4943 Add check to only call notify if resources were actually freed by commandFinish()
+    notify(true);
+
 }
 
 /// @return ptr to scheduler that is tracking p
@@ -186,16 +189,18 @@ bool BlendScheduler::ready() {
 bool BlendScheduler::_ready() {
     std::ostringstream os;
     bool ready = false;
-    int adjMax = _subSchedMaxThreads;
+
+    // Get the total number of threads schedulers want reserved
+    int availableThreads = calcAvailableTheads();
     for (auto sched : _schedulers) {
-        sched->maxThreadAdjust(adjMax);
+        availableThreads = sched->applyAvailableThreads(availableThreads);
         ready = sched->ready();
         os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
-           << " fl=" << sched-> getInFlight() << " adj=" << adjMax << ") ";
+           << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         if (ready) break;
-        adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight());
+        //availableThreads = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
     }
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::_ready() " << os.str());
+    LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     return ready;
 }
 
@@ -207,22 +212,23 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
 
     // Try to get a command from the schedulers
     util::Command::Ptr cmd;
-    int adjMax = _subSchedMaxThreads;
+    int availableThreads = calcAvailableTheads();
     for(auto sched : _schedulers) {
-        sched->maxThreadAdjust(adjMax);
+        availableThreads = sched->applyAvailableThreads(availableThreads);
         cmd = sched->getCmd(false); // no wait
         if (cmd != nullptr) {
             LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << sched->getName());
+            wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
             break;
         }
-        adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight());
-        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " adj=" << adjMax);
+        // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
+        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
     }
     // returning nullptr is acceptable.
     return cmd;
 }
 
-
+/// Method A - maybe use with MemManReal
 int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
     int newAdjMax = oldAdjMax - std::max(inFlight - 1, 0);
     if (newAdjMax < 1) {
@@ -231,6 +237,19 @@ int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
         newAdjMax = 1;
     }
     return newAdjMax;
+}
+
+/// @return the number of threads that are not reserved by any sub-scheduler.
+int BlendScheduler::calcAvailableTheads() {
+    int reserve = 0;
+    for (auto sched : _schedulers) {
+        reserve += sched->desiredThreadReserve();
+    }
+    int available = _schedMaxThreads - reserve;
+    if (available < 0) {
+        LOGS(_log, LOG_LVL_DEBUG, "calcAvailableTheads negative available=" << available);
+    }
+    return available;
 }
 
 /// Returns the number of Tasks queued in all sub-schedulers.
