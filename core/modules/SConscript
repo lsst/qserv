@@ -6,8 +6,11 @@
 This SConscript file defines all targets produced from code in core/modules.
 
 This file is loaded from top-level SConstruct and its main purpose is to
-return tuple with two items - install targets and test targets - former is
-assigned to "install" alias, latter to "test" alias.
+define all target being built and installed by code in modules directory.
+It assigns those targets to three aliases:
+  - "build" - target (e.g. shared libraries) being built in "build" directory
+  - "install-notest" - targets installed in various places
+  - "test" - all unit tests to run as a part of the build
 
 The code in core/modules is split into a bunch of modules, modules do most
 of the job definig targets for their own code, this includes:
@@ -141,9 +144,10 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     # all python/*.py files are installed in lib/python/lsst/qserv/module
     py_modules = env.Glob(os.path.join(path, 'python', '*.py'), source=True, strings=True, exclude=exclude)
     state.log.debug('standardModule: py_modules = ' + str(py_modules))
-    dst = os.path.join("$prefix/$python_relative_prefix/lsst/qserv", module)
+    dst = os.path.join("$python_prefix/lsst/qserv", module)
     py_installed = env.Install(dst, py_modules)
-    build_data['install'] += py_installed
+    pyc_installed = env.PyCompile(py_installed)
+    build_data['install'] += py_installed + pyc_installed
 
     # all bin/*.py files are installed in bin/
     py_scripts = env.Glob(os.path.join(path, 'bin', '*.py'), source=True, strings=True, exclude=exclude)
@@ -182,8 +186,8 @@ env.AlwaysBuild(versionFile)  # Always rebuild this.
 #         other qserv libraries
 #   SHLIBPREFIX: optional prefix for library name, default is 'lib', can be
 #         set to empty string, e.g. for Python extension modules
-#   instDir: installation directory (relative to $prefix) for the library,
-#         default is "lib"
+#   instDir: installation directory (absolute or relative to $prefix) for
+#         the library, default is "lib"
 shlibs = {}
 
 # library used by other shared libs
@@ -218,13 +222,13 @@ shlibs["czarProxy"] = dict(mods="""proxy""",
 shlibs["_cssLib"] = dict(mods="css:python",
                          libs="qserv_css log boost_thread",
                          SHLIBPREFIX='',
-                         instDir="$python_relative_prefix/lsst/qserv/css")
+                         instDir="$python_prefix/lsst/qserv/css")
 
 # Python extension module wrapping qserv_qmeta
 shlibs["_qmetaLib"] = dict(mods="qmeta:python",
                            libs="qserv_qmeta log",
                            SHLIBPREFIX='',
-                           instDir="$python_relative_prefix/lsst/qserv/qmeta")
+                           instDir="$python_prefix/lsst/qserv/qmeta")
 
 # get list of all modules
 all_modules = sorted(str(d) for d in Glob('*', source=True) if os.path.isdir(d.srcnode().abspath))
@@ -268,6 +272,7 @@ for mod in all_modules:
         standardModule(env, module=mod)
 
 # define targets for shared libs
+build_targets = []
 for shlib, shopt in shlibs.items():
 
     state.log.debug('defining target for ' + shlib)
@@ -285,14 +290,16 @@ for shlib, shopt in shlibs.items():
     state.log.debug('libPath: %s' % libPath)
 
     # shared library target
-    if 'SHLIBPREFIX' in shopt:
-        out = env.SharedLibrary(shlib, objects, LIBS=Split(shopt['libs']),
-                                SHLIBPREFIX=shopt['SHLIBPREFIX'], LIBPATH=libPath)
-    else:
-        out = env.SharedLibrary(shlib, objects, LIBS=Split(shopt['libs']), LIBPATH=libPath)
+    pfx = shopt.get('SHLIBPREFIX', env['SHLIBPREFIX'])
+    out = env.SharedLibrary(shlib, objects, LIBS=Split(shopt['libs']),
+                            SHLIBPREFIX=pfx, LIBPATH=libPath)
+    build_targets += out
 
     # install target
     instDir = shopt.get('instDir', 'lib')
+    # instDir can start with $ which confuses join() if substitution
+    # is supposed to be absolute path, so we substitute in advance
+    instDir = env.subst(instDir)
     target = env.Install(os.path.join("$prefix", instDir), out)
     build_data['install'] += target
 
@@ -306,8 +313,15 @@ if utests:
     env.Requires(utests, "build")
     state.log.debug("Unit tests to run: %s" % map(str, utests))
     # special builder that checks that unit tests were successful
-    utestCheck = env.UnitTestCheck('unit-test-check-tag', utests)
-    build_data['tests'].extend(utestCheck)
+    utests = env.UnitTestCheck('unit-test-check-tag', utests)
 
-ret = (build_data['install'], build_data['tests'])
-Return('ret')
+build_targets += build_data['tests']
+
+# define/extend all aliases
+state.log.debug("build targets: %s" % map(str, build_targets))
+env.Alias("build", build_targets)
+state.log.debug("install targets: %s" % map(str, build_data['install']))
+env.Alias("install-notest", build_data['install'])
+if utests:
+    env.Alias("test", utests)
+    state.log.debug("Test tgts to run: %s" % map(str, utests))

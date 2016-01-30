@@ -19,11 +19,8 @@ env = state.env
 all = env.Alias("all", [env.Alias("build"), env.Alias("test")])
 env.Default(all)
 
-env.Depends("build", env.Alias("init-build-env"))
-env.Depends("install-notest", env.Alias("build"))
-
 env.Alias("install-notest",
-          [env.Alias("dist-core"),
+          [env.Alias("build"),
            env.Alias("admin"),
            env.Alias("templates")])
 env.Alias("install",
@@ -59,17 +56,18 @@ else:
 #
 #########################
     adminbin_target = os.path.join(env['prefix'], "bin")
-    env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
+    adminbin_targets = env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
     python_admin = env.InstallPythonModule(target=env['python_prefix'],
                                            source=os.path.join("admin", "python"))
 
     template_target = os.path.join(env['configuration_prefix'], "templates")
-    env.RecursiveInstall(template_target, os.path.join("admin", "templates", "configuration"))
+    template_source = os.path.join("admin", "templates", "configuration")
+    template_targets = env.RecursiveInstall(template_target, template_source)
 
     env.Alias("admin",
               [python_admin,
-               template_target,
-               adminbin_target])
+               template_targets,
+               adminbin_targets])
 
 #############################
 #
@@ -80,18 +78,10 @@ else:
 # Trigger the modules build
 ############################
 
-    (installTargets, testTargets) = SConscript('core/modules/SConscript',
-                                               variant_dir=env['build_dir'],
-                                               duplicate=0,
-                                               exports=['env', 'ARGUMENTS'])
-
-    state.log.debug("installTargets: %s" % map(str, installTargets))
-    env.Alias("dist-core", installTargets)
-
-    if testTargets:
-        env.Alias("test", testTargets)
-        state.log.debug("Test tgts to build: %s" % map(str, testTargets))
-
+    SConscript('core/modules/SConscript',
+               variant_dir=env['build_dir'],
+               duplicate=0,
+               exports=['env'])
 
 #########################################
 #
@@ -131,6 +121,10 @@ else:
         return target_lst
 
     env.Alias("templates", get_template_targets())
+
+    # Clean empty build/install directories (based on current target list)
+    if env.GetOption('clean'):
+        env.CleanEmptyDirs(BUILD_TARGETS, 'bin build cfg lib proxy')
 
 # List all aliases
 try:

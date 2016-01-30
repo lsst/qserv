@@ -61,11 +61,14 @@ def RecursiveInstall(env, target, dir):
     relnodes = [ n.abspath[l:] for n in nodes ]
 
     state.log.debug('RecursiveInstall()')
+    targets = []
     for n in relnodes:
         t = os.path.join(target, n)
         s = os.path.join(dir, n)
         state.log.debug("RecursiveInstall() : source %s, target %s" % (s,t))
-        env.InstallAs( env.File(t), env.File(s))
+        targets += env.InstallAs(env.File(t), env.File(s))
+
+    return targets
 
 def generate(env):
     env.AddMethod(RecursiveInstall)
