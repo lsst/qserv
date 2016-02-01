@@ -1,3 +1,50 @@
+R E L E A S E   2016_01
+=======================
+
+Release highlights:
+ * Query cancellation works
+ * Switched to MariaDB
+ * czar now runs inside mysql proxy
+ * Switched to stream-based logging
+ * Switched to using external sphgeom
+ * Improved packaging of shared libaries in scons
+ * Designed interfaces for memory management for shared scans
+
+New features:
+ * DM-2522: Implement distributed database deletion
+ * DM-224:  Switch to MariaDB
+ * DM-4807: Add Shared Scan Table Information to CSS
+ * DM-4677: Design Interfaces for Memory Management for Shared Scans
+
+Code improvements:
+ * DM-4348: Replace XML-RPC with in-process communication
+ * DM-3447: Improve packaging of shared libraries in scons
+ * DM-4616: Migrate Qserv code to stream-based logging
+ * DM-2178: Migrate Qserv to external sphgeom
+ * DM-4383: Avoid restarting czar when empty chunk list changes
+ * DM-3037: remove lsst/log wrapper from Qserv
+ * DM-2699: Final cleanup of Query cancellation code
+ * DM-2421: Improve support for Python modules in Scons
+ * DM-4753: Cleanup location of anonymous namespaces
+ * DM-3888: Add missing space after if in Qserv code to conform to standard
+ * DM-2452: Replace toString() function
+ * DM-2060: Rename TaskMsgFactory2
+
+Docker:
+ * DM-4295: Run and document multinode integration tests on Openstack+Docker
+ * DM-4523: Fix startup.py inside Docker container
+
+Bug fixes:
+ * DM-4529: Compilation errors from CLang (Apple LLVM 7.0) in XCode 7 on MacOSX
+ * DM-4470: squelch some minor gcc 5.2 warns
+ * DM-4704: Qserv integration tests fail on CentOS7 with gcc 4.8.5
+ * DM-4705: qdisp/testQDisp fails with mariadb
+ * DM-4928: Fix intermittent testQdisp failure
+ * DM-4648: Support sqlalchemy use with qserv
+
+Documentation:
+ * DM-4105: Update user documentation
+
 R E L E A S E   2015_11
 =======================
 
