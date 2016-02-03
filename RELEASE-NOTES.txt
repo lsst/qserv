@@ -7,7 +7,7 @@ Release highlights:
  * czar now runs inside mysql proxy
  * Switched to stream-based logging
  * Switched to using external sphgeom
- * Improved packaging of shared libaries in scons
+ * Improved packaging of shared libraries in scons
  * Designed interfaces for memory management for shared scans
 
 New features:
