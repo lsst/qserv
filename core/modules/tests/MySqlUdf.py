@@ -5,7 +5,7 @@ import optparse
 import random
 import sys
 import unittest
-import MySQLdb as sql
+from lsst.db.engineFactory import getEngineFromArgs
 
 
 def dbparam(x):
@@ -79,26 +79,25 @@ class MySqlUdfTestCase(unittest.TestCase):
     """
     def setUp(self):
         global _options
-        self._conn = sql.connect(unix_socket=_options.socketFile,
-                                 user=_options.user,
-                                 passwd=_options.password)
-        self._cursor = self._conn.cursor()
+        engine = getEngineFromArgs(username=_options.user,
+                                   password=_options.password,
+                                   query={"unix_socket": _options.socketFile})
+        self._conn = engine.connect()
 
     def tearDown(self):
-        self._cursor.close()
-        self._conn.close()
+        del self._conn
 
     def _query(self, query, result):
-        self._cursor.execute(query)
-        rows = self._cursor.fetchall()
+        qresult = self._conn.execute(query)
+        rows = qresult.fetchall()
         self.assertEqual(rows[0][0], result, query +
                          " did not return %s." % dbparam(result))
 
     def _angSep(self, result, *args):
         args = tuple(map(dbparam, args))
-        query = "SELECT qserv_angSep(%s, %s, %s, %s)" % args
-        self._cursor.execute(query)
-        rows = self._cursor.fetchall()
+        query = "SELECT scisql_angSep(%s, %s, %s, %s)" % args
+        qresult = self._conn.execute(query)
+        rows = qresult.fetchall()
         if result is None:
             self.assertEqual(rows[0][0], result, query + " did not return NULL.")
         else:
@@ -123,7 +122,7 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def _ptInSphBox(self, result, *args):
         args = tuple(map(dbparam, args))
-        query = "SELECT qserv_ptInSphBox(%s, %s, %s, %s, %s, %s)" % args
+        query = "SELECT scisql_s2PtInBox(%s, %s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphBox(self):
@@ -143,7 +142,7 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def _ptInSphCircle(self, result, *args):
         args = tuple(map(dbparam, args))
-        query = "SELECT qserv_ptInSphCircle(%s, %s, %s, %s, %s)" % args
+        query = "SELECT scisql_s2PtInCircle(%s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphCircle(self):
@@ -172,7 +171,7 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def _ptInSphEllipse(self, result, *args):
         args = tuple(map(dbparam, args))
-        query = "SELECT qserv_ptInSphEllipse(%s, %s, %s, %s, %s, %s, %s)" % args
+        query = "SELECT scisql_s2PtInEllipse(%s, %s, %s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphEllipse(self):
@@ -204,43 +203,45 @@ class MySqlUdfTestCase(unittest.TestCase):
                     self._ptInSphEllipse(0, ra, dec, ra_cen, dec_cen, smaa, smia, ang)
 
     def _ptInSphPoly(self, result, *args):
-        args = tuple(map(dbparam, args))
-        query = "SELECT qserv_ptInSphPoly(%s, %s, %s)" % args
+        args = ', '.join(map(dbparam, args))
+        query = "SELECT scisql_s2PtInCPoly(%s)" % args
         self._query(query, result)
 
     def testPtInSphPoly(self):
-        for i in xrange(3):
-            a = [0.0, 0.0, "0 0 90 0 0 90"]; a[i] = None
+        # Test for NULL in any argument, returns 0
+        for i in xrange(8):
+            a = [0.0, 0.0, 0, 0, 90, 0, 0, 90]; a[i] = None
             self._ptInSphPoly(0, *a)
+
+        # test for decl outside allowed range, makes NULL
         for d in (-91, 91):
-            a = [0.0, d, "0 0 90 0 0 90"]
-            self._ptInSphPoly(None, *a)
-            spec = "0 0 90 0 0 " + str(d)
-            a = [0.0, 0.0, spec]
-            self.assertRaises(Exception, self._ptInSphPoly,
-                              (self, None, a[0], a[1], a[2]))
+            self._ptInSphPoly(None, 0.0, d, 0, 0, 90, 0, 0, 90)
+            self._ptInSphPoly(None, 0.0, 0.0, 0, 0, 90, 0, 0, d)
+
+        # test for incorrect number of poly coordinates
         self.assertRaises(Exception, self._ptInSphPoly,
-                          (self, None, 0.0, 0.0, "0 0 90 0 60 45 30"))
+                          None, 0.0, 0.0, 0, 0, 90, 0, 60, 45, 30)
         self.assertRaises(Exception, self._ptInSphPoly,
-                          (self, None, 0.0, 0.0, "0 0 90 0 60"))
+                          None, 0.0, 0.0, 0, 0, 90, 0, 60)
         self.assertRaises(Exception, self._ptInSphPoly,
-                          (self, None, 0.0, 0.0, "0 0 90 0"))
+                          None, 0.0, 0.0, 0, 0, 90, 0)
+
+        # Test for non-exceptional cases
         x = (0, 0);  nx = (180, 0)
         y = (90, 0); ny = (270, 0)
         z = (0, 90); nz = (0, -90)
         tris = [ (x, y, z), (y, nx, z), (nx, ny, z), (ny, (360, 0), z),
                  ((360, 0), ny, nz), (ny, nx, nz), (nx, y, nz), (y, x, nz) ]
         for t in tris:
-            spec = " ".join(map(repr, flatten(t)))
+            spec = flatten(t)
             for i in xrange(100):
                 ra = random.uniform(0.0, 360.0)
                 dec = random.uniform(-90.0, 90.0)
                 if ((t[2][1] > 0 and (dec < 0.0 or ra < t[0][0] or ra > t[1][0])) or
                     (t[2][1] < 0 and (dec > 0.0 or ra < t[1][0] or ra > t[0][0]))):
-                    self._ptInSphPoly(0, ra, dec, spec)
+                    self._ptInSphPoly(0, ra, dec, *spec)
                 else:
-                    self._ptInSphPoly(1, ra, dec, spec)
-
+                    self._ptInSphPoly(1, ra, dec, *spec)
 
 def main():
     global _options
@@ -251,7 +252,7 @@ def main():
                       help="Use socket file FILE to connect to mysql",
                       metavar="FILE")
     parser.add_option("-u", "--user", dest="user",
-                      default="qsworker",
+                      default="qsmaster",
                       help="User for db login if not %default")
     parser.add_option("-p", "--password", dest="password",
                       default="",
@@ -260,7 +261,7 @@ def main():
     if _options.password == "-":
         _options.password = getpass.getpass()
     random.seed(123456789)
-    unittest.main()
+    unittest.main(argv=[sys.argv[0]])
 
 if __name__ == "__main__":
     main()

@@ -944,16 +944,11 @@ def resetChunksCache(dbName):
     # validate params
     _validateDbName(dbName)
 
-    try:
-        dbConn = Config.instance().proxyConn()
-    except Exception as exc:
-        _log.error('Failed to connect to proxy: %s', exc)
-        raise ExceptionResponse(500, "ConnectFailed", "Failed to connect to qserv (mysql-proxy)", str(exc))
+    dbConn = Config.instance().proxyDbEngine().connect()
 
     try:
-        cursor = dbConn.cursor()
         query = "FLUSH QSERV_CHUNKS_CACHE FOR {}".format(dbName)
-        cursor.execute(query)
+        dbConn.execute(query)
     except Exception as exc:
         _log.error('exception executing FLUSH QSERV_CHUNKS_CACHE: %s', exc)
         raise ExceptionResponse(500, "FLushFailed", "FLUSH QSERV_CHUNKS_CACHE failed for database %s" % dbName,
