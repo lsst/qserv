@@ -30,12 +30,36 @@
 #include <sstream>
 
 // Third-party headers
+#ifdef __APPLE__
+#define COMMON_DIGEST_FOR_OPENSSL
+#include <CommonCrypto/CommonDigest.h>
+#else
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+#endif
 
 namespace {
-template <unsigned char *dFunc(const unsigned char *,
-                               size_t, unsigned char *),
+
+#ifdef __APPLE__
+
+// Wrappers for CommonCrytpo on OSX to adapt function names and signatures to look like
+// their corresponding openssl versions.
+
+unsigned char* MD5(unsigned char const* data, size_t len, unsigned char* md) {
+    return CC_MD5(static_cast<void const*>(data), static_cast<CC_LONG>(len), md);
+}
+
+unsigned char* SHA1(unsigned char const* data, size_t len, unsigned char* md) {
+    return CC_SHA1(static_cast<void const*>(data), static_cast<CC_LONG>(len), md);
+}
+
+unsigned char* SHA256(unsigned char const* data, size_t len, unsigned char* md) {
+    return CC_SHA256(static_cast<void const*>(data), static_cast<CC_LONG>(len), md);
+}
+
+#endif // __APPLE__
+
+template <unsigned char* dFunc(unsigned char const*, size_t, unsigned char*),
           int dLength>
 inline std::string wrapHash(void const* buffer, int bufferSize) {
     unsigned char digest[dLength];
@@ -43,12 +67,13 @@ inline std::string wrapHash(void const* buffer, int bufferSize) {
     return std::string(reinterpret_cast<char*>(digest), dLength);
 }
 
-template <unsigned char *dFunc(const unsigned char *,
-                               size_t, unsigned char *),
+template <unsigned char *dFunc(unsigned char const*, size_t, unsigned char*),
           int dLength>
 inline std::string wrapHashHex(void const* buffer, int bufferSize) {
     unsigned char digest[dLength];
     dFunc(reinterpret_cast<unsigned char const*>(buffer), bufferSize, digest);
+    // C++ stream version is ~30x faster than boost::format version.
+    // i.e. (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
     std::ostringstream s;
     s.flags(std::ios::hex);
     s.fill('0');
@@ -56,10 +81,9 @@ inline std::string wrapHashHex(void const* buffer, int bufferSize) {
         s.width(2);
         s << static_cast<unsigned int>(digest[i]);
     }
-    // C++ stream version is ~30x faster than boost::format version.
-    // i.e. (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
     return s.str();
 }
+
 } // anonymous namespace
 
 namespace lsst {
@@ -94,6 +118,7 @@ std::string StringHash::getMd5(char const* buffer, int bufferSize) {
 std::string StringHash::getSha1(char const* buffer, int bufferSize) {
     return wrapHash<SHA1, SHA_DIGEST_LENGTH>(buffer, bufferSize);
 }
+
 /// @return the raw SHA256 hash of the input buffer
 /// 256 bits -> 32 bytes
 std::string StringHash::getSha256(char const* buffer, int bufferSize) {
