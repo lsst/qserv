@@ -637,7 +637,7 @@ def main():
             try:
                 parser.parse(cmd)
             except (_ToolError, css.CssError) as e:
-                print("ERROR: ", e.__str__())
+                print("ERROR: ", str(e))
                 sys.exit(1)
     else:
         try:
