@@ -35,6 +35,7 @@
 
 // Local headers
 #include "css/CssAccess.h"
+#include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
 #include "query/TableAlias.h"
@@ -69,7 +70,7 @@ public:
     std::string username; ///< unused, but reserved.
     std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
-    StringPairVector scanTables; // Tables scanned (for shared scans)
+    proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
     // Table aliasing
     TableAlias tableAliases;

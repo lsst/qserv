@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "memman/MemManNone.h"
 #include "sql/SqlConnection.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
@@ -83,18 +84,27 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
+    // TODO: DM-4943 use MemManReal
+    // Memory available is meaningless for MemManNone
+    memman::MemMan::Ptr memMan = std::make_shared<memman::MemManNone>(1, false);
+
     // TODO: set poolSize and all maxThreads values from config file.
-    uint poolSize = std::max(static_cast<uint>(24), std::thread::hardware_concurrency());
+    uint poolSize = std::max(static_cast<uint>(15), std::thread::hardware_concurrency());
     // TODO: set GroupScheduler group size from configuration file
     // TODO: Consider limiting the number of chunks being accessed at a time
     //       by GroupScheduler and ScanScheduler
-    //_foreman = wcontrol::Foreman::newForeman(std::make_shared<wsched::FifoScheduler>(), poolSize);
-    //_foreman = wcontrol::Foreman::newForeman(std::make_shared<wsched::GroupScheduler>(12), poolSize);
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
+    //uint maxThread = poolSize - 3;
+    uint maxThread = poolSize;
+    int maxReserve = 2;
+    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve, 10);
+    auto fast  = std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, maxReserve, memMan);
+    auto med   = std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, maxReserve, memMan);
+    auto slow  = std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, maxReserve, memMan);
+
     _foreman = wcontrol::Foreman::newForeman(
-            std::make_shared<wsched::BlendScheduler>(
-                std::make_shared<wsched::GroupScheduler>(20, 10),
-                std::make_shared<wsched::ScanScheduler>(20)),
+            std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread,
+                                                     group, fast, med, slow),
             poolSize);
 }
 

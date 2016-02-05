@@ -346,13 +346,11 @@ void QuerySession::print(std::ostream& os) const {
     os << "  chunks: " << util::printable(this->_chunks) << "\n";
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par << "\n";
-    os << "  merge statement: " << mer << std::endl;
-    if (!_context->scanTables.empty()) {
-        StringPairVector::const_iterator i,e;
-        for(i=_context->scanTables.begin(), e=_context->scanTables.end();
-            i != e; ++i) {
-            os << "  ScanTable: " << i->first << "." << i->second << std::endl;
-        }
+    os << "  merge statement: " << mer << "\n";
+    os << "  scanSpeed:" << _context->scanInfo.scanSpeed;
+    for (auto const& tbl : _context->scanInfo.infoTables) {
+        os << "  ScanTable: " << tbl.db << "." << tbl.table
+           << " lock=" << tbl.lockInMemory << " sp=" << tbl.scanSpeed << "\n";
     }
 }
 
@@ -421,7 +419,7 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != nullptr);
     _cache.db = _qs->_context->dominantDb;
-    _cache.scanTables = _qs->_context->scanTables;
+    _cache.scanInfo = _qs->_context->scanInfo;
     _cache.chunkId = _chunkSpecsIter->chunkId;
     _cache.nextFragment.reset();
     // Reset subChunkTables

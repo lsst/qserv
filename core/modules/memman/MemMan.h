@@ -76,6 +76,7 @@ public:
 
 class MemMan {
 public:
+    using Ptr = std::shared_ptr<MemMan>;
 
     //-----------------------------------------------------------------------------
     //! @brief Create a memory manager and initialize for processing.

@@ -27,7 +27,7 @@
 #include <map>
 
 // Qserv headers
-#include "wcontrol/Foreman.h"
+#include "wsched/SchedulerBase.h"
 
 // Forward declarations
 namespace lsst {
@@ -42,18 +42,48 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-/// BlendScheduler -- A scheduler that switches between two underlying
-/// schedulers based on the incoming task properties. If the incoming
-/// task has a scanTables spec in its message, it is scheduled with a
-/// ScanScheduler; otherwise it uses the GroupScheduler.
-/// The GroupScheduler has concessions for chunk grouping as well, but
-/// it should be set for reduced concurrency limited I/O sharing.
-class BlendScheduler : public wcontrol::Scheduler {
+/// BlendScheduler is a scheduler that places queries in one of
+/// 4 sub-schedulers. Interactive queries are placed on the GroupScheduler
+/// _group, which has the highest priority. Other queries, which are
+/// expected to require all, or most, of the chunks on this node, go
+/// to one of the ScanSchedulers: _scanFast, _scanMedium, _scanSlow.
+/// The priority is _group, _scanFast, _scanMedium, _scaneSlow. This
+/// should match the list in _schedulers.
+///
+/// There are several constraints BlendSheduler places on the sub-schedulers.
+/// The schedulers run Tasks in a limited pool of threads. At any time,
+/// all sub-schedulers should be able to run at least one thread. This is to
+/// keep sub-schedulers from getting jammed by heavy loads, or prevent
+/// high priority/fast sub-schedulers being stuck waiting for low priority/slow
+/// sub-schedulers to finish a Task.
+///
+/// Each sub-scheduler wants to have some number of threads reserved for it.
+/// The ScanScheduler schedulers work better with 2 Tasks running at the same time
+/// as the Tasks running at the same time should be sharing some resources and
+/// are unlikely to finish at the same time. The resources the 2 were
+/// using remain locked when 1 stops, and a new Task that uses the same resources
+/// can start immediately. If only one Task for a ScanScheduler is running,
+/// and it finishes, it's resources would be unlocked, and if the next Task
+/// needed those resources, it would have to lock them again.
+///
+/// Since we might only have a few threads available, say 12, and 3 schedulers
+/// not running any Tasks, reserving 6 threads could seriously hurt throughput.
+/// So, each scheduler will only reserve 1 more thread than it has Tasks inFlight,
+/// leaving at most 3 threads unavailable at any given time.
+///
+/// Secondly, the ScanScheduler schedulers are only allowed to advance to a new chunk
+/// if resources are available to read the chunk into memory, or if the sub-scheduler
+/// has no Tasks inFlight.
+class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
-    BlendScheduler(std::shared_ptr<GroupScheduler> group,
-                   std::shared_ptr<ScanScheduler> scan);
+    BlendScheduler(std::string const& name,
+                   int subSchedMaxThreads,
+                   std::shared_ptr<GroupScheduler> const& group,
+                   std::shared_ptr<ScanScheduler> const& scanFast,
+                   std::shared_ptr<ScanScheduler> const& scanMedium,
+                   std::shared_ptr<ScanScheduler> const& scanSlow);
     virtual ~BlendScheduler() {}
 
     void queCmd(util::Command::Ptr const& cmd) override;
@@ -62,18 +92,30 @@ public:
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
 
-    bool ready();
+    // SchedulerBase overrides methods.
+    std::size_t getSize() const override;
+    int getInFlight() const override;
+    bool ready() override;
+    int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
-    static std::string getName() { return std::string("BlendSched"); }
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
+    int calcAvailableTheads();
 
 private:
+    int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
 
+    int _schedMaxThreads; //< maximum number of threads that can run.
+
+    // Sub-schedulers.
     std::shared_ptr<GroupScheduler> _group;
-    std::shared_ptr<ScanScheduler> _scan;
+    std::shared_ptr<ScanScheduler> _scanFast;
+    std::shared_ptr<ScanScheduler> _scanMedium;
+    std::shared_ptr<ScanScheduler> _scanSlow;
+    // List of schedulers in order of priority.
+    std::vector<SchedulerBase*> _schedulers;
     bool _lastCmdFromScan{false};
-    std::map<wbase::Task*, wcontrol::Scheduler*> _map;
+    std::map<wbase::Task*, SchedulerBase*> _map;
     std::mutex _mapMutex;
 };
 

@@ -45,12 +45,13 @@ public:
 
     Handle lock(std::vector<TableInfo> const& tables, int chunk) override {
                (void)chunk;
+               if (_alwaysLock) return HandleType::ISEMPTY;
                for (auto it=tables.begin() ; it != tables.end(); it++) {
                    if (it->theData  == TableInfo::LockType::MUSTLOCK
                    ||  it->theIndex == TableInfo::LockType::MUSTLOCK)
-                      {errno = ENOMEM; return 0;}
+                      {errno = ENOMEM; return HandleType::INVALID;}
                }
-               return 1;
+               return HandleType::ISEMPTY;
            }
 
     bool  unlock(Handle handle) override {(void)handle; return true;}
@@ -64,7 +65,8 @@ public:
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 
-    MemManNone(uint64_t maxBytes)
+    // @param alwaysLock - When true, always return ISEMPTY for all lock requests.
+    MemManNone(uint64_t maxBytes, bool alwaysLock) : _alwaysLock(alwaysLock)
               {memset(&_myStats, 0, sizeof(_myStats));
                _myStats.bytesLockMax = maxBytes;
                _myStats.bytesLocked  = maxBytes;
@@ -76,6 +78,7 @@ public:
 private:
     Statistics _myStats;
     Status     _status;
+    int        _alwaysLock{false};
 };
 
 }}} // namespace lsst:qserv:memman

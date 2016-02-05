@@ -25,7 +25,7 @@
 
 // Qserv headers
 #include "util/EventThread.h"
-#include "wcontrol/Foreman.h"
+#include "wsched/SchedulerBase.h"
 
 namespace lsst {
 namespace qserv {
@@ -40,6 +40,7 @@ public:
     explicit GroupQueue(int maxAccepted, wbase::Task::Ptr const& task);
     bool queTask(wbase::Task::Ptr const& task);
     wbase::Task::Ptr getTask();
+    wbase::Task::Ptr peekTask();
     bool isEmpty() { return _tasks.empty(); }
 
 protected:
@@ -53,30 +54,30 @@ protected:
 /// GroupScheduler -- A scheduler that is a cross between FIFO and shared scan.
 /// Tasks are ordered as they come in, except that queries for the
 /// same chunks are grouped together.
-class GroupScheduler : public wcontrol::Scheduler {
+class GroupScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(int maxThreads, int maxGroupSize);
+    GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize);
     virtual ~GroupScheduler() {}
 
-    static std::string getName()  { return std::string("GroupSched"); }
     bool empty();
-    bool ready();
-    std::size_t getSize();
-    int getInFlight() { return _inFlight; }
 
+    // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
-    void commandFinish(util::Command::Ptr const&) override {--_inFlight;}
+    void commandFinish(util::Command::Ptr const&) override { --_inFlight; }
+
+    // SchedulerBase overrides
+    bool ready() override;
+    std::size_t getSize() const override;
+
 
 private:
     bool _ready();
 
     std::deque<GroupQueue::Ptr> _queue;
     int _maxGroupSize{1};
-    int _maxThreads{1};
-    std::atomic<int> _inFlight{0};
 };
 
 }}} // namespace lsst::qserv::wsched

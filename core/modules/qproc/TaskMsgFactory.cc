@@ -54,21 +54,7 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-void
-flattenScanTables(StringVector& outputList,
-                  StringPairVector const& scanTables) {
-    std::string db;
-    outputList.clear();
-    for(StringPairVector::const_iterator i=scanTables.begin(),
-        e=scanTables.end() ; i != e; ++i) {
-        if (db.empty()) {
-            db = i->first;
-        } else if (db != i->first) {
-            throw QueryProcessingBug("Multiple dbs prohibited");
-        }
-        outputList.push_back(db + "." + i->second);
-    }
-}
+
 ////////////////////////////////////////////////////////////////////////
 // class TaskMsgFactory::Impl
 ////////////////////////////////////////////////////////////////////////
@@ -120,12 +106,22 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
     _taskMsg->set_db(s.db);
     _taskMsg->set_protocol(2);
     // scanTables (for shared scans)
-    StringVector sTables;
-    flattenScanTables(sTables, s.scanTables);
-    for(StringVector::const_iterator i=sTables.begin(), e=sTables.end();
-        i != e; ++i) {
-        _taskMsg->add_scantables(*i);
+    // check if more than 1 db in scanInfo
+    std::string db;
+    for(auto const& sTbl : s.scanInfo.infoTables) {
+        if (db.empty()) {
+            db = sTbl.db;
+        } else if (db != sTbl.db) {
+            throw QueryProcessingBug("Multiple dbs prohibited");
+        }
     }
+
+    for(auto const& sTbl : s.scanInfo.infoTables) {
+        lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = _taskMsg->add_scantable();
+        sTbl.copyToScanTable(msgScanTbl);
+    }
+
+    _taskMsg->set_scanpriority(s.scanInfo.scanSpeed);
 
     // per-chunk
     _taskMsg->set_chunkid(s.chunkId);

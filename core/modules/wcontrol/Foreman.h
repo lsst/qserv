@@ -53,6 +53,8 @@ public:
     using Ptr = std::shared_ptr<Scheduler>;
     virtual ~Scheduler() {}
 
+    virtual std::string getName() const = 0; //< @return the name of the scheduler.
+
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.

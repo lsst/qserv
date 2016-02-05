@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,22 +21,40 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "wsched/ChunkState.h"
+// Class header
+#include "proto/ScanTableInfo.h"
 
 // System headers
-#include <iostream>
-#include <iterator>
+#include <ostream>
 
 namespace lsst {
 namespace qserv {
-namespace wsched {
+namespace proto {
 
-std::ostream& operator<<(std::ostream& os, ChunkState const& cs) {
-    os << "(scan=";
-    std::copy(cs._scan.begin(), cs._scan.end(),
-              std::ostream_iterator<int>(os, ","));
-    os << ")";
+
+std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl) {
+    os << "(db=" << tbl.db << " table=" << tbl.table;
+    os << " lockInMemory=" << tbl.lockInMemory << " scanSpeed=" << tbl.scanSpeed << ")";
     return os;
 }
 
-}}} // namespace lsst::qserv::wsched
+
+std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
+    os << "ScanInfo{speed=" << info.scanSpeed << " tables: ";
+    bool first = true;
+    for (auto const& table: info.infoTables) {
+        if (!first) {
+            os << ", ";
+        } else {
+            first = false;
+        }
+        os << table;
+    }
+    os << "}";
+    return os;
+}
+
+
+}}} // namespace lsst::qserv::proto
+
+

@@ -27,7 +27,8 @@
 #include <mutex>
 
 // Qserv headers
-#include "wcontrol/Foreman.h"
+#include "memman/MemMan.h"
+#include "wsched/SchedulerBase.h"
 
 // Forward declarations
 namespace lsst {
@@ -56,29 +57,29 @@ namespace wsched {
 ///
 /// This is intended to be done for each disk in the system,
 /// but currently only supports a single disk.
-class ScanScheduler : public wcontrol::Scheduler {
+class ScanScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
-    typedef std::vector<std::shared_ptr<ChunkDisk> > ChunkDiskList;
 
-    ScanScheduler(int maxThreads);
+    ScanScheduler(std::string const& name, int maxThreads,
+                  int maxReserve, memman::MemMan::Ptr const& memman);
     virtual ~ScanScheduler() {}
 
+    // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
-    int getInFlight() { return _inFlight; }
 
-    static std::string getName()  { return std::string("ScanSched"); }
-    bool ready();
-    std::size_t getSize();
+    // SchedulerBase overrides
+    bool ready() override;
+    std::size_t getSize() const override ;
+
 private:
     bool _ready();
-
-    int _maxThreads;
-    ChunkDiskList _disks;
-    std::atomic<int> _inFlight{0};
+    std::shared_ptr<ChunkDisk> _disk; //< Constrains access to files.
+    memman::MemMan::Ptr _memMan; //< Limits queries when resources not available.
+    memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
 };
 
 }}} // namespace lsst::qserv::wsched

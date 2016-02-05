@@ -111,12 +111,29 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     tSeq = sequence.incr();
     allTSeq.add(tSeq);
     LOGS(_log, LOG_LVL_DEBUG, "Task(...) tSeq=" << tSeq << ": " << allTSeq);
+
+    // Determine which major tables this task will use.
+    int const size = msg->scantable_size();
+    for(int j=0; j < size; ++j) {
+        _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
+    }
+    _scanInfo.scanSpeed = msg->scanpriority();
 }
 
 Task::~Task() {
     allTSeq.remove(tSeq);
     LOGS(_log, LOG_LVL_DEBUG, "~Task() tSeq=" << tSeq << ": " << allTSeq);
 }
+
+
+/// @return the chunkId for this task. If the task has no chunkId, return -1.
+int Task::getChunkId() {
+    if (msg->has_chunkid()) {
+        return msg->chunkid();
+    }
+    return -1;
+}
+
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {

@@ -298,8 +298,10 @@ public:
     ChunkResource getResourceFragment(int i) {
         proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
         if (!fragment.has_subchunks()) {
-            StringVector tables(_msg.scantables().begin(),
-                                _msg.scantables().end());
+            StringVector tables;
+            for (auto const& scanTbl : _msg.scantable()) {
+                tables.push_back(scanTbl.db() + "." + scanTbl.table());
+            }
             assert(_msg.has_db());
             return _mgr->acquire(_msg.db(), _msg.chunkid(), tables);
         }

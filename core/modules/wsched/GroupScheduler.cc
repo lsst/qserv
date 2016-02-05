@@ -90,12 +90,16 @@ wbase::Task::Ptr GroupQueue::getTask() {
     return task;
 }
 
+wbase::Task::Ptr GroupQueue::peekTask() {
+    return _tasks.front();
+}
+
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "GroupScheduler::queCmd could not be converted to Task or was nullptr");
+        LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
@@ -112,6 +116,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
+    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd tSeq=" << t->tSeq);
     util::CommandQueue::_cv.notify_all();
 }
 
@@ -120,6 +125,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+    } else if (!_ready()) {
+        return nullptr;
     }
     auto group = _queue.front();
     auto cmd = group->getTask();
@@ -130,8 +137,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     return cmd;
 }
 
-GroupScheduler::GroupScheduler(int maxThreads, int maxGroupSize)
-  : _maxGroupSize{maxGroupSize}, _maxThreads{maxThreads} {
+GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize)
+  : SchedulerBase(name, maxThreads, maxReserve), _maxGroupSize(maxGroupSize){
 }
 
 bool GroupScheduler::empty() {
@@ -147,11 +154,13 @@ bool GroupScheduler::ready() {
 
 /// Precondition: _mx must be locked.
 bool GroupScheduler::_ready() {
-    return !_queue.empty() && _inFlight < _maxThreads;
+    // GroupScheduler is not limited by resource availability.
+    return !_queue.empty() && _inFlight < maxInFlight();
 }
 
+
 /// Return the number of groups (not Tasks) in the queue.
-std::size_t GroupScheduler::getSize() {
+std::size_t GroupScheduler::getSize() const {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _queue.size();
 }
