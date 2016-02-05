@@ -288,7 +288,8 @@ class UnitTest:
                 if retcode == 0:
                     print("Test success", file=sys.stderr)
                     # Cleanup
-                    map(os.remove, self.testFiles)
+                    for f in self.testFiles:
+                        os.remove(f)
                 else:
                     print("Compilation failure: g++ returned", retcode, file=sys.stderr)
                     print("Test files:", " ".join(self.testFiles))
