@@ -40,10 +40,12 @@ Example which also checks unit test results:
 """
 
 import os
+import platform
 import shutil
 
 from SCons.Builder import Builder
 from SCons.Errors import StopError
+from SCons.Platform import platform_default
 
 
 class _unitTest(object):
@@ -61,9 +63,28 @@ class _unitTest(object):
         out = str(target[0])
         exe = str(source[0])
 
-        try:
+        # On Mac OS X El Capitan we will need to side load the library load path
+        # and fix up the binary rpath
+        libpathstr = ""
+        if platform_default() == 'darwin':
+            # El Capitan is Darwin 15.x. We could simply always set this
+            # variable on OS X rather than restricting to version as
+            # in the future it will be more likely than not that we
+            # are running a SIP platform.
+            release_str = platform.release()
+            release_major = int(release_str.split('.')[0])
+            if release_major >= 15:
+                if "LSST_LIBRARY_PATH" in os.environ:
+                    os.environ["DYLD_LIBRARY_PATH"] = os.environ["LSST_LIBRARY_PATH"]
 
-            cmd = exe + ' > ' + out + ' 2>&1'
+            # We need to tell the tests where the uninstalled Qserv libraries
+            # are located because rpaths aren't (yet?) handled properly
+            # when the libraries and binaries are built on OS X.
+            libpathstr = "{}={}:{}".format("DYLD_LIBRARY_PATH",
+                env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
+
+        try:
+            cmd = "{} {} > {} 2>&1".format(libpathstr, exe, out)
             ret = os.system(cmd)
 
             if ret != 0:
