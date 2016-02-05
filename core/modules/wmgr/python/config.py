@@ -38,7 +38,6 @@ import tempfile
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv import css
-import MySQLdb as sql
 
 #----------------------------------
 # Local non-exported definitions --
@@ -105,10 +104,9 @@ class Config(object):
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['query'] = {"unix_socket": self.dbSocket}
         if self.dbUser: kwargs['username'] = self.dbUser
-        _log.debug('creating new connection %s', kwargs)
+        _log.debug('creating new connection (password not shown) %s', kwargs)
         if self.dbPasswd: kwargs['password'] = self.dbPasswd
-        inst = getEngineFromArgs(**kwargs)
-        return inst
+        return getEngineFromArgs(**kwargs)
 
     def privDbEngine(self):
         """ Return database engine for priviledged account """
@@ -117,26 +115,19 @@ class Config(object):
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['query'] = {"unix_socket": self.dbSocket}
         if self.dbUserPriv: kwargs['username'] = self.dbUserPriv
-        _log.debug('creating new connection %s', kwargs)
+        _log.debug('creating new connection (password not shown) %s', kwargs)
         if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
-        inst = getEngineFromArgs(**kwargs)
-        return inst
+        return getEngineFromArgs(**kwargs)
 
-    def proxyConn(self):
-        """
-        Return mysql connection object for proxy.
-
-        Sqlalchemy drivers have trouble with qserv, so we have to limit
-        ourself to direct mysqldb.
-        """
+    def proxyDbEngine(self):
+        """ Return database engine for proxy """
         kwargs = {}
         if self.proxyHost: kwargs['host'] = self.proxyHost
         if self.proxyPort: kwargs['port'] = self.proxyPort
-        if self.proxyUser: kwargs['user'] = self.proxyUser
-        _log.debug('creating new connection %s', kwargs)
-        if self.proxyPasswd: kwargs['passwd'] = self.proxyPasswd
-        conn = sql.connect(**kwargs)
-        return conn
+        if self.proxyUser: kwargs['username'] = self.proxyUser
+        _log.debug('creating new connection (password not shown) %s', kwargs)
+        if self.proxyPasswd: kwargs['password'] = self.proxyPasswd
+        return getEngineFromArgs(**kwargs)
 
     def cssAccess(self):
         """
