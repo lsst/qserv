@@ -318,7 +318,7 @@ class Configurator(object):
                 # used in templates targets comments
                 config['qserv']['meta_config_file'] = self._meta_config_file
 
-            except ConfigParser.NoOptionError, exc:
+            except ConfigParser.NoOptionError as exc:
                 _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 
