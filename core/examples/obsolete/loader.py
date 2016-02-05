@@ -23,6 +23,7 @@
 #
 
 
+from __future__ import print_function
 import getpass
 from glob import glob
 from itertools import cycle, groupby, izip
@@ -136,7 +137,7 @@ class SqlActions(object):
         return self.cursor.fetchone()[1]
 
     def loadPartitions(self, table, partFile, index=True):
-        print "Loading partition table: %s with %s" % (table, os.path.abspath(partFile))
+        print("Loading partition table: %s with %s" % (table, os.path.abspath(partFile)))
         self.dropTable(table)
         self._exec("""
             CREATE TABLE %s (
@@ -245,12 +246,12 @@ class SqlActions(object):
                   alpha < 0.0 OR alpha > 180.0""" % partTable)
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
-            print dedent("""\
+            print(dedent("""\
                 ERROR: found %d partition map entries with invalid data.
                        Errors can include any of the following: invalid
                        bounds (coordinate values out of range or min >= max),
                        a negative row count, or an invalid overlap width
-                       (alpha).""" % nfailed)
+                       (alpha).""" % nfailed))
 
         # Test 2: make sure spherical coordinates are in range
         self.cursor.execute("""
@@ -259,10 +260,10 @@ class SqlActions(object):
             chunkTable)
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
-            print dedent("""\
+            print(dedent("""\
                 ERROR: found %d records assigned to chunk %d (%s) with
                        invalid coordinates.""" %
-                (nfailed, chunkId, chunkTable))
+                (nfailed, chunkId, chunkTable)))
 
         # Test 3: make sure all entries are inside their sub-chunks
         self.cursor.execute("""
@@ -273,10 +274,10 @@ class SqlActions(object):
             (chunkTable, partTable))
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
-            print dedent("""\
+            print(dedent("""\
                 ERROR: found %d records assigned to chunk %d (%s)
                        falling outside the bounds of their sub-chunks.""" %
-                (nfailed, chunkId, chunkTable))
+                (nfailed, chunkId, chunkTable)))
 
         # Test 4: make sure all self-overlap entries are outside but
         # "close" to their sub-chunks
@@ -289,10 +290,10 @@ class SqlActions(object):
                 (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
-                print dedent("""\
+                print(dedent("""\
                     ERROR: found %d self-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
-                    (nfailed, chunkId, selfTable))
+                    (nfailed, chunkId, selfTable)))
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
@@ -321,11 +322,11 @@ class SqlActions(object):
                 )""" % (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
-                print dedent("""\
+                print(dedent("""\
                     WARNING: found %d self-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk self-overlap regions.""" %
-                    (nfailed, chunkId, selfTable))
+                    (nfailed, chunkId, selfTable)))
 
         # Test 5: make sure all full-overlap entries are outside but
         # "close" to their sub-chunks
@@ -338,10 +339,10 @@ class SqlActions(object):
                 (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
-                print dedent("""\
+                print(dedent("""\
                     ERROR: found %d full-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
-                    (nfailed, chunkId, fullTable))
+                    (nfailed, chunkId, fullTable)))
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
@@ -361,11 +362,11 @@ class SqlActions(object):
                 )""" % (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
-                print dedent("""\
+                print(dedent("""\
                     WARNING: found %d full-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk full-overlap regions.""" %
-                    (nfailed, chunkId, fullTable))
+                    (nfailed, chunkId, fullTable)))
 
         # Test 6: make sure the partition map sub-chunk row counts agree
         # with the loaded table
@@ -494,7 +495,7 @@ def findChunkFiles(inputDir, prefix):
             if pat.match(f) != None:
                 chunkId = chunkIdFromPath(f)
                 p = os.path.join(root, f)
-                if chunks.has_key(chunkId):
+                if chunkId in chunks:
                     for c in chunks[chunkId]:
                         if os.path.basename(c) == f:
                             raise RuntimeError(dedent("""\
@@ -556,7 +557,7 @@ def masterInit(master, sampleFile, opts):
                 if avg < opts.rowSize:
                     npad = (opts.rowSize - avg) / 4
                     if opts.verbose:
-                        print "Adding %d FLOAT columns for padding" % npad
+                        print("Adding %d FLOAT columns for padding" % npad)
             finally:
                 act.dropTable(sampleTable)
     finally:
@@ -573,7 +574,7 @@ def loadWorker(args):
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
-        print "Loading chunk: %s" % prototype
+        print("Loading chunk: %s" % prototype)
         if prototype != params.prototype:
             act.createPrototype(prototype, params.schema)
         if params.npad != None and params.npad > 0:
@@ -733,10 +734,10 @@ def main():
         opts.chunkPrefix = None
         chunkFiles = []
     if opts.verbose:
-        print "Master server: " + master
-        print "Worker servers:"
+        print("Master server: " + master)
+        print("Worker servers:")
         for w in workers:
-            print '\t' + w
+            print('\t' + w)
     # Filter out annoying "Unknown table" and "Unknown database" warnings
     # emitted by MySQLdb when dropping non existent tables/databases
     warnings.filterwarnings("ignore", "Unknown table.*")
@@ -783,7 +784,7 @@ def main():
                        (opts.database, time.time() - t))
         # Load chunks
         if len(chunkFiles) > 0:
-            print "Init master with options: %s" % opts
+            print("Init master with options: %s" % opts)
             schema, npad = masterInit(master, chunkFiles[0][0], opts)
             for params in serverParams:
                 params.schema, params.npad = schema, npad
@@ -800,7 +801,7 @@ def main():
     finally:
         pool.close()
     if opts.verbose:
-        print "Total time: %f sec" % (time.time() - startTime)
+        print("Total time: %f sec" % (time.time() - startTime))
 
 if __name__ == "__main__":
     main()

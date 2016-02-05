@@ -31,6 +31,7 @@
 # using. So, we redistribute files among node_xx directories.
 
 # This reuses some (large?) portions from Serge's loader.py
+from __future__ import print_function
 from itertools import chain, imap, izip, repeat
 import optparse
 import os
@@ -92,7 +93,7 @@ class RebalanceProgram:
     def _move(self):
         chunkCount = len(self._chunkFiles)
         nominal, extra = divmod(chunkCount, self._opts.dirs)
-        print chunkCount, "in dirs with at least", nominal
+        print(chunkCount, "in dirs with at least", nominal)
         start = 0
 
         for i in range(self._opts.dirs):
@@ -114,7 +115,7 @@ class RebalanceProgram:
             for j in range(start, stop):
                 for f in self._chunkFiles[j]:
                     path, name = os.path.split(f)
-                    print "rename ", f, os.path.join(targetdir, name)
+                    print("rename ", f, os.path.join(targetdir, name))
                     os.rename(f, os.path.join(targetdir, name))
             start = stop
         pass

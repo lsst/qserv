@@ -21,6 +21,7 @@
 """
 This is an out-of-date test harness for the app.py functions in qserv/master.
 """
+from __future__ import print_function
 import lsst.qserv.master as qMaster
 import lsst.qserv.master.config as config
 import unittest
@@ -54,7 +55,7 @@ class AppTest(unittest.TestCase):
             for i in range(sz):
                 c = cvec.get(i)
                 yield c.name + "-->" + ",".join(vecGen(c))
-        print "\n".join(vecConGen(cvec))
+        print("\n".join(vecConGen(cvec)))
 
         for i in range(3):
             self._addChunk(1, i)

@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from __future__ import print_function
 from lsst.qserv.master import protocol
 import unittest
 
@@ -21,7 +22,7 @@ class ProtocolSanityTest(unittest.TestCase):
                 factory.fillFragment("SELECT * from blah;",
                                      range(i*10, (i+1)*10))
         msg = factory.getBytes()
-        print "sizeof message is", len(msg)
+        print("sizeof message is", len(msg))
         self.assertEqual(1,1)
 
 def main():
