@@ -268,8 +268,8 @@ def addExtern(env, externPaths):
 def importCustom(env, extraTgts):
 
     def getExt(ext):
-        varNames = filter(lambda s: s.endswith(ext), env.Dictionary())
-        vals = map(lambda varName: env[varName], varNames)
+        varNames = [s for s in env.Dictionary() if s.endswith(ext)]
+        vals = [env[varName] for varName in varNames]
         state.log.debug("varNames : %s, vals %s" % (varNames, vals))
         return vals
 

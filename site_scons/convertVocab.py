@@ -180,8 +180,8 @@ source file name"""
             basename = os.path.basename(targetFile)
             filename = self.sanitizeIdent(basename)
             structName = self.sanitizeIdent(os.path.splitext(basename)[0])
-        enums = ",\n".join(imap(lambda s: s.toEnum(), self.tokens))
-        cases = "\n".join(imap(lambda s: s.toCase(), self.tokens))
+        enums = ",\n".join(s.toEnum() for s in self.tokens)
+        cases = "\n".join(s.toCase() for s in self.tokens)
         return cppTemplate.format(filename, sourceFilename, __file__,
                                   structName, enums, cases)
 
