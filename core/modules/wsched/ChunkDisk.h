@@ -51,7 +51,7 @@ namespace wsched {
 class ChunkDisk {
 public:
 
-    ChunkDisk(memman::MemMan::Ptr const& memMan) : _memMan(memMan) {}
+    ChunkDisk(memman::MemMan::Ptr const& memMan) : _memMan{memMan} {}
     ChunkDisk(ChunkDisk const&) = delete;
     ChunkDisk& operator=(ChunkDisk const&) = delete;
 
@@ -95,7 +95,7 @@ private:
     int _lastChunk{-100}; // initialize to much too impossible small value;
     memman::MemMan::Ptr _memMan;
     mutable std::mutex _inflightMutex;
-    bool _resourceStarved;
+    bool _resourceStarved{false};
 };
 
 }}} // namespace

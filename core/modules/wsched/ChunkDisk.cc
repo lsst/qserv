@@ -148,7 +148,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "." + tbl.table, lckOptTbl, lckOptIdx);
-            LOGS(_log,LOG_LVL_DEBUG, "cunkId=" << chunkId << " ti=" << ti.tableName
+            LOGS(_log,LOG_LVL_DEBUG, "chunkId=" << chunkId << " ti=" << ti.tableName
                                      << " lock=" << (int)ti.theData);
             tblVect.push_back(ti);
         }

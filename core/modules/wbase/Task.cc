@@ -113,14 +113,11 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     LOGS(_log, LOG_LVL_DEBUG, "Task(...) tSeq=" << tSeq << ": " << allTSeq);
 
     // Determine which major tables this task will use.
-    int size = msg->scantable_size();
-
+    int const size = msg->scantable_size();
     for(int j=0; j < size; ++j) {
-        proto::TaskMsg_ScanTable const& scanTbl = msg->scantable(j);
-        _scanInfo.infoTables.push_back(proto::ScanTableInfo(scanTbl.db(), scanTbl.table(),
-                                       scanTbl.lockinmemory(), scanTbl.scanspeed()));
+        _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
     }
-    _scanInfo.priority = msg->scanpriority();
+    _scanInfo.scanSpeed = msg->scanpriority();
 }
 
 Task::~Task() {

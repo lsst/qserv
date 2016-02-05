@@ -28,10 +28,12 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "proto/worker.pb.h"
+
 namespace lsst {
 namespace qserv {
 namespace proto {
-
 
 
 /// Structure to store shared scan information for a single table.
@@ -42,20 +44,36 @@ struct ScanTableInfo {
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_,
                   bool lockInMemory_, int scanSpeed_) :
-                  db(db_), table(table_), lockInMemory(lockInMemory_), scanSpeed(scanSpeed_) {}
-    std::string db    {""};
-    std::string table {""};
+                  db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanSpeed{scanSpeed_} {}
+    ScanTableInfo(TaskMsg_ScanTable const& scanTbl) :
+                  db{scanTbl.db()}, table{scanTbl.table()},
+                  lockInMemory{scanTbl.lockinmemory()}, scanSpeed{scanTbl.scanspeed()} {}
+
+    /// Copy contents of this object into a TaskMsg_ScanTable object.
+    void copyToScanTable(TaskMsg_ScanTable *msgScanTbl) const {
+        msgScanTbl->set_db(db);
+        msgScanTbl->set_table(table);
+        msgScanTbl->set_lockinmemory(lockInMemory);
+        msgScanTbl->set_scanspeed(scanSpeed);
+    }
+
+    std::string db;
+    std::string table;
     bool lockInMemory {false};
     int  scanSpeed    {0};
 };
 
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
-    enum Priority { FASTEST = 0, FAST = 1, MEDIUM = 2, SLOW = 3 };
+    enum Speed { FASTEST = 0, FAST = 1, MEDIUM = 2, SLOW = 3 };
 
     ScanTableInfo::ListOf infoTables;
-    int priority{Priority::FASTEST};
+    int scanSpeed{Speed::FASTEST};
 };
+
+
+std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);
+std::ostream& operator<<(std::ostream& os, ScanInfo const& info);
 
 }}} // namespace lsst::qserv::proto
 

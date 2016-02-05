@@ -347,7 +347,7 @@ void QuerySession::print(std::ostream& os) const {
     os << "  needs merge: " << this->needsMerge() << "\n";
     os << "  1st parallel statement: " << par << "\n";
     os << "  merge statement: " << mer << "\n";
-    os << "  scan Piority:" << _context->scanInfo.priority;
+    os << "  scanSpeed:" << _context->scanInfo.scanSpeed;
     for (auto const& tbl : _context->scanInfo.infoTables) {
         os << "  ScanTable: " << tbl.db << "." << tbl.table
            << " lock=" << tbl.lockInMemory << " sp=" << tbl.scanSpeed << "\n";

@@ -53,7 +53,7 @@ namespace qserv {
 namespace wsched {
 
 
-GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted(maxAccepted) {
+GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted{maxAccepted} {
     assert(task != nullptr);
     _hasChunkId = task->msg->has_chunkid();
     if (_hasChunkId) {
@@ -125,10 +125,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
-    } else {
-        if (!_ready()) {
-            return nullptr;
-        }
+    } else if (!_ready()) {
+        return nullptr;
     }
     auto group = _queue.front();
     auto cmd = group->getTask();

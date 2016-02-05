@@ -133,7 +133,7 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = 2;
     if (context.chunkCount < scanThreshold) {
         context.scanInfo.infoTables.clear();
-        context.scanInfo.priority = 0;
+        context.scanInfo.scanSpeed = 0;
         LOGS(_log, LOG_LVL_DEBUG, "Squash scan tables: <" << scanThreshold << " chunks.");
     }
 }
@@ -276,9 +276,9 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         if (info.lockInMemory) inMemoryCount++;
         info.scanSpeed = params.scanSpeed;
         scanInfo.infoTables.push_back(info);
-        scanInfo.priority = std::max(scanInfo.priority, info.scanSpeed);
+        scanInfo.scanSpeed = std::max(scanInfo.scanSpeed, info.scanSpeed);
     }
-    if (inMemoryCount > 2) scanInfo.priority++;
+    if (inMemoryCount > 2) scanInfo.scanSpeed++;
 
     return scanInfo;
 }

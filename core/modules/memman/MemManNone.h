@@ -44,14 +44,14 @@ class MemManNone : public MemMan {
 public:
 
     Handle lock(std::vector<TableInfo> const& tables, int chunk) override {
-               if (_alwaysLock) return true;
                (void)chunk;
+               if (_alwaysLock) return HandleType::ISEMPTY;
                for (auto it=tables.begin() ; it != tables.end(); it++) {
                    if (it->theData  == TableInfo::LockType::MUSTLOCK
                    ||  it->theIndex == TableInfo::LockType::MUSTLOCK)
-                      {errno = ENOMEM; return 0;}
+                      {errno = ENOMEM; return HandleType::INVALID;}
                }
-               return 1;
+               return HandleType::ISEMPTY;
            }
 
     bool  unlock(Handle handle) override {(void)handle; return true;}
@@ -65,6 +65,7 @@ public:
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 
+    // @param alwaysLock - When true, always return ISEMPTY for all lock requests.
     MemManNone(uint64_t maxBytes, bool alwaysLock) : _alwaysLock(alwaysLock)
               {memset(&_myStats, 0, sizeof(_myStats));
                _myStats.bytesLockMax = maxBytes;

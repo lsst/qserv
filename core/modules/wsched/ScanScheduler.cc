@@ -57,7 +57,7 @@ namespace wsched {
 
 ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve,
                              memman::MemMan::Ptr const& memMan)
-    : SchedulerBase(name, maxThreads, maxReserve), _memMan(memMan) {
+    : SchedulerBase{name, maxThreads, maxReserve}, _memMan{memMan} {
     _disk = std::make_shared<ChunkDisk>(_memMan);
 }
 

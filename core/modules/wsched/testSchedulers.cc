@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
-    // In this case, memMan->lock(..) always returns true.
+    // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
     int maxThreads = 9;
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
@@ -409,26 +409,26 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(group->getSize() == 1);
     BOOST_CHECK(blend.ready() == true);
 
-    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Priority::FAST);
+    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Speed::FAST);
     Task::Ptr sF1 = makeTask(taskMsg);
     blend.queCmd(sF1);
     BOOST_CHECK(scanFast->getSize() == 1);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Priority::FAST);
+    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Speed::FAST);
     Task::Ptr sF2 = makeTask(taskMsg);
     blend.queCmd(sF2);
     BOOST_CHECK(scanFast->getSize() == 2);
     BOOST_CHECK(blend.ready() == true);
 
 
-    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Priority::SLOW );
+    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Speed::SLOW );
     Task::Ptr sS1 = makeTask(taskMsg);
     blend.queCmd(sS1);
     BOOST_CHECK(scanSlow->getSize() == 1);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Priority::MEDIUM );
+    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Speed::MEDIUM );
     Task::Ptr sM1 = makeTask(taskMsg);
     blend.queCmd(sM1);
     BOOST_CHECK(scanMed->getSize() == 1);
@@ -471,42 +471,42 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend.getSize() == 2);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Priority::FAST);
+    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Speed::FAST);
     Task::Ptr sF3 = makeTask(taskMsg);
     blend.queCmd(sF3);
     BOOST_CHECK(scanFast->getSize() == 1);
     BOOST_CHECK(blend.getSize() == 3);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Priority::FAST);
+    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Speed::FAST);
     Task::Ptr sF4 = makeTask(taskMsg);
     blend.queCmd(sF4);
     BOOST_CHECK(scanFast->getSize() == 2);
     BOOST_CHECK(blend.getSize() == 4);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Priority::MEDIUM);
+    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Speed::MEDIUM);
     Task::Ptr sM2 = makeTask(taskMsg);
     blend.queCmd(sM2);
     BOOST_CHECK(scanMed->getSize() == 1);
     BOOST_CHECK(blend.getSize() == 5);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Priority::MEDIUM);
+    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Speed::MEDIUM);
     Task::Ptr sM3 = makeTask(taskMsg);
     blend.queCmd(sM3);
     BOOST_CHECK(scanMed->getSize() == 2);
     BOOST_CHECK(blend.getSize() == 6);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Priority::SLOW);
+    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Speed::SLOW);
     Task::Ptr sS2 = makeTask(taskMsg);
     blend.queCmd(sS2);
     BOOST_CHECK(scanSlow->getSize() == 1);
     BOOST_CHECK(blend.getSize() == 7);
     BOOST_CHECK(blend.ready() == true);
 
-    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Priority::SLOW);
+    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Speed::SLOW);
     Task::Ptr sS3 = makeTask(taskMsg);
     blend.queCmd(sS3);
     BOOST_CHECK(scanSlow->getSize() == 2);
@@ -588,6 +588,69 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     blend.commandFinish(osS3);
     BOOST_CHECK(blend.calcAvailableTheads() == 5);
     BOOST_CHECK(blend.getInFlight() == 0);
+
+    // Test that only 6 threads can be started on a single ScanScheduler
+    // This leaves 3 threads available, 1 for each other scheduler.
+    BOOST_CHECK(blend.ready() == false);
+    std::vector<Task::Ptr> scanTasks;
+    for (int j=0; j<7; ++j) {
+        blend.queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Speed::MEDIUM)));
+        if (j < 6) {
+            BOOST_CHECK(blend.ready() == true);
+            auto cmd = blend.getCmd(false);
+            BOOST_CHECK(cmd != nullptr);
+            auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
+            scanTasks.push_back(task);
+        }
+        if (j == 6) {
+            BOOST_CHECK(blend.ready() == false);
+            BOOST_CHECK(blend.getCmd(false) == nullptr);
+        }
+    }
+    {
+        // Finishing one task should allow the 7th one to run.
+        blend.commandFinish(scanTasks[0]);
+        BOOST_CHECK(blend.ready() == true);
+        auto cmd = blend.getCmd(false);
+        BOOST_CHECK(cmd != nullptr);
+        auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
+        scanTasks.push_back(task);
+    }
+    // Finish all the scanTasks, scanTasks[0] is already finished.
+    for (int j=1; j<7; ++j) blend.commandFinish(scanTasks[j]);
+    BOOST_CHECK(blend.getInFlight() == 0);
+    BOOST_CHECK(blend.ready() == false);
+
+    // Test that only 6 threads can be started on a single GroupScheduler
+    // This leaves 3 threads available, 1 for each other scheduler.
+    std::vector<Task::Ptr> groupTasks;
+    for (int j=0; j<7; ++j) {
+        blend.queCmd(makeTask(newTaskMsg(j)));
+        if (j < 6) {
+            BOOST_CHECK(blend.ready() == true);
+            auto cmd = blend.getCmd(false);
+            BOOST_CHECK(cmd != nullptr);
+            auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
+            groupTasks.push_back(task);
+        }
+        if (j == 6) {
+            BOOST_CHECK(blend.ready() == false);
+            BOOST_CHECK(blend.getCmd(false) == nullptr);
+        }
+    }
+    {
+        // Finishing one task should allow the 7th one to run.
+        blend.commandFinish(groupTasks[1]);
+        BOOST_CHECK(blend.ready() == true);
+        auto cmd = blend.getCmd(false);
+        BOOST_CHECK(cmd != nullptr);
+        auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
+        groupTasks.push_back(task);
+    }
+    // Finish all the groupTasks, groupTasks[1] is already finished.
+    for (int j=1; j<7; ++j) blend.commandFinish(groupTasks[j]);
+    BOOST_CHECK(blend.getInFlight() == 0);
+    BOOST_CHECK(blend.ready() == false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

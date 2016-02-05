@@ -50,31 +50,30 @@ namespace wsched {
 /// The priority is _group, _scanFast, _scanMedium, _scaneSlow. This
 /// should match the list in _schedulers.
 ///
-/// There are several constraints on BlendSheduler places on the sub-schedulers.
+/// There are several constraints BlendSheduler places on the sub-schedulers.
 /// The schedulers run Tasks in a limited pool of threads. At any time,
 /// all sub-schedulers should be able to run at least one thread. This is to
 /// keep sub-schedulers from getting jammed by heavy loads, or prevent
 /// high priority/fast sub-schedulers being stuck waiting for low priority/slow
 /// sub-schedulers to finish a Task.
 ///
-/// Limiting threads for sub-schedulers is handler mostly with
-/// For every Task inFlight beyond 1, the maximum threads available to other schedulers is reduced by one.
-/// If configured properly, each scheduler has a maxThreads limit that will leave one thread available for
-/// each of the other schedulers.
-/// An example:
-/// Assuming 12 threads, 4 schedulers, which gives a base _subSchedulerMaxThreads = 9.
-/// The group scheduler has 1 Task inFlight, it has no effect on the other schedulers' maxThread limit.
-/// The scanFast scheduler has 5 Tasks inFlight, so
-///     the scanMedium and scanSlow schedulers' maxThread limit will drop by 4.
-/// scanMedium has 0 Tasks inFlight, it has no effect on other schedulers' maxThreads
-/// The scanSlow puts 5 Tasks inFlight, using all that is allowed by its adjusted maxThreads value (9 - 4).
-/// 11 of the 12 threads are in use. If something is put on scanMedium, it can run immediately.
-/// If several tasks are put on the group scheduler, it will grab threads as other Tasks finish, as threads
-///      ask _group first for new Tasks.
+/// Each sub-scheduler wants to have some number of threads reserved for it.
+/// The ScanScheduler schedulers work better with 2 Tasks running at the same time
+/// as the Tasks running at the same time should be sharing some resources and
+/// are unlikely to finish at the same time. The resources the 2 were
+/// using remain locked when 1 stops, and a new Task that uses the same resources
+/// can start immediately. If only one Task for a ScanScheduler is running,
+/// and it finishes, it's resources would be unlocked, and if the next Task
+/// needed those resources, it would have to lock them again.
+///
+/// Since we might only have a few threads available, say 12, and 3 schedulers
+/// not running any Tasks, reserving 6 threads could seriously hurt throughput.
+/// So, each scheduler will only reserve 1 more thread than it has Tasks inFlight,
+/// leaving at most 3 threads unavailable at any given time.
 ///
 /// Secondly, the ScanScheduler schedulers are only allowed to advance to a new chunk
 /// if resources are available to read the chunk into memory, or if the sub-scheduler
-/// has no Tasks inFlight (same thing as having zero threads).
+/// has no Tasks inFlight.
 class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;

@@ -76,8 +76,6 @@ public:
 private:
     bool _ready();
 
-    std::string _name;
-
     std::deque<GroupQueue::Ptr> _queue;
     int _maxGroupSize{1};
 };

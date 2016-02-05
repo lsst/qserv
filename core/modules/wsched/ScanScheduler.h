@@ -68,8 +68,8 @@ public:
     // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
-    void commandStart (util::Command::Ptr const& cmd) override;
-    void commandFinish (util::Command::Ptr const& cmd) override;
+    void commandStart(util::Command::Ptr const& cmd) override;
+    void commandFinish(util::Command::Ptr const& cmd) override;
 
     // SchedulerBase overrides
     bool ready() override;

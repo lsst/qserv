@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,14 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
- * SchedulerBase.h
- *
- *  Created on: Feb 1, 2016
- *      Author: jgates
  */
 
-#ifndef LSST_QSERV_WSCHED_SCHEDULERBASE_H_
-#define LSST_QSERV_WSCHED_SCHEDULERBASE_H_
+#ifndef LSST_QSERV_WSCHED_SCHEDULERBASE_H
+#define LSST_QSERV_WSCHED_SCHEDULERBASE_H
 
 // System headers
 
@@ -43,9 +39,9 @@ class SchedulerBase : public wcontrol::Scheduler {
 public:
     using Ptr = std::shared_ptr<SchedulerBase>;
 
-    SchedulerBase(std::string name, int maxThreads, int maxReserve) :
-        _name(name), _maxReserve(maxReserve), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads) {};
-    virtual ~SchedulerBase() {};
+    SchedulerBase(std::string const& name, int maxThreads, int maxReserve) :
+        _name(name), _maxReserve(maxReserve), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads) {}
+    virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
     SchedulerBase& operator=(SchedulerBase const&) = delete;
 
@@ -58,7 +54,7 @@ public:
 
     /// Use the number of available threads to determine how many threads this
     /// scheduler can use (_maxThreadAdj).
-    /// @return availableThreads - (The number of threads beyond our reserve that we are using.)
+    /// @return (availableThreads - (The number of threads beyond our reserve that we are using.))
     virtual int applyAvailableThreads(int availableThreads) {
         _maxThreadsAdj = availableThreads + desiredThreadReserve();
         int remainingThreads = availableThreads - std::max(0, _inFlight - _maxReserve);
@@ -79,7 +75,7 @@ public:
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
 protected:
-    std::string _name{""}; //< Name of this scheduler.
+    std::string const _name{}; //< Name of this scheduler.
     int _maxReserve{1};    //< Number of threads this scheduler would like to have reserved for its use.
     int _maxThreads{1};    //< Maximum number of threads for this scheduler to have inFlight.
     int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.

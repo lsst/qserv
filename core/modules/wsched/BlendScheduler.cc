@@ -73,9 +73,8 @@ BlendScheduler::BlendScheduler(std::string const& name,
                                std::shared_ptr<ScanScheduler> const& scanFast,
                                std::shared_ptr<ScanScheduler> const& scanMedium,
                                std::shared_ptr<ScanScheduler> const& scanSlow)
-    : SchedulerBase(name, 0, 0), _schedMaxThreads(schedMaxThreads),
-      _group(group), _scanFast(scanFast), _scanMedium(scanMedium), _scanSlow(scanSlow)
-{
+    : SchedulerBase{name, 0, 0}, _schedMaxThreads{schedMaxThreads},
+      _group{group}, _scanFast{scanFast}, _scanMedium{scanMedium}, _scanSlow{scanSlow} {
     dbgBlendScheduler = this;
 
     // Schedulers must be listed highest priority first.
@@ -84,7 +83,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
         if (sched == nullptr) {
             throw Bug("BlendScheduler: missing scheduler");
         }
-        LOGS(_log, LOG_LVL_WARN, "Scheduler " << _name << " found scheduler " << sched->getName());
+        LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
 }
 
@@ -99,9 +98,9 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     assert(_group);
     assert(_scanFast);
     SchedulerBase* s = nullptr;
-    proto::ScanTableInfo::ListOf &scanTables = task->getScanInfo().infoTables;
+    auto const& scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {
-        int scanPriority = task->getScanInfo().priority;
+        int scanPriority = task->getScanInfo().scanSpeed;
         if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
             ss << "Blend chose scan for priority=" << scanPriority << " : ";
@@ -111,9 +110,9 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
 
-        if (scanPriority >= proto::ScanInfo::Priority::SLOW) {
+        if (scanPriority >= proto::ScanInfo::Speed::SLOW) {
             s = _scanSlow.get();
-        } else if (scanPriority >= proto::ScanInfo::Priority::MEDIUM) {
+        } else if (scanPriority >= proto::ScanInfo::Speed::MEDIUM) {
             s = _scanMedium.get();
         } else { // must be fast
             s = _scanFast.get();
@@ -184,6 +183,7 @@ bool BlendScheduler::ready() {
     return _ready();
 }
 
+
 /// Returns true when any sub-scheduler has a command ready.
 /// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
@@ -195,8 +195,10 @@ bool BlendScheduler::_ready() {
     for (auto sched : _schedulers) {
         availableThreads = sched->applyAvailableThreads(availableThreads);
         ready = sched->ready();
-        os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
-           << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+            os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
+               << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+        }
         if (ready) break;
         //availableThreads = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
     }

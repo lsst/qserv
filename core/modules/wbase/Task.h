@@ -125,7 +125,7 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     void cancel();
-    bool getCancelled() { return _cancelled; }
+    bool getCancelled() const { return _cancelled; }
 
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
@@ -135,7 +135,7 @@ public:
     // Shared scan information
     int getChunkId();
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
-    bool hasMemHandle() { return _memHandle != memman::MemMan::HandleType::INVALID; }
+    bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
     void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
 

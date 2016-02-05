@@ -31,6 +31,7 @@ message TaskMsg {
     // Future: might have multiple db/chunk dependencies.
     optional string db = 2;
     optional int32 chunkid = 3;
+    // repeated string scantables = 4;  // obsolete
     optional string user = 6;
     optional int32 protocol = 7; // Null or 1: original mysqldump, 2: row-based result
     optional int32 scanpriority = 8;
@@ -58,7 +59,7 @@ message TaskMsg {
         required bool lockInMemory = 3;
         required int32 scanSpeed = 4;
     }
-    repeated ScanTable scantable = 4;
+    repeated ScanTable scantable = 9;
     
 }
 

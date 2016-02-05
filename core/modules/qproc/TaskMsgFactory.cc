@@ -107,7 +107,7 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
     _taskMsg->set_protocol(2);
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
-    std::string db = "";
+    std::string db;
     for(auto const& sTbl : s.scanInfo.infoTables) {
         if (db.empty()) {
             db = sTbl.db;
@@ -118,13 +118,10 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
 
     for(auto const& sTbl : s.scanInfo.infoTables) {
         lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = _taskMsg->add_scantable();
-        msgScanTbl->set_db(sTbl.db);
-        msgScanTbl->set_table(sTbl.table);
-        msgScanTbl->set_lockinmemory(sTbl.lockInMemory);
-        msgScanTbl->set_scanspeed(sTbl.scanSpeed);
+        sTbl.copyToScanTable(msgScanTbl);
     }
 
-    _taskMsg->set_scanpriority(s.scanInfo.priority);
+    _taskMsg->set_scanpriority(s.scanInfo.scanSpeed);
 
     // per-chunk
     _taskMsg->set_chunkid(s.chunkId);
