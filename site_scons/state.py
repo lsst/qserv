@@ -258,7 +258,7 @@ def _saveState():
         confFile = os.path.join(os.path.join(env['prefix'],"admin"),"configuration.in.cfg")
         with open(confFile, 'wb') as configfile:
             config.write(configfile)
-    except Exception, e:
+    except Exception as e:
         log.warn("Unexpected exception in _saveState: %s" % e)
 
 def init(src_dir):

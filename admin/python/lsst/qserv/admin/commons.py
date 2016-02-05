@@ -24,6 +24,7 @@ Commons functions for Qserv administration tools
 @author  Fabrice Jammes, IN2P3
 
 """
+from __future__ import absolute_import
 
 # --------------------------------
 #  Imports of standard modules --

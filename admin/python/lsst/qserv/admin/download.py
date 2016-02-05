@@ -48,10 +48,10 @@ def download(file_name, url_str):
         f.close()
 
     #handle errors
-    except HTTPError, e:
+    except HTTPError as e:
         logger.fatal("HTTP Error: %r %r" % (e, url_str))
         success = False
-    except URLError, e:
+    except URLError as e:
         logger.fatal("URL Error: %r %r" % (e, url_str))
         success = False
 

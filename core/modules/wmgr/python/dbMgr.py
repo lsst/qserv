@@ -807,7 +807,7 @@ def loadData(dbName, tblName, chunkId=None):
         # named pipe to send data to mysql, make it in a temporary dir
         with tmpDirMaker() as tmpDir:
             fifoName = os.path.join(tmpDir, 'tabledata.dat')
-            os.mkfifo(fifoName, 0600)
+            os.mkfifo(fifoName, 0o600)
 
             # do we need to uncompress?
             compressed = _getArgFlag(options, 'compressed', None)

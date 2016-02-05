@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # LSST Data Management System
 # Copyright 2012-2014 LSST Corporation.
@@ -214,7 +215,7 @@ def findXrootdLibPath(libName, pathList):
         path = p
         if os.access(os.path.join(path, fName), os.R_OK):
             return path
-    print "Couldn't find " + libName
+    print("Couldn't find " + libName)
     return None
 
 def checkXrootdLink(env, autoadd=0):
@@ -267,8 +268,8 @@ def addExtern(env, externPaths):
 def importCustom(env, extraTgts):
 
     def getExt(ext):
-        varNames = filter(lambda s: s.endswith(ext), env.Dictionary())
-        vals = map(lambda varName: env[varName], varNames)
+        varNames = [s for s in env.Dictionary() if s.endswith(ext)]
+        vals = [env[varName] for varName in varNames]
         state.log.debug("varNames : %s, vals %s" % (varNames, vals))
         return vals
 

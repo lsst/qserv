@@ -267,12 +267,12 @@ def _set_perms(file):
     if (os.path.basename(path) == "bin" or
         os.path.basename(path) == "init.d" or
         basename in script_list):
-        os.chmod(file, 0760)
+        os.chmod(file, 0o760)
     elif basename in SECRET_FILES:
-        os.chmod(file, 0600)
+        os.chmod(file, 0o600)
     else:
         # all other files are configuration files
-        os.chmod(file, 0660)
+        os.chmod(file, 0o660)
 
 def apply_tpl_once(src_file, target_file, params_dict = None):
     """ Creating one configuration file from one template
@@ -289,7 +289,7 @@ def apply_tpl_once(src_file, target_file, params_dict = None):
     out_cfg = t.safe_substitute(**params_dict)
     for match in t.pattern.findall(t.template):
         name = match[1]
-        if len(name) != 0 and not params_dict.has_key(name):
+        if len(name) != 0 and name not in params_dict:
             _LOG.fatal("Template %r in file %r is not defined in configuration tool", name, src_file)
             sys.exit(1)
 

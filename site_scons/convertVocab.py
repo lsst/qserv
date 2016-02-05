@@ -20,6 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # convertVocab.py converts ANTLRv2 token vocabularies to c++ header files
+from __future__ import print_function
 from itertools import chain, imap
 from optparse import OptionParser
 import hashlib
@@ -152,9 +153,9 @@ See: http://www.antlr2.org/doc/vocab.html
             if not line: continue
             try:
                 self.tokens.append(Token(line))
-            except NoValueError, e:
+            except NoValueError as e:
                 # print e.message
-                print "ignoring", line
+                print("ignoring", line)
                 pass
         pass
 
@@ -179,8 +180,8 @@ source file name"""
             basename = os.path.basename(targetFile)
             filename = self.sanitizeIdent(basename)
             structName = self.sanitizeIdent(os.path.splitext(basename)[0])
-        enums = ",\n".join(imap(lambda s: s.toEnum(), self.tokens))
-        cases = "\n".join(imap(lambda s: s.toCase(), self.tokens))
+        enums = ",\n".join(s.toEnum() for s in self.tokens)
+        cases = "\n".join(s.toCase() for s in self.tokens)
         return cppTemplate.format(filename, sourceFilename, __file__,
                                   structName, enums, cases)
 
@@ -240,7 +241,7 @@ class Token:
 def debugTest() :
     v = Vocabulary()
     v.importBuffer(sample)
-    print v.exportCppHeader("SomeTokens.h")
+    print(v.exportCppHeader("SomeTokens.h"))
 
 class UnitTest:
     """Unit test this module by exercising the conversion over sample token data
@@ -282,18 +283,19 @@ class UnitTest:
                                                 self.progFile, self.ccFile]),
                                       shell=True)
             if retcode < 0:
-                print >>sys.stderr, "Test failed: terminated by signal", -retcode
+                print("Test failed: terminated by signal", -retcode, file=sys.stderr)
             else:
                 if retcode == 0:
-                    print >>sys.stderr, "Test success"
+                    print("Test success", file=sys.stderr)
                     # Cleanup
-                    map(os.remove, self.testFiles)
+                    for f in self.testFiles:
+                        os.remove(f)
                 else:
-                    print >>sys.stderr, "Compilation failure: g++ returned", retcode
-                    print "Test files:", " ".join(self.testFiles)
+                    print("Compilation failure: g++ returned", retcode, file=sys.stderr)
+                    print("Test files:", " ".join(self.testFiles))
 
-        except OSError, e:
-            print >>sys.stderr, "Execution failed:", e
+        except OSError as e:
+            print("Execution failed:", e, file=sys.stderr)
         pass
     def run(self):
         self.writeFiles()

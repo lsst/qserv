@@ -25,6 +25,7 @@ DataLoader class is used to simplify data loading procedure.
 
 @author  Andy Salnikov, SLAC
 """
+from __future__ import print_function
 
 #--------------------------------
 #  Imports of standard modules --
@@ -746,7 +747,7 @@ class DataLoader(object):
         out = open(self.emptyChunks, 'w')
         for chunk in range(maxChunks):
             if chunk not in self.chunks:
-                print >> out, chunk
+                print(chunk, file=out)
 
 
     def _makeIndex(self, database, table):

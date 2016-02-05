@@ -32,6 +32,7 @@ Known issues and todos:
  - many commands still need to be implemented
  - need to separate dangerous admin commands like DROP EVERYTHING
 """
+from __future__ import print_function
 
 # standard library imports
 import ConfigParser
@@ -368,7 +369,7 @@ class CommandParser(object):
         """
         Print available commands.
         """
-        print self._supportedCommands
+        print(self._supportedCommands)
 
     def _parseRelease(self, tokens):
         """
@@ -390,7 +391,7 @@ class CommandParser(object):
         if t == 'DATABASES':
             names = self._css.getDbNames()
             for name in names:
-                print name
+                print(name)
         elif t == 'NODES':
             self._parseShowNodes()
         else:
@@ -402,10 +403,10 @@ class CommandParser(object):
         """
         nodes = self._css.getAllNodeParams()
         if not nodes:
-            print "No nodes defined in CSS"
+            print("No nodes defined in CSS")
         for node, params in sorted(nodes.items()):
-            print "{0} type={1} host={2} port={3} state={4}".format(node, params.type, params.host,
-                                                                     params.port, params.state)
+            print("{0} type={1} host={2} port={3} state={4}".format(node, params.type, params.host,
+                                                                     params.port, params.state))
 
     def _parseUpdate(self, tokens):
         """
@@ -499,7 +500,7 @@ class CommandParser(object):
         return opts
 
     def _setDefault(self, opts, key, defaultValue, force=False):
-        if not opts.has_key(key):
+        if key not in opts:
             self._logger.info(
                 "param '" + key + "' not found, will use default: " + str(defaultValue))
             opts[key] = defaultValue
@@ -515,8 +516,8 @@ class CommandParser(object):
         self._setDefault(opts, "clusteredIndex", "NULL")
         self._setDefault(opts, "match", 0)
         self._setDefault(opts, "isView", 0)
-        if opts.has_key("schemaFile"):
-            if opts.has_key("schema"):
+        if "schemaFile" in opts:
+            if "schema" in opts:
                 self._logger.info("Both schema and schemaFile specified. " +
                                   "Ignoring schemaFile")
             else: # Create schema field from file.
@@ -527,7 +528,7 @@ class CommandParser(object):
                 j = data.rfind(')')
                 opts["schema"] = data[i:j + 1]
 
-        elif not opts.has_key("schema"):
+        elif "schema" not in opts:
             raise _MissingParamError("Missing 'schema' or 'schemaFile'")
         # these are required options for createTable
         self._checkExist(opts, CommandParser.requiredOpts["createTable"])
@@ -636,14 +637,14 @@ def main():
             try:
                 parser.parse(cmd)
             except (_ToolError, css.CssError) as e:
-                print "ERROR: ", e.__str__()
+                print("ERROR: ", str(e))
                 sys.exit(1)
     else:
         try:
             # wait for commands and process
             parser.receiveCommands()
         except(KeyboardInterrupt, SystemExit, EOFError):
-            print ""
+            print()
 
 if __name__ == "__main__":
     main()
