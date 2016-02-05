@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # LSST Data Management System
 # Copyright 2012-2014 LSST Corporation.
@@ -214,7 +215,7 @@ def findXrootdLibPath(libName, pathList):
         path = p
         if os.access(os.path.join(path, fName), os.R_OK):
             return path
-    print "Couldn't find " + libName
+    print("Couldn't find " + libName)
     return None
 
 def checkXrootdLink(env, autoadd=0):

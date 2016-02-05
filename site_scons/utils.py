@@ -1,3 +1,4 @@
+from __future__ import print_function
 ##
 #  @file
 #
@@ -24,11 +25,11 @@ class Log(object):
 
     def debug(self, message):
         if self.verbose and not self.silent:
-            print "DEBUG : " + message
+            print("DEBUG : " + message)
 
     def info(self, message):
         if not self.silent:
-            print "INFO : " + message
+            print("INFO : " + message)
 
     def warn(self, message):
         if self.traceback:
