@@ -644,7 +644,7 @@ def main():
             # wait for commands and process
             parser.receiveCommands()
         except(KeyboardInterrupt, SystemExit, EOFError):
-            print("")
+            print()
 
 if __name__ == "__main__":
     main()
