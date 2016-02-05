@@ -91,8 +91,8 @@ class _unitTest(object):
             if ret != 0:
                 shutil.move(out, out + '.failed')
                 msg = '*** Unit test failed, check log file ' + out + '.failed ***'
-                sep = '*' * len(msg)
-                print(sep + '\n' + msg + '\n' + sep)
+                stars = '*' * len(msg)
+                print(stars, msg, stars, sep="\n")
                 # save failed target in UNIT_TESTS_FAILED list in env,
                 # to be analyzed by UnitTestCheck
                 env.Append(UNIT_TESTS_FAILED=source)
