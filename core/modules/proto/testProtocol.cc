@@ -37,8 +37,9 @@
 
 // Qserv headers
 #include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
+#include "proto/ScanTableInfo.h"
 #include "proto/TaskMsgDigest.h"
+#include "proto/worker.pb.h"
 #include "proto/WorkerResponse.h"
 
 #include "proto/FakeProtocolFixture.h"
@@ -190,5 +191,51 @@ BOOST_AUTO_TEST_CASE(ProtoHeaderWrap) {
     BOOST_CHECK(worked);
     BOOST_CHECK(compareProtoHeaders(response->protoHeader, *ph));
 }
+
+BOOST_AUTO_TEST_CASE(ScanTableInfo) {
+    lsst::qserv::proto::ScanTableInfo stiA{"dba", "fruit", false, 1};
+    lsst::qserv::proto::ScanTableInfo stiB{"dba", "fruit", true, 1};
+    BOOST_CHECK(stiA.compare(stiB) < 0);
+    BOOST_CHECK(stiB.compare(stiA) > 0);
+    BOOST_CHECK(stiA.compare(stiA) == 0);
+    BOOST_CHECK(stiB.compare(stiB) == 0);
+
+    lsst::qserv::proto::ScanTableInfo stiC{"dba", "fruit", true, 1};
+    lsst::qserv::proto::ScanTableInfo stiD{"dba", "fruit", true, 2};
+    BOOST_CHECK(stiC.compare(stiD) < 0);
+    BOOST_CHECK(stiD.compare(stiC) > 0);
+    BOOST_CHECK(stiC.compare(stiC) == 0);
+    BOOST_CHECK(stiD.compare(stiD) == 0);
+
+    lsst::qserv::proto::ScanTableInfo stiE{"dba", "fruit", true, 2};
+    lsst::qserv::proto::ScanTableInfo stiF{"dbb", "fruit", true, 2};
+    BOOST_CHECK(stiE.compare(stiF) < 0);
+    BOOST_CHECK(stiF.compare(stiE) > 0);
+    BOOST_CHECK(stiE.compare(stiE) == 0);
+    BOOST_CHECK(stiF.compare(stiF) == 0);
+
+    lsst::qserv::proto::ScanTableInfo stiG{"dbb", "fruit", true, 2};
+    lsst::qserv::proto::ScanTableInfo stiH{"dbb", "veggie", true, 2};
+    BOOST_CHECK(stiG.compare(stiH) < 0);
+    BOOST_CHECK(stiH.compare(stiG) > 0);
+    BOOST_CHECK(stiG.compare(stiG) == 0);
+    BOOST_CHECK(stiH.compare(stiH) == 0);
+
+    lsst::qserv::proto::ScanTableInfo::ListOf list = { stiE, stiH, stiC, stiD, stiB, stiA, stiG, stiF };
+    lsst::qserv::proto::ScanInfo scanInfo;
+    scanInfo.infoTables = list;
+    scanInfo.sortTablesSlowestFirst();
+    int j = 0;
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiH) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiG) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiF) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiE) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiD) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiC) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiB) == 0);
+    BOOST_CHECK(scanInfo.infoTables[j++].compare(stiA) == 0);
+}
+
+
 
 BOOST_AUTO_TEST_SUITE_END()

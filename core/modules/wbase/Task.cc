@@ -117,6 +117,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
         _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
     }
     _scanInfo.scanSpeed = msg->scanpriority();
+    _scanInfo.sortTablesSlowestFirst();
 }
 
 Task::~Task() {

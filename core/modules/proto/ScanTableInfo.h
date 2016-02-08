@@ -57,6 +57,8 @@ struct ScanTableInfo {
         msgScanTbl->set_scanspeed(scanSpeed);
     }
 
+    int compare(ScanTableInfo const& rhs) const;
+
     std::string db;
     std::string table;
     bool lockInMemory {false};
@@ -66,6 +68,9 @@ struct ScanTableInfo {
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
     enum Speed { FASTEST = 0, FAST = 1, MEDIUM = 2, SLOW = 3 };
+
+    void sortTablesSlowestFirst();
+    int compareTables(ScanInfo const& rhs);
 
     ScanTableInfo::ListOf infoTables;
     int scanSpeed{Speed::FASTEST};

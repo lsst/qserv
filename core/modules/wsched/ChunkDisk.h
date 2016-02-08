@@ -64,15 +64,23 @@ public:
 
     void setResourceStarved(bool starved);
 
-    /// Class that keeps the minimum chunk id at the front of the heap.
+    /// Class that keeps the minimum chunkId at the front of the heap
+    /// and within that chunkId, start with the slowest tables to scan.
     class MinHeap {
     public:
         // Using a greater than comparison function results in a minimum value heap.
         std::function<bool(wbase::Task::Ptr const&, wbase::Task::Ptr const&)> compareFunc =
             [](wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) -> bool {
                 if(!x || !y) { return false; }
+                /* &&& delete
                 if((!x->msg) || (!y->msg)) { return false; }
                 return x->msg->chunkid() > y->msg->chunkid();
+                */
+                if (x->getChunkId() > y->getChunkId()) return true;
+                if (x->getChunkId() < y->getChunkId()) return false;
+                // chunkId's must be equal, compare scanInfo (slower first)
+                int siComp = x->getScanInfo().compareTables(y->getScanInfo());
+                return siComp > 0;
         };
         void push(wbase::Task::Ptr const& task);
         wbase::Task::Ptr pop();
