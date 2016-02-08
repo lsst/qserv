@@ -1,7 +1,6 @@
 # -*- python -*-
 Import('env')
-
-import os
+Import('standardModule')
 
 # Construct proto env (add protoc Builder)
 proto = File("worker.proto")
@@ -12,17 +11,4 @@ pFiles = env.Protoc(
     PROTOC_PYOUT='.',
     )
 
-# collect all *.cc files
-sources = [f for f in Glob("*.cc") 
-           if not os.path.basename(str(f)).startswith("test")]
-
-#print "sources", sources, type(sources)
-objects = []
-for s in sources:
-    CPPPATH = env['CPPPATH']
-    if 'worker.pb.cc' in str(s):
-        CPPPATH += ['../..']
-    objects.append(env.SharedObject(s, CPPPATH=CPPPATH))
-
-build_data = DefaultEnvironment()['build_data']
-build_data['module_objects']['proto'] = objects
+standardModule(env, test_libs='log4cxx')
