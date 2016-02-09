@@ -15,7 +15,7 @@ COPY scripts/*.sh /home/dev/scripts/
 RUN chown -R dev:dev /home/dev/.eups && \
     chown -R dev:dev /home/dev/scripts && \
     chmod g+w /qserv/stack/ && \
-    chmod -R g+w /qserv/stack/Linux64/mysql
+    chmod -R g+w /qserv/stack/Linux64/mariadb/*/lib/plugin
 
 USER dev
 
