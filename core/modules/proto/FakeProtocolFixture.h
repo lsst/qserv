@@ -52,13 +52,13 @@ public:
         sTbl->set_db("orange");
         sTbl->set_table("cart");
         sTbl->set_lockinmemory(false);
-        sTbl->set_scanspeed(1);
+        sTbl->set_scanrating(1);
 
         sTbl = t->add_scantable();
         sTbl->set_db("plum");
         sTbl->set_table("bike");
         sTbl->set_lockinmemory(false);
-        sTbl->set_scanspeed(1);
+        sTbl->set_scanrating(1);
 
         for(int i=0; i < 3; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();

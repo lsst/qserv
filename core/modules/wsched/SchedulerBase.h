@@ -35,12 +35,18 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
+
+class BlendScheduler;
+
+
 class SchedulerBase : public wcontrol::Scheduler {
 public:
     using Ptr = std::shared_ptr<SchedulerBase>;
 
-    SchedulerBase(std::string const& name, int maxThreads, int maxReserve) :
-        _name(name), _maxReserve(maxReserve), _maxThreads(maxThreads), _maxThreadsAdj(maxThreads) {}
+    SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int priority) :
+        _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
+        _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
+        _priority{priority}, _priorityDefault{priority}, _priorityNext{priority} {}
     virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
     SchedulerBase& operator=(SchedulerBase const&) = delete;
@@ -51,6 +57,16 @@ public:
     virtual int getInFlight() const { return _inFlight; }
     virtual std::size_t getSize() const =0; //< @return the number of tasks in the queue (not in flight).
     virtual bool ready()=0; //< @return true if the scheduler is ready to provide a Task.
+
+    /// Methods for altering priority.
+    // Hooks for changing this schedulers priority/reserved threads.
+    int  getPriority() { return _priority; }
+    void setPriority(int priority); ///< Priority to use starting next chunk
+    void applyPriority();           ///< Apply _priorityNext
+    void setPriorityDefault();      ///< Return to default priority next chunk
+    int getMaxReserve() { return _maxReserve; }
+    virtual void setMaxReserve(int maxReserve) { _maxReserve = maxReserve; }
+    void restoreMaxReserve() { setMaxReserve(_maxReserveDefault); }
 
     /// Use the number of available threads to determine how many threads this
     /// scheduler can use (_maxThreadAdj).
@@ -77,8 +93,15 @@ public:
 protected:
     std::string const _name{}; //< Name of this scheduler.
     int _maxReserve{1};    //< Number of threads this scheduler would like to have reserved for its use.
+    int _maxReserveDefault{1};
     int _maxThreads{1};    //< Maximum number of threads for this scheduler to have inFlight.
     int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.
+
+    std::shared_ptr<BlendScheduler> _blendScheduler;
+    int _priority; ///< Current priority, lower numbers = higher priority
+    int _priorityDefault;
+    int _priorityNext; ///< Priority to use starting with the next chunk.
+
     std::atomic<int> _inFlight{0}; //< Number of Tasks running.
 };
 

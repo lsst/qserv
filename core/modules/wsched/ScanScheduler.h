@@ -34,6 +34,7 @@
 namespace lsst {
 namespace qserv {
 namespace wsched {
+    class BlendScheduler;
     class ChunkDisk;
 }}} // End of forward declarations
 
@@ -41,6 +42,7 @@ namespace wsched {
 namespace lsst {
 namespace qserv {
 namespace wsched {
+
 
 /// The purpose of the scan scheduler is to try to limit disk i/o.
 /// Tasks given to ScanScheduler are parts of user queries that are
@@ -50,26 +52,26 @@ namespace wsched {
 /// ascending order running all Tasks for each chunk as it goes and
 //  wrapping back to the lowest chunk at the end.
 ///
-/// It only advances to the next chunk after the current chunk
-/// has been read from disk. It waits for at least one query on the
-/// current chunk to finish as an indicator that the entire chunk
-/// was read from disk.
-///
-/// This is intended to be done for each disk in the system,
-/// but currently only supports a single disk.
+/// It only advances to the next chunk if system resources are available.
 class ScanScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
 
-    ScanScheduler(std::string const& name, int maxThreads,
-                  int maxReserve, memman::MemMan::Ptr const& memman);
+    ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
+                  memman::MemMan::Ptr const& memman,
+                  int minRating, int maxRating);
     virtual ~ScanScheduler() {}
+
+    void setBlendScheduler(std::shared_ptr<BlendScheduler> const& blend) {
+        _blendScheduler = blend;
+    }
 
     // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
+    bool isRatingInRange(int rating) { return _minRating <= rating && rating <= _maxRating; }
 
     // SchedulerBase overrides
     bool ready() override;
@@ -78,8 +80,14 @@ public:
 private:
     bool _ready();
     std::shared_ptr<ChunkDisk> _disk; //< Constrains access to files.
+
     memman::MemMan::Ptr _memMan; //< Limits queries when resources not available.
     memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
+
+    /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
+    int _minRating;
+    int _maxRating;
+
 };
 
 }}} // namespace lsst::qserv::wsched

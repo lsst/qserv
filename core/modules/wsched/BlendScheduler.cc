@@ -33,6 +33,7 @@
 #include "wsched/BlendScheduler.h"
 
 // System headers
+#include <algorithm>
 #include <cstddef>
 #include <iostream>
 #include <mutex>
@@ -67,6 +68,7 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
+/* &&& delete
 BlendScheduler::BlendScheduler(std::string const& name,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
@@ -78,7 +80,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
     dbgBlendScheduler = this;
 
     // Schedulers must be listed highest priority first.
-    _schedulers = { _group.get(), _scanFast.get(), _scanMedium.get(), _scanSlow.get() };
+    _schedulers = { _group, _scanFast, _scanMedium, _scanSlow };
     for (auto sched : _schedulers) {
         if (sched == nullptr) {
             throw Bug("BlendScheduler: missing scheduler");
@@ -86,6 +88,37 @@ BlendScheduler::BlendScheduler(std::string const& name,
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
 }
+*/
+/// @param scanScheduler - schedulers must be listed in ascending priority.
+BlendScheduler::BlendScheduler(std::string const& name,
+                               int schedMaxThreads,
+                               std::shared_ptr<GroupScheduler> const& group,
+                               std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers)
+    : SchedulerBase{name, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
+      _group{group}, _scanFast{scanSchedulers[0]} {
+    dbgBlendScheduler = this;
+
+    // Schedulers must be listed highest priority first.
+    // _schedulers = { _group, _scanFast, _scanMedium, _scanSlow }; &&& delete
+    _schedulers.push_back(_group);
+    for (auto const& sched : scanSchedulers) {
+        _schedulers.push_back(sched);
+        sched->setBlendScheduler(shared_from_this());
+    }
+    _sortScanSchedulers();
+    for (auto sched : _schedulers) {
+        LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
+    }
+}
+
+
+void BlendScheduler::_sortScanSchedulers() {
+    auto lessThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
+        return a->getPriority() < b->getPriority();
+    };
+    std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
+}
+
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
@@ -100,7 +133,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     SchedulerBase* s = nullptr;
     auto const& scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {
-        int scanPriority = task->getScanInfo().scanSpeed;
+        int scanPriority = task->getScanInfo().scanRating;
         if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
             ss << "Blend chose scan for priority=" << scanPriority << " : ";
@@ -110,11 +143,29 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
 
-        if (scanPriority >= proto::ScanInfo::Speed::SLOW) {
+        /* &&& delete
+        if (scanPriority >= proto::ScanInfo::Rating::SLOW) {
             s = _scanSlow.get();
-        } else if (scanPriority >= proto::ScanInfo::Speed::MEDIUM) {
+        } else if (scanPriority >= proto::ScanInfo::Rating::MEDIUM) {
             s = _scanMedium.get();
         } else { // must be fast
+            s = _scanFast.get();
+        }
+        */
+        for (auto const& sched : _schedulers) {
+            ScanScheduler *scan = dynamic_cast<ScanScheduler*>(sched.get());
+            if (scan != nullptr) {
+                if (scan->isRatingInRange(scanPriority)) {
+                    s = scan;
+                    break;
+                }
+            }
+        }
+        if (s == nullptr) {
+            // Task wasn't assigned with a scheduler, assuming it is simple and fast.
+            // TODO: This is probably not a good assumption for the long term, but fine for our
+            // integration test data and the like.
+            LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " " << task);
             s = _scanFast.get();
         }
     } else {

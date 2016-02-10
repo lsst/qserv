@@ -520,7 +520,7 @@ CssAccess::getScanTableParams(std::string const& dbName,
 
     ScanTableParams params;
 
-    std::vector<std::string> subKeys{"sharedScan/lockInMem", "sharedScan/scanSpeed"};
+    std::vector<std::string> subKeys{"sharedScan/lockInMem", "sharedScan/scanRating"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
@@ -544,7 +544,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
     std::vector<std::string> subKeys{"partitioning/subChunks", "partitioning/dirDb",
         "partitioning/dirTable", "partitioning/dirColName", "partitioning/latColName",
         "partitioning/lonColName", "partitioning/overlap", "partitioning/secIndexColName",
-        "sharedScann/lockInMem", "sharedScan/scanSpeed",
+        "sharedScann/lockInMem", "sharedScan/scanRating",
         "match/dirTable1", "match/dirColName1", "match/dirTable2", "match/dirColName2",
         "match/flagColName", "partitioning"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
@@ -600,14 +600,14 @@ CssAccess::createTable(std::string const& dbName,
         _storePacked(tableKey + "/partitioning", partMap);
 
         // save shared scan info. Only store values different from default
-        if (scanParams.lockInMem or scanParams.scanSpeed != 0) {
+        if (scanParams.lockInMem or scanParams.scanRating != 0) {
             std::map<std::string, std::string> scanMap;
             if (scanParams.lockInMem) {
                 scanMap.insert(std::make_pair("lockInMem", "1"));
             };
-            if (scanParams.scanSpeed != 0) {
-                scanMap.insert(std::make_pair("scanSpeed",
-                                              std::to_string(scanParams.scanSpeed)));
+            if (scanParams.scanRating != 0) {
+                scanMap.insert(std::make_pair("scanRating",
+                                              std::to_string(scanParams.scanRating)));
             }
             _storePacked(tableKey + "/sharedScan", scanMap);
         }
@@ -1061,9 +1061,9 @@ CssAccess::_fillScanTableParams(std::map<std::string, std::string>& paramMap,
         if (iter != paramMap.end()) {
             params.lockInMem = std::stoi(paramMap["sharedScan/lockInMem"]);
         }
-        iter = paramMap.find("sharedScan/scanSpeed");
+        iter = paramMap.find("sharedScan/scanRating");
         if (iter != paramMap.end()) {
-            params.scanSpeed = std::stoi(paramMap["sharedScan/scanSpeed"]);
+            params.scanRating = std::stoi(paramMap["sharedScan/scanRating"]);
         }
     } catch (std::exception const& exc) {
         LOGS(_log, LOG_LVL_ERROR, "One of the sub-keys is not numeric: "

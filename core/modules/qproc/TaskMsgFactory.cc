@@ -121,7 +121,7 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
         sTbl.copyToScanTable(msgScanTbl);
     }
 
-    _taskMsg->set_scanpriority(s.scanInfo.scanSpeed);
+    _taskMsg->set_scanpriority(s.scanInfo.scanRating);
 
     // per-chunk
     _taskMsg->set_chunkid(s.chunkId);

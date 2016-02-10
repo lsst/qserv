@@ -40,8 +40,8 @@ int ScanTableInfo::compare(ScanTableInfo const& rhs) const {
         return 0;
     } else if (!rhs.lockInMemory) return 1;
     // Both have tables to lock, compare scanSpeed
-    if (scanSpeed < rhs.scanSpeed) return -1;
-    if (scanSpeed > rhs.scanSpeed) return 1;
+    if (scanRating < rhs.scanRating) return -1;
+    if (scanRating > rhs.scanRating) return 1;
     // Scan speeds equal, compare database names alphabetically
     int dbComp = db.compare(rhs.db);
     if (dbComp < 0) return -1;
@@ -91,13 +91,13 @@ void ScanInfo::sortTablesSlowestFirst() {
 
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl) {
     os << "(db=" << tbl.db << " table=" << tbl.table;
-    os << " lockInMemory=" << tbl.lockInMemory << " scanSpeed=" << tbl.scanSpeed << ")";
+    os << " lockInMemory=" << tbl.lockInMemory << " scanRating=" << tbl.scanRating << ")";
     return os;
 }
 
 
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
-    os << "ScanInfo{speed=" << info.scanSpeed << " tables: ";
+    os << "ScanInfo{speed=" << info.scanRating << " tables: ";
     bool first = true;
     for (auto const& table: info.infoTables) {
         if (!first) {

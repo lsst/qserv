@@ -43,18 +43,18 @@ struct ScanTableInfo {
 
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_,
-                  bool lockInMemory_, int scanSpeed_) :
-                  db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanSpeed{scanSpeed_} {}
+                  bool lockInMemory_, int scanRating_) :
+                  db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
     ScanTableInfo(TaskMsg_ScanTable const& scanTbl) :
                   db{scanTbl.db()}, table{scanTbl.table()},
-                  lockInMemory{scanTbl.lockinmemory()}, scanSpeed{scanTbl.scanspeed()} {}
+                  lockInMemory{scanTbl.lockinmemory()}, scanRating{scanTbl.scanrating()} {}
 
     /// Copy contents of this object into a TaskMsg_ScanTable object.
     void copyToScanTable(TaskMsg_ScanTable *msgScanTbl) const {
         msgScanTbl->set_db(db);
         msgScanTbl->set_table(table);
         msgScanTbl->set_lockinmemory(lockInMemory);
-        msgScanTbl->set_scanspeed(scanSpeed);
+        msgScanTbl->set_scanrating(scanRating);
     }
 
     int compare(ScanTableInfo const& rhs) const;
@@ -62,18 +62,18 @@ struct ScanTableInfo {
     std::string db;
     std::string table;
     bool lockInMemory {false};
-    int  scanSpeed    {0};
+    int  scanRating    {0};
 };
 
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
-    enum Speed { FASTEST = 0, FAST = 1, MEDIUM = 2, SLOW = 3 };
+    enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30 };
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);
 
     ScanTableInfo::ListOf infoTables;
-    int scanSpeed{Speed::FASTEST};
+    int scanRating{Rating::FASTEST};
 };
 
 

@@ -104,15 +104,22 @@ SsiService::SsiService(XrdSsiLogger* log) {
     //uint maxThread = poolSize - 3;
     uint maxThread = poolSize;
     int maxReserve = 2;
-    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve, 10);
-    auto fast  = std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, maxReserve, memMan);
-    auto med   = std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, maxReserve, memMan);
-    auto slow  = std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, maxReserve, memMan);
+    int priority = 1;
+    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve, 10, priority++);
+
+    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
+    int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
+    int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
+    int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
+        std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, maxReserve, priority++, memMan, fastest, fast),
+        std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, maxReserve, priority++, memMan, fast+1, medium),
+        std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, maxReserve, priority++, memMan, medium+1, slow)
+    };
 
     _foreman = wcontrol::Foreman::newForeman(
-            std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread,
-                                                     group, fast, med, slow),
-            poolSize);
+        std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread, group, scanSchedulers),
+        poolSize);
 }
 
 SsiService::~SsiService() {

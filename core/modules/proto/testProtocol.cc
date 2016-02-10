@@ -69,7 +69,7 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
             bool eq = (sTbl1.db().compare(sTbl2.db()) == 0
                        && sTbl1.table() == sTbl2.table()
                        && sTbl1.lockinmemory() == sTbl2.lockinmemory()
-                       && sTbl1.scanspeed() == sTbl2.scanspeed());
+                       && sTbl1.scanrating() == sTbl2.scanrating());
             sTablesEq = sTablesEq && eq;
         }
 
