@@ -136,7 +136,7 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsFile)),
         (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin('XROOTD_DIR', "xrootd"),
                       PathVariable.PathIsDir)),
-        (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld_safe"),
+        (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld"),
                       PathVariable.PathIsDir)),
         (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir',
                       _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"),
