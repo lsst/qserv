@@ -158,7 +158,7 @@ bool SsiService::_setupScratchDb() {
     std::string dbName = wconfig::getConfig().getString("scratchDb");
     LOGS(_log, LOG_LVL_DEBUG, "Cleaning up scratchDb: " << dbName);
     if (!conn->dropDb(dbName, errObj, false)) {
-        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: ."
+        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: "
              << dbName << ", error: " << errObj.errMsg());
         return false;
     }
