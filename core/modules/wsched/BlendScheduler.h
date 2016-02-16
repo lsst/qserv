@@ -74,7 +74,7 @@ namespace wsched {
 /// Secondly, the ScanScheduler schedulers are only allowed to advance to a new chunk
 /// if resources are available to read the chunk into memory, or if the sub-scheduler
 /// has no Tasks inFlight.
-class BlendScheduler : public wsched::SchedulerBase, public std::enable_shared_from_this<BlendScheduler> {
+class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
@@ -82,7 +82,7 @@ public:
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
                    std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers);
-    virtual ~BlendScheduler() {}
+    virtual ~BlendScheduler();
 
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;

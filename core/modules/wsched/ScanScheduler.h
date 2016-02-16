@@ -62,7 +62,7 @@ public:
                   int minRating, int maxRating);
     virtual ~ScanScheduler() {}
 
-    void setBlendScheduler(std::shared_ptr<BlendScheduler> const& blend) {
+    void setBlendScheduler(BlendScheduler *blend) {
         _blendScheduler = blend;
     }
 

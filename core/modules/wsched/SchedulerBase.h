@@ -97,7 +97,7 @@ protected:
     int _maxThreads{1};    //< Maximum number of threads for this scheduler to have inFlight.
     int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.
 
-    std::shared_ptr<BlendScheduler> _blendScheduler;
+    BlendScheduler *_blendScheduler{nullptr};
     int _priority; ///< Current priority, lower numbers = higher priority
     int _priorityDefault;
     int _priorityNext; ///< Priority to use starting with the next chunk.

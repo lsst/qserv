@@ -68,27 +68,6 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
-/* &&& delete
-BlendScheduler::BlendScheduler(std::string const& name,
-                               int schedMaxThreads,
-                               std::shared_ptr<GroupScheduler> const& group,
-                               std::shared_ptr<ScanScheduler> const& scanFast,
-                               std::shared_ptr<ScanScheduler> const& scanMedium,
-                               std::shared_ptr<ScanScheduler> const& scanSlow)
-    : SchedulerBase{name, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanFast{scanFast}, _scanMedium{scanMedium}, _scanSlow{scanSlow} {
-    dbgBlendScheduler = this;
-
-    // Schedulers must be listed highest priority first.
-    _schedulers = { _group, _scanFast, _scanMedium, _scanSlow };
-    for (auto sched : _schedulers) {
-        if (sched == nullptr) {
-            throw Bug("BlendScheduler: missing scheduler");
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
-    }
-}
-*/
 /// @param scanScheduler - schedulers must be listed in ascending priority.
 BlendScheduler::BlendScheduler(std::string const& name,
                                int schedMaxThreads,
@@ -99,15 +78,26 @@ BlendScheduler::BlendScheduler(std::string const& name,
     dbgBlendScheduler = this;
 
     // Schedulers must be listed highest priority first.
-    // _schedulers = { _group, _scanFast, _scanMedium, _scanSlow }; &&& delete
     _schedulers.push_back(_group);
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
-        sched->setBlendScheduler(shared_from_this());
+        sched->setBlendScheduler(this);
     }
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
+    }
+}
+
+
+BlendScheduler::~BlendScheduler() {
+    /// Cleanup pointers.
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    for (auto const& sched : _schedulers) {
+        auto const& scanSched = std::dynamic_pointer_cast<ScanScheduler>(sched);
+        if (scanSched != nullptr) {
+            scanSched->setBlendScheduler(nullptr);
+        }
     }
 }
 
@@ -126,6 +116,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd tSeq=" << task->tSeq);
+
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
     assert(_group);
@@ -143,15 +134,6 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
 
-        /* &&& delete
-        if (scanPriority >= proto::ScanInfo::Rating::SLOW) {
-            s = _scanSlow.get();
-        } else if (scanPriority >= proto::ScanInfo::Rating::MEDIUM) {
-            s = _scanMedium.get();
-        } else { // must be fast
-            s = _scanFast.get();
-        }
-        */
         for (auto const& sched : _schedulers) {
             ScanScheduler *scan = dynamic_cast<ScanScheduler*>(sched.get());
             if (scan != nullptr) {
@@ -241,6 +223,11 @@ bool BlendScheduler::_ready() {
     std::ostringstream os;
     bool ready = false;
 
+    if (_flagReorderScans) {
+        _flagReorderScans = false;
+        _sortScanSchedulers();
+    }
+
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
     for (auto sched : _schedulers) {
@@ -251,7 +238,6 @@ bool BlendScheduler::_ready() {
                << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         }
         if (ready) break;
-        //availableThreads = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
     }
     LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     return ready;
