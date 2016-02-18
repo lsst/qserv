@@ -68,9 +68,9 @@ getCircleFromParams(std::vector<double> const& params) {
 
 inline std::shared_ptr<lsst::sphgeom::Ellipse>
 getEllipseFromParams(std::vector<double> const& params) {
-    // lon, lat, semimajang, semiminang, posangle
+    // center lon, center lat, semi major axe angle (rad), semi minor axe angle (rad), orientation angle (rad)
     if(params.size() != 5) {
-        throw QueryProcessingError("Invalid number of parameters for ellips");
+        throw QueryProcessingError("Invalid number of parameters for ellipse");
     }
     lsst::sphgeom::UnitVector3d center(lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]));
     return std::make_shared<lsst::sphgeom::Ellipse>(
@@ -83,8 +83,8 @@ getEllipseFromParams(std::vector<double> const& params) {
 inline std::shared_ptr<lsst::sphgeom::ConvexPolygon>
 getConvexPolyFromParams(std::vector<double> const& params) {
     // polygon vertices, min 3 vertices, must get even number of params
-    if((params.size() <= 6) || ((params.size() & 1) != 0)) {
-        throw QueryProcessingError("Invalid number of parameters for polygon");
+    if((params.size() < 6) || ((params.size() & 1) != 0)) {
+        throw QueryProcessingError("Invalid number of parameters for convex polygon");
     }
     std::vector<lsst::sphgeom::UnitVector3d> uv3;
     for(unsigned i=0; i < params.size(); i += 2) {
