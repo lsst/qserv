@@ -78,6 +78,9 @@ class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
+    // This scheduler will have difficulty with less than 10 threads.
+    static int getMinPoolSize(){ return 10; }
+
     BlendScheduler(std::string const& name,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,

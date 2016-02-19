@@ -265,7 +265,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
 
-    // Ask css if any of the tables should be locked in memory and their scan speed.
+    // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
     proto::ScanInfo scanInfo;
     int inMemoryCount = 0;
@@ -278,7 +278,6 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
     }
-    if (inMemoryCount > 2) scanInfo.scanRating++;
 
     return scanInfo;
 }

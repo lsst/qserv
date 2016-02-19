@@ -43,6 +43,8 @@ class SchedulerBase : public wcontrol::Scheduler {
 public:
     using Ptr = std::shared_ptr<SchedulerBase>;
 
+    static int getMaxPriority(){ return 1000000000; }
+
     SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int priority) :
         _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
         _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
@@ -98,7 +100,7 @@ protected:
     int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.
 
     BlendScheduler *_blendScheduler{nullptr};
-    int _priority; ///< Current priority, lower numbers = higher priority
+    int _priority; ///< Current priority, higher value - higher priority
     int _priorityDefault;
     int _priorityNext; ///< Priority to use starting with the next chunk.
 

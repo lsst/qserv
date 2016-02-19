@@ -95,7 +95,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     if (_disk->nextTaskDifferentChunkId()) {
         applyPriority();
     }
-    // Whenever a Task finishes, threads need to check if resources are available to run new Tasks.
+    // Whenever a Task finishes, all sleeping threads need to check if resources
+    // are available to run new Tasks.
     _cv.notify_all();
 }
 

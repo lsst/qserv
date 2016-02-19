@@ -78,7 +78,7 @@ BlendScheduler::BlendScheduler(std::string const& name,
     dbgBlendScheduler = this;
 
     // Schedulers must be listed highest priority first.
-    _schedulers.push_back(_group);
+    _schedulers.push_back(_group); // _group scheduler must be first in the list.
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
         sched->setBlendScheduler(this);
@@ -103,10 +103,14 @@ BlendScheduler::~BlendScheduler() {
 
 
 void BlendScheduler::_sortScanSchedulers() {
-    auto lessThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
-        return a->getPriority() < b->getPriority();
+    auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
+        // Experiment of sorts, priority depends on number of Tasks in each scheduler.
+        auto aVal = a->getPriority() * a->getSize();
+        auto bVal = b->getPriority() * b->getSize();
+        return aVal > bVal;
     };
-    std::sort(_schedulers.begin(), _schedulers.end(), lessThan);
+    // The first scheduler should always be the GroupScheduler (for interactive queries).
+    std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
 }
 
 
