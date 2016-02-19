@@ -86,7 +86,7 @@ std::string formLoadInfile(std::string const& table,
                            std::string const& virtFile) {
     auto sql = "LOAD DATA LOCAL INFILE '" + virtFile + "' INTO TABLE " + table
             + " FIELDS ENCLOSED BY '\\\''";
-    LOGF(getLogger(), LOG_LVL_TRACE, "Load query: %1% " % sql);
+    LOGS(getLogger(), LOG_LVL_TRACE, "Load query: " << sql);
     return sql;
 }
 

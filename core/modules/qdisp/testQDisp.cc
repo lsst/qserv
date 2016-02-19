@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
     BOOST_CHECK(ex.getEmpty() == true);
 
     // Test that we can detect ex._empty == false.
-    LOGF_INFO("Executive test 3");
+    LOGS_DEBUG("Executive test 3");
     qdisp::XrdSsiServiceMock::_go.exchange(false);
     executiveTest(ex, sequence, chunkId, millis, 5);
     jobs += 5;

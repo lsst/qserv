@@ -98,9 +98,7 @@ bool JobQuery::runJob() {
         }
     }
 
-    std::ostringstream os;
-    os << "JobQuery Failed to RunJob failed. cancelled=" << cancelled << " reset=" << handlerReset;
-    LOGF_WARN("%1%" % os.str());
+    LOGS_WARN("JobQuery Failed to RunJob failed. cancelled=" << cancelled << " reset=" << handlerReset);
     return false;
 }
 
@@ -113,24 +111,24 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel() {
-    LOGF_DEBUG("%1% JobQuery::cancel()" % getIdStr());
+    LOGS_DEBUG(getIdStr() << " JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         // If _queryRequestPtr is not nullptr, then this job has been passed to xrootd and cancellation is complicated.
         if (_queryRequestPtr != nullptr) {
-            LOGF_DEBUG("%1% cancel QueryRequest in progress" % getIdStr());
+            LOGS_DEBUG(getIdStr() << " cancel QueryRequest in progress");
             _queryRequestPtr->cancel();
         } else {
             std::ostringstream os;
             os << getIdStr() <<" cancel before QueryRequest" ;
-            LOGF_DEBUG("%1%" % os.str());
+            LOGS_DEBUG(os.str());
             getDescription().respHandler()->errorFlush(os.str(), -1);
             _executive->markCompleted(getIdInt(), false);
         }
         _jobDescription.respHandler()->processCancel();
         return true;
     }
-    LOGF_DEBUG("%1% cancel, skipping, already cancelled." % getIdStr());
+    LOGS_DEBUG(getIdStr() << " cancel, skipping, already cancelled.");
     return false;
 }
 

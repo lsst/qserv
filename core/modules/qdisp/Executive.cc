@@ -251,7 +251,7 @@ void Executive::squash() {
     for (auto const& job : jobsToCancel) {
         job->cancel();
     }
-    LOGF_DEBUG("%1% Executive::squash done" % _id);
+    LOGS_DEBUG(_id << " Executive::squash done");
 }
 
 int Executive::getNumInflight() {

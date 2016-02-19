@@ -161,7 +161,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
             jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR_OK);
-            LOGF_ERROR("%1% QueryRequest::_importStream Finished() !ok %2%" % _jobId % getXrootdErr(nullptr));
+            LOGS_ERROR(_jobId << " QueryRequest::_importStream Finished() !ok " << getXrootdErr(nullptr));
         } else {
             jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR_CORRUPT);
         }
@@ -177,7 +177,8 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
-            LOGF_WARN("%1% QueryRequest::_importError code=%2% msg=%3% not passed" % _jobId % code % msg);
+            LOGS_WARN(_jobId << " QueryRequest::_importError code=" << code
+                      << " msg=" << msg << " not passed");
             return false;
         }
         _jobQuery->getDescription().respHandler()->errorFlush(msg, code);
@@ -264,11 +265,11 @@ bool QueryRequest::isCancelled() {
 
 /// Cleanup pointers so class can be deleted and this should only be called by _finish or _errorFinish.
 void QueryRequest::cleanup() {
-    LOGF_DEBUG("%1% QueryRequest::cleanup()" %_jobId);
+    LOGS_DEBUG(_jobId << " QueryRequest::cleanup()");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus == ACTIVE) {
-            LOGF_ERROR("%1% QueryRequest::cleanup called before _finish or _errorFinish" % _jobId);
+            LOGS_ERROR(_jobId << " QueryRequest::cleanup called before _finish or _errorFinish");
             return;
         }
     }
@@ -289,7 +290,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             // Either _finish or _errorFinish has already been called.
-            LOGF_DEBUG("%1% QueryRequest::_errorFinish() job no longer ACTIVE, ignoring" % _jobId);
+            LOGS_DEBUG(_jobId << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
             return;
         }
         _finishStatus = ERROR;
@@ -323,13 +324,13 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 
 /// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
-    LOGF_DEBUG("%1% QueryRequest::_finish" % _jobId);
+    LOGS_DEBUG(_jobId << " QueryRequest::_finish");
     {
         // Running _finish more than once would cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             // Either _finish or _errorFinish has already been called.
-            LOGF_WARN("%1% QueryRequest::_finish called when not ACTIVE, ignoring" % _jobId);
+            LOGS_WARN(_jobId << " QueryRequest::_finish called when not ACTIVE, ignoring");
             return;
         }
         _finishStatus = FINISHED;

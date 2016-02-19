@@ -56,7 +56,7 @@ public:
         return qr.getJobQuery()->getDescription().payload();
     }
     static void finish(QueryResource& qr) {
-        LOGF_DEBUG("QueryResourceDebug::finish");
+        LOGS_DEBUG("QueryResourceDebug::finish");
         qr.getJobQuery()->getMarkCompleteFunc()->operator ()(true);
     }
 };
@@ -68,7 +68,7 @@ util::Sequential<int> XrdSsiServiceMock::_count(0);
  * Fire up thread that sleeps for a bit and then indicates it was successful.
  */
 void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut, bool userConn){
-    LOGF_DEBUG("XrdSsiServiceMock::Provision");
+    LOGS_DEBUG("XrdSsiServiceMock::Provision");
     if (resP == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
         return;
@@ -92,7 +92,7 @@ void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut, bool u
  */
 void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
                                           unsigned short timeOut) {
-    LOGF_DEBUG("XrdSsiServiceMock::mockProvisionTest");
+    LOGS_DEBUG("XrdSsiServiceMock::mockProvisionTest");
     string payload = QueryResourceDebug::getPayload(*qr);
     int millisecs = atoi(payload.c_str());
     // barrier for all threads when _go is false.
