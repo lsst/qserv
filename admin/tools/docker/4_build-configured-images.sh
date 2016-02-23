@@ -27,6 +27,7 @@
 set -e
 
 DEFAULT_DOCKER_IMAGE="qserv/qserv:dev"
+PUSH_TO_HUB="true"
 
 usage() {
   cat << EOD
@@ -36,6 +37,7 @@ usage() {
   Available options:
     -h          this message
     -i image    Docker image to be used as input, default to $DEFAULT_DOCKER_IMAGE
+    -L			Do not push image to Docker Hub
 
   Create docker images containing Qserv master and worker instances,
   use an existing Qserv Docker image as input.
@@ -46,10 +48,11 @@ EOD
 
 # Get the options
 DOCKER_IMAGE="$DEFAULT_DOCKER_IMAGE"
-while getopts hi: c ; do
+while getopts hi:L c ; do
     case $c in
             h) usage ; exit 0 ;;
             i) DOCKER_IMAGE="$OPTARG" ;;
+			L) PUSH_TO_HUB="false" ;;
             \?) usage ; exit 2 ;;
     esac
 done
@@ -77,9 +80,13 @@ sed -i 's%{{COMMENT_ON_WORKER_OPT}}%%g' "$DOCKERFILE"
 TAG="${DOCKER_IMAGE}_master_${MASTER}"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push "$TAG"
+printf "Image %s built successfully\n" "$TAG"
 
-printf "Image %s built and pushed successfully\n" "$TAG"
+if [ "$PUSH_TO_HUB" = "true" ] ; then 
+    docker push "$TAG"
+	printf "Image %s pushed successfully\n" "$TAG"
+fi
+
 
 # Build the worker image
 
@@ -92,6 +99,9 @@ sed -i 's%{{COMMENT_ON_WORKER_OPT}}%# %g' "$DOCKERFILE"
 TAG="${DOCKER_IMAGE}_worker_${MASTER}"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
-docker push "$TAG"
+printf "Image %s built successfully\n" "$TAG"
 
-printf "Image %s built and pushed successfully\n" "$TAG"
+if [ "$PUSH_TO_HUB" = "true" ] ; then 
+    docker push "$TAG"
+	printf "Image %s pushed successfully\n" "$TAG"
+fi
