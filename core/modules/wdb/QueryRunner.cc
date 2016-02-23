@@ -134,12 +134,12 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     if (_task->getCancelled()) {
-        LOGF(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. %1%" % _task->hash);
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. taskHash=" << _task->hash);
         return false;
     }
 
     _setDb();
-    LOGF(_log, LOG_LVL_DEBUG, "Exec in flight for Db = %1%" % _dbName);
+    LOGS(_log, LOG_LVL_DEBUG, "Exec in flight for Db=" << _dbName);
     bool connOk = _initConnection();
     if (!connOk) { return false; }
 

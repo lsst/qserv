@@ -16,7 +16,6 @@ QSERV_UNIX_USER={{QSERV_UNIX_USER}}
 # used by xrootd
 NODE_TYPE={{NODE_TYPE}}
 MYSQLD_SOCK={{MYSQLD_SOCK}}
-XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
 
 # Pathes to Qserv and dependencies
 # installation directories 

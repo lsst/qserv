@@ -28,7 +28,6 @@ source_sysconfig ${DIR}
 check_writable ${NAME} "QSERV_RUN_DIR"
 check_writable ${NAME} "QSERV_PID_DIR"
 check_writable ${NAME} "QSERV_LOG_DIR"
-check_writable ${NAME} "XROOTD_RUN_DIR"
 check_readable ${NAME} "XROOTD_DIR"
 
 err_msg="Failure while starting ${NAME}:"
@@ -43,12 +42,9 @@ XROOTD_INSTANCE_NAME="worker"
 PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
 LOG_DIR=${QSERV_LOG_DIR}
 
-export QSW_XRDQUERYPATH="/q"
 export QSW_DBSOCK="${MYSQLD_SOCK}"
-export QSW_MYSQLDUMP=`which mysqldump`
 QSW_SCRATCHPATH="${QSERV_RUN_DIR}/tmp"
 QSW_SCRATCHDB="qservScratch"
-export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
 
 # Log configuration file for worker nodes.
 # xrootd manager doesn't use it.
@@ -102,10 +98,6 @@ stop_service() {
 
 start_all() {
     local xrootd_started cmsd_started=0 retval=1
-    mkdir -p ${QSW_RESULTPATH} || {
-        log_failure_msg "Failed to create ${QSW_RESULTPATH}"
-        return 1
-    }
     mkdir -p ${PID_DIR} || {
         log_failure_msg "Failed to create ${PID_DIR}"
         return 1
