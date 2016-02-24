@@ -100,7 +100,6 @@ Task::Task() {
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc} {
     hash = hashTaskMsg(*t);
-    dbName = "q_" + hash;
     if (t->has_user()) {
         user = t->user();
     } else {

@@ -60,7 +60,6 @@ ETC = 'etc'
 CLIENT = 'client'
 
 MYSQL = 'mysql'
-XROOTD = 'xrootd'
 CSS_WATCHER = 'css-watcher'
 CZAR = 'qserv-czar'
 WORKER = 'qserv-worker'
@@ -68,7 +67,7 @@ QSERV = 'qserv'
 SCISQL =  'scisql'
 
 DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
-NODB_COMPONENTS = [XROOTD, CSS_WATCHER]
+NODB_COMPONENTS = [CSS_WATCHER]
 COMPONENTS = NODB_COMPONENTS + DB_COMPONENTS
 CONFIGURATION_STEPS = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
 
@@ -81,7 +80,6 @@ ALL_STEPS_DOC = {
     ETC: "Create Qserv configuration files in QSERV_RUN_DIR using values issued " +
          "from meta-config file QSERV_RUN_DIR/qserv-meta.conf",
     MYSQL: "Remove MariaDB previous data, install db and set password",
-    XROOTD: "Create xrootd query and result directories",
     CSS_WATCHER: "Configure CSS-watcher (i.e. MySQL credentials)",
     CZAR: "Initialize Qserv master database",
     WORKER: "Initialize Qserv worker database",
@@ -243,7 +241,6 @@ def _get_template_params():
         'XROOTD_DIR': config['xrootd']['base_dir'],
         'XROOTD_MANAGER_HOST': config['qserv']['master'],
         'XROOTD_PORT': config['xrootd']['xrootd_port'],
-        'XROOTD_RUN_DIR': os.path.join(config['qserv']['qserv_run_dir'], "xrootd-run"),
         'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
         'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
         'HOME': os.path.expanduser("~"),

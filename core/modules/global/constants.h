@@ -33,11 +33,7 @@ const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
 const int DUMMY_CHUNK = 1234567890;
 
-const char USER_DEFAULT[] = "qsmaster";
 const char SEC_INDEX_DB[] = "qservMeta";
-
-const char ENV_WRESULTPATH[] = "QSW_RESULTPATH";
-const char ENV_XRDID[] = "XRDNAME";
 
 const char SUBCHUNKDB_PREFIX[] = "Subchunks_";
 const char SCISQLDB_PREFIX[] = "scisql_";
