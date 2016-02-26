@@ -43,6 +43,10 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.proxy.czarProxy");
 
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
+
 std::shared_ptr<lsst::qserv::czar::Czar> _czar;
 
 // mutex is used for czar initialization only which could potentially
@@ -64,6 +68,9 @@ initCzar(std::string const& czarName) {
     if (::_czar) {
         return;
     }
+
+    // add some MDC data in every thread
+    LOG_MDC_INIT(initMDC);
 
     // Find QSERV_CONFIG envvar value
     auto qConfig = std::getenv("QSERV_CONFIG");
@@ -106,8 +113,9 @@ killQuery(std::string const& query, std::string const& clientId) {
 void log(std::string const& loggername, std::string const& level,
          std::string const& filename, std::string const& funcname,
          unsigned int lineno, std::string const& message) {
-    lsst::log::Log::log(loggername, log4cxx::Level::toLevel(level),
-                        filename, funcname, lineno, "%s", message.c_str());
+    lsst::log::Log::logMsg(lsst::log::Log::getLogger(loggername), log4cxx::Level::toLevel(level),
+                           log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
+                           message);
 }
 
 

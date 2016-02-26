@@ -58,6 +58,13 @@ class XrdPosixCallBack; // Forward.
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
+
+// add LWP to MDC in log messages
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
+int dummyInitMDC = LOG_MDC_INIT(initMDC);
+
 }
 
 namespace lsst {
