@@ -42,7 +42,7 @@ using lsst::qserv::wconfig::Config;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////
-static const int settingsCount = 5;
+static const int settingsCount = 16;
 // key, env var name, default, description
 static const char* settings[settingsCount][4] = {
     {"mysqlSocket", "QSW_DBSOCK", "/var/lib/mysql/mysql.sock",
@@ -54,8 +54,31 @@ static const char* settings[settingsCount][4] = {
     {"scratchDb", "QSW_SCRATCHDB", "qservScratch",
      "MySQL db for creating temporary result tables."},
     {"numThreads", "QSW_NUMTHREADS", "4",
-     "Number of in-flight query threads allowed."}
+     "Number of in-flight query threads allowed."},
+    {"QSW_MEMMAN", "QSW_MEMMAN", "Undef",
+     "MemMan class to use for managing memory for tables"},
+    {"QSW_MEMMAN_MB", "QSW_MEMMAN_MB", "900",
+     "Memory available for locking tables"},
+    {"QSW_MEMMAN_LOCATION", "QSW_MEMMAN_LOCATION", "/u1/qserv-run/var/lib/mysql",
+     "Path to database tables"},
+    {"QSW_THRDPOOLSZ", "QSW_THRDPOOLSZ", "15",
+     "Thread pool size"},
+    {"QSW_GROUPSZ", "QSW_GROUPSZ", "10",
+     "Maximum group size for GroupScheduler"},
+    {"QSW_PRIORITYSLOW", "QSW_PRIORITYSLOW", "1",
+     "Slow scheduler priority"},
+    {"QSW_PRIORITYMED", "QSW_PRIORITYMED", "1",
+     "Medium scheduler priority"},
+    {"QSW_PRIORITYFAST", "QSW_PRIORITYFAST", "1",
+     "Fast scheduler priority"},
+    {"QSW_RESERVESLOW", "QSW_RESERVESLOW", "2",
+     "Maximum number of threads to reserve for slow scan"},
+    {"QSW_RESERVEMED", "QSW_RESERVEMED", "2",
+     "Maximum number of threads to reserve for medium scan"},
+    {"QSW_RESERVEFAST", "QSW_RESERVEFAST", "2",
+     "Maximum number of threads to reserve for fast scan"}
 };
+
 
 // Validator code /////////////////////////////////////////////////////
 std::string validateMysql(Config const& c) {

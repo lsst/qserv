@@ -57,7 +57,7 @@ message TaskMsg {
         required string db = 1;
         required string table = 2;
         required bool lockInMemory = 3;
-        required int32 scanSpeed = 4;
+        required int32 scanRating = 4;
     }
     repeated ScanTable scantable = 9;
     

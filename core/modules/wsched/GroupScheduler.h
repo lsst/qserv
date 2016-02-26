@@ -58,7 +58,8 @@ class GroupScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize);
+    GroupScheduler(std::string const& name,
+                   int maxThreads, int maxReserve, int maxGroupSize, int priority);
     virtual ~GroupScheduler() {}
 
     bool empty();

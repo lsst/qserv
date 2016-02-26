@@ -63,16 +63,20 @@ public:
     std::size_t getSize() const;
 
     void setResourceStarved(bool starved);
+    bool nextTaskDifferentChunkId();
 
-    /// Class that keeps the minimum chunk id at the front of the heap.
+    /// Class that keeps the minimum chunkId at the front of the heap
+    /// and within that chunkId, start with the slowest tables to scan.
     class MinHeap {
     public:
         // Using a greater than comparison function results in a minimum value heap.
-        std::function<bool(wbase::Task::Ptr const&, wbase::Task::Ptr const&)> compareFunc =
-            [](wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) -> bool {
+        static bool compareFunc(wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) {
                 if(!x || !y) { return false; }
-                if((!x->msg) || (!y->msg)) { return false; }
-                return x->msg->chunkid() > y->msg->chunkid();
+                if (x->getChunkId() > y->getChunkId()) return true;
+                if (x->getChunkId() < y->getChunkId()) return false;
+                // chunkId's must be equal, compare scanInfo (slower scans first)
+                int siComp = x->getScanInfo().compareTables(y->getScanInfo());
+                return siComp > 0;
         };
         void push(wbase::Task::Ptr const& task);
         wbase::Task::Ptr pop();
@@ -92,7 +96,7 @@ private:
     mutable std::mutex _queueMutex;
     MinHeap _activeTasks;
     MinHeap _pendingTasks;
-    int _lastChunk{-100}; // initialize to much too impossible small value;
+    int _lastChunk{-100}; // initialize to impossibly small value;
     memman::MemMan::Ptr _memMan;
     mutable std::mutex _inflightMutex;
     bool _resourceStarved{false};

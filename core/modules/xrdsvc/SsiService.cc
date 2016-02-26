@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "memman/MemMan.h"
 #include "memman/MemManNone.h"
 #include "sql/SqlConnection.h"
 #include "wbase/Base.h"
@@ -91,28 +92,67 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
 
-    // TODO: DM-4943 use MemManReal
-    // Memory available is meaningless for MemManNone
-    memman::MemMan::Ptr memMan = std::make_shared<memman::MemManNone>(1, false);
+    auto const& config = wconfig::getConfig();
+    auto cfgMemMan = config.getString("QSW_MEMMAN");
+    memman::MemMan::Ptr memMan;
+    if (cfgMemMan  == "MemManReal") {
+        // Default to 1 gigabyte
+        uint64_t memManSizeMb = config.getInt("QSW_MEMMAN_MB", 1000);
+        std::string memManLocation = config.getString("QSW_MEMMAN_LOCATION");
+        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << memManSizeMb);
+        memMan = std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSizeMb*1000000, memManLocation));
+    } else if (cfgMemMan == "MemManNone"){
+        // Memory available is meaningless for MemManNone
+        LOGS(_log, LOG_LVL_DEBUG, "Using MemManNone");
+        memMan = std::make_shared<memman::MemManNone>(1, false);
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
+        throw wconfig::ConfigError("Unrecognized memory manager.");
+    }
 
-    // TODO: set poolSize and all maxThreads values from config file.
-    uint poolSize = std::max(static_cast<uint>(15), std::thread::hardware_concurrency());
-    // TODO: set GroupScheduler group size from configuration file
-    // TODO: Consider limiting the number of chunks being accessed at a time
-    //       by GroupScheduler and ScanScheduler
+    // Set thread pool size.
+    auto cfgPoolSize = config.getInt("QSW_THRDPOOLSZ", wsched::BlendScheduler::getMinPoolSize());
+    uint poolSize = std::max(static_cast<uint>(cfgPoolSize), std::thread::hardware_concurrency());
+    // Set GroupScheduler group size from configuration file
+    auto maxGroupSize = config.getInt("QSW_GROUPSZ", 1);
+    LOGS(_log, LOG_LVL_DEBUG, "cfg poolSize=" << poolSize << " maxGroupSize=" << maxGroupSize);
+
+    // get shared scan priorities
+    auto prioritySlow = config.getInt("QSW_PRIORITYSLOW", 1);
+    auto priorityMed  = config.getInt("QSW_PRIORITYMED", 2);
+    auto priorityFast = config.getInt("QSW_PRIORITYFAST", 3);
+    LOGS(_log, LOG_LVL_DEBUG, "cfg priority fast=" << priorityFast
+         << " med=" << priorityMed << " slow=" << prioritySlow);
+
+    // get max thread reserve
+    auto maxReserveSlow = config.getInt("QSW_RESERVESLOW", 2);
+    auto maxReserveMed  = config.getInt("QSW_RESERVEMED", 2);
+    auto maxReserveFast = config.getInt("QSW_RESERVEFAST", 2);
+    LOGS(_log, LOG_LVL_DEBUG, "cfg reserved threads fast=" << maxReserveFast
+         << " med=" << maxReserveMed << " slow=" << maxReserveSlow);
+
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
-    //uint maxThread = poolSize - 3;
     uint maxThread = poolSize;
     int maxReserve = 2;
-    auto group = std::make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve, 10);
-    auto fast  = std::make_shared<wsched::ScanScheduler>("SchedFast", maxThread, maxReserve, memMan);
-    auto med   = std::make_shared<wsched::ScanScheduler>("SchedMed", maxThread, maxReserve, memMan);
-    auto slow  = std::make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, maxReserve, memMan);
+    auto group = std::make_shared<wsched::GroupScheduler>(
+                 "SchedGroup", maxThread, maxReserve, maxGroupSize, wsched::SchedulerBase::getMaxPriority());
+
+    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
+    int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
+    int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
+    int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
+        std::make_shared<wsched::ScanScheduler>(
+                 "SchedSlow", maxThread, maxReserveSlow, prioritySlow, memMan, medium+1, slow),
+        std::make_shared<wsched::ScanScheduler>(
+                 "SchedMed", maxThread, maxReserveMed, priorityMed, memMan, fast+1, medium),
+        std::make_shared<wsched::ScanScheduler>(
+                 "SchedFast", maxThread, maxReserveFast, priorityFast, memMan, fastest, fast)
+    };
 
     _foreman = wcontrol::Foreman::newForeman(
-            std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread,
-                                                     group, fast, med, slow),
-            poolSize);
+        std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread, group, scanSchedulers),
+        poolSize);
 }
 
 SsiService::~SsiService() {

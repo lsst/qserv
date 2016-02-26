@@ -62,21 +62,21 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
     kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objectId"));
     kv.push_back(make_pair(p + "/Object/sharedScan/lockInMem", "1"));
-    kv.push_back(make_pair(p + "/Object/sharedScan/scanSpeed", "1"));
+    kv.push_back(make_pair(p + "/Object/sharedScan/scanRating", "1"));
     kv.push_back(make_pair(p + "/Source", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Source/partitioning", ""));
     kv.push_back(make_pair(p + "/Source/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/Source/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/Source/partitioning/subChunks", "0"));
     kv.push_back(make_pair(p + "/Source/sharedScan/lockInMem", "1"));
-    kv.push_back(make_pair(p + "/Source/sharedScan/scanSpeed", "2"));
+    kv.push_back(make_pair(p + "/Source/sharedScan/scanRating", "2"));
     kv.push_back(make_pair(p + "/FSource", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/FSource/partitioning", ""));
     kv.push_back(make_pair(p + "/FSource/partitioning/lonColName", "ra"));
     kv.push_back(make_pair(p + "/FSource/partitioning/latColName", "decl"));
     kv.push_back(make_pair(p + "/FSource/partitioning/subChunks", "0"));
     kv.push_back(make_pair(p + "/FSource/sharedScan/lockInMem", "0"));
-    kv.push_back(make_pair(p + "/FSource/sharedScan/scanSpeed", "3"));
+    kv.push_back(make_pair(p + "/FSource/sharedScan/scanRating", "3"));
     kv.push_back(make_pair(p + "/Exposure", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/Exposure/schema", "(I INT)"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS", ""));
@@ -479,19 +479,19 @@ BOOST_AUTO_TEST_CASE(testGetPartTableParams4Scans) {
     ScanTableParams params;
     params = getScanTableParams("dbA", "Exposure");
     BOOST_CHECK_EQUAL(params.lockInMem, false);
-    BOOST_CHECK_EQUAL(params.scanSpeed, 0);
+    BOOST_CHECK_EQUAL(params.scanRating, 0);
 
     params = getScanTableParams("dbA", "Object");
     BOOST_CHECK_EQUAL(params.lockInMem, true);
-    BOOST_CHECK_EQUAL(params.scanSpeed, 1);
+    BOOST_CHECK_EQUAL(params.scanRating, 1);
 
     params = getScanTableParams("dbA", "Source");
     BOOST_CHECK_EQUAL(params.lockInMem, true);
-    BOOST_CHECK_EQUAL(params.scanSpeed, 2);
+    BOOST_CHECK_EQUAL(params.scanRating, 2);
 
     params = getScanTableParams("dbA", "FSource");
     BOOST_CHECK_EQUAL(params.lockInMem, false);
-    BOOST_CHECK_EQUAL(params.scanSpeed, 3);
+    BOOST_CHECK_EQUAL(params.scanRating, 3);
 }
 
 BOOST_AUTO_TEST_CASE(testCreateTable) {

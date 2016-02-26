@@ -33,6 +33,7 @@
 #include "wsched/BlendScheduler.h"
 
 // System headers
+#include <algorithm>
 #include <cstddef>
 #include <iostream>
 #include <mutex>
@@ -67,25 +68,57 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
+
 BlendScheduler::BlendScheduler(std::string const& name,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
-                               std::shared_ptr<ScanScheduler> const& scanFast,
-                               std::shared_ptr<ScanScheduler> const& scanMedium,
-                               std::shared_ptr<ScanScheduler> const& scanSlow)
-    : SchedulerBase{name, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanFast{scanFast}, _scanMedium{scanMedium}, _scanSlow{scanSlow} {
+                               std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers)
+    : SchedulerBase{name, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
+      _group{group}, _scanFast{scanSchedulers.at(0)} {
     dbgBlendScheduler = this;
-
-    // Schedulers must be listed highest priority first.
-    _schedulers = { _group.get(), _scanFast.get(), _scanMedium.get(), _scanSlow.get() };
+    // If these are not defined, there is no point in continuing.
+    assert(_group);
+    assert(_scanFast);
+    _schedulers.push_back(_group); // _group scheduler must be first in the list.
+    for (auto const& sched : scanSchedulers) {
+        _schedulers.push_back(sched);
+        sched->setBlendScheduler(this);
+    }
+    assert(_schedulers.size() >= 2); // Must have at least _group and _scanFast in the list.
+    _sortScanSchedulers();
     for (auto sched : _schedulers) {
-        if (sched == nullptr) {
-            throw Bug("BlendScheduler: missing scheduler");
-        }
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
 }
+
+
+BlendScheduler::~BlendScheduler() {
+    /// Cleanup pointers.
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    for (auto const& sched : _schedulers) {
+        auto const& scanSched = std::dynamic_pointer_cast<ScanScheduler>(sched);
+        if (scanSched != nullptr) {
+            scanSched->setBlendScheduler(nullptr);
+        }
+    }
+}
+
+
+void BlendScheduler::_sortScanSchedulers() {
+    auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
+        // Experiment of sorts, priority depends on number of Tasks in each scheduler.
+        auto aVal = a->getPriority() * (1 + a->getSize());
+        auto bVal = b->getPriority() * (1 + b->getSize());
+        return aVal > bVal;
+    };
+    // The first scheduler should always be _group (for interactive queries).
+    if (_schedulers.size() >= 2) {
+        std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "not enough schedulers, _schedulers.size=" << _schedulers.size());
+    }
+}
+
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
@@ -93,14 +126,13 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd tSeq=" << task->tSeq);
+
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
-    assert(_group);
-    assert(_scanFast);
     SchedulerBase* s = nullptr;
     auto const& scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {
-        int scanPriority = task->getScanInfo().scanSpeed;
+        int scanPriority = task->getScanInfo().scanRating;
         if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;
             ss << "Blend chose scan for priority=" << scanPriority << " : ";
@@ -110,11 +142,20 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             LOGS(_log, LOG_LVL_DEBUG, ss.str());
         }
 
-        if (scanPriority >= proto::ScanInfo::Speed::SLOW) {
-            s = _scanSlow.get();
-        } else if (scanPriority >= proto::ScanInfo::Speed::MEDIUM) {
-            s = _scanMedium.get();
-        } else { // must be fast
+        for (auto const& sched : _schedulers) {
+            ScanScheduler *scan = dynamic_cast<ScanScheduler*>(sched.get());
+            if (scan != nullptr) {
+                if (scan->isRatingInRange(scanPriority)) {
+                    s = scan;
+                    break;
+                }
+            }
+        }
+        if (s == nullptr) {
+            // Task wasn't assigned with a scheduler, assuming it is simple and fast.
+            // TODO: This is probably not a good assumption for the long term, but fine for our
+            // integration test data and the like.
+            LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " " << task);
             s = _scanFast.get();
         }
     } else {
@@ -190,6 +231,11 @@ bool BlendScheduler::_ready() {
     std::ostringstream os;
     bool ready = false;
 
+    if (_flagReorderScans) {
+        _flagReorderScans = false;
+        _sortScanSchedulers();
+    }
+
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
     for (auto sched : _schedulers) {
@@ -200,7 +246,6 @@ bool BlendScheduler::_ready() {
                << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         }
         if (ready) break;
-        //availableThreads = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
     }
     LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     return ready;

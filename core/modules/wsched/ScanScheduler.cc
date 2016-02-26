@@ -44,6 +44,7 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "wcontrol/Foreman.h"
+#include "wsched/BlendScheduler.h"
 #include "wsched/ChunkDisk.h"
 
 namespace {
@@ -54,12 +55,14 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-
-ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve,
-                             memman::MemMan::Ptr const& memMan)
-    : SchedulerBase{name, maxThreads, maxReserve}, _memMan{memMan} {
+ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
+                             memman::MemMan::Ptr const& memMan, int minRating, int maxRating)
+    : SchedulerBase{name, maxThreads, maxReserve, priority},
+      _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
     _disk = std::make_shared<ChunkDisk>(_memMan);
+    assert(_minRating <= _maxRating);
 }
+
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
@@ -89,7 +92,11 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         _memMan->unlock(t->getMemHandle());
     }
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
-    // Whenever a Task finishes, threads need to check if resources are available to run new Tasks.
+    if (_disk->nextTaskDifferentChunkId()) {
+        applyPriority();
+    }
+    // Whenever a Task finishes, all sleeping threads need to check if resources
+    // are available to run new Tasks.
     _cv.notify_all();
 }
 
@@ -135,6 +142,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     ++_inFlight; // in flight as soon as it is off the queue.
     return task;
 }
+
 
 void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);

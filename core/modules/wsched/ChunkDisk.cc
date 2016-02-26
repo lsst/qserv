@@ -119,6 +119,17 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
     }
 }
 
+
+/// @return true if the next Task has a different cunkId than the current Task.
+/// The purpose here is that the best time to change priority or switch to doing
+/// something else is when all the Tasks for the current chunkId have finished.
+bool ChunkDisk::nextTaskDifferentChunkId() {
+    auto const& topTask = _activeTasks.top();
+    if (topTask == nullptr) return true; // going to switch to pending, new chunkId
+    return topTask->getChunkId() != _lastChunk;
+}
+
+
 /// Return true if this disk is ready to provide a Task from its queue.
 bool ChunkDisk::ready(bool useFlexibleLock) {
     std::lock_guard<std::mutex> lock(_queueMutex);

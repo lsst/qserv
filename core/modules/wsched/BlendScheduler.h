@@ -78,13 +78,14 @@ class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
+    // This scheduler will have difficulty with less than 10 threads.
+    static int getMinPoolSize(){ return 10; }
+
     BlendScheduler(std::string const& name,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
-                   std::shared_ptr<ScanScheduler> const& scanFast,
-                   std::shared_ptr<ScanScheduler> const& scanMedium,
-                   std::shared_ptr<ScanScheduler> const& scanSlow);
-    virtual ~BlendScheduler() {}
+                   std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers);
+    virtual ~BlendScheduler();
 
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
@@ -98,25 +99,26 @@ public:
     bool ready() override;
     int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
+    void setFlagReorderScans() { _flagReorderScans = true; }
     wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
     int calcAvailableTheads();
 
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
+    void _sortScanSchedulers();
 
     int _schedMaxThreads; //< maximum number of threads that can run.
 
     // Sub-schedulers.
     std::shared_ptr<GroupScheduler> _group;
     std::shared_ptr<ScanScheduler> _scanFast;
-    std::shared_ptr<ScanScheduler> _scanMedium;
-    std::shared_ptr<ScanScheduler> _scanSlow;
-    // List of schedulers in order of priority.
-    std::vector<SchedulerBase*> _schedulers;
+    std::vector<SchedulerBase::Ptr> _schedulers;
     bool _lastCmdFromScan{false};
     std::map<wbase::Task*, SchedulerBase*> _map;
     std::mutex _mapMutex;
+
+    std::atomic<bool> _flagReorderScans{false};
 };
 
 }}} // namespace lsst::qserv::wsched

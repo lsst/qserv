@@ -32,13 +32,12 @@ namespace css {
 
 /// A container for shared scan-table metadata.
 struct ScanTableParams {
-    ScanTableParams() :
-        lockInMem(false), scanSpeed(0) {}
-    ScanTableParams(bool lockInMem_, int scanSpeed_) :
-        lockInMem(lockInMem_), scanSpeed(scanSpeed_) {}
+    ScanTableParams() {}
+    ScanTableParams(bool lockInMem_, int scanRating_) :
+        lockInMem(lockInMem_), scanRating(scanRating_) {}
 
-    bool lockInMem;          ///< True if table should be locked in memory for shared scan
-    int scanSpeed;           ///< Speed of shared scan. 1-fast, 2-medium, 3-slow
+    bool lockInMem{false};  ///< True if table should be locked in memory for shared scan
+    int scanRating{0};      ///< Speed of shared scan. 1-fast, 2-medium, 3-slow
 };
 
 }}} // namespace lsst::qserv::css

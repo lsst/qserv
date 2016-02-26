@@ -137,8 +137,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     return cmd;
 }
 
-GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize)
-  : SchedulerBase(name, maxThreads, maxReserve), _maxGroupSize(maxGroupSize){
+GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize, int priority)
+  : SchedulerBase(name, maxThreads, maxReserve, priority), _maxGroupSize(maxGroupSize){
 }
 
 bool GroupScheduler::empty() {
