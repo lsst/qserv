@@ -68,21 +68,23 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
-/// @param scanScheduler - schedulers must be listed in ascending priority.
+
 BlendScheduler::BlendScheduler(std::string const& name,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
                                std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers)
     : SchedulerBase{name, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanFast{scanSchedulers[0]} {
+      _group{group}, _scanFast{scanSchedulers.at(0)} {
     dbgBlendScheduler = this;
-
-    // Schedulers must be listed highest priority first.
+    // If these are not defined, there is no point in continuing.
+    assert(_group);
+    assert(_scanFast);
     _schedulers.push_back(_group); // _group scheduler must be first in the list.
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
         sched->setBlendScheduler(this);
     }
+    assert(_schedulers.size() >= 2); // Must have at least _group and _scanFast in the list.
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
@@ -105,12 +107,16 @@ BlendScheduler::~BlendScheduler() {
 void BlendScheduler::_sortScanSchedulers() {
     auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
         // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getPriority() * a->getSize();
-        auto bVal = b->getPriority() * b->getSize();
+        auto aVal = a->getPriority() * (1 + a->getSize());
+        auto bVal = b->getPriority() * (1 + b->getSize());
         return aVal > bVal;
     };
-    // The first scheduler should always be the GroupScheduler (for interactive queries).
-    std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
+    // The first scheduler should always be _group (for interactive queries).
+    if (_schedulers.size() >= 2) {
+        std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "not enough schedulers, _schedulers.size=" << _schedulers.size());
+    }
 }
 
 
@@ -123,8 +129,6 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
 
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
-    assert(_group);
-    assert(_scanFast);
     SchedulerBase* s = nullptr;
     auto const& scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {

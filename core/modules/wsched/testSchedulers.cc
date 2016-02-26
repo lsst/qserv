@@ -400,12 +400,12 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int priority = 1;
     auto group = std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++);
-    auto scanFast = std::make_shared<wsched::ScanScheduler>(
-        "ScanFast", maxThreads, 3, priority++, memMan, fastest, fast);
-    auto scanMed  = std::make_shared<wsched::ScanScheduler>(
-        "ScanMed",  maxThreads, 2, priority++, memMan, fast+1, medium);
     auto scanSlow = std::make_shared<wsched::ScanScheduler>(
         "ScanSlow", maxThreads, 2, priority++, memMan, medium+1, slow);
+    auto scanMed  = std::make_shared<wsched::ScanScheduler>(
+        "ScanMed",  maxThreads, 2, priority++, memMan, fast+1, medium);
+    auto scanFast = std::make_shared<wsched::ScanScheduler>(
+        "ScanFast", maxThreads, 3, priority++, memMan, fastest, fast);
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed, scanSlow};
     wsched::BlendScheduler::Ptr blend =
         std::make_shared<wsched::BlendScheduler>("blendSched", maxThreads, group, scanSchedulers);
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(og1.get() == g1.get());
     BOOST_CHECK(blend->calcAvailableTheads() == 4);
     auto osF1 = blend->getCmd(false);
-    BOOST_CHECK(osF1.get() == sF1.get()); // sF1 has lower chunId than sF2
+    BOOST_CHECK(osF1.get() == sF1.get()); // sF1 has lower chunkId than sF2
     BOOST_CHECK(blend->calcAvailableTheads() == 3);
     auto osF2 = blend->getCmd(false);
     BOOST_CHECK(osF2.get() == sF2.get());
@@ -662,5 +662,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->getInFlight() == 0);
     BOOST_CHECK(blend->ready() == false);
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

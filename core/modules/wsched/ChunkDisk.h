@@ -70,8 +70,7 @@ public:
     class MinHeap {
     public:
         // Using a greater than comparison function results in a minimum value heap.
-        std::function<bool(wbase::Task::Ptr const&, wbase::Task::Ptr const&)> compareFunc =
-            [](wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) -> bool {
+        static bool compareFunc(wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) {
                 if(!x || !y) { return false; }
                 if (x->getChunkId() > y->getChunkId()) return true;
                 if (x->getChunkId() < y->getChunkId()) return false;

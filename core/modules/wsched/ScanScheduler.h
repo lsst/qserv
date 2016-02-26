@@ -85,8 +85,8 @@ private:
     memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
 
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
-    int _minRating;
-    int _maxRating;
+    const int _minRating;
+    const int _maxRating;
 
 };
 

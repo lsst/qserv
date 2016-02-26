@@ -28,6 +28,9 @@
 #include <algorithm>
 #include <ostream>
 
+// Qserv headers
+#include "util/IterableFormatter.h"
+
 namespace lsst {
 namespace qserv {
 namespace proto {
@@ -97,17 +100,8 @@ std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl) {
 
 
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
-    os << "ScanInfo{speed=" << info.scanRating << " tables: ";
-    bool first = true;
-    for (auto const& table: info.infoTables) {
-        if (!first) {
-            os << ", ";
-        } else {
-            first = false;
-        }
-        os << table;
-    }
-    os << "}";
+    os << "ScanInfo{speed=" << info.scanRating << " tables: "
+       << util::printable(info.infoTables) << "}";
     return os;
 }
 
