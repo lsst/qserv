@@ -37,11 +37,13 @@ docker push jdoe/qserv:dm-1234
 ## Cleanup
 ##
 
-# Clean old local containers
-docker ps -a | grep 'hours ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
+# Clean exited containers and unused images
+dcleanup()
+{     
+	docker rm -v $(docker ps --filter status=exited -q 2>/dev/null) 2>/dev/null
+    docker rmi $(docker images --filter dangling=true -q 2>/dev/null) 2>/dev/null
+}
 
-# Clean old local images
-docker images | grep 'hours ago' | awk '{print $3}' | xargs --no-run-if-empty docker rmi
 
 ##
 ## Develop

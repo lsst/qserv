@@ -37,11 +37,14 @@ Create Qserv cutting-edge dependencies image, named qserv:dev:
 
 Create Qserv image for a given git tag/branch:
 
+In order to push produced Docker images to Docker Hub, prefix
+``<docker-image-name>`` with ``qserv/qserv:`` in instructions below.
+
 .. code-block:: bash
 
    # Code need to be pushed on github
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   3_build-tagged-image.sh <git-tag/branch>
+   3_build-git-image.sh -B <git-tag/branch> -T <docker-image-name>
    # Current Qserv version will have eups tag named qserv-dev
 
 Create Qserv master and worker images from a given Qserv version:

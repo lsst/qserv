@@ -13,11 +13,9 @@ MASTER=master."$DNS_DOMAIN"
 
 for i in $(seq 1 "$NB_WORKERS");
 do
-    WORKERS="$WORKERS worker${i}.$DNS_DOMAIN"
+    WORKERS="${WORKERS} worker${i}.${DNS_DOMAIN}"
 done
 
 # Set images names
-MASTER_IMAGE="${VERSION}_master_$MASTER"
-WORKER_IMAGE="${VERSION}_worker_$MASTER"
-
-
+MASTER_IMAGE="${VERSION}_master_${MASTER}"
+WORKER_IMAGE="${VERSION}_worker_${MASTER}"

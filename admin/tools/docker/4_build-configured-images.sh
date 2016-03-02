@@ -26,34 +26,32 @@
 
 set -e
 
-DEFAULT_DOCKER_IMAGE="qserv/qserv:dev"
+DOCKER_IMAGE="qserv/qserv:dev"
 PUSH_TO_HUB="true"
 
 usage() {
-  cat << EOD
+    cat << EOD
+Usage: $(basename "$0") [options] host
 
-  Usage: $(basename "$0") [options] host
+Available options:
+  -h          this message
+  -i image    Docker image to be used as input, default to $DOCKER_IMAGE
+  -L			Do not push image to Docker Hub
 
-  Available options:
-    -h          this message
-    -i image    Docker image to be used as input, default to $DEFAULT_DOCKER_IMAGE
-    -L			Do not push image to Docker Hub
-
-  Create docker images containing Qserv master and worker instances,
-  use an existing Qserv Docker image as input.
-  Qserv master fqdn or ip adress must be provided as unique argument.
+Create docker images containing Qserv master and worker instances,
+use an existing Qserv Docker image as input.
+Qserv master fqdn or ip adress must be provided as unique argument.
 
 EOD
 }
 
 # Get the options
-DOCKER_IMAGE="$DEFAULT_DOCKER_IMAGE"
 while getopts hi:L c ; do
     case $c in
-            h) usage ; exit 0 ;;
-            i) DOCKER_IMAGE="$OPTARG" ;;
-			L) PUSH_TO_HUB="false" ;;
-            \?) usage ; exit 2 ;;
+        h) usage ; exit 0 ;;
+        i) DOCKER_IMAGE="$OPTARG" ;;
+        L) PUSH_TO_HUB="false" ;;
+        \?) usage ; exit 2 ;;
     esac
 done
 shift "$((OPTIND-1))"
@@ -82,9 +80,9 @@ printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
 printf "Image %s built successfully\n" "$TAG"
 
-if [ "$PUSH_TO_HUB" = "true" ] ; then 
+if [ "$PUSH_TO_HUB" = "true" ]; then
     docker push "$TAG"
-	printf "Image %s pushed successfully\n" "$TAG"
+    printf "Image %s pushed successfully\n" "$TAG"
 fi
 
 
@@ -101,7 +99,7 @@ printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
 printf "Image %s built successfully\n" "$TAG"
 
-if [ "$PUSH_TO_HUB" = "true" ] ; then 
+if [ "$PUSH_TO_HUB" = "true" ]; then
     docker push "$TAG"
-	printf "Image %s pushed successfully\n" "$TAG"
+    printf "Image %s pushed successfully\n" "$TAG"
 fi
