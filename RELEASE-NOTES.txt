@@ -1,3 +1,34 @@
+R E L E A S E   2016_02
+=======================
+
+Release highlights:
+  * Removed all remaining dependencies on mysql/mysqlclient
+  * Memory-managed shared scans
+  * User-friendly thread IDs in logging
+
+New features:
+  * DM-4943: Switch to MemManReal memory manager in worker scheduler
+  * DM-4756: Support human-friendly thread ID in logging messages
+  * DM-4697: Implement worker scheduler for shared scans
+  * DM-4648: Support connection to qserv from sqlalchemy client
+
+Code improvements:
+  * DM-5204: Removed all remaining LOGF macro usage from qserv
+  * DM-5202: Removed deprecated LOGF macros entirely from log package
+  * DM-4938: Update to scisql 0.3.5
+  * DM-4786: Update mysqlproxy to 0.8.5
+  * DM-4440: Remove unused code in worker and configuration templates
+  * DM-3949: Remove mysqldb dependency in wmgr
+  * DM-2900: Add integration tests to excercise non-box spatial constraints
+
+Docker:
+  * DM-3985: Support multinode integration test on single host
+
+Bug fixes:
+  * DM-5125: Fix qserv failure when mixing mariadb/mariadbclient directories
+  * DM-5122: Explicitly enable LOAD DATA LOCAL for mariadb
+  * DM-5026: Remove stale mysqlclient dependeny from eups sqlalchemy package
+
 R E L E A S E   2016_01
 =======================
 
