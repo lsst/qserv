@@ -60,7 +60,8 @@ message TaskMsg {
         required int32 scanRating = 4;
     }
     repeated ScanTable scantable = 9;
-    
+    required uint64 queryid = 10;
+    required int32 jobid = 11;
 }
 
 // Result message received from worker

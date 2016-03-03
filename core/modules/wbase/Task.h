@@ -76,17 +76,24 @@ public:
     virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
 };
 
-/// Used to find tasks that are in process for debugging with Task::tSeq.
+/// Used to find tasks that are in process for debugging with Task::_idStr.
 /// This is largely meant to track down incomplete tasks in a possible intermittent
 /// failure and should probably be removed when it is no longer needed.
 /// It depends on code in BlendScheduler to work. If the decision is made to keep it
 /// forever, dependency on BlendScheduler needs to be re-worked.
 struct IdSet {
-    void add(int id) { std::lock_guard<std::mutex> lock(mx); _ids.insert(id); }
-    void remove(int id) { std::lock_guard<std::mutex> lock(mx); _ids.erase(id); }
+    void add(std::string const& id) {
+        std::lock_guard<std::mutex> lock(mx);
+        _ids.insert(id);
+    }
+    void remove(std::string const& id) {
+        std::lock_guard<std::mutex> lock(mx);
+        _ids.erase(id);
+    }
+    std::atomic<int> maxDisp{5}; //< maximum number of entries to show with operator<<
     friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
 private:
-    std::set<int> _ids;
+    std::set<std::string> _ids;
     std::mutex mx;
 };
 
@@ -109,7 +116,6 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    Task();
     explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -138,11 +144,14 @@ public:
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
     void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
 
-    static util::Sequential<int> sequence; // for debugging only
-    static IdSet allTSeq; // set of all task sequence numbers that are not complete.
-    int tSeq{-1}; // for debugging only
+    static IdSet allIds; // set of all task jobId numbers that are not complete.
+    std::string getIdStr() {return _idStr;}
 
 private:
+    uint64_t const    _qId{0}; //< queryId from czar
+    int      const    _jId{0}; //< jobId from czar
+    std::string const _idStr{"QId(0_0)"}; // < for logging only
+
     std::atomic<bool> _cancelled{false};
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;

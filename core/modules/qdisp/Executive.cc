@@ -85,15 +85,15 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-std::atomic<int> Executive::_seq{0};
+std::atomic<uint64_t> Executive::_seq{0};
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     : _config{*c}, _messageStore{ms} {
-    int id = _seq++;
-    _id = "E" + std::to_string(id);
+    _id = _seq++; // &&& set from css
+    _idStr = "QId" + std::to_string(_id);
     _setup();
 }
 
@@ -115,6 +115,7 @@ void Executive::add(JobDescription const& jobDesc) {
     JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
     MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
     JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
+
     if (!_addJobToMap(jobQuery)) {
         LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
         return;
@@ -125,7 +126,7 @@ void Executive::add(JobDescription const& jobDesc) {
         return;
     }
     if (_empty.exchange(false)) {
-        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by jobId=" << jobQuery->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by QId" << jobQuery->getIdStr());
     }
     ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
@@ -210,7 +211,7 @@ void Executive::markCompleted(int jobId, bool success) {
                 throw Bug(msg);
             }
         }
-        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing jobId=" << jobId
+        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing QId" << jobId
              << ": " << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
@@ -225,7 +226,7 @@ void Executive::markCompleted(int jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: jobId="
+        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: QId"
              << jobId << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
     }
@@ -306,7 +307,7 @@ void Executive::_setup() {
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
-    LOGS(_log, LOG_LVL_DEBUG, "Attempt to TRACK jobId="
+    LOGS(_log, LOG_LVL_DEBUG, "Attempt to TRACK QId"
          << _id << "_" << jobId << " to Executive ("<< this <<") tracked jobs");
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
@@ -316,7 +317,7 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
         _incompleteJobs[jobId] = r;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING jobId="
+    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING QId"
          << _id << "_" << jobId << " to Executive ("<< this <<") tracked jobs");
     return true;
 }
@@ -342,7 +343,7 @@ void Executive::_unTrack(int jobId) {
         }
     }
     std::ostringstream os;
-    os << "Executive (" << this << ") UNTRACKING jobId=" << _id << "_" << jobId << " size=" << size << " " << (untracked ? "success":"failed");
+    os << "Executive (" << this << ") UNTRACKING QId" << _id << "_" << jobId << " size=" << size << " " << (untracked ? "success":"failed");
     os << "::" << s.str();
     if (untracked) {
         LOGS(_log, LOG_LVL_DEBUG, os.str());
@@ -359,7 +360,7 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
         if (!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
             LOGS(_log, LOG_LVL_DEBUG, "Executive (" << (void*) this
-                 << ") reaped requester for jobId=" << iter->first);
+                 << ") reaped requester for QId" << iter->first);
             iter = _incompleteJobs.erase(iter);
         } else {
             ++iter;

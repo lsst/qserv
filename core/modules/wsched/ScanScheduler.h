@@ -24,6 +24,7 @@
 #define LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
 // System headers
+#include<atomic>
 #include <mutex>
 
 // Qserv headers
@@ -88,6 +89,7 @@ private:
     const int _minRating;
     const int _maxRating;
 
+    std::atomic<bool> _infoChanged{true}; //< "Used to limit the amount of debug logging.
 };
 
 }}} // namespace lsst::qserv::wsched

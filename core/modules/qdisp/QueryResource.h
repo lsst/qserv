@@ -74,7 +74,7 @@ public:
 private:
     XrdSsiSession* _xrdSsiSession {nullptr}; ///< unowned, do not delete.
     std::shared_ptr<JobQuery> _jobQuery;
-    std::string const _jobId; ///< for debugging only TODO delete in DM-3946
+    std::string const _jobIdStr; ///< for debugging only
 };
 
 }}} // namespace lsst::qserv::qdisp

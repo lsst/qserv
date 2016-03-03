@@ -116,7 +116,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
-    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd tSeq=" << t->tSeq);
+    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd " << t->getIdStr());
     util::CommandQueue::_cv.notify_all();
 }
 

@@ -71,7 +71,7 @@ public:
                  qdisp::JobDescription const& jobDescription,
                  qdisp::JobStatus::Ptr jobStatus,
                  qdisp::MarkCompleteFunc::Ptr markCompleteFunc)
-        : qdisp::JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, "ExecTest"} {}
+        : qdisp::JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, 12345} {}
 
     virtual ~JobQueryTest() {}
     virtual bool runJob() override {

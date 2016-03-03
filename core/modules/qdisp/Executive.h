@@ -52,6 +52,8 @@ class JobQuery;
 class MessageStore;
 class QueryResource;
 
+using QId = uint64_t;
+
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.
 class Executive {
@@ -91,7 +93,8 @@ public:
 
     bool getEmpty() { return _empty; }
 
-    std::string& getId() { return _id; }
+    QId getId() { return _id; }
+    std::string& getIdStr() { return _idStr; }
 
     std::shared_ptr<JobQuery> getJobQuery(int id);
 
@@ -150,8 +153,9 @@ private:
     mutable std::recursive_mutex _jobsMutex;
 
     // Give this executive a reasonable identifier, to be replaced by a unique id.
-    std::string _id;
-    static std::atomic<int> _seq;
+    QId _id;
+    std::string _idStr;
+    static std::atomic<uint64_t> _seq;
 };
 
 class MarkCompleteFunc {
