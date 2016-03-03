@@ -39,6 +39,7 @@
 #include "rproc/InfileMerger.h"
 
 // System headers
+#include <chrono> // &&& delete maybe
 #include <cstddef>
 #include <iostream>
 #include <sstream>
@@ -215,15 +216,25 @@ InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& merg
  */
 void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
     std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
-    _workQueue.add(a);
+    //_workQueue.add(a);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& InfileMerger::Mgr::queMerge");
+    a->operator()(); // Do not return until the write completes.
 }
 
 /** Load data from the 'response' into the 'table'. Return true if successful.
  */
 bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
+    auto start = std::chrono::system_clock::now(); // &&& delete, probably
     std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+    auto protoFileEnd = std::chrono::system_clock::now(); // &&& delete, probably
+    auto protoFileDur = std::chrono::duration_cast<std::chrono::seconds>(protoFileEnd - start); // &&& delete, probably
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
-    return applyMysql(infileStatement);
+    auto ret = applyMysql(infileStatement);
+    auto sqlEnd = std::chrono::system_clock::now();
+    auto sqlDur = std::chrono::duration_cast<std::chrono::seconds>(sqlEnd - protoFileEnd); // &&& delete, probably
+    LOGS(_log, LOG_LVL_DEBUG, "&&& proto response took=" << protoFileDur.count()
+         << " sql took=" << sqlDur.count());
+    return ret;
 }
 
 bool InfileMerger::Mgr::applyMysql(std::string const& query) {
@@ -297,8 +308,9 @@ bool InfileMerger::finalize() {
     if (_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
+        // Using MyISAM as single thread writing with no need to recover from errors.
         std::string createMerge = "CREATE TABLE " + _config.targetTable
-            + " " + mergeSelect;
+            + " ENGINE=MyISAM " + mergeSelect;
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge);
 
@@ -425,6 +437,8 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             s.columns.push_back(scs);
         }
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
+        // USing InnoDB for row locking as several threads will be writing at once.
+        createStmt += " ENGINE=InnoDB";
         LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query prepared: " << createStmt);
 
         if (not _applySqlLocal(createStmt)) {
