@@ -44,9 +44,3 @@ QSERV_RUN_DIR="$INSTALL_BASE/run"
 
 # Local directory which will contains Qserv data
 QSERV_DATA_DIR="$INSTALL_BASE/data"
-
-# Tag related to Qserv version built from sources,
-# add it to ~/.eups/startup.py
-SETUP_OPT_GIT='-t git'
-
-SETUP_OPT_DEV='-t qserv-dev'
