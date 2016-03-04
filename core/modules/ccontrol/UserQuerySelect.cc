@@ -142,13 +142,11 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  qmeta::CzarId czarId,
-                                 uint64_t userQueryId,
                                  std::string const& errorExtra)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _submitted(false), _userQueryId(userQueryId), _sequence(0),
-       _errorExtra(errorExtra) {
+       _killed(false), _submitted(false), _sequence(0), _errorExtra(errorExtra) {
 }
 
 std::string UserQuerySelect::getError() const {
@@ -190,15 +188,21 @@ UserQuerySelect::getProxyOrderBy() {
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
     _qSession->finalize();
-    _setupMerger();
 
     // register query in qmeta, this may throw
     _qMetaRegister();
 
+    _resultTable = "result_";
+    _resultTable += std::to_string(_qMetaQueryId);
+
+    // has to be done after result table name
+
+    _setupMerger();
+
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    qproc::TaskMsgFactory f(_userQueryId);
-    TmpTableName ttn(_userQueryId, _qSession->getOriginal());
+    qproc::TaskMsgFactory f(_qMetaQueryId);
+    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
@@ -289,12 +293,13 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect(" << _userQueryId << ")");
+    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect(" << _qMetaQueryId << ")");
 }
 
 /// Setup merger (for results handling and aggregation)
 void UserQuerySelect::_setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
+    _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }

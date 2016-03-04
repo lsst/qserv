@@ -413,16 +413,23 @@ function queryProcessing()
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
-        local q2 = "SELECT * FROM " .. self.resultTableName .. " " .. self.orderByClause
+        -- if no result table then do something that returns empty result set
+        local q2 = "SELECT NULL FROM DUAL LIMIT 0"
+        if self.resultTableName ~= "" then
+            q2 = "SELECT * FROM " .. self.resultTableName .. " " .. self.orderByClause
+        end
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
+
         local q3 = "DROP TABLE " .. self.msgTableName
         proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
                              {resultset_is_needed = true})
 
-        local q4 = "DROP TABLE " .. self.resultTableName
-        proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
-                             {resultset_is_needed = true})
+        if self.resultTableName ~= "" then
+            local q4 = "DROP TABLE " .. self.resultTableName
+            proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
+                                 {resultset_is_needed = true})
+        end
 
         return SUCCESS
     end

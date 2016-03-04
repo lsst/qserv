@@ -46,11 +46,9 @@ namespace ccontrol {
 // Constructor
 UserQueryFlushChunksCache::UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
                                                      std::string const& dbName,
-                                                     sql::SqlConnection* resultDbConn,
-                                                     std::string const& resultTable)
+                                                     sql::SqlConnection* resultDbConn)
     : _css(css), _dbName(dbName), _resultDbConn(resultDbConn),
-      _resultTable(resultTable),  _qState(UNKNOWN),
-      _messageStore(std::make_shared<qdisp::MessageStore>()) {
+      _qState(UNKNOWN), _messageStore(std::make_shared<qdisp::MessageStore>()) {
 }
 
 std::string UserQueryFlushChunksCache::getError() const {
@@ -65,19 +63,6 @@ void UserQueryFlushChunksCache::kill() {
 void UserQueryFlushChunksCache::submit() {
 
     LOGS(_log, LOG_LVL_INFO, "Flushing empty chunks for db: " << _dbName);
-
-    // create result table first, exact schema does not matter but mysql
-    // needs at least one column in table DDL
-    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << _resultTable);
-    std::string sql = "CREATE TABLE " + _resultTable + " (CODE INT)";
-    sql::SqlErrorObject sqlErr;
-    if (not _resultDbConn->runQuery(sql, sqlErr)) {
-        // There is no way to return success if we cannot create result table so just stop here
-        std::string message = "Failed to create result table: " + sqlErr.errMsg();
-        _messageStore->addMessage(-1, 1005, message, MessageSeverity::MSG_ERROR);
-        _qState = ERROR;
-        return;
-    }
 
     // reset empty chunk cache , this does not throw
     _css->getEmptyChunks().clearCache(_dbName);

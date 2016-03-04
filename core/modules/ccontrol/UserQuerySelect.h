@@ -82,7 +82,6 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
-                    uint64_t userQueryId,
                     std::string const& errorExtra);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
@@ -110,6 +109,9 @@ public:
     // Delegate objects
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
+
+    /// @return Name of the result table for this query, can be empty
+    virtual std::string getResultTableName() override { return _resultTable; }
 
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() override;
@@ -140,9 +142,9 @@ private:
     bool _killed;
     bool _submitted;                ///< True after submit() is completed
     std::mutex _killMutex;
-    uint64_t _userQueryId;          ///< Unique query identifier
     int _sequence;                  ///< Sequence number for subtask ids
     std::string _errorExtra;        ///< Additional error information
+    std::string _resultTable;       ///< Result table name
 };
 
 }}} // namespace lsst::qserv:ccontrol

@@ -53,13 +53,12 @@ UserQueryDrop::UserQueryDrop(std::shared_ptr<css::CssAccess> const& css,
                              std::string const& dbName,
                              std::string const& tableName,
                              sql::SqlConnection* resultDbConn,
-                             std::string const& resultTable,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                              qmeta::CzarId qMetaCzarId)
     : _css(css), _dbName(dbName), _tableName(tableName),
-      _resultDbConn(resultDbConn), _resultTable(resultTable),
-      _queryMetadata(queryMetadata), _qMetaCzarId(qMetaCzarId),
-      _qState(UNKNOWN), _messageStore(std::make_shared<qdisp::MessageStore>()),
+      _resultDbConn(resultDbConn), _queryMetadata(queryMetadata),
+      _qMetaCzarId(qMetaCzarId), _qState(UNKNOWN),
+      _messageStore(std::make_shared<qdisp::MessageStore>()),
       _sessionId(0) {
 }
 
@@ -77,19 +76,6 @@ void UserQueryDrop::submit() {
     // will take care of the actual delete process
 
     LOGS(_log, LOG_LVL_INFO, "About to drop: " << _dbName <<  "." << _tableName);
-
-    // create result table first, exact schema does not matter but mysql
-    // needs at least one column in table DDL
-    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << _resultTable);
-    std::string sql = "CREATE TABLE " + _resultTable + " (CODE INT)";
-    sql::SqlErrorObject sqlErr;
-    if (not _resultDbConn->runQuery(sql, sqlErr)) {
-        // There is no way to return success if we cannot create result table so just stop here
-        std::string message = "Failed to create result table: " + sqlErr.errMsg();
-        _messageStore->addMessage(-1, 1005, message, MessageSeverity::MSG_ERROR);
-        _qState = ERROR;
-        return;
-    }
 
     // check current status of table or db, if not READY then fail
     if (not _checkStatus()) {

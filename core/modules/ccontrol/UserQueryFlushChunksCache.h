@@ -59,12 +59,10 @@ public:
      *  @param css:           CSS interface
      *  @param dbName:        Name of the database where table is
      *  @param resultDbConn:  Connection to results database
-     *  @param resultTable:   Name of the table for query results
      */
     UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
                               std::string const& dbName,
-                              sql::SqlConnection* resultDbConn,
-                              std::string const& resultTable);
+                              sql::SqlConnection* resultDbConn);
 
     UserQueryFlushChunksCache(UserQueryFlushChunksCache const&) = delete;
     UserQueryFlushChunksCache& operator=(UserQueryFlushChunksCache const&) = delete;
@@ -92,6 +90,9 @@ public:
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
 
+    /// @return Name of the result table for this query, can be empty
+    virtual std::string getResultTableName() override { return std::string(); }
+
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() override { return std::string(); }
 
@@ -102,7 +103,6 @@ private:
     std::shared_ptr<css::CssAccess> const _css;
     std::string const _dbName;
     sql::SqlConnection* _resultDbConn;
-    std::string const _resultTable;
     QueryState _qState;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
 

@@ -195,10 +195,6 @@ void QuerySession::setDummy() {
     _chunks.push_back(ChunkSpec(DUMMY_CHUNK, v));
 }
 
-void QuerySession::setResultTable(std::string const& resultTable) {
-    _resultTable = resultTable;
-}
-
 std::string const& QuerySession::getDominantDb() const {
     return _context->dominantDb; // parsed query's dominant db (via TablePlugin)
 }
