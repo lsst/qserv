@@ -60,10 +60,8 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-. /qserv/scripts/params.sh
-
-. $INSTALL_DIR/loadLSST.bash
+. /qserv/stack/loadLSST.bash
 
 echo "Setup Qserv from source version"
-eups declare $SETUP_OPT_GIT -r "$SRC_DIR"
+eups declare -t git -r "$SRC_DIR"
 

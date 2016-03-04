@@ -7,10 +7,10 @@ hooks.config.Eups.userTags += ["git"]
 def cmdHook(Eups, cmd, opts, args):
    if Eups and cmd == "setup":
        if not opts.tag:
-           opts.tag = ["git", "qserv_latest"]
+           opts.tag = ["git", "qserv-dev"]
 
            if opts.verbose >= 0:
-               import utils
+               from . import utils
                msg = "Using default tags: {0} to setup {1}" \
                    .format(", ".join(opts.tag), ", ".join(args))
                print(msg, file=utils.stdinfo)
