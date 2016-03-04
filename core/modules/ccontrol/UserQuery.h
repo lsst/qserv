@@ -79,6 +79,9 @@ public:
     // Delegate objects
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() = 0;
 
+    /// @return Name of the result table for this query, can be empty
+    virtual std::string getResultTableName() = 0;
+
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() = 0;
 

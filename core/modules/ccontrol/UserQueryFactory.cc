@@ -92,9 +92,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
 
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& query,
-                               std::string const& defaultDb,
-                               std::string const& resultTable,
-                               uint64_t userQueryId) {
+                               std::string const& defaultDb) {
     std::string dbName, tableName;
 
     if (UserQueryType::isSelect(query)) {
@@ -103,7 +101,6 @@ UserQueryFactory::newUserQuery(std::string const& query,
         std::string errorExtra;
         qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css);
         try {
-            qs->setResultTable(resultTable);
             qs->setDefaultDb(defaultDb);
             qs->analyzeQuery(query);
         } catch (...) {
@@ -122,11 +119,10 @@ UserQueryFactory::newUserQuery(std::string const& query,
         if (sessionValid) {
             executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
-            infileMergerConfig->targetTable = resultTable;
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->qMetaCzarId, userQueryId, errorExtra);
+                                                    _impl->qMetaCzarId, errorExtra);
         if (sessionValid) {
             uq->setupChunking();
         }
@@ -137,20 +133,20 @@ UserQueryFactory::newUserQuery(std::string const& query,
             dbName = defaultDb;
         }
         auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, tableName,
-                                                  _impl->resultDbConn.get(), resultTable,
+                                                  _impl->resultDbConn.get(),
                                                   _impl->queryMetadata, _impl->qMetaCzarId);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: " << dbName << "." << tableName);
         return uq;
     } else if (UserQueryType::isDropDb(query, dbName)) {
         // processing DROP DATABASE
         auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, std::string(),
-                                                  _impl->resultDbConn.get(), resultTable,
+                                                  _impl->resultDbConn.get(),
                                                   _impl->queryMetadata, _impl->qMetaCzarId);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=" << dbName);
         return uq;
     } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
         auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->css, dbName,
-                                                              _impl->resultDbConn.get(), resultTable);
+                                                              _impl->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: " << dbName);
         return uq;
     } else {

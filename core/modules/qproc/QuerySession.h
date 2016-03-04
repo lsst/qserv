@@ -100,12 +100,6 @@ public:
 
     query::SelectStmtPtrVector const& getStmtParallel() const { return _stmtParallel; }
 
-    // Resulttable concept will be obsolete after we implement query result
-    // marshalling/transfer (at which point, table dump and restore will also be
-    // obsolete).
-    void setResultTable(std::string const& resultTable);
-    std::string const& getResultTable() const { return _resultTable; }
-
     /** @brief Return the ORDER BY clause to run on mysql-proxy at result retrieval.
      *
      *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.

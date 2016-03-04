@@ -62,7 +62,6 @@ public:
      *  @param tableName:     Name of the table to drop, if empty then drop
      *                        entire database
      *  @param resultDbConn:  Connection to results database
-     *  @param resultTable:   Name of the table for query results
      *  @param queryMetadata: QMeta interface
      *  @param qMetaCzarId:   Czar ID in QMeta database
      */
@@ -70,7 +69,6 @@ public:
                   std::string const& dbName,
                   std::string const& tableName,
                   sql::SqlConnection* resultDbConn,
-                  std::string const& resultTable,
                   std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                   qmeta::CzarId qMetaCzarId);
 
@@ -100,6 +98,9 @@ public:
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
         return _messageStore; }
 
+    /// @return Name of the result table for this query, can be empty
+    virtual std::string getResultTableName() override { return std::string(); }
+
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() override { return std::string(); }
 
@@ -112,7 +113,6 @@ private:
     std::string const _dbName;
     std::string const _tableName;
     sql::SqlConnection* _resultDbConn;
-    std::string const _resultTable;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     qmeta::CzarId const _qMetaCzarId;   ///< Czar ID in QMeta database
     QueryState _qState;

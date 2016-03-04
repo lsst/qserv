@@ -113,7 +113,6 @@ Czar::submitQuery(std::string const& query,
 
     // make table names
     auto userQueryIdStr = std::to_string(userQueryId);
-    std::string const resultName = _resultConfig.dbName + ".result_" + userQueryIdStr;
     std::string const lockName = _resultConfig.dbName + ".message_" + userQueryIdStr;
 
     SubmitResult result;
@@ -133,7 +132,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defDb, resultName, userQueryId);
+        uq = _uqFactory->newUserQuery(query, defDb);
     }
 
     // check for errors
@@ -186,7 +185,9 @@ Czar::submitQuery(std::string const& query,
     }
 
     // return all info to caller
-    result.resultTable = resultName;
+    if (not uq->getResultTableName().empty()) {
+        result.resultTable = _resultConfig.dbName + "." + uq->getResultTableName();
+    }
     result.messageTable = lockName;
     result.orderBy = uq->getProxyOrderBy();
     LOGS(_log, LOG_LVL_DEBUG, "returning result to proxy: resultTable="
