@@ -68,4 +68,5 @@ QMeta::createFromConfig(std::map<std::string, std::string> const& config) {
     }
 }
 
+
 }}} // namespace lsst::qserv::qmeta

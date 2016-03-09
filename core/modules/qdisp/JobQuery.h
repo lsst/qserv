@@ -52,7 +52,7 @@ public:
     /// Factory function to make certain a shared_ptr is used and _setup is called.
     static JobQuery::Ptr newJobQuery(Executive* executive, JobDescription const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-            QId qid) {
+            qmeta::QueryId qid) {
         Ptr jq{new JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, qid}};
         jq->_setup();
         return jq;
@@ -94,7 +94,7 @@ protected:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     JobQuery(Executive* executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-        QId qid);
+        qmeta::QueryId qid);
 
     void _setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());
@@ -114,7 +114,7 @@ protected:
     // JobStatus has its own mutex.
     JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
 
-    QId const _qid; // User query id
+    qmeta::QueryId const _qid; // User query id
     std::string const _idStr; ///< Identifier string for logging.
 
     // Values that need mutex protection

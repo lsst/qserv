@@ -270,6 +270,7 @@ protected:
 
 };
 
+
 }}} // namespace lsst::qserv::qmeta
 
 #endif // LSST_QSERV_QMETA_QMETA_H

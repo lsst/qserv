@@ -94,7 +94,7 @@ IdSet Task::allIds{};
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc},
       _qId{t->queryid()}, _jId{t->jobid()},
-      _idStr{"QId(" + std::to_string(_qId) + "_" + std::to_string(_jId) + ")"} {
+      _idStr{qmeta::QueryIdHelper::makeIdStr(_qId, _jId)} {
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {

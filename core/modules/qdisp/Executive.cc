@@ -85,15 +85,11 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-std::atomic<uint64_t> Executive::_seq{0};
-
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     : _config{*c}, _messageStore{ms} {
-    _id = _seq++; // &&& set from css
-    _idStr = "QId" + std::to_string(_id);
     _setup();
 }
 
@@ -101,6 +97,13 @@ Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
 }
+
+
+void Executive::setQueryId(qmeta::QueryId id) {
+    _id = id;
+    _idStr = qmeta::QueryIdHelper::makeIdStr(_id);
+}
+
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
@@ -126,7 +129,7 @@ void Executive::add(JobDescription const& jobDesc) {
         return;
     }
     if (_empty.exchange(false)) {
-        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by QId" << jobQuery->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
     }
     ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
@@ -195,7 +198,8 @@ bool Executive::join() {
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << _id << "_" << jobId
+    std::string idStr = qmeta::QueryIdHelper::makeIdStr(_id, jobId);
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr
             << " " << success);
     if (!success) {
         {
@@ -204,15 +208,13 @@ void Executive::markCompleted(int jobId, bool success) {
             if (iter != _incompleteJobs.end()) {
                 err = iter->second->getDescription().respHandler()->getError();
             } else {
-                std::string msg =
-                    (boost::format("Executive::markCompleted(%1%) "
-                                   "failed to find tracked id=%2% size=%3%")
-                     % (void*)this % jobId % _incompleteJobs.size()).str();
+                std::string msg = "Executive::markCompleted failed to find tracked " + idStr +
+                        " size=" + std::to_string(_incompleteJobs.size());
                 throw Bug(msg);
             }
         }
-        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing QId" << jobId
-             << ": " << err << " (status: " << err.getStatus() << ")");
+        LOGS(_log, LOG_LVL_ERROR, "Executive: error executing " << idStr
+             << " " << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
             _jobMap[jobId]->getStatus()->updateInfo(JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
@@ -226,8 +228,8 @@ void Executive::markCompleted(int jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: QId"
-             << jobId << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
+        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: "
+             << idStr << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
     }
 }
@@ -307,18 +309,17 @@ void Executive::_setup() {
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
-    LOGS(_log, LOG_LVL_DEBUG, "Attempt to TRACK QId"
-         << _id << "_" << jobId << " to Executive ("<< this <<") tracked jobs");
+    std::string idStr = qmeta::QueryIdHelper::makeIdStr(_id, jobId);
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
+            LOGS(_log, LOG_LVL_WARN, "Attempt to TRACK " << idStr
+                 << " failed as jobId already found in incomplete jobs.");
             return false;
         }
         _incompleteJobs[jobId] = r;
     }
-
-    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING QId"
-         << _id << "_" << jobId << " to Executive ("<< this <<") tracked jobs");
+    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING " << idStr);
     return true;
 }
 
@@ -343,8 +344,8 @@ void Executive::_unTrack(int jobId) {
         }
     }
     std::ostringstream os;
-    os << "Executive (" << this << ") UNTRACKING QId" << _id << "_" << jobId << " size=" << size << " " << (untracked ? "success":"failed");
-    os << "::" << s.str();
+    os << "Executive UNTRACKING " << qmeta::QueryIdHelper::makeIdStr(_id, jobId)
+       << " size=" << size << " " << (untracked ? "success":"failed") << "::" << s.str();
     if (untracked) {
         LOGS(_log, LOG_LVL_DEBUG, os.str());
     } else {
@@ -359,8 +360,8 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
     for(auto iter=_incompleteJobs.begin(), e=_incompleteJobs.end(); iter != e;) {
         if (!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
-            LOGS(_log, LOG_LVL_DEBUG, "Executive (" << (void*) this
-                 << ") reaped requester for QId" << iter->first);
+            LOGS(_log, LOG_LVL_DEBUG, "Executive reaped requester for "
+                 << qmeta::QueryIdHelper::makeIdStr(_id, iter->first));
             iter = _incompleteJobs.erase(iter);
         } else {
             ++iter;
@@ -422,7 +423,7 @@ void Executive::_waitAllUntilEmpty() {
                     _printState(os);
                     os << "\n";
                 }
-                os << _id << " Still " << count << " in flight.";
+                os << _idStr << " Still " << count << " in flight.";
                 complainCount = 0;
                 lock.unlock(); // release the lock while we trigger logging.
                 LOGS(_log, LOG_LVL_DEBUG, os.str());
@@ -441,14 +442,9 @@ std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& 
 
 /// precondition: _requestersMutex is held by current thread.
 void Executive::_printState(std::ostream& os) {
-    bool first = false;
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
-        if (!first) {
-            os << "\n";
-        }
-        os << *job;
-        first = false;
+        os << *job << "\n";
     }
 }
 

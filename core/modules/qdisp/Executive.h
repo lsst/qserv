@@ -38,6 +38,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
+#include "qmeta/types.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 
@@ -52,7 +53,6 @@ class JobQuery;
 class MessageStore;
 class QueryResource;
 
-using QId = uint64_t;
 
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.
@@ -93,8 +93,9 @@ public:
 
     bool getEmpty() { return _empty; }
 
-    QId getId() { return _id; }
-    std::string& getIdStr() { return _idStr; }
+    void setQueryId(qmeta::QueryId id);
+    qmeta::QueryId getId() const { return _id; }
+    std::string const& getIdStr() const { return _idStr; }
 
     std::shared_ptr<JobQuery> getJobQuery(int id);
 
@@ -153,9 +154,8 @@ private:
     mutable std::recursive_mutex _jobsMutex;
 
     // Give this executive a reasonable identifier, to be replaced by a unique id.
-    QId _id;
-    std::string _idStr;
-    static std::atomic<uint64_t> _seq;
+    qmeta::QueryId _id{0};
+    std::string    _idStr{qmeta::QueryIdHelper::makeIdStr(0, true)};
 };
 
 class MarkCompleteFunc {

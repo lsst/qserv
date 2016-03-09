@@ -399,6 +399,7 @@ void UserQuerySelect::_qMetaRegister()
 
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
+    _executive->setQueryId(_qMetaQueryId);
 
     // Note that ordering is important here, this check must happen after
     // query is registered in qmeta
