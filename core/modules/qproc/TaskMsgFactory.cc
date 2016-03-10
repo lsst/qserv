@@ -64,7 +64,8 @@ public:
         : _session(session), _resultTable(resultTable) {
     }
     std::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
-                                            std::string const& chunkResultName);
+                                            std::string const& chunkResultName,
+                                            uint64_t queryId, int jobId);
 private:
     template <class C1, class C2, class C3>
     void addFragment(proto::TaskMsg& m, std::string const& resultName,
@@ -97,7 +98,8 @@ private:
 
 std::shared_ptr<proto::TaskMsg>
 TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
-                              std::string const& chunkResultName) {
+                              std::string const& chunkResultName,
+                              uint64_t queryId, int jobId) {
     std::string resultTable = _resultTable;
     if (!chunkResultName.empty()) { resultTable = chunkResultName; }
     _taskMsg = std::make_shared<proto::TaskMsg>();
@@ -105,6 +107,8 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
     _taskMsg->set_protocol(2);
+    _taskMsg->set_queryid(queryId);
+    _taskMsg->set_jobid(jobId);
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
     std::string db;
@@ -163,8 +167,9 @@ TaskMsgFactory::TaskMsgFactory(uint64_t session)
 
 void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
                                   std::string const& chunkResultName,
+                                  uint64_t queryId, int jobId,
                                   std::ostream& os) {
-    std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName);
+    std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName, queryId, jobId);
     m->SerializeToOstream(&os);
 }
 

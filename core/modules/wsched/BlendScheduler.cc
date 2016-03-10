@@ -125,7 +125,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     if (task == nullptr || task->msg == nullptr) {
         throw Bug("BlendScheduler::queueTaskAct: null task");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd tSeq=" << task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
 
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
@@ -166,8 +166,9 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         std::lock_guard<std::mutex> guard(_mapMutex);
         _map[task.get()] = s;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd tSeq=" << task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd " << task->getIdStr());
     s->queCmd(task);
+    _infoChanged = true;
     notify(true);
 }
 
@@ -178,13 +179,14 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart tSeq=" << t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
     wcontrol::Scheduler* s = lookup(t);
     if (s != nullptr) {
         s->commandStart(t);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found tSeq=" << t ->tSeq);
+        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found " << t ->getIdStr());
     }
+    _infoChanged = true;
 }
 
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
@@ -198,9 +200,10 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found tSeq=" << t->tSeq);
+        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found " << t->getIdStr());
     }
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish tSeq=" << t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
+    _infoChanged = true;
 
     // TODO: DM-4943 Add check to only call notify if resources were actually freed by commandFinish()
     notify(true);
@@ -212,7 +215,7 @@ wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p) {
     std::lock_guard<std::mutex> guard(_mapMutex);
     auto i = _map.find(p.get());
     if (i == _map.end()) {
-        LOGS(_log, LOG_LVL_ERROR, "lookup failed to find scheduler tSeq=" << p->tSeq);
+        LOGS(_log, LOG_LVL_ERROR, "lookup failed to find scheduler " << p->getIdStr());
         return nullptr;
     }
     return i->second;
@@ -238,16 +241,19 @@ bool BlendScheduler::_ready() {
 
     // Get the total number of threads schedulers want reserved
     int availableThreads = calcAvailableTheads();
+    bool changed = _infoChanged.exchange(false);
     for (auto sched : _schedulers) {
         availableThreads = sched->applyAvailableThreads(availableThreads);
         ready = sched->ready();
-        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
                << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
         }
         if (ready) break;
     }
-    LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
+    if (changed) {
+        LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
+    }
     return ready;
 }
 
@@ -271,6 +277,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
         LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
     }
+    if (cmd != nullptr) _infoChanged = true;
     // returning nullptr is acceptable.
     return cmd;
 }

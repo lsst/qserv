@@ -119,6 +119,7 @@ private:
     std::mutex _mapMutex;
 
     std::atomic<bool> _flagReorderScans{false};
+    std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 };
 
 }}} // namespace lsst::qserv::wsched

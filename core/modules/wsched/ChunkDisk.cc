@@ -106,9 +106,9 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
     }
     LOGS(_log, LOG_LVL_DEBUG,
          "ChunkDisk enqueue "
-         << "chunkId=" << chunkId
+         << a->getIdStr()
+         << " chunkId=" << chunkId
          << " state=" << state
-         << " tSeq=" << a->tSeq
          << " lastChunk=" << _lastChunk
          << " active.sz=" << _activeTasks._tasks.size()
          << " pend.sz=" << _pendingTasks._tasks.size());
@@ -172,14 +172,14 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
                 setResourceStarved(true);
                 return false;
             case ENOENT:
-                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found tSeq=" << task->tSeq);
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found " << task->getIdStr());
                 // Not sure if this is the best course of action, but it should just need one
                 // logic path. The query should fail from the missing tables
                 // and the czar must be able to handle that with appropriate retries.
                 handle = memman::MemMan::HandleType::ISEMPTY;
                 break;
             default:
-                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock file system error tSeq=" << task->tSeq);
+                LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock file system error " << task->getIdStr());
                 // Any error reading the file system is probably fatal for the worker.
                 throw std::bad_exception();
                 return false;
@@ -207,7 +207,7 @@ wbase::Task::Ptr ChunkDisk::getTask(bool useFlexibleLock) {
     auto task = _activeTasks.pop();
     int chunkId = task->getChunkId();
     LOGS(_log, LOG_LVL_DEBUG, "ChunkDisk getTask: current=" << _lastChunk
-         << " candidate=" << chunkId << " tSeq=" << task->tSeq);
+         << " candidate=" << chunkId << " " << task->getIdStr());
     return task;
 }
 

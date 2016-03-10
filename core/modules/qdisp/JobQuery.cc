@@ -52,15 +52,16 @@ namespace qdisp {
 JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   std::string const& executiveId) :
+                   qmeta::QueryId qid) :
   _executive(executive), _jobDescription(jobDescription),
   _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
-  _idStr(executiveId + "_" + std::to_string(getIdInt())) {
-    LOGS(_log, LOG_LVL_DEBUG, "JobQuery JQ_jobId=" << getIdStr() << " desc=" << _jobDescription);
+  _qid{qid},
+  _idStr{qmeta::QueryIdHelper::makeIdStr(qid, getIdInt())} {
+    LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << getIdStr() << " desc=" << _jobDescription);
 }
 
 JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery JQ_jobId=" << getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery " << getIdStr());
 }
 
 /** Attempt to run the job on a worker.
@@ -103,7 +104,7 @@ bool JobQuery::runJob() {
 }
 
 void JobQuery::provisioningFailed(std::string const& msg, int code) {
-    LOGS(_log, LOG_LVL_ERROR, "Error provisioning, jobId=" << getIdStr() << " msg=" << msg
+    LOGS(_log, LOG_LVL_ERROR, "Error provisioning, " << getIdStr() << " msg=" << msg
          << " code=" << code << " " << *this << "\n    desc=" << _jobDescription);
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
     _jobDescription.respHandler()->errorFlush(msg, code);

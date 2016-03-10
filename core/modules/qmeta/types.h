@@ -24,6 +24,7 @@
 
 // System headers
 #include <cstdint>
+#include <string>
 
 // Third-party headers
 
@@ -43,6 +44,21 @@ typedef std::uint32_t CzarId;
 
 /// Typedef for Query ID in query metadata.
 typedef std::uint64_t QueryId;
+
+/// Class to provide a consistent format for QueryIds in the log file
+class QueryIdHelper {
+public:
+
+    static std::string makeIdStr(qmeta::QueryId qid, bool unknown=false) {
+        if (unknown) return "QI=?:";
+        return "QI=" + std::to_string(qid) + ":";
+    }
+
+    static std::string makeIdStr(qmeta::QueryId qid, int jobId, bool unknown=false) {
+        if (unknown) return makeIdStr(qid, true) + "?;";
+        return makeIdStr(qid) + std::to_string(jobId) + ";";
+    }
+};
 
 }}} // namespace lsst::qserv::qmeta
 

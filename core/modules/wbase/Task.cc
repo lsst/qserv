@@ -86,20 +86,17 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     return x->msg->chunkid()  > y->msg->chunkid();
 }
 
+
 std::string const Task::defaultUser = "qsmaster";
+IdSet Task::allIds{};
 
-util::Sequential<int> Task::sequence{0};
-IdSet Task::allTSeq{};
-
-Task::Task() {
-    tSeq = sequence.incr();
-    allTSeq.add(tSeq);
-    LOGS(_log, LOG_LVL_DEBUG, "Task tSeq=" << tSeq << ": " << allTSeq);
-}
 
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
-    : msg{t}, sendChannel{sc} {
+    : msg{t}, sendChannel{sc},
+      _qId{t->queryid()}, _jId{t->jobid()},
+      _idStr{qmeta::QueryIdHelper::makeIdStr(_qId, _jId)} {
     hash = hashTaskMsg(*t);
+
     if (t->has_user()) {
         user = t->user();
     } else {
@@ -107,9 +104,8 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     }
     timestr[0] = '\0';
 
-    tSeq = sequence.incr();
-    allTSeq.add(tSeq);
-    LOGS(_log, LOG_LVL_DEBUG, "Task(...) tSeq=" << tSeq << ": " << allTSeq);
+    allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
+    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << _idStr << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = msg->scantable_size();
@@ -121,8 +117,8 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
 }
 
 Task::~Task() {
-    allTSeq.remove(tSeq);
-    LOGS(_log, LOG_LVL_DEBUG, "~Task() tSeq=" << tSeq << ": " << allTSeq);
+    allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
+    LOGS(_log, LOG_LVL_DEBUG, "~Task() " << _idStr << ": " << allIds);
 }
 
 
@@ -169,7 +165,8 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;
     os << "Task: "
-       << "msg: session=" << m.session()
+       << "msg: " << t._idStr
+       << " session=" << m.session()
        << " chunk=" << m.chunkid()
        << " db=" << m.db()
        << " entry time=" << t.timestr
@@ -182,15 +179,19 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
 }
 
 std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
-    os << "count=" << idSet._ids.size() << " ";
+    // Limiting output as number of entries can be very large.
+    os << "showing " << idSet.maxDisp << " of count=" << idSet._ids.size() << " ";
     bool first = true;
-    for(auto j: idSet._ids) {
+    int i = 0;
+    int maxDisp = idSet.maxDisp; // idSet.maxDisp is atomic
+    for(auto id: idSet._ids) {
         if (!first) {
             os << ", ";
         } else {
             first = false;
         }
-        os << j;
+        os << id;
+        if (++i >= maxDisp) break;
     }
     return os;
 }

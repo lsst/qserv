@@ -140,7 +140,7 @@ private:
     bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
-    std::string _jobId {"jobId=-1"}; ///< for debugging only.
+    std::string _jobIdStr {qmeta::QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

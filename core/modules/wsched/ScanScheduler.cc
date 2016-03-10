@@ -66,16 +66,18 @@ ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxRes
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    _infoChanged = true;
     if (task == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
         return;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart tSeq=" << task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart " << task->getIdStr());
     // task was registered Inflight when getCmd() was called.
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    _infoChanged = true;
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion");
         return;
@@ -110,8 +112,11 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight=" << _inFlight
-            << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj);
+    if (_infoChanged) {
+        _infoChanged = false;
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight="
+             << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj);
+    }
     if (_inFlight >= maxInFlight()) {
         return false;
     }
@@ -140,6 +145,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     bool useFlexibleLock = (_inFlight < 1);
     auto task = _disk->getTask(useFlexibleLock);
     ++_inFlight; // in flight as soon as it is off the queue.
+    _infoChanged = true;
     return task;
 }
 
@@ -151,8 +157,9 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd tSeq=" << t->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr());
     _disk->enqueue(t);
+    _infoChanged = true;
     util::CommandQueue::_cv.notify_all();
 }
 

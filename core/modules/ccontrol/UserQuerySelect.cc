@@ -201,7 +201,7 @@ void UserQuerySelect::submit() {
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    qproc::TaskMsgFactory f(_qMetaQueryId);
+    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
@@ -215,7 +215,7 @@ void UserQuerySelect::submit() {
         std::string chunkResultName = ttn.make(cs.chunkId);
         ++msgCount;
         std::ostringstream ss;
-        f.serializeMsg(cs, chunkResultName, ss);
+        taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), _sequence, ss);
         std::string msg = ss.str();
 
         pi(msg.data(), msg.size());
@@ -226,10 +226,10 @@ void UserQuerySelect::submit() {
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
-        int refNum = ++_sequence;
-        qdisp::JobDescription jobDesc(refNum, ru, ss.str(),
+        qdisp::JobDescription jobDesc(_sequence, ru, ss.str(),
             std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
         _executive->add(jobDesc);
+        ++_sequence;
     }
 
     _submitted = true;
@@ -399,6 +399,7 @@ void UserQuerySelect::_qMetaRegister()
 
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
+    _executive->setQueryId(_qMetaQueryId);
 
     // Note that ordering is important here, this check must happen after
     // query is registered in qmeta

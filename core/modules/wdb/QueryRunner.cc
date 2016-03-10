@@ -121,7 +121,7 @@ void QueryRunner::_setDb() {
 }
 
 bool QueryRunner::runQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() tSeq=" << _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() " << _task->getIdStr());
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -155,7 +155,7 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END tSeq=" << _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END " << _task->getIdStr());
     return false;
 }
 
@@ -243,7 +243,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " tSeq=" << _task->tSeq);
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr());
     std::string resultString;
     _result->set_continues(!last);
     if (!_multiError.empty()) {
@@ -254,7 +254,7 @@ void QueryRunner::_transmit(bool last) {
     }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " tSeq=" << _task->tSeq
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
          << " resultString=" << util::prettyCharList(resultString, 5));
     if (!_cancelled) {
         _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);

@@ -49,6 +49,7 @@ public:
     /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s,
                       std::string const& chunkResultName,
+                      uint64_t queryId, int jobId,
                       std::ostream& os);
 private:
     class Impl;

@@ -57,13 +57,13 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery) :
   _session{session}, _jobQuery{jobQuery},
-  _jobId{"jobId=" + jobQuery->getIdStr()} {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId <<" New QueryRequest with payload:"
+  _jobIdStr{jobQuery->getIdStr()} {
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest with payload:"
          << _jobQuery->getDescription().payload().size());
 }
 
 QueryRequest::~QueryRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " ~QueryRequest");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
     if (_session) {
           if (_session->Unprovision()) {
               LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");
@@ -77,29 +77,29 @@ QueryRequest::~QueryRequest() {
 char* QueryRequest::GetRequest(int& requestLength) {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     if (_finishStatus != ACTIVE) {
-        LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::GetRequest called after job finished (cancelled?)");
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::GetRequest called after job finished (cancelled?)");
         requestLength = 0;
         return const_cast<char*>("");
     }
     requestLength = _jobQuery->getDescription().payload().size();
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " Requesting, payload size: " << requestLength);
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " Requesting, payload size: " << requestLength);
     // Andy promises that his code won't corrupt it.
     return const_cast<char*>(_jobQuery->getDescription().payload().data());
 }
 
 // Deleting the buffer (payload) would cause us problems, as this class is not the owner.
 void QueryRequest::RelRequestBuffer() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " RelRequestBuffer");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " RelRequestBuffer");
 }
 // precondition: rInfo.rType != isNone
 // Must not throw exceptions: calling thread cannot trap them.
 // Callback function for XrdSsiRequest.
 // See QueryResource::ProvisionDone which invokes ProcessRequest(QueryRequest*))
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " ProcessResponse");
-    std::string errorDesc = _jobId + " ";
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse");
+    std::string errorDesc = _jobIdStr + " ";
     if (isCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, _jobId << " QueryRequest::ProcessResponse job already cancelled");
+        LOGS(_log, LOG_LVL_WARN, _jobIdStr << " QueryRequest::ProcessResponse job already cancelled");
         cancel(); // calls _errorFinish()
         return true;
     }
@@ -110,13 +110,13 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             LOGS(_log, LOG_LVL_WARN,
-                 _jobId << " QueryRequest::GetRequest called after job finished (cancelled?)");
+                 _jobIdStr << " QueryRequest::GetRequest called after job finished (cancelled?)");
             return true;
         }
     }
     if (!isOk) {
         std::ostringstream os;
-        os << _jobId << "ProcessResponse request failed " << getXrootdErr(nullptr);
+        os << _jobIdStr << "ProcessResponse request failed " << getXrootdErr(nullptr);
         jq->getDescription().respHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
         _errorFinish();
@@ -150,18 +150,18 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     bool success = false;
     // Pass ResponseHandler's buffer directly.
     std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " _importStream buffer.size=" << buffer.size());
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream buffer.size=" << buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " _importStream->GetResponseData size="
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream->GetResponseData size="
          << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
     success = GetResponseData(&buffer[0], buffer.size());
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " Initiated request " << (success ? "ok" : "err"));
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " Initiated request " << (success ? "ok" : "err"));
 
     if (!success) {
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR);
         if (Finished()) {
             jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR_OK);
-            LOGS_ERROR(_jobId << " QueryRequest::_importStream Finished() !ok " << getXrootdErr(nullptr));
+            LOGS_ERROR(_jobIdStr << " QueryRequest::_importStream Finished() !ok " << getXrootdErr(nullptr));
         } else {
             jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_ERROR_CORRUPT);
         }
@@ -177,7 +177,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
-            LOGS_WARN(_jobId << " QueryRequest::_importError code=" << code
+            LOGS_WARN(_jobIdStr << " QueryRequest::_importError code=" << code
                       << " msg=" << msg << " not passed");
             return false;
         }
@@ -188,7 +188,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " ProcessResponseData with buflen=" << blen
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
@@ -202,9 +202,9 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         int eCode;
         auto reason = getXrootdErr(&eCode);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
-        LOGS(_log, LOG_LVL_ERROR, _jobId << " ProcessResponse[data] error(" << eCode
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
-        jq->getDescription().respHandler()->errorFlush("Couldn't retrieve response data:" + reason + " " + _jobId, eCode);
+        jq->getDescription().respHandler()->errorFlush("Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
         _errorFinish();
         return;
     }
@@ -215,14 +215,14 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             auto sz = jq->getDescription().respHandler()->nextBuffer().size();
             if (last && sz != 0) {
                 LOGS(_log, LOG_LVL_WARN,
-                     _jobId << " Connection closed when more information expected sz=" << sz);
+                     _jobIdStr << " Connection closed when more information expected sz=" << sz);
             }
             jq->getStatus()->updateInfo(JobStatus::COMPLETE);
             _finish();
         } else {
             std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
             const void* pbuf = (void*)(&buffer[0]);
-            LOGS(_log, LOG_LVL_DEBUG, _jobId << "_importStream->GetResponseData size=" << buffer.size()
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "_importStream->GetResponseData size=" << buffer.size()
                  << " " << pbuf << " " << util::prettyCharList(buffer, 5));
             if (!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
@@ -230,7 +230,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             }
         }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, _jobId << " ProcessResponse data flush failed");
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
         ResponseHandler::Error err = jq->getDescription().respHandler()->getError();
         jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
@@ -241,11 +241,11 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
 }
 
 void QueryRequest::cancel() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::cancel");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::cancel");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_cancelled) {
-            LOGS(_log, LOG_LVL_DEBUG, _jobId <<" QueryRequest::cancel already cancelled, ignoring");
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" QueryRequest::cancel already cancelled, ignoring");
             return; // Don't do anything if already cancelled.
         }
         _cancelled = true;
@@ -265,11 +265,11 @@ bool QueryRequest::isCancelled() {
 
 /// Cleanup pointers so class can be deleted and this should only be called by _finish or _errorFinish.
 void QueryRequest::cleanup() {
-    LOGS_DEBUG(_jobId << " QueryRequest::cleanup()");
+    LOGS_DEBUG(_jobIdStr << " QueryRequest::cleanup()");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus == ACTIVE) {
-            LOGS_ERROR(_jobId << " QueryRequest::cleanup called before _finish or _errorFinish");
+            LOGS_ERROR(_jobIdStr << " QueryRequest::cleanup called before _finish or _errorFinish");
             return;
         }
     }
@@ -284,13 +284,13 @@ void QueryRequest::cleanup() {
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::_errorFinish() shouldCancel=" << shouldCancel);
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish() shouldCancel=" << shouldCancel);
     {
         // Running _errorFinish more than once could cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             // Either _finish or _errorFinish has already been called.
-            LOGS_DEBUG(_jobId << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
+            LOGS_DEBUG(_jobIdStr << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
             return;
         }
         _finishStatus = ERROR;
@@ -299,9 +299,9 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
     // Make the calls outside of the mutex lock.
     bool ok = Finished(shouldCancel);
     if (!ok) {
-        LOGS(_log, LOG_LVL_ERROR, _jobId << " QueryRequest::_errorFinish !ok " << getXrootdErr(nullptr));
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " QueryRequest::_errorFinish !ok " << getXrootdErr(nullptr));
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::_errorFinish ok");
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish ok");
     }
 
     if (!_retried.exchange(true) && !shouldCancel) {
@@ -309,11 +309,11 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         // new QueryResource object which is used to create a new QueryRequest object
         // which will replace this one in _jobQuery. The replacement could show up
         // before this one's cleanup is called, so this will keep this alive.
-        LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::_errorFinish retrying");
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish retrying");
         _keepAlive = _jobQuery->getQueryRequest(); // shared pointer to this
         if (!_jobQuery->runJob()) {
             // Retry failed, nothing left to try.
-            LOGS(_log, LOG_LVL_DEBUG, _jobId << "errorFinish retry failed");
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "errorFinish retry failed");
             _callMarkComplete(false);
         }
     } else {
@@ -324,22 +324,22 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
 
 /// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
-    LOGS_DEBUG(_jobId << " QueryRequest::_finish");
+    LOGS_DEBUG(_jobIdStr << " QueryRequest::_finish");
     {
         // Running _finish more than once would cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             // Either _finish or _errorFinish has already been called.
-            LOGS_WARN(_jobId << " QueryRequest::_finish called when not ACTIVE, ignoring");
+            LOGS_WARN(_jobIdStr << " QueryRequest::_finish called when not ACTIVE, ignoring");
             return;
         }
         _finishStatus = FINISHED;
     }
     bool ok = Finished();
     if (!ok) {
-        LOGS(_log, LOG_LVL_ERROR, _jobId << " QueryRequest::finish Finished() !ok " << getXrootdErr(nullptr));
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " QueryRequest::finish Finished() !ok " << getXrootdErr(nullptr));
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, _jobId << " QueryRequest::finish Finished() ok.");
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::finish Finished() ok.");
     }
 
     _callMarkComplete(true);
@@ -355,7 +355,7 @@ void QueryRequest::_callMarkComplete(bool success) {
 }
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& qr) {
-    os << "QueryRequest " << qr._jobId;
+    os << "QueryRequest " << qr._jobIdStr;
     return os;
 }
 
