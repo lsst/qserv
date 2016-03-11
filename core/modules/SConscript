@@ -232,7 +232,6 @@ shlibs["_qmetaLib"] = dict(mods="qmeta:python",
 
 # get list of all modules
 all_modules = sorted(str(d) for d in Glob('*', source=True) if os.path.isdir(d.srcnode().abspath))
-all_modules.remove('obsolete')
 state.log.debug('all_modules: ' + str(all_modules))
 
 # setup build data structure, which is a map with these keys and values:
