@@ -54,18 +54,10 @@ namespace qdisp {
 namespace query {
     class SelectStmt;
 }
-namespace rproc {
-    class SqlInsertIter;
-}
 namespace sql {
     class SqlConnection;
 }
-namespace util {
-    class PacketBuffer;
-}
-namespace xrdc {
-    class PacketIter;
-}}} // End of forward declarations
+}} // End of forward declarations
 
 
 namespace lsst {
@@ -115,7 +107,6 @@ public:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    typedef std::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit InfileMerger(InfileMergerConfig const& c);
     ~InfileMerger();
 
