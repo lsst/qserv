@@ -61,8 +61,6 @@ class QuerySession;
 class SecondaryIndex;
 }
 namespace rproc {
-class TableMerger;
-class TableMergerConfig;
 class InfileMerger;
 class InfileMergerConfig;
 }}}

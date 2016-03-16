@@ -59,13 +59,11 @@
 #include "proto/ProtoImporter.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
-#include "rproc/SqlInsertIter.h"
 #include "sql/Schema.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
-#include "util/MmapFile.h"
 #include "util/StringHash.h"
 #include "util/WorkQueue.h"
 
