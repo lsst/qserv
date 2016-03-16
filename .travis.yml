@@ -1,15 +1,19 @@
 # whitelist
 branches:
   only:
-      - tickets/DM-5218
+    - master
+    - /^tickets\/.*$/
 
-sudo: required
+sudo: false
 
 services:
-      - docker
+  - docker
 
 before_install:
-    - cp ./admin/tools/docker/integration-tests/localhost/env.example.sh ./admin/tools/docker/integration-tests/localhost/env.sh
+  - docker pull qserv/qserv:dev
+  - cp ./admin/tools/docker/integration-tests/travis/env.sh .
 
 script:
-    - ./admin/tools/docker/integration-tests/localhost/run-multinode-tests.sh
+  - ./admin/tools/docker/3_build-git-image.sh -L -T travis -S "$PWD"
+  - ./admin/tools/docker/4_build-configured-images.sh -L -i travis master.localdomain
+  - ./admin/tools/docker/integration-tests/localhost/run-multinode-tests.sh
