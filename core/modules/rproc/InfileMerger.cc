@@ -216,21 +216,20 @@ InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& merg
  */
 void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
     std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
-    //_workQueue.add(a);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& InfileMerger::Mgr::queMerge");
-    a->operator()(); // Do not return until the write completes.
+    _workQueue.add(a);
+    // a->operator()(); // Comment out above line and enable this to wait until the write completes.
 }
 
 /** Load data from the 'response' into the 'table'. Return true if successful.
  */
 bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
     std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
-    auto start = std::chrono::system_clock::now(); // &&& delete, probably
+    auto start = std::chrono::system_clock::now();
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto ret = applyMysql(infileStatement);
     auto end = std::chrono::system_clock::now();
-    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start); // &&& delete, probably
-    LOGS(_log, LOG_LVL_DEBUG, "&&& mergeDur=" << mergeDur.count());
+    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     return ret;
 }
 
@@ -434,9 +433,9 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             s.columns.push_back(scs);
         }
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
-        // Using InnoDB for row locking as several threads will be writing at once. &&&
-        //createStmt += " ENGINE=InnoDB"; &&&
-        createStmt += " ENGINE=MyISAM"; // See if getting rid of row lock contention helps the czar. &&&
+        // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
+        // choice when multiple threads are writing to the result table.
+        createStmt += " ENGINE=MyISAM";
         LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query prepared: " << createStmt);
 
         if (not _applySqlLocal(createStmt)) {

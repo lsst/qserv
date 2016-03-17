@@ -268,18 +268,15 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
     proto::ScanInfo scanInfo;
-    int inMemoryCount = 0;
-    LOGS(_log, LOG_LVL_DEBUG, "Checking for ScanInfo &&&");
     for (auto& pair : scanTables) {
         proto::ScanTableInfo info(pair.first, pair.second);
         css::ScanTableParams const params = context.css->getScanTableParams(info.db, info.table);
         info.lockInMemory = params.lockInMem;
-        if (info.lockInMemory) inMemoryCount++;
         info.scanRating = params.scanRating;
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
         LOGS(_log, LOG_LVL_DEBUG, "ScanInfo " << info.db << "." << info.table
-              << " lock=" << info.lockInMemory << " rating=" << info.scanRating);
+              << " lockInMemory=" << info.lockInMemory << " rating=" << info.scanRating);
     }
 
     return scanInfo;
