@@ -15,3 +15,4 @@ MASTER_IMAGE="$DOCKER_ORG/qserv:${VERSION}_master_$MASTER"
 WORKER_IMAGE="$DOCKER_ORG/qserv:${VERSION}_worker_$MASTER"
 
 CSS_FILE=nodes.css
+CONTAINER_NAME=qserv_dev
