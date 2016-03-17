@@ -59,7 +59,13 @@ In :file:`nodes.css`, add worker nodes to css configuration:
 .. literalinclude:: ../../../admin/tools/docker/deployment/parallel/nodes.example.css
    :linenos:
 
-In :file:`run-multinode-tests.sh`, download docker images and run multinode test:
+In :file:`pull.sh`, download latest container version on each node:
+
+.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/pull.sh
+   :language: bash
+   :linenos:
+
+In :file:`run-multinode-tests.sh`, run multinode test:
 
 .. literalinclude:: ../../../admin/tools/docker/deployment/parallel/run-multinode-tests.sh
    :language: bash
