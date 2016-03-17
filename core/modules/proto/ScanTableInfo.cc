@@ -42,7 +42,7 @@ int ScanTableInfo::compare(ScanTableInfo const& rhs) const {
         if (rhs.lockInMemory) return -1;
         return 0;
     } else if (!rhs.lockInMemory) return 1;
-    // Both have tables to lock, compare scanSpeed
+    // Both have tables to lock, compare scanRating
     if (scanRating < rhs.scanRating) return -1;
     if (scanRating > rhs.scanRating) return 1;
     // Scan speeds equal, compare database names alphabetically

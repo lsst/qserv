@@ -695,7 +695,7 @@ class DataLoader(object):
                 pParams = css.PartTableParams(options['dirDb'], options['dirTable'], options['dirColName'],
                                               options['latColName'], options['lonColName'],
                                               options['overlap'], True, options['subChunks'])
-                sParams = css.ScanTableParams(options['lockInMem'], options['scanSpeed'])
+                sParams = css.ScanTableParams(options['lockInMem'], options['scanRating'])
             else:
                 pParams = css.PartTableParams()
                 sParams = css.ScanTableParams()
