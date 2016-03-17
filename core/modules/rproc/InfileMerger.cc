@@ -208,7 +208,7 @@ InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& merg
       _workQueue(1),
       _numInflight(0) {
     if (!_setupConnection()) {
-        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT);
+        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
 }
 

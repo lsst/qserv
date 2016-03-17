@@ -219,6 +219,7 @@ bool MergingHandler::_merge() {
         }
         bool success = _infileMerger->merge(_response);
         if (!success) {
+            LOGS(_log, LOG_LVL_WARN, "_merge() failed");
             rproc::InfileMergerError const& err = _infileMerger->getError();
             _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
             _state = MsgState::RESULT_ERR;
