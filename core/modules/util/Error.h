@@ -75,10 +75,7 @@ struct ErrorCode {
 class Error {
 public:
 
-    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE) :
-        _code(code), _msg(msg), _status(status) {
-    }
-
+    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE);
 
     /** Overload output operator for current class
      *

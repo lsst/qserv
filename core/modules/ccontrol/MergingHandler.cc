@@ -219,6 +219,7 @@ bool MergingHandler::_merge() {
         }
         bool success = _infileMerger->merge(_response);
         if (!success) {
+            LOGS(_log, LOG_LVL_WARN, "_merge() failed");
             rproc::InfileMergerError const& err = _infileMerger->getError();
             _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
             _state = MsgState::RESULT_ERR;
@@ -237,11 +238,15 @@ void MergingHandler::_setError(int code, std::string const& msg) {
 }
 
 bool MergingHandler::_setResult() {
+    auto start = std::chrono::system_clock::now();
     if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
     }
+    auto protoEnd = std::chrono::system_clock::now();
+    auto protoDur = std::chrono::duration_cast<std::chrono::milliseconds>(protoEnd - start);
+    LOGS(_log, LOG_LVL_DEBUG, "protoDur=" << protoDur.count());
     return true;
 }
 bool MergingHandler::_verifyResult() {

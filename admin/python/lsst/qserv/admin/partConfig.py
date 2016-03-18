@@ -185,7 +185,7 @@ class PartConfig(UserDict.UserDict):
             options['dirDb'] = self['dirDb']
             options['dirTable'] = self['dirTable']
             options['lockInMem'] = bool(self.get('sharedScan.lockInMem', False))
-            options['scanSpeed'] = int(self.get('sharedScan.scanSpeed', 0))
+            options['scanRating'] = int(self.get('sharedScan.scanRating', 0))
             if 'dirColName' in self:
                 options['dirColName'] = self['dirColName']
             else:
