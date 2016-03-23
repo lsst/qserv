@@ -24,6 +24,6 @@ done
 
 ssh "$MASTER" "docker exec qserv bash -c '. /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
-   echo \"$CSS_INFO\" | qserv-admin.py && \
-   qserv-test-integration.py'"
+    echo \"$CSS_INFO\" | qserv-admin.py && \
+    qserv-test-integration.py'"
 

@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+
+# WARN: this procedure is not officially supported, use it at your own risk
 
 # Stop all services on Qserv master and remove all temporary result/message tables
 # from its MySQL 'qservResult' database.

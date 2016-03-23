@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Download Qserv master and workers containers on all cluster nodes
 
