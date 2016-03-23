@@ -30,6 +30,22 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. $DIR/params.sh
+. "$DIR/params.sh"
 
-$QSERV_RUN_DIR/bin/qserv-start.sh && tail -F $(find  $QSERV_RUN_DIR/var/log -type f)
+# Check $QSERV_MASTER was provided at container execution and use it
+# to update container configuration
+if [ -n "$QSERV_MASTER" ]
+then
+    sed -i "s/master = <DOCKER_ENV_QSERV_MASTER>/master = ${QSERV_MASTER}/" \
+        "$QSERV_RUN_DIR/qserv-meta.conf"
+    bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && \
+        qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' --etc"
+else
+    echo "ERROR: \$QSERV_MASTER is unset"
+    exit 1
+fi
+
+# TODO: wmgr.secret should be retrieved at container execution time
+cp $QSERV_RUN_DIR/etc/wmgr.secret.example $QSERV_RUN_DIR/etc/wmgr.secret
+
+"$QSERV_RUN_DIR"/bin/qserv-start.sh && tail -F $(find  "$QSERV_RUN_DIR/var/log" -type f)

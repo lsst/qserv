@@ -17,8 +17,7 @@ do
 done
 
 # Set images names
-DOCKER_ORG=qserv
-MASTER_IMAGE="$DOCKER_ORG/qserv:${VERSION}_master_$MASTER"
-WORKER_IMAGE="$DOCKER_ORG/qserv:${VERSION}_worker_$MASTER"
+MASTER_IMAGE="qserv/qserv:${VERSION}_master"
+WORKER_IMAGE="qserv/qserv:${VERSION}_worker"
 
 

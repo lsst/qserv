@@ -13,9 +13,9 @@ language: c++
 
 before_install:
   - docker pull qserv/qserv:dev
-  - cp ./admin/tools/docker/deployment/travis/env.sh .
+  - cp ./admin/tools/docker/deployment/travis/env.sh ./admin/tools/docker/deployment/localhost/env.sh
 
 script:
   - ./admin/tools/docker/3_build-git-image.sh -L -T travis -S "$PWD"
-  - ./admin/tools/docker/4_build-configured-images.sh -L -i travis master.localdomain
+  - ./admin/tools/docker/4_build-configured-images.sh -L -i travis
   - ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh

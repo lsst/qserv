@@ -43,7 +43,9 @@ echo
 echo "Launch Qserv containers on master"
 echo "================================="
 echo
-shmux -Bm -c "docker run --detach=true \
+shmux -Bm -c "
+docker run --detach=true \
+    -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
     --name $CONTAINER_NAME --net=host \
@@ -54,6 +56,7 @@ echo "Launch Qserv containers on worker"
 echo "================================="
 echo
 shmux -Bm -S all -c "docker run --detach=true \
+    -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
     --name $CONTAINER_NAME --net=host \

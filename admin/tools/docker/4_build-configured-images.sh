@@ -31,7 +31,7 @@ PUSH_TO_HUB="true"
 
 usage() {
     cat << EOD
-Usage: $(basename "$0") [options] host
+Usage: $(basename "$0") [options]
 
 Available options:
   -h          this message
@@ -40,7 +40,6 @@ Available options:
 
 Create docker images containing Qserv master and worker instances,
 use an existing Qserv Docker image as input.
-Qserv master fqdn or ip adress must be provided as unique argument.
 
 EOD
 }
@@ -56,12 +55,10 @@ while getopts hi:L c ; do
 done
 shift "$((OPTIND-1))"
 
-if [ $# -ne 1 ] ; then
+if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
-
-MASTER=$1
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/configured"
@@ -72,10 +69,9 @@ DOCKERFILE="$DOCKERDIR/Dockerfile"
 cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
 sed -i 's%{{NODE_TYPE_OPT}}%-m%g' "$DOCKERFILE"
 sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
-sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
 sed -i 's%{{COMMENT_ON_WORKER_OPT}}%%g' "$DOCKERFILE"
 
-TAG="${DOCKER_IMAGE}_master_${MASTER}"
+TAG="${DOCKER_IMAGE}_master"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
 printf "Image %s built successfully\n" "$TAG"
@@ -91,10 +87,9 @@ fi
 cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
 sed -i 's%{{NODE_TYPE_OPT}}%%g' "$DOCKERFILE"
 sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
-sed -i "s%{{MASTER_FQDN_OPT}}%${MASTER}%g" "$DOCKERFILE"
 sed -i 's%{{COMMENT_ON_WORKER_OPT}}%# %g' "$DOCKERFILE"
 
-TAG="${DOCKER_IMAGE}_worker_${MASTER}"
+TAG="${DOCKER_IMAGE}_worker"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
 printf "Image %s built successfully\n" "$TAG"

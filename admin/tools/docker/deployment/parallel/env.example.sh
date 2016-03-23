@@ -1,12 +1,6 @@
 # Rename this file to env.sh and edit configuration parameters
 # env.sh is sourced by other scripts from the directory
 
-# Nodes names
-# ===========
-
-MASTER=qserv00.domain.org
-WORKERS=$(echo qserv0{1..3}.domain.org)
-
 # Image names
 # ===========
 
@@ -15,9 +9,6 @@ WORKERS=$(echo qserv0{1..3}.domain.org)
 #   2. a git tag
 # example: tickets_DM-5402
 BRANCH=dev
-
-MASTER_IMAGE="qserv/qserv:${BRANCH}_master_$MASTER"  # Do not edit
-WORKER_IMAGE="qserv/qserv:${BRANCH}_worker_$MASTER"  # Do not edit
 
 # `docker run` settings
 # =====================
@@ -28,4 +19,32 @@ WORKER_IMAGE="qserv/qserv:${BRANCH}_worker_$MASTER"  # Do not edit
 # Log directory location on docker host, optional
 # HOST_LOG_DIR=/qserv/log
 
-CONTAINER_NAME=qserv                                 # Do not edit
+
+# Nodes names
+# ===========
+
+# Format for all node names
+HOSTNAME_FORMAT="qserv%g.domain.org"
+
+# Master id
+MASTER_ID=1
+
+# Workers range
+WORKER_FIRST_ID=2
+WORKER_LAST_ID=3
+
+# Disjoint sequences of host names can
+# be set directly using variables below
+MASTER=$(printf "$HOSTNAME_FORMAT" "$MASTER_ID")    # Master hostname. Do not edit
+WORKERS=$(seq --format "$HOSTNAME_FORMAT" \
+    --separator=' ' "$WORKER_FIRST_ID" \
+    "$WORKER_LAST_ID")                              # Worker hostnames list. Do not edit
+
+
+# Advanced configuration
+# ======================
+
+CONTAINER_NAME=qserv                                # Do not edit
+
+MASTER_IMAGE="qserv/qserv:${BRANCH}_master"         # Do not edit
+WORKER_IMAGE="qserv/qserv:${BRANCH}_worker"         # Do not edit

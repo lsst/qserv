@@ -15,11 +15,11 @@ EXPOSE 5012 1094
 
 COPY scripts/*.sh scripts/
 
-RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}} {{MASTER_FQDN_OPT}}"
+RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}}"
 
 # WARNING: Unsafe because it is pushed in Docker Hub
 # TODO: use consul to manage secret
-COPY wmgr.secret /qserv/run/etc/
+COPY wmgr.secret /qserv/run/etc/wmgr.secret.example
 
 # This script does not exit
 CMD /qserv/scripts/start.sh
