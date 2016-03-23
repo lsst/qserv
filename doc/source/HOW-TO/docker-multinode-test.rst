@@ -54,11 +54,6 @@ In :file:`env.sh`, prepare your host list and set the name of your images:
    :language: bash
    :linenos:
 
-In :file:`nodes.css`, add worker nodes to css configuration:
-
-.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/nodes.example.css
-   :linenos:
-
 In :file:`pull.sh`, download latest container version on each node:
 
 .. literalinclude:: ../../../admin/tools/docker/deployment/parallel/pull.sh
