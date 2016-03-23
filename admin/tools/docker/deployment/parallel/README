@@ -1,1 +1,10 @@
-See ../../../../doc/source/HOW-TO/docker-multinode-test.rst
+Documentation
+=============
+
+See ``../../../../doc/source/HOW-TO/docker-multinode-test.rst``
+
+Example
+=======
+
+``../in2p3`` directory contains a specialization of these scripts for IN2P3
+cluster.

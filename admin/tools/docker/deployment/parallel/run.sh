@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Launch Docker containers for Qserv master and workers
 
@@ -17,25 +17,42 @@ if [ -n "$HOST_DATA_DIR" ]; then
     DATA_VOLUME_OPT="--volume $HOST_DATA_DIR:/qserv/data"
 fi
 
-echo "* Check for running Qserv containers"
-IS_UP="DOCKER_IS_UP"
-shmux -Bsm -S all -c "docker inspect --format='{{ .State.Running }}' ${CONTAINER_NAME} && echo ${IS_UP}" "$MASTER" $WORKERS \
-    2> /dev/null \
-    | grep "${IS_UP}" \
-    && echo "ERROR: Qserv containers are already running on nodes listed above"  && exit 1
-
-echo "* Remove stopped Qserv containers"
-shmux -Bm -c "docker rm -f $CONTAINER_NAME" "$MASTER" $WORKERS
 echo
+echo "Check for existing Qserv containers"
+echo "==================================="
+echo
+EXIST_MSG="${CONTAINER_NAME} container exists"
+STDOUT=$(shmux -Bm -S all -c "
+    if docker inspect ${CONTAINER_NAME} 2> /dev/null
+    then
+        echo '${EXIST_MSG}'
+    fi" "$MASTER" $WORKERS)
 
-echo "* Launch Qserv containers on master"
+if echo "$STDOUT" | grep "${EXIST_MSG}"
+then
+    echo
+    echo "ERROR: Qserv containers are existing on nodes listed above,
+       Remove them using ${DIR}/stop.sh"
+    exit 1
+else
+    echo
+    echo "No existing ${CONTAINER_NAME} container on any nodes"
+fi
+
+echo
+echo "Launch Qserv containers on master"
+echo "================================="
+echo
 shmux -Bm -c "docker run --detach=true \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
     --name $CONTAINER_NAME --net=host \
     $MASTER_IMAGE" "$MASTER"
 
-echo "* Launch Qserv containers on worker"
+echo
+echo "Launch Qserv containers on worker"
+echo "================================="
+echo
 shmux -Bm -S all -c "docker run --detach=true \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
@@ -43,6 +60,9 @@ shmux -Bm -S all -c "docker run --detach=true \
     $WORKER_IMAGE" $WORKERS
 
 
-echo "* Wait for Qserv services to be up and running on all nodes"
+echo
+echo "Wait for Qserv services to be up and running on all nodes"
+echo "========================================================="
+echo
 shmux -Bm -S all -c "docker exec $CONTAINER_NAME /qserv/scripts/wait.sh" "$MASTER" $WORKERS
 
