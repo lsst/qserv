@@ -79,6 +79,8 @@ std::string getErrorText(XrdSsiErrInfo & e) {
     return os.str();
 }
 
+std::atomic<int> clExecutiveInstCount{0}; // &&&
+
 } // anonymous namespace
 
 namespace lsst {
@@ -91,11 +93,13 @@ namespace qdisp {
 Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     : _config{*c}, _messageStore{ms} {
     _setup();
+    LOGS(_log,LOG_LVL_DEBUG, "&&& clExecutiveInstCount=" << ++clExecutiveInstCount);
 }
 
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
+    LOGS(_log,LOG_LVL_DEBUG, "~&&& clExecutiveInstCount=" << --clExecutiveInstCount);
 }
 
 

@@ -42,6 +42,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
 void logErr(std::string const& msg, lsst::qserv::qdisp::JobQuery* jq) {
     LOGS(_log, LOG_LVL_ERROR, msg << " " << *jq);
 }
+
+std::atomic<int> clJobQueryInstCount{0}; // &&&
+
 } // anonymous namespace
 
 namespace lsst {
@@ -58,10 +61,12 @@ JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
   _qid{qid},
   _idStr{qmeta::QueryIdHelper::makeIdStr(qid, getIdInt())} {
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << getIdStr() << " desc=" << _jobDescription);
+    LOGS(_log,LOG_LVL_DEBUG, "&&& clJobQueryInstCount=" << ++clJobQueryInstCount);
 }
 
 JobQuery::~JobQuery() {
     LOGS(_log, LOG_LVL_DEBUG, "~JobQuery " << getIdStr());
+    LOGS(_log,LOG_LVL_DEBUG, "~&&& clJobQueryInstCount=" << --clJobQueryInstCount);
 }
 
 /** Attempt to run the job on a worker.

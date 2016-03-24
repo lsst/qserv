@@ -46,6 +46,9 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
+
+std::atomic<int> clQueryRequestInstCount{0};
+
 }
 
 namespace lsst {
@@ -58,12 +61,14 @@ namespace qdisp {
 QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery) :
   _session{session}, _jobQuery{jobQuery},
   _jobIdStr{jobQuery->getIdStr()} {
+    LOGS(_log, LOG_LVL_DEBUG, "&&& QueryRequestInstCount=" << ++clQueryRequestInstCount);
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest with payload:"
          << _jobQuery->getDescription().payload().size());
 }
 
 QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "&&& ~QueryRequestInstCount=" << --clQueryRequestInstCount);
     if (_session) {
           if (_session->Unprovision()) {
               LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");

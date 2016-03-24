@@ -43,6 +43,7 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryResource");
+std::atomic<int> clQueryResourceInstCount{0};
 }
 
 namespace lsst {
@@ -53,10 +54,12 @@ QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
   : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
       _jobQuery(jobQuery), _jobIdStr(jobQuery->getIdStr()) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryResource");
+    LOGS(_log,LOG_LVL_DEBUG, "&&& clQueryResourceInstCount=" << ++clQueryResourceInstCount);
 }
 
 QueryResource::~QueryResource() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() ");
+    LOGS(_log,LOG_LVL_DEBUG, "~&&& clQueryResourceInstCount=" << --clQueryResourceInstCount);
     std::free(const_cast<char*>(rName));
 }
 
