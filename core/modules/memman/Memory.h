@@ -80,19 +80,38 @@ friend class Memory;
    ~MemInfo() {}
 
 private:
+
 union {void  *_memAddr; int _errCode;};
 uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
 };
 
 //-----------------------------------------------------------------------------
 //! @brief Physical memory manager
+//!
+//! This class is partially MT-safe. Inspection of single variables is MT-safe.
+//! Compound variable inspection, while MT-safe may not yield an accurate value.
+//! Methods that modify variables must be externally synchronized. Each method
+//! indicates the level of MT-safeness.
 //-----------------------------------------------------------------------------
 
 class Memory {
 public:
 
     //-----------------------------------------------------------------------------
+    //! Obtain number of bytes free (this takes into account reserved bytes).
+    //! This method must be externally serialized to obtain an accurate value.
+    //!
+    //! @return The number of bytes free.
+    //-----------------------------------------------------------------------------
+
+    uint64_t bytesFree() {
+        uint64_t usedBytes = _lokBytes + _rsvBytes;
+        return (_maxBytes <= usedBytes ? 0 : _maxBytes - usedBytes);
+    }
+
+    //-----------------------------------------------------------------------------
     //! Obtain number of bytes locked.
+    //! This method is MT-safe.
     //!
     //! @return The number of bytes locked.
     //-----------------------------------------------------------------------------
@@ -100,7 +119,17 @@ public:
     uint64_t bytesLocked() {return _lokBytes;}
 
     //-----------------------------------------------------------------------------
+    //! Obtain number of reserved bytes of memory.
+    //! This method is MT-safe.
+    //!
+    //! @return The number of reserved bytes of memory.
+    //-----------------------------------------------------------------------------
+
+    uint64_t bytesReserved() {return _rsvBytes;}
+
+    //-----------------------------------------------------------------------------
     //! Obtain number of bytes in memory.
+    //! This method is MT-safe.
     //!
     //! @return The number of bytes in memory.
     //-----------------------------------------------------------------------------
@@ -109,6 +138,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //! @brief Get file information.
+    //! This method is MT-safe.
     //!
     //! @param  fPath - File path for which information is obtained.
     //!
@@ -120,6 +150,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //! @brief Generate a file path given directory, a table name and chunk.
+    //! This method is MT-safe.
     //!
     //! @param  dbTable    - The name of the table
     //! @param  chunk      - The chunk number in question
@@ -136,6 +167,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //! Obtain and optionally update of flexible files that were locked.
+    //! This method is MT-safe.
     //!
     //! @return The number of flexible files that were locked.
     //-----------------------------------------------------------------------------
@@ -147,6 +179,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //! @brief Lock a database file in memory.
+    //! This method must be externally serialized, it is not MT-safe.
     //!
     //! @param  fPath  - Path of the database file to be locked in memory.
     //! @param  isFlex - When true this is a flexible file request.
@@ -159,6 +192,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //! @brief Unlock a memory object.
+    //! This method must be externally serialized, it is not MT-safe.
     //!
     //! @param  mInfo   - Memory MemInfo object returned by memLock().
     //-----------------------------------------------------------------------------
@@ -166,14 +200,36 @@ public:
     void    memRel(MemInfo& mInfo);
 
     //-----------------------------------------------------------------------------
+    //! @brief Reserve memory for future locking.
+    //! This method is MT-safe.
+    //!
+    //! @param  memSZ   - Bytes of memory to reserve.
+    //-----------------------------------------------------------------------------
+
+    void    memReserve(uint64_t memSZ) {_rsvBytes += memSZ;}
+
+    //-----------------------------------------------------------------------------
+    //! @brief Restore memory previously reserved.
+    //! This method must be externally serialized, it is not MT-safe.
+    //!
+    //! @param  memSZ   - Bytes of memory to release.
+    //-----------------------------------------------------------------------------
+
+    void    memRestore(uint64_t memSZ) {
+                       if (_rsvBytes <= memSZ) _rsvBytes = 0;
+                          else _rsvBytes -= memSZ;
+                      }
+
+    //-----------------------------------------------------------------------------
     //! Constructor
     //!
     //! @param  dbDir  - Directory path to where managed files reside.
-    //! @param  memSZ  - Size of memory to manage.
+    //! @param  memSZ  - Size of memory to manage in bytes.
     //-----------------------------------------------------------------------------
 
     Memory(std::string const& dbDir, uint64_t memSZ)
-          : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0), _flexNum(0) {}
+          : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0), _rsvBytes(0),
+            _flexNum(0) {}
 
     ~Memory() {}
 
@@ -182,6 +238,7 @@ private:
     std::string        _dbDir;
     uint64_t           _maxBytes;
     std::atomic_ullong _lokBytes;
+    std::atomic_ullong _rsvBytes;
     std::atomic_uint   _flexNum;
 };
 }}} // namespace lsst:qserv:memman

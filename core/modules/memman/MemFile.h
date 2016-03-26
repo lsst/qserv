@@ -40,6 +40,8 @@ namespace memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Description of a memory based file.
+//! This class serializes all the appropriate methods in the memory object.
+//! It is the only class allowed to call non MT-safe memory methods!
 //-----------------------------------------------------------------------------
 
 class MemFile {
@@ -48,15 +50,15 @@ public:
     //-----------------------------------------------------------------------------
     //! @brief Lock database file in memory.
     //!
-    //! @param  maxBytes- maximum file size for locking the table file.
-    //!                   A value of zero skips the check.
-    //! @param  minRefs - minimum reference count for locking the table file.
+    //! @param  force   - When true, does not check if the file fits into the
+    //!                   locked memory quota. Otherwise, the table must not
+    //!                   exceed the locked memory quota.
     //!
     //! @return MLResult  When bLocked > 0 this number of bytes locked.
     //!                   When bLocked = 0 no bytes were locked and retc holds
-    //!                   the reason. When retc = 0 the file did not meet the
-    //!                   minRefs restriction. Otherwise, retc is the errno
-    //!                   value indicating the reason for the failure.
+    //!                   the reason. When retc = 0 there was not enough memory
+    //!                   but flexible locking was requested and memory was
+    //!                   reserved for a future attempt.
     //-----------------------------------------------------------------------------
 
     struct MLResult {
@@ -66,7 +68,7 @@ public:
         MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
     };
 
-    MLResult    memLock(uint64_t maxBytes=0, int minRefs=0);
+    MLResult    memLock(bool force=false);
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -125,9 +127,10 @@ private:
     std::string _fPath;
     Memory&     _memory;
     MemInfo     _memInfo;
-    int         _refs = 1;           // Protected by cacheMutex
-    bool        _isLocked = false;   // Ditto
-    bool        _isFlex;             // Set once at object creation
+    int         _refs = 1;             // Protected by cacheMutex
+    bool        _isLocked   = false;   // Ditto
+    bool        _isReserved = false;   // Ditto
+    bool        _isFlex;               // Set once at object creation
 };
 
 }}} // namespace lsst:qserv:memman

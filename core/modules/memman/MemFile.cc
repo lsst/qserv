@@ -46,7 +46,7 @@ std::unordered_map<std::string, MemFile*> fileCache;
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
-MemFile::MLResult MemFile::memLock(uint64_t maxBytes, int minRefs) {
+MemFile::MLResult MemFile::memLock(bool force) {
 
     std::lock_guard<std::mutex> guard(cacheMutex);
 
@@ -58,18 +58,24 @@ MemFile::MLResult MemFile::memLock(uint64_t maxBytes, int minRefs) {
         return aokResult;
     }
 
-    // If the file doesn't meet the refcount restriction, don't lock it
+    // Check if we need to verify there is enough memory for this table
     //
-    if (_refs < minRefs) {
-        MLResult nilResult(0,0);
-        return nilResult;
-    }
-
-    // If space is wanted, check now before we attempt to lock the file
-    //
-    if (maxBytes != 0 && _memInfo.size() > maxBytes) {
-        MLResult bigResult(0, ENOMEM);
-        return bigResult;
+    if (!force) {
+        uint64_t freeBytes = _memory.bytesFree();
+        if (_isReserved) freeBytes += _memInfo.size();
+        if (_memInfo.size() > freeBytes) {
+            if (_isFlex) {
+                if (!_isReserved) {
+                    _memory.memReserve(_memInfo.size());
+                    _isReserved = true;
+                }
+                MLResult nilResult(0,0);
+                return nilResult;
+            } else {
+            MLResult bigResult(0, ENOMEM);
+            return bigResult;
+            }
+        }
     }
 
     // Lock this table in memory if possible.
@@ -77,13 +83,30 @@ MemFile::MLResult MemFile::memLock(uint64_t maxBytes, int minRefs) {
     MemInfo mInfo = _memory.memLock(_fPath, _isFlex);
 
     // If we successfully locked this file, then indicate so, update the
-    // memory information and return.
+    // memory information and return. If memory was previously reserved for
+    // this file then credit the reserve count using the original size.
     //
     if (mInfo.isValid()) {
         MLResult aokResult(mInfo.size(),0);
-        _isLocked = 1;
+        if (_isReserved) {
+            _memory.memRestore(_memInfo.size());
+            _isReserved = false;
+        }
+        _isLocked = true;
         _memInfo = mInfo;
         return aokResult;
+    }
+
+    // If this is a flex table and there was not enough memory and storage
+    // was not yet reserved for it, do so now.
+    //
+    if (_isFlex && mInfo.errCode() == ENOMEM) {
+        if (!_isReserved) {
+            _memory.memReserve(_memInfo.size());
+            _isReserved = true;
+        }
+        MLResult nilResult(0,0);
+        return nilResult;
     }
 
     // Diagnose any errors
@@ -163,7 +186,15 @@ void MemFile::release() {
 
     // Release the memory
     //
-    _memory.memRel(_memInfo);
+    if (_isLocked) {
+        _memory.memRel(_memInfo);
+        _isLocked = false;
+    } else {
+        if (_isReserved) {
+            _memory.memRestore(_memInfo.size());
+            _isReserved = false;
+        }
+    }
 
     // Remove the object from our cache
     //

@@ -81,51 +81,35 @@ int MemFileSet::add(std::string const& tabname, int chunk,
 int MemFileSet::lockAll() {
 
     MemFile::MLResult mlResult;
-    uint64_t bytesLocked, bytesMax, freeBytes;
+    uint64_t totLocked = 0;
 
-    // Calculate the number of bytes available at this point. Note that we force
-    // freeBytes to be atleast 1 to make memlock check before it tries locking
-    // the file to avoid a useless memory map operation if it can't be locked.
-    // By the time we get here someone else may have already locked the file.
-    //
-    bytesMax    = _memory.bytesMax();
-    bytesLocked = _memory.bytesLocked();
-    if (bytesMax <= bytesLocked) {
-        freeBytes = 1;
-    } else {
-        freeBytes = bytesMax - bytesLocked;
-    }
-
-    // Try to lock all of the required tables
+    // Try to lock all of the required tables. Any failure is considered fatal.
+    // The caller should delete the fileset upon return in this case.
     //
     for (auto mfP : _lockFiles) {
-        mlResult = mfP->memLock(freeBytes);
-        if (mlResult.retc != 0) return mlResult.retc;
-        _lockBytes += mlResult.bLocked;
-        if (freeBytes  > mlResult.bLocked) {
-            freeBytes -= mlResult.bLocked;
-        } else {
-            freeBytes = 1;
+        mlResult = mfP->memLock();
+        totLocked += mlResult.bLocked;
+        if (mlResult.retc != 0) {
+            _lockBytes += totLocked;
+            return mlResult.retc;
         }
     }
 
-    // Try locking as many flexible files as we can. We only lock the file table
-    // if the reference count >= 2 to optimize memory usage. At some point we
-    // will place unlocked flex files on a "want to lock" queue. FUTURE!!!
+    // Try locking as many flexible files as we can. At some point we will
+    // place unlocked flex files on a "want to lock" queue. FUTURE!!! In any
+    // case we ignore all errors here as these files may remain unlocked.
     //
     for (auto mfP : _flexFiles) {
-        mlResult = mfP->memLock(freeBytes, 2);
-        if (mlResult.bLocked == 0) continue;
-        _lockBytes += mlResult.bLocked;
-        if (freeBytes  > mlResult.bLocked) {
-            freeBytes -= mlResult.bLocked;
-        } else {
-            freeBytes = 1;
-        }
+        mlResult = mfP->memLock();
+        totLocked += mlResult.bLocked;
     }
 
-    // All done
+    // We ignore optional files at this point. FUTURE!!!
     //
+
+    // All done, update the statistics.
+    //
+    _lockBytes += totLocked;
     return 0;
 }
 
