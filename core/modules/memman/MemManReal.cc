@@ -65,10 +65,10 @@ MemMan::Statistics MemManReal::getStatistics() {
     //
     stats.bytesLockMax = _memory.bytesMax();
     stats.bytesLocked  = _memory.bytesLocked();
+    stats.bytesReserved= _memory.bytesReserved();
     stats.numFlexLock  = _memory.flexNum();
     stats.numLocks     = _numLocks;
     stats.numErrors    = _numErrors;
-    stats.numFiles     = MemFile::numFiles();
     stats.numFiles     = MemFile::numFiles();
 
     // The following requires a lock
