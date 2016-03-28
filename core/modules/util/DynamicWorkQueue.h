@@ -30,6 +30,9 @@
 #include <mutex>
 #include <set>
 
+// Qserv headers
+#include "util/InstanceCount.h" // &&&
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -115,6 +118,7 @@ private:
     std::condition_variable _threadsExited;
 
     friend struct Runner;
+    util::InstanceCount _instC{"DynamicWorkQueue&&&"};
 };
 
 }}} // namespace lsst::qserv::util

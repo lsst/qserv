@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "proto/worker.pb.h"
+#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
@@ -63,6 +64,7 @@ struct ScanTableInfo {
     std::string table;
     bool lockInMemory {false};
     int  scanRating    {0};
+    util::InstanceCount _instC{"ScanTableInfo&&&"};
 };
 
 struct ScanInfo {
@@ -74,6 +76,7 @@ struct ScanInfo {
 
     ScanTableInfo::ListOf infoTables;
     int scanRating{Rating::FASTEST};
+    util::InstanceCount _instC{"ScanInfo&&&"};
 };
 
 

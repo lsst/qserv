@@ -35,7 +35,8 @@
 #include "XrdSsi/XrdSsiService.hh" // Resource
 
 // Local headers
-#include "util/Callable.h"
+// #include "util/Callable.h" &&&
+#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
@@ -75,6 +76,7 @@ private:
     XrdSsiSession* _xrdSsiSession {nullptr}; ///< unowned, do not delete.
     std::shared_ptr<JobQuery> _jobQuery;
     std::string const _jobIdStr; ///< for debugging only
+    util::InstanceCount _instC{"QueryResource&&&"};
 };
 
 }}} // namespace lsst::qserv::qdisp

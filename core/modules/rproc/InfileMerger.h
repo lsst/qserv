@@ -91,6 +91,7 @@ public:
     std::shared_ptr<query::SelectStmt> mergeStmt;
     std::string user;
     std::string socket;
+    util::InstanceCount _instC{"InfileMergerConfig&&&"};
 };
 
 /// InfileMerger is a row-based merger that imports rows from result messages
@@ -152,6 +153,7 @@ private:
     std::unique_ptr<Mgr> _mgr; ///< Delegate merging action object
 
     bool _needCreateTable; ///< Does the target table need creating?
+    util::InstanceCount _instC{"InfileMerger&&&"};
 };
 
 }}} // namespace lsst::qserv::rproc

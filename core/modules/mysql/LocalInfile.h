@@ -33,6 +33,9 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
+// Qserv headers
+#include "util/InstanceCount.h" // &&&
+
 namespace lsst {
 namespace qserv {
 namespace mysql {
@@ -81,6 +84,7 @@ private:
     unsigned _leftoverSize; ///< Size of bytes not yet sent in _leftover
     std::string _filename; ///< virtual filename for mysql
     std::shared_ptr<RowBuffer> _rowBuffer; ///< Underlying row source
+    util::InstanceCount _instC{"LocalInfile&&&"};
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler
@@ -129,6 +133,7 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> _impl; // PIMPL implementation class.
+    util::InstanceCount _instClinfile{"LocalInfile::Mgr&&&"};
 };
 
 }}} // namespace lsst::qserv::mysql

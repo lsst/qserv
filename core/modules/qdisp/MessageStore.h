@@ -40,6 +40,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "util/InstanceCount.h" // &&&
 
 
 namespace lsst {
@@ -66,6 +67,7 @@ struct QueryMessage {
     std::string description;
     std::time_t timestamp;
     MessageSeverity severity;
+    util::InstanceCount _instC{"QueryMessage&&&"};
 };
 
 /** Store messages issued by Qserv workers and czar
@@ -108,6 +110,7 @@ public:
 private:
     std::mutex _storeMutex;
     std::vector<QueryMessage> _queryMessages;
+    util::InstanceCount _instC{"MessageStore&&&"};
 };
 
 }}} // namespace lsst::qserv::qdisp

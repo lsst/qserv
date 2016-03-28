@@ -77,6 +77,7 @@ public:
 private:
     int _numAccepted;
     AcceptorPtr _acceptor;
+    util::InstanceCount _instC{"ProtoImporter&&&"};
 };
 }}} // lsst::qserv::proto
 

@@ -79,8 +79,6 @@ std::string getErrorText(XrdSsiErrInfo & e) {
     return os.str();
 }
 
-std::atomic<int> clExecutiveInstCount{0}; // &&&
-
 } // anonymous namespace
 
 namespace lsst {
@@ -93,13 +91,11 @@ namespace qdisp {
 Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
     : _config{*c}, _messageStore{ms} {
     _setup();
-    LOGS(_log,LOG_LVL_DEBUG, "&&& clExecutiveInstCount=" << ++clExecutiveInstCount);
 }
 
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
-    LOGS(_log,LOG_LVL_DEBUG, "~&&& clExecutiveInstCount=" << --clExecutiveInstCount);
 }
 
 
@@ -110,32 +106,37 @@ void Executive::setQueryId(qmeta::QueryId id) {
 
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
-///
+//
 void Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
-    if (_cancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
-             << jobDesc.id() << ")");
-        return;
-    }
-    // Create the JobQuery and put it in the map.
-    JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
-    MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-    JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
+    JobQuery::Ptr jobQuery;
+    {
+        std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
+        if (_cancelled) {
+            LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
+                    << jobDesc.id() << ")");
+            return;
+        }
+        // Create the JobQuery and put it in the map.
+        JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
+        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
+        jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
 
-    if (!_addJobToMap(jobQuery)) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
-        return;
-    }
+        if (!_addJobToMap(jobQuery)) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
+            return;
+        }
 
-    if (!_track(jobQuery->getIdInt(), jobQuery)) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
-        return;
+        if (!_track(jobQuery->getIdInt(), jobQuery)) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
+            return;
+        }
+
+        if (_empty.exchange(false)) {
+            LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
+        }
+        ++_requestCount;
     }
-    if (_empty.exchange(false)) {
-        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
-    }
-    ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
@@ -168,6 +169,7 @@ bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
 }
 
 bool Executive::join() {
+    _allJobsSubmitted.wait(true);
     // To join, we make sure that all of the chunks added so far are complete.
     // Check to see if _requesters is empty, if not, then sleep on a condition.
     _waitAllUntilEmpty();

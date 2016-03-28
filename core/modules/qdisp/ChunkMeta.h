@@ -28,6 +28,9 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "util/InstanceCount.h" // &&&
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -45,6 +48,7 @@ private:
     std::string db;
     std::string table;
     int chunkLevel;
+    util::InstanceCount _instC{"ChunkMetaEntry&&&"};
 };
 // class ChunkMeta is a value class that is used to transfer db/table
 // information from the python layer into the C++ layer
@@ -67,6 +71,7 @@ public:
     EntryVector const& getEntries() const { return _entries; }
 private:
     EntryVector _entries;
+    util::InstanceCount _instC{"ChunkMeta&&&"};
 };
 
 }}} // namespace lsst::qserv::qdisp

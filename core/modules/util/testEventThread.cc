@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "util/EventThread.h"
+#include "util/InstanceCount.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE common
@@ -50,9 +51,7 @@ using namespace lsst::qserv::util;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-/** @test
- * Print a MultiError object containing only one error
- */
+
 BOOST_AUTO_TEST_CASE(EventThreadTest) {
     LOGS_DEBUG("EventThread test");
 
@@ -182,6 +181,40 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     }
     BOOST_CHECK(weak_pool.use_count() == 0);
     BOOST_CHECK(weak_que.use_count() == 0);
+}
+
+
+BOOST_AUTO_TEST_CASE(InstanceCountTest) {
+
+    class CA {
+    public:
+        InstanceCount instanceCount{"CA"};
+    };
+
+    class CB {
+       public:
+           InstanceCount instanceCount{"CB"};
+       };
+
+    CB cb;
+    {
+        CA ca1;
+        BOOST_CHECK(ca1.instanceCount.getCount() == 1);
+        CA ca2;
+        BOOST_CHECK(ca1.instanceCount.getCount() == 2);
+        CA ca3(ca1);
+        BOOST_CHECK(ca1.instanceCount.getCount() == 3);
+        CA ca4 = std::move(ca1);
+        BOOST_CHECK(ca1.instanceCount.getCount() == 4);
+        CA ca5;
+        BOOST_CHECK(ca1.instanceCount.getCount() == 5);
+        ca5 = ca2;
+        BOOST_CHECK(ca1.instanceCount.getCount() == 5);
+        BOOST_CHECK(cb.instanceCount.getCount() == 1);
+    }
+    BOOST_CHECK(cb.instanceCount.getCount() == 1);
+    CA ca0;
+    BOOST_CHECK(ca0.instanceCount.getCount() == 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

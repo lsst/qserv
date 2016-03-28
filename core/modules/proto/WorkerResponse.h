@@ -26,17 +26,19 @@
 
 // Qserv headers
 #include "proto/worker.pb.h"
+#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
 namespace proto {
 
 struct WorkerResponse {
-    WorkerResponse();
-    ~WorkerResponse();
+    WorkerResponse() {}
+    ~WorkerResponse() {}
     unsigned char headerSize;
     ProtoHeader protoHeader;
     Result result;
+    util::InstanceCount _instC{"WorkerResponse&&&"};
 };
 
 }}} // lsst::qserv::proto

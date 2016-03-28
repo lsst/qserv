@@ -174,6 +174,7 @@ private:
     typedef std::map<std::string, std::shared_ptr<RowBuffer> > RowBufferMap;
     RowBufferMap _map;
     std::mutex _mapMutex;
+    util::InstanceCount _instClinfilepimp{"LocalInfile::Mgr::Impl&&&"};
 };
 
 ////////////////////////////////////////////////////////////////////////

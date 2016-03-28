@@ -51,7 +51,7 @@ public:
     virtual void Provision(Resource *resP, unsigned short timeOut=0, bool userConn=false);
     XrdSsiServiceMock(Executive *executive) {};
     void setGo(bool go) {
-        _go.exchange(go);
+        _go.exchangeNotify(go);
     }
 protected:
     void mockProvisionTest(QueryResource *resP, unsigned short timeOut);

@@ -50,7 +50,6 @@ using lsst::qserv::proto::WorkerResponse;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
-std::atomic<int> clMergingHandlerInstCount{0}; // &&&
 }
 
 
@@ -67,12 +66,10 @@ MergingHandler::MergingHandler(
     : _msgReceiver{msgReceiver}, _infileMerger{merger}, _tableName{tableName},
       _response{new WorkerResponse()} {
     _initState();
-    LOGS(_log,LOG_LVL_DEBUG, "&&& clMergingHandlerInstCount=" << ++clMergingHandlerInstCount);
 }
 
 MergingHandler::~MergingHandler() {
     LOGS(_log, LOG_LVL_DEBUG, "~MergingHandler()");
-    LOGS(_log,LOG_LVL_DEBUG, "~&&& clMergingHandlerInstCount=" << --clMergingHandlerInstCount);
 }
 
 const char* MergingHandler::getStateStr(MsgState const& state) {

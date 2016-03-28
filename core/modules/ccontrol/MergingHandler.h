@@ -115,6 +115,7 @@ private:
     std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed {false}; ///< flushed to InfileMerger?
     std::string _wName {"~"}; /// worker name
+    util::InstanceCount _instC{"MergingHandler&&&"};
 };
 
 }}} // namespace lsst::qserv::qdisp

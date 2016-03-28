@@ -141,6 +141,7 @@ private:
 
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
     std::string _jobIdStr {qmeta::QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
+    util::InstanceCount _instC{"QueryRequest&&&"};
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

@@ -32,6 +32,9 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// Qserv headers
+#include "util/InstanceCount.h" // &&&
+
 namespace lsst {
 namespace qserv {
 namespace proto {
@@ -62,6 +65,7 @@ struct Row {
     char** row;
     unsigned long int* lengths;
     int numFields;
+    util::InstanceCount _instCRow{"mysql::Row&&&"};
 };
 
 /// RowBuffer: an buffer from which arbitrarily-sized buckets of bytes
@@ -79,6 +83,7 @@ public:
 
     /// Construct a RowBuffer tied to a MySQL query result
     static Ptr newResRowBuffer(MYSQL_RES* result);
+    util::InstanceCount _instCRB{"mysql::RowBuffer&&&"};
 };
 
 }}} // lsst::qserv::mysql

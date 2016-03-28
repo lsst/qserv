@@ -26,6 +26,9 @@
 // System headers
 #include <memory>
 
+// Qserv headers
+#include "util/InstanceCount.h" // &&&
+
 /// VoidCallable, UnaryCallable, and BinaryCallable are convenience templates
 /// for declaring no-argument, unary-argument, and binary-argument function
 /// objects. These classes are useful when defining interfaces.
@@ -41,6 +44,7 @@ public:
     typedef Ret R;
     virtual ~VoidCallable() {}
     virtual Ret operator()() = 0;
+    util::InstanceCount _instC{"VoidCallable&&&"};
 };
 
 template <typename Ret, typename Arg>
@@ -52,6 +56,7 @@ public:
 
     virtual ~UnaryCallable() {}
     virtual Ret operator()(Arg a) = 0;
+    util::InstanceCount _instC{"UnaryCallable&&&"};
 };
 
 template <typename Ret, typename Arg1, typename Arg2>
@@ -64,6 +69,7 @@ public:
 
     virtual ~BinaryCallable() {}
     virtual Ret operator()(A1 a1, A2 a2) = 0;
+    util::InstanceCount _instC{"BinaryCallable&&&"};
 };
 
 }}} // lsst::qserv::util

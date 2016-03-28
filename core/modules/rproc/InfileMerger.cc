@@ -39,8 +39,7 @@
 #include "rproc/InfileMerger.h"
 
 // System headers
-#include <atomic>
-#include <chrono> // &&& delete maybe
+#include <chrono>
 #include <cstddef>
 #include <iostream>
 #include <sstream>
@@ -72,7 +71,6 @@
 namespace { // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
-std::atomic<int> clInfileMergerInstCount{0}; // &&&
 
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::rproc::InfileMergerConfig;
@@ -260,7 +258,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _sqlConfig(makeSqlConfig(c)),
       _isFinished(false),
       _needCreateTable(true) {
-    LOGS(_log,LOG_LVL_DEBUG, "&&& clInfileMergerInstCount=" << ++clInfileMergerInstCount);
     _fixupTargetName();
     if (_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
@@ -269,7 +266,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
 }
 
 InfileMerger::~InfileMerger() {
-    LOGS(_log,LOG_LVL_DEBUG, "~&&& clInfileMergerInstCount=" << --clInfileMergerInstCount);
 }
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
