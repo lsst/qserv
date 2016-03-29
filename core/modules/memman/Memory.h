@@ -40,7 +40,7 @@ namespace memman {
 
 class MemInfo {
 public:
-friend class Memory;
+    friend class Memory;
 
     //-----------------------------------------------------------------------------
     //! @brief Return reason why this object is not valid.
@@ -81,8 +81,8 @@ friend class Memory;
 
 private:
 
-union {void  *_memAddr; int _errCode;};
-uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
+   union {void  *_memAddr; int _errCode;};
+   uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
 };
 
 //-----------------------------------------------------------------------------

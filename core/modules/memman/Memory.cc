@@ -148,8 +148,11 @@ void Memory::memRel(MemInfo& mInfo) {
     //
     if (mInfo._memSize > 0 && mInfo._memAddr != MAP_FAILED) {
         munmap(mInfo._memAddr, mInfo._memSize);
-        if (_lokBytes < mInfo._memSize) _lokBytes -= mInfo._memSize;
-           else _lokBytes = 0;
+        if (_lokBytes < mInfo._memSize) {
+            _lokBytes -= mInfo._memSize;
+        } else {
+            _lokBytes = 0;
+        }
         mInfo._memSize = 0;
         mInfo._memAddr = MAP_FAILED;
     }

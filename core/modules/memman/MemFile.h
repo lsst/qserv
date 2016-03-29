@@ -47,12 +47,15 @@ namespace memman {
 class MemFile {
 public:
 
+    struct MLResult {
+        uint64_t bLocked;
+        int      retc;
+        MLResult() {}
+        MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
+    };
+
     //-----------------------------------------------------------------------------
     //! @brief Lock database file in memory.
-    //!
-    //! @param  force   - When true, does not check if the file fits into the
-    //!                   locked memory quota. Otherwise, the table must not
-    //!                   exceed the locked memory quota.
     //!
     //! @return MLResult  When bLocked > 0 this number of bytes locked.
     //!                   When bLocked = 0 no bytes were locked and retc holds
@@ -61,14 +64,7 @@ public:
     //!                   reserved for a future attempt.
     //-----------------------------------------------------------------------------
 
-    struct MLResult {
-        uint64_t bLocked;
-        int      retc;
-        MLResult() {}
-        MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
-    };
-
-    MLResult    memLock(bool force=false);
+    MLResult    memLock();
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -77,6 +73,13 @@ public:
     //-----------------------------------------------------------------------------
 
     static uint32_t numFiles();
+
+    struct MFResult {
+        MemFile* mfP;
+        int      retc;
+        MFResult() {}
+        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
+    };
 
     //-----------------------------------------------------------------------------
     //! @brief Obtain an object describing a in-memory file.
@@ -89,13 +92,6 @@ public:
     //! @return MFResult  When mfP is zero or retc is not zero, the MemFile
     //!                   object could not be obtained and retc holds errno.
     //-----------------------------------------------------------------------------
-
-    struct MFResult {
-        MemFile* mfP;
-        int      retc;
-        MFResult() {}
-        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
-    };
 
     static MFResult obtain(std::string const& fPath, Memory& mem, bool isFlex);
 

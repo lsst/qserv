@@ -46,7 +46,7 @@ std::unordered_map<std::string, MemFile*> fileCache;
 /*                               m e m L o c k                                */
 /******************************************************************************/
 
-MemFile::MLResult MemFile::memLock(bool force) {
+MemFile::MLResult MemFile::memLock() {
 
     std::lock_guard<std::mutex> guard(cacheMutex);
 
@@ -58,23 +58,21 @@ MemFile::MLResult MemFile::memLock(bool force) {
         return aokResult;
     }
 
-    // Check if we need to verify there is enough memory for this table
+    // Check if there is enough memory for this table
     //
-    if (!force) {
-        uint64_t freeBytes = _memory.bytesFree();
-        if (_isReserved) freeBytes += _memInfo.size();
-        if (_memInfo.size() > freeBytes) {
-            if (_isFlex) {
-                if (!_isReserved) {
-                    _memory.memReserve(_memInfo.size());
-                    _isReserved = true;
-                }
-                MLResult nilResult(0,0);
-                return nilResult;
-            } else {
+    uint64_t freeBytes = _memory.bytesFree();
+    if (_isReserved) freeBytes += _memInfo.size();
+    if (_memInfo.size() > freeBytes) {
+        if (_isFlex) {
+            if (!_isReserved) {
+                _memory.memReserve(_memInfo.size());
+                _isReserved = true;
+            }
+            MLResult nilResult(0,0);
+            return nilResult;
+        } else {
             MLResult bigResult(0, ENOMEM);
             return bigResult;
-            }
         }
     }
 

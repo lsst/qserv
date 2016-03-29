@@ -37,7 +37,7 @@ namespace memman {
 //-----------------------------------------------------------------------------
 //! @brief Describe a table that can be potentially locked in memory.
 //!
-//! A table marked as MANDATORY downgrades to FLEXIBLE if the same table was
+//! A table marked as MUSTLOCK downgrades to FLEXIBLE if the same table was
 //! previously added and marked FLEXIBLE. Tables marked FLEXIBLE are locked if
 //! there is sufficient memory. Otherwise, the required memory is reserved and
 //! a lock attempt is made when the table is encountered in the future.
@@ -51,7 +51,6 @@ public:
     enum class LockType {
         NOLOCK   = 0,         //< Item should not be locked
         MUSTLOCK = 1,         //< Item must be locked or declare failure
-        MANDATORY= 1,         //< Item must be locked or declare failure
         FLEXIBLE = 2,         //< Item may  be locked but memory is reserved
         OPTIONAL = 3          //< Item may  be locked if possible or ignored
     };
