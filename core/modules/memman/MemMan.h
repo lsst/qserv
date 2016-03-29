@@ -36,6 +36,11 @@ namespace memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Describe a table that can be potentially locked in memory.
+//!
+//! A table marked as MUSTLOCK downgrades to FLEXIBLE if the same table was
+//! previously added and marked FLEXIBLE. Tables marked FLEXIBLE are locked if
+//! there is sufficient memory. Otherwise, the required memory is reserved and
+//! a lock attempt is made when the table is encountered in the future.
 //-----------------------------------------------------------------------------
 
 class TableInfo {
@@ -44,9 +49,10 @@ public:
     std::string tableName;    //< Name of the table
 
     enum class LockType {
-        NOLOCK,               //< Item should not be locked
-        MUSTLOCK,             //< Item must be locked or declare failure
-        FLEXIBLE              //< Item may be locked if possible
+        NOLOCK   = 0,         //< Item should not be locked
+        MUSTLOCK = 1,         //< Item must be locked or declare failure
+        FLEXIBLE = 2,         //< Item may  be locked but memory is reserved
+        OPTIONAL = 3          //< Item may  be locked if possible or ignored
     };
 
     LockType theData;         //< Lock options for the table's data
@@ -143,6 +149,7 @@ public:
     struct Statistics {
         uint64_t bytesLockMax; //!< Maximum number of bytes to lock
         uint64_t bytesLocked;  //!< Current number of bytes locked
+        uint64_t bytesReserved;//!< Current number of bytes reserved
         uint32_t numFSets;     //!< Global  number of active file sets
         uint32_t numFiles;     //!< Global  number of active files
         uint32_t numReqdFiles; //!< Number  required files encountered

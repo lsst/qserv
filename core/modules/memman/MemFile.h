@@ -40,24 +40,12 @@ namespace memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Description of a memory based file.
+//! This class serializes all the appropriate methods in the memory object.
+//! It is the only class allowed to call non MT-safe memory methods!
 //-----------------------------------------------------------------------------
 
 class MemFile {
 public:
-
-    //-----------------------------------------------------------------------------
-    //! @brief Lock database file in memory.
-    //!
-    //! @param  maxBytes- maximum file size for locking the table file.
-    //!                   A value of zero skips the check.
-    //! @param  minRefs - minimum reference count for locking the table file.
-    //!
-    //! @return MLResult  When bLocked > 0 this number of bytes locked.
-    //!                   When bLocked = 0 no bytes were locked and retc holds
-    //!                   the reason. When retc = 0 the file did not meet the
-    //!                   minRefs restriction. Otherwise, retc is the errno
-    //!                   value indicating the reason for the failure.
-    //-----------------------------------------------------------------------------
 
     struct MLResult {
         uint64_t bLocked;
@@ -66,7 +54,17 @@ public:
         MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
     };
 
-    MLResult    memLock(uint64_t maxBytes=0, int minRefs=0);
+    //-----------------------------------------------------------------------------
+    //! @brief Lock database file in memory.
+    //!
+    //! @return MLResult  When bLocked > 0 this number of bytes locked.
+    //!                   When bLocked = 0 no bytes were locked and retc holds
+    //!                   the reason. When retc = 0 there was not enough memory
+    //!                   but flexible locking was requested and memory was
+    //!                   reserved for a future attempt.
+    //-----------------------------------------------------------------------------
+
+    MLResult    memLock();
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -75,6 +73,13 @@ public:
     //-----------------------------------------------------------------------------
 
     static uint32_t numFiles();
+
+    struct MFResult {
+        MemFile* mfP;
+        int      retc;
+        MFResult() {}
+        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
+    };
 
     //-----------------------------------------------------------------------------
     //! @brief Obtain an object describing a in-memory file.
@@ -87,13 +92,6 @@ public:
     //! @return MFResult  When mfP is zero or retc is not zero, the MemFile
     //!                   object could not be obtained and retc holds errno.
     //-----------------------------------------------------------------------------
-
-    struct MFResult {
-        MemFile* mfP;
-        int      retc;
-        MFResult() {}
-        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
-    };
 
     static MFResult obtain(std::string const& fPath, Memory& mem, bool isFlex);
 
@@ -125,9 +123,10 @@ private:
     std::string _fPath;
     Memory&     _memory;
     MemInfo     _memInfo;
-    int         _refs = 1;           // Protected by cacheMutex
-    bool        _isLocked = false;   // Ditto
-    bool        _isFlex;             // Set once at object creation
+    int         _refs = 1;             // Protected by cacheMutex
+    bool        _isLocked   = false;   // Ditto
+    bool        _isReserved = false;   // Ditto
+    bool        _isFlex;               // Set once at object creation
 };
 
 }}} // namespace lsst:qserv:memman
