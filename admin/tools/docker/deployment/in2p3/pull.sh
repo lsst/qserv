@@ -1,0 +1,1 @@
+../parallel/pull.sh

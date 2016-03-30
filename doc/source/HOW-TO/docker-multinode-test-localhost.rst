@@ -30,11 +30,11 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
 .. code-block:: bash
 
    git clone git@github.com:lsst/qserv.git
-   cd qserv/admin/tools/docker/integration-tests/localhost
+   cd qserv/admin/tools/docker/deployment/localhost
 
 In :file:`env.sh`, set the name of your image, based on the github branch name:
 
-.. literalinclude:: ../../../admin/tools/docker/integration-tests/localhost/env.example.sh
+.. literalinclude:: ../../../admin/tools/docker/deployment/localhost/env.example.sh
    :language: bash
    :linenos:
 

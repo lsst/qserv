@@ -44,24 +44,25 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
 .. code-block:: bash
 
    git clone git@github.com:lsst/qserv.git
-   cd ${SRC_DIR}/qserv/admin/tools/docker/integration-tests
+   cd ${SRC_DIR}/qserv/admin/tools/docker/deployment
 
 create and adapt next example scripts to prepare multinode test execution:
 
 In :file:`env.sh`, prepare your host list and set the name of your images:
 
-.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/env.example.sh
+.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/env.example.sh
    :language: bash
    :linenos:
 
-In :file:`nodes.css`, add worker nodes to css configuration:
+In :file:`pull.sh`, download latest container version on each node:
 
-.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/nodes.example.css
+.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/pull.sh
+   :language: bash
    :linenos:
 
-In :file:`run-multinode-tests.sh`, download docker images and run multinode test:
+In :file:`run-multinode-tests.sh`, run multinode test:
 
-.. literalinclude:: ../../../admin/tools/docker/integration-tests/parallel/run-multinode-tests.sh
+.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/run-multinode-tests.sh
    :language: bash
    :linenos:
 
