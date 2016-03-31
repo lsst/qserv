@@ -31,8 +31,6 @@
 #include <memory>
 #include <mutex>
 
-// qserv headers
-#include "util/InstanceCount.h"
 
 namespace lsst {
 namespace qserv {
@@ -53,7 +51,6 @@ private:
     Status _trStatus{Status::INPROGRESS};
     std::mutex _trMutex;
     std::condition_variable _trCV;
-    util::InstanceCount _instCTracker{"Tracker&&&"};
 };
 
 /// Base class to allow arbitrary data to be passed to or returned from
@@ -78,7 +75,6 @@ public:
     void resetFunc();
 protected:
     std::function<void(CmdData*)> _func = [](CmdData*){;};
-    util::InstanceCount _instCCommand{"Command&&&"};
 };
 
 /// Extension of Command that can notify other threads when its

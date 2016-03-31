@@ -39,7 +39,6 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
-#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
@@ -91,7 +90,6 @@ private:
     bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
     bool _interrupted; ///< true if cancellation requested
     std::mutex _interruptMutex;
-    util::InstanceCount _instCmysqlcon{"MySqlConnection&&&"};
 };
 
 }}} // namespace lsst::qserv::mysql

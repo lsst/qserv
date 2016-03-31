@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "global/constants.h" // For DUMMY_CHUNK
-#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
@@ -100,8 +99,6 @@ private:
     static char const _varDelim = '&';
 
     friend std::ostream& operator<<(std::ostream& os, ResourceUnit const& ru);
-
-    util::InstanceCount _instC{"ResourceUnit&&&"};
 };
 
 class ResourceUnit::Checker {

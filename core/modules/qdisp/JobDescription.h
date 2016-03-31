@@ -33,7 +33,6 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
-#include "util/InstanceCount.h" // &&&
 
 // Forward declarations
 
@@ -61,7 +60,6 @@ private:
     ResourceUnit _resource; // path, e.g. /q/LSST/23125
     std::string _payload; // encoded request
     std::shared_ptr<ResponseHandler> _respHandler; // probably MergingHandler
-    util::InstanceCount _instC{"JobDescription&&&"};
 };
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

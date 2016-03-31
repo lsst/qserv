@@ -28,7 +28,6 @@
 #include <string>
 
 // Qserv headers
-#include "util/InstanceCount.h" // &&&
 
 namespace lsst {
 namespace qserv {
@@ -53,7 +52,6 @@ public:
                       std::string const&, std::string const&,
                       std::string const&, bool);
     std::string asString() const;
-    util::InstanceCount _instC{"MySqlConfig&&&"};
 };
 
 }}} // namespace lsst::qserv::mysql

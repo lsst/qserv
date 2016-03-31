@@ -39,6 +39,7 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "qmeta/types.h"
+#include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 
@@ -155,7 +156,7 @@ private:
 
     qmeta::QueryId _id{0}; ///< Unique identifier for this query.
     std::string    _idStr{qmeta::QueryIdHelper::makeIdStr(0, true)};
-    util::InstanceCount _instC{"Executive&&&"};
+    util::InstanceCount _instC{"Executive"};
 
     /// Members to prevent join from running before all jobs submitted.
     util::FlagNotify<bool> _allJobsSubmitted{false};

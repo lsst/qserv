@@ -30,9 +30,6 @@
 #include <string>
 #include <time.h>
 
-// Qserv headers
-#include "util/InstanceCount.h" // &&&
-
 
 namespace lsst {
 namespace qserv {
@@ -106,7 +103,6 @@ private:
 
 private:
     mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
-    util::InstanceCount _instC{"JobStatus&&&"};
 };
 std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);

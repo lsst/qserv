@@ -217,7 +217,7 @@ InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& merg
 void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
     std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
     _workQueue.add(a);
-    // a->operator()(); // Comment out above line and enable this to wait until the write completes.
+    //a->operator()(); // Comment out above line and enable this to wait until the write completes.
 }
 
 /** Load data from the 'response' into the 'table'. Return true if successful.

@@ -52,7 +52,6 @@ public:
 
     static std::string wrap(std::string& protoHeaderString);
     static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
-    util::InstanceCount _instC{"ProtoHeaderWrap&&&"};
 };
 
 }}} // end namespace

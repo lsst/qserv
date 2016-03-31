@@ -129,8 +129,7 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled {false};
-
-    util::InstanceCount _instC{"JobQuery&&&"};
+    util::InstanceCount _instC{"JobQuery"};
 };
 
 }}} // end namespace

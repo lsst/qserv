@@ -36,7 +36,6 @@
 // System headers
 #include <string>
 
-#include "util/InstanceCount.h"
 
 namespace lsst {
 namespace qserv {
@@ -109,7 +108,6 @@ private:
     int _code;
     std::string _msg;
     int _status;
-    util::InstanceCount _instC{"util::Error&&&"};
 };
 
 }}} // namespace lsst::qserv::util

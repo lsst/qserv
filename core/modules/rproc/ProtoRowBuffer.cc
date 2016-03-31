@@ -35,7 +35,6 @@
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
-#include "util/InstanceCount.h" // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // Helpful constants
@@ -139,7 +138,6 @@ private:
     int _rowIdx; ///< Row index
     int _rowTotal; ///< Total row count
     std::vector<char> _currentRow; ///< char buffer representing current row.
-    util::InstanceCount _instC{"ProtoRowBuffer&&&"};
 };
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
