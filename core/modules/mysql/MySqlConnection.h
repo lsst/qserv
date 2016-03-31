@@ -55,6 +55,7 @@ public:
 
     ~MySqlConnection();
 
+    void closeMySqlConn();
     bool connect();
 
     bool connected() const { return _isConnected; }

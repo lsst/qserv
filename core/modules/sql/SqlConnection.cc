@@ -126,14 +126,18 @@ SqlConnection::~SqlConnection() {
 
 bool
 SqlConnection::connectToDb(SqlErrorObject& errObj) {
-    assert(_connection.get());
-    if (_connection->connected()) return true;
+    if (_connection->connected()) {
+        int rc = mysql_ping(_connection->getMySql());
+        if (rc == 0) return true;
+        _connection->closeMySqlConn();
+    }
+
     if (!_connection->connect()) {
         _setErrorObject(errObj);
         return false;
-    } else {
-        return true;
     }
+
+    return true;
 }
 
 bool

@@ -94,14 +94,21 @@ MySqlConnection::~MySqlConnection() {
             while((row = mysql_fetch_row(_mysql_res))); // Drain results.
             _mysql_res = nullptr;
         }
-        mysql_close(_mysql);
+        closeMySqlConn();
     }
+}
+
+void
+MySqlConnection::closeMySqlConn() {
+    // Close mysql connection and set deallocated pointer to null
+    mysql_close(_mysql);
+    _mysql = nullptr;
 }
 
 bool
 MySqlConnection::connect() {
     // Cleanup garbage
-    if (_mysql) { mysql_close(_mysql); }
+    if (_mysql) { closeMySqlConn(); }
     _isConnected = false;
     // Make myself a thread
     _mysql = _connectHelper();
