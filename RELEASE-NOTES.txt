@@ -1,3 +1,31 @@
+R E L E A S E   2016_03
+=======================
+
+Release highlights:
+  * Unique query IDs in logging
+  * Improved memory-managed shared scans
+  * Multi-node integration tests running in Travis CI
+  * Docker scripts now support multiple clusters
+  * Service timeout bug fixed
+
+New features:
+  * DM-5314: Implement unique query-id generation
+  * DM-4755: Add unique query-ids to log messages
+  * DM-5218: Run Qserv multi-node integration tests in Travis CI
+
+Code improvements:
+  * DM-2320: Remove deprecated merging code
+  * DM-991:  Add query involving a blob to the integration tests
+  * DM-5313: Refine shared scan memory manager implementation
+
+Docker:
+  * DM-5402: Make cluster deployment scripts more generic
+  * DM-5319: Fix container used by mariadb CI
+
+Bug Fixes:
+  * DM-5336: Fix minor issues in docker procedure
+  * DM-5594: Fix qserv service timeout issue
+
 R E L E A S E   2016_02
 =======================
 
