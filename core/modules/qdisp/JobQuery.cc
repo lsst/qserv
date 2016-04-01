@@ -42,7 +42,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
 void logErr(std::string const& msg, lsst::qserv::qdisp::JobQuery* jq) {
     LOGS(_log, LOG_LVL_ERROR, msg << " " << *jq);
 }
-
 } // anonymous namespace
 
 namespace lsst {

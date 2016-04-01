@@ -63,12 +63,6 @@ InstanceCount::~InstanceCount() {
 }
 
 
-InstanceCount& InstanceCount::operator=(InstanceCount const& o) {
-    _className = o._className;
-    return *this;
-}
-
-
 int InstanceCount::getCount() {
     std::lock_guard<std::recursive_mutex> lg(_mx);
     auto iter = _instances.find(_className);

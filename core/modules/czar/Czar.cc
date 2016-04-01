@@ -142,13 +142,11 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
-    // start execution
-    LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
-    uq->submit();
-
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
+        LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
+        uq->submit();
         uq->join();
         try {
             msgTable.unlock(uq);

@@ -30,7 +30,6 @@
 #include <string>
 #include <time.h>
 
-
 namespace lsst {
 namespace qserv {
 namespace qdisp {

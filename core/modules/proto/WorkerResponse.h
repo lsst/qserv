@@ -32,8 +32,6 @@ namespace qserv {
 namespace proto {
 
 struct WorkerResponse {
-    WorkerResponse() {}
-    ~WorkerResponse() {}
     unsigned char headerSize;
     ProtoHeader protoHeader;
     Result result;

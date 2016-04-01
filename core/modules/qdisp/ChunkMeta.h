@@ -28,7 +28,6 @@
 #include <string>
 #include <vector>
 
-
 namespace lsst {
 namespace qserv {
 namespace qdisp {

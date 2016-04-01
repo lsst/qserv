@@ -186,15 +186,13 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
 
 BOOST_AUTO_TEST_CASE(InstanceCountTest) {
 
-    class CA {
-    public:
+    struct CA {
         InstanceCount instanceCount{"CA"};
     };
 
-    class CB {
-       public:
-           InstanceCount instanceCount{"CB"};
-       };
+    struct CB {
+        InstanceCount instanceCount{"CB"};
+    };
 
     CB cb;
     {

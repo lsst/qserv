@@ -106,7 +106,7 @@ void Executive::setQueryId(qmeta::QueryId id) {
 
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
-//
+///
 void Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
     JobQuery::Ptr jobQuery;
@@ -169,7 +169,6 @@ bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
 }
 
 bool Executive::join() {
-    _allJobsSubmitted.wait(true);
     // To join, we make sure that all of the chunks added so far are complete.
     // Check to see if _requesters is empty, if not, then sleep on a condition.
     _waitAllUntilEmpty();

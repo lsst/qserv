@@ -27,8 +27,6 @@
 // System headers
 #include <string>
 
-// Qserv headers
-
 namespace lsst {
 namespace qserv {
 namespace mysql {

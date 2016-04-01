@@ -23,7 +23,7 @@ public:
     InstanceCount(InstanceCount &&origin);
     ~InstanceCount();
 
-    InstanceCount& operator=(InstanceCount const& o);
+    InstanceCount& operator=(InstanceCount const& o) = default;
 
     int getCount(); //< Return the number of instances of _className.
 

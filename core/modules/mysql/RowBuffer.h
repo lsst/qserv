@@ -32,7 +32,6 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
-
 namespace lsst {
 namespace qserv {
 namespace proto {

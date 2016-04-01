@@ -36,7 +36,6 @@
 // System headers
 #include <string>
 
-
 namespace lsst {
 namespace qserv {
 namespace util {

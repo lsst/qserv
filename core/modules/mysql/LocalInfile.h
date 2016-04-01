@@ -33,7 +33,6 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
-
 namespace lsst {
 namespace qserv {
 namespace mysql {

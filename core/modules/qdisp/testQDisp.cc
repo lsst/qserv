@@ -169,7 +169,6 @@ void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string 
                 rv[j]);
         ex.add(job); // ex.add() is not thread safe.
     }
-    ex.allJobsSubmitted();
 }
 
 /** Start adds 'copies' number of test requests that each sleep for 'millisecs' time

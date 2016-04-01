@@ -147,6 +147,11 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
        _killed(false), _errorExtra(errorExtra) {
+    // register query in qmeta, this may throw
+    _qMetaRegister();
+
+    _resultTable = "result_";
+    _resultTable += std::to_string(_qMetaQueryId);
 }
 
 std::string UserQuerySelect::getError() const {
@@ -189,12 +194,6 @@ UserQuerySelect::getProxyOrderBy() {
 void UserQuerySelect::submit() {
     _qSession->finalize();
 
-    // register query in qmeta, this may throw
-    _qMetaRegister();
-
-    _resultTable = "result_";
-    _resultTable += std::to_string(_qMetaQueryId);
-
     // has to be done after result table name
     _setupMerger();
 
@@ -203,54 +202,43 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission " << _qMetaQueryId);
     assert(_infileMerger);
 
-    // Creating and sending out all the jobs can take a few seconds, so it is done in
-    // a separate thread.
-    // 'this' should be stable until _executive->allJobsSubmitted() has been called.
-    auto createJobsFunc = [this]() {
-        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect createJobsFunc " << _qMetaQueryId);
-        qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
-        TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
-        proto::ProtoImporter<proto::TaskMsg> pi;
-        std::vector<int> chunks;
-        int msgCount = 0;
-        int sequence = 0;
-        // Writing query for each chunk, stop if query is cancelled.
-        for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
+    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
+    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
+    proto::ProtoImporter<proto::TaskMsg> pi;
+    std::vector<int> chunks;
+    int msgCount = 0;
+    int sequence = 0;
+    // Writing query for each chunk, stop if query is cancelled.
+    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
-            qproc::ChunkQuerySpec& cs = *i;
-            chunks.push_back(cs.chunkId);
-            std::string chunkResultName = ttn.make(cs.chunkId);
-            ++msgCount;
-            std::ostringstream ss;
-            taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
-            std::string msg = ss.str();
+        qproc::ChunkQuerySpec& cs = *i;
+        chunks.push_back(cs.chunkId);
+        std::string chunkResultName = ttn.make(cs.chunkId);
+        ++msgCount;
+        std::ostringstream ss;
+        taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
+        std::string msg = ss.str();
 
-            pi(msg.data(), msg.size());
-            if (pi.getNumAccepted() != msgCount) {
-                throw UserQueryBug("Error serializing TaskMsg.");
-            }
+        pi(msg.data(), msg.size());
+        if (pi.getNumAccepted() != msgCount) {
+            throw UserQueryBug("Error serializing TaskMsg.");
+        }
 
-            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-            ResourceUnit ru;
-            ru.setAsDbChunk(cs.db, cs.chunkId);
-            qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
+        std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
+        ResourceUnit ru;
+        ru.setAsDbChunk(cs.db, cs.chunkId);
+        qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
                 std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
-            _executive->add(jobDesc);
-            ++sequence;
-        }
+        _executive->add(jobDesc);
+        ++sequence;
+    }
 
-        // we only care about per-chunk info for ASYNC queries, and
-        // currently all queries are SYNC, so we skip this.
-        qmeta::QInfo::QType const qType = qmeta::QInfo::SYNC;
-        if (qType == qmeta::QInfo::ASYNC) {
-            _qMetaAddChunks(chunks);
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect createJobsFunc done " << _qMetaQueryId);
-        _executive->allJobsSubmitted(); // Executive::join() will wait until this is called.
-    };
-
-    std::thread t(createJobsFunc);
-    t.detach();
+    // we only care about per-chunk info for ASYNC queries, and
+    // currently all queries are SYNC, so we skip this.
+    qmeta::QInfo::QType const qType = qmeta::QInfo::SYNC;
+    if (qType == qmeta::QInfo::ASYNC) {
+        _qMetaAddChunks(chunks);
+    }
 }
 
 /// Block until a submit()'ed query completes.
