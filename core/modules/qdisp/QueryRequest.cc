@@ -65,12 +65,12 @@ QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> co
 QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
     if (_session) {
-          if (_session->Unprovision()) {
-              LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");
-          } else {
-              LOGS(_log, LOG_LVL_ERROR, "Unprovision Error.");
-          }
-      }
+        if (_session->Unprovision()) {
+            LOGS(_log, LOG_LVL_DEBUG, "Unprovision ok.");
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "Unprovision Error.");
+        }
+    }
 }
 
 // content of request data

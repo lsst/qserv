@@ -39,6 +39,7 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "qmeta/types.h"
+#include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 
@@ -113,8 +114,6 @@ public:
     bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
                          std::shared_ptr<QueryResource> const& sourceQr);
 
-
-
 private:
     void _setup();
 
@@ -153,9 +152,9 @@ private:
     std::condition_variable _allJobsComplete;
     mutable std::recursive_mutex _jobsMutex;
 
-    // Give this executive a reasonable identifier, to be replaced by a unique id.
-    qmeta::QueryId _id{0};
+    qmeta::QueryId _id{0}; ///< Unique identifier for this query.
     std::string    _idStr{qmeta::QueryIdHelper::makeIdStr(0, true)};
+    util::InstanceCount _instC{"Executive"};
 };
 
 class MarkCompleteFunc {

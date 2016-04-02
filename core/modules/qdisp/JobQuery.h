@@ -35,6 +35,7 @@
 #include "qdisp/Executive.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
+#include "util/InstanceCount.h"
 
 namespace lsst {
 namespace qserv {
@@ -128,6 +129,7 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled {false};
+    util::InstanceCount _instC{"JobQuery"};
 };
 
 }}} // end namespace

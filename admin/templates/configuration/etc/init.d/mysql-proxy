@@ -53,6 +53,11 @@ pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
 PROXY_CONFIG=${QSERV_RUN_DIR}/etc/my-proxy.cnf
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
 
+VALG=""
+#VALG="valgrind --leak-check=full"
+#VALG="valgrind --leak-check=no"
+#VALG="valgrind --tool=callgrind"
+
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 logfile=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_CONFIG=${QSERV_RUN_DIR}/etc/qserv-czar.cnf
@@ -64,7 +69,7 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
-cmd="QSERV_CONFIG=${QSERV_CONFIG} ${DAEMON} \
+cmd="QSERV_CONFIG=${QSERV_CONFIG} ${VALG} ${DAEMON} \
     $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option \
     --defaults-file=${PROXY_CONFIG} >> ${LUA_LOG_FILE} 2>&1 &"
 

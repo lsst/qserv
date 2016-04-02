@@ -105,7 +105,7 @@ public:
     /** Sets flag value to 'val' while notifying others of the change,
      * and returns the old value of flag.
      */
-    virtual T exchange(T val) {
+    virtual T exchangeNotify(T val) {
         std::lock_guard<std::mutex> lock(_mutex);
         auto oldVal = _flag;
         _flag = val;

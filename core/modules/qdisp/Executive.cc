@@ -109,29 +109,34 @@ void Executive::setQueryId(qmeta::QueryId id) {
 ///
 void Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
-    if (_cancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
-             << jobDesc.id() << ")");
-        return;
-    }
-    // Create the JobQuery and put it in the map.
-    JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
-    MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-    JobQuery::Ptr jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
+    JobQuery::Ptr jobQuery;
+    {
+        std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
+        if (_cancelled) {
+            LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
+                    << jobDesc.id() << ")");
+            return;
+        }
+        // Create the JobQuery and put it in the map.
+        JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
+        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
+        jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
 
-    if (!_addJobToMap(jobQuery)) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
-        return;
-    }
+        if (!_addJobToMap(jobQuery)) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
+            return;
+        }
 
-    if (!_track(jobQuery->getIdInt(), jobQuery)) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
-        return;
+        if (!_track(jobQuery->getIdInt(), jobQuery)) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
+            return;
+        }
+
+        if (_empty.exchange(false)) {
+            LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
+        }
+        ++_requestCount;
     }
-    if (_empty.exchange(false)) {
-        LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
-    }
-    ++_requestCount;
     std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
