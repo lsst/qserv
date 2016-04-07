@@ -29,6 +29,7 @@
 #include <unistd.h> // for getpass
 
 // Third-party headers
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "sql/SqlConnection.h"

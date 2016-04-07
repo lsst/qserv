@@ -25,6 +25,9 @@
 #include <string>
 #include <unistd.h>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // Boost unit test header
 #define BOOST_TEST_MODULE Qdisp_1
 #include "boost/test/included/unit_test.hpp"
