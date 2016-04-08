@@ -86,6 +86,9 @@ def generate(env):
         env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
         env.Append(CXXFLAGS=['-std=c++11'])
 
+        # Required for XCode 7.3 @rpath linker issues
+        env['LIBDIRSUFFIX'] = "/"
+
         # copied from sconsUtils
         env.Append(SHLINKFLAGS=["-undefined", "suppress", "-flat_namespace", "-headerpad_max_install_names"])
 
