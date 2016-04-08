@@ -94,7 +94,7 @@ def generate(env):
 
         env['LDMODULESUFFIX'] = ".so"
         if not re.search(r"-install_name", str(env['SHLINKFLAGS'])):
-            env.Append(SHLINKFLAGS=["-Wl,-install_name", "-Wl,${TARGET.file}"])
+            env.Append(SHLINKFLAGS=["-install_name", "@rpath/${TARGET.file}"])
 
     elif platform == 'linux2':
         # Linux with any compiler
