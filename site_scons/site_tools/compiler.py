@@ -86,12 +86,15 @@ def generate(env):
         env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
         env.Append(CXXFLAGS=['-std=c++11'])
 
+        # Required for XCode 7.3 @rpath linker issues
+        env['LIBDIRSUFFIX'] = "/"
+
         # copied from sconsUtils
         env.Append(SHLINKFLAGS=["-undefined", "suppress", "-flat_namespace", "-headerpad_max_install_names"])
 
         env['LDMODULESUFFIX'] = ".so"
         if not re.search(r"-install_name", str(env['SHLINKFLAGS'])):
-            env.Append(SHLINKFLAGS=["-Wl,-install_name", "-Wl,${TARGET.file}"])
+            env.Append(SHLINKFLAGS=["-install_name", "@rpath/${TARGET.file}"])
 
     elif platform == 'linux2':
         # Linux with any compiler
