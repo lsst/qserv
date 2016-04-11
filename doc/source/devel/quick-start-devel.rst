@@ -20,10 +20,10 @@ source dependencies for the current Qserv release:
 .. code-block:: bash
 
    # use Qserv official distribution server
-   eups distrib install --onlydepend --tag qserv qserv
+   eups distrib install --onlydepend --tag qserv-dev qserv
    # only if you want to launch integration tests with your Qserv code
-   eups distrib install --tag qserv qserv_testdata
-   setup qserv_testdata
+   eups distrib install --tag qserv-dev qserv_testdata
+   setup qserv_testdata --tag qserv-dev
  
 .. note::
 
@@ -47,13 +47,13 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    cd ${SRC_DIR}
    # anonymous access :
    git clone git://github.com/LSST/qserv
-   # or authenticated access (require a ssh key) :
-   git clone ssh://git@github.com/LSST/qserv
+   # or authenticated access (require a ssh key) by tapping :
+   # git clone ssh://git@github.com/LSST/qserv
    # build and install your Qserv version
    cd qserv
    # if following "setup" command fails due to missing packages one has to
    # manually install those packages with regular "eups distrib install ..."
-   setup --keep --root .
+   setup --root . --tag qserv-dev
    # build Qserv. Optional, covered by next command (i.e. install)
    scons build
    # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
