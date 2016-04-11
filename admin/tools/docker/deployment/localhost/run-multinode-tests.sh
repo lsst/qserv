@@ -5,8 +5,9 @@
 set -x
 set -e
 
-. ./env.sh
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
+. "${DIR}/env.sh"
 
 usage() {
   cat << EOD
@@ -47,12 +48,14 @@ docker run --name docker_spy --detach=true -e "DNS_DOMAIN=$DNS_DOMAIN" -v /var/r
 DNS_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' docker_spy)
 
 docker rm -f "$MASTER" || echo "No existing container for $MASTER"
-docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" --name "$MASTER" -h "${MASTER}" "$MASTER_IMAGE"
+docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" \
+    -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_IMAGE"
 
 for i in $WORKERS;
 do
     docker rm -f "$i" || echo "No existing container for $i"
-    docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" --name "$i" -h "${i}"  "$WORKER_IMAGE"
+    docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" \
+        -e "QSERV_MASTER=$MASTER" --name "$i" -h "${i}"  "$WORKER_IMAGE"
 done
 
 # Wait for Qserv services to be up and running

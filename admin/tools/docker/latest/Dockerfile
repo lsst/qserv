@@ -23,7 +23,6 @@ WORKDIR /qserv
 # other files changes in scripts/
 COPY scripts/install-stack.sh scripts/install-stack.sh
 
-# Hack to enable diagnose of stack install failure
-RUN /bin/bash /qserv/scripts/install-stack.sh 2>&1 /qserv/STACK_INSTALL.out || echo 'INSTALL FAILED' > /qserv/STACK_INSTALL.err
+RUN /bin/bash /qserv/scripts/install-stack.sh 2>&1 /qserv/STACK_INSTALL.out
 
 COPY scripts/*.sh scripts/

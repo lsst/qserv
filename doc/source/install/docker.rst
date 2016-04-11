@@ -54,7 +54,7 @@ Create Qserv master and worker images from a given Qserv version:
    # Code need to be pushed on github
    # eups tag named qserv-dev will be used to setup Qserv version
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   4_build-configured-image.sh -i <docker-image-name> <master-node-fqdn>
+   4_build-configured-image.sh -i <docker-image-name>
 
 *********
 Use cases
@@ -93,7 +93,7 @@ Host might be a development machine or a continuous integration server.
 
    ./change-uid.sh
 
-Build, configure and run Qserv from source in qserv:dev-uid container using
+Build, configure and run Qserv from source in qserv:work-uid container using
 source and run directory located on a development machine.
 
 .. code-block:: bash
@@ -103,7 +103,7 @@ source and run directory located on a development machine.
    -v /home/qserv/src/qserv:/home/dev/src/qserv \
    -v /home/qserv/qserv-run/:/home/dev/qserv-run \
    -u dev \
-   fjammes/qserv:dev-uid \
+   fjammes/qserv:work-uid \
    /bin/sh -c "/home/dev/scripts/build.sh && /qserv/scripts/mono-node-test.sh"
 
 ***************

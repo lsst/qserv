@@ -17,5 +17,5 @@ do
 done
 
 # Set images names
-MASTER_IMAGE="${VERSION}_master_${MASTER}"
-WORKER_IMAGE="${VERSION}_worker_${MASTER}"
+MASTER_IMAGE="${VERSION}_master"
+WORKER_IMAGE="${VERSION}_worker"

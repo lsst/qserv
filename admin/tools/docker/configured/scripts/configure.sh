@@ -30,14 +30,14 @@ set -e
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options] host
+Usage: `basename $0` [options]
 
   Available options:
     -h          this message
     -m          configure Qserv master, instead of worker by default
 
-  Configure a Qserv worker/master in a docker image. Qserv master fqdn
-  must be provided.
+  Configure a Qserv worker/master in a docker image,
+  except Qserv master hostname parameter, set later at container execution.
 EOD
 }
 
@@ -53,12 +53,10 @@ while getopts hm c ; do
 done
 shift `expr $OPTIND - 1`
 
-if [ $# -ne 1 ] ; then
+if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
-
-MASTER=$1
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . $DIR/params.sh
@@ -71,7 +69,7 @@ qserv-configure.py --init --force \
 # Customize meta configuration file
 sed -i "s/node_type = mono/node_type = $NODE_TYPE/" \
     $QSERV_RUN_DIR/qserv-meta.conf
-sed -i "s/master = 127.0.0.1/master = $MASTER/" \
+sed -i "s/master = 127.0.0.1/master = <DOCKER_ENV_QSERV_MASTER>/" \
     $QSERV_RUN_DIR/qserv-meta.conf
 
 qserv-configure.py --qserv-run-dir $QSERV_RUN_DIR --force
