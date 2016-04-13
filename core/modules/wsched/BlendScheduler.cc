@@ -165,6 +165,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     {
         std::lock_guard<std::mutex> guard(_mapMutex);
         _map[task.get()] = s;
+        LOGS(_log, LOG_LVL_DEBUG, "&&& created s=" << s << " t=" << task.get());
     }
     LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd " << task->getIdStr());
     s->queCmd(task);
@@ -181,6 +182,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
 
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
     wcontrol::Scheduler* s = lookup(t);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& start s=" << s << " t=" << t);
     if (s != nullptr) {
         s->commandStart(t);
     } else {
@@ -196,6 +198,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     wcontrol::Scheduler* s = lookup(t, true); // erase entry in map
+    LOGS(_log, LOG_LVL_DEBUG, "&&& fini s=" << s << " t=" << t);
 
     if (s != nullptr) {
         s->commandFinish(t);
@@ -220,7 +223,7 @@ wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p, bool erase) {
         return nullptr;
     }
     auto val = i->second;
-    //if (erase) _map.erase(i); // &&& why does this break unit tests???
+    if (erase) _map.erase(i); // &&& why does this break unit tests???
     return val;
 }
 

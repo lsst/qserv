@@ -123,9 +123,11 @@ bool ScanScheduler::_ready() {
     if (_inFlight >= maxInFlight()) {
         return false;
     }
-    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() > 2) {   // &&& replace magic number or delete entire if block
+    /* &&& re-enable
+    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() >= 3) {   // &&& replace magic number or delete entire if block
         return false;
     }
+    */
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _disk->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
