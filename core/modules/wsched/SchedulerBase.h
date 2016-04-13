@@ -59,6 +59,8 @@ public:
     virtual int getInFlight() const { return _inFlight; }
     virtual std::size_t getSize() const =0; //< @return the number of tasks in the queue (not in flight).
     virtual bool ready()=0; //< @return true if the scheduler is ready to provide a Task.
+    int getUserQueriesInQ(); //< @return number of UserQueries in the queue.
+    int getActiveChunkCount(); //< @return number of chunks being queried.
 
     /// Methods for altering priority.
     // Hooks for changing this schedulers priority/reserved threads.
@@ -92,7 +94,21 @@ public:
     /// Return maximum number of Tasks this scheduler can have inFlight.
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
+    std::string chunkStatusStr(); //< @return a string
+
 protected:
+    /// Increment the _userQueryCounts entry for queryId, creating it if needed.
+    /// Precondition util::CommandQueue::_mx must be locked.
+    /// @return the new count for queryId.
+    int _incrCountForUserQuery(uint64_t queryId);
+
+    /// Decrement the _userQueryCounts entry for queryId. The entry is deleted if the new value <= 0.
+    /// @return the new count for queryId.
+    int _decrCountForUserQuery(uint64_t queryId);
+
+    void _incrChunkTaskCount(int chunkId); //< Increase the count of Tasks working on this chunk.
+    void _decrChunkTaskCount(int chunkId); //< Decrease the count of Tasks working on this chunk.
+
     std::string const _name{}; //< Name of this scheduler.
     int _maxReserve{1};    //< Number of threads this scheduler would like to have reserved for its use.
     int _maxReserveDefault{1};
@@ -105,6 +121,14 @@ protected:
     int _priorityNext; ///< Priority to use starting with the next chunk.
 
     std::atomic<int> _inFlight{0}; //< Number of Tasks running.
+
+private:
+    /// The true purpose of _userQuerycount is to track how many different UserQuery's are on the queue.
+    /// Number of Tasks for each UserQuery in the queue.
+    std::map<uint64_t, int> _userQueryCounts;
+
+    std::map<int, int> _chunkTasks; //< Number of tasks in each chunk actively being queried. &&& implement
+    std::mutex _countsMutex; //< Protects _userQueryCounts and _chunkTasks.
 };
 
 }}} // namespace lsst::qserv::wsched

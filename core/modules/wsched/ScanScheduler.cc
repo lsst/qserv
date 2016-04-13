@@ -93,6 +93,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     } else {
         _memMan->unlock(t->getMemHandle());
     }
+
+    _decrChunkTaskCount(t->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
     if (_disk->nextTaskDifferentChunkId()) {
         applyPriority();
@@ -115,9 +117,13 @@ bool ScanScheduler::_ready() {
     if (_infoChanged) {
         _infoChanged = false;
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight="
-             << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj);
+             << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
+             << " activeChunks=" << getActiveChunkCount());
     }
     if (_inFlight >= maxInFlight()) {
+        return false;
+    }
+    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() > 2) {   // &&& replace magic number or delete entire if block
         return false;
     }
     bool useFlexibleLock = (_inFlight < 1);
@@ -135,6 +141,7 @@ std::size_t ScanScheduler::getSize() const {
     return _disk->getSize();
 }
 
+
 util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
@@ -146,6 +153,8 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     auto task = _disk->getTask(useFlexibleLock);
     ++_inFlight; // in flight as soon as it is off the queue.
     _infoChanged = true;
+    _decrCountForUserQuery(task->getQueryId());
+    _incrChunkTaskCount(task->getChunkId());
     return task;
 }
 
@@ -157,7 +166,9 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr());
+    auto uqCount = _incrCountForUserQuery(t->getQueryId());
+    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
+         << " uqCount=" << uqCount);
     _disk->enqueue(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();

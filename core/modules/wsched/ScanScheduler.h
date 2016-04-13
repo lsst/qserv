@@ -67,6 +67,8 @@ public:
         _blendScheduler = blend;
     }
 
+
+
     // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;

@@ -120,7 +120,7 @@ void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
 }
 
 
-/// @return true if the next Task has a different cunkId than the current Task.
+/// @return true if the next Task has a different chunkId than the current Task.
 /// The purpose here is that the best time to change priority or switch to doing
 /// something else is when all the Tasks for the current chunkId have finished.
 bool ChunkDisk::nextTaskDifferentChunkId() {

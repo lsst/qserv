@@ -100,13 +100,14 @@ public:
     int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
     void setFlagReorderScans() { _flagReorderScans = true; }
-    wcontrol::Scheduler* lookup(wbase::Task::Ptr p);
+    wcontrol::Scheduler* lookup(wbase::Task::Ptr p, bool erase=false);
     int calcAvailableTheads();
 
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
     void _sortScanSchedulers();
+    void _logChunkStatus();
 
     int _schedMaxThreads; //< maximum number of threads that can run.
 
@@ -115,7 +116,7 @@ private:
     std::shared_ptr<ScanScheduler> _scanFast;
     std::vector<SchedulerBase::Ptr> _schedulers;
     bool _lastCmdFromScan{false};
-    std::map<wbase::Task*, SchedulerBase*> _map;
+    std::map<wbase::Task*, SchedulerBase*> _map; // &&& does this ever shrink? or does it just keep getting bigger??
     std::mutex _mapMutex;
 
     std::atomic<bool> _flagReorderScans{false};

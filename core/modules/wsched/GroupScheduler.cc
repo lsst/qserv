@@ -116,7 +116,9 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
-    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd " << t->getIdStr());
+    auto uqCount = _incrCountForUserQuery(t->getQueryId());
+    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd " << t->getIdStr()
+         << " uqCount=" << uqCount);
     util::CommandQueue::_cv.notify_all();
 }
 
@@ -129,13 +131,23 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
         return nullptr;
     }
     auto group = _queue.front();
-    auto cmd = group->getTask();
+    auto task = group->getTask();
     if (group->isEmpty()) {
         _queue.pop_front();
     }
     ++_inFlight; // Considered inFlight as soon as it's off the queue.
-    return cmd;
+    _decrCountForUserQuery(task->getQueryId());
+    _incrChunkTaskCount(task->getChunkId());
+    return task;
 }
+
+
+void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
+    --_inFlight;
+    auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
+}
+
 
 GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize, int priority)
   : SchedulerBase(name, maxThreads, maxReserve, priority), _maxGroupSize(maxGroupSize){
