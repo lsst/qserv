@@ -71,6 +71,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
         return;
     }
+    task->startTime();
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart " << task->getIdStr());
     // task was registered Inflight when getCmd() was called.
 }
@@ -85,13 +86,20 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
 
+    t->endTime();
+
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         _memMan->unlock(_memManHandleToUnlock);
+        _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
     }
+
+    // Wait to unlock the tables until after the next call to _ready or commandFinish.
+    // This is done in case only one thread is running on this scheduler as
+    // we don't want to release the tables in case the next Task wants some of them.
     if (_disk->getSize() != 0) {
         _memManHandleToUnlock = t->getMemHandle();
     } else {
-        _memMan->unlock(t->getMemHandle());
+        _memMan->unlock(t->getMemHandle()); // Nothing on the queue, no reason to wait.
     }
 
     _decrChunkTaskCount(t->getChunkId());
@@ -123,16 +131,18 @@ bool ScanScheduler::_ready() {
     if (_inFlight >= maxInFlight()) {
         return false;
     }
-    /* &&& re-enable
-    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() >= 3) {   // &&& replace magic number or delete entire if block
+    /* &&& keep or get rid of ???
+    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() >= 10) {   // &&& replace magic number or delete entire if block
         return false;
     }
-    */
+    */ // &&&
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _disk->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
+    // If ready failed, holding onto this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
+        logMemManStats();
     }
     return rdy;
 }
@@ -174,6 +184,21 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     _disk->enqueue(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();
+}
+
+
+void ScanScheduler::logMemManStats() {
+    auto s = _memMan->getStatistics();
+    LOGS(_log, LOG_LVL_DEBUG, "bMax=" << s.bytesLockMax
+         << " bLocked=" << s.bytesLocked
+         << " bReserved=" << s.bytesReserved
+         << " FSets=" << s.numFSets
+         << " files=" << s.numFiles
+         << " ReqF=" << s.numReqdFiles
+         << " FlxF=" << s.numFlexFiles
+         << " FlxLck=" << s.numFlexLock
+         << " lckCalls=" << s.numLocks
+         << " errs=" << s.numErrors);
 }
 
 }}} // namespace lsst::qserv::wsched

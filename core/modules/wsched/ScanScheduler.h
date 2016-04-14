@@ -67,8 +67,6 @@ public:
         _blendScheduler = blend;
     }
 
-
-
     // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
@@ -79,6 +77,8 @@ public:
     // SchedulerBase overrides
     bool ready() override;
     std::size_t getSize() const override ;
+
+    void logMemManStats();
 
 private:
     bool _ready();

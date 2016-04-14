@@ -27,6 +27,7 @@
 
 // System headers
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -149,6 +150,9 @@ public:
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
 
+    void startTime();
+    void endTime();
+
 private:
     uint64_t const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
@@ -159,6 +163,9 @@ private:
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
+
+    std::chrono::system_clock::time_point _startTime;
+    std::chrono::system_clock::time_point _endTime;
 };
 
 /// MsgProcessor implementations handle incoming Task objects.
