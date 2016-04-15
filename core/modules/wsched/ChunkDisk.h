@@ -62,7 +62,7 @@ public:
     bool ready(bool useFlexibleLock);
     std::size_t getSize() const;
 
-    void setResourceStarved(bool starved);
+    bool setResourceStarved(bool starved);
     bool nextTaskDifferentChunkId();
 
     /// Class that keeps the minimum chunkId at the front of the heap

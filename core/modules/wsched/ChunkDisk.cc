@@ -139,6 +139,17 @@ bool ChunkDisk::ready(bool useFlexibleLock) {
 /// Precondition: _queueMutex must be locked
 /// Return true if this disk is ready to provide a Task from its queue.
 bool ChunkDisk::_ready(bool useFlexibleLock) {
+    auto logMemManRes =
+        [this](bool newVal, std::string const& msg, std::vector<memman::TableInfo> const& tblVect) {
+        if (setResourceStarved(newVal)) {
+            std::string str;
+            for (auto const& tblInfo:tblVect) {
+                str += tblInfo.tableName + " ";
+            }
+            LOGS(_log, LOG_LVL_DEBUG, "ready memMan " << msg << " - " << str);
+        }
+    };
+
     // If the current queue is empty and the pending is not,
     // Switch to the pending queue.
     if (_activeTasks.empty() && !_pendingTasks.empty()) {
@@ -158,18 +169,17 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         auto chunkId = task->getChunkId();
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
-            memman::TableInfo ti(tbl.db + "." + tbl.table, lckOptTbl, lckOptIdx);
-            LOGS(_log,LOG_LVL_DEBUG, "chunkId=" << chunkId << " ti=" << ti.tableName
-                                     << " lock=" << (int)ti.theData);
+            memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
+            // LOGS(_log,LOG_LVL_DEBUG, "_ready memMgr chunkId=" << chunkId << " ti=" << ti.tableName << " lock=" << (int)ti.theData); &&& delete
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
         memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
-        LOGS(_log,LOG_LVL_DEBUG, "handle=" << handle);
+        // LOGS(_log,LOG_LVL_DEBUG, "_ready memMgr handle=" << handle); &&& delete
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:
-                setResourceStarved(true);
+                logMemManRes(true, "ENOMEM", tblVect);
                 return false;
             case ENOENT:
                 LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found " << task->getIdStr());
@@ -186,7 +196,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
             }
         }
         task->setMemHandle(handle);
-        setResourceStarved(false);
+        logMemManRes(false, "got handle", tblVect);
         // Once the chunk has been granted, everything equal and below must go on pending.
         // Otherwise there's a risk of a Task with lower or same chunkId getting in front
         // of this one and needing the resources this Task has been promised.
@@ -211,12 +221,15 @@ wbase::Task::Ptr ChunkDisk::getTask(bool useFlexibleLock) {
     return task;
 }
 
+// @return true if value changed.
 // TODO: DM-4943 add statistics.
-void ChunkDisk::setResourceStarved(bool starved) {
+bool ChunkDisk::setResourceStarved(bool starved) {
     if (starved != _resourceStarved) {
         _resourceStarved = starved;
         LOGS(_log, LOG_LVL_DEBUG, "resourceStarved changed to " << _resourceStarved);
+        return true;
     }
+    return false;
 }
 
 

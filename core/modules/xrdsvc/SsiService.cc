@@ -99,8 +99,10 @@ SsiService::SsiService(XrdSsiLogger* log) {
         // Default to 1 gigabyte
         uint64_t memManSizeMb = config.getInt("QSW_MEMMAN_MB", 1000);
         std::string memManLocation = config.getString("QSW_MEMMAN_LOCATION");
-        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << memManSizeMb);
-        memMan = std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSizeMb*1000000, memManLocation));
+        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << memManSizeMb
+                << " location=" << memManLocation);
+        memMan =
+            std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSizeMb*1000000, memManLocation));
     } else if (cfgMemMan == "MemManNone"){
         // Memory available is meaningless for MemManNone
         LOGS(_log, LOG_LVL_DEBUG, "Using MemManNone");
