@@ -24,6 +24,8 @@
 // Class header
 #include "ConfigStore.h"
 
+// System headers
+#include <map>
 #include <sstream>
 
 // Qserv headers
@@ -41,7 +43,7 @@
 
 namespace { // File-scope helpers
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Config");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ConfigStore");
 
 } // namespace
 
@@ -51,11 +53,13 @@ namespace qserv {
 namespace util {
 
 
-void ConfigStore::parseFile(std::string const& configFilePath) {
+std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string const& configFilePath) {
 
     // read it into a ptree
     boost::property_tree::ptree pt;
     boost::property_tree::ini_parser::read_ini(configFilePath, pt);
+
+    std::map<std::string, std::string> configMap;
 
     // flatten
     for (auto& sectionPair: pt) {
@@ -63,13 +67,15 @@ void ConfigStore::parseFile(std::string const& configFilePath) {
         for (auto& itemPair: sectionPair.second) {
             auto& item = itemPair.first;
             auto& value = itemPair.second.data();
-            _configMap.insert(std::make_pair(section + "." + item, value));
+            configMap.insert(std::make_pair(section + "." + item, value));
         }
     }
+
+    return configMap;
 }
 
-std::string ConfigStore::get(std::string const& key) const {
-    StringMap::const_iterator i = _configMap.find(key);
+std::string ConfigStore::getString(std::string const& key) const {
+    std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     if(i != _configMap.end()) {
         return i->second;
     } else {
@@ -78,9 +84,9 @@ std::string ConfigStore::get(std::string const& key) const {
     }
 }
 
-std::string ConfigStore::get(std::string const& key,
+std::string ConfigStore::getStringOrDefault(std::string const& key,
                              std::string const& defaultValue) const {
-    StringMap::const_iterator i = _configMap.find(key);
+    std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     if(i != _configMap.end()) {
         return i->second;
     } else {
@@ -89,14 +95,23 @@ std::string ConfigStore::get(std::string const& key,
     }
 }
 
-int ConfigStore::getInt(std::string const& key, int const& defaultValue) const {
-    StringMap::const_iterator i = _configMap.find(key);
-    if (i != _configMap.end()) {
-        return boost::lexical_cast<int>(i->second);
+int ConfigStore::getIntOrDefault(std::string const& key, int const& defaultValue) const {
+	std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
+    int result = defaultValue;
+    if (i != _configMap.end() and not i->second.empty()) {
+        try {
+            // tried to use std::stoi() here but it returns OK for strings like "0xFSCK"
+            result = boost::lexical_cast<int>(i->second);
+            return result;
+        } catch (boost::bad_lexical_cast const& exc) {
+            LOGS( _log, LOG_LVL_WARN, "Unable to cast string \"" << i->second << "\" to integer");
+            throw InvalidIntegerValue(key, i->second);
+        }
     } else {
-        LOGS( _log, LOG_LVL_WARN, "[" << key << "] key not found, using default value: \"" << defaultValue << "\"");
-        return defaultValue;
+        LOGS( _log, LOG_LVL_WARN, "[" << key << "] key does not exist or has empty string value");
+        LOGS( _log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
     }
+    return result;
 }
 
 

@@ -31,21 +31,68 @@ namespace lsst {
 namespace qserv {
 namespace mysql {
 
-/// class MySqlConfig : Value class for configuring the MySQL connection
+/**
+ *  Value class for configuring the MySQL connection
+ *
+ *  Instance can be created with network socket and/or file socket
+ *  or only file socket. Parameters validity and MySQL insance connection can be
+ *  both ckecked.
+ *
+ */
 class MySqlConfig {
 public:
     MySqlConfig() : port(0) {}
+
+    /**
+     *  Create MySqlConfig instance
+     *
+     *  @param username:    MySQL username
+     *  @param password:    MySQL password
+     *  @param hostname:    MySQL hostname
+     *  @param port:        MySQL port
+     *  @param socket:      MySQL socket
+     *  @param db:          MySQL database
+     *  @param checkValid:  if true, throws exception if parameters below are invalid
+     *
+     * @throws std::runtime_error: if checkValid is true and some parameters are invalid
+     */
     MySqlConfig(std::string const& username, std::string const& password,
                 std::string const& hostname,
                 unsigned int const port,
                 std::string const& socket,
-                std::string const& dbName = "");
-    MySqlConfig(std::string const& username, std::string const& password,
-                std::string const& socket, std::string const& dbName = "");
+                std::string const& db = "",
+                bool const checkValid = true);
 
+    /**
+     *  Create MySqlConfig instance
+     *
+     *  @param username:    MySQL username
+     *  @param password:    MySQL password
+     *  @param socket:      MySQL socket
+     *  @param db:          MySQL db
+     *  @param checkValid:  if true, throws exception if parameters below are invalid
+     *
+     * @throws std::runtime_error: if some parameters are invalid
+     */
+    MySqlConfig(std::string const& username, std::string const& password,
+                std::string const& socket, std::string const& db = "");
+
+    /**
+     *  Check MySQL connection for current instance
+     *
+     * @return: true if MySQL connection succeeded, else false
+     */
     bool checkConnection() const;
 
-    bool isValid() const { return !username.empty(); }
+    /**
+     *  Check members variables validity for current instance
+     *
+     *  username must not be empty
+     *  hostname:port or socket must not be empty
+     *
+     * @throws std::runtime_error: if some member variable are invalid
+     */
+    void checkValidity() const;
 
     /** Overload output operator for current class
      *
@@ -55,6 +102,12 @@ public:
      */
     friend std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig);
 
+    /** Return a string representation of the object
+     *
+     * @return a string representation of the object
+     */
+    std::string toString() const;
+
     std::string username;
     std::string password;
     std::string hostname;
@@ -62,7 +115,6 @@ public:
     std::string socket;
     std::string dbName;
 
-    std::string toString() const;
 };
 
 }}} // namespace lsst::qserv::mysql

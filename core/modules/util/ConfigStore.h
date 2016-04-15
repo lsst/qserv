@@ -36,36 +36,49 @@
 #define LSST_QSERV_UTIL_CONFIGSTORE_H_
 
 // System headers
+#include <map>
 #include <string>
 
 // Qserv headers
-#include "global/stringTypes.h"
 
 namespace lsst {
 namespace qserv {
 namespace util {
 
-/** @brief Manage Qserv configuration
+/**
+ *  Read, store and provide read-only access for a key-value list
+ *
+ *  Used to manage Qserv configuration parameters.
+ *
+ *  Parse an INI configuration file, identify required parameters and ignore
+ *  others, analyze and store them inside private member variables, use default
+ *  values for missing parameters, provide accessor for each of these variable.
+ *  This class hide configuration complexity from other part of the code.
+ *  All private member variables are related to Czar parameters and are immutables.
  *
  */
 class ConfigStore {
 public:
 
-    // TODO remove it
-    static ConfigStore& getInstance() {
-        static ConfigStore instance;
-        return instance;
-    }
-
     /** Build a ConfigStore object from a configuration file
      *
      * @param configFilePath: path to Qserv configuration file
      */
-    ConfigStore(std::string const& configFilePath) {
-        parseFile(configFilePath);
+    ConfigStore(std::string const& configFilePath)
+        : _configMap(_parseIniFile(configFilePath)) {
     };
 
-    void parseFile(std::string const& configFilePath);
+    /** Build a ConfigStore object from a map
+     *
+     * @param kvMap: key-value map
+     */
+    ConfigStore(std::map<std::string, std::string> const& kvMap)
+    :   _configMap(kvMap) {
+    };
+
+    ConfigStore(ConfigStore const&) = delete;
+    ConfigStore& operator=(ConfigStore const&) = delete;
+
 
     /** Overload output operator for current class
      *
@@ -76,31 +89,60 @@ public:
     friend std::ostream& operator<<(std::ostream &out, ConfigStore const& config);
 
     /** Get value for a configuration key
+     *
      * @param key configuration key
      * @return the string value for a key
-     * @throw a ConfigError exception if key is not found
+     * @throw KeyNotFoundError if key is not found
      */
-    std::string get(std::string const& key) const;
+    std::string getString(std::string const& key) const;
 
-    /** Get value for a configuration key
+    /** Get value for a configuration key or a default value if key is not found
+     *
      * @param key configuration key
      * @params defaultValue
      * @return the string value for a key, defaulting to defaultValue
      */
-    std::string get(std::string const& key, std::string const& defaultValue) const;
+    std::string getStringOrDefault(std::string const& key,
+        std::string const& defaultValue = std::string()) const;
 
-    /// @return the typed value for a key, defaulting to defaultValue
-    int getInt(std::string const& key, int const& defaultValue = 0) const;
+    /** Get value for a configuration key or a default value if key is not found
+     *
+     * @param key configuration key
+     * @params defaultValue
+     * @return the integer value for a key, defaulting to defaultValue
+     *
+     * @throw InvalidIntegerValue if value can not be converted to an integer
+     */
+    int getIntOrDefault(std::string const& key, int const& defaultValue = 0) const;
 
-    const lsst::qserv::StringMap& getConfigMap() const {
-        return _configMap;
+    /** Get a collection of (key, value) related to a configuration section
+     *
+     *  All ConfigStore entries having key like "section.param_key" are returned
+     *  but all key name are shortened to "param_key"
+     *
+     * @param sectionName name of configuration section
+     * @return a collection of (key, value) related to a configuration section
+     *
+     */
+    std::map<std::string, std::string> const getSectionConfigMap(std::string sectionName) const {
+        // find all css.* parameters and copy to new map (dropping css.)
+            std::string section = sectionName+".";
+            std::map<std::string, std::string> sectionConfigMap;
+            int len = section.length();
+            for (auto const& kv : _configMap) {
+                if (kv.first.compare(0, len, section) == 0) {
+                    sectionConfigMap.insert(
+                            std::make_pair(std::string(kv.first, 4), kv.second));
+                }
+            }
+        return sectionConfigMap;
     }
 
 private:
-    ConfigStore(){};
-    ConfigStore& operator=(const ConfigStore&);
 
-    StringMap _configMap;
+    static std::map<std::string, std::string> const  _parseIniFile(std::string const& configFilePath);
+
+    std::map<std::string, std::string> const _configMap;
 
 };
 

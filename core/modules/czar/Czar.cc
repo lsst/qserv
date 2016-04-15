@@ -36,7 +36,6 @@
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
 #include "czar/MessageTable.h"
-#include "util/ConfigStore.h"
 #include "util/IterableFormatter.h"
 
 namespace {
@@ -46,9 +45,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 // parse KILL query, return thread ID or -1
 int parseKillQuery(std::string const& query);
 
-// make mysql config object from config map
-lsst::qserv::mysql::MySqlConfig mysqlConfig(lsst::qserv::util::ConfigStore const& config);
-
 } // anonymous namespace
 
 namespace lsst {
@@ -57,9 +53,8 @@ namespace czar {
 
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
-    : _czarName(czarName), _config(lsst::qserv::util::ConfigStore(configPath)),
-      _resultConfig(::mysqlConfig(_config)), _idCounter(),
-      _uqFactory(), _clientToQuery(), _mutex() {
+    : _czarName(czarName), _czarConfig(configPath),
+      _idCounter(), _uqFactory(), _clientToQuery(), _mutex() {
 
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
@@ -67,15 +62,15 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     const int year = 60*60*24*365;
     _idCounter = uint64_t(tv.tv_sec % year)*1000 + tv.tv_usec/1000;
 
-    std::string logConfig = _config.get("log.logConfig");
+    std::string logConfig = _czarConfig.getLogConfig();
     if (not logConfig.empty()) {
         LOG_CONFIG(logConfig);
     }
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _config);
+    LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
 
-    _uqFactory.reset(new ccontrol::UserQueryFactory(_config, _czarName));
+    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, _czarName));
 }
 
 SubmitResult
@@ -85,35 +80,31 @@ Czar::submitQuery(std::string const& query,
     LOGS(_log, LOG_LVL_INFO, "New query: " << query
          << ", hints: " << util::printable(hints));
 
-    // get some info from hints
-    std::string clientId;
-    int threadId = -1;
+    util::ConfigStore hintsConfigStore(hints);
 
-    auto hintIter = hints.find("client_dst_name");
-    if (hintIter != hints.end()) clientId = hintIter->second;
+    // Analyze query hints
+    std::string clientId = hintsConfigStore.getStringOrDefault("client_dst_name");
 
-    hintIter = hints.find("server_thread_id");
-    if (hintIter != hints.end()) {
-        try {
-            threadId = boost::lexical_cast<int>(hintIter->second);
-        } catch (boost::bad_lexical_cast const& exc) {
-            // Not fatal, just means we cannot associate query with particular
-            // client/thread and will not be able to kill it later
-        }
-    }
+    // Not being able to get thread id is not fatal,
+    // it just means query cannot be associate with particular
+    // client/thread and will not be able to be killed later
+    int threadId = hintsConfigStore.getIntOrDefault("server_thread_id", -1);
 
-    // this is atomic
-    uint64_t userQueryId = _idCounter++;
+    std::string defaultDb = hintsConfigStore.getStringOrDefault("db");
+    LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
+
+
+
+    // make message table name
+    std::string userQueryId = std::to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
-
-    // make table names
-    auto userQueryIdStr = std::to_string(userQueryId);
-    std::string const lockName = _resultConfig.dbName + ".message_" + userQueryIdStr;
+    std::string resultDb = _czarConfig.getMySqlResultConfig().dbName;
+    std::string const lockName = resultDb + ".message_" + userQueryId;
 
     SubmitResult result;
 
     // instantiate message table manager
-    MessageTable msgTable(lockName, _resultConfig);
+    MessageTable msgTable(lockName, _czarConfig.getMySqlResultConfig());
     try {
         msgTable.lock();
     } catch (std::exception const& exc) {
@@ -121,20 +112,13 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
+
     // make new UserQuery
-    std::string defDb;
-    hintIter = hints.find("db");
-    if (hintIter != hints.end()) {
-        defDb = hintIter->second;
-    }
-    else {
-        LOGS(_log, LOG_LVL_DEBUG, "Failed to find default database, using empty string");
-        defDb = "";
-    }
+    // this is atomic
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defDb);
+        uq = _uqFactory->newUserQuery(query, defaultDb);
     }
 
     // check for errors
@@ -186,7 +170,7 @@ Czar::submitQuery(std::string const& query,
 
     // return all info to caller
     if (not uq->getResultTableName().empty()) {
-        result.resultTable = _resultConfig.dbName + "." + uq->getResultTableName();
+        result.resultTable = resultDb + "." + uq->getResultTableName();
     }
     result.messageTable = lockName;
     result.orderBy = uq->getProxyOrderBy();
@@ -266,22 +250,6 @@ parseKillQuery(std::string const& aQuery) {
     }
 
     return -1;
-}
-
-// make mysql config object from config map
-lsst::qserv::mysql::MySqlConfig
-mysqlConfig(lsst::qserv::util::ConfigStore const& config) {
-
-    lsst::qserv::mysql::MySqlConfig mysqlConfig;
-
-    mysqlConfig.username = config.get("resultdb.user", "qsmaster");
-    mysqlConfig.password = config.get("resultdb.passwd");
-    mysqlConfig.hostname = config.get("resultdb.host");
-    mysqlConfig.port = config.getInt("resultdb.port",0);
-    mysqlConfig.socket = config.get("resultdb.unix_socket");
-    mysqlConfig.dbName = config.get("resultdb.db","qservResult");
-
-    return mysqlConfig;
 }
 
 } // namespace

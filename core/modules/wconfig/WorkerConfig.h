@@ -36,65 +36,125 @@ namespace qserv {
 
 namespace wconfig {
 
-/// The Config object provides a thin abstraction layer to shield code from
-/// the details of how the qserv worker is configured.
+/**
+ *  Provide all configuration parameters for a Qserv worker instance
+ *
+ *  Parse an INI configuration file, identify required parameters and ignore
+ *  others, analyze and store them inside private member variables, use default
+ *  values for missing parameters, provide accessor for each of these variable.
+ *  This class hide configuration complexity
+ *  from other part of the code. All private member variables are related to INI
+ *  parameters and are immutables.
+ *
+ */
 class WorkerConfig {
 public:
-    WorkerConfig(util::ConfigStore const& ConfigStore);
 
-
-    /* Get groupScheduler group size
-     * set from configuration file
+    /**
+     *  Create WorkerConfig instance from a INI configuration file
+     *
+     *  @param configFileName: path to worker INI configuration file
      */
-    const unsigned int getThreadPoolSize() const {
+    WorkerConfig(std::string configFileName)
+        : WorkerConfig(util::ConfigStore(configFileName)) {
+    }
+
+    WorkerConfig(WorkerConfig const&) = delete;
+    WorkerConfig& operator=(WorkerConfig const&) = delete;
+
+    /* Get thread pool size for shared scans
+     *
+     * @return thread pool size for shared scans
+     */
+    unsigned int const getThreadPoolSize() const {
         return _threadPoolSize;
     }
 
-    const unsigned int getMaxGroupSize() const {
+    /* Get maximum number of task accepted in a group queue
+     *
+     * @return maximum number of task accepted in a group queue
+     */
+    unsigned int const getMaxGroupSize() const {
         return _maxGroupSize;
     }
 
-    /* Get max thread reserve */
-    const unsigned int getMaxReserveFast() const {
+    /* Get max thread reserve for fast shared scan
+     *
+     * @return max thread reserve for fast shared scan
+     */
+    unsigned int const getMaxReserveFast() const {
         return _maxReserveFast;
     }
 
-    const unsigned int getMaxReserveMed() const {
+    /* Get max thread reserve for medium shared scan
+     *
+     * @return max thread reserve for medium shared scan
+     */
+    unsigned int const getMaxReserveMed() const {
         return _maxReserveMed;
     }
 
-    const unsigned int getMaxReserveSlow() const {
+    /* Get max thread reserve for slow shared scan
+     *
+     * @return max thread reserve for slow shared scan
+     */
+    unsigned int const getMaxReserveSlow() const {
         return _maxReserveSlow;
     }
 
-    const std::string& getMemManClass() const {
+    /* Get selected memory management implementation
+     *
+     * @return class name implementing selected memory management
+     */
+    std::string const& getMemManClass() const {
         return _memManClass;
     }
 
-    const std::string& getMemManLocation() const {
+    /* Get path to directory where the Memory Manager database resides
+     *
+     * @return path to directory where the Memory Manager database resides
+     */
+    std::string const& getMemManLocation() const {
         return _memManLocation;
     }
 
-    const uint64_t getMemManSizeMb() const {
+    /* Get maximum amount of memory that can be used by Memory Manager
+     *
+     * @return maximum amount of memory that can be used by Memory Manager
+     */
+    uint64_t const getMemManSizeMb() const {
         return _memManSizeMb;
     }
 
-    const mysql::MySqlConfig& getMySqlConfig() const {
+    /* Get MySQL configuration for worker MySQL instance
+     *
+     * @return a structure containing MySQL parameters
+     */
+    mysql::MySqlConfig const& getMySqlConfig() const {
         return _mySqlConfig;
     }
 
-    /* Get fast shared scan priority */
-    const unsigned int getPriorityFast() const {
+    /* Get fast shared scan priority
+     *
+     * @return fast shared scan priority
+     */
+    unsigned int const getPriorityFast() const {
         return _priorityFast;
     }
 
-    /* Get medium shared scan priority */
-    const unsigned int getPriorityMed() const {
+    /* Get medium shared scan priority
+     *
+     * @return medium shared scan priority
+     */
+    unsigned int const getPriorityMed() const {
         return _priorityMed;
     }
 
-    /* Get slow shared scan priority */
-    const unsigned int getPrioritySlow() const {
+    /* Get slow shared scan priority
+     *
+     * @return slow shared scan priority
+     */
+    unsigned int const getPrioritySlow() const {
         return _prioritySlow;
     }
 
@@ -107,6 +167,9 @@ public:
     friend std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig);
 
 private:
+
+    WorkerConfig(util::ConfigStore const& configStore);
+
     mysql::MySqlConfig const _mySqlConfig;
 
     std::string const _memManClass;

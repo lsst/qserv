@@ -61,6 +61,15 @@ public:
         : ConfigStoreError("Missing configuration key: " + key) {}
 };
 
+/**
+ * Specialized run-time error: invalid integer value
+ */
+class InvalidIntegerValue : public ConfigStoreError {
+public:
+    explicit InvalidIntegerValue(std::string const& key, std::string const& value)
+        : ConfigStoreError("Configuration key [" + key + "] has invalid integer value: '" + value +"'") {}
+};
+
 }}} // namespace lsst::qserv::util
 
 #endif // LSST_QSERV_CONFIGSTOREERROR_H

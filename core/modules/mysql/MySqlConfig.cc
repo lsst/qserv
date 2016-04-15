@@ -38,10 +38,10 @@
 
 namespace {
 
-    LOG_LOGGER getLogger() {
-        static LOG_LOGGER logger = LOG_GET("lsst.qserv.mysql.MySqlConfig");
-        return logger;
-    }
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.mysql.MySqlConfig");
+    return logger;
+}
 
 
 } // anonymous
@@ -55,23 +55,20 @@ MySqlConfig::MySqlConfig(std::string const& username,
                          std::string const& hostname,
                          unsigned int const port,
                          std::string const& socket,
-                         std::string const& dbName)
+                         std::string const& dbName,
+                         bool const checkValid)
     : username(username), password(password), hostname(hostname), port(port),
       socket(socket), dbName(dbName) {
 
-    if ((hostname.empty() or port == 0) and socket.empty()) {
-        LOGS(getLogger(), LOG_LVL_FATAL, "MySQL hostname:port and socket both undefined");
-        throw std::invalid_argument("MySQL hostname:port and socket both undefined" );
+    if (checkValid) {
+        checkValidity();
     }
 }
 
 MySqlConfig::MySqlConfig(std::string const& username, std::string const& password,
                          std::string const& socket, std::string const& dbName)
     : username(username), password(password), port(0), socket(socket), dbName(dbName) {
-    if (socket.empty()) {
-        LOGS(getLogger(), LOG_LVL_FATAL, "MySQL socket undefined");
-        throw std::invalid_argument("MySQL socket undefined");
-    }
+    checkValidity();
 }
 
 bool MySqlConfig::checkConnection() const {
@@ -91,6 +88,28 @@ std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig) {
         << ", user=" << mysqlConfig.username << ", password=" << mysqlConfig.password
         << ", db=" << mysqlConfig.dbName << ", socket=" << mysqlConfig.socket << "]";
     return out;
+}
+
+void MySqlConfig::checkValidity() const {
+    bool hasError = false;
+    std::string errorMsg = "Invalid MySQL configuration: [";
+    if (username.empty()) {
+        errorMsg = "\"username is empty\"";
+        hasError = true;
+    }
+    if ((hostname.empty() or port == 0) and socket.empty()) {
+        if (hasError) {
+            errorMsg +=", ";
+        }
+        errorMsg += "\"hostname:port and socket both undefined\"";
+        hasError = true;
+    }
+    errorMsg += "]";
+
+    if (hasError) {
+        LOGS(getLogger(), LOG_LVL_FATAL, errorMsg);
+        throw std::runtime_error(errorMsg);
+    }
 }
 
 std::string MySqlConfig::toString() const {

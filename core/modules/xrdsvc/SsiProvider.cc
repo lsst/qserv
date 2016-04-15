@@ -40,7 +40,6 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
-#include "util/ConfigStore.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
@@ -95,8 +94,8 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: "
         << argv[1]);
 
-    util::ConfigStore configStore(argv[1]);
-    wconfig::WorkerConfig workerConfig(configStore);
+    std::string workerConfigFile = argv[1];
+    wconfig::WorkerConfig workerConfig(workerConfigFile);
     LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: "
         << workerConfig);
 
