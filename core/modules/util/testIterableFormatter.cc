@@ -31,6 +31,7 @@
  */
 
 // System headers
+#include <array>
 #include <iostream>
 #include <sstream>
 #include <string>
