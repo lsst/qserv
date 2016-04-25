@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 
 }
 
-/// &&& re-enstate and fix
+
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
@@ -617,7 +617,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& a j=" << j);
         blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM)));
         if (j < 6) {
             BOOST_CHECK(blend->ready() == true);
@@ -632,7 +631,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
         }
     }
     {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& b");
         // Finishing one task should allow the 7th one to run.
         blend->commandFinish(scanTasks[0]);
         BOOST_CHECK(blend->ready() == true);
@@ -641,7 +639,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
         auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
         scanTasks.push_back(task);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& c");
     // Finish all the scanTasks, scanTasks[0] is already finished.
     for (int j=1; j<7; ++j) blend->commandFinish(scanTasks[j]);
     BOOST_CHECK(blend->getInFlight() == 0);
@@ -649,7 +646,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     // Test that only 6 threads can be started on a single GroupScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
-    LOGS(_log, LOG_LVL_DEBUG, "&&& d");
     std::vector<Task::Ptr> groupTasks;
     for (int j=0; j<7; ++j) {
         blend->queCmd(makeTask(newTaskMsg(j)));
@@ -666,7 +662,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
         }
     }
     {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& e");
         // Finishing one task should allow the 7th one to run.
         blend->commandFinish(groupTasks[0]);
         BOOST_CHECK(blend->ready() == true);
@@ -675,7 +670,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
         auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
         groupTasks.push_back(task);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& f");
     // Finish all the groupTasks, groupTasks[0] is already finished.
     for (int j=1; j<7; ++j) blend->commandFinish(groupTasks[j]);
     BOOST_CHECK(blend->getInFlight() == 0);

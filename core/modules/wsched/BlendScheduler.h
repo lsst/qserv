@@ -116,7 +116,7 @@ private:
     std::shared_ptr<ScanScheduler> _scanFast;
     std::vector<SchedulerBase::Ptr> _schedulers;
     bool _lastCmdFromScan{false};
-    std::map<wbase::Task*, SchedulerBase*> _map; // &&& does this ever shrink? or does it just keep getting bigger??
+    std::map<wbase::Task*, SchedulerBase*> _map;
     std::mutex _mapMutex;
 
     std::atomic<bool> _flagReorderScans{false};

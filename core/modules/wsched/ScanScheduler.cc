@@ -122,20 +122,34 @@ bool ScanScheduler::ready() {
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
+    bool logStuff = false;
     if (_infoChanged) {
         _infoChanged = false;
+        logStuff = true;
         LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight="
              << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
              << " activeChunks=" << getActiveChunkCount());
     }
     if (_inFlight >= maxInFlight()) {
+        if (logStuff) {
+            LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready too many in flight "
+                 << _inFlight);
+        }
         return false;
     }
-    /* &&& keep or get rid of ???
-    if (_disk->nextTaskDifferentChunkId() && getActiveChunkCount() >= 10) {   // &&& replace magic number or delete entire if block
-        return false;
+
+    if (_disk->nextTaskDifferentChunkId()) {
+        auto activeChunkCount = getActiveChunkCount();
+        auto maxActiveChunks = getMaxActiveChunks();
+        if (activeChunkCount >= maxActiveChunks) {
+            if (logStuff) {
+                LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready too many ActiveChunks "
+                     << activeChunkCount << ">=" << maxActiveChunks);
+            }
+            return false;
+        }
     }
-    */ // &&&
+
     bool useFlexibleLock = (_inFlight < 1);
     auto rdy = _disk->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     bool logMemStats = false;
@@ -146,7 +160,6 @@ bool ScanScheduler::_ready() {
         logMemStats = true;
     }
     if (rdy || logMemStats) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ready rdy=" << rdy);
         logMemManStats();
     }
     return rdy;

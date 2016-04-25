@@ -191,8 +191,7 @@ public:
         // Delay preparing the virtual file until just before it is needed.
     }
     void operator()() {
-        auto result = _mgr._doMerge(_response);
-        assert(result);
+        bool result = _mgr._doMerge(_response);
         _mgr.signalDone(result, *this);
     }
     Mgr& _mgr;

@@ -170,12 +170,10 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
         std::vector<memman::TableInfo> tblVect;
         for (auto const& tbl : scanInfo.infoTables) {
             memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
-            // LOGS(_log,LOG_LVL_DEBUG, "_ready memMgr chunkId=" << chunkId << " ti=" << ti.tableName << " lock=" << (int)ti.theData); &&& delete
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
         memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
-        // LOGS(_log,LOG_LVL_DEBUG, "_ready memMgr handle=" << handle); &&& delete
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:

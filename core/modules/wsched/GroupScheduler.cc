@@ -145,7 +145,6 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     --_inFlight;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    LOGS(_log, LOG_LVL_DEBUG, "GroupScheduler::commandFinish &&& inFlight=" << _inFlight << " t=" << t);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
 }
 

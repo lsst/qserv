@@ -134,13 +134,12 @@ bool
 SqlConnection::connectToDb(SqlErrorObject& errObj) {
     if (_connection->connected()) {
         int rc = mysql_ping(_connection->getMySql());
-        LOGS(_log, LOG_LVL_DEBUG, "&&& connectToDb ping=" << rc);
         if (rc == 0) return true;
         LOGS(_log, LOG_LVL_WARN, "connectToDb ping=" << rc);
         _connection->closeMySqlConn();
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "&&& connectToDb trying to connect");
+    LOGS(_log, LOG_LVL_DEBUG, "connectToDb trying to connect");
     if (!_connection->connect()) {
         LOGS(_log, LOG_LVL_ERROR, "connectToDb failed to connect!");
         _setErrorObject(errObj);

@@ -61,6 +61,7 @@ public:
     virtual bool ready()=0; //< @return true if the scheduler is ready to provide a Task.
     int getUserQueriesInQ(); //< @return number of UserQueries in the queue.
     int getActiveChunkCount(); //< @return number of chunks being queried.
+    int getMaxActiveChunks() const { return _maxActiveChunks; }
 
     /// Methods for altering priority.
     // Hooks for changing this schedulers priority/reserved threads.
@@ -127,8 +128,11 @@ private:
     /// Number of Tasks for each UserQuery in the queue.
     std::map<uint64_t, int> _userQueryCounts;
 
-    std::map<int, int> _chunkTasks; //< Number of tasks in each chunk actively being queried. &&& implement
+    std::map<int, int> _chunkTasks; //< Number of tasks in each chunk actively being queried.
     std::mutex _countsMutex; //< Protects _userQueryCounts and _chunkTasks.
+    // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
+    //       on 'everything' scheduler limits/needs.
+    int _maxActiveChunks{20}; //< Limit the number of chunks this scheduler can work on at one time.
 };
 
 }}} // namespace lsst::qserv::wsched
