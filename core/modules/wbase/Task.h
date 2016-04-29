@@ -27,6 +27,7 @@
 
 // System headers
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -35,6 +36,7 @@
 #include <string>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
 #include "qmeta/types.h"
@@ -140,6 +142,7 @@ public:
 
     // Shared scan information
     int getChunkId();
+    QueryId getQueryId() { return _qId; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
@@ -148,8 +151,11 @@ public:
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
 
+    void startTime();
+    void endTime();
+
 private:
-    uint64_t const    _qId{0}; //< queryId from czar
+    QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
     std::string const _idStr{qmeta::QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 
@@ -158,6 +164,9 @@ private:
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
+
+    std::chrono::system_clock::time_point _startTime;
+    std::chrono::system_clock::time_point _endTime;
 };
 
 /// MsgProcessor implementations handle incoming Task objects.

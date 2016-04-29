@@ -65,4 +65,70 @@ void SchedulerBase::setPriorityDefault() {
 }
 
 
+int SchedulerBase::_incrCountForUserQuery(QueryId queryId) {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    return ++_userQueryCounts[queryId];
+}
+
+
+int SchedulerBase::_decrCountForUserQuery(QueryId queryId) {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    // Decrement the count for this user query and remove the entry if count is 0.
+    int count = 0;
+    auto iter = _userQueryCounts.find(queryId);
+    if (iter != _userQueryCounts.end()) {
+        count = --(iter->second);
+        if (count <= 0) {
+            _userQueryCounts.erase(iter);
+            LOGS(_log, LOG_LVL_DEBUG, queryId << " uqCount=0, erased");
+        }
+    }
+    return count;
+}
+
+
+int SchedulerBase::getUserQueriesInQ() {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    return _userQueryCounts.size();
+}
+
+
+void SchedulerBase::_incrChunkTaskCount(int chunkId) {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    ++_chunkTasks[chunkId];
+}
+
+
+void SchedulerBase::_decrChunkTaskCount(int chunkId) {
+    // Decrement the count for this user query and remove the entry if count is 0.
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    auto iter = _chunkTasks.find(chunkId);
+    if (iter != _chunkTasks.end()) {
+        --(iter->second);
+        if (iter->second <= 0) {
+            _chunkTasks.erase(iter);
+        }
+    }
+}
+
+
+int SchedulerBase::getActiveChunkCount() {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    return _chunkTasks.size();
+}
+
+
+std::string SchedulerBase::chunkStatusStr() {
+    std::ostringstream os;
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    os << getName() << " ActiveChunks=" << _chunkTasks.size() << " ";
+    for (auto const& entry:_chunkTasks) {
+        int chunkId = entry.first;
+        int count = entry.second;
+        os << "(" << chunkId << ":" << count << ")";
+    }
+    return os.str();
+}
+
+
 }}} // namespace lsst::qserv::wsched

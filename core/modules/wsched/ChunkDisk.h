@@ -62,7 +62,7 @@ public:
     bool ready(bool useFlexibleLock);
     std::size_t getSize() const;
 
-    void setResourceStarved(bool starved);
+    bool setResourceStarved(bool starved);
     bool nextTaskDifferentChunkId();
 
     /// Class that keeps the minimum chunkId at the front of the heap
@@ -80,7 +80,10 @@ public:
         };
         void push(wbase::Task::Ptr const& task);
         wbase::Task::Ptr pop();
-        wbase::Task::Ptr top() { return _tasks.front(); }
+        wbase::Task::Ptr top() {
+            if (_tasks.empty()) return nullptr;
+            return _tasks.front();
+        }
         bool empty() const { return _tasks.empty(); }
         void heapify() {
             std::make_heap(_tasks.begin(), _tasks.end(), compareFunc);

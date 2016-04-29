@@ -35,5 +35,8 @@ namespace qserv {
 typedef std::set<int> IntSet;
 typedef std::vector<int> IntVector;
 typedef std::vector<int32_t> Int32Vector;
+
+/// Typedef for Query ID in query metadata.
+typedef std::uint64_t QueryId;
 }}
 #endif // LSST_QSERV_INTTYPES_H

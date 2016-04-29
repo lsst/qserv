@@ -107,8 +107,8 @@ BlendScheduler::~BlendScheduler() {
 void BlendScheduler::_sortScanSchedulers() {
     auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
         // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getPriority() * (1 + a->getSize());
-        auto bVal = b->getPriority() * (1 + b->getSize());
+        auto aVal = a->getPriority() * (1 + a->getUserQueriesInQ());
+        auto bVal = b->getPriority() * (1 + b->getUserQueriesInQ());
         return aVal > bVal;
     };
     // The first scheduler should always be _group (for interactive queries).
@@ -195,7 +195,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
-    wcontrol::Scheduler* s = lookup(t);
+    wcontrol::Scheduler* s = lookup(t, true); // erase entry in map
 
     if (s != nullptr) {
         s->commandFinish(t);
@@ -204,6 +204,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
     _infoChanged = true;
+    _logChunkStatus();
 
     // TODO: DM-4943 Add check to only call notify if resources were actually freed by commandFinish()
     notify(true);
@@ -211,14 +212,16 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
 }
 
 /// @return ptr to scheduler that is tracking p
-wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p) {
+wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p, bool erase) {
     std::lock_guard<std::mutex> guard(_mapMutex);
     auto i = _map.find(p.get());
     if (i == _map.end()) {
         LOGS(_log, LOG_LVL_ERROR, "lookup failed to find scheduler " << p->getIdStr());
         return nullptr;
     }
-    return i->second;
+    auto val = i->second;
+    if (erase) _map.erase(i);
+    return val;
 }
 
 
@@ -266,7 +269,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     // Try to get a command from the schedulers
     util::Command::Ptr cmd;
     int availableThreads = calcAvailableTheads();
-    for(auto sched : _schedulers) {
+    for (auto const& sched : _schedulers) {
         availableThreads = sched->applyAvailableThreads(availableThreads);
         cmd = sched->getCmd(false); // no wait
         if (cmd != nullptr) {
@@ -277,7 +280,10 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
         LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
     }
-    if (cmd != nullptr) _infoChanged = true;
+    if (cmd != nullptr) {
+        _infoChanged = true;
+        _logChunkStatus();
+    }
     // returning nullptr is acceptable.
     return cmd;
 }
@@ -324,6 +330,16 @@ int BlendScheduler::getInFlight() const {
         inFlight += sched->getInFlight();
     }
     return inFlight;
+}
+
+void BlendScheduler::_logChunkStatus() {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        std::string str;
+        for (auto const& sched : _schedulers) {
+            if (sched != nullptr) str += sched->chunkStatusStr() + "\n";
+        }
+        LOGS(_log, LOG_LVL_DEBUG, str);
+    }
 }
 
 }}} // namespace lsst::qserv::wsched

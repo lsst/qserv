@@ -108,7 +108,7 @@ MySqlConnection::closeMySqlConn() {
 bool
 MySqlConnection::connect() {
     // Cleanup garbage
-    if (_mysql) { closeMySqlConn(); }
+    if (_mysql != nullptr) { closeMySqlConn(); }
     _isConnected = false;
     // Make myself a thread
     _mysql = _connectHelper();

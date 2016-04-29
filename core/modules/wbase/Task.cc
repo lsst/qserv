@@ -162,6 +162,18 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
     }
 }
 
+
+void Task::startTime() {
+    _startTime = std::chrono::system_clock::now();
+}
+
+
+void Task::endTime() {
+    _endTime = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(_endTime - _startTime);
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing sec=" << duration.count());
+}
+
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;
     os << "Task: "

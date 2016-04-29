@@ -61,7 +61,7 @@ public:
     //-----------------------------------------------------------------------------
     //! Constructor
     //!
-    //! @param  tabName   is the name of the table.
+    //! @param  tabName   is the name of the table, with '/' separating database and table name.
     //! @param  optData   lock options for the table's data
     //! @param  optIndex  lock options for the table's index
     //-----------------------------------------------------------------------------

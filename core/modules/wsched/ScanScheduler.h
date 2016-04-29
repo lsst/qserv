@@ -78,6 +78,8 @@ public:
     bool ready() override;
     std::size_t getSize() const override ;
 
+    void logMemManStats();
+
 private:
     bool _ready();
     std::shared_ptr<ChunkDisk> _disk; //< Constrains access to files.

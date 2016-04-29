@@ -107,6 +107,21 @@ MemFile::MLResult MemFile::memLock() {
         return nilResult;
     }
 
+    // TODO: Find a better solution for systems where mmap is not viable, which
+    // manifests as no bytes being locked but bytes are reserved.
+    // Fake mmap as the configuration isn't working properly.
+    // At this point, there is enough free space, it was not a flex table,
+    // but mmap failed. So,this will fake it being a flexilock file and
+    // reserve space for it.
+    if (_memInfo.size() < freeBytes) {
+        if (!_isReserved) {
+            _memory.memReserve(_memInfo.size());
+            _isReserved = true;
+        }
+        MLResult nilResult(0,0);
+        return nilResult;
+    }
+
     // Diagnose any errors
     //
     MLResult errResult(0, mInfo.errCode());

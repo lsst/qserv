@@ -29,6 +29,9 @@
 
 // Third-party headers
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "memman/MemManNone.h"
 #include "proto/ScanTableInfo.h"
@@ -47,9 +50,14 @@
 namespace test = boost::test_tools;
 namespace wsched = lsst::qserv::wsched;
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
+}
+
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
+
 
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
@@ -414,6 +422,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
 
     // Put one message on each scheduler except ScanFast, which gets 2.
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
     Task::Ptr g1 = makeTask(newTaskMsgSimple(40));
     blend->queCmd(g1);
     BOOST_CHECK(group->getSize() == 1);
@@ -448,6 +457,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
 
     // Start all the Tasks.
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 start all tasks");
     // Tasks should come out in order of scheduler priority.
     auto og1 = blend->getCmd(false);
     BOOST_CHECK(og1.get() == g1.get());
@@ -578,6 +588,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->ready() == false);
 
     // Close out all tasks and check counts.
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 close out all Tasks");
     blend->commandFinish(og2);
     BOOST_CHECK(blend->calcAvailableTheads() == 2);
     BOOST_CHECK(blend->getInFlight() == 7);
@@ -598,7 +609,9 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     blend->commandFinish(osS3);
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
     BOOST_CHECK(blend->getInFlight() == 0);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 done");
 
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
     // Test that only 6 threads can be started on a single ScanScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
     BOOST_CHECK(blend->ready() == false);
@@ -650,18 +663,18 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     }
     {
         // Finishing one task should allow the 7th one to run.
-        blend->commandFinish(groupTasks[1]);
+        blend->commandFinish(groupTasks[0]);
         BOOST_CHECK(blend->ready() == true);
         auto cmd = blend->getCmd(false);
         BOOST_CHECK(cmd != nullptr);
         auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
         groupTasks.push_back(task);
     }
-    // Finish all the groupTasks, groupTasks[1] is already finished.
+    // Finish all the groupTasks, groupTasks[0] is already finished.
     for (int j=1; j<7; ++j) blend->commandFinish(groupTasks[j]);
     BOOST_CHECK(blend->getInFlight() == 0);
     BOOST_CHECK(blend->ready() == false);
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
