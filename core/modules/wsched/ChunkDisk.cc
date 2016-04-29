@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "util/IterableFormatter.h"
 
 /// ChunkDisk is a data structure that tracks a queue of pending tasks
 /// for a disk, and the state of a chunkId-ordered scan on a disk

@@ -48,7 +48,7 @@ QSW_SCRATCHDB="qservScratch"
 
 # MemMan configuration
 export QSW_MEMMAN="MemManReal"
-export QSW_MEMMAN_MB="16000"
+export QSW_MEMMAN_MB="11000"
 export QSW_MEMMAN_LOCATION="${QSERV_RUN_DIR}/var/lib/mysql"
 
 # Worker Scheduler configuration

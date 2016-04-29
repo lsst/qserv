@@ -29,7 +29,7 @@
 // Third-party headers
 
 // Qserv headers
-
+#include "global/intTypes.h"
 
 namespace lsst {
 namespace qserv {

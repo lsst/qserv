@@ -36,6 +36,7 @@
 #include <string>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
 #include "qmeta/types.h"
@@ -141,7 +142,7 @@ public:
 
     // Shared scan information
     int getChunkId();
-    uint64_t getQueryId() { return _qId; }
+    QueryId getQueryId() { return _qId; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
@@ -154,7 +155,7 @@ public:
     void endTime();
 
 private:
-    uint64_t const    _qId{0}; //< queryId from czar
+    QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
     std::string const _idStr{qmeta::QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 

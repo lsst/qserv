@@ -101,11 +101,11 @@ protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
     /// Precondition util::CommandQueue::_mx must be locked.
     /// @return the new count for queryId.
-    int _incrCountForUserQuery(uint64_t queryId);
+    int _incrCountForUserQuery(QueryId queryId);
 
     /// Decrement the _userQueryCounts entry for queryId. The entry is deleted if the new value <= 0.
     /// @return the new count for queryId.
-    int _decrCountForUserQuery(uint64_t queryId);
+    int _decrCountForUserQuery(QueryId queryId);
 
     void _incrChunkTaskCount(int chunkId); //< Increase the count of Tasks working on this chunk.
     void _decrChunkTaskCount(int chunkId); //< Decrease the count of Tasks working on this chunk.
@@ -126,7 +126,7 @@ protected:
 private:
     /// The true purpose of _userQuerycount is to track how many different UserQuery's are on the queue.
     /// Number of Tasks for each UserQuery in the queue.
-    std::map<uint64_t, int> _userQueryCounts;
+    std::map<QueryId, int> _userQueryCounts;
 
     std::map<int, int> _chunkTasks; //< Number of tasks in each chunk actively being queried.
     std::mutex _countsMutex; //< Protects _userQueryCounts and _chunkTasks.
