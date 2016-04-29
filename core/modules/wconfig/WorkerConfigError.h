@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WCONFIG_CONFIGERROR_H
-#define LSST_QSERV_WCONFIG_CONFIGERROR_H
+#ifndef LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H
+#define LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H
 
 // System headers
 #include <stdexcept>
@@ -31,12 +31,12 @@ namespace qserv {
 namespace wconfig {
 
 /// ConfigError indicates a worker configuration error
-class ConfigError : public std::runtime_error {
+class WorkerConfigError : public std::runtime_error {
 public:
-    explicit ConfigError(char const* msg) : std::runtime_error(msg) {}
-    explicit ConfigError(std::string const& msg) : std::runtime_error(msg) {}
+    explicit WorkerConfigError(char const* msg) : std::runtime_error(msg) {}
+    explicit WorkerConfigError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
 }}} // namespace lsst::qserv::wconfig
 
-#endif // LSST_QSERV_WCONFIG_CONFIGERROR_H
+#endif // LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H

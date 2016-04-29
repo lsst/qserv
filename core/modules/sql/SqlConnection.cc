@@ -46,7 +46,7 @@ populateErrorObject(lsst::qserv::mysql::MySqlConnection& m,
     if (mysql == nullptr) {
         o.setErrNo(-999);
         o.addErrMsg("Error connecting to mysql with config:"
-                    + m.getConfig().asString());
+                    + m.getConfig().toString());
     } else {
         o.setErrNo( mysql_errno(mysql) );
         o.addErrMsg( mysql_error(mysql) );

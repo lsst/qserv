@@ -38,6 +38,7 @@
 #include <memory>
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
@@ -54,25 +55,14 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
-/// Bundle of values needed to construct a QueryRunner
-///
-struct QueryRunnerArg {
-public:
-    QueryRunnerArg() {}
-
-    QueryRunnerArg(wbase::Task::Ptr const &task_,
-                   ChunkResourceMgr::Ptr const& mgr_)
-        : task{task_}, mgr{mgr_} { }
-    wbase::Task::Ptr task; ///< Actual task
-    ChunkResourceMgr::Ptr mgr; ///< Resource reservation
-};
-
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
 class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
 public:
     using Ptr = std::shared_ptr<QueryRunner>;
-    static QueryRunner::Ptr newQueryRunner(QueryRunnerArg const& a);
+    static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
+                                           ChunkResourceMgr::Ptr const& chunkResourceMgr,
+                                           mysql::MySqlConfig const& mySqlConfig);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner operator=(QueryRunner const&) = delete;
@@ -82,7 +72,9 @@ public:
     void cancel() override; ///< Cancel the action (in-progress)
 
 protected:
-    QueryRunner(QueryRunnerArg const& a);
+    QueryRunner(wbase::Task::Ptr const& task,
+                ChunkResourceMgr::Ptr const& chunkResourceMgr,
+                mysql::MySqlConfig const& mySqlConfig);
 private:
     bool _initConnection();
     void _setDb();
@@ -96,10 +88,14 @@ private:
     void _transmit(bool last);
     void _transmitHeader(std::string& msg);
 
+    ///< Actual task
     wbase::Task::Ptr _task;
+
+    ///< Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
+    mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
     util::MultiError _multiError; // Error log

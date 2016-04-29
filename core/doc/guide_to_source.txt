@@ -59,19 +59,3 @@ xrootd.h -- Helper functions for dealing with specifics of
 xrootd-based dispatch.
 xrootd.cc -- impl of helper functions with xrootd.
 
-python/lsst/qserv/czar/
-__init__.py -- module initialization for lsst.qserv.czar
-app.py -- Top-level for master functionality
-appInterface.py -- narrow API for qserv master clients
-appTest.py -- Test code for appInterface (and app.py underneath)
-client.py -- out-of-date client code (not using proxy)
-config.py -- configuration parsing module
-db.py -- local db interaction module
-indexing.py -- column indexing mgmt (unfinished)
-metadata.py -- persistent metadata abstraction module
-protocol.py -- dispatch and result msg wire protocol module
-proxy.py -- mysqlproxy interaction utility module
-server.py -- wraps up appInterface logic in a HTTP or XML-RPC daemon
-testAppInterface.py -- (stale) test app interface module
-testHintedParser.py -- (stale) test functions for hinted queries
-

@@ -40,6 +40,7 @@
 
 // Local headers
 #include "ccontrol/UserQuery.h"
+#include "czar/CzarConfig.h"
 #include "global/stringTypes.h"
 
 namespace lsst {
@@ -53,7 +54,7 @@ namespace ccontrol {
 class UserQueryFactory : private boost::noncopyable {
 public:
 
-    UserQueryFactory(std::map<std::string,std::string> const& m,
+    UserQueryFactory(czar::CzarConfig const& czarConfig,
                      std::string const& czarName);
 
     /// @param query:       Query text

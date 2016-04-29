@@ -29,8 +29,6 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
-#include "boost/property_tree/ini_parser.hpp"
-#include "boost/property_tree/ptree.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,14 +42,8 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
-// read configuration file
-lsst::qserv::StringMap readConfig(std::string const& configPath);
-
 // parse KILL query, return thread ID or -1
 int parseKillQuery(std::string const& query);
-
-// make mysql config object from config map
-lsst::qserv::mysql::MySqlConfig mysqlConfig(lsst::qserv::StringMap const& config);
 
 } // anonymous namespace
 
@@ -61,9 +53,8 @@ namespace czar {
 
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
-    : _czarName(czarName), _config(::readConfig(configPath)),
-      _resultConfig(::mysqlConfig(_config)), _idCounter(),
-      _uqFactory(), _clientToQuery(), _mutex() {
+    : _czarName(czarName), _czarConfig(configPath),
+      _idCounter(), _uqFactory(), _clientToQuery(), _mutex() {
 
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
@@ -71,16 +62,15 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     const int year = 60*60*24*365;
     _idCounter = uint64_t(tv.tv_sec % year)*1000 + tv.tv_usec/1000;
 
-    ccontrol::ConfigMap cm(_config);
-    std::string logConfig = cm.get("log.logConfig", "", "");
+    std::string logConfig = _czarConfig.getLogConfig();
     if (not logConfig.empty()) {
         LOG_CONFIG(logConfig);
     }
 
-    LOGS(_log, LOG_LVL_INFO, "creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_INFO, "czar config: " << util::printable(_config));
+    LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
+    LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
 
-    _uqFactory.reset(new ccontrol::UserQueryFactory(_config, _czarName));
+    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, _czarName));
 }
 
 SubmitResult
@@ -90,35 +80,31 @@ Czar::submitQuery(std::string const& query,
     LOGS(_log, LOG_LVL_INFO, "New query: " << query
          << ", hints: " << util::printable(hints));
 
-    // get some info from hints
-    std::string clientId;
-    int threadId = -1;
+    util::ConfigStore hintsConfigStore(hints);
 
-    auto hintIter = hints.find("client_dst_name");
-    if (hintIter != hints.end()) clientId = hintIter->second;
+    // Analyze query hints
+    std::string clientId = hintsConfigStore.get("client_dst_name");
 
-    hintIter = hints.find("server_thread_id");
-    if (hintIter != hints.end()) {
-        try {
-            threadId = boost::lexical_cast<int>(hintIter->second);
-        } catch (boost::bad_lexical_cast const& exc) {
-            // Not fatal, just means we cannot associate query with particular
-            // client/thread and will not be able to kill it later
-        }
-    }
+    // Not being able to get thread id is not fatal,
+    // it just means query cannot be associate with particular
+    // client/thread and will not be able to be killed later
+    int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
-    // this is atomic
-    uint64_t userQueryId = _idCounter++;
+    std::string defaultDb = hintsConfigStore.get("db");
+    LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
+
+
+
+    // make message table name
+    std::string userQueryId = std::to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
-
-    // make table names
-    auto userQueryIdStr = std::to_string(userQueryId);
-    std::string const lockName = _resultConfig.dbName + ".message_" + userQueryIdStr;
+    std::string resultDb = _czarConfig.getMySqlResultConfig().dbName;
+    std::string const lockName = resultDb + ".message_" + userQueryId;
 
     SubmitResult result;
 
     // instantiate message table manager
-    MessageTable msgTable(lockName, _resultConfig);
+    MessageTable msgTable(lockName, _czarConfig.getMySqlResultConfig());
     try {
         msgTable.lock();
     } catch (std::exception const& exc) {
@@ -126,13 +112,13 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
+
     // make new UserQuery
-    ccontrol::ConfigMap cm(hints);
-    std::string defDb = cm.get("db", "Failed to find default database, using empty string", "");
+    // this is atomic
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defDb);
+        uq = _uqFactory->newUserQuery(query, defaultDb);
     }
 
     // check for errors
@@ -184,7 +170,7 @@ Czar::submitQuery(std::string const& query,
 
     // return all info to caller
     if (not uq->getResultTableName().empty()) {
-        result.resultTable = _resultConfig.dbName + "." + uq->getResultTableName();
+        result.resultTable = resultDb + "." + uq->getResultTableName();
     }
     result.messageTable = lockName;
     result.orderBy = uq->getProxyOrderBy();
@@ -239,30 +225,6 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
 
 namespace {
 
-// read configuration file
-lsst::qserv::StringMap
-readConfig(std::string const& configPath) {
-    using boost::property_tree::ini_parser::read_ini;
-    using boost::property_tree::ptree;
-
-    // read it into a ptree
-    ptree pt;
-    read_ini(configPath, pt);
-
-    // flatten
-    lsst::qserv::StringMap config;
-    for (auto& sectionPair: pt) {
-        auto& section = sectionPair.first;
-        for (auto& itemPair: sectionPair.second) {
-            auto& item = itemPair.first;
-            auto& value = itemPair.second.data();
-            config.insert(std::make_pair(section + "." + item, value));
-        }
-    }
-
-    return config;
-}
-
 int
 parseKillQuery(std::string const& aQuery) {
     // the query that proxy passes us is all uppercase and spaces compressed
@@ -288,42 +250,6 @@ parseKillQuery(std::string const& aQuery) {
     }
 
     return -1;
-}
-
-// make mysql config object from config map
-lsst::qserv::mysql::MySqlConfig
-mysqlConfig(lsst::qserv::StringMap const& config) {
-
-    lsst::qserv::ccontrol::ConfigMap cm(config);
-
-    lsst::qserv::mysql::MySqlConfig mysqlConfig;
-
-    mysqlConfig.hostname = cm.get(
-        "resultdb.host",
-        "Error, resultdb.host not found. Using empty host name.",
-        "");
-    mysqlConfig.port = cm.getTyped<unsigned>(
-        "resultdb.port",
-        "Error, resultdb.port not found. Using 0 for port.",
-        0U);
-    mysqlConfig.username = cm.get(
-        "resultdb.user",
-        "Error, resultdb.user not found. Using qsmaster.",
-        "qsmaster");
-    mysqlConfig.password = cm.get(
-        "resultdb.passwd",
-        "Error, resultdb.passwd not found. Using empty string.",
-        "");
-    mysqlConfig.socket = cm.get(
-        "resultdb.unix_socket",
-        "Error, resultdb.unix_socket not found. Using empty string.",
-        "");
-    mysqlConfig.dbName = cm.get(
-        "resultdb.db",
-        "Error, resultdb.db not found. Using qservMeta.",
-        "qservResult");
-
-    return mysqlConfig;
 }
 
 } // namespace

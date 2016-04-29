@@ -44,6 +44,7 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/CzarConfig.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
@@ -66,12 +67,12 @@ namespace ccontrol {
 class UserQueryFactory::Impl {
 public:
 
-    Impl(StringMap const& config);
+    Impl(czar::CzarConfig const& czarConfig);
 
     /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
     std::shared_ptr<css::CssAccess> css;
-    rproc::InfileMergerConfig infileMergerConfigTemplate;
+    mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::unique_ptr<sql::SqlConnection> resultDbConn;
@@ -79,9 +80,9 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
-UserQueryFactory::UserQueryFactory(StringMap const& m,
+UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
-    :  _impl(std::make_shared<Impl>(m)) {
+    :  _impl(std::make_shared<Impl>(czarConfig)) {
 
     ::putenv((char*)"XRDDEBUG=1");
 
@@ -118,7 +119,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
             executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
-            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->infileMergerConfigTemplate);
+            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
@@ -156,82 +157,19 @@ UserQueryFactory::newUserQuery(std::string const& query,
     }
 }
 
-UserQueryFactory::Impl::Impl(StringMap const& m) {
+UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
+    : mysqlResultConfig(czarConfig.getMySqlResultConfig()) {
 
-    ConfigMap cm(m);
-    /// localhost:1094 is the most reasonable default, even though it is
-    /// the wrong choice for all but small developer installations.
-    std::string serviceUrl = cm.get(
-        "frontend.xrootd", // czar.serviceUrl
-        "WARNING! No xrootd spec. Using localhost:1094",
-        "localhost:1094");
-    executiveConfig = std::make_shared<qdisp::Executive::Config>(serviceUrl);
-    // This should be overriden by the installer properly.
-    infileMergerConfigTemplate.socket = cm.get(
-        "resultdb.unix_socket",
-        "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
-        "/u1/local/mysql.sock");
-    infileMergerConfigTemplate.user = cm.get(
-        "resultdb.user",
-        "Error, resultdb.user not found. Using qsmaster.",
-        "qsmaster");
-    infileMergerConfigTemplate.targetDb = cm.get(
-        "resultdb.db",
-        "Error, resultdb.db not found. Using qservResult.",
-        "qservResult");
-    mysql::MySqlConfig mc;
-    mc.username = infileMergerConfigTemplate.user;
-    mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
-    mc.socket = infileMergerConfigTemplate.socket;
-    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mc);
+    executiveConfig = std::make_shared<qdisp::Executive::Config>(czarConfig.getXrootdFrontendUrl());
+    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
 
     // make one dedicated connection for results database
-    resultDbConn.reset(new sql::SqlConnection(mc));
+    resultDbConn.reset(new sql::SqlConnection(mysqlResultConfig));
 
-    // get config parameters for qmeta db
-    mysql::MySqlConfig qmetaConfig;
-    qmetaConfig.hostname = cm.get(
-        "qmeta.host",
-        "Error, qmeta.host not found. Using empty host name.",
-        "");
-    qmetaConfig.port = cm.getTyped<unsigned>(
-        "qmeta.port",
-        "Error, qmeta.port not found. Using 0 for port.",
-        0U);
-    qmetaConfig.username = cm.get(
-        "qmeta.user",
-        "Error, qmeta.user not found. Using qsmaster.",
-        "qsmaster");
-    qmetaConfig.password = cm.get(
-        "qmeta.passwd",
-        "Error, qmeta.passwd not found. Using empty string.",
-        "");
-    qmetaConfig.socket = cm.get(
-        "qmeta.unix_socket",
-        "Error, qmeta.unix_socket not found. Using empty string.",
-        "");
-    qmetaConfig.dbName = cm.get(
-        "qmeta.db",
-        "Error, qmeta.db not found. Using qservMeta.",
-        "qservMeta");
-    queryMetadata = std::make_shared<qmeta::QMetaMysql>(qmetaConfig);
-
-    // empty chunk path
-    std::string emptyChunkPath = cm.get(
-        "partitioner.emptyChunkPath",
-        "Error, missing path for Empty chunk file, using '.'.",
-        ".");
-
-    // find all css.* parameters and copy to new map (dropping css.)
-    StringMap cssConfig;
-    for (auto& kv: m) {
-        if (kv.first.compare(0, 4, "css.") == 0) {
-            cssConfig.insert(std::make_pair(std::string(kv.first, 4), kv.second));
-        }
-    }
+    queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
 
     // create CssAccess instance
-    css = css::CssAccess::createFromConfig(cssConfig, emptyChunkPath);
+    css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());
 }
 
 }}} // lsst::qserv::ccontrol

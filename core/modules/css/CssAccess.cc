@@ -26,6 +26,7 @@
 // System headers
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <sstream>
 
 // Third-party headers
@@ -38,6 +39,7 @@
 
 // Qserv headers
 #include "css/constants.h"
+#include "css/CssConfig.h"
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
 #include "css/KvInterface.h"
@@ -49,17 +51,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.CssAccess");
-
-// get optional value from map, deturn default if key does not exist
-std::string _mapGet(std::map<std::string, std::string> const& config,
-                    std::string const& key,
-                    std::string const& def=std::string()) {
-    auto iter = config.find(key);
-    if (iter == config.end()) {
-        return def;
-    }
-    return iter->second;
-}
 
 // Name of sub-key used for packed data
 std::string const _packedKeyName(".packed.json");
@@ -95,31 +86,24 @@ std::shared_ptr<CssAccess>
 CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
                             std::string const& emptyChunkPath,
                             bool readOnly) {
+    css::CssConfig cssConfig(config);
     LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance from config map");
-    auto iter = config.find("technology");
-    if (iter == config.end()) {
-        LOGS(_log, LOG_LVL_DEBUG, "\"technology\" does not exist in configuration map");
-        throw ConfigError("\"technology\" does not exist in configuration map");
-    } else if (iter->second == "mem") {
+    if (cssConfig.getTechnology() == "mem") {
         // optional data or file keys
-        auto iterData = config.find("data");
-        auto iterFile = config.find("file");
-        if (iterData != config.end() and iterFile != config.end() ) {
-            LOGS(_log, LOG_LVL_DEBUG, "\"data\"  and \"file\" keys are mutually exclusive");
-            throw ConfigError("\"data\"  and \"file\" keys are mutually exclusive");
-        }
-        if (iterData != config.end()) {
+        std::string iterData = cssConfig.getData();
+        std::string iterFile = cssConfig.getFile();
+        if (not cssConfig.getData().empty()) {
             // data is in a string
-            return createFromData(iterData->second, emptyChunkPath, readOnly);
-        } else if (iterFile != config.end()) {
+            return createFromData(cssConfig.getData(), emptyChunkPath, readOnly);
+        } else if (not cssConfig.getFile().empty()) {
             // read data from file
-            std::ifstream f(iterFile->second);
+            std::ifstream f(cssConfig.getFile());
             if (f.fail()) {
-                LOGS(_log, LOG_LVL_DEBUG, "failed to open data file " << iterFile->second);
-                throw ConfigError("failed to open data file " + iterFile->second);
+                LOGS(_log, LOG_LVL_DEBUG, "failed to open data file " << cssConfig.getFile());
+                throw ConfigError("failed to open data file " + cssConfig.getFile());
             }
             LOGS(_log, LOG_LVL_DEBUG,
-                 "Create CSS instance with memory store from data file " << iterFile->second);
+                 "Create CSS instance with memory store from data file " << cssConfig.getFile());
             auto kvi = std::make_shared<KvInterfaceImplMem>(f, readOnly);
             return std::shared_ptr<CssAccess>(new CssAccess(kvi,
                                                             std::make_shared<EmptyChunks>(emptyChunkPath)));
@@ -130,30 +114,13 @@ CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
             return std::shared_ptr<CssAccess>(new CssAccess(kvi,
                                                             std::make_shared<EmptyChunks>(emptyChunkPath)));
         }
-    } else if (iter->second == "mysql") {
-        // extract all optional values from map
-        mysql::MySqlConfig mysqlConfig;
-        mysqlConfig.hostname = _mapGet(config, "hostname");
-        mysqlConfig.username = _mapGet(config, "username");
-        mysqlConfig.password = _mapGet(config, "password");
-        mysqlConfig.dbName = _mapGet(config, "database");
-        mysqlConfig.socket = _mapGet(config, "socket");
-        auto portStr = _mapGet(config, "port", "");
-        if (portStr.empty()) portStr = "0";
-        try {
-            // tried to use std::stoi() here but it returns OK for strings like "0xFSCK"
-            mysqlConfig.port = boost::lexical_cast<unsigned>(portStr);
-        } catch (boost::bad_lexical_cast const& exc) {
-            LOGS(_log, LOG_LVL_DEBUG, "failed to convert \"port\" to number: " << portStr);
-            throw ConfigError("failed to convert \"port\" to number " + portStr);
-        }
-
+    } else if (cssConfig.getTechnology() == "mysql") {
         LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store");
-        auto kvi = std::make_shared<KvInterfaceImplMySql>(mysqlConfig, readOnly);
+        auto kvi = std::make_shared<KvInterfaceImplMySql>(cssConfig.getMySqlConfig(), readOnly);
         return std::shared_ptr<CssAccess>(new CssAccess(kvi, std::make_shared<EmptyChunks>(emptyChunkPath)));
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Unexpected value of \"technology\" key: " << iter->second);
-        throw ConfigError("Unexpected value of \"technology\" key: " + iter->second);
+        LOGS(_log, LOG_LVL_DEBUG, "Unexpected value of \"technology\" key: " << cssConfig.getTechnology());
+        throw ConfigError("Unexpected value of \"technology\" key: " + cssConfig.getTechnology());
     }
 }
 

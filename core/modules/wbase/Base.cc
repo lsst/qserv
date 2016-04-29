@@ -122,32 +122,6 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
 // | grep Object_ | sed 's/\(.*\)_\(.*\)/create table if not exists LSST.
 //
 
-void updateResultPath(char const* resultPath) {
-    if (checkWritablePath(resultPath)) {
-        DUMP_BASE.assign(resultPath);
-        return;
-    }
-    char* path =::getenv("QSW_RESULTPATH");
-    if (checkWritablePath(path)) {
-        DUMP_BASE.assign(path);
-    }
-}
-
-void clearResultPath() {
-    // Conceptually: rm DUMP_BASE/*
-    glob_t globbuf;
-    std::string globstr(DUMP_BASE);
-    globstr += "/*";
-    // Glob, with no special opts, no error function
-    if (0 == glob(globstr.c_str(), 0, nullptr, &globbuf)) {
-        char** s = globbuf.gl_pathv;
-        while(nullptr != *s) {
-            unlink(*s++); // delete file, ignore errors.
-        }
-        globfree(&globbuf);
-    }
-}
-
 //////////////////////////////////////////////////////////////////////
 // StringBuffer
 //////////////////////////////////////////////////////////////////////

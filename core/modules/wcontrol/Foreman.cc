@@ -41,7 +41,6 @@
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
-#include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -53,14 +52,10 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-Foreman::Ptr Foreman::newForeman(Scheduler::Ptr const& sched, uint poolSize) {
-    return std::make_shared<Foreman>(sched, poolSize);
-}
-
-Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize) : _scheduler{s} {
+Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig)
+    : _scheduler{s}, _mySqlConfig(mySqlConfig) {
     // Make the chunk resource mgr
-    mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
-    _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
+    _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_mySqlConfig);
     assert(s); // Cannot operate without scheduler.
 
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize);
@@ -87,19 +82,13 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
                 task->sendChannel->sendError("Unsupported wire protocol", 1);
             }
         } else {
-            auto qr = _newQueryRunner(task);
+            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig);
             qr->runQuery();
         }
     };
 
     task->setFunc(func);
     _scheduler->queCmd(task);
-}
-
-std::shared_ptr<wdb::QueryRunner> Foreman::_newQueryRunner(wbase::Task::Ptr const& t) {
-    wdb::QueryRunnerArg a(t, _chunkResourceMgr);
-    auto qa = wdb::QueryRunner::newQueryRunner(a);
-    return qa;
 }
 
 }}} // namespace

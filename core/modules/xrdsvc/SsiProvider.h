@@ -35,16 +35,12 @@
 #include "XrdSsi/XrdSsiProvider.hh"
 
 // Qserv headers
+#include "wpublish/ChunkInventory.h"
 #include "xrdsvc/SsiService.h"
 
 // Forward declarations
 class XrdSsiCluster;
 class XrdSsiLogger;
-namespace lsst {
-namespace qserv {
-namespace wpublish {
-  class ChunkInventory;
-}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -72,10 +68,9 @@ public:
 
 private:
 
-    std::unique_ptr<wpublish::ChunkInventory> _chunkInventory;
-    std::unique_ptr<SsiService>               _service;
+    wpublish::ChunkInventory _chunkInventory;
+    std::unique_ptr<SsiService> _service;
 
-    std::string    _name;
     XrdSsiCluster* _cmsSsi;
     XrdSsiLogger*  _logSsi;
 };

@@ -31,25 +31,72 @@ namespace lsst {
 namespace qserv {
 namespace mysql {
 
-/// class MySqlConfig : Value class for configuring the MySQL connection
+/**
+ *  Value class for configuring the MySQL connection
+ *
+ *  Instance can be created with network socket and/or file socket
+ *  or only file socket. Parameters validity and MySQL insance connection can be
+ *  both ckecked.
+ *
+ */
 class MySqlConfig {
 public:
     MySqlConfig() : port(0) {}
-    MySqlConfig(const MySqlConfig&);
-    std::string hostname;
+
+    /**
+     *  Create MySqlConfig instance
+     *
+     *  @param username:    MySQL username
+     *  @param password:    MySQL password
+     *  @param hostname:    MySQL hostname
+     *  @param port:        MySQL port
+     *  @param socket:      MySQL socket
+     *  @param db:          MySQL database
+     *  @param checkValid:  if true, throws exception if parameters below are invalid
+     *
+     * @throws std::runtime_error: if checkValid is true and some parameters are invalid
+     */
+    MySqlConfig(std::string const& username, std::string const& password,
+                std::string const& hostname,
+                unsigned int const port,
+                std::string const& socket,
+                std::string const& db = "");
+
+    /**
+     *  Create MySqlConfig instance
+     *
+     *  @param username:    MySQL username
+     *  @param password:    MySQL password
+     *  @param socket:      MySQL socket
+     *  @param db:          MySQL database
+     *
+     * @throws std::runtime_error: if some parameters are invalid
+     */
+    MySqlConfig(std::string const& username, std::string const& password,
+                std::string const& socket, std::string const& db = "");
+
+
+    /** Overload output operator for current class
+     *
+     * @param out
+     * @param mysqlConfig
+     * @return an output stream
+     */
+    friend std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig);
+
+    /** Return a string representation of the object
+     *
+     * @return a string representation of the object
+     */
+    std::string toString() const;
+
     std::string username;
     std::string password;
-    std::string dbName;
+    std::string hostname;
     unsigned int port;
     std::string socket;
+    std::string dbName;
 
-    bool isValid() const { return !username.empty(); }
-    void throwIfNotSet(std::string const&) const;
-    void initFromFile(std::string const&, std::string const&,
-                      std::string const&, std::string const&,
-                      std::string const&, std::string const&,
-                      std::string const&, bool);
-    std::string asString() const;
 };
 
 }}} // namespace lsst::qserv::mysql

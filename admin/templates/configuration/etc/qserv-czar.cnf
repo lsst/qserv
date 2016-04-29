@@ -2,8 +2,6 @@
 [frontend]
 
 xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
-# Use /dev/shm shared memory for better performance
-scratch_path={{QSERV_SCRATCH_DIR}}
 
 #[mgmtdb]
 #db=qservMeta

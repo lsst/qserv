@@ -58,6 +58,14 @@ public:
     void closeMySqlConn();
     bool connect();
 
+
+    /**
+     *  Check MySQL connection for a given configuration
+     *
+     * @return: true if MySQL connection succeeded, else false
+     */
+    static bool checkConnection(mysql::MySqlConfig const& mysqlconfig);
+
     bool connected() const { return _isConnected; }
     // instance destruction invalidates this return value
     MYSQL* getMySql() { return _mysql;}

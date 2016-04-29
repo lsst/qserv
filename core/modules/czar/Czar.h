@@ -36,9 +36,11 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
+#include "czar/CzarConfig.h"
 #include "czar/SubmitResult.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "util/ConfigStore.h"
 
 namespace lsst {
 namespace qserv {
@@ -96,8 +98,7 @@ private:
     typedef std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> ClientToQuery;
 
     std::string const _czarName;        ///< Unique czar name
-    StringMap const _config;            ///< Czar configuration (section.key -> value)
-    mysql::MySqlConfig const _resultConfig;   ///< Configuration for result database
+    CzarConfig const _czarConfig;
 
     std::atomic<uint64_t> _idCounter;   ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
