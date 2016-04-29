@@ -40,7 +40,6 @@
 // Qserv headers
 #include "global/constants.h"
 #include "sql/SqlConnection.h"
-#include "wconfig/Config.h"
 
 namespace { // File-scope helpers
 
@@ -215,15 +214,16 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-ChunkInventory::ChunkInventory(std::string const& name)
-    : _name(name) {
-    SqlConnection sc(wconfig::getConfig().getSqlConfig(), true);
-    _init(sc);
-}
 ChunkInventory::ChunkInventory(std::string const& name,
                                std::shared_ptr<SqlConnection> sc)
     : _name(name) {
     _init(*sc);
+}
+
+void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& mySqlConfig) {
+    _name = name;
+    SqlConnection sc(mySqlConfig, true);
+    _init(sc);
 }
 
 bool ChunkInventory::has(std::string const& db, int chunk,
@@ -291,17 +291,6 @@ void ChunkInventory::_init(SqlConnection& sc) {
     // SHOW TABLES IN db;
     std::deque<std::string> chunks;
     std::for_each(dbs.begin(), dbs.end(), doDb(sc, regex, _existMap));
-}
-
-void ChunkInventory::_fillDbChunks(ChunkInventory::StringSet& s) {
-    s.clear();
-    for(ExistMap::const_iterator ei=_existMap.begin();
-        ei != _existMap.end(); ++ei) {
-        std::string dbName = ei->first;
-        ChunkMap const& cm = ei->second;
-        std::for_each(cm.begin(), cm.end(), addDbItem(dbName, s));
-        //std::cout << "loaded chunks for " << dbName << std::endl;
-    }
 }
 
 }}} // lsst::qserv::wpublish

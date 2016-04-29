@@ -30,6 +30,10 @@
 // Third-party headers
 #include "XrdSsi/XrdSsiService.hh"
 
+// Qserv headers
+#include "mysql/MySqlConfig.h"
+#include "wconfig/WorkerConfig.h"
+
 // Forward declarations
 class XrdSsiLogger;
 
@@ -51,25 +55,30 @@ namespace xrdsvc {
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-    typedef std::shared_ptr<SsiService> Ptr;
 
+    /** Build a SsiService object
+     *
+     * @param log xrdssi logger
+     * @param config SSiservice configuration parameters
+     */
     // take ownership of logger for now
-    SsiService(XrdSsiLogger* log);
-    virtual ~SsiService();
+
+    SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig);
+    ~SsiService();
 
     /// Called by xrootd daemon to handle new resource requests
-    virtual void Provision(XrdSsiService::Resource* r,
+    void Provision(XrdSsiService::Resource* r,
                            unsigned short timeOut=0,
-                           bool userConn=false);
+                           bool userConn=false) override;
 
 private:
     void _initInventory();
     void _configure();
-    void _setupResultPath();
-    bool _setupScratchDb();
 
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
     std::shared_ptr<wcontrol::Foreman> _foreman;
+
+    mysql::MySqlConfig const _mySqlConfig;
 
 }; // class SsiService
 

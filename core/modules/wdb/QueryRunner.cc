@@ -63,7 +63,6 @@
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
-#include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 
 namespace {
@@ -74,10 +73,12 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
-QueryRunner::Ptr QueryRunner::newQueryRunner(QueryRunnerArg const& a) {
-    Ptr qr{new QueryRunner{a}}; // Private constructor.
+QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
+                                             ChunkResourceMgr::Ptr const& chunkResourceMgr,
+                                             mysql::MySqlConfig const& mySqlConfig) {
+    Ptr qr{new QueryRunner{task, chunkResourceMgr, mySqlConfig}}; // Private constructor.
     // Let the Task know this is its QueryRunner.
-    auto cancelled = qr->_task->setTaskQueryRunner(qr);
+    bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
         qr->_cancelled.store(true);
         // runQuery will return quickly if the Task has been cancelled.
@@ -87,9 +88,10 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(QueryRunnerArg const& a) {
 
 /// New instances need to be made with QueryRunner to ensure registration with the task
 /// and correct setup of enable_shared_from_this.
-QueryRunner::QueryRunner(QueryRunnerArg const& a)
-    : _task{a.task},
-      _chunkResourceMgr{a.mgr} {
+QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
+                         ChunkResourceMgr::Ptr const& chunkResourceMgr,
+                         mysql::MySqlConfig const& mySqlConfig)
+    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -97,15 +99,13 @@ QueryRunner::QueryRunner(QueryRunnerArg const& a)
 
 /// Initialize the db connection
 bool QueryRunner::_initConnection() {
-    mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
-    sc.username = _task->user.c_str(); // Override with czar-passed username.
-    _mysqlConn.reset(new mysql::MySqlConnection(sc));
+    mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
+    localMySqlConfig.username = _task->user.c_str(); // Override with czar-passed username.
+    _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
-    if (!_mysqlConn->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as "
-             << wconfig::getConfig().getString("mysqlSocket")
-             << " using " << _task->user);
-        util::Error error(-1, "Unable to connect to MySQL as " + _task->user);
+    if (not _mysqlConn->connect()) {
+        LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
+        util::Error error(-1, "Unable to connect to MySQL; " + localMySqlConfig.toString());
         _multiError.push_back(error);
         return false;
     }

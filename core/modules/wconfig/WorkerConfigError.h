@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,31 +20,23 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#ifndef LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H
+#define LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H
 
 // System headers
-#include <iostream>
+#include <stdexcept>
 
-// Qserv headers
-#include "wconfig/WorkerConfig.h"
+namespace lsst {
+namespace qserv {
+namespace wconfig {
 
-// Boost unit test header
-#define BOOST_TEST_MODULE SanityCheck
-#include "boost/test/included/unit_test.hpp"
-
-namespace test = boost::test_tools;
-using lsst::qserv::wconfig::WorkerConfig;
-
-struct SanityFixture {
-    SanityFixture(void) { };
-    ~SanityFixture(void) { };
+/// ConfigError indicates a worker configuration error
+class WorkerConfigError : public std::runtime_error {
+public:
+    explicit WorkerConfigError(char const* msg) : std::runtime_error(msg) {}
+    explicit WorkerConfigError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
-BOOST_FIXTURE_TEST_SUITE(SanityCheckTest, SanityFixture)
+}}} // namespace lsst::qserv::wconfig
 
-BOOST_AUTO_TEST_CASE(CheckGood) {
-    // TODO
-    // WorkerConfig c;
-    // BOOST_CHECK_EQUAL(c.getMemManClass(), "");
-}
-
-BOOST_AUTO_TEST_SUITE_END()
+#endif // LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H

@@ -35,6 +35,7 @@
 #include <string>
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "util/Error.h"
 
 // Forward declarations
@@ -77,20 +78,14 @@ typedef util::Error InfileMergerError;
 class InfileMergerConfig {
 public:
     InfileMergerConfig() {}
-    InfileMergerConfig(std::string const& targetDb_,
-                       std::string const& targetTable_,
-                       std::shared_ptr<query::SelectStmt> mergeStmt_,
-                       std::string const& user_, std::string const& socket_)
-        :  targetDb(targetDb_),  targetTable(targetTable_),
-           mergeStmt(mergeStmt_), user(user_), socket(socket_)
+    InfileMergerConfig(mysql::MySqlConfig const& mySqlConfig)
+        :  mySqlConfig(mySqlConfig)
     {
     }
-
-    std::string targetDb; // for final result, and imported result
+    // for final result, and imported result
+    mysql::MySqlConfig const mySqlConfig;
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;
-    std::string user;
-    std::string socket;
 };
 
 /// InfileMerger is a row-based merger that imports rows from result messages
@@ -138,7 +133,6 @@ private:
     void _fixupTargetName();
 
     InfileMergerConfig _config; ///< Configuration
-    std::shared_ptr<mysql::MySqlConfig> _sqlConfig; ///< SQL connection config
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
 
     std::string _mergeTable; ///< Table for result loading

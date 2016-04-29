@@ -28,118 +28,75 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h> // atoi
+#include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
+#include "sql/SqlConnection.h"
+
+namespace {
+
+    LOG_LOGGER getLogger() {
+        static LOG_LOGGER logger = LOG_GET("lsst.qserv.mysql.MySqlConfig");
+        return logger;
+    }
+
+
+} // anonymous
 
 namespace lsst {
 namespace qserv {
 namespace mysql {
 
+MySqlConfig::MySqlConfig(std::string const& username,
+                         std::string const& password,
+                         std::string const& hostname,
+                         unsigned int const port,
+                         std::string const& socket,
+                         std::string const& dbName)
+    : username(username), password(password), hostname(hostname), port(port),
+      socket(socket), dbName(dbName) {
 
-MySqlConfig::MySqlConfig(const MySqlConfig& c)
-    : hostname(c.hostname),
-      username(c.username),
-      password(c.password),
-      dbName(c.dbName),
-      port(c.port),
-      socket(c.socket) {
-}
-
-void
-MySqlConfig::throwIfNotSet(std::string const& fName) const {
-    bool allSet = true;
-    std::stringstream s;
-    s << "Value for ";
-    if (hostname == "") { allSet = false; s << "host "; }
-    if (port     == 0 ) { allSet = false; s << "port "; }
-    if (username == "") { allSet = false; s << "username "; }
-    if (password == "") { allSet = false; s << "password "; }
-    if (dbName   == "") { allSet = false; s << "dbName ";   }
-    if (socket   == "") { allSet = false; s << "socket "; }
-    if (!allSet) {
-        s << "not set in the '" << fName << "' file.";
-        throw s.str();
+    if ((hostname.empty() or port == 0) and socket.empty()) {
+        LOGS(getLogger(), LOG_LVL_FATAL, "MySQL hostname:port and socket both undefined");
+        throw std::invalid_argument("MySQL hostname:port and socket both undefined" );
     }
 }
 
-/// Initializes self from a file. File format: <key>:<value>
-/// To ignore given token, pass "".
-/// To ignore unrecognized tokens, set the flag to false.
-/// This is handy for reading a subset of a file.
-void
-MySqlConfig::initFromFile(std::string const& fName,
-                          std::string const& hostToken,
-                          std::string const& portToken,
-                          std::string const& userToken,
-                          std::string const& passToken,
-                          std::string const& dbNmToken,
-                          std::string const& sockToken,
-                          bool ignoreUnrecognizedTokens) {
-    std::ifstream f;
-    f.open(fName.c_str());
-    if (!f) {
-        std::stringstream s;
-        s << "Failed to open '" << fName << "'";
-        throw s.str();
+MySqlConfig::MySqlConfig(std::string const& username, std::string const& password,
+                         std::string const& socket, std::string const& dbName)
+    : username(username), password(password), port(0), socket(socket), dbName(dbName) {
+    if (socket.empty()) {
+        LOGS(getLogger(), LOG_LVL_FATAL, "MySQL socket undefined");
+        throw std::invalid_argument("MySQL socket undefined");
     }
-    std::string line;
-    f >> line;
-    while ( !f.eof() ) {
-        int pos = line.find_first_of(':');
-        if ( pos == -1 ) {
-            std::stringstream s;
-            s << "Invalid format, expecting <token>:<value>. "
-              << "File '" << fName << "', line: '" << line << "'";
-            throw s.str();
-        }
-        std::string token = line.substr(0,pos);
-        std::string value = line.substr(pos+1, line.size());
-        if (hostToken != "" and token == hostToken) {
-            this->hostname = value;
-        } else if (portToken != "" and token == portToken) {
-            this->port = atoi(value.c_str());
-            if ( this->port <= 0 ) {
-                std::stringstream s;
-                s << "Invalid port number " << this->port << ". "
-                  << "File '" << fName << "', line: '" << line << "'";
-                throw s.str();
-            }
-        } else if (userToken != "" and token == userToken) {
-            this->username = value;
-        } else if (passToken != "" and token == passToken) {
-            this->password = value;
-        } else if (dbNmToken != "" and token == dbNmToken) {
-            this->dbName = value;
-        } else if (sockToken != "" and token == sockToken) {
-            this->socket = value;
-        } else if (!ignoreUnrecognizedTokens) {
-            std::stringstream s;
-            s << "Unexpected token: '" << token << "' (supported tokens "
-              << "are: " << hostToken << ", " << portToken << ", "
-              << userToken << ", " << passToken << ", " << dbNmToken << ", "
-              << sockToken << ").";
-            throw(s.str());
-        }
-        f >> line;
-    }
-    f.close();
-    //throwIfNotSet(fName);
 }
 
-std::string
-MySqlConfig::asString() const {
-    std::string result;
-    result.reserve(500);
-    std::ostringstream os;
-    os << port;
-    result += "[host="; result += hostname;
-    result +=", port="; result += os.str();
-    result += ", usr="; result += username;
-    result += ", pass="; result += password;
-    result += ", dbName="; result += dbName;
-    result += ", socket="; result += socket;
-    result += "]";
-    return result;
+bool MySqlConfig::checkConnection() const {
+    lsst::qserv::sql::SqlConnection scn(*this);
+    lsst::qserv::sql::SqlErrorObject eo;
+    if (scn.connectToDb(eo)) {
+        LOGS(getLogger(), LOG_LVL_DEBUG, "Successful MySQL connection check: " << *this);
+        return true;
+    } else {
+        LOGS(getLogger(), LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << *this);
+        return false;
+    }
+}
+
+std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig) {
+    out << "[host=" << mysqlConfig.hostname << ", port=" << mysqlConfig.port
+        << ", user=" << mysqlConfig.username << ", password=" << mysqlConfig.password
+        << ", db=" << mysqlConfig.dbName << ", socket=" << mysqlConfig.socket << "]";
+    return out;
+}
+
+std::string MySqlConfig::toString() const {
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
 }
 
 }}} // namespace lsst::qserv::mysql

@@ -35,21 +35,34 @@ namespace mysql {
 class MySqlConfig {
 public:
     MySqlConfig() : port(0) {}
-    MySqlConfig(const MySqlConfig&);
-    std::string hostname;
-    std::string username;
-    std::string password;
-    std::string dbName;
-    unsigned int port;
-    std::string socket;
+    MySqlConfig(std::string const& username, std::string const& password,
+                std::string const& hostname,
+                unsigned int const port,
+                std::string const& socket,
+                std::string const& dbName = "");
+    MySqlConfig(std::string const& username, std::string const& password,
+                std::string const& socket, std::string const& dbName = "");
+
+    bool checkConnection() const;
 
     bool isValid() const { return !username.empty(); }
-    void throwIfNotSet(std::string const&) const;
-    void initFromFile(std::string const&, std::string const&,
-                      std::string const&, std::string const&,
-                      std::string const&, std::string const&,
-                      std::string const&, bool);
-    std::string asString() const;
+
+    /** Overload output operator for current class
+     *
+     * @param out
+     * @param mysqlConfig
+     * @return an output stream
+     */
+    friend std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig);
+
+    std::string username;
+    std::string password;
+    std::string hostname;
+    unsigned int port;
+    std::string socket;
+    std::string dbName;
+
+    std::string toString() const;
 };
 
 }}} // namespace lsst::qserv::mysql

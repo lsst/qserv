@@ -43,8 +43,8 @@
 #include "memman/MemManNone.h"
 #include "sql/SqlConnection.h"
 #include "wbase/Base.h"
-#include "wconfig/Config.h"
-#include "wconfig/ConfigError.h"
+#include "wconfig/WorkerConfig.h"
+#include "wconfig/WorkerConfigError.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
@@ -72,72 +72,40 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-std::shared_ptr<sql::SqlConnection> makeSqlConnection() {
-    std::shared_ptr<sql::SqlConnection> conn;
-    mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
-    sqlConfig.dbName = ""; // Force dbName empty to prevent accidental context
-    conn = std::make_shared<sql::SqlConnection>(sqlConfig, true);
-    return conn;
-}
-
-
-SsiService::SsiService(XrdSsiLogger* log) {
+SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
+    : _mySqlConfig(workerConfig.getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
-    _configure();
-    _initInventory();
-    _setupResultPath();
 
-    if (!_setupScratchDb()) {
-        throw wconfig::ConfigError("Couldn't setup scratch db");
+    if (not _mySqlConfig.checkConnection()) {
+    LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
+    throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
+    _initInventory();
 
-    auto const& config = wconfig::getConfig();
-    auto cfgMemMan = config.getString("QSW_MEMMAN");
+    std::string cfgMemMan = workerConfig.getMemManClass();
     memman::MemMan::Ptr memMan;
     if (cfgMemMan  == "MemManReal") {
         // Default to 1 gigabyte
-        uint64_t memManSizeMb = config.getInt("QSW_MEMMAN_MB", 1000);
-        std::string memManLocation = config.getString("QSW_MEMMAN_LOCATION");
-        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << memManSizeMb
-                << " location=" << memManLocation);
-        memMan =
-            std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSizeMb*1000000, memManLocation));
+        uint64_t memManSize = workerConfig.getMemManSizeMb()*1000000;
+        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb() 
+            << " location=" <<  workerConfig.getMemManLocation());
+        memMan = std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
     } else if (cfgMemMan == "MemManNone"){
-        // Memory available is meaningless for MemManNone
-        LOGS(_log, LOG_LVL_DEBUG, "Using MemManNone");
         memMan = std::make_shared<memman::MemManNone>(1, false);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
-        throw wconfig::ConfigError("Unrecognized memory manager.");
+        throw wconfig::WorkerConfigError("Unrecognized memory manager.");
     }
 
     // Set thread pool size.
-    auto cfgPoolSize = config.getInt("QSW_THRDPOOLSZ", wsched::BlendScheduler::getMinPoolSize());
-    uint poolSize = std::max(static_cast<uint>(cfgPoolSize), std::thread::hardware_concurrency());
-    // Set GroupScheduler group size from configuration file
-    auto maxGroupSize = config.getInt("QSW_GROUPSZ", 1);
-    LOGS(_log, LOG_LVL_DEBUG, "cfg poolSize=" << poolSize << " maxGroupSize=" << maxGroupSize);
-
-    // get shared scan priorities
-    auto prioritySlow = config.getInt("QSW_PRIORITYSLOW", 1);
-    auto priorityMed  = config.getInt("QSW_PRIORITYMED", 2);
-    auto priorityFast = config.getInt("QSW_PRIORITYFAST", 3);
-    LOGS(_log, LOG_LVL_DEBUG, "cfg priority fast=" << priorityFast
-         << " med=" << priorityMed << " slow=" << prioritySlow);
-
-    // get max thread reserve
-    auto maxReserveSlow = config.getInt("QSW_RESERVESLOW", 2);
-    auto maxReserveMed  = config.getInt("QSW_RESERVEMED", 2);
-    auto maxReserveFast = config.getInt("QSW_RESERVEFAST", 2);
-    LOGS(_log, LOG_LVL_DEBUG, "cfg reserved threads fast=" << maxReserveFast
-         << " med=" << maxReserveMed << " slow=" << maxReserveSlow);
+    uint poolSize = std::max(workerConfig.getThreadPoolSize(), std::thread::hardware_concurrency());
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     uint maxThread = poolSize;
     int maxReserve = 2;
     auto group = std::make_shared<wsched::GroupScheduler>(
-                 "SchedGroup", maxThread, maxReserve, maxGroupSize, wsched::SchedulerBase::getMaxPriority());
+                 "SchedGroup", maxThread, maxReserve, workerConfig.getMaxGroupSize(), wsched::SchedulerBase::getMaxPriority());
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
     int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
@@ -145,16 +113,17 @@ SsiService::SsiService(XrdSsiLogger* log) {
     int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedSlow", maxThread, maxReserveSlow, prioritySlow, memMan, medium+1, slow),
+                 "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(), memMan, medium+1, slow),
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedMed", maxThread, maxReserveMed, priorityMed, memMan, fast+1, medium),
+                 "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(), memMan, fast+1, medium),
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedFast", maxThread, maxReserveFast, priorityFast, memMan, fastest, fast)
+                 "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(), memMan, fastest, fast)
     };
 
-    _foreman = wcontrol::Foreman::newForeman(
+    _foreman = std::make_shared<wcontrol::Foreman>(
         std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread, group, scanSchedulers),
-        poolSize);
+        poolSize,
+        workerConfig.getMySqlConfig());
 }
 
 SsiService::~SsiService() {
@@ -171,53 +140,18 @@ void SsiService::Provision(XrdSsiService::Resource* r,
 
 void SsiService::_initInventory() {
     XrdName x;
-    std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
+    if (not _mySqlConfig.dbName.empty()) {
+            LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
+            throw std::runtime_error("dbName must be empty to prevent accidental context");
+
+    }
+    std::shared_ptr<sql::SqlConnection> conn = std::make_shared<sql::SqlConnection>(_mySqlConfig, true);
     assert(conn);
     _chunkInventory = std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
     LOGS(_log, LOG_LVL_DEBUG, os.str());
-}
-
-void SsiService::_setupResultPath() {
-    wbase::updateResultPath();
-    wbase::clearResultPath();
-}
-
-void SsiService::_configure() {
-    if (!wconfig::getConfig().getIsValid()) {
-        std::string msg("Configuration invalid: "
-                        + wconfig::getConfig().getError());
-        LOGS(_log, LOG_LVL_FATAL, msg);
-        throw wconfig::ConfigError(msg);
-    }
-}
-
-/// Cleanup scratch space and scratch dbs.
-/// This means that scratch db and scratch dirs CANNOT be shared among
-/// qserv workers. Take heed.
-/// @return true if cleanup was successful, false otherwise.
-bool SsiService::_setupScratchDb() {
-    std::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
-    if (!conn) {
-        return false;
-    }
-    sql::SqlErrorObject errObj;
-    std::string dbName = wconfig::getConfig().getString("scratchDb");
-    LOGS(_log, LOG_LVL_DEBUG, "Cleaning up scratchDb: " << dbName);
-    if (!conn->dropDb(dbName, errObj, false)) {
-        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: "
-             << dbName << ", error: " << errObj.errMsg());
-        return false;
-    }
-    errObj.reset();
-    if (!conn->createDb(dbName, errObj, true)) {
-        LOGS(_log, LOG_LVL_ERROR, "Cfg error! couldn't create scratchDb: "
-             << dbName << ", error: " << errObj.errMsg());
-        return false;
-    }
-    return true;
 }
 
 

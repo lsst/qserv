@@ -92,11 +92,6 @@ def read_config(config_file):
             if re.match(".*_dir", option):
                 config[section][option] = os.path.normpath(
                     config[section][option])
-    # computable configuration parameters
-    config['qserv']['scratch_dir'] = os.path.join("/dev", "shm", "qserv-%r-%r" %
-                                                  (getpass.getuser(),
-                                                   hashlib.sha224(config['qserv']['qserv_run_dir']).hexdigest())
-                                                  )
 
     # TODO : manage special characters for pass (see config file comments for
     # additional information)

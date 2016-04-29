@@ -29,6 +29,7 @@
 #include <memory>
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
@@ -66,9 +67,7 @@ public:
 /// The schedulers may limit the number of threads they will use from the thread pool.
 class Foreman : public wbase::MsgProcessor {
 public:
-    using Ptr = std::shared_ptr<Foreman>;
-    static Foreman::Ptr newForeman(Scheduler::Ptr const& s, uint poolSize);
-    explicit Foreman(Scheduler::Ptr const& s, uint poolSize);
+    explicit Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig);
     virtual ~Foreman();
     // This class should not be copied.
     Foreman(Foreman const&) = delete;
@@ -76,12 +75,12 @@ public:
 
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
-protected:
-    std::shared_ptr<wdb::QueryRunner> _newQueryRunner(wbase::Task::Ptr const& t);
+private:
 
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;
+    mysql::MySqlConfig const _mySqlConfig;
 };
 
 }}}  // namespace lsst::qserv::wcontrol

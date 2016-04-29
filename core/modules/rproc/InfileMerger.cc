@@ -92,16 +92,6 @@ std::string getTimeStampId() {
     // guaranteed to be unique.
 }
 
-std::shared_ptr<MySqlConfig>
-makeSqlConfig(InfileMergerConfig const& c) {
-    auto sc = std::make_shared<MySqlConfig>();
-    assert(sc.get());
-    sc->username = c.user;
-    sc->dbName = c.targetDb;
-    sc->socket = c.socket;
-    return sc;
-}
-
 } // anonymous namespace
 
 namespace lsst {
@@ -254,14 +244,13 @@ bool InfileMerger::Mgr::applyMysql(std::string const& query) {
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
     : _config(c),
-      _sqlConfig(makeSqlConfig(c)),
       _isFinished(false),
       _needCreateTable(true) {
     _fixupTargetName();
     if (_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
-    _mgr.reset(new Mgr(*_sqlConfig, _mergeTable));
+    _mgr.reset(new Mgr(_config.mySqlConfig, _mergeTable));
 }
 
 InfileMerger::~InfileMerger() {
@@ -316,7 +305,7 @@ bool InfileMerger::finalize() {
 #if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
-                                             _config.targetDb);
+                                             _config.mySqlConfig.dbName);
 #else
         bool cleanupOk = true;
 #endif
@@ -342,7 +331,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if (not _sqlConn.get()) {
-        _sqlConn = std::make_shared<sql::SqlConnection>(*_sqlConfig, true);
+        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
         if (not _sqlConn->connectToDb(errObj)) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
                            util::ErrorCode::MYSQLCONNECT);
@@ -455,9 +444,9 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
 /// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
     if (_config.targetTable.empty()) {
-        assert(!_config.targetDb.empty());
+        assert(not _config.mySqlConfig.dbName.empty());
         _config.targetTable = (boost::format("%1%.result_%2%")
-                               % _config.targetDb % getTimeStampId()).str();
+                               % _config.mySqlConfig.dbName % getTimeStampId()).str();
     }
 
     if (_config.mergeStmt) {

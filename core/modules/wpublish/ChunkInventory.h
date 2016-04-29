@@ -38,6 +38,7 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "mysql/MySqlConfig.h"
 
 // Forward declarations
 namespace lsst {
@@ -63,8 +64,10 @@ public:
     typedef std::shared_ptr<ChunkInventory> Ptr;
     typedef std::shared_ptr<ChunkInventory const> CPtr;
 
-    ChunkInventory(std::string const& name);
+    ChunkInventory() {};
     ChunkInventory(std::string const& name, std::shared_ptr<sql::SqlConnection> sc);
+
+    void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
     /// (helper) Create a key string from a (db, chunk) pair
     static inline std::string makeKey(std::string const& db, int chunk) {
@@ -83,7 +86,6 @@ public:
 
 private:
     void _init(sql::SqlConnection& sc);
-    void _fillDbChunks(ChunkInventory::StringSet& s);
 
     ExistMap _existMap;
     std::string _name;

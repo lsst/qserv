@@ -40,6 +40,8 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "util/ConfigStore.h"
+#include "wconfig/WorkerConfig.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
 
@@ -83,9 +85,20 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
 
     lsst::qserv::xrdsvc::XrdName x;
 
-    // Establish our instance name (many different qservs may be running here).
-    //
-    _name = x.getName();
+    if (argc != 2) {
+        LOGS( _log, LOG_LVL_TRACE, "argc: " << argc);
+        LOGS( _log, LOG_LVL_FATAL, "Uncorrect xrdssi configuration, launch \
+            xrootd with option '-+xrdssi /path/to/xrdssi/cfg/file'");
+        exit(EXIT_FAILURE);
+    }
+
+    LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: "
+        << argv[1]);
+
+    util::ConfigStore configStore(argv[1]);
+    wconfig::WorkerConfig workerConfig(configStore);
+    LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: "
+        << workerConfig);
 
     // Save the ssi logger as it places messages in another file than our log.
     //
@@ -112,7 +125,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     // calls either in the data provider and the metadata provider (we can be
     // either one).
     //
-    _chunkInventory.reset(new wpublish::ChunkInventory(_name));
+    _chunkInventory.init(x.getName(), workerConfig.getMySqlConfig());
 
     // If we are a data provider (i.e. xrootd) then we need to get the service
     // object. It will print the exported paths. Otherwise, we need to print
@@ -120,11 +133,11 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
     // single shared memory inventory object which should do this by itself.
     //
     if (clsP && clsP->DataContext()) {
-        _service.reset(new SsiService(logP));
+        _service.reset(new SsiService(logP, workerConfig));
     } else {
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";
-        _chunkInventory->dbgPrint(ss);
+        _chunkInventory.dbgPrint(ss);
         LOGS(_log, LOG_LVL_DEBUG, ss.str());
         _logSsi->Msg("Qserv", ss.str().c_str());
     }
@@ -152,7 +165,7 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
 
     // If the chunk exists on our node then tell he caller it is here.
     //
-    if (_chunkInventory->has(ru.db(), ru.chunk())) {
+    if (_chunkInventory.has(ru.db(), ru.chunk())) {
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
         return isPresent;
     }

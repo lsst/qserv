@@ -226,7 +226,6 @@ def _get_template_params():
         'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
         'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
         'QSERV_USER': config['qserv']['user'],
-        'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
         'LUA_DIR': os.path.join(config['lua']['base_dir']),
         'MYSQL_DIR': config['mysqld']['base_dir'],
         'MYSQLD_DATA_DIR': os.path.join(config['qserv']['qserv_data_dir'], "mysql"),

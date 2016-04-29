@@ -9,9 +9,6 @@ CREATE TABLE qservw_worker.Dbs (
   `db` char(200) NOT NULL
 );
 
-CREATE DATABASE IF NOT EXISTS qservScratch;
-GRANT ALL ON qservScratch.* TO 'qsmaster'@'localhost';
-
 GRANT SELECT ON mysql.* TO 'qsmaster'@'localhost';
 GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'localhost';
 

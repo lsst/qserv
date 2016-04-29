@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,23 +20,47 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WCONFIG_CONFIGERROR_H
-#define LSST_QSERV_WCONFIG_CONFIGERROR_H
+
+/**
+  * @file
+  *
+  * @brief RunTimeErrors for ConfigStore.
+  *
+  * @Author Fabrice Jammes, IN2P3
+  */
+
+#ifndef LSST_QSERV_CONFIGSTOREERROR_H
+#define LSST_QSERV_CONFIGSTOREERROR_H
 
 // System headers
 #include <stdexcept>
+#include <string>
+
+// Qserv headers
 
 namespace lsst {
 namespace qserv {
-namespace wconfig {
+namespace util {
 
-/// ConfigError indicates a worker configuration error
-class ConfigError : public std::runtime_error {
+/**
+ * Base class for ConfigStore run-time errors, represents a generic ConfigStore run-time error.
+ */
+class ConfigStoreError : public std::runtime_error {
 public:
-    explicit ConfigError(char const* msg) : std::runtime_error(msg) {}
-    explicit ConfigError(std::string const& msg) : std::runtime_error(msg) {}
+    explicit ConfigStoreError(std::string const& msg)
+        : std::runtime_error(msg) {}
+
 };
 
-}}} // namespace lsst::qserv::wconfig
+/**
+ * Specialized run-time error: configuration key is missing.
+ */
+class KeyNotFoundError : public ConfigStoreError {
+public:
+    explicit KeyNotFoundError(std::string const& key)
+        : ConfigStoreError("Missing configuration key: " + key) {}
+};
 
-#endif // LSST_QSERV_WCONFIG_CONFIGERROR_H
+}}} // namespace lsst::qserv::util
+
+#endif // LSST_QSERV_CONFIGSTOREERROR_H

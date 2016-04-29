@@ -1,0 +1,57 @@
+# Qserv xrdssi plugin configuration file
+# Default values for parameters are commented
+
+[mysql]
+
+# hostname =
+# port =
+
+# Username for mysql connections
+username = qsmaster
+password =
+
+# MySQL socket file path for db connections
+socket = {{MYSQLD_SOCK}}
+
+[memman]
+
+# MemMan class to use for managing memory for tables
+# can be "MemManReal" or "MemManNone"
+# class = MemManReal
+
+# Memory available for locking tables, in MB
+# memory = 1000
+memory = 11000
+
+# Path to database tables
+location = {{QSERV_DATA_DIR}}/mysql
+
+[scheduler]
+
+# Thread pool size
+# thread_pool_size = 10
+thread_pool_size = 15
+
+# Maximum group size for GroupScheduler
+# group_size = 1
+group_size = 10
+
+# Slow scheduler priority
+# priority_slow = 1
+priority_slow = 3
+
+# Medium scheduler priority
+# priority_med = 2
+
+# Fast scheduler priority
+#priority_fast = 3
+priority_fast = 1
+
+# Maximum number of threads to reserve for slow scan
+#reserve_slow = 2
+
+# Maximum number of threads to reserve for medium scan
+#reserve_med = 2
+
+# Maximum number of threads to reserve for fast scan
+#reserve_fast = 2

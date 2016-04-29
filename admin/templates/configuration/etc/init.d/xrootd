@@ -37,19 +37,14 @@ if [ -z "${NODE_TYPE}" ]; then
 fi
 
 XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"
+# Add configuration for xrdssi, used only on Qserv workers, not Czar
+XRDSSI_CONFIG="${QSERV_RUN_DIR}/etc/xrdssi.cnf"
 XROOTD_INSTANCE_NAME="worker"
 
 PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
 LOG_DIR=${QSERV_LOG_DIR}
 
 export QSW_DBSOCK="${MYSQLD_SOCK}"
-QSW_SCRATCHPATH="${QSERV_RUN_DIR}/tmp"
-QSW_SCRATCHDB="qservScratch"
-
-# MemMan configuration
-export QSW_MEMMAN="MemManReal"
-export QSW_MEMMAN_MB="11000"
-export QSW_MEMMAN_LOCATION="${QSERV_RUN_DIR}/var/lib/mysql"
 
 # Worker Scheduler configuration
 export QSW_THRDPOOLSZ="20"
@@ -89,7 +84,7 @@ start_service() {
     [ -f ${XROOTD_CONFIG} ] || exit 6
 
     console_logfile="${LOG_DIR}/xrootd-console.log"
-    cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  >>${console_logfile} 2>&1 &"
+    cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  -+xrdssi ${XRDSSI_CONFIG} >>${console_logfile} 2>&1 &"
     start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
     ret=$?
     # xrootd modifies log file path, try to guess it here too for logging
