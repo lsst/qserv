@@ -58,7 +58,7 @@ public:
 class KeyNotFoundError : public ConfigStoreError {
 public:
     explicit KeyNotFoundError(std::string const& key)
-        : ConfigStoreError("Missing configuration key: " + key) {}
+        : ConfigStoreError("Missing configuration key: [" + key + "]") {}
 };
 
 /**
@@ -66,7 +66,7 @@ public:
  */
 class InvalidIntegerValue : public ConfigStoreError {
 public:
-    explicit InvalidIntegerValue(std::string const& key, std::string const& value)
+    InvalidIntegerValue(std::string const& key, std::string const& value)
         : ConfigStoreError("Configuration key [" + key + "] has invalid integer value: '" + value +"'") {}
 };
 

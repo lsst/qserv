@@ -64,7 +64,7 @@ public:
     // take ownership of logger for now
 
     SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig);
-    ~SsiService();
+    virtual ~SsiService();
 
     /// Called by xrootd daemon to handle new resource requests
     void Provision(XrdSsiService::Resource* r,

@@ -41,6 +41,7 @@
 // Qserv headers
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
+#include "mysql/MySqlConnection.h"
 #include "sql/SqlConnection.h"
 #include "wbase/Base.h"
 #include "wconfig/WorkerConfig.h"
@@ -77,9 +78,9 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
 
-    if (not _mySqlConfig.checkConnection()) {
-    LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
-    throw wconfig::WorkerConfigError("Unable to connect to MySQL");
+    if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
+        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
+        throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
     _initInventory();
 
@@ -141,11 +142,10 @@ void SsiService::Provision(XrdSsiService::Resource* r,
 void SsiService::_initInventory() {
     XrdName x;
     if (not _mySqlConfig.dbName.empty()) {
-            LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
-            throw std::runtime_error("dbName must be empty to prevent accidental context");
-
+        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
+        throw std::runtime_error("dbName must be empty to prevent accidental context");
     }
-    std::shared_ptr<sql::SqlConnection> conn = std::make_shared<sql::SqlConnection>(_mySqlConfig, true);
+    auto conn = std::make_shared<sql::SqlConnection>(_mySqlConfig, true);
     assert(conn);
     _chunkInventory = std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
     std::ostringstream os;

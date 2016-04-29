@@ -36,8 +36,17 @@
 #include "boost/lexical_cast.hpp"
 #include "boost/thread/tss.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.MySqlConnection");
+
+} // anonymous
 
 
 namespace {
@@ -95,6 +104,17 @@ MySqlConnection::~MySqlConnection() {
             _mysql_res = nullptr;
         }
         closeMySqlConn();
+    }
+}
+
+bool MySqlConnection::checkConnection(mysql::MySqlConfig const& mysqlconfig) {
+    MySqlConnection conn(mysqlconfig);
+    if (conn.connect()) {
+        LOGS(_log, LOG_LVL_DEBUG, "Successful MySQL connection check: " << mysqlconfig);
+        return true;
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << mysqlconfig);
+        return false;
     }
 }
 

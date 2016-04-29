@@ -83,14 +83,14 @@ Czar::submitQuery(std::string const& query,
     util::ConfigStore hintsConfigStore(hints);
 
     // Analyze query hints
-    std::string clientId = hintsConfigStore.getStringOrDefault("client_dst_name");
+    std::string clientId = hintsConfigStore.get("client_dst_name");
 
     // Not being able to get thread id is not fatal,
     // it just means query cannot be associate with particular
     // client/thread and will not be able to be killed later
-    int threadId = hintsConfigStore.getIntOrDefault("server_thread_id", -1);
+    int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
-    std::string defaultDb = hintsConfigStore.getStringOrDefault("db");
+    std::string defaultDb = hintsConfigStore.get("db");
     LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
 
 

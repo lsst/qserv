@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 AURA/LSST.
+ * Copyright 2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,10 +25,6 @@
 #include "css/CssConfig.h"
 
 // System headers
-#include <cassert>
-#include <cstddef>
-#include <sstream>
-#include <unistd.h>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -50,20 +46,19 @@ namespace qserv {
 namespace css {
 
 CssConfig::CssConfig(util::ConfigStore const& configStore)
-    try : _technology(configStore.getStringOrDefault("technology")),
-      _data(configStore.getStringOrDefault("data")),
-      _file(configStore.getStringOrDefault("file")),
-      _mySqlConfig(configStore.getStringOrDefault("username"),
-           configStore.getStringOrDefault("password"),
-           configStore.getStringOrDefault("hostname"),
-           configStore.getIntOrDefault("port"),
-           configStore.getStringOrDefault("socket"),
-           configStore.getStringOrDefault("database"),
-           false) {
+    try : _technology(configStore.get("technology")),
+      _data(configStore.get("data")),
+      _file(configStore.get("file")),
+      _mySqlConfig(configStore.get("username"),
+           configStore.get("password"),
+           configStore.get("hostname"),
+           configStore.getInt("port"),
+           configStore.get("socket"),
+           configStore.get("database")) {
 
     if (_technology.empty()) {
         std::string msg = "\"technology\" does not exist in configuration map";
-        LOGS(_log, LOG_LVL_DEBUG, msg);
+        LOGS(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(msg);
     }
 
@@ -72,16 +67,13 @@ CssConfig::CssConfig(util::ConfigStore const& configStore)
         LOGS(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(msg);
     }
-}
-catch (util::ConfigStoreError e) {
+} catch (util::ConfigStoreError const& e) {
     throw ConfigError(e.what());
 }
 
 std::ostream& operator<<(std::ostream &out, CssConfig const& cssConfig) {
-    if (cssConfig._technology == "mem") {
-        out << "[ technology=" << cssConfig._technology << ", data=" << cssConfig._data <<
-                ", file=" << cssConfig._file << ", mysql_configuration=" << cssConfig._mySqlConfig <<"]";
-    }
+    out << "[ technology=" << cssConfig._technology << ", data=" << cssConfig._data
+        << ", file=" << cssConfig._file << ", mysql_configuration=" << cssConfig._mySqlConfig <<"]";
     return out;
 }
 

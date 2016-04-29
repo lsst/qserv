@@ -111,7 +111,7 @@ struct TestDBGuard {
         // need config without database name
         MySqlConfig sqlConfigLocal = sqlConfig;
         sqlConfigLocal.dbName = "";
-        std::cout << "config:" << sqlConfigLocal.toString() << std::endl;
+        std::cout << "config:" << sqlConfigLocal << std::endl;
         SqlConnection sqlConn(sqlConfigLocal);
 
         SqlErrorObject errObj;

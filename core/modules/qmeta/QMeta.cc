@@ -33,21 +33,20 @@ QMeta::createFromConfig(std::map<std::string, std::string> const& config) {
     std::string technology;
 
     try {
-        technology = configStore.getString("technology");
-    }
-    catch (util::KeyNotFoundError const& e) {
+        technology = configStore.getRequired("technology");
+    } catch (util::KeyNotFoundError const& e) {
         LOGS(_log, LOG_LVL_DEBUG, "\"technology\" does not exist in configuration map");
         throw ConfigError(ERR_LOC, "\"technology\" does not exist in configuration map");
     }
     if (technology == "mysql") {
         try {
             // extract all optional values from map
-            mysql::MySqlConfig mysqlConfig(configStore.getStringOrDefault("username"),
-               configStore.getStringOrDefault("password"),
-               configStore.getStringOrDefault("hostname"),
-               configStore.getIntOrDefault("port"),
-               configStore.getStringOrDefault("socket"),
-               configStore.getStringOrDefault("database"));
+            mysql::MySqlConfig mysqlConfig(configStore.get("username"),
+               configStore.get("password"),
+               configStore.get("hostname"),
+               configStore.getInt("port"),
+               configStore.get("socket"),
+               configStore.get("database"));
 
                 LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance with mysql store");
                 return std::make_shared<QMetaMysql>(mysqlConfig);

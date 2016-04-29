@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,7 +53,7 @@ public:
      *
      *  @param configMap: a collection of (key, value)
      */
-    CssConfig(std::map<std::string, std::string> configMap)
+    CssConfig(std::map<std::string, std::string> const& configMap)
         : CssConfig(util::ConfigStore(configMap)) {
     }
 
@@ -92,9 +92,9 @@ public:
         return _file;
     }
 
-    /* Get thread pool size for shared scans
+    /* Get CSS technology
      *
-     * @return thread pool size for shared scans
+     * @return CSS technology name
      */
     std::string const& getTechnology() const {
         return _technology;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 #define LSST_QSERV_WCONFIG_WORKERCONFIG_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Qserv headers
@@ -33,7 +34,6 @@
 
 namespace lsst {
 namespace qserv {
-
 namespace wconfig {
 
 /**
@@ -55,7 +55,7 @@ public:
      *
      *  @param configFileName: path to worker INI configuration file
      */
-    WorkerConfig(std::string configFileName)
+    explicit WorkerConfig(std::string configFileName)
         : WorkerConfig(util::ConfigStore(configFileName)) {
     }
 
@@ -66,7 +66,7 @@ public:
      *
      * @return thread pool size for shared scans
      */
-    unsigned int const getThreadPoolSize() const {
+    unsigned int getThreadPoolSize() const {
         return _threadPoolSize;
     }
 
@@ -74,7 +74,7 @@ public:
      *
      * @return maximum number of task accepted in a group queue
      */
-    unsigned int const getMaxGroupSize() const {
+    unsigned int getMaxGroupSize() const {
         return _maxGroupSize;
     }
 
@@ -82,7 +82,7 @@ public:
      *
      * @return max thread reserve for fast shared scan
      */
-    unsigned int const getMaxReserveFast() const {
+    unsigned int getMaxReserveFast() const {
         return _maxReserveFast;
     }
 
@@ -90,7 +90,7 @@ public:
      *
      * @return max thread reserve for medium shared scan
      */
-    unsigned int const getMaxReserveMed() const {
+    unsigned int getMaxReserveMed() const {
         return _maxReserveMed;
     }
 
@@ -98,7 +98,7 @@ public:
      *
      * @return max thread reserve for slow shared scan
      */
-    unsigned int const getMaxReserveSlow() const {
+    unsigned int getMaxReserveSlow() const {
         return _maxReserveSlow;
     }
 
@@ -122,7 +122,7 @@ public:
      *
      * @return maximum amount of memory that can be used by Memory Manager
      */
-    uint64_t const getMemManSizeMb() const {
+    uint64_t getMemManSizeMb() const {
         return _memManSizeMb;
     }
 

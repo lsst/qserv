@@ -27,7 +27,6 @@
 // System headers
 
 // Qserv headers
-#include "css/CssConfig.h"
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 

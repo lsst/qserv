@@ -100,7 +100,7 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
 /// Initialize the db connection
 bool QueryRunner::_initConnection() {
     mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
-    localMySqlConfig.username = _task->user.c_str(); // Override with czar-passed username.
+    localMySqlConfig.username = _task->user; // Override with czar-passed username.
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {

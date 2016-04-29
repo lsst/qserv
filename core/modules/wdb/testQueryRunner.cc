@@ -48,6 +48,7 @@ namespace gio = google::protobuf::io;
 namespace util = lsst::qserv::util;
 
 using lsst::qserv::mysql::MySqlConfig;
+using lsst::qserv::mysql::MySqlConnection;
 
 using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoImporter;
@@ -89,7 +90,7 @@ struct Fixture {
         std::string password = "";
         std::string socket = "SET ME HERE";
         MySqlConfig mySqlConfig(user, password, socket);
-        if (not mySqlConfig.checkConnection()) {
+        if (not MySqlConnection::checkConnection(mySqlConfig)) {
             throw std::runtime_error("Unable to connect to MySQL database with params: "+mySqlConfig.toString());
         }
         return mySqlConfig;

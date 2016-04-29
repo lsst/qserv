@@ -64,7 +64,7 @@ public:
     typedef std::shared_ptr<ChunkInventory> Ptr;
     typedef std::shared_ptr<ChunkInventory const> CPtr;
 
-    ChunkInventory() {};
+    ChunkInventory() {}
     ChunkInventory(std::string const& name, std::shared_ptr<sql::SqlConnection> sc);
 
     void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);

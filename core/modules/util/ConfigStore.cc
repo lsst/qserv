@@ -74,7 +74,7 @@ std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string 
     return configMap;
 }
 
-std::string ConfigStore::getString(std::string const& key) const {
+std::string ConfigStore::getRequired(std::string const& key) const {
     std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     if(i != _configMap.end()) {
         return i->second;
@@ -84,18 +84,18 @@ std::string ConfigStore::getString(std::string const& key) const {
     }
 }
 
-std::string ConfigStore::getStringOrDefault(std::string const& key,
+std::string ConfigStore::get(std::string const& key,
                              std::string const& defaultValue) const {
     std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     if(i != _configMap.end()) {
         return i->second;
     } else {
-        LOGS( _log, LOG_LVL_WARN, "[" << key << "] key not found, using default value: \"" << defaultValue << "\"");
+        LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key not found, using default value: \"" << defaultValue << "\"");
         return defaultValue;
     }
 }
 
-int ConfigStore::getIntOrDefault(std::string const& key, int const& defaultValue) const {
+int ConfigStore::getInt(std::string const& key, int const& defaultValue) const {
 	std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     int result = defaultValue;
     if (i != _configMap.end() and not i->second.empty()) {
@@ -108,10 +108,23 @@ int ConfigStore::getIntOrDefault(std::string const& key, int const& defaultValue
             throw InvalidIntegerValue(key, i->second);
         }
     } else {
-        LOGS( _log, LOG_LVL_WARN, "[" << key << "] key does not exist or has empty string value");
+        LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
         LOGS( _log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
     }
     return result;
+}
+
+std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string sectionName) const {
+    // find all css.* parameters and copy to new map (dropping css.)
+    std::string section = sectionName + ".";
+    std::map<std::string, std::string> sectionConfigMap;
+    int len = section.length();
+    for (auto const& kv : _configMap) {
+        if (kv.first.compare(0, len, section) == 0) {
+            sectionConfigMap.insert(std::make_pair(std::string(kv.first, 4), kv.second));
+        }
+    }
+    return sectionConfigMap;
 }
 
 

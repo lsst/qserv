@@ -25,10 +25,6 @@
 #include "czar/CzarConfig.h"
 
 // System headers
-#include <cassert>
-#include <cstddef>
-#include <sstream>
-#include <unistd.h>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -49,30 +45,29 @@ namespace qserv {
 namespace czar {
 
 CzarConfig::CzarConfig(util::ConfigStore const& configStore)
-    : _mySqlResultConfig(configStore.getStringOrDefault("resultdb.user", "qsmaster"),
-            configStore.getString("resultdb.passwd"),
-            configStore.getString("resultdb.host"), configStore.getIntOrDefault("resultdb.port"),
-            configStore.getString("resultdb.unix_socket"), configStore.getStringOrDefault("resultdb.db","qservResult")),
-      _logConfig(configStore.getStringOrDefault("log.logConfig")),
+    : _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
+            configStore.getRequired("resultdb.passwd"),
+            configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
+            configStore.getRequired("resultdb.unix_socket"), configStore.get("resultdb.db","qservResult")),
+      _logConfig(configStore.get("log.logConfig")),
       _cssConfigMap(configStore.getSectionConfigMap("css")),
-      _mySqlQmetaConfig(configStore.getStringOrDefault( "qmeta.user", "qsmaster"),
-                        configStore.getStringOrDefault("qmeta.passwd"),
-                        configStore.getStringOrDefault("qmeta.host"),
-                        configStore.getIntOrDefault("qmeta.port", 3306),
-                        configStore.getStringOrDefault("qmeta.unix_socket"),
-                        configStore.getStringOrDefault("qmeta.db", "qservMeta")),
-       _xrootdFrontendUrl(configStore.getStringOrDefault("frontend.xrootd", "localhost:1094")),
-       _emptyChunkPath(configStore.getStringOrDefault("partitioner.emptyChunkPath", ".")) {
+      _mySqlQmetaConfig(configStore.get( "qmeta.user", "qsmaster"),
+                        configStore.get("qmeta.passwd"),
+                        configStore.get("qmeta.host"),
+                        configStore.getInt("qmeta.port", 3306),
+                        configStore.get("qmeta.unix_socket"),
+                        configStore.get("qmeta.db", "qservMeta")),
+       _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
+       _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {
-    out << "[" <<
-           ", cssConfigMap=" << util::printable(czarConfig._cssConfigMap) <<
-           ", EmptyChunkPath=" << czarConfig._emptyChunkPath <<
+    out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap) <<
+           ", emptyChunkPath=" << czarConfig._emptyChunkPath <<
            ", logConfig=" << czarConfig._logConfig <<
-           ", MySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig <<
-           ", MySqlResultConfig=" << czarConfig._mySqlResultConfig <<
-           ", XrootdFrontendUrl=" << czarConfig._xrootdFrontendUrl <<
+           ", mySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig <<
+           ", mySqlResultConfig=" << czarConfig._mySqlResultConfig <<
+           ", xrootdFrontendUrl=" << czarConfig._xrootdFrontendUrl <<
            "]";
 
     return out;

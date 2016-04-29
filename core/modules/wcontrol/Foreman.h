@@ -67,7 +67,7 @@ public:
 /// The schedulers may limit the number of threads they will use from the thread pool.
 class Foreman : public wbase::MsgProcessor {
 public:
-    explicit Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig);
+    Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig);
     virtual ~Foreman();
     // This class should not be copied.
     Foreman(Foreman const&) = delete;

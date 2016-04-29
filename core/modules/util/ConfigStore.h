@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,8 +32,8 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-#ifndef LSST_QSERV_UTIL_CONFIGSTORE_H_
-#define LSST_QSERV_UTIL_CONFIGSTORE_H_
+#ifndef LSST_QSERV_UTIL_CONFIGSTORE_H
+#define LSST_QSERV_UTIL_CONFIGSTORE_H
 
 // System headers
 #include <map>
@@ -66,7 +66,7 @@ public:
      */
     ConfigStore(std::string const& configFilePath)
         : _configMap(_parseIniFile(configFilePath)) {
-    };
+    }
 
     /** Build a ConfigStore object from a map
      *
@@ -74,13 +74,13 @@ public:
      */
     ConfigStore(std::map<std::string, std::string> const& kvMap)
     :   _configMap(kvMap) {
-    };
+    }
 
     ConfigStore(ConfigStore const&) = delete;
     ConfigStore& operator=(ConfigStore const&) = delete;
 
 
-    /** Overload output operator for current class
+    /** Output operator for current class
      *
      * @param out
      * @param config
@@ -94,26 +94,26 @@ public:
      * @return the string value for a key
      * @throw KeyNotFoundError if key is not found
      */
-    std::string getString(std::string const& key) const;
+    std::string getRequired(std::string const& key) const;
 
     /** Get value for a configuration key or a default value if key is not found
      *
      * @param key configuration key
-     * @params defaultValue
+     * @param defaultValue to use if key is not found
      * @return the string value for a key, defaulting to defaultValue
      */
-    std::string getStringOrDefault(std::string const& key,
+    std::string get(std::string const& key,
         std::string const& defaultValue = std::string()) const;
 
     /** Get value for a configuration key or a default value if key is not found
      *
      * @param key configuration key
-     * @params defaultValue
+     * @params defaultValue to use if key if not found or associated value is empty string
      * @return the integer value for a key, defaulting to defaultValue
      *
      * @throw InvalidIntegerValue if value can not be converted to an integer
      */
-    int getIntOrDefault(std::string const& key, int const& defaultValue = 0) const;
+    int getInt(std::string const& key, int const& defaultValue = 0) const;
 
     /** Get a collection of (key, value) related to a configuration section
      *
@@ -124,19 +124,7 @@ public:
      * @return a collection of (key, value) related to a configuration section
      *
      */
-    std::map<std::string, std::string> const getSectionConfigMap(std::string sectionName) const {
-        // find all css.* parameters and copy to new map (dropping css.)
-            std::string section = sectionName+".";
-            std::map<std::string, std::string> sectionConfigMap;
-            int len = section.length();
-            for (auto const& kv : _configMap) {
-                if (kv.first.compare(0, len, section) == 0) {
-                    sectionConfigMap.insert(
-                            std::make_pair(std::string(kv.first, 4), kv.second));
-                }
-            }
-        return sectionConfigMap;
-    }
+    std::map<std::string, std::string> getSectionConfigMap(std::string sectionName) const;
 
 private:
 
@@ -148,4 +136,4 @@ private:
 
 }}} // namespace lsst::qserv::util
 
-#endif /* LSST_QSERV_UTIL_CONFIGSTORE_H_ */
+#endif /* LSST_QSERV_UTIL_CONFIGSTORE_H */

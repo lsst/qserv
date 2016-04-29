@@ -86,8 +86,8 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
 
     if (argc != 2) {
         LOGS( _log, LOG_LVL_TRACE, "argc: " << argc);
-        LOGS( _log, LOG_LVL_FATAL, "Uncorrect xrdssi configuration, launch \
-            xrootd with option '-+xrdssi /path/to/xrdssi/cfg/file'");
+        LOGS( _log, LOG_LVL_FATAL, "Incorrect xrdssi configuration, launch "
+                "xrootd with option '-+xrdssi /path/to/xrdssi/cfg/file'");
         exit(EXIT_FAILURE);
     }
 

@@ -60,8 +60,7 @@ public:
                 std::string const& hostname,
                 unsigned int const port,
                 std::string const& socket,
-                std::string const& db = "",
-                bool const checkValid = true);
+                std::string const& db = "");
 
     /**
      *  Create MySqlConfig instance
@@ -69,30 +68,13 @@ public:
      *  @param username:    MySQL username
      *  @param password:    MySQL password
      *  @param socket:      MySQL socket
-     *  @param db:          MySQL db
-     *  @param checkValid:  if true, throws exception if parameters below are invalid
+     *  @param db:          MySQL database
      *
      * @throws std::runtime_error: if some parameters are invalid
      */
     MySqlConfig(std::string const& username, std::string const& password,
                 std::string const& socket, std::string const& db = "");
 
-    /**
-     *  Check MySQL connection for current instance
-     *
-     * @return: true if MySQL connection succeeded, else false
-     */
-    bool checkConnection() const;
-
-    /**
-     *  Check members variables validity for current instance
-     *
-     *  username must not be empty
-     *  hostname:port or socket must not be empty
-     *
-     * @throws std::runtime_error: if some member variable are invalid
-     */
-    void checkValidity() const;
 
     /** Overload output operator for current class
      *
