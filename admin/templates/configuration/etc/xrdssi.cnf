@@ -30,7 +30,7 @@ location = {{QSERV_DATA_DIR}}/mysql
 
 # Thread pool size
 # thread_pool_size = 10
-thread_pool_size = 15
+thread_pool_size = 20
 
 # Maximum group size for GroupScheduler
 # group_size = 1

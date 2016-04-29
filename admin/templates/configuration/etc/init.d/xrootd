@@ -44,18 +44,6 @@ XROOTD_INSTANCE_NAME="worker"
 PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
 LOG_DIR=${QSERV_LOG_DIR}
 
-export QSW_DBSOCK="${MYSQLD_SOCK}"
-
-# Worker Scheduler configuration
-export QSW_THRDPOOLSZ="20"
-export QSW_GROUPSZ="10"
-export QSW_PRIORITYSLOW="3"
-export QSW_PRIORITYMED="2"
-export QSW_PRIORITYFAST="1"
-export QSW_RESERVESLOW="2"
-export QSW_RESERVEMED="2"
-export QSW_RESERVEFAST="2"
-
 # Log configuration file for worker nodes.
 # xrootd manager doesn't use it.
 # Indeed, log4cxx is only used by Qserv plugin
