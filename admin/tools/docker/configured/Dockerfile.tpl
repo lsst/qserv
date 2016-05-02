@@ -1,4 +1,4 @@
-FROM {{DOCKER_IMAGE_OPT}}
+FROM <DOCKER_IMAGE>
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 WORKDIR /qserv
@@ -11,11 +11,11 @@ EXPOSE 5012 1094
 
 # Respectively cmsd mysql-proxy ports
 # Used on master only
-{{COMMENT_ON_WORKER_OPT}}EXPOSE 2131 4040
+<COMMENT_ON_WORKER>EXPOSE 2131 4040
 
 COPY scripts/*.sh scripts/
 
-RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh {{NODE_TYPE_OPT}}"
+RUN bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && /qserv/scripts/configure.sh <NODE_TYPE>"
 
 # WARNING: Unsafe because it is pushed in Docker Hub
 # TODO: use consul to manage secret
