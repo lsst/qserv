@@ -36,7 +36,7 @@ Usage: $(basename "$0") [options]
 Available options:
   -h          this message
   -i image    Docker image to be used as input, default to $DOCKER_IMAGE
-  -L			Do not push image to Docker Hub
+  -L          Do not push image to Docker Hub
 
 Create docker images containing Qserv master and worker instances,
 use an existing Qserv Docker image as input.
@@ -61,15 +61,22 @@ if [ $# -ne 0 ] ; then
 fi
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-DOCKERDIR="$DIR/configured"
 
 # Build the master image
 
+DOCKERDIR="$DIR/configured"
 DOCKERFILE="$DOCKERDIR/Dockerfile"
-cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
-sed -i 's%{{NODE_TYPE_OPT}}%-m%g' "$DOCKERFILE"
-sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
-sed -i 's%{{COMMENT_ON_WORKER_OPT}}%%g' "$DOCKERFILE"
+
+# Templating is required here
+# docker build --build-arg=[] is too restrictive
+awk \
+-v NODE_TYPE="-m" \
+-v DOCKER_IMAGE="$DOCKER_IMAGE" \
+-v COMMENT_ON_WORKER="" \
+'{gsub(/<NODE_TYPE>/, NODE_TYPE);
+  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_master"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
@@ -84,10 +91,14 @@ fi
 
 # Build the worker image
 
-cp "$DOCKERDIR/Dockerfile.tpl" "$DOCKERFILE"
-sed -i 's%{{NODE_TYPE_OPT}}%%g' "$DOCKERFILE"
-sed -i "s%{{DOCKER_IMAGE_OPT}}%$DOCKER_IMAGE%g" "$DOCKERFILE"
-sed -i 's%{{COMMENT_ON_WORKER_OPT}}%# %g' "$DOCKERFILE"
+awk \
+-v NODE_TYPE="" \
+-v DOCKER_IMAGE="$DOCKER_IMAGE" \
+-v COMMENT_ON_WORKER="# " \
+'{gsub(/<NODE_TYPE>/, NODE_TYPE);
+  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_worker"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"

@@ -36,8 +36,10 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 # to update container configuration
 if [ -n "$QSERV_MASTER" ]
 then
-    sed -i "s/master = <DOCKER_ENV_QSERV_MASTER>/master = ${QSERV_MASTER}/" \
-        "$QSERV_RUN_DIR/qserv-meta.conf"
+    cp "$QSERV_RUN_DIR/qserv-meta.conf" /tmp/qserv-meta.conf.orig
+    awk -v MASTER="${QSERV_MASTER}" \
+        '{gsub(/<DOCKER_ENV_QSERV_MASTER>/, MASTER);
+          print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
     bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && \
         qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' --etc"
 else

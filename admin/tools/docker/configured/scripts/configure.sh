@@ -30,7 +30,7 @@ set -e
 usage() {
   cat << EOD
 
-Usage: `basename $0` [options]
+Usage: $(basename "$0") [options]
 
   Available options:
     -h          this message
@@ -51,7 +51,7 @@ while getopts hm c ; do
             \?) usage ; exit 2 ;;
     esac
 done
-shift `expr $OPTIND - 1`
+shift "$((OPTIND-1))"
 
 if [ $# -ne 0 ] ; then
     usage
@@ -59,18 +59,21 @@ if [ $# -ne 0 ] ; then
 fi
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. $DIR/params.sh
+. "$DIR/params.sh"
 
 echo "Configure Qserv $NODE_TYPE"
 qserv-configure.py --init --force \
-                   --qserv-run-dir $QSERV_RUN_DIR \
-                   --qserv-data-dir $QSERV_DATA_DIR
+                   --qserv-run-dir "$QSERV_RUN_DIR" \
+                   --qserv-data-dir "$QSERV_DATA_DIR"
 
 # Customize meta configuration file
-sed -i "s/node_type = mono/node_type = $NODE_TYPE/" \
-    $QSERV_RUN_DIR/qserv-meta.conf
-sed -i "s/master = 127.0.0.1/master = <DOCKER_ENV_QSERV_MASTER>/" \
-    $QSERV_RUN_DIR/qserv-meta.conf
+cp "$QSERV_RUN_DIR/qserv-meta.conf" /tmp/qserv-meta.conf.orig
+awk \
+-v NODE_TYPE_KV="node_type = $NODE_TYPE" \
+-v MASTER_KV="master = <DOCKER_ENV_QSERV_MASTER>" \
+'{gsub(/node_type = mono/, NODE_TYPE_KV);
+  gsub(/master = 127.0.0.1/, MASTER_KV);
+  print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
 
-qserv-configure.py --qserv-run-dir $QSERV_RUN_DIR --force
+qserv-configure.py --qserv-run-dir "$QSERV_RUN_DIR" --force
 
