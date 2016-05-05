@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     {
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
-        uint sz = 10; // size of thread poo to create
+        uint sz = 10; // size of thread pool to create
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
         LOGS_DEBUG("pool size=" << sz);
@@ -127,6 +127,58 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         pool->endAll(); // These are added to end of queue, everything on queue should complete.
         pool->waitForResize(0);
         BOOST_CHECK(total == poolSum.total);
+
+        // Test that a threads can leave the pool and complete and the pool size recovers.
+        sz = 5;
+        pool->resize(sz);
+        pool->waitForResize(0);
+        Sum sum;
+        std::vector<Tracker::Ptr> trackedCmds;
+        bool go = false;
+        std::condition_variable goCV;
+        std::mutex goCVMtx;
+        // Create more threads than can fit in the pool and don't let any complete.
+        int threadsRunning = 2*sz;
+        for (int j=0; j<threadsRunning; j++) {
+            auto cmdDelaySum = std::make_shared<CommandThreadPool>(
+                [&sum, &go, &goCV, &goCVMtx](CmdData* eventThread){
+                    PoolEventThread* peThread = dynamic_cast<PoolEventThread*>(eventThread);
+                    peThread->leavePool();
+                    sum.add(1);
+                    LOGS_DEBUG("Wait for goCVTest.");
+                    auto goCVTest = [&go](){ return go; };
+                    std::unique_lock<std::mutex> goLock(goCVMtx);
+                    goCV.wait(goLock, goCVTest); // wait on go == true;
+                    sum.add(1);
+            });
+            trackedCmds.push_back(cmdDelaySum);
+            poolQueue->queCmd(cmdDelaySum);
+        }
+        // Wait briefly (5sec) for all threads to be running.
+        LOGS_DEBUG("Wait for all threads to be running.");
+        for (int j = 0; sum.total<threadsRunning && j<50; ++j) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        // Verify pool size
+        BOOST_CHECK(pool->size() == sz);
+        BOOST_CHECK(sum.total == threadsRunning);
+        // Shrink the pool to zero and verify the separated threads complete.
+        pool->resize(0);
+        pool->waitForResize(0);
+        BOOST_CHECK(pool->size() == 0);
+        // Have the separated threads finish.
+        {
+            std::lock_guard<std::mutex> lock(goCVMtx);
+            go = true;
+        }
+        goCV.notify_all();
+        // Wait for all separated threads to finish
+        for (auto const& ptc : trackedCmds) {
+            LOGS_DEBUG("Wait for thread to finish.");
+            ptc->waitComplete();
+        }
+        // sum.total should now be double what it was.
+        BOOST_CHECK(sum.total == 2*threadsRunning);
     }
 
     // Give it some time to finish deleting everything (5 seconds total)

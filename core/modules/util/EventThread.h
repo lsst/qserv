@@ -80,6 +80,7 @@ public:
 
     virtual void commandStart(Command::Ptr const&) {};
     virtual void commandFinish(Command::Ptr const&) {};
+
 protected:
     std::deque<Command::Ptr> _qu{};
     std::condition_variable  _cv{};
@@ -113,7 +114,7 @@ public:
             void action(CmdData *data) override {
                 auto thisEventThread = dynamic_cast<EventThread*>(data);
                 if (thisEventThread != nullptr) {
-                    thisEventThread->_loop =false;
+                    thisEventThread->_loop = false;
                 }
             }
         };
@@ -121,16 +122,28 @@ public:
         queCmd(cmd);
     }
 
+    Command* getCurrentCommand() const { return _currentCommand; }
+
 protected:
     virtual void startup() {};  ///< Things to do before handling commands
     virtual void finishup() {}; ///< things to do when the thread is closing down.
+    virtual void specialActions(Command::Ptr const& cmd) {}; ///< Things to do before running a command.
+    void callCommandFinish(Command::Ptr const& cmd); //< Only allow command finish to be called once.
 
     CommandQueue::Ptr _q{std::make_shared<CommandQueue>()}; ///< Queue of commands.
-    std::thread _t;                 // Our thread
-    bool   _loop {true};       // Keep running the event loop while this is true.
+    std::thread _t;            //< Our thread.
+    std::atomic<bool> _loop {true}; //< Keep running the event loop while this is true.
+    std::atomic<bool> _commandFinishCalled{false}; //< flag to prevent multiple calls to commandFinish.
+    Command::Ptr _getCurrentCommandPtr() const { return _cmd; } //< not thread safe.
+
+private:
+    Command::Ptr _cmd;
+    std::atomic<Command*> _currentCommand{nullptr};
 };
 
+
 class ThreadPool;
+
 
 /// An EventThread to be used by the ThreadPool class.
 /// finishup() is used to tell the ThreadPool that this thread is finished.
@@ -141,10 +154,31 @@ public:
      : EventThread{q}, _threadPool{threadPool} {}
     ~PoolEventThread();
 
+    void leavePool();
+    bool leavePool(Command::Ptr const& cmd);
+
 protected:
-     void finishup() override;
-     std::shared_ptr<ThreadPool> _threadPool;
+    void specialActions(Command::Ptr const& cmd) override;
+    void finishup() override;
+    std::shared_ptr<ThreadPool> _threadPool;
+    std::atomic<bool> _finished{false}; //< Ensure finishup() only called once.
 };
+
+
+/// A Command that is aware that it is running as part of a PoolEventThread,
+// which allows it to tell the pool to take special actions.
+class CommandThreadPool : public CommandTracked {
+public:
+    using Ptr = std::shared_ptr<CommandThreadPool>;
+
+    CommandThreadPool() {};
+    CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
+
+    friend class PoolEventThread; // Only class that should use _poolEventThread.
+private:
+    PoolEventThread* _poolEventThread{nullptr};
+};
+
 
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
 /// Growing the pool is simple, shrinking the pool is complex. Both operations should
@@ -193,7 +227,8 @@ protected:
 
 };
 
-}}} // namespace
+
+}}} // namespace lsst:qserv:util
 
 
 

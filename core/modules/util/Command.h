@@ -71,6 +71,11 @@ public:
     virtual void action(CmdData *data) {
         _func(data);
     };
+    virtual void actionComplete(CmdData*) {}
+    void runAction(CmdData *data) {
+        action(data);
+        actionComplete(data);
+    }
     void setFunc(std::function<void(CmdData*)> func);
     void resetFunc();
 protected:
@@ -85,8 +90,7 @@ public:
     CommandTracked() {};
     CommandTracked(std::function<void(CmdData*)> func) : Command{func} {}
     virtual ~CommandTracked() {};
-    void action(CmdData *data) override {
-        _func(data);
+    void actionComplete(CmdData*) override {
         setComplete();
     };
 };
