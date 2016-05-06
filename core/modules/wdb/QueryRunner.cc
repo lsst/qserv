@@ -234,6 +234,13 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
             _transmit(false);
             size = 0;
             _initMsg();
+            // This task is going to have multiple results to return to the czar and will be
+            // the speed this task can be completed will be limited by the czar's ability to
+            // read in results, which could be very very slow. The upshot of this is the
+            // scheduler for this worker should stop waiting for this task. leavePool()
+            // will tell the scheduler this task is finished and create a new thread in the pool
+            // to replace this one.
+            _task->getPoolEventThread()->leavePool();
         }
     }
     return true;
@@ -339,7 +346,7 @@ bool QueryRunner::_dispatchChannel() {
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
             for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
-                MYSQL_RES* res = _primeResult(fragment.query(qi));
+                MYSQL_RES* res = _primeResult(fragment.query(qi)); // This runs the SQL query.
                 if (!res) {
                     erred = true;
                     continue;

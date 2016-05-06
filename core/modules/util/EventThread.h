@@ -207,6 +207,8 @@ public:
     CommandThreadPool() {}
     CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
 
+    PoolEventThread* getPoolEventThread() { return _poolEventThread; } //< Not thread safe.
+
     friend class PoolEventThread; // Only class that should use _poolEventThread.
 private:
     PoolEventThread* _poolEventThread{nullptr};

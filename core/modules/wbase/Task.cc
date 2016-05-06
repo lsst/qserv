@@ -91,6 +91,10 @@ std::string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
 
 
+/// When the constructor is called, there is not enough information
+/// available to define the action to take when this task is run, so
+/// Command::setFunc() is used set the action later. This is why
+/// the util::CommandThreadPool is not called here.
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     : msg{t}, sendChannel{sc},
       _qId{t->queryid()}, _jId{t->jobid()},
