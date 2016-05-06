@@ -27,18 +27,18 @@ DB_PORT = {{MYSQLD_PORT}}
 DB_SOCKET = '{{MYSQLD_SOCK}}'
 
 # regular database account
-DB_USER = '{{QSERV_USER}}'
+DB_USER = '{{MYSQLD_USER_QSERV}}'
 DB_PASSWD = ''
 
 # special account used to create new databases
-DB_USER_PRIV = '{{MYSQLD_USER}}'
-DB_PASSWD_PRIV = '{{MYSQLD_PASS}}'
+DB_USER_PRIV = 'root'
+DB_PASSWD_PRIV = '{{MYSQLD_PASSWORD_ROOT}}'
 
 # parameters for mysql-proxy connection, these are only useful
 # for czar wmgr instance
 PROXY_HOST = '127.0.0.1'
 PROXY_PORT = {{MYSQL_PROXY_PORT}}
-PROXY_USER = '{{QSERV_USER}}'
+PROXY_USER = '{{MYSQLD_USER_QSERV}}'
 PROXY_PASSWD = ''
 
 # CSS-related parameters
@@ -49,7 +49,7 @@ CSS_CONFIG = {
     'technology': 'mysql',
     'hostname': '{{QSERV_MASTER}}',
     'port': '{{MYSQLD_PORT}}',
-    'username': '{{QSERV_USER}}',
+    'username': '{{MYSQLD_USER_QSERV}}',
     'database': 'qservCssData',
 }
 

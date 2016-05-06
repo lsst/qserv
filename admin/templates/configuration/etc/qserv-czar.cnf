@@ -8,47 +8,44 @@ xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 # Steal resultdb settings for now.
 
 [css]
-technology=mysql
+technology = mysql
 hostname =
 port =
-username = qsmaster
+username = {{MYSQLD_USER_QSERV}}
 password =
 database = qservCssData
 socket = {{MYSQLD_SOCK}}
 
 [resultdb]
 passwd =
-db=qservResult
-unix_socket={{MYSQLD_SOCK}}
-host=
-user=qsmaster
-port=0
+db = qservResult
+unix_socket = {{MYSQLD_SOCK}}
+host =
+user= {{MYSQLD_USER_QSERV}}
+port = 0
 
 # database connection for QMeta database
 [qmeta]
 passwd =
-db=qservMeta
-unix_socket={{MYSQLD_SOCK}}
-host=
-user=qsmaster
-port=0
+db = qservMeta
+unix_socket = {{MYSQLD_SOCK}}
+host =
+user = {{MYSQLD_USER_QSERV}}
+port = 0
 
 [partitioner]
 # emptyChunkPath is used to check existence of empty_$DBNAME.txt
-emptyChunkPath={{QSERV_DATA_DIR}}/qserv
+emptyChunkPath = {{QSERV_DATA_DIR}}/qserv
 
 # If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
 # doesn't exist then emptyChunkListFile is used for queries on $DBNAME
-emptyChunkListFile={{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
+emptyChunkListFile = {{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 
 #[tuning]
-#memoryEngine=yes
+#memoryEngine = yes
 
 #[debug]
-#chunkLimit=-1
-
-#[mysql]
-#mysqlclient=
+#chunkLimit = -1
 
 [log]
 logConfig = {{QSERV_RUN_DIR}}/etc/log4cxx.czar.properties

@@ -1,1 +1,1 @@
-mysql --socket {{MYSQLD_SOCK}} --user={{MYSQLD_USER}} --pass=XXXXXX
+mysql --socket {{MYSQLD_SOCK}} --user=root --pass=XXXXXX

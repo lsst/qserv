@@ -12,20 +12,20 @@ interval = 3.0
 
 [css]
 # connection parameters for CSS
-technology=mysql
+technology = mysql
 hostname =
 port =
-username = qsmaster
+username = {{MYSQLD_USER_QSERV}}
 password =
 database = qservCssData
 socket = {{MYSQLD_SOCK}}
 
 [qmeta]
 # connection parameters for QMeta
-technology=mysql
+technology = mysql
 hostname =
 port =
-username = qsmaster
+username = {{MYSQLD_USER_QSERV}}
 password =
 database = qservMeta
 socket = {{MYSQLD_SOCK}}

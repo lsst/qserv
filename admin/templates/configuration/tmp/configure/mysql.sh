@@ -54,7 +54,7 @@ mysql --no-defaults -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql ||
     echo -n "ERROR : Failed to set mariadb root user password."
     echo "Please set the MariaDB root user password with : "
     echo "mysqladmin -S ${QSERV_RUN_DIR}/var/lib/mysql/mysql.sock -u root password <password>"
-    echo "mysqladmin -u root -h ${MYSQLD_HOST} -P${MYSQLD_PASS} password <password>"
+    echo "mysqladmin -u root -h ${MYSQLD_HOST} -PXXXX password <password>"
     exit 1
 }
 rm ${SQL_DIR}/mysql-password.sql
