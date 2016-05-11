@@ -184,7 +184,7 @@ class Configurator(object):
                 os.path.dirname(os.path.realpath(__file__)),
                 "..")
         )
-        self._in_config_dir = os.path.join(qserv_dir, "cfg")
+        self._in_config_dir = os.path.join(qserv_dir, "share", "qserv", "configuration")
         self._template_root = os.path.join(self._in_config_dir, "templates")
 
         if self.args.qserv_data_dir:
@@ -194,8 +194,11 @@ class Configurator(object):
 
     def _template_to_symlink(self, filename, symlink):
         """
-        Use template qserv_prefix/cfg/templates/filename to generate
-        qserv_run_dir/etc/filename and create a symlink to the latter
+        Use template qserv_prefix/share/qserv/configuration/templates/filename to generate
+        qserv_run_dir/filename and create a symlink to the latter
+
+        Allow to generate symlinks in ~/.lsst to file in a given qserv_run_dir.
+
         @param filename: absolute path to the source template file
         @param symlink: absolute path to the created symlink
         @return: nothing

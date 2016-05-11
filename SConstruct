@@ -48,7 +48,7 @@ else:
 #
 ################################
     state.initBuild()
-    env.Replace(configuration_prefix = os.path.join( env['prefix'], "cfg"))
+    env.Replace(configuration_prefix = os.path.join( env['prefix'], "share", "qserv", "configuration"))
 
 #########################
 #
@@ -124,7 +124,7 @@ else:
 
     # Clean empty build/install directories (based on current target list)
     if env.GetOption('clean'):
-        env.CleanEmptyDirs(BUILD_TARGETS, 'bin build cfg lib proxy')
+        env.CleanEmptyDirs(BUILD_TARGETS, 'bin build share lib proxy')
 
 # List all aliases
 try:

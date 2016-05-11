@@ -10,8 +10,7 @@ config.log
 # in place build:
 /bin/
 /lib/
-/proxy/
-/cfg/
+/share/
 /qserv-start.sh
 /qserv-stop.sh
 /qserv-status.sh

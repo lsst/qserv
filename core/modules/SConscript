@@ -216,7 +216,7 @@ shlibs["qserv_czar"] = dict(mods="""ccontrol czar parser qana query qdisp qproc 
 shlibs["czarProxy"] = dict(mods="""proxy""",
                            libs="""qserv_czar""",
                            SHLIBPREFIX='',
-                           instDir='proxy')
+                           instDir='lib/lua/qserv')
 
 # Python extension module wrapping qserv_css
 shlibs["_cssLib"] = dict(mods="css:python",
