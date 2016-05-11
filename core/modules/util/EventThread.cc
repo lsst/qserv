@@ -65,7 +65,7 @@ void EventThread::handleCmds() {
 }
 
 
-/// Ensure that commandFinish is only called once.
+/// Ensure that commandFinish is only called once per loop.
 void EventThread::callCommandFinish(Command::Ptr const& cmd) {
     if (_commandFinishCalled.exchange(true) == false) {
         _q->commandFinish(cmd);
@@ -94,17 +94,20 @@ void PoolEventThread::specialActions(Command::Ptr const& cmd) {
 }
 
 
-/// Cause this thread to leave the thread pool, this can be called from outside the thread
-// that will be removed from the pool.
-// @return false if a different command is running.
+/// Cause this thread to leave the thread pool, this can be called from outside of the
+// thread that will be removed from the pool. This would most likely be done by
+// a CommandQueue which was having some trouble due to 'cmd', such as 'cmd' taking
+// too long to complete. This allows the CommandQueue to continue but will have other
+// consequences.
+// @return false if a different command is running than cmd.
 bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
     if (cmd.get() != getCurrentCommand()) {
         // cmd must have finished before the event loop stopped.
         // The current command will complete normally, and the pool
-        // should replace this thread with a new one when finishup
-        // is called. No harm aside from some wasted CPU cycles.
+        // should replace this thread with a new one when finishup()
+        // is called in handleCmds(). No harm aside from some wasted CPU cycles.
         return false;
     }
 
@@ -126,8 +129,9 @@ void PoolEventThread::leavePool() {
     leavePool(_getCurrentCommandPtr());
 }
 
+
 void PoolEventThread::finishup() {
-    if (_finished.exchange(true) == false) {
+    if (_finishupOnce.exchange(true) == false) {
         // 'pet' will keep this PoolEventThread instance alive until this thread completes,
         // otherwise it would likely be deleted when _threadPool->release(this) is called.
         PoolEventThread::Ptr pet = _threadPool->release(this);
@@ -140,6 +144,7 @@ void PoolEventThread::finishup() {
         }
     }
 }
+
 
 ThreadPool::~ThreadPool() {
     endAll();
