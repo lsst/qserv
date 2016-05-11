@@ -102,6 +102,7 @@ else:
         )
 
         script_dict = {'{{QSERV_DIR}}': os.path.abspath(env['prefix']),
+                       '{{QSERV_PKGAUTOVERSION}}': env['QSERV_PKGAUTOVERSION'],
                        '{{XROOTD_DIR}}': env['XROOTD_DIR'],
                        '{{LUA_DIR}}': env['LUA_DIR'],
                        '{{MYSQL_DIR}}': env['MYSQL_DIR'],
