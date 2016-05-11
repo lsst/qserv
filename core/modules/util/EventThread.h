@@ -40,6 +40,39 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
+///
+// The classes in this header are meant to provide the basis for easy to use event
+// driven threads. A basic CommandQueue is a simple thread safe fifo, but derived
+// classes can overload the member functions and be very complicated schedulers
+// (see wsched::ScanScheduler, wsched::BlendScheduler, and wsched::GroupScheduler).
+//
+// The basic EventThread just runs whatever Command its CommandQueue object hands it.
+// It tells the CommandQueue when each command starts and finishes, which can be
+// ignored. In the case where a Command needs to know something about the EventThread
+// it is running on, specialAction can be overriden.
+//
+// The ThreadPool is easy to use and conceptually simple, but has some unusual features
+// that complicate implementation. A ThreadPool is composed of some number of
+// PoolEventThread's that all share a CommandQueue. A Command placed on the CommandQueue
+// may be run by any thread in the pool. A PoolEventThread is simply an EventThread
+// that is aware that it is part of a ThreadPool.
+//
+// The ThreadPool starts getting complicated in that there are the unusual cases where
+// a Command decides it should no longer be part of the pool or a CommandQueue scheduler
+// decides that it should no longer wait for that Command to complete. For this there is
+// CommandThreadPool. It is a Command that knows it is in a thread pool and has the
+// capability to have the PoolEventThread leave its ThreadPool. When this is done, the
+// CommandQueue is told the Command is complete and the ThreadPool creates a replacement
+// PoolEventThread.
+//
+// The primary case for a thread deciding to leave is that it has reached a point where it
+// expects to need significantly fewer resources than it was using before (such as waiting
+// for something slow to complete before finishing a task). And the primary case for a
+// CommandQueue derived scheduler to cause a Command and its PoolEventThread to leave the
+// ThreadPool is that the command is too slow for that scheduler.
+//
+
+
 /// A queue of Commands meant to drive an EventThread.
 ///
 class CommandQueue {
@@ -78,15 +111,16 @@ public:
         }
     }
 
-    virtual void commandStart(Command::Ptr const&) {};
-    virtual void commandFinish(Command::Ptr const&) {};
+    virtual void commandStart(Command::Ptr const&) {}; //< Derived methods must be thread safe.
+    virtual void commandFinish(Command::Ptr const&) {}; //< Derived methods must be thread safe.
+
 protected:
     std::deque<Command::Ptr> _qu{};
     std::condition_variable  _cv{};
     mutable std::mutex       _mx{};
 };
 
-/// An event driven thread.
+/// An event driven thread, the event loop is in handleCmds().
 /// Thread must be started with run(). Stop the thread by calling queEnd().
 class EventThread : public CmdData {
 public:
@@ -97,7 +131,7 @@ public:
     EventThread operator=(EventThread const&) = delete;
     virtual ~EventThread() {}
 
-    void handleCmds();
+    void handleCmds(); //< Event loop!!!
     void join() { _t.join(); }
     void run(); ///< Run this EventThread.
 
@@ -113,7 +147,7 @@ public:
             void action(CmdData *data) override {
                 auto thisEventThread = dynamic_cast<EventThread*>(data);
                 if (thisEventThread != nullptr) {
-                    thisEventThread->_loop =false;
+                    thisEventThread->_loop = false;
                 }
             }
         };
@@ -121,16 +155,28 @@ public:
         queCmd(cmd);
     }
 
+    Command* getCurrentCommand() const { return _currentCommand; }
+
 protected:
-    virtual void startup() {};  ///< Things to do before handling commands
-    virtual void finishup() {}; ///< things to do when the thread is closing down.
+    virtual void startup() {}  ///< Things to do when the thread is starting up.
+    virtual void finishup() {} ///< things to do when the thread is closing down.
+    virtual void specialActions(Command::Ptr const& cmd) {} ///< Things to do before running a command.
+    void callCommandFinish(Command::Ptr const& cmd); //< Limit commandFinish() to be called once per loop.
 
     CommandQueue::Ptr _q{std::make_shared<CommandQueue>()}; ///< Queue of commands.
-    std::thread _t;                 // Our thread
-    bool   _loop {true};       // Keep running the event loop while this is true.
+    std::thread _t;            //< Our thread.
+    std::atomic<bool> _loop {true}; //< Keep running the event loop while this is true.
+    std::atomic<bool> _commandFinishCalled{false}; //< flag to prevent multiple calls to commandFinish.
+    Command::Ptr _getCurrentCommandPtr() const { return _cmd; } //< not thread safe.
+
+private:
+    Command::Ptr _cmd;
+    std::atomic<Command*> _currentCommand{nullptr};
 };
 
+
 class ThreadPool;
+
 
 /// An EventThread to be used by the ThreadPool class.
 /// finishup() is used to tell the ThreadPool that this thread is finished.
@@ -141,10 +187,31 @@ public:
      : EventThread{q}, _threadPool{threadPool} {}
     ~PoolEventThread();
 
+    void leavePool();
+    bool leavePool(Command::Ptr const& cmd);
+
 protected:
-     void finishup() override;
-     std::shared_ptr<ThreadPool> _threadPool;
+    void specialActions(Command::Ptr const& cmd) override;
+    void finishup() override;
+    std::shared_ptr<ThreadPool> _threadPool;
+    std::atomic<bool> _finishupOnce{false}; //< Ensure finishup() only called once.
 };
+
+
+/// A Command that is aware that it is running as part of a PoolEventThread,
+// which allows it to tell the event thread and pool to take special actions.
+class CommandThreadPool : public CommandTracked {
+public:
+    using Ptr = std::shared_ptr<CommandThreadPool>;
+
+    CommandThreadPool() {}
+    CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
+
+    friend class PoolEventThread; // Only class that should use _poolEventThread.
+private:
+    PoolEventThread* _poolEventThread{nullptr};
+};
+
 
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
 /// Growing the pool is simple, shrinking the pool is complex. Both operations should
@@ -193,7 +260,8 @@ protected:
 
 };
 
-}}} // namespace
+
+}}} // namespace lsst:qserv:util
 
 
 

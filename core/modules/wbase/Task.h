@@ -100,7 +100,7 @@ private:
     std::mutex mx;
 };
 
-/// struct Task defines a query task to be done, containing a TaskMsg
+/// class Task defines a query task to be done, containing a TaskMsg
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable

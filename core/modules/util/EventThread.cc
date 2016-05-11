@@ -46,18 +46,32 @@ namespace util {
 void EventThread::handleCmds() {
     startup();
     while(_loop) {
-        Command::Ptr cmd = _q->getCmd();
-        if (cmd != nullptr) {
-            _q->commandStart(cmd);
-            cmd->action(this);
-            _q->commandFinish(cmd);
+        _cmd = _q->getCmd();
+        _commandFinishCalled = false;
+        _currentCommand = _cmd.get();
+        if (_cmd != nullptr) {
+            _q->commandStart(_cmd);
+            specialActions(_cmd);
+            _cmd->runAction(this);
+            callCommandFinish(_cmd);
             // Reset _func in case it has a captured Command::Ptr,
             // which would keep it alive indefinitely.
-            cmd->resetFunc();
+            _cmd->resetFunc();
         }
+        _cmd.reset();
+        _currentCommand = nullptr;
     }
     finishup();
 }
+
+
+/// Ensure that commandFinish is only called once per loop.
+void EventThread::callCommandFinish(Command::Ptr const& cmd) {
+    if (_commandFinishCalled.exchange(true) == false) {
+        _q->commandFinish(cmd);
+    }
+}
+
 
 /// call this to start the thread
 void EventThread::run() {
@@ -65,23 +79,72 @@ void EventThread::run() {
     _t = std::move(t);
 }
 
+
 PoolEventThread::~PoolEventThread() {
     LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread()");
 }
 
-void PoolEventThread::finishup() {
-    // 'pet' will keep this PoolEventThread instance alive until this thread completes,
-    // otherwise it would likely be deleted when _threadPool->release(this) is called.
-    // It's probably overly cautious but it is safe.
-    PoolEventThread::Ptr pet = _threadPool->release(this);
-    if (pet != nullptr) {
-        auto f = [pet](){ pet->join(); };
-        std::thread t{f};
-        t.detach();
-    } else {
-        LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
+
+/// If cmd is a CommandThreadPool object, give it a copy of our this pointer.
+void PoolEventThread::specialActions(Command::Ptr const& cmd) {
+    CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
+    if (cmdPool != nullptr) {
+        cmdPool->_poolEventThread = this;
     }
 }
+
+
+/// Cause this thread to leave the thread pool, this can be called from outside of the
+// thread that will be removed from the pool. This would most likely be done by
+// a CommandQueue which was having some trouble due to 'cmd', such as 'cmd' taking
+// too long to complete. This allows the CommandQueue to continue but will have other
+// consequences.
+// @return false if a different command is running than cmd.
+bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
+    // This thread will stop accepting commands
+    _loop = false;
+    if (cmd.get() != getCurrentCommand()) {
+        // cmd must have finished before the event loop stopped.
+        // The current command will complete normally, and the pool
+        // should replace this thread with a new one when finishup()
+        // is called in handleCmds(). No harm aside from some wasted CPU cycles.
+        return false;
+    }
+
+    // Have the CommandQueue deal with any accounting that needs to be done.
+    callCommandFinish(cmd);
+
+    // Have the thread pool release this thread, which will cause a replacement thread
+    // to be created.
+    finishup();
+    return true;
+}
+
+
+/// Cause this thread to leave the thread pool, this MUST only called from within
+// the thread that will be removed (most likely from within a CommandThreadPool action).
+void PoolEventThread::leavePool() {
+    // This thread will stop accepting commands
+    _loop = false;
+    leavePool(_getCurrentCommandPtr());
+}
+
+
+void PoolEventThread::finishup() {
+    if (_finishupOnce.exchange(true) == false) {
+        // 'pet' will keep this PoolEventThread instance alive until this thread completes,
+        // otherwise it would likely be deleted when _threadPool->release(this) is called.
+        PoolEventThread::Ptr pet = _threadPool->release(this);
+        if (pet != nullptr) {
+            auto f = [pet](){ pet->join(); };
+            std::thread t{f};
+            t.detach();
+        } else {
+            LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
+        }
+    }
+}
+
 
 ThreadPool::~ThreadPool() {
     endAll();
