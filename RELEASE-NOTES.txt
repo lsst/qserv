@@ -1,3 +1,26 @@
+R E L E A S E   2016_04
+=======================
+
+Release highlights:
+  * Bug fixes to re-enable scripted large-scale tests
+  * Bug fixes for new shared scans
+  
+Code improvements:
+  * DM-5209: Improve worker configuration files
+  * DM-5788: Xcode 7.3 compiler issue
+  * DM-5394: Investigate boost compiler warnings and update boost to v1.60
+
+Documentation:
+  * DM-5754: Improvements to install documentation
+  
+Docker:
+  * DM-4438: Replace sed with awk for docker template expansion
+  * DM-5187: Set Qserv master in env variable for Docker containers
+
+Bug Fixes:
+  * DM-5514: Shared scan bug fixes
+  * DM-5307: Query distribution threading fixes
+
 R E L E A S E   2016_03
 =======================
 
