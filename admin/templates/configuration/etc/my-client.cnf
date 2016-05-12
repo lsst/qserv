@@ -1,6 +1,6 @@
 ### used by css (i.e. watcher.py)
 [client]
-user     = {{QSERV_USER}} 
+user     = {{MYSQLD_USER_QSERV}}
 # host/port and/or socket
 host     = {{MYSQLD_HOST}}
 port     = {{MYSQLD_PORT}}

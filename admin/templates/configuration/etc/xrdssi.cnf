@@ -7,7 +7,7 @@
 # port =
 
 # Username for mysql connections
-username = qsmaster
+username = {{MYSQLD_USER_QSERV}}
 password =
 
 # MySQL socket file path for db connections

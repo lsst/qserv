@@ -29,14 +29,12 @@ from __future__ import absolute_import
 # --------------------------------
 #  Imports of standard modules --
 # -------------------------------
-import os
-import hashlib
-import getpass
+import ConfigParser
 import logging
+import os
 import re
 import subprocess
 import sys
-import ConfigParser
 
 # ----------------------------
 # Imports for other modules --
@@ -73,7 +71,7 @@ def read_config(config_file):
         exit(1)
 
     parser = ConfigParser.SafeConfigParser()
-    # parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
+    # TODO: add unicode support for passwords: see DM-5985
     parser.read(config_file)
 
     _LOG.debug("Build configuration : ")
@@ -93,9 +91,6 @@ def read_config(config_file):
                 config[section][option] = os.path.normpath(
                     config[section][option])
 
-    # TODO : manage special characters for pass (see config file comments for
-    # additional information)
-    config['mysqld']['pass'] = parser.get("mysqld", "pass", raw=True)
     if parser.has_option('mysqld', 'port'):
         config['mysqld']['port'] = parser.getint('mysqld', 'port')
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 set -e
 
@@ -6,8 +6,7 @@ QSERV_RUN_DIR='{{QSERV_RUN_DIR}}'
 SCISQL_DIR='{{SCISQL_DIR}}'
 MYSQL_DIR='{{MYSQL_DIR}}'
 MYSQLD_SOCK='{{MYSQLD_SOCK}}'
-MYSQLD_USER='{{MYSQLD_USER}}'
-MYSQLD_PASS='{{MYSQLD_PASS}}'
+MYSQLD_PASSWORD_ROOT='{{MYSQLD_PASSWORD_ROOT}}'
 PYTHON_BIN='{{PYTHON_BIN}}'
 export PYTHONPATH='{{PYTHONPATH}}'
 
@@ -17,9 +16,9 @@ export LD_LIBRARY_PATH='{{LD_LIBRARY_PATH}}'
 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start
 echo "-- Deploying sciSQL plugin in MySQL database"
-echo "${MYSQLD_PASS}" | "${SCISQL_DIR}/bin/scisql-deploy.py" --mysql-dir="$MYSQL_DIR" \
+echo "${MYSQLD_PASSWORD_ROOT}" | "${SCISQL_DIR}/bin/scisql-deploy.py" --mysql-dir="$MYSQL_DIR" \
 				 --mysql-socket="${MYSQLD_SOCK}" \
-				 --mysql-user="${MYSQLD_USER}"
+				 --mysql-user="root"
 "${QSERV_RUN_DIR}/etc/init.d/mysqld" stop ||
 exit 1
 
