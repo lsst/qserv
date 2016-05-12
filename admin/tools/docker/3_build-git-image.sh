@@ -60,10 +60,10 @@ if [ -z "$GIT_REF" -a -z "$SRC_DIR" ]; then
     echo "ERROR: provide either branch/tag or local source directory"
     usage
     exit 2
-elif [ -n "$GIT_REF" -a -n "$SRC_DIR" ]; then
-    echo "ERROR: must not provide both branch/tag and local source directory"
-    usage
-    exit 2
+#elif [ -n "$GIT_REF" -a -n "$SRC_DIR" ]; then
+#    echo "ERROR: must not provide both branch/tag and local source directory"
+#    usage
+#    exit 2
 elif [ -n "$GIT_REF" ] ; then
     printf "Using remote branch/tag %s from %s\n" "$GIT_REF" "$GITHUB_REPO"
 	TMP_DIR=$(mktemp --directory --suffix "_qserv")

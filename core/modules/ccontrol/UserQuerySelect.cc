@@ -245,7 +245,7 @@ void UserQuerySelect::submit() {
 /// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
     bool successful = _executive->join(); // Wait for all data
-    _infileMerger->finalize(); // Wait for all data to get merged
+    _infileMerger->finalize(); // Since all data are in, run final SQL commands like GROUP BY.
     _discardMerger();
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);

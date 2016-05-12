@@ -234,7 +234,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
             _transmit(false);
             size = 0;
             _initMsg();
-            // This task is going to have multiple results to return to the czar and will be
+            // This task is going to have multiple results to return to the czar and
             // the speed this task can be completed will be limited by the czar's ability to
             // read in results, which could be very very slow. The upshot of this is the
             // scheduler for this worker should stop waiting for this task. leavePool()
