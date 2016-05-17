@@ -54,8 +54,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "mysql/LocalInfile.h"
-#include "mysql/MySqlConnection.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
 #include "query/SelectStmt.h"
@@ -98,142 +96,32 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-////////////////////////////////////////////////////////////////////////
-// InfileMerger::Mgr
-////////////////////////////////////////////////////////////////////////
 
-/// InfileMerger::Mgr is a delegate class of InfileMerger that manages a queue
-/// of jobs to import rows into a mysqld. The purpose of maintaining a queue and
-/// not performing parallel loading is poor performance (as measured in MySQL
-/// 5.1). While performance might be better when the merge/result table is an
-/// ENGINE=MEMORY table, we cannot use in-memory by default because result
-/// tables could spill physical RAM--baseline LSST query requirements allow for
-/// large result sets.
-class InfileMerger::Mgr {
-public:
-    class ActionMerge;
-    friend class ActionMerge;
-
-    Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable);
-
-    ~Mgr() {}
-
-    /// Enqueue an bundle of result rows to be inserted, as represented by the
-    /// Protobufs message bundle
-    void queMerge(std::shared_ptr<proto::WorkerResponse> response);
-
-    /// Wait until work queue is empty.
-    /// @return true on success
-    bool join() {
-        std::unique_lock<std::mutex> lock(_inflightMutex);
-        while(_numInflight > 0) {
-            _inflightZero.wait(lock);
-        }
-        return true;
-    }
-
-    /// Apply a mysql query, using synchronization to prevent contention.
-    bool applyMysql(std::string const& query);
-
-    /// Report completion of an action (used by Action threads to report their
-    /// completion before they destroy themselves).
-    void signalDone(bool success, ActionMerge& a) {
-        std::lock_guard<std::mutex> lock(_inflightMutex);
-        --_numInflight;
-        // TODO: do something with the result so we can catch errors.
-        if (_numInflight == 0) {
-            _inflightZero.notify_all();
-        }
-    }
-
-private:
-    bool _doMerge(std::shared_ptr<proto::WorkerResponse>& response);
-
-    void _incrementInflight() {
-        std::lock_guard<std::mutex> lock(_inflightMutex);
-        ++_numInflight;
-    }
-
-    bool _setupConnection() {
-        if (_mysqlConn.connect()) {
-            _infileMgr.attach(_mysqlConn.getMySql());
-            return true;
-        }
-        return false;
-    }
-
-    mysql::MySqlConnection _mysqlConn;
-    std::mutex _mysqlMutex;
-    std::string const& _mergeTable;
-
-    util::WorkQueue _workQueue;
-    std::mutex _inflightMutex;
-    std::condition_variable _inflightZero;
-    int _numInflight;
-
-    lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
-};
-
-class InfileMerger::Mgr::ActionMerge : public util::WorkQueue::Callable {
-public:
-    ActionMerge(Mgr& mgr, std::shared_ptr<proto::WorkerResponse> response) : _mgr(mgr), _response(response) {
-        _mgr._incrementInflight();
-        // Delay preparing the virtual file until just before it is needed.
-    }
-    void operator()() {
-        bool result = _mgr._doMerge(_response);
-        _mgr.signalDone(result, *this);
-    }
-    Mgr& _mgr;
-    std::shared_ptr<proto::WorkerResponse> _response;
-};
-
-////////////////////////////////////////////////////////////////////////
-// InfileMerger::Mgr implementation
-////////////////////////////////////////////////////////////////////////
-InfileMerger::Mgr::Mgr(mysql::MySqlConfig const& config, std::string const& mergeTable)
-    : _mysqlConn(config),
-      _mergeTable(mergeTable),
-      _workQueue(1),
-      _numInflight(0) {
-    if (!_setupConnection()) {
-        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
-    }
-}
-
-/** Queue merging the rows encoded in the 'response'.
- */
-void InfileMerger::Mgr::queMerge(std::shared_ptr<proto::WorkerResponse> response) {
-    std::shared_ptr<ActionMerge> a(new ActionMerge(*this, response));
-    _workQueue.add(a);
-    //a->operator()(); // Comment out above line and enable this to wait until the write completes.
-}
-
-/** Load data from the 'response' into the 'table'. Return true if successful.
- */
-bool InfileMerger::Mgr::_doMerge(std::shared_ptr<proto::WorkerResponse>& response) {
+/// Load data from the 'response' into the 'table'. Return true if successful.
+//
+bool InfileMerger::_merge(std::shared_ptr<proto::WorkerResponse>& response) {
     std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
     auto start = std::chrono::system_clock::now();
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
-    auto ret = applyMysql(infileStatement);
+    auto ret = _applyMysql(infileStatement);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     return ret;
 }
 
-bool InfileMerger::Mgr::applyMysql(std::string const& query) {
+
+bool InfileMerger::_applyMysql(std::string const& query) {
     std::lock_guard<std::mutex> lock(_mysqlMutex);
     if (!_mysqlConn.connected()) {
-        // should have connected during Mgr construction
+        // should have connected during construction
         // Try reconnecting--maybe we timed out.
         if (!_setupConnection()) {
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
             return false; // Reconnection failed. This is an error.
         }
     }
-    // Go direct--MySqlConnection API expects results and will report
-    // an error if there is no result.
-    // bool result = _mysqlConn.queryUnbuffered(query);  // expects a result
+
     int rc = mysql_real_query(_mysqlConn.getMySql(),
                               query.data(), query.size());
     return rc == 0;
@@ -243,14 +131,15 @@ bool InfileMerger::Mgr::applyMysql(std::string const& query) {
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
-    : _config(c),
-      _isFinished(false),
-      _needCreateTable(true) {
+    : _config{c},
+      _mysqlConn{_config.mySqlConfig} {
     _fixupTargetName();
     if (_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
-    _mgr.reset(new Mgr(_config.mySqlConfig, _mergeTable));
+    if (!_setupConnection()) {
+        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
+    }
 }
 
 InfileMerger::~InfileMerger() {
@@ -280,11 +169,17 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
             return false;
         }
     }
-    return _importResponse(response);
+
+    // Nothing to do if size is zero.
+    if (response->result.row_size() != 0) {
+        return _merge(response);
+    }
+    return true;
 }
 
+
 bool InfileMerger::finalize() {
-    bool finalizeOk = _mgr->join();
+    bool finalizeOk = true;
     // TODO: Should check for error condition before continuing.
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
@@ -383,16 +278,6 @@ bool InfileMerger::_verifySession(int sessionId) {
     return true; // TODO: for better message integrity
 }
 
-bool InfileMerger::_importResponse(std::shared_ptr<proto::WorkerResponse> response) {
-    // Check for the no-row condition
-    if (response->result.row_size() == 0) {
-        // Nothing further, don't bother importing
-    } else {
-        // Delegate merging thread mgmt to mgr
-        _mgr->queMerge(response);
-    }
-    return true;
-}
 
 /// Create a table with the appropriate schema according to the
 /// supplied Protobufs message

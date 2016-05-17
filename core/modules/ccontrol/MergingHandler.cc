@@ -133,8 +133,11 @@ bool MergingHandler::flush(int bLen, bool& last) {
             LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
                  << " last=" << last << " for tableName=" << _tableName);
 
+            // TODO: DM-5910 ??? inform  JobQuery that a merge has started
             auto success = _merge();
+            // TODO: DM-5910 ??? inform  JobQuery that a merge has finished
             if (msgContinues) {
+                // TODO: DM-5910 ??? wait here for before continuing  to get info from worker ???
                 _response.reset(new WorkerResponse());
             }
             return success;

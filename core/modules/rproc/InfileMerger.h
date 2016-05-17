@@ -35,7 +35,9 @@
 #include <string>
 
 // Qserv headers
+#include "mysql/LocalInfile.h"
 #include "mysql/MySqlConfig.h"
+#include "mysql/MySqlConnection.h"
 #include "util/Error.h"
 
 // Forward declarations
@@ -122,30 +124,37 @@ public:
     bool isFinished() const;
 
 private:
+    bool _applyMysql(std::string const& query);
+    bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
-    bool _importResponse(std::shared_ptr<proto::WorkerResponse> response);
     bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
     void _fixupTargetName();
 
+    bool _setupConnection() {
+        if (_mysqlConn.connect()) {
+            _infileMgr.attach(_mysqlConn.getMySql());
+            return true;
+        }
+        return false;
+    }
+
     InfileMergerConfig _config; ///< Configuration
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
-
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state
-
-    bool _isFinished; ///< Completed?
+    bool _isFinished{false}; ///< Completed?
     std::mutex _createTableMutex; ///< protection from creating tables
     std::mutex _sqlMutex; ///< Protection for SQL connection
+    bool _needCreateTable{true}; ///< Does the target table need creating?
 
-    class Mgr;
-    std::unique_ptr<Mgr> _mgr; ///< Delegate merging action object
-
-    bool _needCreateTable; ///< Does the target table need creating?
+    mysql::MySqlConnection _mysqlConn;
+    std::mutex _mysqlMutex;
+    lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 };
 
 }}} // namespace lsst::qserv::rproc

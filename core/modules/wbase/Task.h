@@ -104,9 +104,7 @@ private:
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable
-/// Task encapsulates nearly zero logic, aside from:
-/// * constructors
-class Task : public util::Command {
+class Task : public util::CommandThreadPool {
 public:
     static std::string const defaultUser;
     using Ptr =  std::shared_ptr<Task>;
