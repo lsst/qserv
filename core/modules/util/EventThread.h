@@ -209,7 +209,7 @@ public:
 
     PoolEventThread* getPoolEventThread() { return _poolEventThread; } //< Not thread safe.
 
-    friend class PoolEventThread; // Only class that should use _poolEventThread.
+    friend class PoolEventThread;
 private:
     PoolEventThread* _poolEventThread{nullptr};
 };
