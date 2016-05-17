@@ -252,7 +252,10 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
 void QueryRunner::_transmit(bool last) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr());
     std::string resultString;
+    _result->set_queryid(_task->getQueryId());
+    _result->set_jobid(_task->getJobId());
     _result->set_continues(!last);
+    _result->set_largeresult(_largeResult);
     if (!_multiError.empty()) {
         std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
@@ -268,6 +271,7 @@ void QueryRunner::_transmit(bool last) {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
+    _largeResult = true;
 }
 
 /// Transmit the protoHeader

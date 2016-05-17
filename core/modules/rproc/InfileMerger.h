@@ -39,6 +39,7 @@
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "util/Error.h"
+#include "util/EventThread.h"
 
 // Forward declarations
 namespace lsst {
@@ -155,6 +156,10 @@ private:
     mysql::MySqlConnection _mysqlConn;
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
+
+    // The limited size pool will keep this query from using up all the czar's time
+    // when only a couple of threads can effective write to a single table.
+    util::ThreadPool::Ptr _largeResultPool = util::ThreadPool::newThreadPool(3, nullptr);
 };
 
 }}} // namespace lsst::qserv::rproc

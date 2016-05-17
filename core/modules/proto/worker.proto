@@ -103,6 +103,9 @@ message Result {
     optional int32 errorcode = 4;
     optional string errormsg = 5;
     repeated RowBundle row = 6;
+    required uint64 queryid = 7;
+    required int32 jobid = 8;
+    required bool largeresult = 9;
 }
 
 // Result protocol 2:

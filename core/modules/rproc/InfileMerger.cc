@@ -56,6 +56,7 @@
 // Qserv headers
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "qmeta/types.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
@@ -64,7 +65,6 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
 #include "util/StringHash.h"
-#include "util/WorkQueue.h"
 
 namespace { // File-scope helpers
 
@@ -96,17 +96,86 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
+////////////////////////////////////////////////////////////////////////
+// InfileMerger public
+////////////////////////////////////////////////////////////////////////
+InfileMerger::InfileMerger(InfileMergerConfig const& c)
+    : _config{c},
+      _mysqlConn{_config.mySqlConfig} {
+    _fixupTargetName();
+    if (_config.mergeStmt) {
+        _config.mergeStmt->setFromListAsTable(_mergeTable);
+    }
+    if (!_setupConnection()) {
+        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
+    }
+}
 
-/// Load data from the 'response' into the 'table'. Return true if successful.
-//
-bool InfileMerger::_merge(std::shared_ptr<proto::WorkerResponse>& response) {
+InfileMerger::~InfileMerger() {
+    _largeResultPool->endAll();
+}
+
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
+    if (!response) {
+        return false;
+    }
+    // TODO: Check session id (once session id mgmt is implemented)
+
+    std::string queryIdStr = qmeta::QueryIdHelper::makeIdStr(
+            response->result.queryid(), response->result.jobid());
+    bool largeResult = response->result.largeresult();
+    LOGS(_log, LOG_LVL_DEBUG,
+         "Executing InfileMerger::merge("
+         << queryIdStr
+         << "largeResult=" << largeResult
+         << " sizes=" << static_cast<short>(response->headerSize)
+         << ", " << response->protoHeader.size()
+         << ", rowcount=" << response->result.row_size()
+         << ", errCode=" << response->result.has_errorcode()
+         << "hasErrorMsg=" << response->result.has_errormsg() << ")");
+
+    if (response->result.has_errorcode() || response->result.has_errormsg()) {
+        _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
+        LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
+        return false;
+    }
+    if (_needCreateTable) {
+        if (!_setupTable(*response)) {
+            return false;
+        }
+    }
+
+    // Nothing to do if size is zero.
+    if (response->result.row_size() == 0) {
+        return true;
+    }
+
     std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
-    auto start = std::chrono::system_clock::now();
     std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
-    auto ret = _applyMysql(infileStatement);
-    auto end = std::chrono::system_clock::now();
-    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+    bool ret = false;
+    auto runSql = [this, &infileStatement, &queryIdStr, &ret](util::CmdData*){
+        auto start = std::chrono::system_clock::now();
+        ret = _applyMysql(infileStatement);
+        auto end = std::chrono::system_clock::now();
+        auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDur=" << mergeDur.count());
+    };
+    if (largeResult) {
+        // Queuing on the limited size thread pool should keep the czar from getting
+        // crushed trying to write hundreds of large result transmits at the same time.
+        auto start = std::chrono::system_clock::now();
+        auto ct = std::make_shared<util::CommandTracked>(runSql);
+        // Using the ThreadPool with queue ensures only a queries run at a time and that they
+        // are handled in a Fifo manner.
+        _largeResultPool->getQueue()->queCmd(ct);
+        ct->waitComplete();
+        auto end = std::chrono::system_clock::now();
+        auto mergeDurWait = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDurWait=" << mergeDurWait.count());
+    } else {
+        // First transmit, run asap to avoid slowing down the worker.
+        runSql(nullptr);
+    }
     return ret;
 }
 
@@ -125,56 +194,6 @@ bool InfileMerger::_applyMysql(std::string const& query) {
     int rc = mysql_real_query(_mysqlConn.getMySql(),
                               query.data(), query.size());
     return rc == 0;
-}
-
-////////////////////////////////////////////////////////////////////////
-// InfileMerger public
-////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c)
-    : _config{c},
-      _mysqlConn{_config.mySqlConfig} {
-    _fixupTargetName();
-    if (_config.mergeStmt) {
-        _config.mergeStmt->setFromListAsTable(_mergeTable);
-    }
-    if (!_setupConnection()) {
-        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
-    }
-}
-
-InfileMerger::~InfileMerger() {
-}
-
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
-    if (!response) {
-        return false;
-    }
-    // TODO: Check session id (once session id mgmt is implemented)
-
-    LOGS(_log, LOG_LVL_DEBUG,
-         "Executing InfileMerger::merge("
-         << "sizes=" << static_cast<short>(response->headerSize)
-         << ", " << response->protoHeader.size()
-         << ", rowcount=" << response->result.row_size()
-         << ", errCode=" << response->result.has_errorcode()
-         << "hasErrorMsg=" << response->result.has_errormsg() << ")");
-
-    if (response->result.has_errorcode() || response->result.has_errormsg()) {
-        _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
-        return false;
-    }
-    if (_needCreateTable) {
-        if (!_setupTable(*response)) {
-            return false;
-        }
-    }
-
-    // Nothing to do if size is zero.
-    if (response->result.row_size() != 0) {
-        return _merge(response);
-    }
-    return true;
 }
 
 

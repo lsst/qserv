@@ -140,7 +140,8 @@ public:
 
     // Shared scan information
     int getChunkId();
-    QueryId getQueryId() { return _qId; }
+    QueryId getQueryId() const { return _qId; }
+    int getJobId() const { return _jId; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }

@@ -218,7 +218,9 @@ private:
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
 /// Growing the pool is simple, shrinking the pool is complex. Both operations should
 /// have no effect on items running or on the queue.
-/// endAll() must be called to shutdown the ThreadPool.
+/// Note: endAll() MUST be called to shutdown the ThreadPool. There are self
+///   referential pointer between ThreadPool and its PoolEventThread's. This is a lesser
+///   evil than having PoolEventThread's running without their ThreadPool.
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
 public:
     using Ptr = std::shared_ptr<ThreadPool>;

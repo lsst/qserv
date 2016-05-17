@@ -102,6 +102,7 @@ private:
 
     std::shared_ptr<proto::ProtoHeader> _protoHeader;
     std::shared_ptr<proto::Result> _result;
+    bool _largeResult{false}; //< True for all transmits after the first transmit.
 };
 
 }}} // namespace
