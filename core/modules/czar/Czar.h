@@ -104,6 +104,7 @@ private:
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
     ClientToQuery _clientToQuery;       ///< maps client ID to query
     std::mutex _mutex;                  ///< protects both _uqFactory and _clientToQuery
+
 };
 
 }}} // namespace lsst::qserv::czar

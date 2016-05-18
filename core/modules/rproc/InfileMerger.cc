@@ -89,12 +89,14 @@ std::string getTimeStampId() {
     // Alternative (for production?) Use boost::uuid to construct ids that are
     // guaranteed to be unique.
 }
-
 } // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace rproc {
+
+util::ThreadPool::Ptr InfileMerger::_largeResultPool;
+std::mutex InfileMerger::largeResultPoolMutex;
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
@@ -109,13 +111,29 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     if (!_setupConnection()) {
         throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
+
+    if (_largeResultPool == nullptr) {
+        throw InfileMergerError(util::ErrorCode::INTERNAL, "InfileMerger largeResultPool uninitialized");
+    }
 }
 
 InfileMerger::~InfileMerger() {
-    _largeResultPool->endAll();
+}
+
+
+int InfileMerger::setLargeResultPoolSize(int size) {
+    std::lock_guard<std::mutex> lock(largeResultPoolMutex);
+    size = std::min(1, size); // size must be at least 1
+    if (_largeResultPool == nullptr) {
+        _largeResultPool = util::ThreadPool::newThreadPool(size, nullptr);
+    }
+    _largeResultPool->resize(size);
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger::setLargeResultPoolSize sz=" << size);
+    return size;
 }
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
+    static std::atomic<int> cmdCount{0}; // Count of large results in process.
     if (!response) {
         return false;
     }
@@ -150,8 +168,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         return true;
     }
 
-    std::string virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
-    std::string infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
+    std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+    std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     bool ret = false;
     auto runSql = [this, &infileStatement, &queryIdStr, &ret](util::CmdData*){
         auto start = std::chrono::system_clock::now();
@@ -162,13 +180,15 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     };
     if (largeResult) {
         // Queuing on the limited size thread pool should keep the czar from getting
-        // crushed trying to write hundreds of large result transmits at the same time.
+        // crushed trying to write hundreds of large result transmits at the same time
+        // as well as ensure they are handled in a fifo manner.
         auto start = std::chrono::system_clock::now();
         auto ct = std::make_shared<util::CommandTracked>(runSql);
-        // Using the ThreadPool with queue ensures only a queries run at a time and that they
-        // are handled in a Fifo manner.
         _largeResultPool->getQueue()->queCmd(ct);
+        auto cc = ++cmdCount;
+        LOGS(_log, LOG_LVL_DEBUG, "largeResult cmdCount=" << cc);
         ct->waitComplete();
+        --cmdCount;
         auto end = std::chrono::system_clock::now();
         auto mergeDurWait = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDurWait=" << mergeDurWait.count());

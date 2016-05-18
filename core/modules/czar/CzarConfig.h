@@ -112,6 +112,15 @@ public:
         return _xrootdFrontendUrl;
     }
 
+    /* Get number of threads to use for collecting large result data.
+     *
+     * @return the size of the thread pool for large results.
+     */
+    // TODO: enable this once adding an int no longer causes a segfault
+    // int getLargeResultPoolSize() const {
+    //     return _largeResultPoolSize;
+    // }
+
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -125,6 +134,8 @@ private:
     mysql::MySqlConfig const _mySqlQmetaConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
+    // TODO: DM-6160 figure out/fix why this causes a segfault and enable it
+    //int _largeResultPoolSize;
 };
 
 }}} // namespace lsst::qserv::czar

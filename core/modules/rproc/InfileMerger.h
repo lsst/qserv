@@ -108,6 +108,10 @@ public:
     explicit InfileMerger(InfileMergerConfig const& c);
     ~InfileMerger();
 
+    /// Create the shared thread pool and/or change its size.
+    // @return the size of the large result thread pool.
+    static int setLargeResultPoolSize(int size);
+
     /// Merge a worker response, which contains:
     /// Size of ProtoHeader message
     /// ProtoHeader message
@@ -157,9 +161,9 @@ private:
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 
-    // The limited size pool will keep this query from using up all the czar's time
-    // when only a couple of threads can effective write to a single table.
-    util::ThreadPool::Ptr _largeResultPool = util::ThreadPool::newThreadPool(3, nullptr);
+    // The limited size pool will keep large queries from using up all the czar's time.
+    static util::ThreadPool::Ptr _largeResultPool;
+    static std::mutex largeResultPoolMutex;
 };
 
 }}} // namespace lsst::qserv::rproc

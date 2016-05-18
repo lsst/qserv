@@ -36,6 +36,7 @@
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
 #include "czar/MessageTable.h"
+#include "rproc/InfileMerger.h"
 #include "util/IterableFormatter.h"
 
 namespace {
@@ -66,6 +67,11 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     if (not logConfig.empty()) {
         LOG_CONFIG(logConfig);
     }
+
+    // TODO: DM-6160 set size from configuration file
+    // int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
+    int largeResultPoolSize = 40;
+    rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
