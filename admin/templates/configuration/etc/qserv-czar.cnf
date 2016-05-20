@@ -43,7 +43,7 @@ emptyChunkListFile = {{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 
 #[tuning]
 #memoryEngine = yes
-#largeResultPoolSize = 40
+#largeResultPoolSize = 3
 
 #[debug]
 #chunkLimit = -1

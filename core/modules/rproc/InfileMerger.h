@@ -163,7 +163,6 @@ private:
 
     // The limited size pool will keep large queries from using up all the czar's time.
     static util::ThreadPool::Ptr _largeResultPool;
-    static std::mutex largeResultPoolMutex;
 };
 
 }}} // namespace lsst::qserv::rproc

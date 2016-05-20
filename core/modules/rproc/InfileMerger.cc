@@ -96,7 +96,7 @@ namespace qserv {
 namespace rproc {
 
 util::ThreadPool::Ptr InfileMerger::_largeResultPool;
-std::mutex InfileMerger::largeResultPoolMutex;
+std::mutex largeResultPoolMutex;
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
@@ -123,11 +123,12 @@ InfileMerger::~InfileMerger() {
 
 int InfileMerger::setLargeResultPoolSize(int size) {
     std::lock_guard<std::mutex> lock(largeResultPoolMutex);
-    size = std::min(1, size); // size must be at least 1
+    size = std::max(1, size); // size must be at least 1
     if (_largeResultPool == nullptr) {
         _largeResultPool = util::ThreadPool::newThreadPool(size, nullptr);
+    } else {
+        _largeResultPool->resize(size);
     }
-    _largeResultPool->resize(size);
     LOGS(_log, LOG_LVL_DEBUG, "InfileMerger::setLargeResultPoolSize sz=" << size);
     return size;
 }
@@ -168,10 +169,10 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         return true;
     }
 
-    std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
-    std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     bool ret = false;
-    auto runSql = [this, &infileStatement, &queryIdStr, &ret](util::CmdData*){
+    auto runSql = [this, &response, &queryIdStr, &ret](util::CmdData*){
+        std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+        std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
         auto start = std::chrono::system_clock::now();
         ret = _applyMysql(infileStatement);
         auto end = std::chrono::system_clock::now();
