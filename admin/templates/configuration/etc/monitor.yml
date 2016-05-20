@@ -1,0 +1,12 @@
+# Qserv parameters used for monitoring
+qserv:
+
+    version: {{QSERV_VERSION}}
+
+    # Path to Qserv and dependencies binaries
+    install_dir:
+        qserv_dir: {{QSERV_DIR}}
+        xrootd_dir: {{XROOTD_DIR}}
+        mysqlproxy_dir: {{MYSQLPROXY_DIR}}
+        mariadb_dir: {{MYSQL_DIR}}
+        lua_dir: {{LUA_DIR}}

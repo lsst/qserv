@@ -37,7 +37,7 @@ DB_PASSWD_PRIV = '{{MYSQLD_PASSWORD_ROOT}}'
 # parameters for mysql-proxy connection, these are only useful
 # for czar wmgr instance
 PROXY_HOST = '127.0.0.1'
-PROXY_PORT = {{MYSQL_PROXY_PORT}}
+PROXY_PORT = {{MYSQLPROXY_PORT}}
 PROXY_USER = '{{MYSQLD_USER_QSERV}}'
 PROXY_PASSWD = ''
 
