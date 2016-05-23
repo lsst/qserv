@@ -16,6 +16,9 @@ fi
 if [ -n "$HOST_DATA_DIR" ]; then
     DATA_VOLUME_OPT="--volume $HOST_DATA_DIR:/qserv/data"
 fi
+if [ -n "$ULIMIT_MEMLOCK" ]; then
+    ULIMIT_OPT="--ulimit memlock=$ULIMIT_MEMLOCK"
+fi
 
 echo
 echo "Check for existing Qserv containers"
@@ -48,6 +51,7 @@ docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $MASTER_IMAGE" "$MASTER"
 
@@ -59,6 +63,7 @@ shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $WORKER_IMAGE" $WORKERS
 
