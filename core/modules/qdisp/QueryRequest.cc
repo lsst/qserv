@@ -220,7 +220,6 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             jq->getStatus()->updateInfo(JobStatus::COMPLETE);
             _finish();
         } else {
-            // TODO: DM-5910 ??? wait here for before continuing  to get info from worker ???
             std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
             const void* pbuf = (void*)(&buffer[0]);
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "_importStream->GetResponseData size=" << buffer.size()
