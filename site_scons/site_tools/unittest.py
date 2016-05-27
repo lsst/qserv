@@ -81,7 +81,7 @@ class _unitTest(object):
             # We need to tell the tests where the uninstalled Qserv libraries
             # are located because rpaths aren't (yet?) handled properly
             # when the libraries and binaries are built on OS X.
-            libpathstr = "{}={}:{}".format("DYLD_LIBRARY_PATH",
+            libpathstr = "{}='{}:{}'".format("DYLD_LIBRARY_PATH",
                 env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
 
         try:
