@@ -89,7 +89,7 @@ wbase::Task::Ptr ChunkDisk::MinHeap::pop() {
 }
 
 
-void ChunkDisk::enqueue(wbase::Task::Ptr const& a) {
+void ChunkDisk::queTask(wbase::Task::Ptr const& a) {
     std::lock_guard<std::mutex> lock(_queueMutex);
     int chunkId = a->getChunkId();
     time(&a->entryTime);

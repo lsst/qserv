@@ -46,6 +46,7 @@
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/ChunkDisk.h"
+#include "wsched/ChunkTaskList.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
@@ -59,7 +60,8 @@ ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxRes
                              memman::MemMan::Ptr const& memMan, int minRating, int maxRating)
     : SchedulerBase{name, maxThreads, maxReserve, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
-    _disk = std::make_shared<ChunkDisk>(_memMan);
+    //_disk = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
+    _disk = std::make_shared<ChunkTaskList>(_memMan);
     assert(_minRating <= _maxRating);
 }
 
@@ -85,7 +87,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
-
+    _disk->taskComplete(t);
     t->endTime();
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -96,7 +98,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // Wait to unlock the tables until after the next call to _ready or commandFinish.
     // This is done in case only one thread is running on this scheduler as
     // we don't want to release the tables in case the next Task wants some of them.
-    if (_disk->getSize() != 0) {
+    // if (_disk->getSize() != 0) { &&& delete
+    if (!_disk->empty()) {
         _memManHandleToUnlock = t->getMemHandle();
     } else {
         _memMan->unlock(t->getMemHandle()); // Nothing on the queue, no reason to wait.
@@ -199,7 +202,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
          << " uqCount=" << uqCount);
-    _disk->enqueue(t);
+    _disk->queTask(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();
 }

@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "memman/MemMan.h"
+#include "wsched/ChunkTaskCollection.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -82,7 +83,7 @@ public:
 
 private:
     bool _ready();
-    std::shared_ptr<ChunkDisk> _disk; //< Constrains access to files.
+    std::shared_ptr<ChunkTaskCollection> _disk; //< Constrains access to files.
 
     memman::MemMan::Ptr _memMan; //< Limits queries when resources not available.
     memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
@@ -96,8 +97,8 @@ private:
 
 }}} // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; ///< A symbol for gdb
-extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; ///< A symbol for gdb
+//extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; ///< A symbol for gdb
+//extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
