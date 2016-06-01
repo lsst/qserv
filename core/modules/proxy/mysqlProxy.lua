@@ -24,10 +24,6 @@ ERR_QSERV_RUNTIME  = -4120
 SUCCESS            = 0
 MSG_ERROR          = 2
 
--- global variables have per-session(client) scope
--- queryErrorCount -- number of run-time errors detected during query exec.
-queryErrorCount = 0
-
 -------------------------------------------------------------------------------
 --                             error handling                                --
 -------------------------------------------------------------------------------
@@ -403,7 +399,7 @@ function queryProcessing()
 
     ---------------------------------------------------------------------------
 
-    local prepForFetchingResults = function(proxy)
+    local prepForFetchingMessages = function(proxy)
         if not self.resultTableName then
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name")
         end
@@ -413,17 +409,30 @@ function queryProcessing()
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
                              {resultset_is_needed = true})
 
+        local q3 = "DROP TABLE " .. self.msgTableName
+        proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
+                             {resultset_is_needed = true})
+
+        return SUCCESS
+    end
+
+    ---------------------------------------------------------------------------
+
+    local fetchResults = function(proxy)
+
         -- if no result table then do something that returns empty result set
         local q2 = "SELECT NULL FROM DUAL LIMIT 0"
         if self.resultTableName ~= "" then
             q2 = "SELECT * FROM " .. self.resultTableName .. " " .. self.orderByClause
         end
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
-                             {resultset_is_needed = true})
+                             {resultset_is_needed = false})
 
-        local q3 = "DROP TABLE " .. self.msgTableName
-        proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
-                             {resultset_is_needed = true})
+    end
+
+    ---------------------------------------------------------------------------
+
+    local dropResults = function(proxy)
 
         if self.resultTableName ~= "" then
             local q4 = "DROP TABLE " .. self.resultTableName
@@ -431,7 +440,6 @@ function queryProcessing()
                                  {resultset_is_needed = true})
         end
 
-        return SUCCESS
     end
 
     ---------------------------------------------------------------------------
@@ -442,7 +450,9 @@ function queryProcessing()
         killQservQuery = killQservQuery,
         processLocally = processLocally,
         processIgnored = processIgnored,
-        prepForFetchingResults = prepForFetchingResults
+        prepForFetchingMessages = prepForFetchingMessages,
+        fetchResults = fetchResults,
+        dropResults = dropResults
     }
 
 end
@@ -491,8 +501,6 @@ function read_query(packet)
         elseif qType.isKill(qU) then
             return qProc.killQservQuery(q, qU)
         end
-        -- Reset error count
-        queryErrorCount = 0
 
         -- process the query and send it to qserv
         local sendResult = qProc.sendToQserv(q, qU)
@@ -503,7 +511,7 @@ function read_query(packet)
 
         -- configure proxy to fetch results from
         -- the appropriate result table
-        if qProc.prepForFetchingResults(proxy) < 0 then
+        if qProc.prepForFetchingMessages(proxy) < 0 then
             return err.send()
         end
         return proxy.PROXY_SEND_QUERY
@@ -511,15 +519,30 @@ function read_query(packet)
 end
 
 function read_query_result(inj)
+    -- Quick summary of query processing using "dynamic rewriting".
+    -- The prepForFetchingMessages() method called from read_query() issues
+    -- two queries - "SELECT * FROM MesageTable; DROP TABLE MessageTable;"
+    -- with ID 1 and 3 respectively. In this method we process the data
+    -- retrieved from message table (ID=1) and ignore result of drop query
+    -- (ID=3). If message table does not contain any error messages then we
+    -- issue another query "SELECT * FROM ResultTable;" with ID=2 and set a
+    -- flag to forward results directly to client and not to keep them in
+    -- proxy memory (via call to fetchResults() method). We also issue
+    -- "DROP TABLE ResultTables;" in any case with ID=4 (via dropResults()).
+    -- Note that mysql-proxy documentation does not have an example for this
+    -- sort of dynamic query rewriting (from read_query_result()) but it is
+    -- tested to work.
+
     -- we injected query with the id=1 (for messaging and locking purposes)
     if (inj.type == 1) then
         czarProxy.log("mysql-proxy", "INFO", "q1 - ignoring")
+        local queryErrorCount = 0
         local error_msg = ""
         local row
         for row in inj.resultset.rows do
             local severity = tonumber(row[4])
             if (severity == MSG_ERROR) then
-                queryErrorCount  = queryErrorCount + 1
+                queryErrorCount = queryErrorCount + 1
                 error_msg = error_msg .. "\n" .. tostring(row[3])
                 -- WARN czar never returns multiple errors for now
                 if (queryErrorCount > 1) then
@@ -531,37 +554,21 @@ function read_query_result(inj)
             end
         end
         if (queryErrorCount > 0) then
+            -- return error code but also drop result table
+            qProc.dropResults(proxy)
             error_msg = "Unable to return query results:" .. error_msg
             return err.setAndSend(ERR_QSERV_RUNTIME, error_msg)
         end
+
+        -- return result and drop result table
+        qProc.fetchResults(proxy)
+        qProc.dropResults(proxy)
+
         return proxy.PROXY_IGNORE_RESULT
-    elseif (inj.type == 3) or
-        (inj.type == 4) then
-        -- Proxy will complain if we try to touch 'inj' for these:
-        -- (critical) (read_query_result) ...attempt to call a nil value
-        -- (critical) proxy-plugin.c.303: got asked to send a resultset,
-        --            but ignoring it as we already have sent 1 resultset(s).
-        --            injection-id: 3
-        czarProxy.log("mysql-proxy", "INFO", "cleanup q(3,4) - ignoring")
+    elseif (inj.type == 3) or (inj.type == 4) then
+        czarProxy.log("mysql-proxy", "INFO", "cleanup q" .. inj.type .. " - ignoring")
         return proxy.PROXY_IGNORE_RESULT
-    elseif (queryErrorCount > 0) then
-        czarProxy.log("mysql-proxy", "INFO", "q2 - already have errors, ignoring")
-        return proxy.PROXY_IGNORE_RESULT
-    elseif (inj.resultset.rows == nil) then
-        czarProxy.log("mysql-proxy", "INFO", "q2 - no resultset.")
-        return err.setAndSend(ERR_QSERV_RUNTIME,
-        "Error executing query using qserv.")
-    else
+    elseif (inj.type == 2) then
         czarProxy.log("mysql-proxy", "INFO", "q2 - passing")
-        local row
-        local i = 0
-        for row in inj.resultset.rows do
-            i = i + 1
-            if (i > 32) then
-                czarProxy.log("mysql-proxy", "DEBUG", " ... rest is not shown")
-                break
-            end
-            czarProxy.log("mysql-proxy", "DEBUG", "   " .. row[1])
-        end
     end
 end
