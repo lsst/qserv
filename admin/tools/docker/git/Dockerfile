@@ -2,14 +2,14 @@
 FROM qserv/qserv:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
-COPY src/qserv_src.tar /tmp/
+USER root
+
+COPY src/qserv /home/qserv/src/qserv
+RUN chown -R qserv:qserv /home/qserv/src/qserv
 
 USER qserv 
 
-RUN mkdir -p /home/qserv/src/qserv
 WORKDIR /home/qserv/src/qserv
-
-RUN tar --directory . -xf /tmp/qserv_src.tar
 
 # Update to latest qserv dependencies, need to be publish on distribution server
 # see https://confluence.lsstcorp.org/display/DM/Qserv+Release+Procedure
