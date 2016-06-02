@@ -19,6 +19,8 @@ BRANCH=dev
 # Log directory location on docker host, optional
 # HOST_LOG_DIR=/qserv/log
 
+# ulimit memory lock setting, in bytes, optional
+# ULIMIT_MEMLOCK=10485760
 
 # Nodes names
 # ===========

@@ -22,6 +22,8 @@ HOST_DATA_DIR=/qserv/data
 # Log directory location on docker host, optional
 HOST_LOG_DIR=/qserv/log
 
+# ulimit memory lock setting, in bytes, optional
+ULIMIT_MEMLOCK=10737418240
 
 # Nodes names
 # ===========
