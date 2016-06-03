@@ -27,6 +27,7 @@ test.
 
 @author  Jacek Becla, SLAC
 """
+from __future__ import print_function
 
 # -------------------------------
 #  Imports of standard modules --
@@ -258,7 +259,7 @@ def main():
         if not os.path.isdir(args.output_dir):
             raise
 
-    print "Output directory: {0}".format(args.output_dir)
+    print("Output directory: {0}".format(args.output_dir))
 
     verbosity = len(args.verbose)
     levels = {0: logging.ERROR, 1: logging.WARNING, 2: logging.INFO,
