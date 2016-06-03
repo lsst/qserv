@@ -30,6 +30,7 @@
 // Third-party headers
 
 // LSST headers
+#include "ChunkTasksQueue.h"
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -38,7 +39,6 @@
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wsched/ChunkDisk.h"
-#include "wsched/ChunkTaskList.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
     BOOST_CHECK(cDisk.ready(true) == false);
 
     Task::Ptr a47 = makeTask(newTaskMsgScan(47,0));
-    cDisk.queTask(a47); // should go on pending
+    cDisk.queueTask(a47); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 1);
     // call to ready swaps active and passive.
@@ -283,14 +283,14 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
 
 
     Task::Ptr a42 = makeTask(newTaskMsgScan(42,0));
-    cDisk.queTask(a42); // should go on pending
+    cDisk.queueTask(a42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 2);
     // a47 at top of active has been flagged as ok to run.
     BOOST_CHECK(cDisk.ready(false) == true);
 
     Task::Ptr b42 = makeTask(newTaskMsgScan(42, 0));
-    cDisk.queTask(b42); // should go on pending
+    cDisk.queueTask(b42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.ready(false) == true);
@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
 
     // After calling ready, a42 is at top
     Task::Ptr a18 = makeTask(newTaskMsgScan(18, 0));
-    cDisk.queTask(a18); // should go on pending
+    cDisk.queueTask(a18); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.ready(false) == true);
@@ -783,29 +783,29 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
 }
 
 
-BOOST_AUTO_TEST_CASE(ChunkTaskListTest) {
+BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int firstChunkId = 100;
     int secondChunkId = 150;
     int chunkId = firstChunkId;
-    wsched::ChunkTaskList ctl{memMan};
+    wsched::ChunkTasksQueue ctl{memMan};
 
     BOOST_CHECK(ctl.empty() == true);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.ready(true) == false);
 
     Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, "charlie"));
-    ctl.queTask(a1);
+    ctl.queueTask(a1);
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, "delta"));
-    ctl.queTask(a2);
+    ctl.queueTask(a2);
     Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, "beta"));
-    ctl.queTask(a3);
+    ctl.queueTask(a3);
     Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, "alpha"));
-    ctl.queTask(a4);
+    ctl.queueTask(a4);
 
     BOOST_CHECK(ctl.ready(true) == true);
     BOOST_CHECK(ctl.getTask(true).get() == a3.get());
@@ -824,20 +824,20 @@ BOOST_AUTO_TEST_CASE(ChunkTaskListTest) {
 
     chunkId = secondChunkId;
     Task::Ptr b1 = makeTask(newTaskMsgScan(chunkId, 3, "c"));
-    ctl.queTask(b1);
+    ctl.queueTask(b1);
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     Task::Ptr b2 = makeTask(newTaskMsgScan(chunkId, 3, "d"));
-    ctl.queTask(b2);
+    ctl.queueTask(b2);
     Task::Ptr b3 = makeTask(newTaskMsgScan(chunkId, 4, "b"));
-    ctl.queTask(b3);
+    ctl.queueTask(b3);
     Task::Ptr b4 = makeTask(newTaskMsgScan(chunkId, 2, "a"));
-    ctl.queTask(b4);
-    ctl.queTask(a3);
-    ctl.queTask(a4);
-    ctl.queTask(a2);
-    ctl.queTask(a1);
+    ctl.queueTask(b4);
+    ctl.queueTask(a3);
+    ctl.queueTask(a4);
+    ctl.queueTask(a2);
+    ctl.queueTask(a1);
 
     BOOST_CHECK(ctl.ready(true) == true);
     BOOST_CHECK(ctl.getTask(true).get() == a3.get());
@@ -869,17 +869,17 @@ BOOST_AUTO_TEST_CASE(ChunkTaskListTest) {
     BOOST_CHECK(ctl.empty() == true);
 
     // test wrap around and pending
-    ctl.queTask(b1);
-    ctl.queTask(b2);
+    ctl.queueTask(b1);
+    ctl.queueTask(b2);
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     BOOST_CHECK(ctl.getTask(true).get() == b2.get());
     BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
-    ctl.queTask(a1);
-    ctl.queTask(a2);
-    ctl.queTask(a3);
-    ctl.queTask(b3); // test pendingTasks
-    ctl.queTask(b4);
-    ctl.queTask(a4);
+    ctl.queueTask(a1);
+    ctl.queueTask(a2);
+    ctl.queueTask(a3);
+    ctl.queueTask(b3); // test pendingTasks
+    ctl.queueTask(b4);
+    ctl.queueTask(a4);
     BOOST_CHECK(ctl.getTask(true).get() == b1.get());
     BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
     BOOST_CHECK(ctl.getTask(true).get() == a3.get());

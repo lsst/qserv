@@ -83,22 +83,19 @@ public:
 
 private:
     bool _ready();
-    std::shared_ptr<ChunkTaskCollection> _disk; //< Constrains access to files.
+    std::shared_ptr<ChunkTaskCollection> _taskQueue; ///< Constrains access to files.
 
-    memman::MemMan::Ptr _memMan; //< Limits queries when resources not available.
+    memman::MemMan::Ptr _memMan; ///< Limits queries when resources not available.
     memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
 
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
     const int _minRating;
     const int _maxRating;
 
-    std::atomic<bool> _infoChanged{true}; //< "Used to limit the amount of debug logging.
+    std::atomic<bool> _infoChanged{true}; ///< "Used to limit the amount of debug logging.
 };
 
 }}} // namespace lsst::qserv::wsched
-
-//extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; ///< A symbol for gdb
-//extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_SCANSCHEDULER_H
 

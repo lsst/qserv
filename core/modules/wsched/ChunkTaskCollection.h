@@ -33,19 +33,31 @@ namespace qserv {
 namespace wsched {
 
 /// Class defines an interface to store Tasks related to chunks in an ordered manner.
-// The only derived classes are expected to be ChunkDisk and ChunkTaskList.
-// With luck, one of them will prove to be superior and the other will be destroyed, thus
-// this class will no longer be needed.
+/// The only derived classes are expected to be ChunkDisk and ChunkTasksQueue.
+/// With luck, one of them will prove to be superior and the other will be destroyed, thus
+/// this class will no longer be needed.
 class ChunkTaskCollection {
 public:
-    virtual void queTask(wbase::Task::Ptr const& task) = 0;
+    /// Queue a Task to be run later.
+    virtual void queueTask(wbase::Task::Ptr const& task) = 0;
+
+    /// Return a Task that is ready to run or nullptr if nothing is ready.
+    /// A Task is only ready if the conditions in ready() are met.
     virtual wbase::Task::Ptr getTask(bool useFlexibleLock) = 0;
     virtual bool empty() const = 0;
     virtual std::size_t getSize() const = 0;
+
+    /// @return true if there is a Task available and conditions are acceptable.
+    /// Conditions include things such as memory resources being available for the Task.
     virtual bool ready(bool useFlexibleLock) = 0;
+
+    /// This function will be called when the Task has completed its first transmit to the czar.
     virtual void taskComplete(wbase::Task::Ptr const& task) = 0;
 
+    /// This is set to true when ready() returns false due to not enough memory available.
     virtual bool setResourceStarved(bool starved) = 0;
+
+    /// @return true if the next Task will come from a different active chunk.
     virtual bool nextTaskDifferentChunkId() = 0;
 };
 

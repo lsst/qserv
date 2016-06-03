@@ -40,8 +40,11 @@ namespace wsched {
 
 
 /// A class to store Tasks for a specific chunk.
-//  Tasks are normally placed on _activeTasks, but will be added
-//  to _pendingTasks when this is the active chunk.
+/// Tasks are normally placed on _activeTasks, but will be added
+/// to _pendingTasks when this is the active chunk.
+/// The active chunk is the first chunk to be checked for tasks to run.
+/// Placing tasks on the pending list prevents getting stuck on the
+/// active chunk indefinitely.
 class ChunkTasks {
 public:
     using Ptr = std::shared_ptr<ChunkTasks>;
@@ -103,20 +106,34 @@ private:
 };
 
 
-class ChunkTaskList : public ChunkTaskCollection {
+/// This class queues Tasks by their chunkId and tables rating and names.
+/// New Tasks are queued with other Tasks with the same chunkId and then by shared
+/// scan tables used.
+/// - Tasks are provided starting with the _activeChunk, which remains the
+///   _activeChunk until all of its Tasks are completed. At which time, the
+///   _activeChunk advances to the chunk with the next higher chunkId. While
+///   a chunk is the _activeChunk, all new Tasks for that chunk are put in
+///   in a pending list so that the active chunk does not get stalled.
+/// - While all the Tasks on the _active chunk have been started, but not completed,
+///   Tasks can be taken from chunks after the _activeChunk as long as resources are
+///   available.
+/// Like the other schedulers, ready() is the core of this class as it determines
+/// if a Task is ready to run and which Task will be provided by getTask().
+class ChunkTasksQueue : public ChunkTaskCollection {
 public:
-    using Ptr = std::shared_ptr<ChunkTaskList>;
+    using Ptr = std::shared_ptr<ChunkTasksQueue>;
+
     /// This must be std::map to maintain valid iterators.
-    // Only erase() will invalidate and iterator with std::map.
+    /// Only erase() will invalidate and iterator with std::map.
     using ChunkMap = std::map<int, ChunkTasks::Ptr>;
 
     enum {READY, NOT_READY, NO_RESOURCES};
 
-    ChunkTaskList(memman::MemMan::Ptr const& memMan) : _memMan{memMan} {}
-    ChunkTaskList(ChunkTaskList const&) = delete;
-    ChunkTaskList& operator=(ChunkTaskList const&) = delete;
+    ChunkTasksQueue(memman::MemMan::Ptr const& memMan) : _memMan{memMan} {}
+    ChunkTasksQueue(ChunkTasksQueue const&) = delete;
+    ChunkTasksQueue& operator=(ChunkTasksQueue const&) = delete;
 
-    void queTask(wbase::Task::Ptr const& task) override;
+    void queueTask(wbase::Task::Ptr const& task) override;
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
     bool empty() const override { return _chunkMap.empty(); }
     std::size_t getSize() const override { return _taskCount; }
@@ -128,12 +145,11 @@ public:
     int getActiveChunkId(); ///< return the active chunk id, or -1 if there isn't one.
 
 private:
-    ChunkMap::iterator _insertChunkTask(int chunkId); //< insert a new ChunkTask object into _chunkList and _chunkMap.
     bool _ready(bool useFlexibleLock);
 
-    std::mutex _mapMx; //< Protects _chunkMap
-    ChunkMap _chunkMap; //< map by chunk Id.
-    ChunkMap::iterator _activeChunk{_chunkMap.end()}; //< points at the active ChunkTasks in _chunkList
+    std::mutex _mapMx; ///< Protects _chunkMap, _activeChunk, and _readyChunk.
+    ChunkMap _chunkMap; ///< map by chunk Id.
+    ChunkMap::iterator _activeChunk{_chunkMap.end()}; ///< points at the active ChunkTasks in _chunkList
     ChunkTasks::Ptr _readyChunk{nullptr}; ///< Chunk with the task that's ready to run.
 
     memman::MemMan::Ptr _memMan;

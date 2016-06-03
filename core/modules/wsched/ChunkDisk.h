@@ -47,7 +47,6 @@ namespace qserv {
 namespace wsched {
 
 /// Limits Tasks to running when resources are available.
-/// TODO: DM-4943 Maybe merge this class into ScanScheduler.
 class ChunkDisk : public ChunkTaskCollection {
 public:
 
@@ -57,7 +56,7 @@ public:
     virtual ~ChunkDisk() {};
 
     // Queue management
-    void queTask(wbase::Task::Ptr const& a) override;
+    void queueTask(wbase::Task::Ptr const& a) override;
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
     bool empty() const override;
     bool ready(bool useFlexibleLock) override;
