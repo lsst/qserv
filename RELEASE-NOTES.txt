@@ -1,10 +1,30 @@
+R E L E A S E   2016_05
+=======================
+
+Release highlights:
+  * Robust handling of queries with multi-gigabyte result sets.
+
+Code improvements:
+  * DM-6324: Modernize python code in Qserv admin tools
+
+Docker:
+  * DM-6130: Fix git script failure when both -R and QSERV_DIR are provided
+
+Bug Fixes:
+  * DM-5908: Worker thread pool fixes so workers don't lock up when sending large results
+  * DM-5909: Czar thread pool fixes so czar doesn't lock up when receiving large results
+  * DM-5910: Czar throttling so czar doesn't lock up when receiving multiple large results simultaneously
+  * DM-6149: Reduce memory utilization in mysql proxy when handling large results
+  * DM-6292: Allow spaces in LSST_LIBRARY_PATH for OSX
+  * DM-1355: Clean up installation files: cfg/ and proxy/ moved under share/ and lib/ for consistency
+
 R E L E A S E   2016_04
 =======================
 
 Release highlights:
   * Bug fixes to re-enable scripted large-scale tests
   * Bug fixes for new shared scans
-  
+
 Code improvements:
   * DM-5209: Improve worker configuration files
   * DM-5788: Xcode 7.3 compiler issue
@@ -12,7 +32,7 @@ Code improvements:
 
 Documentation:
   * DM-5754: Improvements to install documentation
-  
+
 Docker:
   * DM-4438: Replace sed with awk for docker template expansion
   * DM-5187: Set Qserv master in env variable for Docker containers
