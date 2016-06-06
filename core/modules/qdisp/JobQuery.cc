@@ -52,7 +52,7 @@ namespace qdisp {
 JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   qserv::QueryId qid) :
+                   QueryId qid) :
   _executive(executive), _jobDescription(jobDescription),
   _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
   _qid{qid},

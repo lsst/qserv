@@ -95,7 +95,7 @@ public:
     bool getEmpty() { return _empty; }
 
     void setQueryId(QueryId id);
-    qserv::QueryId getId() const { return _id; }
+    QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
 
     std::shared_ptr<JobQuery> getJobQuery(int id);
@@ -152,7 +152,7 @@ private:
     std::condition_variable _allJobsComplete;
     mutable std::recursive_mutex _jobsMutex;
 
-    qserv::QueryId _id{0}; ///< Unique identifier for this query.
+    QueryId _id{0}; ///< Unique identifier for this query.
     std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
 };

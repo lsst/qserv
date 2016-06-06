@@ -99,7 +99,7 @@ Executive::~Executive() {
 }
 
 
-void Executive::setQueryId(qserv::QueryId id) {
+void Executive::setQueryId(QueryId id) {
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
 }
