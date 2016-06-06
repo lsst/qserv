@@ -54,9 +54,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
-#include "qmeta/types.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
@@ -140,7 +140,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    std::string queryIdStr = qmeta::QueryIdHelper::makeIdStr(
+    std::string queryIdStr = QueryIdHelper::makeIdStr(
             response->result.queryid(), response->result.jobid());
     bool largeResult = response->result.largeresult();
     LOGS(_log, LOG_LVL_DEBUG,

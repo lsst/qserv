@@ -52,11 +52,11 @@ namespace qdisp {
 JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   qmeta::QueryId qid) :
+                   qserv::QueryId qid) :
   _executive(executive), _jobDescription(jobDescription),
   _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
   _qid{qid},
-  _idStr{qmeta::QueryIdHelper::makeIdStr(qid, getIdInt())} {
+  _idStr{QueryIdHelper::makeIdStr(qid, getIdInt())} {
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << getIdStr() << " desc=" << _jobDescription);
 }
 

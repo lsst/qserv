@@ -33,12 +33,12 @@
 #include <vector>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
-#include "qmeta/types.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
@@ -94,8 +94,8 @@ public:
 
     bool getEmpty() { return _empty; }
 
-    void setQueryId(qmeta::QueryId id);
-    qmeta::QueryId getId() const { return _id; }
+    void setQueryId(QueryId id);
+    qserv::QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
 
     std::shared_ptr<JobQuery> getJobQuery(int id);
@@ -152,8 +152,8 @@ private:
     std::condition_variable _allJobsComplete;
     mutable std::recursive_mutex _jobsMutex;
 
-    qmeta::QueryId _id{0}; ///< Unique identifier for this query.
-    std::string    _idStr{qmeta::QueryIdHelper::makeIdStr(0, true)};
+    qserv::QueryId _id{0}; ///< Unique identifier for this query.
+    std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
 };
 

@@ -95,7 +95,7 @@ void UserQueryDrop::submit() {
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "");
     qmeta::QMeta::TableNames tableNames;
-    qmeta::QueryId qMetaQueryId = 0;
+    qserv::QueryId qMetaQueryId = 0;
     try {
         qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     } catch (qmeta::Exception const& exc) {

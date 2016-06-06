@@ -39,7 +39,6 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
-#include "qmeta/types.h"
 #include "util/EventThread.h"
 #include "util/threadSafe.h"
 
@@ -156,7 +155,7 @@ public:
 private:
     QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
-    std::string const _idStr{qmeta::QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
+    std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 
     std::atomic<bool> _cancelled{false};
     TaskQueryRunner::Ptr _taskQueryRunner;

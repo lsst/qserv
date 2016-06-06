@@ -84,7 +84,8 @@ class ConsistencyError(Exception):
 
 %shared_ptr(lsst::qserv::qmeta::QMeta)
 
+%include "global/intTypes.h"
 %include "qmeta/types.h"
-%template(QueryIdList) std::vector<lsst::qserv::qmeta::QueryId>;
+%template(QueryIdList) std::vector<lsst::qserv::QueryId>;
 %include "qmeta/QInfo.h"
 %include "qmeta/QMeta.h"
