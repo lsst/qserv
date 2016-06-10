@@ -134,7 +134,9 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     // Wait for memman to finish reserving resources.
+    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "QueryRunner MemMan wait begin");
     _task->waitForMemMan();
+    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "QueryRunner MemMan wait end");
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. taskHash=" << _task->hash);

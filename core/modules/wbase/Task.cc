@@ -181,8 +181,11 @@ void Task::endTime() {
 
 /// Wait for MemMan to finish reserving resources.
 void Task::waitForMemMan() {
-    if (_memMan == nullptr) return;
-    _memMan->waitFor(_memHandle);
+    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
+    if (_memMan != nullptr) {
+        _memMan->waitFor(_memHandle);
+    }
+    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
