@@ -145,6 +145,8 @@ public:
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
     void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
+    void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
+    void waitForMemMan();
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
@@ -162,6 +164,7 @@ private:
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
+    memman::MemMan::Ptr _memMan;
 
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _endTime;

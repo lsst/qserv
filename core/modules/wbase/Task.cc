@@ -178,6 +178,13 @@ void Task::endTime() {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing sec=" << duration.count());
 }
 
+
+/// Wait for MemMan to finish reserving resources.
+void Task::waitForMemMan() {
+    if (_memMan == nullptr) return;
+    _memMan->waitFor(_memHandle);
+}
+
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;
     os << "Task: "

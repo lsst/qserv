@@ -30,6 +30,9 @@
 #include <string>
 #include <unistd.h>
 
+// Qserv headers
+#include "memman/CommandMlock.h"
+
 namespace lsst {
 namespace qserv {
 namespace memman {
@@ -76,6 +79,8 @@ public:
 
     uint64_t size() {return _memSize;}
 
+    CommandMlock::Ptr getCmdMlock() {return _cmdMlock;}
+
     MemInfo() : _memAddr((void *)-1), _memSize(0) {}
    ~MemInfo() {}
 
@@ -83,6 +88,7 @@ private:
 
    union {void  *_memAddr; int _errCode;};
    uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
+   CommandMlock::Ptr _cmdMlock; //< Tracks the completion of mlock call.
 };
 
 //-----------------------------------------------------------------------------

@@ -128,5 +128,22 @@ MemMan::Status MemFileSet::status() {
     myStatus.chunk     = _chunk;
     return myStatus;
 }
+
+
+std::vector<CommandMlock::Ptr> MemFileSet::getCmdMlocks() {
+    std::vector<CommandMlock::Ptr> cmds;
+    auto func = [&cmds](std::vector<MemFile*> const& files) {
+        for (auto const& mfp : files) {
+            auto cmd = mfp->getCmdMlock();
+            if (cmd != nullptr) {
+                cmds.push_back(cmd);
+            }
+        }
+    };
+    func(_lockFiles);
+    func(_flexFiles);
+    return cmds;
+}
+
 }}} // namespace lsst:qserv:memman
 

@@ -30,6 +30,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
 
 namespace lsst {
 namespace qserv {
@@ -122,6 +123,19 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
     if (mInfo._memAddr == MAP_FAILED) {
         mInfo.setErrCode(errno);
     } else {
+        // Start a separate thread to call mlock as it is a slow call. The task needs to wait
+        // for the call to complete, so we need to hold onto cmdMlock so we know when mlock is done.
+        auto cmdMlock = std::make_shared<CommandMlock>(mInfo._memAddr, mInfo._memSize);
+        mInfo._cmdMlock = cmdMlock;
+        auto mlockFunc = [cmdMlock]() {
+            cmdMlock->runAction(nullptr);
+        };
+        std::thread thrd(mlockFunc);
+        thrd.detach();
+
+        _lokBytes += mInfo._memSize;
+        if (isFlex) _flexNum++;
+        /* &&&
         if (!mlock(mInfo._memAddr, mInfo._memSize)) {
             _lokBytes += mInfo._memSize;
             if (isFlex) _flexNum++;
@@ -130,6 +144,7 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
             munmap( mInfo._memAddr, mInfo._memSize);
             mInfo.setErrCode(rc);
         }
+        */ // &&&
     }
 
     // Close the file and return result

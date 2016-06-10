@@ -201,6 +201,15 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
          << " uqCount=" << uqCount);
+    /* &&& delete
+<<<<<<< 5624823f1269ebfc3dd141982c32233c191ad58e
+    _taskQueue->queueTask(t);
+=======
+    t->setMemMan(_memMan);
+    _disk->queTask(t);
+>>>>>>> Added code to make mlock asynchronous.
+    &&& delete */
+    t->setMemMan(_memMan);
     _taskQueue->queueTask(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();

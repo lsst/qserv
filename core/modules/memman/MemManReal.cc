@@ -179,6 +179,29 @@ MemMan::Handle MemManReal::lock(std::vector<TableInfo> const& tables, int chunk)
     errno = retc;
     return HandleType::INVALID;
 }
+
+
+int MemManReal::waitFor(Handle handle) {
+    std::vector<CommandMlock::Ptr> cmds;
+    int err = 0;
+    {
+        std::lock_guard<std::mutex> guard(hanMutex);
+        auto iter = hanCache.find(handle);
+        if (iter == hanCache.end()) {
+            return 0; // There is nothing to wait for.
+        }
+        MemFileSet *mfs = iter->second;
+        // Get copies of the shared pointers so the mutex can be unlocked.
+        cmds = mfs->getCmdMlocks();
+    }
+    for (auto const& cmd : cmds) {
+        if (cmd != nullptr) {
+            cmd->waitComplete();
+            if (cmd->errorCode != 0) err = cmd->errorCode;
+        }
+    }
+    return err;
+}
   
 /******************************************************************************/
 /*                                u n l o c k                                 */

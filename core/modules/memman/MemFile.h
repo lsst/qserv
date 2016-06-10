@@ -102,6 +102,8 @@ public:
 
     void release();
 
+    CommandMlock::Ptr getCmdMlock() {return _cmdMlock;}
+
 private:
     //-----------------------------------------------------------------------------
     //! @brief Constructor. Only obtain() can allocate a MemFile object.
@@ -127,6 +129,7 @@ private:
     bool        _isLocked   = false;   // Ditto
     bool        _isReserved = false;   // Ditto
     bool        _isFlex;               // Set once at object creation
+    CommandMlock::Ptr _cmdMlock;       // pointer to mlock command if there is one.
 };
 
 }}} // namespace lsst:qserv:memman
