@@ -42,14 +42,20 @@ typedef std::uint64_t QueryId;
 /// Class to provide a consistent format for QueryIds in the log file
 class QueryIdHelper {
 public:
-
-    static std::string makeIdStr(QueryId qid, bool unknown=false) {
-        if (unknown) return "QI=?:";
+    /// Returns a standardized user query id string.
+    /// @parameter qid - query id number.
+    /// @parameter invalid - true, qid is not a valid user query id.
+    static std::string makeIdStr(QueryId qid, bool invalid=false) {
+        if (invalid) return "QI=?:";
         return "QI=" + std::to_string(qid) + ":";
     }
 
-    static std::string makeIdStr(QueryId qid, int jobId, bool unknown=false) {
-        if (unknown) return makeIdStr(qid, true) + "?;";
+    /// Returns a standardized user query id string with jobId.
+    /// @parameter qid - query id number.
+    /// @parameter jobId - the job id number.
+    /// @parameter invalid - true, qid is not a valid user query id.
+    static std::string makeIdStr(QueryId qid, int jobId, bool invalid=false) {
+        if (invalid) return makeIdStr(qid, true) + "?;";
         return makeIdStr(qid) + std::to_string(jobId) + ";";
     }
 };
