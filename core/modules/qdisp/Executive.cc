@@ -99,9 +99,9 @@ Executive::~Executive() {
 }
 
 
-void Executive::setQueryId(qmeta::QueryId id) {
+void Executive::setQueryId(QueryId id) {
     _id = id;
-    _idStr = qmeta::QueryIdHelper::makeIdStr(_id);
+    _idStr = QueryIdHelper::makeIdStr(_id);
 }
 
 
@@ -203,7 +203,7 @@ bool Executive::join() {
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
-    std::string idStr = qmeta::QueryIdHelper::makeIdStr(_id, jobId);
+    std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr
             << " " << success);
     if (!success) {
@@ -314,7 +314,7 @@ void Executive::_setup() {
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
-    std::string idStr = qmeta::QueryIdHelper::makeIdStr(_id, jobId);
+    std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
@@ -349,7 +349,7 @@ void Executive::_unTrack(int jobId) {
         }
     }
     std::ostringstream os;
-    os << "Executive UNTRACKING " << qmeta::QueryIdHelper::makeIdStr(_id, jobId)
+    os << "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
        << " size=" << size << " " << (untracked ? "success":"failed") << "::" << s.str();
     if (untracked) {
         LOGS(_log, LOG_LVL_DEBUG, os.str());
@@ -366,7 +366,7 @@ void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
         if (!iter->second->getDescription().respHandler()->getError().isNone()) {
             // Requester should have logged the error to the messageStore
             LOGS(_log, LOG_LVL_DEBUG, "Executive reaped requester for "
-                 << qmeta::QueryIdHelper::makeIdStr(_id, iter->first));
+                 << QueryIdHelper::makeIdStr(_id, iter->first));
             iter = _incompleteJobs.erase(iter);
         } else {
             ++iter;

@@ -38,5 +38,28 @@ typedef std::vector<int32_t> Int32Vector;
 
 /// Typedef for Query ID in query metadata.
 typedef std::uint64_t QueryId;
+
+/// Class to provide a consistent format for QueryIds in the log file
+class QueryIdHelper {
+public:
+    /// Returns a standardized user query id string.
+    /// @parameter qid - query id number.
+    /// @parameter invalid - true, qid is not a valid user query id.
+    static std::string makeIdStr(QueryId qid, bool invalid=false) {
+        if (invalid) return "QI=?:";
+        return "QI=" + std::to_string(qid) + ":";
+    }
+
+    /// Returns a standardized user query id string with jobId.
+    /// @parameter qid - query id number.
+    /// @parameter jobId - the job id number.
+    /// @parameter invalid - true, qid is not a valid user query id.
+    static std::string makeIdStr(QueryId qid, int jobId, bool invalid=false) {
+        if (invalid) return makeIdStr(qid, true) + "?;";
+        return makeIdStr(qid) + std::to_string(jobId) + ";";
+    }
+};
+
+
 }}
 #endif // LSST_QSERV_INTTYPES_H

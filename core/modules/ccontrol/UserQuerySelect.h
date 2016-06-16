@@ -136,7 +136,7 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
 
     qmeta::CzarId _qMetaCzarId;     ///< Czar ID in QMeta database
-    qmeta::QueryId _qMetaQueryId;   ///< Query ID in QMeta database
+    QueryId _qMetaQueryId;   ///< Query ID in QMeta database
     bool _killed;
     std::mutex _killMutex;
     std::string _errorExtra;        ///< Additional error information
