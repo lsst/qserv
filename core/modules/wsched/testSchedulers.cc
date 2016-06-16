@@ -30,6 +30,7 @@
 // Third-party headers
 
 // LSST headers
+#include "ChunkTasksQueue.h"
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -98,16 +99,19 @@ struct SchedulerFixture {
         return t;
     }
 
-    TaskMsgPtr newTaskMsgScan(int seq, int priority) {
+
+    TaskMsgPtr newTaskMsgScan(int seq, int priority, std::string const& tableName="whatever") {
         auto taskMsg = newTaskMsg(seq);
         taskMsg->set_scanpriority(priority);
         auto sTbl = taskMsg->add_scantable();
         sTbl->set_db("elephant");
-        sTbl->set_table("whatever");
+        sTbl->set_table(tableName);
         sTbl->set_scanrating(priority);
         sTbl->set_lockinmemory(true);
         return taskMsg;
     }
+
+
 
     Task::Ptr queMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId) {
         Task::Ptr t = makeTask(newTaskMsg(chunkId));
@@ -269,7 +273,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
     BOOST_CHECK(cDisk.ready(true) == false);
 
     Task::Ptr a47 = makeTask(newTaskMsgScan(47,0));
-    cDisk.enqueue(a47); // should go on pending
+    cDisk.queueTask(a47); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 1);
     // call to ready swaps active and passive.
@@ -279,14 +283,14 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
 
 
     Task::Ptr a42 = makeTask(newTaskMsgScan(42,0));
-    cDisk.enqueue(a42); // should go on pending
+    cDisk.queueTask(a42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 2);
     // a47 at top of active has been flagged as ok to run.
     BOOST_CHECK(cDisk.ready(false) == true);
 
     Task::Ptr b42 = makeTask(newTaskMsgScan(42, 0));
-    cDisk.enqueue(b42); // should go on pending
+    cDisk.queueTask(b42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.ready(false) == true);
@@ -305,7 +309,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
 
     // After calling ready, a42 is at top
     Task::Ptr a18 = makeTask(newTaskMsgScan(18, 0));
-    cDisk.enqueue(a18); // should go on pending
+    cDisk.queueTask(a18); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
     BOOST_CHECK(cDisk.ready(false) == true);
@@ -675,6 +679,233 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->getInFlight() == 0);
     BOOST_CHECK(blend->ready() == false);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
+}
+
+
+BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
+    wsched::ChunkTasks::SlowTableHeap heap{};
+
+    BOOST_CHECK(heap.empty() == true);
+
+    Task::Ptr a1 = makeTask(newTaskMsgScan(7, 3, "charlie"));
+    heap.push(a1);
+    BOOST_CHECK(heap.top().get() == a1.get());
+    BOOST_CHECK(heap.empty() == false);
+
+    Task::Ptr a2 = makeTask(newTaskMsgScan(7, 3, "delta"));
+    heap.push(a2);
+    BOOST_CHECK(heap.top().get() == a2.get());
+
+    Task::Ptr a3 = makeTask(newTaskMsgScan(7, 4, "beta"));
+    heap.push(a3);
+    BOOST_CHECK(heap.top().get() == a3.get());
+
+    Task::Ptr a4 = makeTask(newTaskMsgScan(7, 2, "alpha"));
+    heap.push(a4);
+    BOOST_CHECK(heap.top().get() == a3.get());
+    BOOST_CHECK(heap.size() == 4);
+
+
+    BOOST_CHECK(heap.pop().get() == a3.get());
+    BOOST_CHECK(heap.pop().get() == a2.get());
+    BOOST_CHECK(heap.pop().get() == a1.get());
+    BOOST_CHECK(heap.pop().get() == a4.get());
+    BOOST_CHECK(heap.empty() == true);
+}
+
+
+BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
+    // MemManNone always returns that memory is available.
+    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
+    int chunkId = 7;
+    wsched::ChunkTasks chunkTasks{chunkId, memMan};
+
+    BOOST_CHECK(chunkTasks.empty() == true);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == true);
+
+    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, "charlie"));
+    chunkTasks.queTask(a1);
+    BOOST_CHECK(chunkTasks.empty() == false);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == false);
+    BOOST_CHECK(chunkTasks.size() == 1);
+
+    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, "delta"));
+    chunkTasks.queTask(a2);
+    BOOST_CHECK(chunkTasks.size() == 2);
+
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, "beta"));
+    chunkTasks.queTask(a3);
+    BOOST_CHECK(chunkTasks.size() == 3);
+
+    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, "alpha"));
+    chunkTasks.queTask(a4);
+    BOOST_CHECK(chunkTasks.size() == 4);
+
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a3.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a2.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a1.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a4.get());
+    chunkTasks.taskComplete(a1);
+    chunkTasks.taskComplete(a1); // duplicate should not cause problems.
+    chunkTasks.taskComplete(a2);
+    chunkTasks.taskComplete(a4);
+    BOOST_CHECK(chunkTasks.empty() == true);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == false);
+    chunkTasks.taskComplete(a3);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == true);
+
+    chunkTasks.setActive();
+    chunkTasks.queTask(a3);
+    chunkTasks.queTask(a4);
+    chunkTasks.queTask(a2);
+    chunkTasks.queTask(a1);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == true);
+    BOOST_CHECK(chunkTasks.empty() == false);
+    BOOST_CHECK(chunkTasks.size() == 4);
+
+    // move tasks from pending to active
+    chunkTasks.setActive(false);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == false);
+    BOOST_CHECK(chunkTasks.empty() == false);
+    BOOST_CHECK(chunkTasks.size() == 4);
+
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a3.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a2.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a1.get());
+    BOOST_CHECK(chunkTasks.getTask(true).get() == a4.get());
+    BOOST_CHECK(chunkTasks.empty() == true);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == false);
+    chunkTasks.taskComplete(a1);
+    chunkTasks.taskComplete(a2);
+    chunkTasks.taskComplete(a3);
+    chunkTasks.taskComplete(a4);
+    BOOST_CHECK(chunkTasks.readyToAdvance() == true);
+}
+
+
+BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
+    // MemManNone always returns that memory is available.
+    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
+    int firstChunkId = 100;
+    int secondChunkId = 150;
+    int chunkId = firstChunkId;
+    wsched::ChunkTasksQueue ctl{memMan};
+
+    BOOST_CHECK(ctl.empty() == true);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+    BOOST_CHECK(ctl.ready(true) == false);
+
+    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, "charlie"));
+    ctl.queueTask(a1);
+    BOOST_CHECK(ctl.empty() == false);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+
+    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, "delta"));
+    ctl.queueTask(a2);
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, "beta"));
+    ctl.queueTask(a3);
+    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, "alpha"));
+    ctl.queueTask(a4);
+
+    BOOST_CHECK(ctl.ready(true) == true);
+    BOOST_CHECK(ctl.getTask(true).get() == a3.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a2.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a1.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a4.get());
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.empty() == false);
+    ctl.taskComplete(a1);
+    ctl.taskComplete(a2);
+    ctl.taskComplete(a3);
+    ctl.taskComplete(a4);
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.empty() == true);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+
+    chunkId = secondChunkId;
+    Task::Ptr b1 = makeTask(newTaskMsgScan(chunkId, 3, "c"));
+    ctl.queueTask(b1);
+    BOOST_CHECK(ctl.empty() == false);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+
+    Task::Ptr b2 = makeTask(newTaskMsgScan(chunkId, 3, "d"));
+    ctl.queueTask(b2);
+    Task::Ptr b3 = makeTask(newTaskMsgScan(chunkId, 4, "b"));
+    ctl.queueTask(b3);
+    Task::Ptr b4 = makeTask(newTaskMsgScan(chunkId, 2, "a"));
+    ctl.queueTask(b4);
+    ctl.queueTask(a3);
+    ctl.queueTask(a4);
+    ctl.queueTask(a2);
+    ctl.queueTask(a1);
+
+    BOOST_CHECK(ctl.ready(true) == true);
+    BOOST_CHECK(ctl.getTask(true).get() == a3.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a2.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a1.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a4.get());
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
+    BOOST_CHECK(ctl.getTask(true).get() == b3.get());
+    BOOST_CHECK(ctl.getTask(true).get() == b2.get());
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
+    ctl.taskComplete(a1);
+    ctl.taskComplete(a2);
+    ctl.taskComplete(a3);
+    ctl.taskComplete(a4);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+    BOOST_CHECK(ctl.getTask(true).get() == b1.get());
+    BOOST_CHECK(ctl.ready(true) == true);
+    BOOST_CHECK(ctl.getTask(true).get() == b4.get());
+    BOOST_CHECK(ctl.empty() == false);
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
+    ctl.taskComplete(b1);
+    ctl.taskComplete(b2);
+    ctl.taskComplete(b3);
+    ctl.taskComplete(b4);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+    BOOST_CHECK(ctl.empty() == false);
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.empty() == true);
+
+    // test wrap around and pending
+    ctl.queueTask(b1);
+    ctl.queueTask(b2);
+    BOOST_CHECK(ctl.getActiveChunkId() == -1);
+    BOOST_CHECK(ctl.getTask(true).get() == b2.get());
+    BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
+    ctl.queueTask(a1);
+    ctl.queueTask(a2);
+    ctl.queueTask(a3);
+    ctl.queueTask(b3); // test pendingTasks
+    ctl.queueTask(b4);
+    ctl.queueTask(a4);
+    BOOST_CHECK(ctl.getTask(true).get() == b1.get());
+    BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
+    BOOST_CHECK(ctl.getTask(true).get() == a3.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a2.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a1.get());
+    BOOST_CHECK(ctl.getTask(true).get() == a4.get());
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
+    ctl.taskComplete(b1);
+    ctl.taskComplete(b2);
+    BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+    BOOST_CHECK(ctl.getTask(true).get() == b3.get());
+    BOOST_CHECK(ctl.getActiveChunkId() == firstChunkId);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
+    ctl.taskComplete(a1);
+    ctl.taskComplete(a2);
+    ctl.taskComplete(a3);
+    ctl.taskComplete(a4);
+    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
+    BOOST_CHECK(ctl.getTask(true).get() == b4.get());
+    BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
+    ctl.taskComplete(b3);
+    ctl.taskComplete(b4);
+    BOOST_CHECK(ctl.ready(true) == false);
+    BOOST_CHECK(ctl.getActiveChunkId() == -1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

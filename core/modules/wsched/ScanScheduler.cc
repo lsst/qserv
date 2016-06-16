@@ -30,6 +30,7 @@
   */
 
 // Class header
+#include <wsched/ChunkTasksQueue.h>
 #include "wsched/ScanScheduler.h"
 
 // System headers
@@ -59,7 +60,8 @@ ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxRes
                              memman::MemMan::Ptr const& memMan, int minRating, int maxRating)
     : SchedulerBase{name, maxThreads, maxReserve, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
-    _disk = std::make_shared<ChunkDisk>(_memMan);
+    //_disk = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
+    _taskQueue = std::make_shared<ChunkTasksQueue>(_memMan);
     assert(_minRating <= _maxRating);
 }
 
@@ -85,7 +87,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
-
+    _taskQueue->taskComplete(t);
     t->endTime();
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -96,7 +98,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // Wait to unlock the tables until after the next call to _ready or commandFinish.
     // This is done in case only one thread is running on this scheduler as
     // we don't want to release the tables in case the next Task wants some of them.
-    if (_disk->getSize() != 0) {
+    if (!_taskQueue->empty()) {
         _memManHandleToUnlock = t->getMemHandle();
     } else {
         _memMan->unlock(t->getMemHandle()); // Nothing on the queue, no reason to wait.
@@ -104,7 +106,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     _decrChunkTaskCount(t->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
-    if (_disk->nextTaskDifferentChunkId()) {
+    if (_taskQueue->nextTaskDifferentChunkId()) {
         applyPriority();
     }
     // Whenever a Task finishes, all sleeping threads need to check if resources
@@ -138,7 +140,7 @@ bool ScanScheduler::_ready() {
         return false;
     }
 
-    if (_disk->nextTaskDifferentChunkId()) {
+    if (_taskQueue->nextTaskDifferentChunkId()) {
         auto activeChunkCount = getActiveChunkCount();
         auto maxActiveChunks = getMaxActiveChunks();
         if (activeChunkCount >= maxActiveChunks) {
@@ -151,7 +153,7 @@ bool ScanScheduler::_ready() {
     }
 
     bool useFlexibleLock = (_inFlight < 1);
-    auto rdy = _disk->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
+    auto rdy = _taskQueue->ready(useFlexibleLock); // Only returns true if MemMan grants resources.
     bool logMemStats = false;
     // If ready failed, holding onto this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -168,7 +170,7 @@ bool ScanScheduler::_ready() {
 
 std::size_t ScanScheduler::getSize() const {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    return _disk->getSize();
+    return _taskQueue->getSize();
 }
 
 
@@ -180,7 +182,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
         return nullptr;
     }
     bool useFlexibleLock = (_inFlight < 1);
-    auto task = _disk->getTask(useFlexibleLock);
+    auto task = _taskQueue->getTask(useFlexibleLock);
     ++_inFlight; // in flight as soon as it is off the queue.
     _infoChanged = true;
     _decrCountForUserQuery(task->getQueryId());
@@ -199,7 +201,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
          << " uqCount=" << uqCount);
-    _disk->enqueue(t);
+    _taskQueue->queueTask(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();
 }

@@ -40,30 +40,31 @@
 #include "memman/MemMan.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
-
+#include "wsched/ChunkTaskCollection.h"
 
 namespace lsst {
 namespace qserv {
 namespace wsched {
 
 /// Limits Tasks to running when resources are available.
-/// TODO: DM-4943 Maybe merge this class into ScanScheduler.
-class ChunkDisk {
+class ChunkDisk : public ChunkTaskCollection {
 public:
 
     ChunkDisk(memman::MemMan::Ptr const& memMan) : _memMan{memMan} {}
     ChunkDisk(ChunkDisk const&) = delete;
     ChunkDisk& operator=(ChunkDisk const&) = delete;
+    virtual ~ChunkDisk() {};
 
     // Queue management
-    void enqueue(wbase::Task::Ptr const& a);
-    wbase::Task::Ptr getTask(bool useFlexibleLock);
-    bool empty() const;
-    bool ready(bool useFlexibleLock);
+    void queueTask(wbase::Task::Ptr const& a) override;
+    wbase::Task::Ptr getTask(bool useFlexibleLock) override;
+    bool empty() const override;
+    bool ready(bool useFlexibleLock) override;
     std::size_t getSize() const;
+    void taskComplete(wbase::Task::Ptr const& task) override {};
 
-    bool setResourceStarved(bool starved);
-    bool nextTaskDifferentChunkId();
+    bool setResourceStarved(bool starved) override;
+    bool nextTaskDifferentChunkId() override;
 
     /// Class that keeps the minimum chunkId at the front of the heap
     /// and within that chunkId, start with the slowest tables to scan.
@@ -76,7 +77,7 @@ public:
                 if (x->getChunkId() < y->getChunkId()) return false;
                 // chunkId's must be equal, compare scanInfo (slower scans first)
                 int siComp = x->getScanInfo().compareTables(y->getScanInfo());
-                return siComp > 0;
+                return siComp < 0;
         };
         void push(wbase::Task::Ptr const& task);
         wbase::Task::Ptr pop();
