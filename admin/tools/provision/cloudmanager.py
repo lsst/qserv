@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Tools to ease Openstack infrastructure configuration
+Tools to ease OpenStack infrastructure configuration
 and provisioning
 
 @author  Oualid Achbal, IN2P3
@@ -91,21 +91,20 @@ class CloudManager(object):
         Constructor parse all arguments
 
         @param config_file_name define the configuration file containing cloud parameters
-        @param used_image_key base image or snapshot
+        @param used_image_key Add a key to choose the appropriate image (base image or snapshot)
         @param add_ssh_key Add ssh key only while launching instances in provision qserv.
         """
 
-        logging.debug("Use configuration file: {}".format(config_file_name))
+        logging.debug("Use configuration file: %s", config_file_name)
 
         config = ConfigParser.ConfigParser({'net-id': None,
                                             'ssh_security_group': None})
 
         with open(config_file_name, 'r') as config_file:
             config.readfp(config_file)
-        config_file.close()
 
         self._creds = get_nova_creds()
-        logging.debug("Openstack user: {}".format(self._creds['username']))
+        logging.debug("Openstack user: %s", self._creds['username'])
         self._safe_username = self._creds['username'].replace('.', '')
         self.nova = client.Client(**self._creds)
 
@@ -118,10 +117,10 @@ class CloudManager(object):
 
         self.network_name = config.get('openstack', 'network_name')
         if config.get('openstack', 'net-id'):
-            unicode_net_id = unicode(config.get('openstack', 'net-id'))
-            self.nics = [{'net-id': unicode_net_id}]
+            self.nics = [{'net-id': config.get('openstack', 'net-id')}]
         else:
             self.nics = []
+
         self.ssh_security_group = config.get('openstack', 'ssh_security_group')
 
         # Upload ssh public key
@@ -134,22 +133,22 @@ class CloudManager(object):
 
     def nova_image_create(self, instance):
         """
-        Create an openstack image containing Docker
+        Create an OpenStack image containing Docker
         """
-        logging.info("Creating Qserv image")
+        logging.info("Creating Qserv image '%s'", self.snapshot_name)
         qserv_image = instance.create_image(self.snapshot_name)
         status = None
         while status != 'ACTIVE':
             time.sleep(5)
             status = self.nova.images.get(qserv_image).status
-        logging.info("SUCCESS: Qserv image '{}' is active".format(self.snapshot_name))
+        logging.info("SUCCESS: Qserv image '%s' is active", self.snapshot_name)
 
     def nova_servers_create(self, instance_id, userdata):
         """
         Boot an instance and check status
         """
         instance_name = "{0}-qserv-{1}".format(self._safe_username, instance_id)
-        logging.info("Launch an instance {}".format(instance_name))
+        logging.info("Launch an instance %s", instance_name)
 
         # Launch an instance from an image
         instance = self.nova.servers.create(name=instance_name,
@@ -164,8 +163,8 @@ class CloudManager(object):
             time.sleep(5)
             instance.get()
             status = instance.status
-        logging.info("status: {}".format(status))
-        logging.info("Instance {} is active".format(instance_name))
+        logging.info("status: %s", status)
+        logging.info("Instance %s is active", instance_name)
 
         return instance
 
@@ -192,7 +191,7 @@ class CloudManager(object):
         """
         Upload ssh public key
         """
-        logging.info('Manage ssh keys: {}'.format(self.key))
+        logging.info('Manage ssh keys: %s', self.key)
         if self.nova.keypairs.findall(name=self.key):
             logging.debug('Remove previous ssh keys')
             self.nova.keypairs.delete(key=self.key)
@@ -209,20 +208,19 @@ class CloudManager(object):
         floating_ip_pool = self.nova.floating_ip_pools.list()[0].name
 
         # Check for available public ip address in project
-        i = 0
-        for ip in self.nova.floating_ips.list():
+        for ip in floating_ips:
             if ip.instance_id is None:
                 floating_ip = ip
                 logging.debug('Available floating ip found %s', floating_ip)
                 break
 
-        # Check for available public ip adress in ext-net pool
+        # Check for available public ip address in ext-net pool
         if floating_ip is None:
             try:
-                logging.debug("Use floating ip pool: {}".format(floating_ip_pool))
+                logging.debug("Use floating ip pool: %s", floating_ip_pool)
                 floating_ip = self.nova.floating_ips.create(floating_ip_pool)
             except novaclient.exceptions.Forbidden as exc:
-                logging.fatal("Unable to retrieve public IP: {0}".format(exc))
+                logging.fatal("Unable to retrieve public IP: %s", exc)
                 sys.exit(1)
 
         return floating_ip
@@ -265,17 +263,23 @@ class CloudManager(object):
         for instance in instances:
             cmd = ['ssh', '-t', '-F', './ssh_config', instance.name, 'true']
             success = False
+            nb_try = 0
             while not success:
                 try:
                     check_output(cmd)
                     success = True
                 except CalledProcessError as exc:
-                    logging.warn("Waiting for ssh to be avalaible on {}: {}".format(instance.name, exc.output))
-            logging.debug("ssh available on {}".format(instance.name))
+                    logging.warn("Waiting for ssh to be available on %s: %s", instance.name, exc.output)
+                    nb_try += 1
+                    if nb_try > 10:
+                        logging.critical("No available ssh on %s OpenStack clean up is required", instance.name)
+                        sys.exit(1)
+                    time.sleep(2)
+            logging.debug("ssh available on %s", instance.name)
 
     def update_etc_hosts(self, instances):
         """
-        Update /etc/hosts file on each machine
+        Update /etc/hosts file on each virtual machine
         """
         hostfile_tpl = "{ip}    {host}\n"
 
@@ -291,7 +295,7 @@ class CloudManager(object):
             try:
                 check_output(cmd)
             except CalledProcessError as exc:
-                logging.error("ERROR while updating /etc/hosts: {}".format(exc.output))
+                logging.error("ERROR while updating /etc/hosts: %s", exc.output)
                 sys.exit(1)
 
 

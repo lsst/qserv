@@ -2,7 +2,7 @@
 
 """
 Boot instances from an image already created containing Docker
-in Openstack infrastructure, and use cloud config to create users
+in OpenStack infrastructure, and use cloud config to create users
 on virtual machines
 
 Script performs these tasks:
@@ -29,6 +29,7 @@ import sys
 # ----------------------------
 # Imports for other modules --
 # ----------------------------
+from novaclient.exceptions import BadRequest
 import cloudmanager
 
 # -----------------------
@@ -39,34 +40,34 @@ def get_cloudconfig():
     Return cloud init configuration in a string
     """
     cloud_config_tpl = '''
-        #cloud-config
-        users:
-        - name: qserv
-          gecos: Qserv daemon
-          groups: docker
-          lock-passwd: true
-          shell: /bin/bash
-          ssh-authorized-keys:
-          - {key}
-          sudo: ALL=(ALL) NOPASSWD:ALL
+#cloud-config
+users:
+- name: qserv
+  gecos: Qserv daemon
+  groups: docker
+  lock-passwd: true
+  shell: /bin/bash
+  ssh-authorized-keys:
+  - {key}
+  sudo: ALL=(ALL) NOPASSWD:ALL
 
-        runcmd:
-        - ['/tmp/detect_end_cloud_config.sh']
-        - [mkdir, -p, '/qserv/data']
-        - [mkdir, -p, '/qserv/log']
-        - [chown, "1000:1000", '/qserv/data']
-        - [chown, "1000:1000", '/qserv/log']
-        # Allow docker to start via cloud-init
-        # see https://github.com/projectatomic/docker-storage-setup/issues/77
-        - [ sed, -i, -e, 's/After=cloud-final.service/#After=cloud-final.service/g',
-          /usr/lib/systemd/system/docker-storage-setup.service]
-        # 'overlay' seems more robust than default setting
-        - [ sed, -i, -e, '$a STORAGE_DRIVER=overlay', /etc/sysconfig/docker-storage-setup ]
-        # overlay and selinux are not compliant in docker 1.9
-        - [ sed, -i, -e, "s/OPTIONS='--selinux-enabled'/# OPTIONS='--selinux-enabled'/", /etc/sysconfig/docker ]
-        - [ /bin/systemctl, daemon-reload]
-        - [ /bin/systemctl, restart,  docker.service]
-        '''
+runcmd:
+- ['/tmp/detect_end_cloud_config.sh']
+- [mkdir, -p, '/qserv/data']
+- [mkdir, -p, '/qserv/log']
+- [chown, "1000:1000", '/qserv/data']
+- [chown, "1000:1000", '/qserv/log']
+# Allow docker to start via cloud-init
+# see https://github.com/projectatomic/docker-storage-setup/issues/77
+- [ sed, -i, -e, 's/After=cloud-final.service/#After=cloud-final.service/g',
+  /usr/lib/systemd/system/docker-storage-setup.service]
+# 'overlay' seems more robust than default setting
+- [ sed, -i, -e, '$a STORAGE_DRIVER=overlay', /etc/sysconfig/docker-storage-setup ]
+# overlay and selinux are not compliant in docker 1.9
+- [ sed, -i, -e, "s/OPTIONS='--selinux-enabled'/# OPTIONS='--selinux-enabled'/", /etc/sysconfig/docker ]
+- [ /bin/systemctl, daemon-reload]
+- [ /bin/systemctl, restart,  docker.service]
+'''
     fpubkey = open(os.path.expanduser(cloudManager.key_filename + ".pub"))
     public_key=fpubkey.read()
     userdata = cloud_config_tpl.format(key=public_key)
@@ -75,12 +76,6 @@ def get_cloudconfig():
 
 def main():
     cloudManager.manage_ssh_key()
-
-    # Find a floating ip address for gateway
-    floating_ip = cloudManager.get_floating_ip()
-    if not floating_ip:
-        logging.fatal("Unable to add public ip to Qserv gateway")
-        sys.exit(1)
 
     userdata_provision = get_cloudconfig()
 
@@ -91,9 +86,21 @@ def main():
     gateway_id = 0
     gateway_instance = cloudManager.nova_servers_create(gateway_id,
                                                         userdata_provision)
+
+    # Find a floating ip address for gateway
+    floating_ip = cloudManager.get_floating_ip()
+    if not floating_ip:
+        logging.critical("Unable to add public ip to Qserv gateway")
+        sys.exit(1)
     logging.info("Add floating ip ({0}) to {1}".format(floating_ip,
                                                        gateway_instance.name))
-    gateway_instance.add_floating_ip(floating_ip)
+    try:
+        gateway_instance.add_floating_ip(floating_ip)
+    except BadRequest as exc:
+        logging.critical('The procedure needs to be restarted. '
+                         'Exception occurred: %s', exc)
+        cloudManager.nova_servers_delete(gateway_instance)
+        sys.exit(1)
 
     # Manage ssh security group
     if cloudManager.ssh_security_group:
@@ -138,5 +145,5 @@ if __name__ == "__main__":
 
         main()
     except Exception as exc:
-        logging.critical('Exception occured: %s', exc, exc_info=True)
+        logging.critical('Exception occurred: %s', exc, exc_info=True)
         sys.exit(1)

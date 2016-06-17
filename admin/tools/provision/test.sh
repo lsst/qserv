@@ -1,4 +1,4 @@
- #!/bin/sh
+#!/bin/bash
 
 # Test script which performs the following tasks:
 
@@ -14,8 +14,8 @@ set -e
 # and choose the configuration file which contains instance parameters
 
 # For NCSA
-. ./LSST-openrc.sh
-CONF_FILE="ncsa.conf"
+. ./LSST-openrc.sh.example
+CONF_FILE="ncsa.conf.example"
 
 # For Petasky/Galactica
 # . ./petasky-openrc.sh

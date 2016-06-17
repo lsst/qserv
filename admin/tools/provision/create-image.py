@@ -11,7 +11,7 @@ Script performs these tasks:
   - take a snapshot
   - shut down and delete the instance created
 
-@author  Oualid Achbal, ISIMA student , IN2P3
+@author  Oualid Achbal, IN2P3
 
 """
 
@@ -35,45 +35,45 @@ def get_cloudconfig():
     Return cloud init configuration in a string
     """
     userdata = '''
-        #cloud-config
-        groups:
-        - docker
+#cloud-config
+groups:
+- docker
 
-        users:
-        - name: qserv
-          gecos: Qserv daemon
-          groups: docker
-          lock-passwd: true
-          shell: /bin/bash
-          sudo: ALL=(ALL) NOPASSWD:ALL
+users:
+- name: qserv
+  gecos: Qserv daemon
+  groups: docker
+  lock-passwd: true
+  shell: /bin/bash
+  sudo: ALL=(ALL) NOPASSWD:ALL
 
-        packages:
-        - docker
-        - util-linux
+packages:
+- docker
+- util-linux
 
-        runcmd:
-        - ['systemctl', 'enable', 'docker']
-        - ['/tmp/detect_end_cloud_config.sh']
+runcmd:
+- ['systemctl', 'enable', 'docker']
+- ['/tmp/detect_end_cloud_config.sh']
 
-        write_files:
-        -   path: "/tmp/detect_end_cloud_config.sh"
-            permissions: "0544"
-            owner: "root"
-            content: |
-              #!/bin/sh
-              (while [ ! -f /var/lib/cloud/instance/boot-finished ] ;
-              do
-                sleep 2
-                echo "---CLOUD-INIT-DETECT RUNNING---"
-              done
-              sync
-              fsfreeze -f / && read x; fsfreeze -u /
-              echo "---SYSTEM READY FOR SNAPSHOT---") &
+write_files:
+- path: "/tmp/detect_end_cloud_config.sh"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    #!/bin/sh
+    (while [ ! -f /var/lib/cloud/instance/boot-finished ] ;
+    do
+      sleep 2
+      echo "---CLOUD-INIT-DETECT RUNNING---"
+    done
+    sync
+    fsfreeze -f / && read x; fsfreeze -u /
+    echo "---SYSTEM READY FOR SNAPSHOT---") &
 
-        package_upgrade: true
-        package_reboot_if_required: true
-        timezone: Europe/Paris
-        '''
+package_upgrade: true
+package_reboot_if_required: true
+timezone: Europe/Paris
+'''
 
     return userdata
 
