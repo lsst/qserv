@@ -265,14 +265,18 @@ class CloudManager(object):
         for instance in instances:
             cmd = ['ssh', '-t', '-F', './ssh_config', instance.name, 'true']
             success = False
-            occurence = 0
-            while not success and occurence<10:
+            nb_try = 0
+            while not success:
                 try:
-                    time.sleep(2)
                     check_output(cmd)
                     success = True
                 except CalledProcessError as exc:
-                    logging.warn("Waiting for ssh to be avalaible on %s: %s", instance.name, exc.output)
+                    logging.warn("Waiting for ssh to be available on %s: %s", instance.name, exc.output)
+                    nb_try += 1
+                    if nb_try > 10:
+                        logging.fatal("No available ssh on %s OpenStack clean up is required", instance.name)
+                        sys.exit(1)
+                    time.sleep(2)
             logging.debug("ssh available on %s", instance.name)
 
     def update_etc_hosts(self, instances):
