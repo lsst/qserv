@@ -2,7 +2,7 @@
 
 """
 Boot instances from an image already created containing Docker
-in Openstack infrastructure, and use cloud config to create users
+in OpenStack infrastructure, and use cloud config to create users
 on virtual machines
 
 Script performs these tasks:

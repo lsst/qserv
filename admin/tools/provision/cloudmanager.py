@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Tools to ease Openstack infrastructure configuration
+Tools to ease OpenStack infrastructure configuration
 and provisioning
 
 @author  Oualid Achbal, IN2P3
@@ -134,7 +134,7 @@ class CloudManager(object):
 
     def nova_image_create(self, instance):
         """
-        Create an openstack image containing Docker
+        Create an OpenStack image containing Docker
         """
         logging.info("Creating Qserv image '%s'", self.snapshot_name)
         qserv_image = instance.create_image(self.snapshot_name)
@@ -209,14 +209,13 @@ class CloudManager(object):
         floating_ip_pool = self.nova.floating_ip_pools.list()[0].name
 
         # Check for available public ip address in project
-        i = 0
-        for ip in self.nova.floating_ips.list():
+        for ip in floating_ips:
             if ip.instance_id is None:
                 floating_ip = ip
                 logging.debug('Available floating ip found %s', floating_ip)
                 break
 
-        # Check for available public ip adress in ext-net pool
+        # Check for available public ip address in ext-net pool
         if floating_ip is None:
             try:
                 logging.debug("Use floating ip pool: %s", floating_ip_pool)
@@ -281,7 +280,7 @@ class CloudManager(object):
 
     def update_etc_hosts(self, instances):
         """
-        Update /etc/hosts file on each machine
+        Update /etc/hosts file on each virtual machine
         """
         hostfile_tpl = "{ip}    {host}\n"
 

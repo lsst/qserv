@@ -11,7 +11,7 @@ Script performs these tasks:
   - take a snapshot
   - shut down and delete the instance created
 
-@author  Oualid Achbal, ISIMA student , IN2P3
+@author  Oualid Achbal, IN2P3
 
 """
 
@@ -56,19 +56,19 @@ runcmd:
 - ['/tmp/detect_end_cloud_config.sh']
 
 write_files:
--   path: "/tmp/detect_end_cloud_config.sh"
-    permissions: "0544"
-    owner: "root"
-    content: |
-      #!/bin/sh
-      (while [ ! -f /var/lib/cloud/instance/boot-finished ] ;
-      do
-        sleep 2
-        echo "---CLOUD-INIT-DETECT RUNNING---"
-      done
-      sync
-      fsfreeze -f / && read x; fsfreeze -u /
-      echo "---SYSTEM READY FOR SNAPSHOT---") &
+- path: "/tmp/detect_end_cloud_config.sh"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    #!/bin/sh
+    (while [ ! -f /var/lib/cloud/instance/boot-finished ] ;
+    do
+      sleep 2
+      echo "---CLOUD-INIT-DETECT RUNNING---"
+    done
+    sync
+    fsfreeze -f / && read x; fsfreeze -u /
+    echo "---SYSTEM READY FOR SNAPSHOT---") &
 
 package_upgrade: true
 package_reboot_if_required: true
