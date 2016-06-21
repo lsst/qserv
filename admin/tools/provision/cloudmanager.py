@@ -273,7 +273,7 @@ class CloudManager(object):
                     logging.warn("Waiting for ssh to be available on %s: %s", instance.name, exc.output)
                     nb_try += 1
                     if nb_try > 10:
-                        logging.fatal("No available ssh on %s OpenStack clean up is required", instance.name)
+                        logging.critical("No available ssh on %s OpenStack clean up is required", instance.name)
                         sys.exit(1)
                     time.sleep(2)
             logging.debug("ssh available on %s", instance.name)

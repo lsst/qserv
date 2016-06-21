@@ -29,6 +29,7 @@ import sys
 # ----------------------------
 # Imports for other modules --
 # ----------------------------
+from novaclient.exceptions import BadRequest
 import cloudmanager
 
 # -----------------------
@@ -76,12 +77,6 @@ runcmd:
 def main():
     cloudManager.manage_ssh_key()
 
-    # Find a floating ip address for gateway
-    floating_ip = cloudManager.get_floating_ip()
-    if not floating_ip:
-        logging.fatal("Unable to add public ip to Qserv gateway")
-        sys.exit(1)
-
     userdata_provision = get_cloudconfig()
 
     # Create instances list
@@ -91,9 +86,22 @@ def main():
     gateway_id = 0
     gateway_instance = cloudManager.nova_servers_create(gateway_id,
                                                         userdata_provision)
+
+    # Find a floating ip address for gateway
+    floating_ip = cloudManager.get_floating_ip()
+    if not floating_ip:
+        logging.critical("Unable to add public ip to Qserv gateway")
+        sys.exit(1)
     logging.info("Add floating ip ({0}) to {1}".format(floating_ip,
                                                        gateway_instance.name))
     gateway_instance.add_floating_ip(floating_ip)
+    try:
+        gateway_instance.add_floating_ip(floating_ip)
+    except BadRequest as exc:
+        logging.critical('The procedure needs to be restarted. '
+                         'Exception occurred: %s', exc)
+        cloudManager.nova_servers_delete(gateway_instance)
+        sys.exit(1)
 
     # Manage ssh security group
     if cloudManager.ssh_security_group:
@@ -138,5 +146,5 @@ if __name__ == "__main__":
 
         main()
     except Exception as exc:
-        logging.critical('Exception occured: %s', exc, exc_info=True)
+        logging.critical('Exception occurred: %s', exc, exc_info=True)
         sys.exit(1)
