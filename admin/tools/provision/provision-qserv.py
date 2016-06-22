@@ -94,7 +94,6 @@ def main():
         sys.exit(1)
     logging.info("Add floating ip ({0}) to {1}".format(floating_ip,
                                                        gateway_instance.name))
-    gateway_instance.add_floating_ip(floating_ip)
     try:
         gateway_instance.add_floating_ip(floating_ip)
     except BadRequest as exc:
