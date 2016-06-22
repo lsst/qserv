@@ -102,7 +102,6 @@ class CloudManager(object):
 
         with open(config_file_name, 'r') as config_file:
             config.readfp(config_file)
-        config_file.close()
 
         self._creds = get_nova_creds()
         logging.debug("Openstack user: %s", self._creds['username'])

@@ -20,7 +20,7 @@ Pre-requisite
 * Download Openstack RC file: http://docs.openstack.org/user-guide/common/cli_set_environment_variables_using_openstack_rc.html
 
 * Install shmux to run multi node tests
-  * see http://web.taranis.org/shmux/
+   see http://web.taranis.org/shmux/
 
 
 Provision Qserv & run multinode tests
