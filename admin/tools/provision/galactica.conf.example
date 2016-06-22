@@ -1,0 +1,7 @@
+
+[openstack]
+   
+base_image_name: CentOS 7
+snapshot_name: centos-7-qserv
+flavor_name: c1.medium
+network_name: petasky-net
