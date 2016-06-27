@@ -35,21 +35,25 @@ namespace lsst {
 namespace qserv {
 namespace memman {
 
-/// Command to call mlock.
+/// Command to call mlock that allows other threads to wait for when it completes.
 class CommandMlock : public util::CommandTracked {
 public:
     using Ptr = std::shared_ptr<CommandMlock>;
 
     CommandMlock(void *mAddr, uint64_t mSize) : memAddr{mAddr}, memSize{mSize} {}
-    int errorCode{0};
-    void *memAddr;
-    uint64_t memSize;
 
+    /// Call mlock. waitComplete() will wait until this function is finished.
     void action(util::CmdData*) override {
         if (mlock(memAddr, memSize)) {
             errorCode = (errno == EAGAIN ? ENOMEM : errno);
         }
     }
+
+    int errorCode{0}; ///< Error code if mlock fails.
+
+private:
+    void *memAddr;  ///< Memory address for mlock call.
+    uint64_t memSize; ///< Size for mlock call.
 };
 
 
