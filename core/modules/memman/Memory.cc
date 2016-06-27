@@ -30,6 +30,18 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
+
+// Qserv headers
+#include "util/EventThread.h"
+
+namespace {
+lsst::qserv::util::EventThread ulockEvents{};
+std::once_flag ulockEventsFlag;
+void runUlockEventsThreadOnce() {
+    std::call_once(ulockEventsFlag, [](){ ulockEvents.run(); });
+}
+}
 
 namespace lsst {
 namespace qserv {
@@ -122,14 +134,19 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
     if (mInfo._memAddr == MAP_FAILED) {
         mInfo.setErrCode(errno);
     } else {
-        if (!mlock(mInfo._memAddr, mInfo._memSize)) {
-            _lokBytes += mInfo._memSize;
-            if (isFlex) _flexNum++;
-        } else {
-            int rc = (errno == EAGAIN ? ENOMEM : errno);
-            munmap( mInfo._memAddr, mInfo._memSize);
-            mInfo.setErrCode(rc);
-        }
+        // Start a separate thread to call mlock as it is a slow call. The task needs to wait
+        // for the call to complete, so we need to hold onto cmdMlock so we know when mlock is done.
+        auto cmdMlock = std::make_shared<CommandMlock>(mInfo._memAddr, mInfo._memSize);
+        mInfo._cmdMlock = cmdMlock;
+
+        // Having multiple mlock's running at the same time causes a major slow down. Putting
+        // all calls into a single fifo EventThread call forces one mlock call at a time in the
+        // order they were scheduled.
+        runUlockEventsThreadOnce();
+        ulockEvents.queCmd(cmdMlock);
+
+        _lokBytes += mInfo._memSize;
+        if (isFlex) _flexNum++;
     }
 
     // Close the file and return result

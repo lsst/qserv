@@ -201,6 +201,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << t->getIdStr()
          << " uqCount=" << uqCount);
+    t->setMemMan(_memMan);
     _taskQueue->queueTask(t);
     _infoChanged = true;
     util::CommandQueue::_cv.notify_all();

@@ -79,6 +79,7 @@ MemFile::MLResult MemFile::memLock() {
     // Lock this table in memory if possible.
     //
     MemInfo mInfo = _memory.memLock(_fPath, _isFlex);
+    _cmdMlock = mInfo.getCmdMlock();
 
     // If we successfully locked this file, then indicate so, update the
     // memory information and return. If memory was previously reserved for

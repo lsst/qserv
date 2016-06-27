@@ -131,4 +131,9 @@ std::string SchedulerBase::chunkStatusStr() {
 }
 
 
+void SchedulerBase::setMaxActiveChunks(int maxActive) {
+    if (maxActive < 1) maxActive = 1;
+    _maxActiveChunks = maxActive;
+}
+
 }}} // namespace lsst::qserv::wsched

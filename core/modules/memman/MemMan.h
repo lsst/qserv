@@ -176,6 +176,16 @@ public:
         int      chunk;     //!< Chunk number associated with resource
     };
 
+    //-----------------------------------------------------------------------------
+    //! @brief Wait for resource locking to finish.
+    //!
+    //! @param  handle  - The handle returned by lock().
+    //!
+    //! @return error code - non-zero if problems.
+    //-----------------------------------------------------------------------------
+
+    virtual int waitFor(Handle handle) = 0;
+
     virtual Status getStatus(Handle handle) = 0;
 
     //-----------------------------------------------------------------------------

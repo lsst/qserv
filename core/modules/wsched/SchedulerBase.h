@@ -62,6 +62,7 @@ public:
     int getUserQueriesInQ(); //< @return number of UserQueries in the queue.
     int getActiveChunkCount(); //< @return number of chunks being queried.
     int getMaxActiveChunks() const { return _maxActiveChunks; }
+    void setMaxActiveChunks(int maxActive);
 
     /// Methods for altering priority.
     // Hooks for changing this schedulers priority/reserved threads.

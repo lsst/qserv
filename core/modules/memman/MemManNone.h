@@ -62,6 +62,8 @@ public:
 
     Status getStatus(Handle handle) override {(void)handle; return _status;}
 
+    int waitFor(Handle handle) override {return 0;}
+
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 

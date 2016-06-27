@@ -83,12 +83,20 @@ public:
     int    lockAll();
 
     //-----------------------------------------------------------------------------
-    //! @brief Retrn status.
+    //! @brief Return status.
     //!
     //! @return Status information.
     //-----------------------------------------------------------------------------
 
     MemMan::Status status();
+
+    //-----------------------------------------------------------------------------
+    //! @brief Returns all non-null CommandMlock objects.
+    //!
+    //! @return list of all non-null CommandMlock objects.
+    //-----------------------------------------------------------------------------
+
+    std::vector<CommandMlock::Ptr> getCmdMlocks();
 
     //-----------------------------------------------------------------------------
     //! @brief Constructor

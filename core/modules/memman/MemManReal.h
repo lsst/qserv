@@ -54,6 +54,8 @@ public:
 
     Status     getStatus(Handle handle) override;
 
+    int waitFor(Handle handle) override;
+
     MemManReal & operator=(const MemManReal&) = delete;
     MemManReal(const MemManReal&) = delete;
 
