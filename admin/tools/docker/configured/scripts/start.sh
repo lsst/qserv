@@ -50,4 +50,4 @@ fi
 # TODO: wmgr.secret should be retrieved at container execution time
 cp $QSERV_RUN_DIR/etc/wmgr.secret.example $QSERV_RUN_DIR/etc/wmgr.secret
 
-"$QSERV_RUN_DIR"/bin/qserv-start.sh && tail -F $(find  "$QSERV_RUN_DIR/var/log" -type f)
+"$QSERV_RUN_DIR"/bin/qserv-start.sh && tail -f /dev/null
