@@ -57,10 +57,11 @@ namespace qserv {
 namespace wsched {
 
 ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
-                             memman::MemMan::Ptr const& memMan, int minRating, int maxRating)
-    : SchedulerBase{name, maxThreads, maxReserve, priority},
+                             int maxActiveChunks, memman::MemMan::Ptr const& memMan,
+                             int minRating, int maxRating)
+    : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
-    //_disk = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
+    //_taskQueue = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
     _taskQueue = std::make_shared<ChunkTasksQueue>(_memMan);
     assert(_minRating <= _maxRating);
 }

@@ -45,10 +45,13 @@ public:
 
     static int getMaxPriority(){ return 1000000000; }
 
-    SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int priority) :
+    SchedulerBase(std::string const& name, int maxThreads, int maxReserve,
+                  int maxActiveChunks, int priority) :
         _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
         _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
-        _priority{priority}, _priorityDefault{priority}, _priorityNext{priority} {}
+        _priority{priority}, _priorityDefault{priority}, _priorityNext{priority} {
+            setMaxActiveChunks(maxActiveChunks);
+        }
     virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
     SchedulerBase& operator=(SchedulerBase const&) = delete;
@@ -133,7 +136,7 @@ private:
     std::mutex _countsMutex; //< Protects _userQueryCounts and _chunkTasks.
     // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
     //       on 'everything' scheduler limits/needs.
-    int _maxActiveChunks{20}; //< Limit the number of chunks this scheduler can work on at one time.
+    int _maxActiveChunks; //< Limit the number of chunks this scheduler can work on at one time.
 };
 
 }}} // namespace lsst::qserv::wsched

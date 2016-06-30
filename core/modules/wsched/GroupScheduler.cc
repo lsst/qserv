@@ -149,8 +149,9 @@ void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
 }
 
 
+/// MaxActiveChunks and resource limitations (aside from available threads) are ignored by the GroupScheduler.
 GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize, int priority)
-  : SchedulerBase(name, maxThreads, maxReserve, priority), _maxGroupSize(maxGroupSize){
+  : SchedulerBase{name, maxThreads, maxReserve, 0, priority}, _maxGroupSize{maxGroupSize} {
 }
 
 bool GroupScheduler::empty() {
@@ -166,7 +167,7 @@ bool GroupScheduler::ready() {
 
 /// Precondition: _mx must be locked.
 bool GroupScheduler::_ready() {
-    // GroupScheduler is not limited by resource availability.
+    // GroupScheduler is not limited by resource availability and ignores maxActiveChunks.
     return !_queue.empty() && _inFlight < maxInFlight();
 }
 

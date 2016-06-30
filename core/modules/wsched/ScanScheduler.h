@@ -60,7 +60,7 @@ public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
 
     ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
-                  memman::MemMan::Ptr const& memman,
+                  int maxActiveChunks, memman::MemMan::Ptr const& memman,
                   int minRating, int maxRating);
     virtual ~ScanScheduler() {}
 

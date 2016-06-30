@@ -67,7 +67,7 @@ struct ScanTableInfo {
 
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
-    enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30 };
+    enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);

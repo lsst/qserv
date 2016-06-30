@@ -102,6 +102,14 @@ public:
         return _maxReserveSlow;
     }
 
+    /* Get max thread reserve for snail shared scan
+     *
+     * @return max thread reserve for snail shared scan
+     */
+    unsigned int getMaxReserveSnail() const {
+        return _maxReserveSnail;
+    }
+
     /* Get selected memory management implementation
      *
      * @return class name implementing selected memory management
@@ -158,6 +166,47 @@ public:
         return _prioritySlow;
     }
 
+    /* Get snail shared scan priority
+     *
+     * @return slow shared scan priority
+     */
+    unsigned int const getPrioritySnail() const {
+        return _prioritySnail;
+    }
+
+    /* Get maximum concurrent chunks for fast shared scan.
+      *
+      * @return fast shared scan maxActiveChunks.
+      */
+     unsigned int const getMaxActiveChunksFast() const {
+         return _maxActiveChunksFast;
+     }
+
+     /* Get maximum concurrent chunks for medium shared scan.
+      *
+      * @return medium shared scan maxActiveChunks.
+      */
+     unsigned int const getMaxActiveChunksMed() const {
+         return _maxActiveChunksMed;
+     }
+
+     /* Get maximum concurrent chunks for slow shared scan.
+      *
+      * @return slow shared scan maxActiveChunks.
+      */
+     unsigned int const getMaxActiveChunksSlow() const {
+         return _maxActiveChunksSlow;
+     }
+
+     /* Get maximum concurrent chunks for snail shared scan.
+      *
+      * @return snail shared scan maxActiveChunks.
+      */
+     unsigned int const getMaxActiveChunksSnail() const {
+         return _maxActiveChunksSnail;
+     }
+
+
     /** Overload output operator for current class
      *
      * @param out
@@ -180,12 +229,19 @@ private:
     unsigned int const _maxGroupSize;
 
     unsigned int const _prioritySlow;
+    unsigned int const _prioritySnail;
     unsigned int const _priorityMed;
     unsigned int const _priorityFast;
 
     unsigned int const _maxReserveSlow;
+    unsigned int const _maxReserveSnail;
     unsigned int const _maxReserveMed;
     unsigned int const _maxReserveFast;
+
+    unsigned int const _maxActiveChunksSlow;
+    unsigned int const _maxActiveChunksSnail;
+    unsigned int const _maxActiveChunksMed;
+    unsigned int const _maxActiveChunksFast;
 };
 
 }}} // namespace qserv::core::wconfig

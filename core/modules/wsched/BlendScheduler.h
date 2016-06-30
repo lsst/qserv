@@ -78,12 +78,13 @@ class BlendScheduler : public wsched::SchedulerBase {
 public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
-    // This scheduler will have difficulty with less than 10 threads.
-    static int getMinPoolSize(){ return 10; }
+    // This scheduler will have difficulty with less than 11 threads.
+    static int getMinPoolSize(){ return 11; }
 
     BlendScheduler(std::string const& name,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
+                   std::shared_ptr<ScanScheduler> const& snailScheduler,
                    std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers);
     virtual ~BlendScheduler();
 
@@ -109,13 +110,12 @@ private:
     void _sortScanSchedulers();
     void _logChunkStatus();
 
-    int _schedMaxThreads; //< maximum number of threads that can run.
+    int _schedMaxThreads; ///< maximum number of threads that can run.
 
     // Sub-schedulers.
-    std::shared_ptr<GroupScheduler> _group;
-    std::shared_ptr<ScanScheduler> _scanFast;
-    std::vector<SchedulerBase::Ptr> _schedulers;
-    bool _lastCmdFromScan{false};
+    std::shared_ptr<GroupScheduler> _group;    ///< group scheduler
+    std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
+    std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
     std::map<wbase::Task*, SchedulerBase*> _map;
     std::mutex _mapMutex;
 
