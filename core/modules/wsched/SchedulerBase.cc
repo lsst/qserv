@@ -136,4 +136,11 @@ void SchedulerBase::setMaxActiveChunks(int maxActive) {
     _maxActiveChunks = maxActive;
 }
 
+
+bool SchedulerBase::chunkAlreadyActive(int chunkId) {
+    std::lock_guard<std::mutex> lock(_countsMutex);
+    auto iter = _chunkTasks.find(chunkId);
+    return iter != _chunkTasks.end(); // return true if chunkId was found.
+}
+
 }}} // namespace lsst::qserv::wsched

@@ -60,12 +60,13 @@ public:
 
     /// @return the number of tasks in flight.
     virtual int getInFlight() const { return _inFlight; }
-    virtual std::size_t getSize() const =0; //< @return the number of tasks in the queue (not in flight).
-    virtual bool ready()=0; //< @return true if the scheduler is ready to provide a Task.
-    int getUserQueriesInQ(); //< @return number of UserQueries in the queue.
-    int getActiveChunkCount(); //< @return number of chunks being queried.
+    virtual std::size_t getSize() const =0; ///< @return the number of tasks in the queue (not in flight).
+    virtual bool ready()=0; ///< @return true if the scheduler is ready to provide a Task.
+    int getUserQueriesInQ(); ///< @return number of UserQueries in the queue.
+    int getActiveChunkCount(); ///< @return number of chunks being queried.
     int getMaxActiveChunks() const { return _maxActiveChunks; }
     void setMaxActiveChunks(int maxActive);
+    bool chunkAlreadyActive(int chunkId); ///< Return true if chunkId currently has queries being run on it.
 
     /// Methods for altering priority.
     // Hooks for changing this schedulers priority/reserved threads.
@@ -132,11 +133,11 @@ private:
     /// Number of Tasks for each UserQuery in the queue.
     std::map<QueryId, int> _userQueryCounts;
 
-    std::map<int, int> _chunkTasks; //< Number of tasks in each chunk actively being queried.
-    std::mutex _countsMutex; //< Protects _userQueryCounts and _chunkTasks.
+    std::map<int, int> _chunkTasks; ///< Number of tasks in each chunk actively being queried.
+    std::mutex _countsMutex; ///< Protects _userQueryCounts and _chunkTasks.
     // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
     //       on 'everything' scheduler limits/needs.
-    int _maxActiveChunks; //< Limit the number of chunks this scheduler can work on at one time.
+    int _maxActiveChunks; ///< Limit the number of chunks this scheduler can work on at one time.
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     int firstChunkId = 100;
     int secondChunkId = 150;
     int chunkId = firstChunkId;
-    wsched::ChunkTasksQueue ctl{memMan};
+    wsched::ChunkTasksQueue ctl{nullptr, memMan};
 
     BOOST_CHECK(ctl.empty() == true);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
