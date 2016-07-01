@@ -133,9 +133,15 @@ class CloudManager(object):
 
     def nova_image_create(self, instance):
         """
-        Create an OpenStack image containing Docker
+        Shutdown instance and snapshot it
+        to an image named self.snapshot_name
         """
-        logging.info("Creating Qserv image '%s'", self.snapshot_name)
+        instance.stop()
+        while instance.status != 'SHUTOFF':
+            time.sleep(5)
+            instance.get()
+
+        logging.info("Creating Qserv snapshot '%s'", self.snapshot_name)
         qserv_image = instance.create_image(self.snapshot_name)
         status = None
         while status != 'ACTIVE':
