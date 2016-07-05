@@ -114,6 +114,8 @@ public:
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() override;
 
+    virtual std::string getQueryIdString() override;
+
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
 
@@ -137,6 +139,8 @@ private:
 
     qmeta::CzarId _qMetaCzarId;     ///< Czar ID in QMeta database
     QueryId _qMetaQueryId;   ///< Query ID in QMeta database
+    /// QueryId in a standard string form, initially set to unknown.
+    std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed;
     std::mutex _killMutex;
     std::string _errorExtra;        ///< Additional error information

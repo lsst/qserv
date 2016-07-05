@@ -283,6 +283,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
 
     // return value of the auto-increment column
     QueryId queryId = static_cast<QueryId>(_conn.getInsertId());
+    std::string qIdStr = QueryIdHelper::makeIdStr(queryId);
 
     // register all tables, first remove all duplicates from a list
     TableNames uniqueTables = tables;
@@ -296,9 +297,9 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
         query += _conn.escapeString(itr->second);
         query += "')";
 
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        LOGS(_log, LOG_LVL_DEBUG, qIdStr << " Executing query: " << query);
         if (not _conn.runQuery(query, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGS(_log, LOG_LVL_ERROR, qIdStr << " SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }

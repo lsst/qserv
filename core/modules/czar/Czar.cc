@@ -126,18 +126,19 @@ Czar::submitQuery(std::string const& query,
         std::lock_guard<std::mutex> lock(_mutex);
         uq = _uqFactory->newUserQuery(query, defaultDb);
     }
+    auto queryIdStr = uq->getQueryIdString();
 
     // check for errors
     auto error = uq->getError();
     if (not error.empty()) {
-        result.errorMessage = "Failed to instantiate query: " + error;
+        result.errorMessage = queryIdStr + " Failed to instantiate query: " + error;
         return result;
     }
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
-    auto finalizer = [uq, msgTable]() mutable {
-        LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
+    auto finalizer = [uq, msgTable, queryIdStr]() mutable {
+        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " submitting new query");
         uq->submit();
         uq->join();
         try {
@@ -146,10 +147,11 @@ Czar::submitQuery(std::string const& query,
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
-            LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
+            LOGS(_log, LOG_LVL_ERROR,
+                 queryIdStr << " Query finalization failed (client likely hangs): " << exc.what());
         }
     };
-    LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
+    LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " starting finalizer thread for query");
     std::thread finalThread(finalizer);
     finalThread.detach();
 
@@ -169,7 +171,7 @@ Czar::submitQuery(std::string const& query,
         if (not clientId.empty() and threadId >= 0) {
             ClientThreadId ctId(clientId, threadId);
             _clientToQuery.insert(std::make_pair(ctId, uq));
-            LOGS(_log, LOG_LVL_DEBUG, "Remembering query: (" << clientId << ", "
+            LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " Remembering query: (" << clientId << ", "
                  << threadId << ") (new map size: " << _clientToQuery.size() << ")");
         }
     }
@@ -180,7 +182,7 @@ Czar::submitQuery(std::string const& query,
     }
     result.messageTable = lockName;
     result.orderBy = uq->getProxyOrderBy();
-    LOGS(_log, LOG_LVL_DEBUG, "returning result to proxy: resultTable="
+    LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
          << result.resultTable << " messageTable=" << result.messageTable
          << " orderBy=" << result.orderBy);
 
