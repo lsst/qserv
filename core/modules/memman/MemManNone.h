@@ -43,12 +43,14 @@ namespace memman {
 class MemManNone : public MemMan {
 public:
 
-    Handle lock(std::vector<TableInfo> const& tables, int chunk) override {
+    int    lock(Handle handle, bool strict=false) override {return 0;}
+
+    Handle prepare(std::vector<TableInfo> const& tables, int chunk) override {
                (void)chunk;
                if (_alwaysLock) return HandleType::ISEMPTY;
                for (auto it=tables.begin() ; it != tables.end(); it++) {
-                   if (it->theData  == TableInfo::LockType::MUSTLOCK
-                   ||  it->theIndex == TableInfo::LockType::MUSTLOCK)
+                   if (it->theData  == TableInfo::LockType::REQUIRED
+                   ||  it->theIndex == TableInfo::LockType::REQUIRED)
                       {errno = ENOMEM; return HandleType::INVALID;}
                }
                return HandleType::ISEMPTY;
@@ -61,8 +63,6 @@ public:
     Statistics getStatistics() override {return _myStats;}
 
     Status getStatus(Handle handle) override {(void)handle; return _status;}
-
-    int waitFor(Handle handle) override {return 0;}
 
     MemManNone & operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;

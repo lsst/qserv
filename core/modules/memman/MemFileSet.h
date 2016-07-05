@@ -25,7 +25,9 @@
 #define LSST_QSERV_MEMMAN_MEMFILESET_H
 
 // System headers
+#include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <unistd.h>
 
@@ -76,27 +78,57 @@ public:
     //! @bried Lock all of the required tables in a table set and as many
     //!        flexible files as possible.
     //!
+    //! @param strict- When true, if a required table could not be locked, its
+    //!                memory remains reserved but otherwise locking continues.
+    //!                When false, execution stops when an error is encountered.
+    //!
     //! @return =0 all required bytes that could be locked were locked.
     //! @return !0 A required file could not be locked, errno value is returned.
     //-----------------------------------------------------------------------------
 
-    int    lockAll();
+    int    lockAll(bool strict);
 
     //-----------------------------------------------------------------------------
-    //! @brief Return status.
+    //! @bried Map all of the required tables in a table set and as many
+    //!        flexible files as possible.
+    //!
+    //! @return =0 all required tables that could be mapped were mapped.
+    //! @return !0 A required file could not be mapped, errno value is returned.
+    //-----------------------------------------------------------------------------
+
+    int    mapAll();
+
+    //-----------------------------------------------------------------------------
+    //! @brief Control serial access to this object. When obtaining a lock,
+    //!        this method should be called with a common mutex locked.
+    //!
+    //! @param dolok If true, obtains a mutex on this object to serialize access.
+    //!              Otherwise, the lock is released.
+    //!
+    //! @return true  Normal return.
+    //! @return false lktst was true and serialization mutex was already locked.
+    //-----------------------------------------------------------------------------
+
+    bool serialize(bool dolok) {
+        if (dolok) {
+            _setMutex.lock(); 
+            _mtxLocked = true;
+        } else {
+            if (_mtxLocked) {
+                _mtxLocked = false;
+                _setMutex.unlock();
+            }
+        }
+        return true;
+    }
+
+    //-----------------------------------------------------------------------------
+    //! @brief Retrn status.
     //!
     //! @return Status information.
     //-----------------------------------------------------------------------------
 
     MemMan::Status status();
-
-    //-----------------------------------------------------------------------------
-    //! @brief Returns all non-null CommandMlock objects.
-    //!
-    //! @return list of all non-null CommandMlock objects.
-    //-----------------------------------------------------------------------------
-
-    std::vector<CommandMlock::Ptr> getCmdMlocks();
 
     //-----------------------------------------------------------------------------
     //! @brief Constructor
@@ -108,7 +140,8 @@ public:
     //-----------------------------------------------------------------------------
 
     MemFileSet(Memory& memory, int numLock, int numFlex, int chunk)
-              : _memory(memory), _lockBytes(0), _numFiles(0), _chunk(chunk) {
+              : _memory(memory), _lockBytes(0), _numFiles(0), _chunk(chunk),
+                _mtxLocked(false) {
                 _lockFiles.reserve(numLock);
                 _flexFiles.reserve(numFlex);
               }
@@ -116,12 +149,14 @@ public:
     ~MemFileSet();
 
 private:
+    std::mutex            _setMutex;
     Memory&               _memory;
     std::vector<MemFile*> _lockFiles;
     std::vector<MemFile*> _flexFiles;
     uint64_t              _lockBytes;     // Total bytes locked
     uint32_t              _numFiles;
     int                   _chunk;
+    std::atomic_bool      _mtxLocked;     // true -> _setMutex is locked
 };
 
 }}} // namespace lsst:qserv:memman
