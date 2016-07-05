@@ -47,6 +47,15 @@ namespace memman {
 class MemFile {
 public:
 
+    //-----------------------------------------------------------------------------
+    //! @brief Lock database file in memory.
+    //!
+    //! @return MLResult  When bLocked > 0 this number of bytes locked.
+    //!                   When bLocked = 0 no bytes were locked and retc holds
+    //!                   the reason. When retc = 0 there was not enough memory
+    //!                   and the table was marked flexible.
+    //-----------------------------------------------------------------------------
+
     struct MLResult {
         uint64_t bLocked;
         int      retc;
@@ -54,17 +63,18 @@ public:
         MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
     };
 
+    MLResult    memLock();
+
     //-----------------------------------------------------------------------------
-    //! @brief Lock database file in memory.
+    //! @brief Map database file in memory.
     //!
-    //! @return MLResult  When bLocked > 0 this number of bytes locked.
-    //!                   When bLocked = 0 no bytes were locked and retc holds
-    //!                   the reason. When retc = 0 there was not enough memory
-    //!                   but flexible locking was requested and memory was
-    //!                   reserved for a future attempt.
+    //! @return =0      - File succesfully mapped and memory reserved, if so
+    //!                   required (flexible files are not so required).
+    //!         !0        A required file could not be mapped in memory. The
+    //!                   returned value is the errno describing the error.
     //-----------------------------------------------------------------------------
 
-    MLResult    memLock();
+    int         memMap();
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -73,13 +83,6 @@ public:
     //-----------------------------------------------------------------------------
 
     static uint32_t numFiles();
-
-    struct MFResult {
-        MemFile* mfP;
-        int      retc;
-        MFResult() {}
-        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
-    };
 
     //-----------------------------------------------------------------------------
     //! @brief Obtain an object describing a in-memory file.
@@ -93,6 +96,13 @@ public:
     //!                   object could not be obtained and retc holds errno.
     //-----------------------------------------------------------------------------
 
+    struct MFResult {
+        MemFile* mfP;
+        int      retc;
+        MFResult() {}
+        MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
+    };
+
     static MFResult obtain(std::string const& fPath, Memory& mem, bool isFlex);
 
     //-----------------------------------------------------------------------------
@@ -101,8 +111,6 @@ public:
     //-----------------------------------------------------------------------------
 
     void release();
-
-    CommandMlock::Ptr getCmdMlock() {return _cmdMlock;}
 
 private:
     //-----------------------------------------------------------------------------
@@ -122,14 +130,15 @@ private:
 
    ~MemFile() {}
 
+    std::mutex  _fileMutex;
     std::string _fPath;
     Memory&     _memory;
-    MemInfo     _memInfo;
+    MemInfo     _memInfo;              // Protected by _fileMutex
     int         _refs = 1;             // Protected by cacheMutex
-    bool        _isLocked   = false;   // Ditto
+    bool        _isMapped   = false;   // Protected by _fileMutex
     bool        _isReserved = false;   // Ditto
+    bool        _isLocked   = false;   // Ditto
     bool        _isFlex;               // Set once at object creation
-    CommandMlock::Ptr _cmdMlock;       // pointer to mlock command if there is one.
 };
 
 }}} // namespace lsst:qserv:memman

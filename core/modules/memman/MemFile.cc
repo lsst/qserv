@@ -26,7 +26,6 @@
 
 // System Headers
 #include <errno.h>
-#include <mutex>
 #include <unordered_map>
 
 namespace lsst {
@@ -48,85 +47,91 @@ std::unordered_map<std::string, MemFile*> fileCache;
 
 MemFile::MLResult MemFile::memLock() {
 
-    std::lock_guard<std::mutex> guard(cacheMutex);
+    // The _fileMutex is used here to serialize multiple calls to lock the same
+    // file as a file may appear in multiple file sets. This mutex is held for
+    // duration of all operations here. It also serialized memory unmapping.
+    //
+    std::lock_guard<std::mutex> guard(_fileMutex);
+    int rc;
 
     // If the file is already locked, indicate success
     //
     if (_isLocked) {
-        if (_isFlex) _memory.flexNum(1);
         MLResult aokResult(_memInfo.size(), 0);
         return aokResult;
     }
 
-    // Check if there is enough memory for this table
+    // Lock this table in memory if possible. If not, simulate an ENOMEM.
     //
-    uint64_t freeBytes = _memory.bytesFree();
-    if (_isReserved) freeBytes += _memInfo.size();
-    if (_memInfo.size() > freeBytes) {
-        if (_isFlex) {
-            if (!_isReserved) {
-                _memory.memReserve(_memInfo.size());
-                _isReserved = true;
-            }
-            MLResult nilResult(0,0);
-            return nilResult;
-        } else {
-            MLResult bigResult(0, ENOMEM);
-            return bigResult;
+    if (!_isMapped) rc = ENOMEM;
+        else {
+        rc = _memory.memLock(_memInfo, _isFlex);
+        if (rc == 0) {
+            MLResult aokResult(_memInfo.size(),0);
+            _isLocked = true;
+            return aokResult;
         }
     }
-
-    // Lock this table in memory if possible.
+ 
+    // If this is a flexible table, we can ignore this error.
     //
-    MemInfo mInfo = _memory.memLock(_fPath, _isFlex);
-    _cmdMlock = mInfo.getCmdMlock();
-
-    // If we successfully locked this file, then indicate so, update the
-    // memory information and return. If memory was previously reserved for
-    // this file then credit the reserve count using the original size.
-    //
-    if (mInfo.isValid()) {
-        MLResult aokResult(mInfo.size(),0);
-        if (_isReserved) {
-            _memory.memRestore(_memInfo.size());
-            _isReserved = false;
-        }
-        _isLocked = true;
-        _memInfo = mInfo;
-        return aokResult;
-    }
-
-    // If this is a flex table and there was not enough memory and storage
-    // was not yet reserved for it, do so now.
-    //
-    if (_isFlex && mInfo.errCode() == ENOMEM) {
-        if (!_isReserved) {
-            _memory.memReserve(_memInfo.size());
-            _isReserved = true;
-        }
-        MLResult nilResult(0,0);
-        return nilResult;
-    }
-
-    // TODO: Find a better solution for systems where mmap is not viable, which
-    // manifests as no bytes being locked but bytes are reserved.
-    // Fake mmap as the configuration isn't working properly.
-    // At this point, there is enough free space, it was not a flex table,
-    // but mmap failed. So,this will fake it being a flexilock file and
-    // reserve space for it.
-    if (_memInfo.size() < freeBytes) {
-        if (!_isReserved) {
-            _memory.memReserve(_memInfo.size());
-            _isReserved = true;
-        }
+    if (_isFlex) {
         MLResult nilResult(0,0);
         return nilResult;
     }
 
     // Diagnose any errors
     //
-    MLResult errResult(0, mInfo.errCode());
+    MLResult errResult(0, rc);
     return errResult;
+}
+
+/******************************************************************************/
+/*                                m e m M a p                                 */
+/******************************************************************************/
+
+int MemFile::memMap() {
+
+    std::lock_guard<std::mutex> guard(_fileMutex);
+
+    // If the file is already mapped, indicate success
+    //
+    if (_isMapped) return 0;
+
+    // Check if we need to verify there is enough memory for this table. If it's
+    // already reserved (unlikely) then there is no need to check.
+    //
+    if (!_isReserved) {
+        if (_memInfo.size() > _memory.bytesFree()) return (_isFlex ? 0 : ENOMEM);
+        _memory.memReserve(_memInfo.size());
+        _isReserved = true;
+    }
+
+    // Map this table in memory if possible.
+    //
+    MemInfo mInfo = _memory.mapFile(_fPath);
+
+    // If we successfully mapped this file, return success (memory reserved).
+    //
+    if (mInfo.isValid()) {
+        _memInfo  = mInfo;
+        _isMapped = true;
+        return 0;
+    }
+
+    // If this is a flex table, ignore mapping failures but keep storage reserved.
+    //
+    if (_isFlex && mInfo.errCode() == ENOMEM) return 0;
+
+    // Remove storage reservation as we failed to map in this file and it can
+    // never be locked at this point.
+    //
+    _memory.memRestore(_memInfo.size());
+    _isReserved = false;
+
+    // Return the error code
+    //
+    return mInfo.errCode();
 }
 
 /******************************************************************************/
@@ -191,32 +196,42 @@ MemFile::MFResult MemFile::obtain(std::string const& fPath,
 
 void MemFile::release() {
 
-    std::lock_guard<std::mutex> guard(cacheMutex);
-
-    // Decrease the reference count. If there are still references, return
+    // Obtain the cache mutex as it protects the cache and the ref count
     //
-    _refs--;
-    if (_refs > 0) return;
+    {    std::lock_guard<std::mutex> guard(cacheMutex);
 
-    // Release the memory
-    //
-    if (_isLocked) {
-        _memory.memRel(_memInfo);
-        _isLocked = false;
-    } else {
-        if (_isReserved) {
-            _memory.memRestore(_memInfo.size());
-            _isReserved = false;
-        }
+         // Decrease the reference count. If there are still references, return
+         //
+         _refs--;
+         if (_refs > 0) return;
+
+         // Remove the object from our cache
+         //
+         auto it = fileCache.find(_fPath);
+         if (it != fileCache.end()) fileCache.erase(it);
     }
 
-    // Remove the object from our cache
+    // We lock the file mutex. We also get the size of the file as memRel()
+    // destroys the _memInfo object.
     //
-    auto it = fileCache.find(_fPath);
-    if (it != fileCache.end()) fileCache.erase(it);
+    _fileMutex.lock();
+    uint64_t fSize = _memInfo.size();
+
+    // Release the memory if mapped and unreserve the memory if reserved.
+    //
+    if (_isMapped) {
+        _memory.memRel(_memInfo, _isLocked);
+        _isLocked = false;
+        _isMapped = false;
+    }
+    if (_isReserved) {
+        _memory.memRestore(fSize);
+        _isReserved = false;
+    }
 
     // Delete ourselves as we are done
     //
+    _fileMutex.unlock();
     delete this;
 }
 }}} // namespace lsst:qserv:memman

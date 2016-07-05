@@ -27,11 +27,9 @@
 // System headers
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <unistd.h>
-
-// Qserv headers
-#include "memman/CommandMlock.h"
 
 namespace lsst {
 namespace qserv {
@@ -43,7 +41,7 @@ namespace memman {
 
 class MemInfo {
 public:
-    friend class Memory;
+friend class Memory;
 
     //-----------------------------------------------------------------------------
     //! @brief Return reason why this object is not valid.
@@ -79,16 +77,13 @@ public:
 
     uint64_t size() {return _memSize;}
 
-    CommandMlock::Ptr getCmdMlock() {return _cmdMlock;}
-
     MemInfo() : _memAddr((void *)-1), _memSize(0) {}
    ~MemInfo() {}
 
 private:
 
-   union {void  *_memAddr; int _errCode;};
-   uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
-   CommandMlock::Ptr _cmdMlock; //< Tracks the completion of mlock call.
+union {void  *_memAddr; int _errCode;};
+uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
 };
 
 //-----------------------------------------------------------------------------
@@ -96,8 +91,8 @@ private:
 //!
 //! This class is partially MT-safe. Inspection of single variables is MT-safe.
 //! Compound variable inspection, while MT-safe may not yield an accurate value.
-//! Methods that modify variables must be externally synchronized. Each method
-//! indicates the level of MT-safeness.
+//! Methods that modify variables must be externally synchronized. All methods
+//! are MT-safe.
 //-----------------------------------------------------------------------------
 
 class Memory {
@@ -105,46 +100,17 @@ public:
 
     //-----------------------------------------------------------------------------
     //! Obtain number of bytes free (this takes into account reserved bytes).
-    //! This method must be externally serialized to obtain an accurate value.
     //!
     //! @return The number of bytes free.
     //-----------------------------------------------------------------------------
 
     uint64_t bytesFree() {
-        uint64_t usedBytes = _lokBytes + _rsvBytes;
-        return (_maxBytes <= usedBytes ? 0 : _maxBytes - usedBytes);
+        std::lock_guard<std::mutex> guard(_memMutex);
+        return (_maxBytes <= _rsvBytes ? 0 : _maxBytes - _rsvBytes);
     }
 
     //-----------------------------------------------------------------------------
-    //! Obtain number of bytes locked.
-    //! This method is MT-safe.
-    //!
-    //! @return The number of bytes locked.
-    //-----------------------------------------------------------------------------
-
-    uint64_t bytesLocked() {return _lokBytes;}
-
-    //-----------------------------------------------------------------------------
-    //! Obtain number of reserved bytes of memory.
-    //! This method is MT-safe.
-    //!
-    //! @return The number of reserved bytes of memory.
-    //-----------------------------------------------------------------------------
-
-    uint64_t bytesReserved() {return _rsvBytes;}
-
-    //-----------------------------------------------------------------------------
-    //! Obtain number of bytes in memory.
-    //! This method is MT-safe.
-    //!
-    //! @return The number of bytes in memory.
-    //-----------------------------------------------------------------------------
-
-    uint64_t bytesMax() {return _maxBytes;}
-
-    //-----------------------------------------------------------------------------
     //! @brief Get file information.
-    //! This method is MT-safe.
     //!
     //! @param  fPath - File path for which information is obtained.
     //!
@@ -156,7 +122,6 @@ public:
 
     //-----------------------------------------------------------------------------
     //! @brief Generate a file path given directory, a table name and chunk.
-    //! This method is MT-safe.
     //!
     //! @param  dbTable    - The name of the table
     //! @param  chunk      - The chunk number in question
@@ -172,47 +137,49 @@ public:
                         );
 
     //-----------------------------------------------------------------------------
-    //! Obtain and optionally update of flexible files that were locked.
-    //! This method is MT-safe.
-    //!
-    //! @return The number of flexible files that were locked.
-    //-----------------------------------------------------------------------------
-
-    uint32_t flexNum(uint32_t cnt=0) {
-                    if (cnt != 0) _flexNum += cnt;
-                    return _flexNum;
-                    }
-
-    //-----------------------------------------------------------------------------
     //! @brief Lock a database file in memory.
-    //! This method must be externally serialized, it is not MT-safe.
     //!
-    //! @param  fPath  - Path of the database file to be locked in memory.
+    //! @param  mInfo  - The memory mapping returned by mapFile().
+    //! @param  isFlex - When true account for flexible files in the statistics.
+    //!
+    //! @return =0     - Memory was locked.
+    //! @return !0     - Memory not locked, retuned value is the errno.
+    //-----------------------------------------------------------------------------
+
+    int     memLock(MemInfo mInfo, bool isFlex);
+
+    //-----------------------------------------------------------------------------
+    //! @brief Map a database file in memory.
+    //!
+    //! @param  fPath  - Path of the database file to be mapped in memory.
     //! @param  isFlex - When true this is a flexible file request.
     //!
     //! @return A MemInfo object corresponding to the file. Use the MemInfo
-    //!         methods to determine if the file pages were actually locked.
+    //!         methods to determine if the file pages were actually mapped.
     //-----------------------------------------------------------------------------
 
-    MemInfo memLock(std::string const& fPath, bool isFlex=false);
+    MemInfo mapFile(std::string const& fPath);
 
     //-----------------------------------------------------------------------------
     //! @brief Unlock a memory object.
-    //! This method must be externally serialized, it is not MT-safe.
     //!
-    //! @param  mInfo   - Memory MemInfo object returned by memLock().
+    //! @param  mInfo   - Memory MemInfo object returned by memLock(). It is
+    //!                   reset to an invalid state upon return.
+    //! @param  islkd   - When true, update locked memory statistics.
     //-----------------------------------------------------------------------------
 
-    void    memRel(MemInfo& mInfo);
+    void    memRel(MemInfo& mInfo, bool islkd);
 
     //-----------------------------------------------------------------------------
     //! @brief Reserve memory for future locking.
-    //! This method is MT-safe.
     //!
     //! @param  memSZ   - Bytes of memory to reserve.
     //-----------------------------------------------------------------------------
 
-    void    memReserve(uint64_t memSZ) {_rsvBytes += memSZ;}
+    void    memReserve(uint64_t memSZ) {
+                       std::lock_guard<std::mutex> guard(_memMutex);
+                       _rsvBytes += memSZ;
+                      }
 
     //-----------------------------------------------------------------------------
     //! @brief Restore memory previously reserved.
@@ -222,9 +189,38 @@ public:
     //-----------------------------------------------------------------------------
 
     void    memRestore(uint64_t memSZ) {
+                       std::lock_guard<std::mutex> guard(_memMutex);
                        if (_rsvBytes <= memSZ) _rsvBytes = 0;
                           else _rsvBytes -= memSZ;
                       }
+
+    //-----------------------------------------------------------------------------
+    //! @bried Obtain memory statistics.
+    //!
+    //! @return A MemStats structure containing the statistics.
+    //-----------------------------------------------------------------------------
+
+    struct MemStats {
+        uint64_t bytesMax;       //!< Maximum number of bytes being managed
+        uint64_t bytesReserved;  //!< Number of bytes reserved
+        uint64_t bytesLocked;    //!< Number of bytes locked
+        uint32_t numMapErrors;   //!< Number of mmap()  calls that failed
+        uint32_t numLokErrors;   //!< Number of mlock() calls that failed
+        uint32_t numFlexFiles;   //!< Number of Flexible files encountered
+    };
+
+    MemStats Statistics() {
+        MemStats mStats;
+        mStats.bytesMax      = _maxBytes;
+        _memMutex.lock();
+        mStats.bytesReserved = _rsvBytes;
+        mStats.bytesLocked   = _lokBytes;
+        _memMutex.unlock();
+        mStats.numMapErrors  = _numMapErrs;
+        mStats.numLokErrors  = _numLokErrs;
+        mStats.numFlexFiles  = _flexNum;
+        return mStats;
+    }
 
     //-----------------------------------------------------------------------------
     //! Constructor
@@ -235,16 +231,19 @@ public:
 
     Memory(std::string const& dbDir, uint64_t memSZ)
           : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0), _rsvBytes(0),
-            _flexNum(0) {}
+            _numMapErrs(0), _numLokErrs(0), _flexNum(0) {}
 
     ~Memory() {}
 
 private:
 
     std::string        _dbDir;
-    uint64_t           _maxBytes;
-    std::atomic_ullong _lokBytes;
-    std::atomic_ullong _rsvBytes;
+    std::mutex         _memMutex;
+    uint64_t           _maxBytes;    // Set at construction time
+    uint64_t           _lokBytes;    // Protected by _memMutex
+    uint64_t           _rsvBytes;    // Ditto
+    std::atomic_uint   _numMapErrs;
+    std::atomic_uint   _numLokErrs;
     std::atomic_uint   _flexNum;
 };
 }}} // namespace lsst:qserv:memman
