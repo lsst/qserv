@@ -342,7 +342,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
-    wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, memMan, 0, 100};
+    wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100};
 
     // Test ready state as Tasks added and removed.
     BOOST_CHECK(sched.ready() == false);
@@ -409,18 +409,19 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
     int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
     int maxThreads = 9;
+    int maxActiveChunks = 20;
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
-    int priority = 1;
+    int priority = 2;
     auto group = std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++);
     auto scanSlow = std::make_shared<wsched::ScanScheduler>(
-        "ScanSlow", maxThreads, 2, priority++, memMan, medium+1, slow);
+        "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium+1, slow);
     auto scanMed  = std::make_shared<wsched::ScanScheduler>(
-        "ScanMed",  maxThreads, 2, priority++, memMan, fast+1, medium);
+        "ScanMed",  maxThreads, 2, priority++, maxActiveChunks, memMan, fast+1, medium);
     auto scanFast = std::make_shared<wsched::ScanScheduler>(
-        "ScanFast", maxThreads, 3, priority++, memMan, fastest, fast);
-    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed, scanSlow};
+        "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast);
+    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
     wsched::BlendScheduler::Ptr blend =
-        std::make_shared<wsched::BlendScheduler>("blendSched", maxThreads, group, scanSchedulers);
+        std::make_shared<wsched::BlendScheduler>("blendSched", maxThreads, group, scanSlow, scanSchedulers);
 
     BOOST_CHECK(blend->ready() == false);
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
@@ -789,7 +790,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     int firstChunkId = 100;
     int secondChunkId = 150;
     int chunkId = firstChunkId;
-    wsched::ChunkTasksQueue ctl{memMan};
+    wsched::ChunkTasksQueue ctl{nullptr, memMan};
 
     BOOST_CHECK(ctl.empty() == true);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);

@@ -106,23 +106,33 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     uint maxThread = poolSize;
     int maxReserve = 2;
     auto group = std::make_shared<wsched::GroupScheduler>(
-                 "SchedGroup", maxThread, maxReserve, workerConfig.getMaxGroupSize(), wsched::SchedulerBase::getMaxPriority());
+        "SchedGroup", maxThread, maxReserve,
+        workerConfig.getMaxGroupSize(), wsched::SchedulerBase::getMaxPriority());
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
     int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
     int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
     int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    int const slowest = lsst::qserv::proto::ScanInfo::Rating::SLOWEST;
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(), memMan, medium+1, slow),
+            "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
+            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow),
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(), memMan, fast+1, medium),
+            "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
+            workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium),
         std::make_shared<wsched::ScanScheduler>(
-                 "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(), memMan, fastest, fast)
+            "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
+            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast),
+
     };
 
+    auto snail = std::make_shared<wsched::ScanScheduler>(
+        "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
+        workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest);
+
     _foreman = std::make_shared<wcontrol::Foreman>(
-        std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread, group, scanSchedulers),
+        std::make_shared<wsched::BlendScheduler>("BlendSched", maxThread, group, snail, scanSchedulers),
         poolSize,
         workerConfig.getMySqlConfig());
 }

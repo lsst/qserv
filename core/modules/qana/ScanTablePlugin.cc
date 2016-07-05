@@ -275,6 +275,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         info.scanRating = params.scanRating;
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
+        scanInfo.scanRating = std::min(scanInfo.scanRating, static_cast<int>(proto::ScanInfo::SLOWEST));
         LOGS(_log, LOG_LVL_DEBUG, "ScanInfo " << info.db << "." << info.table
               << " lockInMemory=" << info.lockInMemory << " rating=" << info.scanRating);
     }

@@ -139,6 +139,14 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
         if (iter == _activeChunk) {
             return false;
         }
+        if (_scheduler != nullptr
+              && _scheduler->getActiveChunkCount() >= _scheduler->getMaxActiveChunks()) {
+            int newChunkId = iter->second->getChunkId();
+            if (!_scheduler->chunkAlreadyActive(newChunkId)) {
+                return false;
+            }
+        }
+
         chunkState = iter->second->ready(useFlexibleLock);
     }
     if (chunkState == ChunkTasks::ReadyState::NO_RESOURCES) {
@@ -308,6 +316,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     if (_activeTasks.empty()) {
         return ChunkTasks::ReadyState::NOT_READY;
     }
+
     // Calling this function doesn't get expensive until it gets here. Luckily,
     // after this point it will return READY or NO_RESOURCES, and ChunkTasksQueue::_ready
     // will not examine any further chunks upon seeing those results.

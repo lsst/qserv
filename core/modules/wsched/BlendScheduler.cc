@@ -72,19 +72,21 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 BlendScheduler::BlendScheduler(std::string const& name,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
+                               std::shared_ptr<ScanScheduler> const& snailScheduler,
                                std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers)
-    : SchedulerBase{name, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanFast{scanSchedulers.at(0)} {
+    : SchedulerBase{name, 0, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
+      _group{group}, _scanSnail{snailScheduler} {
     dbgBlendScheduler = this;
     // If these are not defined, there is no point in continuing.
     assert(_group);
-    assert(_scanFast);
+    assert(_scanSnail);
     _schedulers.push_back(_group); // _group scheduler must be first in the list.
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
         sched->setBlendScheduler(this);
     }
-    assert(_schedulers.size() >= 2); // Must have at least _group and _scanFast in the list.
+    _schedulers.push_back(_scanSnail);
+    assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
     for (auto sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
@@ -152,11 +154,11 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             }
         }
         if (s == nullptr) {
-            // Task wasn't assigned with a scheduler, assuming it is simple and fast.
-            // TODO: This is probably not a good assumption for the long term, but fine for our
-            // integration test data and the like.
-            LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " " << task);
-            s = _scanFast.get();
+            // Task wasn't assigned with a scheduler, assuming it is terribly slow.
+            // Assign it to the slowest scheduler so it does the least damage to other queries.
+            LOGS_WARN(task->getIdStr() << " Task had unexpected scanRating="
+                      << scanPriority << " adding to scanSnail");
+            s = _scanSnail.get();
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Blend chose group");

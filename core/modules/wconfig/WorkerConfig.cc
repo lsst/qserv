@@ -54,12 +54,18 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _memManLocation(configStore.getRequired("memman.location")),
       _threadPoolSize(configStore.getInt("scheduler.thread_pool_size", wsched::BlendScheduler::getMinPoolSize())),
       _maxGroupSize(configStore.getInt("scheduler.group_size", 1)),
-      _prioritySlow(configStore.getInt("scheduler.priority_slow", 1)),
-      _priorityMed(configStore.getInt("scheduler.priority_med", 2)),
-      _priorityFast(configStore.getInt("scheduler.priority_fast", 3)),
+      _prioritySlow(configStore.getInt("scheduler.priority_slow", 2)),
+      _prioritySnail(configStore.getInt("scheduler.priority_snail", 1)),
+      _priorityMed(configStore.getInt("scheduler.priority_med", 3)),
+      _priorityFast(configStore.getInt("scheduler.priority_fast", 4)),
       _maxReserveSlow(configStore.getInt("scheduler.reserve_slow", 2)),
+      _maxReserveSnail(configStore.getInt("scheduler.reserve_snail", 2)),
       _maxReserveMed(configStore.getInt("scheduler.reserve_med", 2)),
-      _maxReserveFast(configStore.getInt("scheduler.reserve_fast", 2)) {
+      _maxReserveFast(configStore.getInt("scheduler.reserve_fast", 2)),
+      _maxActiveChunksSlow(configStore.getInt("scheduler.maxactivechunks_slow", 4)),
+      _maxActiveChunksSnail(configStore.getInt("scheduler.maxactivechunks_snail", 1)),
+      _maxActiveChunksMed(configStore.getInt("scheduler.maxactivechunks_med", 4)),
+      _maxActiveChunksFast(configStore.getInt("scheduler.maxactivechunks_fast", 4)) {
 }
 
 std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {

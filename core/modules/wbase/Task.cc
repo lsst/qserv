@@ -183,9 +183,12 @@ void Task::endTime() {
 void Task::waitForMemMan() {
     LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
     if (_memMan != nullptr) {
-        _memMan->waitFor(_memHandle);
+        auto err = _memMan->waitFor(_memHandle);
+        if (err) {
+            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << err);
+        }
     }
-    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {

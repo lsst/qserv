@@ -33,6 +33,7 @@
 #include "memman/MemMan.h"
 #include "wbase/Task.h"
 #include "wsched/ChunkTaskCollection.h"
+#include "wsched/SchedulerBase.h"
 
 namespace lsst {
 namespace qserv {
@@ -129,7 +130,8 @@ public:
 
     enum {READY, NOT_READY, NO_RESOURCES};
 
-    ChunkTasksQueue(memman::MemMan::Ptr const& memMan) : _memMan{memMan} {}
+    ChunkTasksQueue(SchedulerBase *scheduler, memman::MemMan::Ptr const& memMan) :
+        _memMan{memMan}, _scheduler{scheduler} {}
     ChunkTasksQueue(ChunkTasksQueue const&) = delete;
     ChunkTasksQueue& operator=(ChunkTasksQueue const&) = delete;
 
@@ -155,6 +157,7 @@ private:
     memman::MemMan::Ptr _memMan;
     std::atomic<int> _taskCount{0};
     bool _resourceStarved;
+    SchedulerBase* _scheduler; ///< Pointer to scheduler that owns this. This can be nullptr.
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -57,11 +57,12 @@ namespace qserv {
 namespace wsched {
 
 ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
-                             memman::MemMan::Ptr const& memMan, int minRating, int maxRating)
-    : SchedulerBase{name, maxThreads, maxReserve, priority},
+                             int maxActiveChunks, memman::MemMan::Ptr const& memMan,
+                             int minRating, int maxRating)
+    : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
-    //_disk = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
-    _taskQueue = std::make_shared<ChunkTasksQueue>(_memMan);
+    //_taskQueue = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
+    _taskQueue = std::make_shared<ChunkTasksQueue>(this, _memMan);
     assert(_minRating <= _maxRating);
 }
 
@@ -140,7 +141,9 @@ bool ScanScheduler::_ready() {
         return false;
     }
 
-    if (_taskQueue->nextTaskDifferentChunkId()) {
+    // Only run this test if _taskQueue is a ChunkDisk. ChunkTasksQueue does this internally.
+    if (std::dynamic_pointer_cast<ChunkDisk>(_taskQueue) != nullptr
+          &&_taskQueue->nextTaskDifferentChunkId()) {
         auto activeChunkCount = getActiveChunkCount();
         auto maxActiveChunks = getMaxActiveChunks();
         if (activeChunkCount >= maxActiveChunks) {
