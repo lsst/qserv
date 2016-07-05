@@ -114,7 +114,7 @@ public:
     /// @return ORDER BY part of SELECT statement to be executed by proxy
     virtual std::string getProxyOrderBy() override;
 
-    virtual std::string getQueryIdString() override;
+    virtual std::string getQueryIdString() const override;
 
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);

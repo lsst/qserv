@@ -21,8 +21,7 @@ socket = {{MYSQLD_SOCK}}
 
 # Memory available for locking tables, in MB
 # memory = 1000
-memory = 11000
-#memory = 7900
+memory = 7900
 
 # Path to database tables
 location = {{QSERV_DATA_DIR}}/mysql

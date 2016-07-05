@@ -87,7 +87,7 @@ public:
     virtual std::string getProxyOrderBy() = 0;
 
     /// @return this query's QueryId string. Many query types do not have valid Id numbers.
-    virtual std::string getQueryIdString() {
+    virtual std::string getQueryIdString() const {
         // return a string indicating this query has no QueryId.
         return QueryIdHelper::makeIdStr(0, true);
     }

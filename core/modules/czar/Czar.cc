@@ -137,8 +137,8 @@ Czar::submitQuery(std::string const& query,
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
-    auto finalizer = [uq, msgTable, queryIdStr]() mutable {
-        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " submitting new query");
+    auto finalizer = [uq, msgTable]() mutable {
+        LOGS(_log, LOG_LVL_DEBUG, uq->getQueryIdString() << " submitting new query");
         uq->submit();
         uq->join();
         try {
@@ -147,8 +147,8 @@ Czar::submitQuery(std::string const& query,
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
-            LOGS(_log, LOG_LVL_ERROR,
-                 queryIdStr << " Query finalization failed (client likely hangs): " << exc.what());
+            LOGS(_log, LOG_LVL_ERROR, uq->getQueryIdString()
+                 << " Query finalization failed (client likely hangs): " << exc.what());
         }
     };
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " starting finalizer thread for query");
