@@ -322,7 +322,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     // will not examine any further chunks upon seeing those results.
     auto task = _activeTasks.top();
     if (!task->hasMemHandle()) {
-        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::MUSTLOCK;
+        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::REQUIRED;
         if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
         memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
         auto scanInfo = task->getScanInfo();
@@ -338,7 +338,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
-        memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
+        memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:

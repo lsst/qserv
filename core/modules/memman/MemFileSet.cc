@@ -132,7 +132,7 @@ int MemFileSet::mapAll() {
     for (auto mfP : _lockFiles) {
         rc = mfP->memMap();
         if (rc != 0) return rc;
-        }
+    }
 
     // Try locking as many flexible files as we can. At some point we will
     // place unlocked flex files on a "want to lock" queue. FUTURE!!! In any
