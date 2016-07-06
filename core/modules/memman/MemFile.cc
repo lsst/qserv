@@ -64,7 +64,7 @@ MemFile::MLResult MemFile::memLock() {
     // Lock this table in memory if possible. If not, simulate an ENOMEM.
     //
     if (!_isMapped) rc = ENOMEM;
-        else {
+    else {
         rc = _memory.memLock(_memInfo, _isFlex);
         if (rc == 0) {
             MLResult aokResult(_memInfo.size(),0);
@@ -207,8 +207,7 @@ void MemFile::release() {
 
          // Remove the object from our cache
          //
-         auto it = fileCache.find(_fPath);
-         if (it != fileCache.end()) fileCache.erase(it);
+         fileCache.erase(_fPath);
     }
 
     // We lock the file mutex. We also get the size of the file as memRel()

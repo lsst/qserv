@@ -216,7 +216,7 @@ public:
 
 protected:
 
-static uint64_t lockLimit;
+    static uint64_t lockLimit;
 };
 
 }}} // namespace lsst:qserv:memman

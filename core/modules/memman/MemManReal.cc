@@ -63,7 +63,7 @@ MemMan::Statistics MemManReal::getStatistics() {
 
     // Get all the needed information and return it
     //
-    mStats = _memory.Statistics();
+    mStats = _memory.statistics();
 
     stats.bytesLockMax = mStats.bytesMax;
     stats.bytesLocked  = mStats.bytesLocked;
@@ -119,7 +119,7 @@ MemMan::Status MemManReal::getStatus(Handle handle) {
   
 int MemManReal::lock(MemMan::Handle handle, bool strict) {
 
-    MemFileSet* fsP;
+    MemFileSet* fsP = nullptr;
     int rc;
 
     // If this is a nil handle, then we need not do anything more. If this is
@@ -211,7 +211,7 @@ MemMan::Handle MemManReal::prepare(std::vector<TableInfo> const& tables, int chu
        std::lock_guard<std::mutex> guard(hanMutex);
 
        // Lock all required tables and any flexible tables we can. Upon success
-       // (with global lock held) update statistics, generate a file handle,
+       // (with global mutex held) update statistics, generate a file handle,
        // add it to the handle cache, and return the handle.
        //
        retc = fileSet->mapAll();
@@ -238,7 +238,7 @@ MemMan::Handle MemManReal::prepare(std::vector<TableInfo> const& tables, int chu
 
 bool MemManReal::unlock(Handle handle) {
 
-    MemFileSet* fsP;
+    MemFileSet* fsP = nullptr;
 
     // If this is a nill handle, then we need not do anything more. If this is
     // a bad handle, return failure.
