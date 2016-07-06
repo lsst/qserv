@@ -1,3 +1,21 @@
+R E L E A S E   2016_06
+=======================
+
+Release highlights:
+  * Scan scheduler enhancement to reduce query start delays
+  * Memory lock limit raised on docker containers for better shared scan performance
+  * Asynchronous memory locking for better shared scan performance
+  * End-to-end script to launch multi-node integrations tests on OpenStack
+
+Code improvements:
+  * DM-5906: Remove the qmeta::QueryId and use the typedef of QueryId instead
+  * DM-5907: Replace the heap in ScanScheduler with a list
+  * DM-6518: Fix scheduler delays caused by mlock call in memman
+
+Docker:
+  * DM-6062: Launch integration tests using Docker+Openstack
+  * DM-6177: Increase memory locked amount in container
+
 R E L E A S E   2016_05
 =======================
 
