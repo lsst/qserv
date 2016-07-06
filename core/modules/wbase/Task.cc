@@ -201,9 +201,11 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
 
 /// Wait for MemMan to finish reserving resources.
 void Task::waitForMemMan() {
+    static std::mutex mx;
     LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
     if (_memMan != nullptr) {
-        auto err = _memMan->waitFor(_memHandle);
+        std::lock_guard<std::mutex> lck(mx);
+        auto err = _memMan->lock(_memHandle, true);
         if (err) {
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << err);
         }
