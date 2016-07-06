@@ -167,7 +167,7 @@ void Memory::memRel(MemInfo& mInfo, bool islkd) {
         if (islkd) {
             _memMutex.lock();
             if (_lokBytes > mInfo._memSize) _lokBytes -= mInfo._memSize;
-                else _lokBytes = 0;
+            else _lokBytes = 0;
             _memMutex.unlock();
         }
         mInfo._memSize = 0;
