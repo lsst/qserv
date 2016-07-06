@@ -64,7 +64,7 @@ runcmd:
 # 'overlay' seems more robust than default setting
 - [ sed, -i, -e, '$a STORAGE_DRIVER=overlay', /etc/sysconfig/docker-storage-setup ]
 # overlay and selinux are not compliant in docker 1.9
-- [ sed, -i, -e, "s/OPTIONS='--selinux-enabled'/# OPTIONS='--selinux-enabled'/", /etc/sysconfig/docker ]
+- [ sed, -i, -e, "s/--selinux-enabled//", /etc/sysconfig/docker ]
 - [ /bin/systemctl, daemon-reload]
 - [ /bin/systemctl, restart,  docker.service]
 '''
