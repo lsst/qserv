@@ -41,7 +41,7 @@ namespace memman {
 
 class MemInfo {
 public:
-friend class Memory;
+    friend class Memory;
 
     //-----------------------------------------------------------------------------
     //! @brief Return reason why this object is not valid.
@@ -82,8 +82,8 @@ friend class Memory;
 
 private:
 
-union {void  *_memAddr; int _errCode;};
-uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
+    union {void  *_memAddr; int _errCode;};
+    uint64_t      _memSize;  //!< If contains 0 then _errCode is valid.
 };
 
 //-----------------------------------------------------------------------------
@@ -209,7 +209,7 @@ public:
         uint32_t numFlexFiles;   //!< Number of Flexible files encountered
     };
 
-    MemStats Statistics() {
+    MemStats statistics() {
         MemStats mStats;
         mStats.bytesMax      = _maxBytes;
         _memMutex.lock();
