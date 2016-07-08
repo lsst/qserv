@@ -99,13 +99,14 @@ docker build $CACHE_OPT --tag="$TAG" "$DOCKERDIR"
 # Use 'latest' as tag alias
 LATEST_VERSION=$(basename "$DOCKERDIR")
 LATEST_TAG="qserv/qserv:$LATEST_VERSION"
-docker tag --force "$TAG" "$LATEST_TAG"
+docker tag "$TAG" "$LATEST_TAG"
+docker push "$TAG"
 docker push "$LATEST_TAG"
 
 # dev and release are the same at
 # release time
 DEV_TAG="qserv/qserv:dev"
-docker tag --force "$TAG" "$DEV_TAG"
+docker tag "$TAG" "$DEV_TAG"
 docker push "$DEV_TAG"
 
 printf "Image %s built successfully\n" "$TAG"

@@ -32,8 +32,8 @@ STACK_DIR="/qserv/stack"
 mkdir -p $STACK_DIR
 cd $STACK_DIR
 
-curl -O "https://sw.lsstcorp.org/eupspkg/newinstall.sh"
-GIT=yes; ANACONDA=no; printf "$GIT\n$ANACONDA\n" > /tmp/answers.txt
+curl -OL https://raw.githubusercontent.com/lsst/lsst/12.0/scripts/newinstall.sh
+MINICONDA=N; echo "$MINICONDA" > /tmp/answers.txt
 
 # LSST stack require bash
 bash newinstall.sh < /tmp/answers.txt
