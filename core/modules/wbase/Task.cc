@@ -64,6 +64,7 @@ dump(std::ostream& os,
     return os;
 }
 
+/// Local EventThread for fifo serialization of mlock calls.
 lsst::qserv::util::EventThread ulockEvents{};
 std::once_flag ulockEventsFlag;
 void runUlockEventsThreadOnce() {
@@ -186,24 +187,10 @@ void Task::endTime() {
 
 /// Wait for MemMan to finish reserving resources.
 void Task::waitForMemMan() {
-    /* &&& delete after test
-    static std::mutex mx;
-    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
-    if (_memMan != nullptr) {
-        std::lock_guard<std::mutex> lck(mx);
-        auto err = _memMan->lock(_memHandle, true);
-        if (err) {
-            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << err);
-        }
-    }
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
-    */
-
     class CommandMlock : public util::CommandTracked {
     public:
         using Ptr = std::shared_ptr<CommandMlock>;
         CommandMlock(memman::MemMan::Ptr memMan, memman::MemMan::Handle handle) : _memMan{memMan}, _handle{handle} {}
-        /// Call mlock. waitComplete() will wait until this function is finished.
         void action(util::CmdData*) override {
             if (_memMan->lock(_handle, true)) {
                 errorCode = (errno == EAGAIN ? ENOMEM : errno);
@@ -219,7 +206,7 @@ void Task::waitForMemMan() {
     if (_memMan != nullptr) {
         runUlockEventsThreadOnce();
         auto cmd = std::make_shared<CommandMlock>(_memMan, _memHandle);
-        ulockEvents.queCmd(cmd);
+        ulockEvents.queCmd(cmd); // local EventThread for fifo serialization of mlock calls.
         cmd->waitComplete();
         if (cmd->errorCode) {
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << cmd->errorCode);
