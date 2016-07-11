@@ -169,7 +169,7 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Task::freeTaskQueryRunner pointer didn't match!");
+        LOGS(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
     }
 }
 
@@ -205,7 +205,10 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
 }
 
 
-/// Wait for MemMan to finish reserving resources.
+/// Wait for MemMan to finish reserving resources. The mlock call can take several seconds
+/// and only one mlock call can be running at a time. Further, queries finish slightly faster
+/// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
+/// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
     class CommandMlock : public util::CommandTracked {
     public:
