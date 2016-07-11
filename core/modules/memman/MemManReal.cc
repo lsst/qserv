@@ -129,9 +129,9 @@ int MemManReal::lock(MemMan::Handle handle, bool strict) {
     if (handle == HandleType::INVALID) return EINVAL;
 
     // Find the table set in the set cache. We need the handle mutex to do this
-    // so we use a lock gaurd in a nested scope. Since we don't want
+    // so we use a lock guard in a nested scope. Since we don't want
     // to keep the handle mutex during the long running lock operation, we
-    // get the pointer to he file set and lock it prior to leaving the scope.
+    // get the pointer to the file set and lock it prior to leaving the scope.
     // If the file set is already locked, then a lock() call is in progress.
     //
     {    std::lock_guard<std::mutex> guard(hanMutex);
