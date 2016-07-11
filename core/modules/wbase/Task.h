@@ -149,7 +149,7 @@ public:
     void waitForMemMan();
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
-    std::string getIdStr() {return _idStr;}
+    std::string getIdStr() const {return _idStr;}
 
     void startTime();
     void endTime();
