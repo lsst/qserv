@@ -168,6 +168,8 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         std::lock_guard<std::mutex> guard(_mapMutex);
         _map[task.get()] = s;
     }
+
+    _queries->addQueryTask(task);
     LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd " << task->getIdStr());
     s->queCmd(task);
     _infoChanged = true;

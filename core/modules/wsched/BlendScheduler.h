@@ -27,6 +27,7 @@
 #include <map>
 
 // Qserv headers
+#include "wsched/QueryStatistics.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -121,6 +122,8 @@ private:
 
     std::atomic<bool> _flagReorderScans{false};
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
+
+    Queries _queries; // &&& right place for this??
 };
 
 }}} // namespace lsst::qserv::wsched
