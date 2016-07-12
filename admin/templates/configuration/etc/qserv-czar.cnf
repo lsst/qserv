@@ -41,7 +41,7 @@ emptyChunkPath = {{QSERV_DATA_DIR}}/qserv
 # doesn't exist then emptyChunkListFile is used for queries on $DBNAME
 emptyChunkListFile = {{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 
-#[tuning]
+[tuning]
 #memoryEngine = yes
 largeResultPoolSize = 3
 
