@@ -58,9 +58,8 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
                         configStore.get("qmeta.unix_socket"),
                         configStore.get("qmeta.db", "qservMeta")),
        _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
-       _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")) {
-       // TODO: DM-6160 enable the line below when the segfault problem is fixed.
-       //_largeResultPoolSize(configStore.getInt("tuning.largeResultPoolSize", 12)) {
+       _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
+       _largeResultPoolSize(configStore.getInt("tuning.largeResultPoolSize", 3)) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {
