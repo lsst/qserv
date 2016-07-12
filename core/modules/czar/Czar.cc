@@ -68,9 +68,7 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
-    // TODO: DM-6160 set size from configuration file
-    // int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
-    int largeResultPoolSize = 3;
+    int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
     rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
