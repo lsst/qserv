@@ -74,7 +74,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
         return;
     }
-    task->startTime();
+    // task->startTime(); &&& delete
     LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart " << task->getIdStr());
     // task was registered Inflight when getCmd() was called.
 }
@@ -89,7 +89,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
     _taskQueue->taskComplete(t);
-    t->endTime();
+    // t->finished(); &&& delete
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
         _memMan->unlock(_memManHandleToUnlock);

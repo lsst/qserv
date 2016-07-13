@@ -33,6 +33,7 @@
 #include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
+#include "wpublish/QueryStatistics.h"
 
 // Forward declarations
 namespace lsst {
@@ -67,7 +68,8 @@ public:
 /// The schedulers may limit the number of threads they will use from the thread pool.
 class Foreman : public wbase::MsgProcessor {
 public:
-    Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig);
+    Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
+            wpublish::Queries::Ptr const& queries);
     virtual ~Foreman();
     // This class should not be copied.
     Foreman(Foreman const&) = delete;
@@ -76,11 +78,11 @@ public:
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
 private:
-
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;
     mysql::MySqlConfig const _mySqlConfig;
+    wpublish::Queries::Ptr _queries;
 };
 
 }}}  // namespace lsst::qserv::wcontrol

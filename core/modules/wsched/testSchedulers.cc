@@ -38,6 +38,7 @@
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
+#include "wpublish/QueryStatistics.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
@@ -420,8 +421,10 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     auto scanFast = std::make_shared<wsched::ScanScheduler>(
         "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast);
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
+    auto queries = std::make_shared<lsst::qserv::wpublish::Queries>();
     wsched::BlendScheduler::Ptr blend =
-        std::make_shared<wsched::BlendScheduler>("blendSched", maxThreads, group, scanSlow, scanSchedulers);
+        std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
+                                                 group, scanSlow, scanSchedulers);
 
     BOOST_CHECK(blend->ready() == false);
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
@@ -557,6 +560,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->ready() == false); // all threads in use
 
     // Finishing a fast Task should allow the last fast Task to go.
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 call commandFinish");
     blend->commandFinish(osF3);
     auto osF4 = blend->getCmd(false);
     BOOST_CHECK(osF4.get() == sF4.get());

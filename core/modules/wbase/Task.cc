@@ -152,6 +152,7 @@ void Task::cancel() {
     }
 }
 
+
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
@@ -167,15 +168,34 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
 }
 
 
-void Task::startTime() {
-    _startTime = std::chrono::system_clock::now();
+/// Set values associated with the Task being put on the queue.
+void Task::queued(std::chrono::system_clock::time_point const& now) {
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    _state = State::QUEUED;
+    _queueTime = now;
 }
 
 
-void Task::endTime() {
-    _endTime = std::chrono::system_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(_endTime - _startTime);
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing sec=" << duration.count());
+/// Set values associated with the Task being started.
+void Task::started(std::chrono::system_clock::time_point const& now) {
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    _state = State::RUNNING;
+    _startTime = now;
+}
+
+
+/// Set values associated with the Task being finished.
+/// @return milliseconds to complete the Task, system clock time.
+std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point const& now) {
+    std::chrono::milliseconds duration;
+    {
+        std::lock_guard<std::mutex> guard(_stateMtx);
+        _finishTime = now;
+        _state = State::FINISHED;
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+    }
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing millisecs=" << duration.count());
+    return duration;
 }
 
 

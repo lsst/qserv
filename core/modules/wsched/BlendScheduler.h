@@ -26,8 +26,8 @@
 // System headers
 #include <map>
 
+#include "../wpublish/QueryStatistics.h"
 // Qserv headers
-#include "wsched/QueryStatistics.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -83,6 +83,7 @@ public:
     static int getMinPoolSize(){ return 11; }
 
     BlendScheduler(std::string const& name,
+                   wpublish::Queries::Ptr const& queries,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -102,7 +103,7 @@ public:
     int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
     void setFlagReorderScans() { _flagReorderScans = true; }
-    wcontrol::Scheduler* lookup(wbase::Task::Ptr p, bool erase=false);
+    // wcontrol::Scheduler* lookup(wbase::Task::Ptr p, bool erase=false); &&& delete
     int calcAvailableTheads();
 
 private:
@@ -117,13 +118,13 @@ private:
     std::shared_ptr<GroupScheduler> _group;    ///< group scheduler
     std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
-    std::map<wbase::Task*, SchedulerBase*> _map;
-    std::mutex _mapMutex;
+    // std::map<wbase::Task*, SchedulerBase*> _map; &&& delete
+    // std::mutex _mapMutex; &&& delete
 
     std::atomic<bool> _flagReorderScans{false};
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
-    Queries _queries; // &&& right place for this??
+    wpublish::Queries::Ptr _queries; /// UserQuery statistics.
 };
 
 }}} // namespace lsst::qserv::wsched

@@ -70,12 +70,13 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 
 BlendScheduler::BlendScheduler(std::string const& name,
+                               wpublish::Queries::Ptr const& queries,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
                                std::shared_ptr<ScanScheduler> const& snailScheduler,
                                std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers)
     : SchedulerBase{name, 0, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanSnail{snailScheduler} {
+      _group{group}, _scanSnail{snailScheduler}, _queries{queries} {
     dbgBlendScheduler = this;
     // If these are not defined, there is no point in continuing.
     assert(_group);
@@ -131,7 +132,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
 
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Check for scan tables
-    SchedulerBase* s = nullptr;
+    SchedulerBase::Ptr s{nullptr};
     auto const& scanTables = task->getScanInfo().infoTables;
     if (scanTables.size() > 0) {
         int scanPriority = task->getScanInfo().scanRating;
@@ -145,7 +146,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         }
 
         for (auto const& sched : _schedulers) {
-            ScanScheduler *scan = dynamic_cast<ScanScheduler*>(sched.get());
+            ScanScheduler::Ptr scan = std::dynamic_pointer_cast<ScanScheduler>(sched);
             if (scan != nullptr) {
                 if (scan->isRatingInRange(scanPriority)) {
                     s = scan;
@@ -158,20 +159,17 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             // Assign it to the slowest scheduler so it does the least damage to other queries.
             LOGS_WARN(task->getIdStr() << " Task had unexpected scanRating="
                       << scanPriority << " adding to scanSnail");
-            s = _scanSnail.get();
+            s = _scanSnail;
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Blend chose group");
-        s = _group.get();
+        s = _group;
     }
-    {
-        std::lock_guard<std::mutex> guard(_mapMutex);
-        _map[task.get()] = s;
-    }
+    task->setTaskScheduler(s);
 
-    _queries->addQueryTask(task);
     LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd " << task->getIdStr());
     s->queCmd(task);
+    _queries->queuedTask(task);
     _infoChanged = true;
     notify(true);
 }
@@ -184,12 +182,15 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
-    wcontrol::Scheduler* s = lookup(t);
+    // wcontrol::Scheduler* s = lookup(t); // &&& should the scheduler just be made part of Task ???
+    wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandStart(t);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found " << t ->getIdStr());
     }
+
+    _queries->startedTask(t);
     _infoChanged = true;
 }
 
@@ -199,8 +200,8 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
-    wcontrol::Scheduler* s = lookup(t, true); // erase entry in map
-
+    // wcontrol::Scheduler* s = lookup(t, true); // erase entry in map &&& delete
+    wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
@@ -210,11 +211,12 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     _infoChanged = true;
     _logChunkStatus();
 
-    // TODO: DM-4943 Add check to only call notify if resources were actually freed by commandFinish()
-    notify(true);
+    _queries->finishedTask(t);
 
+    notify(true);
 }
 
+/* &&& delete
 /// @return ptr to scheduler that is tracking p
 wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p, bool erase) {
     std::lock_guard<std::mutex> guard(_mapMutex);
@@ -227,6 +229,7 @@ wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p, bool erase) {
     if (erase) _map.erase(i);
     return val;
 }
+*/
 
 
 bool BlendScheduler::ready() {

@@ -31,22 +31,31 @@
 
 namespace lsst {
 namespace qserv {
-namespace wsched {
+namespace wpublish {
+
+class Queries;
 
 class QueryStatistics {
 public:
+    using Ptr = std::shared_ptr<QueryStatistics>;
     explicit QueryStatistics(QueryId const& queryId) : _queryId{_queryId} {}
 
-    // private: &&& make private
-    QueryId _queryId;
+    void addTask(wbase::Task::Ptr const& task);
 
-    int _tasksTotal{0};
+    friend class Queries;
+
+private:
+    std::mutex _mx;
+    QueryId const _queryId;
+    std::chrono::system_clock::time_point _touched{std::chrono::system_clock::now()};
+
     int _tasksCompleted{0};
-    int _tasksInFlight{0};
+    int _tasksRunning{0};
     int _tasksBooted{0}; ///< Number of Tasks booted for being too slow.
 
     double _totalCompletionTime{0.0};
-    double _avgTaskCompletionTime{0.0};
+
+    std::map<int, wbase::Task::Ptr> _taskMap;
 };
 
 
@@ -64,12 +73,20 @@ private:
 
 class Queries {
 public:
-    void addQueryTask(wbase::Task::Ptr const& task);
+    using Ptr = std::shared_ptr<Queries>;
+
+    QueryStatistics::Ptr getStats(QueryId const& qId) const;
+
+    void addTask(wbase::Task::Ptr const& task);
+    void queuedTask(wbase::Task::Ptr const& task);
+    void startedTask(wbase::Task::Ptr const& task);
+    void finishedTask(wbase::Task::Ptr const& task);
 
 //private: &&& make private
-    std::map<QueryId, QueryStatistics> _queryStats;
+    mutable std::mutex _qStatsMtx; ///< protects _queryStats;
+    std::map<QueryId, QueryStatistics::Ptr> _queryStats;
 };
 
 
-}}} // namespace lsst::qserv::wsched
+}}} // namespace lsst::qserv::wpublish
 #endif // LSST_QSERV_WSCHED_QUERYSTATISTICS_H

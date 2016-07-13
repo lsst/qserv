@@ -109,6 +109,8 @@ public:
     using Ptr =  std::shared_ptr<Task>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
+    enum class State {CREATED, QUEUED, RUNNING, FINISHED};
+
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
     };
@@ -135,6 +137,7 @@ public:
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
+    TaskScheduler::Ptr getTaskScheduler() { return _taskScheduler.lock(); }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
@@ -148,11 +151,13 @@ public:
     void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
     void waitForMemMan();
 
-    static IdSet allIds; // set of all task jobId numbers that are not complete.
+    static IdSet allIds; // set of all task jobId numbers that are not complete.   // &&& move to class Queries
     std::string getIdStr() {return _idStr;}
 
-    void startTime();
-    void endTime();
+    // Functions for tracking task state and statistics.
+    void queued(std::chrono::system_clock::time_point const& now);
+    void started(std::chrono::system_clock::time_point const& now);
+    std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
 private:
     QueryId  const    _qId{0}; //< queryId from czar
@@ -166,8 +171,11 @@ private:
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 
+    std::mutex _stateMtx; ///< Mutex to protect state related members _state, _???Time.
+    State _state{State::CREATED};
+    std::chrono::system_clock::time_point _queueTime;
     std::chrono::system_clock::time_point _startTime;
-    std::chrono::system_clock::time_point _endTime;
+    std::chrono::system_clock::time_point _finishTime;
 };
 
 /// MsgProcessor implementations handle incoming Task objects.
