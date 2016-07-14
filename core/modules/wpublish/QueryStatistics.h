@@ -59,16 +59,47 @@ private:
 };
 
 
-class SchedulerChunkStatistics {
+class ChunkTableStatistics {
 public:
+    using Ptr = std::shared_ptr<ChunkTableStatistics>;
 
+    static std::string makeTableName(std::string const& db, std::string const& table) {
+        return db + ":" + table;
+    }
+
+    ChunkTableStatistics(std::string const& name) : _scanTableName{name} {}
+
+    void addTaskFinished(double duration);
 private:
-    int _tasksCompleted{0};
-    double _totalCompletionTime{0.0};
-    // effects of system load???  &&&
-    // effects of Tasks running for other chunks??? &&&
-    // keep rolling average of past 100 tasks??? &&&
+    std::mutex _mtx;
+    std::string const _scanTableName;
+
+    std::uint64_t _tasksCompleted{0}; ///< Number of Tasks that have completed on this chunk/table.
+    std::uint16_t _tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
+
+    double _avgCompletionTime{0.0}; ///< weighted average of completion time
+    double _weightAvg{99.0}; ///< weight of previous average
+    double _weightDur{1.0}; ///< weight of new measurement
+    double _weightSum{_weightAvg + _weightDur}; ///< denominator
 };
+
+
+
+class ChunkTaskStatistics {
+public:
+    using Ptr = std::shared_ptr<ChunkTaskStatistics>;
+
+    ChunkTaskStatistics(int chunkId) : _chunkId{chunkId} {}
+
+    ChunkTableStatistics::Ptr add(std::string const& scanTableName, double duration);
+    ChunkTableStatistics::Ptr getStats(std::string const& scanTableName) const;
+private:
+    int const _chunkId;
+    mutable std::mutex _tStatsMtx; ///< protects _tableStats;
+    /// Map of chunk scan table statistics indexed by slowest scan table name in query.
+    std::map<std::string, ChunkTableStatistics::Ptr> _tableStats;
+};
+
 
 
 class Queries {
@@ -82,9 +113,14 @@ public:
     void startedTask(wbase::Task::Ptr const& task);
     void finishedTask(wbase::Task::Ptr const& task);
 
-//private: &&& make private
+private:
+    void _finishedTaskForChunk(wbase::Task::Ptr const& task, double duration);
+
     mutable std::mutex _qStatsMtx; ///< protects _queryStats;
-    std::map<QueryId, QueryStatistics::Ptr> _queryStats;
+    std::map<QueryId, QueryStatistics::Ptr> _queryStats; ///< Map of Query stats indexed by QueryId.
+
+    mutable std::mutex _chunkMtx;
+    std::map<int, ChunkTaskStatistics::Ptr> _chunkStats;///< Map of Chunk stats indexed by chunk id.
 };
 
 

@@ -80,7 +80,7 @@ void Queries::startedTask(wbase::Task::Ptr const& task) {
 void Queries::finishedTask(wbase::Task::Ptr const& task) {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     double taskDuration = (double)(task->finished(now).count());
-    taskDuration /= 1000.0;
+    taskDuration /= 60000.0; // convert to minutes.
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
@@ -91,10 +91,31 @@ void Queries::finishedTask(wbase::Task::Ptr const& task) {
         stats->_totalCompletionTime += taskDuration;
     }
 
-    // &&& add statistics to SchedulerChunkStatistics.
+    _finishedTaskForChunk(task, taskDuration);
 }
 
 
+/// &&& doc
+void Queries::_finishedTaskForChunk(wbase::Task::Ptr const& task, double taskDuration) {
+    std::unique_lock<std::mutex> ul(_chunkMtx);
+    std::pair<int, ChunkTaskStatistics::Ptr> ele(task->getChunkId(), nullptr);
+    auto res = _chunkStats.insert(ele);
+    if (res.second) {
+        res.first->second = std::make_shared<ChunkTaskStatistics>(task->getChunkId());
+    }
+    ul.unlock();
+    auto iter = res.first->second;
+    proto::ScanInfo& scanInfo = task->getScanInfo();
+    std::string tblName = "";
+    if (!scanInfo.infoTables.empty()) {
+        proto::ScanTableInfo &sti = scanInfo.infoTables.at(0);
+        tblName = ChunkTableStatistics::makeTableName(sti.db, sti.table);
+    }
+    ChunkTableStatistics::Ptr tableStats = iter->add(tblName, taskDuration);
+}
+
+
+/// &&& doc
 QueryStatistics::Ptr Queries::getStats(QueryId const& qId) const {
     std::lock_guard<std::mutex> g(_qStatsMtx);
     auto iter = _queryStats.find(qId);
@@ -105,10 +126,49 @@ QueryStatistics::Ptr Queries::getStats(QueryId const& qId) const {
 }
 
 
+/// &&& doc
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
     std::lock_guard<std::mutex> guard(_mx);
     std::pair<int, wbase::Task::Ptr> ent(task->getJobId(), task);
     _taskMap.insert(ent);
+}
+
+
+/// &&& doc
+ChunkTableStatistics::Ptr ChunkTaskStatistics::add(std::string const& scanTableName, double duration) {
+    std::pair<std::string, ChunkTableStatistics::Ptr> ele(scanTableName, nullptr);
+    std::unique_lock<std::mutex> ul(_tStatsMtx);
+    auto res = _tableStats.insert(ele);
+    auto iter = res.first;
+    if (res.second) {
+        iter->second = std::make_shared<ChunkTableStatistics>(scanTableName);
+    }
+    ul.unlock();
+    iter->second->addTaskFinished(duration);
+    return iter->second;
+}
+
+
+/// &&& doc
+ChunkTableStatistics::Ptr ChunkTaskStatistics::getStats(std::string const& scanTableName) const {
+    std::lock_guard<std::mutex> g(_tStatsMtx);
+    auto iter = _tableStats.find(scanTableName);
+    if (iter != _tableStats.end()) {
+        return iter->second;
+    }
+    return nullptr;
+}
+
+
+/// &&& doc
+void ChunkTableStatistics::addTaskFinished(double duration) {
+    std::lock_guard<std::mutex> g(_mtx);
+    ++_tasksCompleted;
+    if (_tasksCompleted > 1) {
+        _avgCompletionTime = (_avgCompletionTime*_weightAvg + duration*_weightDur)/_weightSum;
+    } else {
+        _avgCompletionTime = duration;
+    }
 }
 
 
