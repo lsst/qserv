@@ -70,7 +70,7 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 
 BlendScheduler::BlendScheduler(std::string const& name,
-                               wpublish::Queries::Ptr const& queries,
+                               wpublish::QueryChunkStatistics::Ptr const& queries,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
                                std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -182,7 +182,6 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
-    // wcontrol::Scheduler* s = lookup(t); // &&& should the scheduler just be made part of Task ???
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandStart(t);
@@ -200,7 +199,6 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
-    // wcontrol::Scheduler* s = lookup(t, true); // erase entry in map &&& delete
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandFinish(t);
@@ -215,21 +213,6 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     notify(true);
 }
-
-/* &&& delete
-/// @return ptr to scheduler that is tracking p
-wcontrol::Scheduler* BlendScheduler::lookup(wbase::Task::Ptr p, bool erase) {
-    std::lock_guard<std::mutex> guard(_mapMutex);
-    auto i = _map.find(p.get());
-    if (i == _map.end()) {
-        LOGS(_log, LOG_LVL_ERROR, "lookup failed to find scheduler " << p->getIdStr());
-        return nullptr;
-    }
-    auto val = i->second;
-    if (erase) _map.erase(i);
-    return val;
-}
-*/
 
 
 bool BlendScheduler::ready() {

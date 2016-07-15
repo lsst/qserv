@@ -151,7 +151,7 @@ public:
     void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
     void waitForMemMan();
 
-    static IdSet allIds; // set of all task jobId numbers that are not complete.   // &&& move to class Queries
+    static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
 
     // Functions for tracking task state and statistics.

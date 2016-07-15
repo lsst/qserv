@@ -30,6 +30,7 @@
 // Third-party headers
 
 // LSST headers
+#include "../wpublish/QueryChunkStatistics.h"
 #include "ChunkTasksQueue.h"
 #include "lsst/log/Log.h"
 
@@ -38,7 +39,6 @@
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
-#include "wpublish/QueryStatistics.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     auto scanFast = std::make_shared<wsched::ScanScheduler>(
         "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast);
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
-    auto queries = std::make_shared<lsst::qserv::wpublish::Queries>();
+    auto queries = std::make_shared<lsst::qserv::wpublish::QueryChunkStatistics>(std::chrono::seconds(1));
     wsched::BlendScheduler::Ptr blend =
         std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                                                  group, scanSlow, scanSchedulers);

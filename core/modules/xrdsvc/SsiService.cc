@@ -131,7 +131,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
         workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest);
 
-    wpublish::Queries::Ptr queries = std::make_shared<wpublish::Queries>();
+    wpublish::QueryChunkStatistics::Ptr queries = std::make_shared<wpublish::QueryChunkStatistics>(std::chrono::minutes(5));
     _foreman = std::make_shared<wcontrol::Foreman>(
         std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
                                                  maxThread, group, snail, scanSchedulers),
