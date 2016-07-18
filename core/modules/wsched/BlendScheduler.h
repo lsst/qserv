@@ -26,7 +26,8 @@
 // System headers
 #include <map>
 
-#include "../wpublish/QueryChunkStatistics.h"
+// Qserv headers
+#include "wpublish/QueryChunkStatistics.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations

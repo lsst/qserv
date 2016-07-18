@@ -27,11 +27,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Third-party headers
 
 // LSST headers
-#include "../wpublish/QueryChunkStatistics.h"
-#include "ChunkTasksQueue.h"
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -39,7 +36,9 @@
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
+#include "wpublish/QueryChunkStatistics.h"
 #include "wsched/ChunkDisk.h"
+#include "wsched/ChunkTasksQueue.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"

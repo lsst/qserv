@@ -28,12 +28,13 @@
 #include <atomic>
 #include <memory>
 
-#include "../wpublish/QueryChunkStatistics.h"
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
+#include "wpublish/QueryChunkStatistics.h"
+
 
 // Forward declarations
 namespace lsst {

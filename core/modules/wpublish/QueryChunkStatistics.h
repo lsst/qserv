@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 LSST Corporation.
+ * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WSCHED_QUERYCHUNKSTATISTICS_H
-#define LSST_QSERV_WSCHED_QUERYCHUNKSTATISTICS_H
+#ifndef LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H
+#define LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H
 
 // System headers
 
@@ -42,7 +42,7 @@ class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
-    explicit QueryStatistics(QueryId const& queryId) : _queryId{_queryId} {}
+    explicit QueryStatistics(QueryId const& queryId) : _queryId{queryId} {}
 
     void addTask(wbase::Task::Ptr const& task);
 
@@ -52,7 +52,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
-    bool _isMostlyDead();
+    bool _isMostlyDead() const;
 
     mutable std::mutex _mx;
     QueryId const _queryId;
@@ -63,7 +63,7 @@ private:
     int _tasksRunning{0};
     int _tasksBooted{0}; ///< Number of Tasks booted for being too slow.
 
-    double _totalCompletionTime{0.0};
+    double _totalTimeMinutes{0.0};
 
     std::map<int, wbase::Task::Ptr> _taskMap;
 };
@@ -71,7 +71,7 @@ private:
 /// Statistics for a table in a chunk. Statistics are base on the slowest table in a query,
 /// so this most likely includes values for queries on _scanTableName and queries that join
 /// against _scanTableName. Source is slower than Object, so joins with Source and Object will
-/// have there statistics logged with Source.
+/// have their statistics logged with Source.
 class ChunkStatsTable {
 public:
     using Ptr = std::shared_ptr<ChunkStatsTable>;
@@ -82,7 +82,7 @@ public:
 
     ChunkStatsTable(int chunkId, std::string const& name) : _chunkId{chunkId}, _scanTableName{name} {}
 
-    void addTaskFinished(double duration);
+    void addTaskFinished(double minutes);
 
 private:
     std::mutex _mtx;
@@ -90,7 +90,7 @@ private:
     std::string const _scanTableName;
 
     std::uint64_t _tasksCompleted{0}; ///< Number of Tasks that have completed on this chunk/table.
-    std::uint16_t _tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
+    std::uint64_t _tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
 
     double _avgCompletionTime{0.0}; ///< weighted average of completion time
     double _weightAvg{49.0}; ///< weight of previous average
@@ -148,7 +148,7 @@ public:
     void finishedTask(wbase::Task::Ptr const& task);
 
 private:
-    void _finishedTaskForChunk(wbase::Task::Ptr const& task, double duration);
+    void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
     mutable std::mutex _qStatsMtx; ///< protects _queryStats;
     std::map<QueryId, QueryStatistics::Ptr> _queryStats; ///< Map of Query stats indexed by QueryId.
@@ -168,4 +168,4 @@ private:
 
 
 }}} // namespace lsst::qserv::wpublish
-#endif // LSST_QSERV_WSCHED_QUERYCHUNKSTATISTICS_H
+#endif // LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H

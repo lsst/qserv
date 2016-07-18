@@ -22,14 +22,14 @@
  */
 
 // Class header
-#include "lsst/log/Log.h"
-#include "QueryChunkStatistics.h"
+#include "wpublish/QueryChunkStatistics.h"
 
-// Qserv headers
+// LSST headers
+#include "lsst/log/Log.h"
 
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.QueryStatistics");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueryChunkStatistics");
 }
 
 namespace lsst {
@@ -55,7 +55,7 @@ void QueryChunkStatistics::addTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that was just queued.
 void QueryChunkStatistics::queuedTask(wbase::Task::Ptr const& task) {
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
     task->queued(now);
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
@@ -69,7 +69,7 @@ void QueryChunkStatistics::queuedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that just started.
 void QueryChunkStatistics::startedTask(wbase::Task::Ptr const& task) {
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
     task->started(now);
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
@@ -83,7 +83,7 @@ void QueryChunkStatistics::startedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that finished an the chunk it was querying on.
 void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
     double taskDuration = (double)(task->finished(now).count());
     taskDuration /= 60000.0; // convert to minutes.
 
@@ -93,9 +93,8 @@ void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
         stats->_touched = now;
         stats->_tasksRunning -= 1;
         stats->_tasksCompleted += 1;
-        stats->_totalCompletionTime += taskDuration;
+        stats->_totalTimeMinutes += taskDuration;
         if (stats->_isMostlyDead()) {
-            LOGS(_log, LOG_LVL_DEBUG, "&&& deadList adding task");
             std::lock_guard<std::mutex> gd(_deadMtx);
             _deadList.push_back(stats);
         }
@@ -106,7 +105,7 @@ void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
 
 
 /// Update statistics for the Task that finished an the chunk it was querying on.
-void QueryChunkStatistics::_finishedTaskForChunk(wbase::Task::Ptr const& task, double taskDuration) {
+void QueryChunkStatistics::_finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes) {
     std::unique_lock<std::mutex> ul(_chunkMtx);
     std::pair<int, ChunkStats::Ptr> ele(task->getChunkId(), nullptr);
     auto res = _chunkStats.insert(ele);
@@ -121,43 +120,42 @@ void QueryChunkStatistics::_finishedTaskForChunk(wbase::Task::Ptr const& task, d
         proto::ScanTableInfo &sti = scanInfo.infoTables.at(0);
         tblName = ChunkStatsTable::makeTableName(sti.db, sti.table);
     }
-    ChunkStatsTable::Ptr tableStats = iter->add(tblName, taskDuration);
+    ChunkStatsTable::Ptr tableStats = iter->add(tblName, minutes);
 }
 
 
 /// Go through the list of possibly dead queries and remove those that are too old.
 void QueryChunkStatistics::removeDead() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryChunkStatistics::removeDead");
     std::vector<QueryStatistics::Ptr> dList;
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
     {
         std::lock_guard<std::mutex> g(_deadMtx);
         LOGS(_log, LOG_LVL_DEBUG, "QueryChunkStatistics::removeDead deadList size=" << _deadList.size());
         auto iter = _deadList.begin();
-        auto end = _deadList.end();
-        for (;iter != end; ++iter) {
+        while (iter != _deadList.end()) {
             if ((*iter)->isDead(_deadAfter, now)) {
+                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr((*iter)->_queryId)
+                     << " QueryChunkStatistics::removeDead added to list");
                 dList.push_back(*iter);
                 iter = _deadList.erase(iter);
+            } else {
+                ++iter;
             }
         }
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "QueryChunkStatistics::removeDead mid &&&"); // temporary
-    for (auto const& dead:dList) {
+    for (auto const& dead : dList) {
         removeDead(dead);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryChunkStatistics::removeDead end &&&"); // temporary
 }
 
 
 /// Remove a statistics for a user query.
 void QueryChunkStatistics::removeDead(QueryStatistics::Ptr const& queryStats) {
-    LOGS(_log, LOG_LVL_DEBUG, " Queries::removeDead " << queryStats);
-
     std::unique_lock<std::mutex> gS(queryStats->_mx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
+    LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " Queries::removeDead");
 
     std::lock_guard<std::mutex> gQ(_qStatsMtx);
     _queryStats.erase(qId);
@@ -196,14 +194,14 @@ bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_
 
 /// @return true if all Tasks for this query are complete.
 /// Precondition, _mx must be locked.
-bool QueryStatistics::_isMostlyDead() {
+bool QueryStatistics::_isMostlyDead() const {
     return _tasksCompleted >= _size;
 }
 
 std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
     std::lock_guard<std::mutex> gd(q._mx);
     os << QueryIdHelper::makeIdStr(q._queryId)
-       << " time="           << q._totalCompletionTime
+       << " time="           << q._totalTimeMinutes
        << " size="           << q._size
        << " tasksCompleted=" << q._tasksCompleted
        << " tasksRunning="   << q._tasksRunning
@@ -214,7 +212,7 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
 
 /// Add the duration to the statistics for the table. Create a statistics object if needed.
 /// @return the statistics for the table.
-ChunkStatsTable::Ptr ChunkStats::add(std::string const& scanTableName, double duration) {
+ChunkStatsTable::Ptr ChunkStats::add(std::string const& scanTableName, double minutes) {
     std::pair<std::string, ChunkStatsTable::Ptr> ele(scanTableName, nullptr);
     std::unique_lock<std::mutex> ul(_tStatsMtx);
     auto res = _tableStats.insert(ele);
@@ -223,7 +221,7 @@ ChunkStatsTable::Ptr ChunkStats::add(std::string const& scanTableName, double du
         iter->second = std::make_shared<ChunkStatsTable>(_chunkId, scanTableName);
     }
     ul.unlock();
-    iter->second->addTaskFinished(duration);
+    iter->second->addTaskFinished(minutes);
     return iter->second;
 }
 
@@ -240,13 +238,13 @@ ChunkStatsTable::Ptr ChunkStats::getStats(std::string const& scanTableName) cons
 
 
 /// Use the duration of the last Task completed to adjust the average completion time.
-void ChunkStatsTable::addTaskFinished(double duration) {
+void ChunkStatsTable::addTaskFinished(double minutes) {
     std::lock_guard<std::mutex> g(_mtx);
     ++_tasksCompleted;
     if (_tasksCompleted > 1) {
-        _avgCompletionTime = (_avgCompletionTime*_weightAvg + duration*_weightDur)/_weightSum;
+        _avgCompletionTime = (_avgCompletionTime*_weightAvg + minutes*_weightDur)/_weightSum;
     } else {
-        _avgCompletionTime = duration;
+        _avgCompletionTime = minutes;
     }
     LOGS(_log, LOG_LVL_DEBUG, "ChkId=" << _chunkId << ":tbl=" << _scanTableName
          << " completed=" << _tasksCompleted
@@ -254,4 +252,4 @@ void ChunkStatsTable::addTaskFinished(double duration) {
 }
 
 
-}}} // namespace lsst:qserv:wsched
+}}} // namespace lsst:qserv:wpublish
