@@ -69,6 +69,8 @@ public:
     std::size_t size() const { return _activeTasks.size() + _pendingTasks.size(); }
     int getChunkId() { return _chunkId; }
 
+    wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task);
+
     /// Class that keeps the slowest tables at the front of the heap.
     class SlowTableHeap {
     public:
@@ -137,7 +139,7 @@ public:
 
     void queueTask(wbase::Task::Ptr const& task) override;
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
-    bool empty() const override { return _chunkMap.empty(); }
+    bool empty() const override;
     std::size_t getSize() const override { return _taskCount; }
     bool ready(bool useFlexibleLock) override;
     void taskComplete(wbase::Task::Ptr const& task) override;
@@ -146,10 +148,13 @@ public:
     bool nextTaskDifferentChunkId() override;
     int getActiveChunkId(); ///< return the active chunk id, or -1 if there isn't one.
 
+    wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
+
 private:
     bool _ready(bool useFlexibleLock);
+    bool _empty() const { return _chunkMap.empty(); }
 
-    std::mutex _mapMx; ///< Protects _chunkMap, _activeChunk, and _readyChunk.
+    mutable std::mutex _mapMx; ///< Protects _chunkMap, _activeChunk, and _readyChunk.
     ChunkMap _chunkMap; ///< map by chunk Id.
     ChunkMap::iterator _activeChunk{_chunkMap.end()}; ///< points at the active ChunkTasks in _chunkList
     ChunkTasks::Ptr _readyChunk{nullptr}; ///< Chunk with the task that's ready to run.

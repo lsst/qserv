@@ -66,6 +66,9 @@ public:
     bool setResourceStarved(bool starved) override;
     bool nextTaskDifferentChunkId() override;
 
+    /// &&& ChunkDisk version does nothing for now.
+    wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override {return nullptr;};
+
     /// Class that keeps the minimum chunkId at the front of the heap
     /// and within that chunkId, start with the slowest tables to scan.
     class MinHeap {

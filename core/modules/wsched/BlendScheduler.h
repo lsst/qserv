@@ -105,6 +105,8 @@ public:
     void setFlagReorderScans() { _flagReorderScans = true; }
     int calcAvailableTheads();
 
+    int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();

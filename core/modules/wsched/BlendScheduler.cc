@@ -332,4 +332,26 @@ void BlendScheduler::_logChunkStatus() {
     }
 }
 
+
+int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination) {
+    LOGS(_log, LOG_LVL_DEBUG, "moveUserQuery " << QueryIdHelper::makeIdStr(qId)
+         << " source=" << ((source == nullptr) ? "NULL" : source->getName())
+         << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
+    int count = 0; // Number of Tasks that were moved.
+    if (destination == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, QueryIdHelper::makeIdStr(qId) << " moveUserQuery destination can not be nullptr");
+        return count;
+    }
+    // Go through the Tasks in the query and remove any that are not already on the 'destination'.
+    auto taskList = _queries->removeQueryFrom(qId, source);
+    // Add the tasks in taskList to 'destination'.
+    for (auto task : taskList) {
+        // Change the scheduler to the new scheduler as normally this is done in BlendScheduler::queCmd
+        task->setTaskScheduler(destination);
+        destination->queCmd(task);
+        ++count;
+    }
+    return count;
+}
+
 }}} // namespace lsst::qserv::wsched

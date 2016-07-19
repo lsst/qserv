@@ -31,6 +31,13 @@
 
 namespace lsst {
 namespace qserv {
+namespace wsched {
+    class SchedulerBase;
+}}}
+
+
+namespace lsst {
+namespace qserv {
 namespace wpublish {
 
 
@@ -54,7 +61,7 @@ public:
 private:
     bool _isMostlyDead() const;
 
-    mutable std::mutex _mx;
+    mutable std::mutex _qStatsMtx;
     QueryId const _queryId;
     std::chrono::system_clock::time_point _touched{std::chrono::system_clock::now()};
 
@@ -65,7 +72,7 @@ private:
 
     double _totalTimeMinutes{0.0};
 
-    std::map<int, wbase::Task::Ptr> _taskMap;
+    std::map<int, wbase::Task::Ptr> _taskMap; ///< Map of Tasks keyed by job id.
 };
 
 /// Statistics for a table in a chunk. Statistics are base on the slowest table in a query,
@@ -85,7 +92,7 @@ public:
     void addTaskFinished(double minutes);
 
 private:
-    std::mutex _mtx;
+    std::mutex _cStatsMtx;
     int const _chunkId;
     std::string const _scanTableName;
 
@@ -116,7 +123,6 @@ private:
 };
 
 
-
 class QueryChunkStatistics {
 public:
     using Ptr = std::shared_ptr<QueryChunkStatistics>;
@@ -137,6 +143,8 @@ public:
         _removalThread.join();
     }
 
+    std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
+                                                  std::shared_ptr<wsched::SchedulerBase> const& sched);
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
@@ -150,7 +158,7 @@ public:
 private:
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
-    mutable std::mutex _qStatsMtx; ///< protects _queryStats;
+    mutable std::mutex _queryStatsMtx; ///< protects _queryStats;
     std::map<QueryId, QueryStatistics::Ptr> _queryStats; ///< Map of Query stats indexed by QueryId.
 
     mutable std::mutex _chunkMtx;

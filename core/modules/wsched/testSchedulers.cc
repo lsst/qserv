@@ -72,9 +72,11 @@ struct SchedulerFixture {
     }
     ~SchedulerFixture(void) { }
 
-    TaskMsgPtr newTaskMsg(int seq) {
+    TaskMsgPtr newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
         t->set_session(123456);
+        t->set_queryid(qId);
+        t->set_jobid(jobId);
         t->set_chunkid(seq);
         t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
@@ -86,13 +88,17 @@ struct SchedulerFixture {
         ++counter;
         return t;
     }
+    /* &&& delete
     TaskMsgPtr nextTaskMsg() {
         return newTaskMsg(counter++);
     }
+    */
 
-    TaskMsgPtr newTaskMsgSimple(int seq) {
+    TaskMsgPtr newTaskMsgSimple(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
         t->set_session(123456);
+        t->set_queryid(qId);
+        t->set_jobid(jobId);
         t->set_chunkid(seq);
         t->set_db("moose");
         ++counter;
@@ -100,8 +106,9 @@ struct SchedulerFixture {
     }
 
 
-    TaskMsgPtr newTaskMsgScan(int seq, int priority, std::string const& tableName="whatever") {
-        auto taskMsg = newTaskMsg(seq);
+    TaskMsgPtr newTaskMsgScan(int seq, int priority, lsst::qserv::QueryId qId, int jobId,
+                              std::string const& tableName="whatever") {
+        auto taskMsg = newTaskMsg(seq, qId, jobId);
         taskMsg->set_scanpriority(priority);
         auto sTbl = taskMsg->add_scantable();
         sTbl->set_db("elephant");
@@ -112,9 +119,9 @@ struct SchedulerFixture {
     }
 
 
-
-    Task::Ptr queMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId) {
-        Task::Ptr t = makeTask(newTaskMsg(chunkId));
+    Task::Ptr queMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId,
+                                lsst::qserv::QueryId qId, int jobId) {
+        Task::Ptr t = makeTask(newTaskMsg(chunkId, qId, jobId));
         gs.queCmd(t);
         return t;
     }
@@ -137,26 +144,28 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     BOOST_CHECK(gs.empty() == true);
     BOOST_CHECK(gs.ready() == false);
 
-    Task::Ptr a1 = queMsgWithChunkId(gs, a);
+    lsst::qserv::QueryId qIdInc = 1;
+    Task::Ptr a1 = queMsgWithChunkId(gs, a, qIdInc++, 0);
     BOOST_CHECK(gs.empty() == false);
     BOOST_CHECK(gs.ready() == true);
 
-    Task::Ptr b1 = queMsgWithChunkId(gs, b);
-    Task::Ptr c1 = queMsgWithChunkId(gs, c);
-    Task::Ptr b2 = queMsgWithChunkId(gs, b);
-    Task::Ptr b3 = queMsgWithChunkId(gs, b);
-    Task::Ptr b4 = queMsgWithChunkId(gs, b);
-    Task::Ptr a2 = queMsgWithChunkId(gs, a);
-    Task::Ptr a3 = queMsgWithChunkId(gs, a);
-    Task::Ptr b5 = queMsgWithChunkId(gs, b);
-    Task::Ptr d1 = queMsgWithChunkId(gs, d);
+
+    Task::Ptr b1 = queMsgWithChunkId(gs, b, qIdInc++, 0);
+    Task::Ptr c1 = queMsgWithChunkId(gs, c, qIdInc++, 0);
+    Task::Ptr b2 = queMsgWithChunkId(gs, b, qIdInc++, 0);
+    Task::Ptr b3 = queMsgWithChunkId(gs, b, qIdInc++, 0);
+    Task::Ptr b4 = queMsgWithChunkId(gs, b, qIdInc++, 0);
+    Task::Ptr a2 = queMsgWithChunkId(gs, a, qIdInc++, 0);
+    Task::Ptr a3 = queMsgWithChunkId(gs, a, qIdInc++, 0);
+    Task::Ptr b5 = queMsgWithChunkId(gs, b, qIdInc++, 0);
+    Task::Ptr d1 = queMsgWithChunkId(gs, d, qIdInc++, 0);
     BOOST_CHECK(gs.getSize() == 5);
     BOOST_CHECK(gs.ready() == true);
 
     // Should get all the first 3 'a' commands in order
     auto aa1 = gs.getCmd(false);
     auto aa2 = gs.getCmd(false);
-    Task::Ptr a4 = queMsgWithChunkId(gs, a); // this should get its own group
+    Task::Ptr a4 = queMsgWithChunkId(gs, a, qIdInc++, 0); // this should get its own group
     auto aa3 = gs.getCmd(false);
     BOOST_CHECK(a1.get() == aa1.get());
     BOOST_CHECK(a2.get() == aa2.get());
@@ -209,11 +218,12 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
     wsched::GroupScheduler gs{"GroupSchedB", 3, 0, 100, 0};
+    lsst::qserv::QueryId qIdInc = 1;
     int a = 42;
-    Task::Ptr a1 = queMsgWithChunkId(gs, a);
-    Task::Ptr a2 = queMsgWithChunkId(gs, a);
-    Task::Ptr a3 = queMsgWithChunkId(gs, a);
-    Task::Ptr a4 = queMsgWithChunkId(gs, a);
+    Task::Ptr a1 = queMsgWithChunkId(gs, a, qIdInc++, 0);
+    Task::Ptr a2 = queMsgWithChunkId(gs, a, qIdInc++, 0);
+    Task::Ptr a3 = queMsgWithChunkId(gs, a, qIdInc++, 0);
+    Task::Ptr a4 = queMsgWithChunkId(gs, a, qIdInc++, 0);
     BOOST_CHECK(gs.ready() == true);
     auto aa1 = gs.getCmd(false);
     BOOST_CHECK(a1.get() == aa1.get());
@@ -237,23 +247,24 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
 
 BOOST_AUTO_TEST_CASE(DiskMinHeap) {
     wsched::ChunkDisk::MinHeap minHeap{};
+    lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(minHeap.empty() == true);
 
-    Task::Ptr a47 = makeTask(newTaskMsg(47));
+    Task::Ptr a47 = makeTask(newTaskMsg(47, qIdInc++, 0));
     minHeap.push(a47);
     BOOST_CHECK(minHeap.top().get() == a47.get());
     BOOST_CHECK(minHeap.empty() == false);
 
-    Task::Ptr a42 = makeTask(newTaskMsg(42));
+    Task::Ptr a42 = makeTask(newTaskMsg(42, qIdInc++, 0));
     minHeap.push(a42);
     BOOST_CHECK(minHeap.top().get() == a42.get());
 
-    Task::Ptr a60 = makeTask(newTaskMsg(60));
+    Task::Ptr a60 = makeTask(newTaskMsg(60, qIdInc++, 0));
     minHeap.push(a60);
     BOOST_CHECK(minHeap.top().get() == a42.get());
 
-    Task::Ptr a18 = makeTask(newTaskMsg(18));
+    Task::Ptr a18 = makeTask(newTaskMsg(18, qIdInc++, 0));
     minHeap.push(a18);
     BOOST_CHECK(minHeap.top().get() == a18.get());
 
@@ -267,12 +278,13 @@ BOOST_AUTO_TEST_CASE(DiskMinHeap) {
 BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
     wsched::ChunkDisk cDisk(memMan);
+    lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(cDisk.empty() == true);
     BOOST_CHECK(cDisk.getSize() == 0);
     BOOST_CHECK(cDisk.ready(true) == false);
 
-    Task::Ptr a47 = makeTask(newTaskMsgScan(47,0));
+    Task::Ptr a47 = makeTask(newTaskMsgScan(47,0, qIdInc++, 0));
     cDisk.queueTask(a47); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 1);
@@ -282,14 +294,14 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
     BOOST_CHECK(cDisk.ready(true) == true);
 
 
-    Task::Ptr a42 = makeTask(newTaskMsgScan(42,0));
+    Task::Ptr a42 = makeTask(newTaskMsgScan(42,0, qIdInc++, 0));
     cDisk.queueTask(a42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 2);
     // a47 at top of active has been flagged as ok to run.
     BOOST_CHECK(cDisk.ready(false) == true);
 
-    Task::Ptr b42 = makeTask(newTaskMsgScan(42, 0));
+    Task::Ptr b42 = makeTask(newTaskMsgScan(42, 0, qIdInc++, 0));
     cDisk.queueTask(b42); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
@@ -308,7 +320,7 @@ BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
     BOOST_CHECK(cDisk.ready(false) == true);
 
     // After calling ready, a42 is at top
-    Task::Ptr a18 = makeTask(newTaskMsgScan(18, 0));
+    Task::Ptr a18 = makeTask(newTaskMsgScan(18, 0, qIdInc++, 0));
     cDisk.queueTask(a18); // should go on pending
     BOOST_CHECK(cDisk.empty() == false);
     BOOST_CHECK(cDisk.getSize() == 3);
@@ -344,23 +356,25 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
     wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100};
 
+    lsst::qserv::QueryId qIdInc = 1;
+
     // Test ready state as Tasks added and removed.
     BOOST_CHECK(sched.ready() == false);
 
-    Task::Ptr a38 = makeTask(newTaskMsgScan(38, 0));
+    Task::Ptr a38 = makeTask(newTaskMsgScan(38, 0, qIdInc++, 0));
     sched.queCmd(a38);
     // Calling read swaps active and pending heaps, putting a38 at the top of the active.
     BOOST_CHECK(sched.ready() == true);
 
-    Task::Ptr a40 = makeTask(newTaskMsgScan(40, 0)); // goes on active
+    Task::Ptr a40 = makeTask(newTaskMsgScan(40, 0, qIdInc++, 0)); // goes on active
     sched.queCmd(a40);
 
     // Making a non-scan message so MemManNone will grant it an empty Handle
-    Task::Ptr b41 = makeTask(newTaskMsg(41)); // goes on active
+    Task::Ptr b41 = makeTask(newTaskMsg(41, qIdInc++, 0)); // goes on active
     sched.queCmd(b41);
 
     // Making a non-scan message so MemManNone will grant it an empty Handle
-    Task::Ptr a33 = makeTask(newTaskMsg(33)); // goes on pending.
+    Task::Ptr a33 = makeTask(newTaskMsg(33, qIdInc++, 0)); // goes on pending.
     sched.queCmd(a33);
 
     BOOST_CHECK(sched.ready() == true);
@@ -425,36 +439,38 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
         std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                                                  group, scanSlow, scanSchedulers);
 
+    lsst::qserv::QueryId qIdInc = 1;
+
     BOOST_CHECK(blend->ready() == false);
     BOOST_CHECK(blend->calcAvailableTheads() == 5);
 
     // Put one message on each scheduler except ScanFast, which gets 2.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
-    Task::Ptr g1 = makeTask(newTaskMsgSimple(40));
+    Task::Ptr g1 = makeTask(newTaskMsgSimple(40, qIdInc++, 0));
     blend->queCmd(g1);
     BOOST_CHECK(group->getSize() == 1);
     BOOST_CHECK(blend->ready() == true);
 
-    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST);
+    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
     Task::Ptr sF1 = makeTask(taskMsg);
     blend->queCmd(sF1);
     BOOST_CHECK(scanFast->getSize() == 1);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Rating::FAST);
+    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
     Task::Ptr sF2 = makeTask(taskMsg);
     blend->queCmd(sF2);
     BOOST_CHECK(scanFast->getSize() == 2);
     BOOST_CHECK(blend->ready() == true);
 
 
-    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Rating::SLOW );
+    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
     Task::Ptr sS1 = makeTask(taskMsg);
     blend->queCmd(sS1);
     BOOST_CHECK(scanSlow->getSize() == 1);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Rating::MEDIUM );
+    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
     Task::Ptr sM1 = makeTask(taskMsg);
     blend->queCmd(sM1);
     BOOST_CHECK(scanMed->getSize() == 1);
@@ -486,54 +502,54 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     // All threads should now be in use or reserved, should be able to start one
     // Task for each scheduler but second Task should remain on queue.
-    Task::Ptr g2 = makeTask(newTaskMsgSimple(41));
+    Task::Ptr g2 = makeTask(newTaskMsgSimple(41, qIdInc++, 0));
     blend->queCmd(g2);
     BOOST_CHECK(group->getSize() == 1);
     BOOST_CHECK(blend->getSize() == 1);
     BOOST_CHECK(blend->ready() == true);
 
-    Task::Ptr g3 = makeTask(newTaskMsgSimple(12));
+    Task::Ptr g3 = makeTask(newTaskMsgSimple(12, qIdInc++, 0));
     blend->queCmd(g3);
     BOOST_CHECK(group->getSize() == 2);
     BOOST_CHECK(blend->getSize() == 2);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Rating::FAST);
+    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
     Task::Ptr sF3 = makeTask(taskMsg);
     blend->queCmd(sF3);
     BOOST_CHECK(scanFast->getSize() == 1);
     BOOST_CHECK(blend->getSize() == 3);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Rating::FAST);
+    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
     Task::Ptr sF4 = makeTask(taskMsg);
     blend->queCmd(sF4);
     BOOST_CHECK(scanFast->getSize() == 2);
     BOOST_CHECK(blend->getSize() == 4);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Rating::MEDIUM);
+    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
     Task::Ptr sM2 = makeTask(taskMsg);
     blend->queCmd(sM2);
     BOOST_CHECK(scanMed->getSize() == 1);
     BOOST_CHECK(blend->getSize() == 5);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Rating::MEDIUM);
+    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
     Task::Ptr sM3 = makeTask(taskMsg);
     blend->queCmd(sM3);
     BOOST_CHECK(scanMed->getSize() == 2);
     BOOST_CHECK(blend->getSize() == 6);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Rating::SLOW);
+    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
     Task::Ptr sS2 = makeTask(taskMsg);
     blend->queCmd(sS2);
     BOOST_CHECK(scanSlow->getSize() == 1);
     BOOST_CHECK(blend->getSize() == 7);
     BOOST_CHECK(blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Rating::SLOW);
+    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
     Task::Ptr sS3 = makeTask(taskMsg);
     blend->queCmd(sS3);
     BOOST_CHECK(scanSlow->getSize() == 2);
@@ -625,7 +641,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM)));
+        blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0)));
         if (j < 6) {
             BOOST_CHECK(blend->ready() == true);
             auto cmd = blend->getCmd(false);
@@ -656,7 +672,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     // This leaves 3 threads available, 1 for each other scheduler.
     std::vector<Task::Ptr> groupTasks;
     for (int j=0; j<7; ++j) {
-        blend->queCmd(makeTask(newTaskMsg(j)));
+        blend->queCmd(makeTask(newTaskMsg(j, qIdInc++, 0)));
         if (j < 6) {
             BOOST_CHECK(blend->ready() == true);
             auto cmd = blend->getCmd(false);
@@ -683,28 +699,65 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(blend->getInFlight() == 0);
     BOOST_CHECK(blend->ready() == false);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
+
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-3 task/query removal");
+    // Add some queries to the Fast scheduler and then move one query to the snail.
+    int startChunk = 70;
+    uint jobs = 11;
+    std::vector<Task::Ptr> queryATasks;
+    std::vector<Task::Ptr> queryBTasks;
+    lsst::qserv::QueryId qIdA = qIdInc++;
+    lsst::qserv::QueryId qIdB = qIdInc++;
+    {
+        int jobId = 0;
+        int chunkId = startChunk;
+        for (uint j=0; j<jobs; ++j) {
+            taskMsg = newTaskMsgScan(chunkId, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdA, jobId);
+            Task::Ptr mv = makeTask(taskMsg);
+            queryATasks.push_back(mv);
+            queries->addTask(mv);
+            blend->queCmd(mv);
+            taskMsg = newTaskMsgScan(chunkId++, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdB, jobId++);
+            mv = makeTask(taskMsg);
+            queryATasks.push_back(mv);
+            queries->addTask(mv);
+            blend->queCmd(mv);
+        }
+    }
+    BOOST_CHECK(scanFast->getSize() == jobs*2);
+    BOOST_CHECK(scanSlow->getSize() == 0);
+
+    LOGS(_log, LOG_LVL_DEBUG, "&&& before fastSize=" << scanFast->getSize() << " slowSize=" << scanSlow->getSize());
+    blend->moveUserQuery(qIdA, scanFast, scanSlow);
+    LOGS(_log, LOG_LVL_DEBUG, "fastSize=" << scanFast->getSize() << " slowSize=" << scanSlow->getSize());
+    BOOST_CHECK(scanFast->getSize() == jobs);
+    BOOST_CHECK(scanSlow->getSize() == jobs);
+    auto taskFromA = queryATasks[0];
+    auto schedForA = std::dynamic_pointer_cast<wsched::ScanScheduler>(taskFromA->getTaskScheduler());
+    BOOST_CHECK(schedForA == scanSlow);
 }
 
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     wsched::ChunkTasks::SlowTableHeap heap{};
+    lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(heap.empty() == true);
 
-    Task::Ptr a1 = makeTask(newTaskMsgScan(7, 3, "charlie"));
+    Task::Ptr a1 = makeTask(newTaskMsgScan(7, 3, qIdInc++, 0, "charlie"));
     heap.push(a1);
     BOOST_CHECK(heap.top().get() == a1.get());
     BOOST_CHECK(heap.empty() == false);
 
-    Task::Ptr a2 = makeTask(newTaskMsgScan(7, 3, "delta"));
+    Task::Ptr a2 = makeTask(newTaskMsgScan(7, 3, qIdInc++, 0, "delta"));
     heap.push(a2);
     BOOST_CHECK(heap.top().get() == a2.get());
 
-    Task::Ptr a3 = makeTask(newTaskMsgScan(7, 4, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(7, 4, qIdInc++, 0, "beta"));
     heap.push(a3);
     BOOST_CHECK(heap.top().get() == a3.get());
 
-    Task::Ptr a4 = makeTask(newTaskMsgScan(7, 2, "alpha"));
+    Task::Ptr a4 = makeTask(newTaskMsgScan(7, 2, qIdInc++, 0, "alpha"));
     heap.push(a4);
     BOOST_CHECK(heap.top().get() == a3.get());
     BOOST_CHECK(heap.size() == 4);
@@ -723,25 +776,26 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int chunkId = 7;
     wsched::ChunkTasks chunkTasks{chunkId, memMan};
+    lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(chunkTasks.empty() == true);
     BOOST_CHECK(chunkTasks.readyToAdvance() == true);
 
-    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, "charlie"));
+    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "charlie"));
     chunkTasks.queTask(a1);
     BOOST_CHECK(chunkTasks.empty() == false);
     BOOST_CHECK(chunkTasks.readyToAdvance() == false);
     BOOST_CHECK(chunkTasks.size() == 1);
 
-    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, "delta"));
+    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "delta"));
     chunkTasks.queTask(a2);
     BOOST_CHECK(chunkTasks.size() == 2);
 
-    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "beta"));
     chunkTasks.queTask(a3);
     BOOST_CHECK(chunkTasks.size() == 3);
 
-    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, "alpha"));
+    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, qIdInc++, 0, "alpha"));
     chunkTasks.queTask(a4);
     BOOST_CHECK(chunkTasks.size() == 4);
 
@@ -794,21 +848,22 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     int secondChunkId = 150;
     int chunkId = firstChunkId;
     wsched::ChunkTasksQueue ctl{nullptr, memMan};
+    lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(ctl.empty() == true);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.ready(true) == false);
 
-    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, "charlie"));
+    Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "charlie"));
     ctl.queueTask(a1);
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
-    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, "delta"));
+    Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "delta"));
     ctl.queueTask(a2);
-    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "beta"));
     ctl.queueTask(a3);
-    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, "alpha"));
+    Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, qIdInc++, 0, "alpha"));
     ctl.queueTask(a4);
 
     BOOST_CHECK(ctl.ready(true) == true);
@@ -827,16 +882,16 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     chunkId = secondChunkId;
-    Task::Ptr b1 = makeTask(newTaskMsgScan(chunkId, 3, "c"));
+    Task::Ptr b1 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "c"));
     ctl.queueTask(b1);
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
-    Task::Ptr b2 = makeTask(newTaskMsgScan(chunkId, 3, "d"));
+    Task::Ptr b2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "d"));
     ctl.queueTask(b2);
-    Task::Ptr b3 = makeTask(newTaskMsgScan(chunkId, 4, "b"));
+    Task::Ptr b3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "b"));
     ctl.queueTask(b3);
-    Task::Ptr b4 = makeTask(newTaskMsgScan(chunkId, 2, "a"));
+    Task::Ptr b4 = makeTask(newTaskMsgScan(chunkId, 2, qIdInc++, 0, "a"));
     ctl.queueTask(b4);
     ctl.queueTask(a3);
     ctl.queueTask(a4);
