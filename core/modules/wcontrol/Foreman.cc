@@ -52,8 +52,9 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig)
-    : _scheduler{s}, _mySqlConfig(mySqlConfig) {
+Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
+    wpublish::QueryChunkStatistics::Ptr const& queries)
+    : _scheduler{s}, _mySqlConfig(mySqlConfig), _queries{queries} {
     // Make the chunk resource mgr
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_mySqlConfig);
     assert(s); // Cannot operate without scheduler.
@@ -88,6 +89,7 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
     };
 
     task->setFunc(func);
+    _queries->addTask(task);
     _scheduler->queCmd(task);
 }
 

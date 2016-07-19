@@ -27,6 +27,7 @@
 #include <map>
 
 // Qserv headers
+#include "wpublish/QueryChunkStatistics.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -82,6 +83,7 @@ public:
     static int getMinPoolSize(){ return 11; }
 
     BlendScheduler(std::string const& name,
+                   wpublish::QueryChunkStatistics::Ptr const& queries,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -101,7 +103,6 @@ public:
     int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
 
     void setFlagReorderScans() { _flagReorderScans = true; }
-    wcontrol::Scheduler* lookup(wbase::Task::Ptr p, bool erase=false);
     int calcAvailableTheads();
 
 private:
@@ -116,11 +117,11 @@ private:
     std::shared_ptr<GroupScheduler> _group;    ///< group scheduler
     std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
-    std::map<wbase::Task*, SchedulerBase*> _map;
-    std::mutex _mapMutex;
 
     std::atomic<bool> _flagReorderScans{false};
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
+
+    wpublish::QueryChunkStatistics::Ptr _queries; /// UserQuery statistics.
 };
 
 }}} // namespace lsst::qserv::wsched
