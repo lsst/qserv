@@ -88,11 +88,6 @@ struct SchedulerFixture {
         ++counter;
         return t;
     }
-    /* &&& delete
-    TaskMsgPtr nextTaskMsg() {
-        return newTaskMsg(counter++);
-    }
-    */
 
     TaskMsgPtr newTaskMsgSimple(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
@@ -414,327 +409,366 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 }
 
 
-BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
-    // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
-    // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
-    // ChunkIds matter as they control the order Tasks come off individual schedulers.
+struct SchedFixture {
+    SchedFixture() {}
+
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
     int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
     int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
     int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
-    int maxThreads = 9;
-    int maxActiveChunks = 20;
-    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
-    int priority = 2;
-    auto group = std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++);
-    auto scanSlow = std::make_shared<wsched::ScanScheduler>(
-        "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium+1, slow);
-    auto scanMed  = std::make_shared<wsched::ScanScheduler>(
-        "ScanMed",  maxThreads, 2, priority++, maxActiveChunks, memMan, fast+1, medium);
-    auto scanFast = std::make_shared<wsched::ScanScheduler>(
-        "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast);
+
+    lsst::qserv::QueryId qIdInc{1};
+
+    int maxThreads{9};
+    int maxActiveChunks{20};
+    int priority{2};
+
+    lsst::qserv::memman::MemManNone::Ptr memMan{
+        std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
+    wsched::GroupScheduler::Ptr group{std::make_shared<wsched::GroupScheduler>(
+                "GroupSched", maxThreads, 2, 3, priority++)};
+    wsched::ScanScheduler::Ptr scanSlow{std::make_shared<wsched::ScanScheduler>(
+                "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium+1, slow)};
+    wsched::ScanScheduler::Ptr scanMed{std::make_shared<wsched::ScanScheduler>(
+                "ScanMed",  maxThreads, 2, priority++, maxActiveChunks, memMan, fast+1, medium)};
+    wsched::ScanScheduler::Ptr scanFast{std::make_shared<wsched::ScanScheduler>(
+                "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast)};
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
-    auto queries = std::make_shared<lsst::qserv::wpublish::QueryChunkStatistics>(std::chrono::seconds(1));
-    wsched::BlendScheduler::Ptr blend =
-        std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
-                                                 group, scanSlow, scanSchedulers);
+    lsst::qserv::wpublish::QueryChunkStatistics::Ptr queries{
+        std::make_shared<lsst::qserv::wpublish::QueryChunkStatistics>(std::chrono::seconds(1))};
+    wsched::BlendScheduler::Ptr blend{
+                std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
+                                                         group, scanSlow, scanSchedulers)};
 
-    lsst::qserv::QueryId qIdInc = 1;
+};
 
-    BOOST_CHECK(blend->ready() == false);
-    BOOST_CHECK(blend->calcAvailableTheads() == 5);
+BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
+    // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
+    // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
+    // ChunkIds matter as they control the order Tasks come off individual schedulers.
+    SchedFixture f;
+
+    BOOST_CHECK(f.blend->ready() == false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
 
     // Put one message on each scheduler except ScanFast, which gets 2.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
-    Task::Ptr g1 = makeTask(newTaskMsgSimple(40, qIdInc++, 0));
-    blend->queCmd(g1);
-    BOOST_CHECK(group->getSize() == 1);
-    BOOST_CHECK(blend->ready() == true);
+    Task::Ptr g1 = makeTask(newTaskMsgSimple(40, f.qIdInc++, 0));
+    f.blend->queCmd(g1);
+    BOOST_CHECK(f.group->getSize() == 1);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
+    auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, f.qIdInc++, 0);
     Task::Ptr sF1 = makeTask(taskMsg);
-    blend->queCmd(sF1);
-    BOOST_CHECK(scanFast->getSize() == 1);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sF1);
+    BOOST_CHECK(f.scanFast->getSize() == 1);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(40, lsst::qserv::proto::ScanInfo::Rating::FAST, f.qIdInc++, 0);
     Task::Ptr sF2 = makeTask(taskMsg);
-    blend->queCmd(sF2);
-    BOOST_CHECK(scanFast->getSize() == 2);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sF2);
+    BOOST_CHECK(f.scanFast->getSize() == 2);
+    BOOST_CHECK(f.blend->ready() == true);
 
 
-    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Rating::SLOW, f.qIdInc++, 0);
     Task::Ptr sS1 = makeTask(taskMsg);
-    blend->queCmd(sS1);
-    BOOST_CHECK(scanSlow->getSize() == 1);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sS1);
+    BOOST_CHECK(f.scanSlow->getSize() == 1);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(31, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0);
     Task::Ptr sM1 = makeTask(taskMsg);
-    blend->queCmd(sM1);
-    BOOST_CHECK(scanMed->getSize() == 1);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sM1);
+    BOOST_CHECK(f.scanMed->getSize() == 1);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    BOOST_CHECK(blend->getSize() == 5);
-    BOOST_CHECK(blend->calcAvailableTheads() == 5);
+    BOOST_CHECK(f.blend->getSize() == 5);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
 
     // Start all the Tasks.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 start all tasks");
     // Tasks should come out in order of scheduler priority.
-    auto og1 = blend->getCmd(false);
+    auto og1 = f.blend->getCmd(false);
     BOOST_CHECK(og1.get() == g1.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 4);
-    auto osF1 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 4);
+    auto osF1 = f.blend->getCmd(false);
     BOOST_CHECK(osF1.get() == sF1.get()); // sF1 has lower chunkId than sF2
-    BOOST_CHECK(blend->calcAvailableTheads() == 3);
-    auto osF2 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 3);
+    auto osF2 = f.blend->getCmd(false);
     BOOST_CHECK(osF2.get() == sF2.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    auto osM1 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    auto osM1 = f.blend->getCmd(false);
     BOOST_CHECK(osM1.get() == sM1.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 1);
-    auto osS1 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 1);
+    auto osS1 = f.blend->getCmd(false);
     BOOST_CHECK(osS1.get() == sS1.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    BOOST_CHECK(blend->getSize() == 0);
-    BOOST_CHECK(blend->ready() == false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    BOOST_CHECK(f.blend->getSize() == 0);
+    BOOST_CHECK(f.blend->ready() == false);
 
     // All threads should now be in use or reserved, should be able to start one
     // Task for each scheduler but second Task should remain on queue.
-    Task::Ptr g2 = makeTask(newTaskMsgSimple(41, qIdInc++, 0));
-    blend->queCmd(g2);
-    BOOST_CHECK(group->getSize() == 1);
-    BOOST_CHECK(blend->getSize() == 1);
-    BOOST_CHECK(blend->ready() == true);
+    Task::Ptr g2 = makeTask(newTaskMsgSimple(41, f.qIdInc++, 0));
+    f.blend->queCmd(g2);
+    BOOST_CHECK(f.group->getSize() == 1);
+    BOOST_CHECK(f.blend->getSize() == 1);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    Task::Ptr g3 = makeTask(newTaskMsgSimple(12, qIdInc++, 0));
-    blend->queCmd(g3);
-    BOOST_CHECK(group->getSize() == 2);
-    BOOST_CHECK(blend->getSize() == 2);
-    BOOST_CHECK(blend->ready() == true);
+    Task::Ptr g3 = makeTask(newTaskMsgSimple(12, f.qIdInc++, 0));
+    f.blend->queCmd(g3);
+    BOOST_CHECK(f.group->getSize() == 2);
+    BOOST_CHECK(f.blend->getSize() == 2);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(70, lsst::qserv::proto::ScanInfo::Rating::FAST, f.qIdInc++, 0);
     Task::Ptr sF3 = makeTask(taskMsg);
-    blend->queCmd(sF3);
-    BOOST_CHECK(scanFast->getSize() == 1);
-    BOOST_CHECK(blend->getSize() == 3);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sF3);
+    BOOST_CHECK(f.scanFast->getSize() == 1);
+    BOOST_CHECK(f.blend->getSize() == 3);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(72, lsst::qserv::proto::ScanInfo::Rating::FAST, f.qIdInc++, 0);
     Task::Ptr sF4 = makeTask(taskMsg);
-    blend->queCmd(sF4);
-    BOOST_CHECK(scanFast->getSize() == 2);
-    BOOST_CHECK(blend->getSize() == 4);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sF4);
+    BOOST_CHECK(f.scanFast->getSize() == 2);
+    BOOST_CHECK(f.blend->getSize() == 4);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(13, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0);
     Task::Ptr sM2 = makeTask(taskMsg);
-    blend->queCmd(sM2);
-    BOOST_CHECK(scanMed->getSize() == 1);
-    BOOST_CHECK(blend->getSize() == 5);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sM2);
+    BOOST_CHECK(f.scanMed->getSize() == 1);
+    BOOST_CHECK(f.blend->getSize() == 5);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(15, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0);
     Task::Ptr sM3 = makeTask(taskMsg);
-    blend->queCmd(sM3);
-    BOOST_CHECK(scanMed->getSize() == 2);
-    BOOST_CHECK(blend->getSize() == 6);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sM3);
+    BOOST_CHECK(f.scanMed->getSize() == 2);
+    BOOST_CHECK(f.blend->getSize() == 6);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(5, lsst::qserv::proto::ScanInfo::Rating::SLOW, f.qIdInc++, 0);
     Task::Ptr sS2 = makeTask(taskMsg);
-    blend->queCmd(sS2);
-    BOOST_CHECK(scanSlow->getSize() == 1);
-    BOOST_CHECK(blend->getSize() == 7);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sS2);
+    BOOST_CHECK(f.scanSlow->getSize() == 1);
+    BOOST_CHECK(f.blend->getSize() == 7);
+    BOOST_CHECK(f.blend->ready() == true);
 
-    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Rating::SLOW, qIdInc++, 0);
+    taskMsg = newTaskMsgScan(6, lsst::qserv::proto::ScanInfo::Rating::SLOW, f.qIdInc++, 0);
     Task::Ptr sS3 = makeTask(taskMsg);
-    blend->queCmd(sS3);
-    BOOST_CHECK(scanSlow->getSize() == 2);
-    BOOST_CHECK(blend->getSize() == 8);
-    BOOST_CHECK(blend->ready() == true);
+    f.blend->queCmd(sS3);
+    BOOST_CHECK(f.scanSlow->getSize() == 2);
+    BOOST_CHECK(f.blend->getSize() == 8);
+    BOOST_CHECK(f.blend->ready() == true);
 
     // Expect 1 group, 1 fast, 1 medium, and 1 slow in that order
-    auto og2 = blend->getCmd(false);
+    auto og2 = f.blend->getCmd(false);
     BOOST_CHECK(og2.get() == g2.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    auto osF3 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    auto osF3 = f.blend->getCmd(false);
     BOOST_CHECK(osF3.get() == sF3.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    BOOST_CHECK(blend->ready() == true);
-    auto osM2 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    BOOST_CHECK(f.blend->ready() == true);
+    auto osM2 = f.blend->getCmd(false);
     BOOST_CHECK(osM2.get() == sM2.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    BOOST_CHECK(blend->ready() == true);
-    auto osS2 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    BOOST_CHECK(f.blend->ready() == true);
+    auto osS2 = f.blend->getCmd(false);
     BOOST_CHECK(osS2.get() == sS2.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    BOOST_CHECK(blend->getSize() == 4);
-    BOOST_CHECK(blend->ready() == false); // all threads in use
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    BOOST_CHECK(f.blend->getSize() == 4);
+    BOOST_CHECK(f.blend->ready() == false); // all threads in use
 
     // Finishing a fast Task should allow the last fast Task to go.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 call commandFinish");
-    blend->commandFinish(osF3);
-    auto osF4 = blend->getCmd(false);
+    f.blend->commandFinish(osF3);
+    auto osF4 = f.blend->getCmd(false);
     BOOST_CHECK(osF4.get() == sF4.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    BOOST_CHECK(blend->ready() == false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    BOOST_CHECK(f.blend->ready() == false);
 
     // Finishing 2 fast Tasks should allow a group Task to go.
-    blend->commandFinish(osF1);
-    BOOST_CHECK(blend->calcAvailableTheads() == 0);
-    blend->commandFinish(osF2);
-    BOOST_CHECK(blend->calcAvailableTheads() == 1);
-    auto og3 = blend->getCmd(false);
+    f.blend->commandFinish(osF1);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
+    f.blend->commandFinish(osF2);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 1);
+    auto og3 = f.blend->getCmd(false);
     BOOST_CHECK(og3.get() == g3.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 1);
-    BOOST_CHECK(blend->ready() == false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 1);
+    BOOST_CHECK(f.blend->ready() == false);
 
     // Finishing the last fast Task should let a medium Task go.
-    blend->commandFinish(osF4);
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    auto osM3 = blend->getCmd(false);
+    f.blend->commandFinish(osF4);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    auto osM3 = f.blend->getCmd(false);
     BOOST_CHECK(osM3.get() == sM3.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    BOOST_CHECK(blend->ready() == false);
-    BOOST_CHECK(blend->getCmd(false) == nullptr);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    BOOST_CHECK(f.blend->ready() == false);
+    BOOST_CHECK(f.blend->getCmd(false) == nullptr);
 
     // Finishing a group Task should allow a slow Task to got (only remaining Task)
-    BOOST_CHECK(blend->getSize() == 1);
-    blend->commandFinish(og1);
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    auto osS3 = blend->getCmd(false);
+    BOOST_CHECK(f.blend->getSize() == 1);
+    f.blend->commandFinish(og1);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    auto osS3 = f.blend->getCmd(false);
     BOOST_CHECK(osS3.get() == sS3.get());
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    BOOST_CHECK(blend->getSize() == 0);
-    BOOST_CHECK(blend->ready() == false);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    BOOST_CHECK(f.blend->getSize() == 0);
+    BOOST_CHECK(f.blend->ready() == false);
 
     // Close out all tasks and check counts.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 close out all Tasks");
-    blend->commandFinish(og2);
-    BOOST_CHECK(blend->calcAvailableTheads() == 2);
-    BOOST_CHECK(blend->getInFlight() == 7);
-    blend->commandFinish(og3);
-    BOOST_CHECK(blend->calcAvailableTheads() == 3);
-    BOOST_CHECK(blend->getInFlight() == 6);
-    blend->commandFinish(osM1);
-    BOOST_CHECK(blend->calcAvailableTheads() == 3);
-    BOOST_CHECK(blend->getInFlight() == 5);
-    blend->commandFinish(osM2);
-    BOOST_CHECK(blend->calcAvailableTheads() == 3);
-    blend->commandFinish(osM3);
-    BOOST_CHECK(blend->calcAvailableTheads() == 4);
-    blend->commandFinish(osS1);
-    BOOST_CHECK(blend->calcAvailableTheads() == 4);
-    blend->commandFinish(osS2);
-    BOOST_CHECK(blend->calcAvailableTheads() == 4);
-    blend->commandFinish(osS3);
-    BOOST_CHECK(blend->calcAvailableTheads() == 5);
-    BOOST_CHECK(blend->getInFlight() == 0);
+    f.blend->commandFinish(og2);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 2);
+    BOOST_CHECK(f.blend->getInFlight() == 7);
+    f.blend->commandFinish(og3);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 3);
+    BOOST_CHECK(f.blend->getInFlight() == 6);
+    f.blend->commandFinish(osM1);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 3);
+    BOOST_CHECK(f.blend->getInFlight() == 5);
+    f.blend->commandFinish(osM2);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 3);
+    f.blend->commandFinish(osM3);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 4);
+    f.blend->commandFinish(osS1);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 4);
+    f.blend->commandFinish(osS2);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 4);
+    f.blend->commandFinish(osS3);
+    BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
+    BOOST_CHECK(f.blend->getInFlight() == 0);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 done");
+}
 
+
+BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
+    SchedFixture f;
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
     // Test that only 6 threads can be started on a single ScanScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
-    BOOST_CHECK(blend->ready() == false);
+    BOOST_CHECK(f.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, qIdInc++, 0)));
+        f.blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0)));
         if (j < 6) {
-            BOOST_CHECK(blend->ready() == true);
-            auto cmd = blend->getCmd(false);
+            BOOST_CHECK(f.blend->ready() == true);
+            auto cmd = f.blend->getCmd(false);
             BOOST_CHECK(cmd != nullptr);
             auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
             scanTasks.push_back(task);
         }
         if (j == 6) {
-            BOOST_CHECK(blend->ready() == false);
-            BOOST_CHECK(blend->getCmd(false) == nullptr);
+            BOOST_CHECK(f.blend->ready() == false);
+            BOOST_CHECK(f.blend->getCmd(false) == nullptr);
         }
     }
     {
         // Finishing one task should allow the 7th one to run.
-        blend->commandFinish(scanTasks[0]);
-        BOOST_CHECK(blend->ready() == true);
-        auto cmd = blend->getCmd(false);
+        f.blend->commandFinish(scanTasks[0]);
+        BOOST_CHECK(f.blend->ready() == true);
+        auto cmd = f.blend->getCmd(false);
         BOOST_CHECK(cmd != nullptr);
         auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
         scanTasks.push_back(task);
     }
     // Finish all the scanTasks, scanTasks[0] is already finished.
-    for (int j=1; j<7; ++j) blend->commandFinish(scanTasks[j]);
-    BOOST_CHECK(blend->getInFlight() == 0);
-    BOOST_CHECK(blend->ready() == false);
+    for (int j=1; j<7; ++j) f.blend->commandFinish(scanTasks[j]);
+    BOOST_CHECK(f.blend->getInFlight() == 0);
+    BOOST_CHECK(f.blend->ready() == false);
 
     // Test that only 6 threads can be started on a single GroupScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
     std::vector<Task::Ptr> groupTasks;
     for (int j=0; j<7; ++j) {
-        blend->queCmd(makeTask(newTaskMsg(j, qIdInc++, 0)));
+        f.blend->queCmd(makeTask(newTaskMsg(j, f.qIdInc++, 0)));
         if (j < 6) {
-            BOOST_CHECK(blend->ready() == true);
-            auto cmd = blend->getCmd(false);
+            BOOST_CHECK(f.blend->ready() == true);
+            auto cmd = f.blend->getCmd(false);
             BOOST_CHECK(cmd != nullptr);
             auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
             groupTasks.push_back(task);
         }
         if (j == 6) {
-            BOOST_CHECK(blend->ready() == false);
-            BOOST_CHECK(blend->getCmd(false) == nullptr);
+            BOOST_CHECK(f.blend->ready() == false);
+            BOOST_CHECK(f.blend->getCmd(false) == nullptr);
         }
     }
     {
         // Finishing one task should allow the 7th one to run.
-        blend->commandFinish(groupTasks[0]);
-        BOOST_CHECK(blend->ready() == true);
-        auto cmd = blend->getCmd(false);
+        f.blend->commandFinish(groupTasks[0]);
+        BOOST_CHECK(f.blend->ready() == true);
+        auto cmd = f.blend->getCmd(false);
         BOOST_CHECK(cmd != nullptr);
         auto task = std::dynamic_pointer_cast<lsst::qserv::wbase::Task>(cmd);
         groupTasks.push_back(task);
     }
     // Finish all the groupTasks, groupTasks[0] is already finished.
-    for (int j=1; j<7; ++j) blend->commandFinish(groupTasks[j]);
-    BOOST_CHECK(blend->getInFlight() == 0);
-    BOOST_CHECK(blend->ready() == false);
+    for (int j=1; j<7; ++j) f.blend->commandFinish(groupTasks[j]);
+    BOOST_CHECK(f.blend->getInFlight() == 0);
+    BOOST_CHECK(f.blend->ready() == false);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
+}
 
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-3 task/query removal");
-    // Add some queries to the Fast scheduler and then move one query to the snail.
+
+BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
+    // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
+    // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
+    // ChunkIds matter as they control the order Tasks come off individual schedulers.
+    SchedFixture f;
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryRemovalTest");
+    // Add two queries to scanFast scheduler and then move one query to scanSlow.
     int startChunk = 70;
     uint jobs = 11;
+    uint jobsA = jobs;
+    uint jobsB = jobs;
     std::vector<Task::Ptr> queryATasks;
     std::vector<Task::Ptr> queryBTasks;
-    lsst::qserv::QueryId qIdA = qIdInc++;
-    lsst::qserv::QueryId qIdB = qIdInc++;
+    lsst::qserv::QueryId qIdA = f.qIdInc++;
+    lsst::qserv::QueryId qIdB = f.qIdInc++;
     {
         int jobId = 0;
         int chunkId = startChunk;
         for (uint j=0; j<jobs; ++j) {
-            taskMsg = newTaskMsgScan(chunkId, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdA, jobId);
+            auto taskMsg = newTaskMsgScan(chunkId, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdA, jobId);
             Task::Ptr mv = makeTask(taskMsg);
             queryATasks.push_back(mv);
-            queries->addTask(mv);
-            blend->queCmd(mv);
+            f.queries->addTask(mv);
+            f.blend->queCmd(mv);
             taskMsg = newTaskMsgScan(chunkId++, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdB, jobId++);
             mv = makeTask(taskMsg);
-            queryATasks.push_back(mv);
-            queries->addTask(mv);
-            blend->queCmd(mv);
+            queryBTasks.push_back(mv);
+            f.queries->addTask(mv);
+            f.blend->queCmd(mv);
         }
     }
-    BOOST_CHECK(scanFast->getSize() == jobs*2);
-    BOOST_CHECK(scanSlow->getSize() == 0);
+    BOOST_CHECK(f.scanFast->getSize() == jobs*2);
+    BOOST_CHECK(f.scanSlow->getSize() == 0);
 
-    LOGS(_log, LOG_LVL_DEBUG, "&&& before fastSize=" << scanFast->getSize() << " slowSize=" << scanSlow->getSize());
-    blend->moveUserQuery(qIdA, scanFast, scanSlow);
-    LOGS(_log, LOG_LVL_DEBUG, "fastSize=" << scanFast->getSize() << " slowSize=" << scanSlow->getSize());
-    BOOST_CHECK(scanFast->getSize() == jobs);
-    BOOST_CHECK(scanSlow->getSize() == jobs);
-    auto taskFromA = queryATasks[0];
+    // This should run 1 job from one of the queries, but there are no guarantees about which one.
+    // This is to test that moveUserQuery behaves appropriately for running Tasks.
+    auto poppedTask = f.blend->getCmd(false);
+    bool poppedFromA = false;
+    for (auto const& tk : queryATasks) {
+        if (tk == poppedTask) {
+            poppedFromA = true;
+            break;
+        }
+    }
+    if (poppedFromA) --jobsA;
+    else --jobsB;
+
+    f.blend->moveUserQuery(qIdA, f.scanFast, f.scanSlow); // move query qIdA to scanSlow.
+    LOGS(_log, LOG_LVL_DEBUG, "fastSize=" << f.scanFast->getSize() << " slowSize=" << f.scanSlow->getSize());
+    BOOST_CHECK(f.scanFast->getSize() == jobsB);
+    BOOST_CHECK(f.scanSlow->getSize() == jobsA);
+    // Can't use queryATasks[0] for this as it was popped from the queue before the move.
+    auto taskFromA = queryATasks[1];
     auto schedForA = std::dynamic_pointer_cast<wsched::ScanScheduler>(taskFromA->getTaskScheduler());
-    BOOST_CHECK(schedForA == scanSlow);
+    LOGS(_log, LOG_LVL_DEBUG, "taskFromA=" << taskFromA->getIdStr() << " sched=" << schedForA->getName());
+    BOOST_CHECK(schedForA == f.scanSlow);
 }
 
 
@@ -753,7 +787,7 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     heap.push(a2);
     BOOST_CHECK(heap.top().get() == a2.get());
 
-    Task::Ptr a3 = makeTask(newTaskMsgScan(7, 4, qIdInc++, 0, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(7, 4, qIdInc++, 0, "bravo"));
     heap.push(a3);
     BOOST_CHECK(heap.top().get() == a3.get());
 
@@ -791,7 +825,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     chunkTasks.queTask(a2);
     BOOST_CHECK(chunkTasks.size() == 2);
 
-    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "bravo"));
     chunkTasks.queTask(a3);
     BOOST_CHECK(chunkTasks.size() == 3);
 
@@ -861,7 +895,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
 
     Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "delta"));
     ctl.queueTask(a2);
-    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "beta"));
+    Task::Ptr a3 = makeTask(newTaskMsgScan(chunkId, 4, qIdInc++, 0, "bravo"));
     ctl.queueTask(a3);
     Task::Ptr a4 = makeTask(newTaskMsgScan(chunkId, 2, qIdInc++, 0, "alpha"));
     ctl.queueTask(a4);

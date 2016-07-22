@@ -222,9 +222,7 @@ wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
     // Erase the task if it is in the chunk
     ChunkTasks::Ptr ct = iter->second;
     auto ret = ct->removeTask(task);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::removeTask a size=" << getSize());
     if (ret != nullptr) --_taskCount; // Need to do this by hand.
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasksQueue::removeTask b size=" << getSize());
     return ret;
 }
 
@@ -238,24 +236,15 @@ bool ChunkTasksQueue::empty() const {
 /// This depends on owner for thread safety.
 /// @return a pointer to the removed task or
 wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask");
     auto eraseFunc = [&task](std::vector<wbase::Task::Ptr> &vect)->wbase::Task::Ptr {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask erase " << task->getIdStr());
         auto queryId = task->getQueryId();
         auto jobId = task->getJobId();
-        auto iter = vect.begin();
-        while (iter != vect.end()) {
-            auto qId = (*iter)->getQueryId();
-            auto jId = (*iter)->getJobId();
-            if (queryId == qId && jobId == jId) {
+        for (auto iter = vect.begin(); iter != vect.end(); ++iter) {
+            if ((*iter)->idsMatch(queryId, jobId)) {
                 auto ret = *iter;
-                LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask size=" << vect.size());
-                LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask erase erasing " << task->getIdStr());
                 vect.erase(iter);
-                LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask vect size=" << vect.size());
                 return ret;
             }
-            ++iter;
         }
         return nullptr;
     };
@@ -264,17 +253,12 @@ wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
     // Is it in _activeTasks?
     result = eraseFunc(_activeTasks._tasks);
     if (result != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask before activesize=" << _activeTasks.size());
         _activeTasks.heapify();
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask after activesize=" << _activeTasks.size());
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask after size=" << size());
         return result;
     }
 
     // Is it in _pendingTasks?
-    result = eraseFunc(_pendingTasks);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkTasks::removeTask after size=" << size());
-    return result;
+    return eraseFunc(_pendingTasks);
 }
 
 

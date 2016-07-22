@@ -105,10 +105,9 @@ public:
     /// Remove task from this scheduler.
     /// @return - If task was still in the queue, return a pointer to the
     ///           removed Task, otherwise return nullptr.
-    /// Most schedulers do not support this operation.
+    /// Most schedulers do not support this operation. Currently only supports
+    /// moving from/to ScanSchedulers.
     virtual wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) {return nullptr;}
-    // &&& ??? make removeTask pure virtual
-    // &&& add to GroupScheduler
 
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.

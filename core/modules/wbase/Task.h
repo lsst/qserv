@@ -154,6 +154,9 @@ public:
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
 
+    /// @return true if qId and jId match this task's query and job ids.
+    bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
+
     // Functions for tracking task state and statistics.
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);

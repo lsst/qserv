@@ -45,9 +45,7 @@ void QueryChunkStatistics::addTask(wbase::Task::Ptr const& task) {
 
     std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
     auto res = _queryStats.insert(ent);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& _queryStats.insert qid=" << qid);
     if (res.second) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& _queryStats.insert adding stats qid=" << qid);
         res.first->second = std::make_shared<QueryStatistics>(qid);
     }
     QueryStatistics::Ptr stats = res.first->second;
@@ -177,7 +175,6 @@ QueryStatistics::Ptr QueryChunkStatistics::getStats(QueryId const& qId) const {
 
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& QueryStatistics::addTask " << task->getIdStr());
     std::lock_guard<std::mutex> guard(_qStatsMtx);
     std::pair<int, wbase::Task::Ptr> ent(task->getJobId(), task);
     _taskMap.insert(ent);
@@ -229,15 +226,14 @@ QueryChunkStatistics::removeQueryFrom(QueryId const& qId,
     // Find the user query.
     std::unique_lock<std::mutex> lock(_queryStatsMtx);
     auto query = _queryStats.find(qId);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& _queryStats.size=" << _queryStats.size());
     if (query == _queryStats.end()) {
         LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " was not found by removeQueryFrom");
-        return removedList;;
+        return removedList;
     }
     lock.unlock();
 
     // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
-    // as 'sched'or if sched == nullptr.
+    // as 'sched' or if sched == nullptr.
     auto &taskMap = query->second->_taskMap;
     std::vector<wbase::Task::Ptr> taskList;
     {
@@ -246,33 +242,14 @@ QueryChunkStatistics::removeQueryFrom(QueryId const& qId,
             taskList.push_back(elem.second);
         }
     }
-    /* &&& delete
-    for(auto iter = taskMap.begin(); iter != taskMap.end(); ++iter) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop ");
-        auto task = iter->second;
-        auto baseTaskSched = std::dynamic_pointer_cast<wsched::SchedulerBase>(task->getTaskScheduler());
-        if (baseTaskSched == sched || sched == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop - removing ");
-            // removeTask will only return the task if it was found on the
-            // queue for its scheduler and removed.
-            auto removedTask = baseTaskSched->removeTask(task);
-            if (removedTask != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop - removing - removed");
-                removedList.push_back(removedTask);
-            }
-        }
-    }
-    */
+
     for(auto const& task : taskList) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop ");
         auto baseTaskSched = std::dynamic_pointer_cast<wsched::SchedulerBase>(task->getTaskScheduler());
         if (baseTaskSched == sched || sched == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop - removing ");
             // removeTask will only return the task if it was found on the
             // queue for its scheduler and removed.
             auto removedTask = baseTaskSched->removeTask(task);
             if (removedTask != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom loop - removing - removed");
                 removedList.push_back(removedTask);
             }
         }
