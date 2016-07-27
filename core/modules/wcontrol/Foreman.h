@@ -84,6 +84,7 @@ private:
     Scheduler::Ptr _scheduler;
     mysql::MySqlConfig const _mySqlConfig;
     wpublish::QueryChunkStatistics::Ptr _queries;
+
 };
 
 }}}  // namespace lsst::qserv::wcontrol

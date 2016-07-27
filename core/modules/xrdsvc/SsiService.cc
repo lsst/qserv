@@ -114,24 +114,29 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
     int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
     int const slowest = lsst::qserv::proto::ScanInfo::Rating::SLOWEST;
+    double fastScanMaxMinutes = 60.0; // &&& magic number
+    double medScanMaxMinutes = 8.0*60.0; // &&& magic number
+    double slowScanMaxMinutes = 12.0*60.0; // &&& magic number
+    double snailScanMaxMinutes = 72.0*60.0; // &&& magic number
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
         std::make_shared<wsched::ScanScheduler>(
             "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
-            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow),
+            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, fastScanMaxMinutes),
         std::make_shared<wsched::ScanScheduler>(
             "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
-            workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium),
+            workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium, medScanMaxMinutes),
         std::make_shared<wsched::ScanScheduler>(
             "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
-            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast),
+            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, slowScanMaxMinutes),
 
     };
 
     auto snail = std::make_shared<wsched::ScanScheduler>(
         "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
-        workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest);
+        workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest, snailScanMaxMinutes);
 
-    wpublish::QueryChunkStatistics::Ptr queries = std::make_shared<wpublish::QueryChunkStatistics>(std::chrono::minutes(5));
+    wpublish::QueryChunkStatistics::Ptr queries =
+        std::make_shared<wpublish::QueryChunkStatistics>(std::chrono::minutes(5), std::chrono::minutes(5));
     _foreman = std::make_shared<wcontrol::Foreman>(
         std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
                                                  maxThread, group, snail, scanSchedulers),

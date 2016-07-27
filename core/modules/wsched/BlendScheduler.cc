@@ -110,15 +110,15 @@ BlendScheduler::~BlendScheduler() {
 void BlendScheduler::_sortScanSchedulers() {
     auto greaterThan = [](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b)->bool {
         // Experiment of sorts, priority depends on number of Tasks in each scheduler.
-        auto aVal = a->getPriority() * (1 + a->getUserQueriesInQ());
-        auto bVal = b->getPriority() * (1 + b->getUserQueriesInQ());
+        auto aVal = a->getPriority() + a->getUserQueriesInQ();
+        auto bVal = b->getPriority() + b->getUserQueriesInQ();
         return aVal > bVal;
     };
     // The first scheduler should always be _group (for interactive queries).
     if (_schedulers.size() >= 2) {
         std::sort(_schedulers.begin()+1, _schedulers.end(), greaterThan);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "not enough schedulers, _schedulers.size=" << _schedulers.size());
+        LOGS(_log, LOG_LVL_DEBUG, "not enough schedulers, _schedulers.size=" << _schedulers.size());
     }
 }
 
@@ -126,7 +126,10 @@ void BlendScheduler::_sortScanSchedulers() {
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (task == nullptr || task->msg == nullptr) {
-        throw Bug("BlendScheduler::queueTaskAct: null task");
+        LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
+        _commandQueue.queCmd(cmd);
+        notify(true);
+        return;
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
 
@@ -244,6 +247,9 @@ bool BlendScheduler::_ready() {
         }
         if (ready) break;
     }
+    if (!ready) {
+        ready = _commandQueue.ready();
+    }
     if (changed) {
         LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
     }
@@ -269,6 +275,9 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         }
         // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
         LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
+    }
+    if (cmd == nullptr) {
+       cmd = _commandQueue.getCmd();
     }
     if (cmd != nullptr) {
         _infoChanged = true;
@@ -316,11 +325,12 @@ std::size_t BlendScheduler::getSize() const {
 int BlendScheduler::getInFlight() const {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     int inFlight = 0;
-    for (auto sched : _schedulers) {
+    for (auto const& sched : _schedulers) {
         inFlight += sched->getInFlight();
     }
     return inFlight;
 }
+
 
 void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
@@ -354,6 +364,29 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
         ++count;
     }
     return count;
+}
+
+
+void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {
+    std::lock_guard<std::mutex> lock{_mx};
+    _qu.push_back(cmd);
+}
+
+
+util::Command::Ptr ControlCommandQueue::getCmd() {
+    std::lock_guard<std::mutex> lock{_mx};
+    if (_qu.empty()) {
+        return nullptr;
+    }
+    auto cmd = _qu.front();
+    _qu.pop_front();
+    return cmd;
+}
+
+
+bool ControlCommandQueue::ready() {
+    std::lock_guard<std::mutex> lock{_mx};
+    return !_qu.empty();
 }
 
 }}} // namespace lsst::qserv::wsched

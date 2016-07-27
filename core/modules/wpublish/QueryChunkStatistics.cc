@@ -24,6 +24,7 @@
 // Class header
 #include "wpublish/QueryChunkStatistics.h"
 #include "wsched/SchedulerBase.h"
+#include "wsched/ScanScheduler.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -37,6 +38,34 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
+QueryChunkStatistics::QueryChunkStatistics(
+    std::chrono::seconds deadAfter,
+    std::chrono::seconds examineAfter)
+     :_deadAfter{deadAfter}, _examineAfter{examineAfter} {
+    auto rDead = [this](){
+        while (_loopRemoval) {
+            removeDead();
+            std::this_thread::sleep_for(_deadAfter);
+        }
+    };
+    std::thread td(rDead);
+    _removalThread = move(td);
+
+    LOGS(_log, LOG_LVL_DEBUG, "&&&_examineAfter.count()=" << _examineAfter.count());
+    if (_examineAfter.count() == 0) {
+        LOGS(_log, LOG_LVL_DEBUG, "QueryChunkStatistics turning off examineThread");
+        _loopExamine = false;
+    }
+
+    auto rExamine = [this](){
+        while (_loopExamine) {
+            std::this_thread::sleep_for(_examineAfter);
+            if (_loopExamine) examineAll();
+        }
+    };
+    std::thread te(rExamine);
+    _examineThread = move(te);
+}
 
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueryChunkStatistics::addTask(wbase::Task::Ptr const& task) {
@@ -82,7 +111,7 @@ void QueryChunkStatistics::startedTask(wbase::Task::Ptr const& task) {
 }
 
 
-/// Update statistics for the Task that finished an the chunk it was querying on.
+/// Update statistics for the Task that finished and the chunk it was querying.
 void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
     auto now = std::chrono::system_clock::now();
     double taskDuration = (double)(task->finished(now).count());
@@ -108,10 +137,10 @@ void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
 /// Update statistics for the Task that finished an the chunk it was querying on.
 void QueryChunkStatistics::_finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes) {
     std::unique_lock<std::mutex> ul(_chunkMtx);
-    std::pair<int, ChunkStats::Ptr> ele(task->getChunkId(), nullptr);
+    std::pair<int, ChunkStatistics::Ptr> ele(task->getChunkId(), nullptr);
     auto res = _chunkStats.insert(ele);
     if (res.second) {
-        res.first->second = std::make_shared<ChunkStats>(task->getChunkId());
+        res.first->second = std::make_shared<ChunkStatistics>(task->getChunkId());
     }
     ul.unlock();
     auto iter = res.first->second;
@@ -119,9 +148,9 @@ void QueryChunkStatistics::_finishedTaskForChunk(wbase::Task::Ptr const& task, d
     std::string tblName = "";
     if (!scanInfo.infoTables.empty()) {
         proto::ScanTableInfo &sti = scanInfo.infoTables.at(0);
-        tblName = ChunkStatsTable::makeTableName(sti.db, sti.table);
+        tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
     }
-    ChunkStatsTable::Ptr tableStats = iter->add(tblName, minutes);
+    ChunkTableStats::Ptr tableStats = iter->add(tblName, minutes);
 }
 
 
@@ -173,6 +202,158 @@ QueryStatistics::Ptr QueryChunkStatistics::getStats(QueryId const& qId) const {
 }
 
 
+/// Examine all running Tasks and boot Tasks that are taking too long and
+/// move user queries that are too slow to the snail scan.
+void QueryChunkStatistics::examineAll() {
+    // Need to know how long it takes to complete tasks on each table
+    // in each chunk, and their percentage total of the whole.
+    auto scanTblSums = _calcScanTableSums();
+
+    // Copy a vector of the Queries in the map and work with the copy
+    // to free up the mutex.
+    std::vector<QueryStatistics::Ptr> uqs;
+    {
+        std::lock_guard<std::mutex> g(_queryStatsMtx);
+        for (auto const& ele : _queryStats) {
+            auto const& q = ele.second;
+            LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll push_back=" << q->_queryId);
+            uqs.push_back(q);
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll uqs.size=" << uqs.size());
+
+    // Go through all tasks in each query and examine the running ones.
+    // If the running queries are taking longer than their percent of total time, boot them.
+    // If the booted query makes it more than 5% of Tasks for the user query have been booted,
+    //    then boot the user query to the snailScan.
+    for (auto const& uq : uqs) {
+        // Copy all the running tasks that are on ScanSchedulers.
+        std::vector<wbase::Task::Ptr> runningTasks;
+        {
+            std::lock_guard<std::mutex> lock(uq->_qStatsMtx);
+            for (auto const& ele : uq->_taskMap) {
+                auto const& task = ele.second;
+                if (task->getState() == wbase::Task::State::RUNNING) {
+                    auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
+                    if (sched != nullptr) {
+                        runningTasks.push_back(task);
+                    }
+                }
+            }
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll runningTasks.size=" << runningTasks.size());
+
+        // For each running task, check if it is taking too long, or if the query is taking too long.
+        for (auto const& task : runningTasks) {
+            auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
+            LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll checking scheduler");
+            if (sched == nullptr) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll scheduler == nullptr");
+                continue;
+            }
+            double schedMaxTime = sched->getMaxTimeMinutes(); // Get max time for scheduler
+            LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll " << sched->getName() << " schedMaxTime=" << schedMaxTime);
+            // Get the slowest scan table in task.
+            auto begin = task->getScanInfo().infoTables.begin();
+            if (begin == task->getScanInfo().infoTables.end()) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll table name not found");
+                continue;
+            }
+            std::string const& slowestTable = begin->db + ":" + begin->table;
+            LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll table name=" << slowestTable);
+            for (auto const& tt:scanTblSums) { // &&&
+                LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll first=" << tt.first );
+            }     // &&&
+            auto iterTbl = scanTblSums.find(slowestTable);
+            if (iterTbl != scanTblSums.end()) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll chunkId=" << task->getChunkId());
+                ScanTableSums &tblSums = iterTbl->second;
+                auto iterChunk = tblSums.chunkPercentages.find(task->getChunkId());
+                if (iterChunk != tblSums.chunkPercentages.end()) {
+                    // We can only make the check if there's data on past chunks/tables.
+                    double percent = iterChunk->second.percent;
+                    double maxTimeChunk = percent * schedMaxTime;
+                    LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll percent=" << percent
+                            << " schedMaxTime=" << schedMaxTime << " maxTimeChunk=" << maxTimeChunk);
+                    auto runTimeMilli = task->getRunTime();
+                    LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll runTimeMilli=" << runTimeMilli.count());
+                    double runTimeMinutes = (double)runTimeMilli.count()/60000.0;
+                    LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll runTimeMinutes=" << runTimeMinutes);
+                    LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll runTimeMinutes > maxTimeChunk=" << (runTimeMinutes > maxTimeChunk));
+                    if (runTimeMinutes > maxTimeChunk) {
+                        LOGS(_log, LOG_LVL_DEBUG, "&&& examineAll booting task " << task->getIdStr());
+                        _bootTask(uq, task, sched);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/// @return a map that contains time totals for all chunks for tasks running on specific
+/// tables. The map is sorted by table name and contains sub-maps ordered by chunk id.
+/// The sub-maps contain information about how long tasks take to complete on that table
+/// on that chunk. These are then used to see what the percentage total of the time it took
+/// for tasks on each chunk.
+/// The table names are based on the slowest scan table in each task.
+QueryChunkStatistics::ScanTableSumsMap QueryChunkStatistics::_calcScanTableSums() {
+    LOGS(_log, LOG_LVL_DEBUG, "&&& _calcScanTableSums start");
+    // Copy a vector of all the chunks in the map;
+    std::vector<ChunkStatistics::Ptr> chks;
+    {
+        std::lock_guard<std::mutex> g(_chunkMtx);
+        for (auto const& ele : _chunkStats) {
+            auto const& chk = ele.second;
+            LOGS(_log, LOG_LVL_DEBUG, "&&& _calc chk " << chk->_chunkId);
+            chks.push_back(chk);
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& _calcScanTableSums chks size=" << chks.size());
+
+    QueryChunkStatistics::ScanTableSumsMap scanTblSums;
+    for (auto const& chunkStats : chks) {
+        auto chunkId = chunkStats->_chunkId;
+        std::lock_guard<std::mutex> lock(chunkStats->_tStatsMtx);
+        for (auto const& ele : chunkStats->_tableStats) {
+            auto const& tblName = ele.first;
+            LOGS(_log, LOG_LVL_DEBUG, "&&& tblName=" << tblName);
+            if (tblName != "") {
+                auto &sTSums = scanTblSums[tblName];
+                sTSums.totalTime  += ele.second->getAvgCompletionTime();
+                ChunkTimePercent &ctp = sTSums.chunkPercentages[chunkId];
+                ctp.shardTime = ele.second->getAvgCompletionTime();
+                LOGS(_log, LOG_LVL_DEBUG, "&&& chunkId=" << chunkId << " ctp.shardTime=" << ctp.shardTime);
+            }
+        }
+    }
+
+    // Calculate percentage totals.
+    for (auto &eleTbl : scanTblSums) {
+        auto &scanTbl = eleTbl.second;
+        auto totalTime = scanTbl.totalTime;
+        for (auto &eleChunk : scanTbl.chunkPercentages) {
+            auto &tPercent = eleChunk.second;
+            tPercent.percent = tPercent.shardTime / totalTime;
+        }
+    }
+    return scanTblSums;
+}
+
+
+/// &&& doc
+void QueryChunkStatistics::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
+                                     wsched::SchedulerBase::Ptr const& sched) {
+    LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " taking too long, booting from " << sched->getName());
+    sched->removeTask(task);
+    uq->_tasksBooted += 1;
+    if (uq->_tasksBooted > _maxBooted) {
+        LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " entire UserQuery booting from " << sched->getName());
+        removeQueryFrom(uq->_queryId, sched);
+    }
+}
+
+
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
     std::lock_guard<std::mutex> guard(_qStatsMtx);
@@ -181,7 +362,14 @@ void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
 }
 
 
-/// @return true if this query is don and has not been touched for deadTime.
+/// @return the number of Tasks that have been booted for this user query.
+int QueryStatistics::getTasksBooted() {
+    std::lock_guard<std::mutex> guard(_qStatsMtx);
+    return _tasksBooted;
+}
+
+
+/// @return true if this query is done and has not been touched for deadTime.
 bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now) {
     std::lock_guard<std::mutex> guard(_qStatsMtx);
     if (_isMostlyDead()) {
@@ -260,13 +448,13 @@ QueryChunkStatistics::removeQueryFrom(QueryId const& qId,
 
 /// Add the duration to the statistics for the table. Create a statistics object if needed.
 /// @return the statistics for the table.
-ChunkStatsTable::Ptr ChunkStats::add(std::string const& scanTableName, double minutes) {
-    std::pair<std::string, ChunkStatsTable::Ptr> ele(scanTableName, nullptr);
+ChunkTableStats::Ptr ChunkStatistics::add(std::string const& scanTableName, double minutes) {
+    std::pair<std::string, ChunkTableStats::Ptr> ele(scanTableName, nullptr);
     std::unique_lock<std::mutex> ul(_tStatsMtx);
     auto res = _tableStats.insert(ele);
     auto iter = res.first;
     if (res.second) {
-        iter->second = std::make_shared<ChunkStatsTable>(_chunkId, scanTableName);
+        iter->second = std::make_shared<ChunkTableStats>(_chunkId, scanTableName);
     }
     ul.unlock();
     iter->second->addTaskFinished(minutes);
@@ -275,7 +463,7 @@ ChunkStatsTable::Ptr ChunkStats::add(std::string const& scanTableName, double mi
 
 
 /// @return the statistics for a table. nullptr if the table is not found.
-ChunkStatsTable::Ptr ChunkStats::getStats(std::string const& scanTableName) const {
+ChunkTableStats::Ptr ChunkStatistics::getStats(std::string const& scanTableName) const {
     std::lock_guard<std::mutex> g(_tStatsMtx);
     auto iter = _tableStats.find(scanTableName);
     if (iter != _tableStats.end()) {
@@ -286,11 +474,11 @@ ChunkStatsTable::Ptr ChunkStats::getStats(std::string const& scanTableName) cons
 
 
 /// Use the duration of the last Task completed to adjust the average completion time.
-void ChunkStatsTable::addTaskFinished(double minutes) {
+void ChunkTableStats::addTaskFinished(double minutes) {
     std::lock_guard<std::mutex> g(_cStatsMtx);
     ++_tasksCompleted;
     if (_tasksCompleted > 1) {
-        _avgCompletionTime = (_avgCompletionTime*_weightAvg + minutes*_weightDur)/_weightSum;
+        _avgCompletionTime = (_avgCompletionTime*_weightAvg + minutes*_weightNew)/_weightSum;
     } else {
         _avgCompletionTime = minutes;
     }
@@ -299,5 +487,10 @@ void ChunkStatsTable::addTaskFinished(double minutes) {
          << " avgCompletionTime=" << _avgCompletionTime);
 }
 
+
+double ChunkTableStats::getAvgCompletionTime() {
+    std::lock_guard<std::mutex> g(_cStatsMtx);
+    return _avgCompletionTime;
+}
 
 }}} // namespace lsst:qserv:wpublish

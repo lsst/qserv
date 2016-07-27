@@ -61,7 +61,7 @@ public:
 
     ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
                   int maxActiveChunks, memman::MemMan::Ptr const& memman,
-                  int minRating, int maxRating);
+                  int minRating, int maxRating, double maxTimeMinutes);
     virtual ~ScanScheduler() {}
 
     void setBlendScheduler(BlendScheduler *blend) {
@@ -81,6 +81,7 @@ public:
 
     void logMemManStats();
 
+    double getMaxTimeMinutes() { return _maxTimeMinutes; }
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
 
 private:
@@ -93,6 +94,10 @@ private:
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
     const int _minRating;
     const int _maxRating;
+
+    /// Maximum amount of time a UserQuery (all of its Tasks for this worker) should
+    /// take to complete on this scheduler.
+    double _maxTimeMinutes;
 
     std::atomic<bool> _infoChanged{true}; ///< "Used to limit the amount of debug logging.
 };

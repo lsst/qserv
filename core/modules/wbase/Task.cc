@@ -182,6 +182,12 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
 }
 
 
+Task::State Task::getState() {
+    std::lock_guard<std::mutex> lock(_stateMtx);
+    return _state;
+}
+
+
 /// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);
@@ -200,7 +206,27 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
         _state = State::FINISHED;
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
     }
+    // Ensure that the duration is greater than 0.
+    if (duration.count() < 1) {
+        duration = std::chrono::milliseconds{1};
+    }
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing millisecs=" << duration.count());
+    return duration;
+}
+
+
+/// @return the amount of time spent so far on the task in milliseconds.
+std::chrono::milliseconds Task::getRunTime() {
+    std::chrono::milliseconds duration{0};
+    {
+        std::lock_guard<std::mutex> guard(_stateMtx);
+        if (_state == State::FINISHED) {
+            duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+        } else if (_state == State::RUNNING) {
+            auto now = std::chrono::system_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - _startTime);
+        }
+    }
     return duration;
 }
 

@@ -58,9 +58,10 @@ namespace wsched {
 
 ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
                              int maxActiveChunks, memman::MemMan::Ptr const& memMan,
-                             int minRating, int maxRating)
+                             int minRating, int maxRating, double maxTimeMinutes)
     : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
-      _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
+      _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating},
+      _maxTimeMinutes{maxTimeMinutes} {
     //_taskQueue = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
     _taskQueue = std::make_shared<ChunkTasksQueue>(this, _memMan);
     assert(_minRating <= _maxRating);

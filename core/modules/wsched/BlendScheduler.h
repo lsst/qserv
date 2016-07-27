@@ -43,6 +43,20 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
+
+// Class to pass control commands to the pool thread.
+class ControlCommandQueue {
+public:
+    void queCmd(util::Command::Ptr const& cmd);
+    util::Command::Ptr getCmd();
+    bool ready();
+
+private:
+    std::deque<util::Command::Ptr> _qu{};
+    std::mutex _mx{};
+};
+
+
 /// BlendScheduler is a scheduler that places queries in one of
 /// 4 sub-schedulers. Interactive queries are placed on the GroupScheduler
 /// _group, which has the highest priority. Other queries, which are
@@ -112,6 +126,7 @@ private:
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
+    ControlCommandQueue _commandQueue;
 
     int _schedMaxThreads; ///< maximum number of threads that can run.
 

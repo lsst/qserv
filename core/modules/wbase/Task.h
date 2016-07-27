@@ -159,6 +159,8 @@ public:
     bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
 
     // Functions for tracking task state and statistics.
+    State getState();
+    std::chrono::milliseconds getRunTime();
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
