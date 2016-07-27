@@ -23,6 +23,7 @@
 
 // Class header
 #include "wpublish/QueryChunkStatistics.h"
+#include "wsched/SchedulerBase.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -42,7 +43,7 @@ void QueryChunkStatistics::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
     auto ent = std::pair<QueryId, QueryStatistics::Ptr>(qid, nullptr);
 
-    std::unique_lock<std::mutex> guardStats(_qStatsMtx);
+    std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
     auto res = _queryStats.insert(ent);
     if (res.second) {
         res.first->second = std::make_shared<QueryStatistics>(qid);
@@ -60,7 +61,7 @@ void QueryChunkStatistics::queuedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        std::lock_guard<std::mutex>(stats->_mx);
+        std::lock_guard<std::mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_size += 1;
     }
@@ -74,7 +75,7 @@ void QueryChunkStatistics::startedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        std::lock_guard<std::mutex>(stats->_mx);
+        std::lock_guard<std::mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_tasksRunning += 1;
     }
@@ -89,7 +90,7 @@ void QueryChunkStatistics::finishedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        std::lock_guard<std::mutex> gs(stats->_mx);
+        std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_tasksRunning -= 1;
         stats->_tasksCompleted += 1;
@@ -152,18 +153,18 @@ void QueryChunkStatistics::removeDead() {
 
 /// Remove a statistics for a user query.
 void QueryChunkStatistics::removeDead(QueryStatistics::Ptr const& queryStats) {
-    std::unique_lock<std::mutex> gS(queryStats->_mx);
+    std::unique_lock<std::mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
     LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " Queries::removeDead");
 
-    std::lock_guard<std::mutex> gQ(_qStatsMtx);
+    std::lock_guard<std::mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
 }
 
 /// @return the statistics for a user query.
 QueryStatistics::Ptr QueryChunkStatistics::getStats(QueryId const& qId) const {
-    std::lock_guard<std::mutex> g(_qStatsMtx);
+    std::lock_guard<std::mutex> g(_queryStatsMtx);
     auto iter = _queryStats.find(qId);
     if (iter != _queryStats.end()) {
         return iter->second;
@@ -174,7 +175,7 @@ QueryStatistics::Ptr QueryChunkStatistics::getStats(QueryId const& qId) const {
 
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    std::lock_guard<std::mutex> guard(_mx);
+    std::lock_guard<std::mutex> guard(_qStatsMtx);
     std::pair<int, wbase::Task::Ptr> ent(task->getJobId(), task);
     _taskMap.insert(ent);
 }
@@ -182,7 +183,7 @@ void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
 
 /// @return true if this query is don and has not been touched for deadTime.
 bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now) {
-    std::lock_guard<std::mutex> guard(_mx);
+    std::lock_guard<std::mutex> guard(_qStatsMtx);
     if (_isMostlyDead()) {
         if (now - _touched > deadTime) {
             return true;
@@ -199,7 +200,7 @@ bool QueryStatistics::_isMostlyDead() const {
 }
 
 std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
-    std::lock_guard<std::mutex> gd(q._mx);
+    std::lock_guard<std::mutex> gd(q._qStatsMtx);
     os << QueryIdHelper::makeIdStr(q._queryId)
        << " time="           << q._totalTimeMinutes
        << " size="           << q._size
@@ -207,6 +208,53 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
        << " tasksRunning="   << q._tasksRunning
        << " tasksBooted="    << q._tasksBooted;
     return os;
+}
+
+
+/// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.
+/// If 'sched' is null, then Tasks will be removed from the queue of whatever scheduler
+/// they are queued on.
+/// Tasks that are already running continue, but are marked as complete on their
+/// current scheduler. Stopping and rescheduling them would be difficult at best, and
+/// probably not very helpful.
+std::vector<wbase::Task::Ptr>
+QueryChunkStatistics::removeQueryFrom(QueryId const& qId,
+                                      std::shared_ptr<wsched::SchedulerBase> const& sched) {
+
+    std::vector<wbase::Task::Ptr> removedList; // Return value;
+
+    // Find the user query.
+    std::unique_lock<std::mutex> lock(_queryStatsMtx);
+    auto query = _queryStats.find(qId);
+    if (query == _queryStats.end()) {
+        LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " was not found by removeQueryFrom");
+        return removedList;
+    }
+    lock.unlock();
+
+    // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
+    // as 'sched' or if sched == nullptr.
+    auto &taskMap = query->second->_taskMap;
+    std::vector<wbase::Task::Ptr> taskList;
+    {
+        std::lock_guard<std::mutex> taskLock(query->second->_qStatsMtx);
+        for (auto const& elem : taskMap) {
+            taskList.push_back(elem.second);
+        }
+    }
+
+    for(auto const& task : taskList) {
+        auto taskSched = task->getTaskScheduler();
+        if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
+            // removeTask will only return the task if it was found on the
+            // queue for its scheduler and removed.
+            auto removedTask = taskSched->removeTask(task);
+            if (removedTask != nullptr) {
+                removedList.push_back(removedTask);
+            }
+        }
+    }
+    return removedList;
 }
 
 
@@ -239,7 +287,7 @@ ChunkStatsTable::Ptr ChunkStats::getStats(std::string const& scanTableName) cons
 
 /// Use the duration of the last Task completed to adjust the average completion time.
 void ChunkStatsTable::addTaskFinished(double minutes) {
-    std::lock_guard<std::mutex> g(_mtx);
+    std::lock_guard<std::mutex> g(_cStatsMtx);
     ++_tasksCompleted;
     if (_tasksCompleted > 1) {
         _avgCompletionTime = (_avgCompletionTime*_weightAvg + minutes*_weightDur)/_weightSum;

@@ -84,7 +84,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
     if (_readyChunk != nullptr) {
         return true;
     }
-    if (empty()) {
+    if (_empty()) {
         return false;
     }
 
@@ -209,6 +209,56 @@ int ChunkTasksQueue::getActiveChunkId() {
         return -1;
     }
     return _activeChunk->second->getChunkId();
+}
+
+
+wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
+    // Find the correct chunk
+    auto chunkId = task->getChunkId();
+    std::lock_guard<std::mutex> lock(_mapMx);
+    auto iter = _chunkMap.find(chunkId);
+    if (iter == _chunkMap.end()) return nullptr;
+
+    // Erase the task if it is in the chunk
+    ChunkTasks::Ptr ct = iter->second;
+    auto ret = ct->removeTask(task);
+    if (ret != nullptr) --_taskCount; // Need to do this by hand.
+    return ret;
+}
+
+
+bool ChunkTasksQueue::empty() const {
+    std::lock_guard<std::mutex> lock(_mapMx);
+    return _empty();
+}
+
+/// Remove task from ChunkTasks.
+/// This depends on owner for thread safety.
+/// @return a pointer to the removed task or
+wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
+    auto eraseFunc = [&task](std::vector<wbase::Task::Ptr> &vect)->wbase::Task::Ptr {
+        auto queryId = task->getQueryId();
+        auto jobId = task->getJobId();
+        for (auto iter = vect.begin(); iter != vect.end(); ++iter) {
+            if ((*iter)->idsMatch(queryId, jobId)) {
+                auto ret = *iter;
+                vect.erase(iter);
+                return ret;
+            }
+        }
+        return nullptr;
+    };
+
+    wbase::Task::Ptr result = nullptr;
+    // Is it in _activeTasks?
+    result = eraseFunc(_activeTasks._tasks);
+    if (result != nullptr) {
+        _activeTasks.heapify();
+        return result;
+    }
+
+    // Is it in _pendingTasks?
+    return eraseFunc(_pendingTasks);
 }
 
 

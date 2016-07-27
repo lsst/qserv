@@ -59,6 +59,10 @@ public:
 
     /// @return true if the next Task will come from a different active chunk.
     virtual bool nextTaskDifferentChunkId() = 0;
+
+    /// Remove task from this collection.
+    /// @return a pointer to the removed task or nullptr if the task was not found.
+    virtual wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) = 0;
 };
 
 }}} // namespace lsst::qserv::wsched

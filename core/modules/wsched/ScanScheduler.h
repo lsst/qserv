@@ -81,6 +81,8 @@ public:
 
     void logMemManStats();
 
+    wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
+
 private:
     bool _ready();
     std::shared_ptr<ChunkTaskCollection> _taskQueue; ///< Constrains access to files.

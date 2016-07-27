@@ -209,6 +209,30 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 }
 
 
+/// @returns - If task was removed from the queue, a pointer to the removed Task
+///            is returned
+wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
+    // Check if task is in the queue.
+    // _taskQueue has its own mutex to protect this.
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr());
+    auto rmTask = _taskQueue->removeTask(task);
+    if (rmTask != nullptr) return rmTask;
+
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inflight");
+    // Wasn't in the queue, could be in flight.
+    /// The task can only leave the pool if it has been started, and there is a tiny
+    /// window where the task could have been pulled from the queue but commandStart()
+    /// has not been called and 'task' does not know its poolThread. 'task' will possibly
+    /// gum up its scheduler by being slow, but nothing terrible should happen. Waiting
+    /// and calling this function again is probably the best option if needed.
+    auto poolThread = task->getPoolEventThread();
+    if (poolThread != nullptr) poolThread->leavePool(task);
+    // If it was running, no Task pointer should be returned as it could
+    // (erroneously) be scheduled to run again on a different scheduler.
+    return nullptr;
+}
+
+
 void ScanScheduler::logMemManStats() {
     auto s = _memMan->getStatistics();
     LOGS(_log, LOG_LVL_DEBUG, "bMax=" << s.bytesLockMax

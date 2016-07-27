@@ -76,6 +76,7 @@ public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
+    virtual std::shared_ptr<Task> removeTask(std::shared_ptr<Task> const& task)=0;
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -153,6 +154,9 @@ public:
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() {return _idStr;}
+
+    /// @return true if qId and jId match this task's query and job ids.
+    bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
 
     // Functions for tracking task state and statistics.
     void queued(std::chrono::system_clock::time_point const& now);
