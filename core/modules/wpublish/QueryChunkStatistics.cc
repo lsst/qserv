@@ -244,11 +244,11 @@ QueryChunkStatistics::removeQueryFrom(QueryId const& qId,
     }
 
     for(auto const& task : taskList) {
-        auto baseTaskSched = std::dynamic_pointer_cast<wsched::SchedulerBase>(task->getTaskScheduler());
-        if (baseTaskSched == sched || sched == nullptr) {
+        auto taskSched = task->getTaskScheduler();
+        if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
             // removeTask will only return the task if it was found on the
             // queue for its scheduler and removed.
-            auto removedTask = baseTaskSched->removeTask(task);
+            auto removedTask = taskSched->removeTask(task);
             if (removedTask != nullptr) {
                 removedList.push_back(removedTask);
             }

@@ -76,6 +76,7 @@ public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
+    virtual std::shared_ptr<Task> removeTask(std::shared_ptr<Task> const& task)=0;
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
