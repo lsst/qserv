@@ -109,8 +109,8 @@ protected:
 
     // Values that don't change once set.
     Executive* _executive;
-    /// The job description needs to survive until the query is complete. Some elements passed to xrootd as
-    /// raw pointers.
+    /// The job description needs to survive until the task is complete. Some elements are passed to
+    /// xrootd as raw pointers.
     JobDescription _jobDescription;
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
