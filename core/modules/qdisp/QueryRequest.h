@@ -97,17 +97,17 @@ public:
 
     /// Called by xrootd to get the request payload
     /// @return content of request data
-    virtual char* GetRequest(int& requestLength);
+    char* GetRequest(int& requestLength) override;
 
     /// Called by xrootd to release the allocated request payload
-    virtual void RelRequestBuffer();
+    void RelRequestBuffer() override;
 
     /// Called by xrootd when a response is ready
     /// precondition: rInfo.rType != isNone
-    virtual bool ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk);
+    bool ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) override;
 
     /// Called by xrootd when new data is available.
-    virtual void ProcessResponseData(char *buff, int blen, bool last);
+    XrdSsiRequest::PRD_Xeq ProcessResponseData(char *buff, int blen, bool last) override;
 
     void cancel();
     bool isCancelled();

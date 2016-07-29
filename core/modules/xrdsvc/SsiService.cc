@@ -145,8 +145,8 @@ SsiService::~SsiService() {
 void SsiService::Provision(XrdSsiService::Resource* r,
                            unsigned short timeOut,
                            bool userConn) { // Step 2
-    LOGS(_log, LOG_LVL_DEBUG, "Got provision call where rName is: " << r->rName);
-    XrdSsiSession* session = new SsiSession(r->rName, _chunkInventory->newValidator(), _foreman);
+    LOGS(_log, LOG_LVL_DEBUG, "Got provision call where rName is: " << r->rDesc.rName);
+    XrdSsiSession* session = new SsiSession(r->rDesc.rName, _chunkInventory->newValidator(), _foreman);
     r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
 }
 

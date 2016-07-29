@@ -50,14 +50,13 @@ namespace qserv {
 namespace qdisp {
 
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
-  : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
+  : Resource(jobQuery->getDescription().resource().path().c_str()),
       _jobQuery(jobQuery), _jobIdStr(jobQuery->getIdStr()) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryResource");
 }
 
 QueryResource::~QueryResource() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() ");
-    std::free(const_cast<char*>(rName));
 }
 
 /// May not throw exceptions because the calling code comes from
