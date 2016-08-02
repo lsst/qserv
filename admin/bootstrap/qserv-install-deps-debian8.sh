@@ -36,6 +36,7 @@ apt-get --yes install bash \
     flex \
     g++ \
     gettext \
+    git \
     libbz2-dev \
     libglib2.0-dev \
     libpthread-workqueue-dev \
