@@ -42,13 +42,13 @@ First, log in with a **non-root user account**.
 
 .. code-block:: bash
 
-   NEWINSTALL_URL=https://sw.lsstcorp.org/eupspkg/newinstall.sh
-   # create a new directory stack and initialize INSTALL_DIR as an absolute path to stack 
+   NEWINSTALL_URL=https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
+   # create a new directory stack and initialize INSTALL_DIR as an absolute path to stack
    mkdir stack
    INSTALL_DIR=/path/to/lsst/stack/
    # e.g. ~qserv, please note that $INSTALL_DIR must be empty
    cd $INSTALL_DIR
-   curl -O ${NEWINSTALL_URL}
+   curl -OL ${NEWINSTALL_URL}
    # script below will ask some questions. Unless you know what you're doing,
    # and you need a fine tuned setup, please answer 'yes' everywhere.
    bash newinstall.sh
@@ -124,7 +124,7 @@ Testing
 For a mono-node instance.
 
 .. code-block:: bash
-   
+
    # default value for QSERV_RUN_DIR
    QSERV_RUN_DIR="$HOME/qserv-run/$(qserv-version.sh)"
    # start qserv
@@ -135,11 +135,11 @@ For a mono-node instance.
    # fine-tuning is available (see --help)
    qserv-check-integration.py --case=01 --load
    # to avoid conflict you can stop qserv
-   $QSERV_RUN_DIR/bin/qserv-stop.sh 
+   $QSERV_RUN_DIR/bin/qserv-stop.sh
 
 ********************
 For more information
 ********************
 
 https://confluence.lsstcorp.org/display/LSWUG/Building+the+LSST+Stack+from+Source
-   
+

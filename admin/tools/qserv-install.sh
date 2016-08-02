@@ -7,7 +7,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Default values below may be overidden by cmd-line options
 MODE="internet mode"
-NEWINSTALL_URL="https://sw.lsstcorp.org/eupspkg/newinstall.sh"
+NEWINSTALL_URL="https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh"
 VERSION="-t qserv"
 
 underline() {
@@ -106,7 +106,7 @@ cd $STACK_DIR ||
 }
 
 underline "Installing LSST stack : $MODE, version : $VERSION"
-curl -O ${NEWINSTALL_URL} ||
+curl -OL ${NEWINSTALL_URL} ||
 {
     >&2 printf "Unable to download from ${NEWINSTALL_URL}\n"
     exit 2
