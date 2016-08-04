@@ -2,7 +2,7 @@
 
 set -e
 
-# First, with lsstsw tools : 
+# First, with lsstsw tools :
 # rebuild lsst qserv qserv_testdata
 # publish -t qserv -b bXX lsst qserv qserv_testdata
 
@@ -45,12 +45,12 @@ git_update_bare() {
         echo "Updating ${giturl}"
         cd ${product}
         git fetch origin +refs/heads/*:refs/heads/* && retval=0
-        cd .. 
+        cd ..
     fi
 
-    if [ ! retval ]; then 
+    if [ ! retval ]; then
         echo "ERROR : git update failed"
-    fi  
+    fi
     return ${retval}
 }
 
@@ -95,7 +95,7 @@ echo
 echo "Downloading LSST stack install script"
 echo "====================================="
 echo
-curl -O https://sw.lsstcorp.org/eupspkg/newinstall.sh
+curl -OL https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
 mv newinstall.sh ${EUPS_PKGROOT}
 
 
