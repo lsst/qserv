@@ -1,1 +1,7 @@
 /ssh_config
+/env.sh
+/integration-tests-env.sh
+/LSST-openrc.sh
+/petasky-openrc.sh
+/ncsa.conf
+/galactica.conf

@@ -15,7 +15,7 @@ import ConfigParser
 import logging
 import os
 import re
-from subprocess import CalledProcessError, check_output
+import subprocess
 import sys
 import time
 import warnings
@@ -23,8 +23,30 @@ import warnings
 # ----------------------------
 # Imports for other modules --
 # ----------------------------
+
+from keystoneauth1 import loading
+from keystoneauth1 import session
 from novaclient import client
+import glanceclient
 import novaclient.exceptions
+
+# ---------------------------------
+# Local non-exported definitions --
+# ---------------------------------
+
+_OPENSTACK_API_VERSION = '2'
+_OPENSTACK_VERIFY_SSL = False
+
+def _get_nova_creds():
+    """
+    Extract the login information from the environment
+    """
+    creds = {}
+    creds['username'] = os.environ['OS_USERNAME']
+    creds['password'] = os.environ['OS_PASSWORD']
+    creds['auth_url'] = os.environ['OS_AUTH_URL']
+    creds['project_id'] = os.environ['OS_TENANT_ID']
+    return creds
 
 # -----------------------
 # Exported definitions --
@@ -33,18 +55,10 @@ import novaclient.exceptions
 BASE_IMAGE_KEY='base_image_name'
 SNAPSHOT_IMAGE_KEY='snapshot_name'
 
-def get_nova_creds():
-    """
-    Extract the login information from the environment
-    """
-    creds = {}
-    creds['version'] = 2
-    creds['username'] = os.environ['OS_USERNAME']
-    creds['api_key'] = os.environ['OS_PASSWORD']
-    creds['auth_url'] = os.environ['OS_AUTH_URL']
-    creds['project_id'] = os.environ['OS_TENANT_NAME']
-    creds['insecure'] = True
-    return creds
+# Profile used to build cloud-init file
+DOCKER_NODE = "docker_node"
+SWARM_MANAGER = "swarm_manager"
+SWARM_NODE = "swarm_node"
 
 def add_parser_args(parser):
     """
@@ -56,8 +70,10 @@ def add_parser_args(parser):
                         help='Apply verbosity to all loggers, by default only loader level is set.')
     # parser = lsst.qserv.admin.logger.add_logfile_opt(parser)
     group = parser.add_argument_group('Cloud configuration options',
-                                       'Options defining parameters to access remote cloud-platform')
+                                       'Options related to cloud-platform access and management')
 
+    parser.add_argument('-C', '--cleanup', dest='cleanup', default=False, action='store_true',
+                        help='Clean images and instances potentially created during a previous run')
     group.add_argument('-f', '--config', dest='configFile',
                         required=True, metavar='PATH',
                         help='Add cloud config file which contains instance characteristics')
@@ -72,15 +88,15 @@ def config_logger(loggerName, verbose, verboseAll):
     levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     if not verboseAll:
         # suppress INFO/DEBUG regular messages from other loggers
-        # Disable requests and urllib3 package logger and warnings
-        logging.getLogger("requests").setLevel(logging.ERROR)
-        logging.getLogger("urllib3").setLevel(logging.ERROR)
+        # Disable dependencies loggers and warnings
+        for logger_name in ["keystoneauth", "novaclient", "requests", "stevedore", "urllib3"]:
+            logging.getLogger(logger_name).setLevel(logging.ERROR)
+        warnings.filterwarnings("ignore")
 
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(name)-15s'
                                ' %(message)s',
                         level=levels.get(verbosity, logging.DEBUG))
 
-    warnings.filterwarnings("ignore")
 
 
 class CloudManager(object):
@@ -103,14 +119,23 @@ class CloudManager(object):
         with open(config_file_name, 'r') as config_file:
             config.readfp(config_file)
 
-        self._creds = get_nova_creds()
+        self._creds = _get_nova_creds()
         logging.debug("Openstack user: %s", self._creds['username'])
         self._safe_username = self._creds['username'].replace('.', '')
-        self.nova = client.Client(**self._creds)
 
+        self._session = self._create_keystone_session()
+
+        self.nova = client.Client(_OPENSTACK_API_VERSION, session=self._session)
         base_image_name = config.get('openstack', used_image_key)
         self.snapshot_name = config.get('openstack', 'snapshot_name')
-        self.image = self.nova.images.find(name=base_image_name)
+        try:
+            self.image = self.nova.images.find(name=base_image_name)
+        except novaclient.exceptions.NoUniqueMatch:
+            logging.critical("Image %s not unique", base_image_name)
+            sys.exit(1)
+        except novaclient.exceptions.NotFound:
+            logging.critical("Image %s do not exist. Create it first", base_image_name)
+            sys.exit(1)
 
         flavor_name = config.get('openstack', 'flavor_name')
         self.flavor = self.nova.flavors.find(name=flavor_name)
@@ -131,10 +156,34 @@ class CloudManager(object):
 
         self.key_filename = '~/.ssh/id_rsa'
 
-    def nova_image_create(self, instance):
+        self._hostname_tpl = "{0}-qserv-".format(self._safe_username)
+
+    def get_hostname_tpl(self):
         """
-        Shutdown instance and snapshot it
-        to an image named self.snapshot_name
+        All instances names created by current CloudManager instance
+        start with returned string
+        """
+        return self._hostname_tpl
+
+    def _create_keystone_session(self):
+        """
+        Return a keystone session used to
+        connect to other Openstack services
+        """
+        loader = loading.get_plugin_loader('password')
+        auth = loader.load_from_options(**self._creds)
+        sess = session.Session(auth=auth, verify=_OPENSTACK_VERIFY_SSL)
+        return sess
+
+    def get_safe_username(self):
+        """
+        Returns cleaned Openstack user login (special characters, like -, are removed)
+        """
+        return self._safe_username
+
+    def nova_snapshot_create(self, instance):
+        """
+        Shutdown instance and snapshot it to an image named self.snapshot_name
         """
         instance.stop()
         while instance.status != 'SHUTOFF':
@@ -149,11 +198,45 @@ class CloudManager(object):
             status = self.nova.images.get(qserv_image).status
         logging.info("SUCCESS: Qserv image '%s' is active", self.snapshot_name)
 
+    def nova_snapshot_find(self):
+        """
+        Returns and Openstack image named self.snapshot_name. Exit with error code if image is not unique.
+        @throw novaclient.exceptions.NoUniqueMatch if image is not unique.
+        """
+        try:
+            snapshot = self.nova.images.find(name=self.snapshot_name)
+        except novaclient.exceptions.NotFound:
+            snapshot = None
+        except novaclient.exceptions.NoUniqueMatch:
+            logging.critical("Qserv snapshot %s not unique, manual cleanup required", self.snapshot_name)
+            sys.exit(1)
+        return snapshot
+
+    def nova_snapshot_delete(self, snapshot):
+        """
+        Delete an Openstack image from Glance
+        :param snapshot: image to delete
+        """
+        glance = glanceclient.Client(_OPENSTACK_API_VERSION, session=self._session)
+        glance.images.delete(snapshot.id)
+
+    def _build_instance_name(self, instance_id):
+        """
+        Build Openstack instance.
+        First convert instance id to unicode and then concatenate instance name template with it
+        :param instance_id: instance id
+        :return:            instance name
+        """
+        if isinstance(instance_id, unicode):
+            instance_id = instance_id.encode('ascii', 'ignore')
+        instance_name = "{0}{1}".format(self._hostname_tpl, instance_id)
+        return instance_name
+
     def nova_servers_create(self, instance_id, userdata):
         """
-        Boot an instance and check status
+        Boot an instance and returns when its status is "ACTIVE"
         """
-        instance_name = "{0}-qserv-{1}".format(self._safe_username, instance_id)
+        instance_name = self._build_instance_name(instance_id)
         logging.info("Launch an instance %s", instance_name)
 
         # Launch an instance from an image
@@ -163,7 +246,7 @@ class CloudManager(object):
                                             userdata=userdata,
                                             key_name=self.key,
                                             nics=self.nics)
-        # Poll at 5 second intervals, until the status is no longer 'BUILD'
+        # Poll at 5 second intervals, until the status is 'ACTIVE'
         status = instance.status
         while status != 'ACTIVE':
             time.sleep(5)
@@ -176,7 +259,7 @@ class CloudManager(object):
 
     def detect_end_cloud_config(self, instance):
         """
-        Add clean wait for cloud-init completion
+        Wait for cloud-init completion
         """
         check_word = "---SYSTEM READY FOR SNAPSHOT---"
         end_word = None
@@ -187,15 +270,21 @@ class CloudManager(object):
             logging.debug("instance: %s",instance)
             end_word = re.search(check_word, output)
 
-    def nova_servers_delete(self, server):
+    def nova_servers_cleanup(self, last_instance_id):
         """
-        Shut down and delete a server
+        Shut down and delete all Qserv servers
+        belonging to current Openstack user.
         """
-        server.delete()
+        for server in self.nova.servers.list():
+            # server_name must be ascii
+            if server.name.startswith(self._hostname_tpl):
+                logging.debug("Cleanup existing instance %s", server.name)
+                server.delete()
+
 
     def manage_ssh_key(self):
         """
-        Upload ssh public key
+        Upload user ssh public key on Openstack instances
         """
         logging.info('Manage ssh keys: %s', self.key)
         if self.nova.keypairs.findall(name=self.key):
@@ -207,7 +296,7 @@ class CloudManager(object):
 
     def get_floating_ip(self):
         """
-        Allocate floating ip address to project
+        Return an available floating ip address
         """
         floating_ips = self.nova.floating_ips.list()
         floating_ip = None
@@ -233,7 +322,7 @@ class CloudManager(object):
 
     def print_ssh_config(self, instances, floating_ip):
         """
-        Print ssh client configuration to file
+        Print ssh client configuration to local file
         """
         # ssh config
         ssh_config_tpl = '''
@@ -264,7 +353,7 @@ class CloudManager(object):
 
     def check_ssh_up(self, instances):
         """
-        Check if the ssh service started
+        Check if the ssh service started on all instances
         """
         for instance in instances:
             cmd = ['ssh', '-t', '-F', './ssh_config', instance.name, 'true']
@@ -272,9 +361,9 @@ class CloudManager(object):
             nb_try = 0
             while not success:
                 try:
-                    check_output(cmd)
+                    subprocess.check_output(cmd)
                     success = True
-                except CalledProcessError as exc:
+                except subprocess.CalledProcessError as exc:
                     logging.warn("Waiting for ssh to be available on %s: %s", instance.name, exc.output)
                     nb_try += 1
                     if nb_try > 10:
@@ -285,7 +374,8 @@ class CloudManager(object):
 
     def update_etc_hosts(self, instances):
         """
-        Update /etc/hosts file on each virtual machine
+        Update /etc/hosts file on each instances.
+        Add each instance name and ip address inside it.
         """
         hostfile_tpl = "{ip}    {host}\n"
 
@@ -299,9 +389,113 @@ class CloudManager(object):
             cmd = ['ssh', '-t', '-F', './ssh_config', instance.name,
                    'sudo sh -c "echo \'{hostfile}\' >> /etc/hosts"'.format(hostfile=hostfile)]
             try:
-                check_output(cmd)
-            except CalledProcessError as exc:
+                subprocess.check_output(cmd)
+            except subprocess.CalledProcessError as exc:
                 logging.error("ERROR while updating /etc/hosts: %s", exc.output)
                 sys.exit(1)
+
+    def build_cloudconfig(self, server_profile=DOCKER_NODE, instance_last_id=""):
+        """
+        Build cloudconfig configuration for a given server profile
+
+        @param server_profile:      Can be DOCKER_NODE, SWARM_NODE or SWARM_MANAGER
+        @param instance_last_id:    Must not be empty if server_profile is SWARM_MANAGER
+        """
+        # cloud config
+        cloud_config = '#cloud-config'
+
+        if server_profile == SWARM_MANAGER:
+            if not instance_last_id:
+                msg = "Must provide non-empty instance_last_id parameter in Swarm manager cloud-init file"
+                raise ValueError(msg)
+            cloud_config += '''
+
+write_files:
+- path: /tmp/swarm-env.sh
+  permissions: "0754"
+  owner: "root:docker"
+  content: |
+    #!/bin/sh
+
+    # Cluster parameters used to run
+    # swarm and docker
+
+    # @author  Fabrice Jammes, IN2P3
+
+    INSTANCE_LAST_ID={instance_last_id}
+    HOSTNAME_TPL="{hostname_tpl}"
+
+    DOCKER_PORT=2375
+
+    SWARM_HOSTNAME="{hostname_tpl}swarm"
+    SWARM_PORT=3376'''
+
+        cloud_config += '''
+
+users:
+- name: qserv
+  gecos: Qserv daemon
+  groups: docker
+  lock-passwd: true
+  shell: /bin/bash
+  ssh-authorized-keys:
+  - {key}
+  sudo: ALL=(ALL) NOPASSWD:ALL'''
+
+        if server_profile == SWARM_MANAGER:
+            cloud_config += '''
+
+packages:
+- git'''
+
+        cloud_config += '''
+
+runcmd:
+  - [/tmp/detect_end_cloud_config.sh]
+'''
+
+        if server_profile == SWARM_NODE:
+            cloud_config += '''
+  # Option below crash mysqld inside Qservcontainer, but is required by Swarm manager???
+  #- [sed, -i, '/--exec-opt native.cgroupdriver=systemd/d', /usr/lib/systemd/system/docker.service]
+  - [sed, -i, 's,ExecStart=/usr/bin/docker daemon -H fd://,ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375 --storage-driver=overlay,', /usr/lib/systemd/system/docker.service]
+  # Data and log are stored on Openstack host
+  - [mkdir, -p, /qserv/data]
+  - [mkdir, -p, /qserv/log]
+  - [chown, -R, qserv, /qserv]
+'''
+
+        cloud_config += '''
+  - [/bin/systemctl, daemon-reload]
+  - [/bin/systemctl, restart,  docker.service]'''
+
+        branch = "master"
+        if server_profile == SWARM_MANAGER:
+            cloud_config += '''
+  - [su, qserv, -c, "git clone -b {branch} --single-branch https://github.com/lsst/qserv.git /home/qserv/src/qserv"]
+  - [cp, /tmp/swarm-env.sh, /home/qserv/src/qserv/admin/tools/docker/deployment/swarm]'''
+
+            cmd = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+            try:
+                branch = subprocess.check_output(cmd).strip()
+            except subprocess.CalledProcessError:
+                logging.debug("Unable to retrieve current git branch, "
+                              "using qserv master branch"
+                              "to retrieve swarm procedure code.")
+
+                logging.debug("Cloning swarm procedure code from "
+                              "https://github.com/lsst/qserv.git "
+                              "(branch: {})".format(branch))
+
+        fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
+        public_key = fpubkey.read()
+
+        userdata = cloud_config.format(branch=branch,
+                                       instance_last_id=instance_last_id,
+                                       key=public_key,
+                                       hostname_tpl=self._hostname_tpl)
+
+        logging.debug("cloud-config userdata: \n%s", userdata)
+        return userdata
 
 

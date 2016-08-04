@@ -15,7 +15,6 @@ Script performs these tasks:
   - print ssh client config
 
 @author  Oualid Achbal, IN2P3
-
 """
 
 # -------------------------------
@@ -23,7 +22,7 @@ Script performs these tasks:
 # -------------------------------
 import argparse
 import logging
-import os
+import subprocess
 import sys
 
 # ----------------------------
@@ -35,57 +34,22 @@ import cloudmanager
 # -----------------------
 # Exported definitions --
 # -----------------------
-def get_cloudconfig():
-    """
-    Return cloud init configuration in a string
-    """
-    cloud_config_tpl = '''
-#cloud-config
-users:
-- name: qserv
-  gecos: Qserv daemon
-  groups: docker
-  lock-passwd: true
-  shell: /bin/bash
-  ssh-authorized-keys:
-  - {key}
-  sudo: ALL=(ALL) NOPASSWD:ALL
-
-runcmd:
-- ['/tmp/detect_end_cloud_config.sh']
-- [mkdir, -p, '/qserv/data']
-- [mkdir, -p, '/qserv/log']
-- [chown, "1000:1000", '/qserv/data']
-- [chown, "1000:1000", '/qserv/log']
-# Allow docker to start via cloud-init
-# see https://github.com/projectatomic/docker-storage-setup/issues/77
-- [ sed, -i, -e, 's/After=cloud-final.service/#After=cloud-final.service/g',
-  /usr/lib/systemd/system/docker-storage-setup.service]
-# 'overlay' seems more robust than default setting
-- [ sed, -i, -e, '$a STORAGE_DRIVER=overlay', /etc/sysconfig/docker-storage-setup ]
-# overlay and selinux are not compliant in docker 1.9
-- [ sed, -i, -e, "s/--selinux-enabled//", /etc/sysconfig/docker ]
-- [ /bin/systemctl, daemon-reload]
-- [ /bin/systemctl, restart,  docker.service]
-'''
-    fpubkey = open(os.path.expanduser(cloudManager.key_filename + ".pub"))
-    public_key=fpubkey.read()
-    userdata = cloud_config_tpl.format(key=public_key)
-
-    return userdata
 
 def main():
     cloudManager.manage_ssh_key()
 
-    userdata_provision = get_cloudconfig()
+    userdata_node = cloudManager.build_cloudconfig(cloudmanager.SWARM_NODE)
 
     # Create instances list
     instances = []
 
+    if args.cleanup:
+        cloudManager.nova_servers_cleanup(args.nbServers)
+
     # Create gateway instance and add floating_ip to it
     gateway_id = 0
     gateway_instance = cloudManager.nova_servers_create(gateway_id,
-                                                        userdata_provision)
+                                                        userdata_node)
 
     # Find a floating ip address for gateway
     floating_ip = cloudManager.get_floating_ip()
@@ -99,7 +63,7 @@ def main():
     except BadRequest as exc:
         logging.critical('The procedure needs to be restarted. '
                          'Exception occurred: %s', exc)
-        cloudManager.nova_servers_delete(gateway_instance)
+        gateway_instance.delete()
         sys.exit(1)
 
     # Manage ssh security group
@@ -111,8 +75,31 @@ def main():
     # Create worker instances
     for instance_id in range(1, args.nbServers):
         worker_instance = cloudManager.nova_servers_create(instance_id,
-                                                           userdata_provision)
+                                                           userdata_node)
         instances.append(worker_instance)
+
+    instance_id = 'swarm'
+    userdata_swarm_mgr = cloudManager.build_cloudconfig(cloudmanager.SWARM_MANAGER,
+                                                        args.nbServers-1)
+    swarm_instance = cloudManager.nova_servers_create(instance_id,
+                                                      userdata_swarm_mgr)
+    instances.append(swarm_instance)
+
+    envfile_tpl = '''# Parameters related to Openstack platform
+# Used by Swarm
+SWARM_NODE="{}"
+# Used by shmux
+HOSTNAME_TPL="{}"
+WORKER_LAST_ID="{}"
+'''
+
+    worker_last_id = args.nbServers - 1
+    envfile = envfile_tpl.format(swarm_instance.name,
+                                 cloudManager.get_hostname_tpl(),
+                                 worker_last_id)
+    filep = open('integration-tests-env.sh', 'w')
+    filep.write(envfile)
+    filep.close()
 
     cloudManager.print_ssh_config(instances, floating_ip)
 
@@ -132,8 +119,8 @@ if __name__ == "__main__":
         # Define command-line arguments
         parser = argparse.ArgumentParser(description='Boot instances from image containing Docker.')
         parser.add_argument('-n', '--nb-servers', dest='nbServers',
-                           required=False, default=3, type=int,
-                           help='Choose the number of servers to boot')
+                            required=False, default=3, type=int,
+                            help='Choose the number of servers to boot')
 
         cloudmanager.add_parser_args(parser)
         args = parser.parse_args()
@@ -141,7 +128,9 @@ if __name__ == "__main__":
         loggerName = "Provisioner"
         cloudmanager.config_logger(loggerName, args.verbose, args.verboseAll)
 
-        cloudManager = cloudmanager.CloudManager(config_file_name=args.configFile, used_image_key=cloudmanager.SNAPSHOT_IMAGE_KEY, add_ssh_key=True)
+        cloudManager = cloudmanager.CloudManager(config_file_name=args.configFile,
+                                                 used_image_key=cloudmanager.SNAPSHOT_IMAGE_KEY,
+                                                 add_ssh_key=True)
 
         main()
     except Exception as exc:

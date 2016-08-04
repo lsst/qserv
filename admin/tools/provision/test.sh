@@ -5,81 +5,112 @@
 # Create image
 # Boot instances
 # Launch Qserv containers
+# Lauch integration tests
 
 # @author  Oualid Achbal, IN2P3
+# @author  Fabrice Jammes, IN2P3
 
 set -e
-set -x
+# set -x
 
-# Source the cloud openrc file
-# and choose the configuration file which contains instance parameters
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-# For NCSA
-# . ./LSST-openrc.sh
-CONF_FILE="ncsa.conf"
+usage() {
+  cat << EOD
 
-# For Petasky/Galactica
-# . ./petasky-openrc.sh
-# CONF_FILE="galactica.conf"
+Usage: `basename $0` [options]
 
-# Choose a number of instances to boot
-NB_SERVERS=3
+  Available options:
+    -h          this message
+    -c          update CentOS7/Docker snapshot
+    -p          provision Qserv cluster on Openstack
+    -s          launch Qserv integration test using shmux
+    -S          launch Qserv integration test using swarm, disable previous option
 
-# Choose snapshot name and update the cloud conf file chosen
-SNAPSHOT_NAME="centos-7-qserv"
+  Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
+  Openstack, theninstall Qserv and launch integration test on it.
+  If no option provided, use '-p -S' by default. 
 
-SAFE_USERNAME=$(echo  "$OS_USERNAME" | sed 's/\.//g')
-# Delete the previous instances for a new test
-PREVIOUS_INSTANCE_IDS=$(openstack server list | grep "$SAFE_USERNAME-qserv" | cut -d'|' -f 2)
-# Test PREVIOUS_INSTANCE_IDS 
-if [ "$PREVIOUS_INSTANCE_IDS" ]
-then
-    echo "Delete the previous instances"
-	openstack server delete $PREVIOUS_INSTANCE_IDS
-else
-	echo "No existing servers to delete"
+  Pre-requisites: Openstack RC file need to be sourced and $DIR/env.sh available.
+
+EOD
+}
+
+# get the options
+while getopts hcpsS c ; do
+    case $c in
+	    h) usage ; exit 0 ;;
+	    c) CREATE="TRUE" ;;
+	    p) PROVISION="TRUE" ;;
+	    s) SHMUX="TRUE" ;;
+	    S) SWARM="TRUE" ;;
+	    \?) usage ; exit 2 ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+if [ $# -ne 0 ] ; then
+    usage
+    exit 2
 fi
 
-# Delete the snapshot created for a new test
-PREVIOUS_IMAGE_ID=$(openstack image list | grep "$SNAPSHOT_NAME" | cut -d'|' -f 2)
-# Test PREVIOUS_IMAGE_ID
-if [ "$PREVIOUS_IMAGE_ID" ]
-then
-    echo "Delete the previous image denoted $SNAPSHOT_NAME"
-	openstack image delete $PREVIOUS_IMAGE_ID
-else
-	echo "No existing image denoted $SNAPSHOT_NAME to delete"
+if [ "$OPTIND" -eq 1 ]; then
+    PROVISION="TRUE"
+    SWARM="TRUE"
 fi
 
-set -x
+. "$DIR/env.sh"
 
-# Take a snapshot
-python create-image.py -f "$CONF_FILE" -vv
+if [ -n "$CREATE" ]; then
+    echo "Create up to date snapshot image"
+    "$DIR/create-image.py" --cleanup --config "$CONF_FILE" -vv
+fi
 
-# Execute provision-qserv with an input cloud conf file
-python provision-qserv.py -f "$CONF_FILE" -n "$NB_SERVERS" -vv
+if [ -n "$PROVISION" ]; then
+    echo "Provision Qserv cluster on Openstack"
+    "$DIR/provision-qserv.py" --cleanup --config "$CONF_FILE" --nb-servers "$NB_SERVERS" -vv
+fi
 
-# Warning : if  multinode tests failed save your ~/.ssh/config
-# your old ~/.ssh/config is in ~/.ssh/config.backup
+. "$DIR/integration-tests-env.sh"
 
-cp ~/.ssh/config ~/.ssh/config.backup
+if [ -n "$SWARM" ]; then
+    echo "Launch integration tests using Swarm"
+    echo "Configure Swarm node"
+    ssh -F ./ssh_config "$SWARM_NODE" \
+        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/swarm-setup.sh
 
-cp ssh_config ~/.ssh/config
+    echo "Launch multinode tests"
+    ssh -F ./ssh_config "$SWARM_NODE" \
+        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/run-multinode-tests.sh
+elif [ -n "$SHMUX" ]; then
 
-cd ../docker/deployment/parallel
+    echo "Launch integration tests using shmux"
 
-WORKER_LAST_ID=$(expr $NB_SERVERS - 1)
-HOSTNAME_FORMAT="${SAFE_USERNAME}-qserv-%g"
+    # Warning : if  multinode tests failed save your ~/.ssh/config
+    # your old ~/.ssh/config is in ~/.ssh/config.backup
 
-# Update env.sh
-cp env.example.sh env.sh
-sed -i -e "s/HOSTNAME_FORMAT=/HOSTNAME_FORMAT=$HOSTNAME_FORMAT #/g" env.sh
-sed -i -e "s/MASTER_ID=1/MASTER_ID=0/" env.sh
-sed -i -e "s/WORKER_FIRST_ID=2/WORKER_FIRST_ID=1/" env.sh
-sed -i -e "s/WORKER_LAST_ID=3/WORKER_LAST_ID=$WORKER_LAST_ID/" env.sh
+    DATE=$(date +%Y%m%d_%H-%M-%S)
+    SSH_CONFIG="$HOME/.ssh/config"
+    SSH_CONFIG_BACKUP="$SSH_CONFIG.backup.${DATE}"
+    if [ -f "$SSH_CONFIG" ]; then
+        echo  "WARN: backuping $SSH_CONFIG to $SSH_CONFIG_BACKUP"
+        mv "$SSH_CONFIG" "$SSH_CONFIG_BACKUP"
+    fi
+    cp "$DIR/ssh_config" ~/.ssh/config
+    cd ../docker/deployment/parallel
 
-# Run multinode tests
-./run-multinode-tests.sh
+    # Update env.sh
+    cp env.example.sh env.sh
+    sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}%g\"/" env.sh
+    sed -i "s/MASTER_ID=1/MASTER_ID=0/" env.sh
+    sed -i "s/WORKER_FIRST_ID=2/WORKER_FIRST_ID=1/" env.sh
+    sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
-cp ~/.ssh/config.backup ~/.ssh/config
+    # Run multinode tests
+    ./run-multinode-tests.sh
 
+    if [ -f "$SSH_CONFIG_BACKUP" ]; then
+        echo  "Restoring backup of $SSH_CONFIG"
+        mv "$SSH_CONFIG_BACKUP" "$SSH_CONFIG"
+    fi
+fi

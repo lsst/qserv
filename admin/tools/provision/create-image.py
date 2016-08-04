@@ -36,26 +36,18 @@ def get_cloudconfig():
     """
     userdata = '''
 #cloud-config
-groups:
-- docker
-
-users:
-- name: qserv
-  gecos: Qserv daemon
-  groups: docker
-  lock-passwd: true
-  shell: /bin/bash
-  sudo: ALL=(ALL) NOPASSWD:ALL
-
-packages:
-- docker
-- util-linux
-
-runcmd:
-- ['systemctl', 'enable', 'docker']
-- ['/tmp/detect_end_cloud_config.sh']
 
 write_files:
+- path: "/etc/yum.repos.d/docker.repo"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    [dockerrepo]
+    name=Docker Repository
+    baseurl=https://yum.dockerproject.org/repo/main/centos/7/
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://yum.dockerproject.org/gpg
 - path: "/tmp/detect_end_cloud_config.sh"
   permissions: "0544"
   owner: "root"
@@ -69,6 +61,25 @@ write_files:
     sync
     fsfreeze -f / && read x; fsfreeze -u /
     echo "---SYSTEM READY FOR SNAPSHOT---") &
+
+groups:
+- docker
+
+users:
+- name: qserv
+  gecos: Qserv daemon
+  groups: docker
+  lock-passwd: true
+  shell: /bin/bash
+  sudo: ALL=(ALL) NOPASSWD:ALL
+
+packages:
+- docker-engine
+- util-linux
+
+runcmd:
+- ['systemctl', 'enable', 'docker']
+- ['/tmp/detect_end_cloud_config.sh']
 
 package_upgrade: true
 package_reboot_if_required: true
@@ -92,16 +103,26 @@ if __name__ == "__main__":
 
         userdata_snapshot = get_cloudconfig()
 
+        previous_snapshot = cloudManager.nova_snapshot_find()
+
+        if args.cleanup:
+            if previous_snapshot is not None:
+                logging.debug("Removing previous snapshot: %s", cloudManager.snapshot_name)
+                cloudManager.nova_snapshot_delete(previous_snapshot)
+        elif previous_snapshot is not None:
+            logging.critical("Destination snapshot: %s already exist", cloudManager.snapshot_name)
+            sys.exit(1)
+
         instance_id = "source"
         instance_for_snapshot = cloudManager.nova_servers_create(instance_id, userdata_snapshot)
 
         # Wait for cloud config completion
         cloudManager.detect_end_cloud_config(instance_for_snapshot)
 
-        cloudManager.nova_image_create(instance_for_snapshot)
+        cloudManager.nova_snapshot_create(instance_for_snapshot)
 
         # Delete instance after taking a snapshot
-        cloudManager.nova_servers_delete(instance_for_snapshot)
+        instance_for_snapshot.delete()
 
     except Exception as exc:
         logging.critical('Exception occured: %s', exc, exc_info=True)
