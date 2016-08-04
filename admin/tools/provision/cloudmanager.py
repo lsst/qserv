@@ -68,12 +68,11 @@ def add_parser_args(parser):
                         const=None, help='More verbose output, can use several times.')
     parser.add_argument('--verbose-all', dest='verboseAll', default=False, action='store_true',
                         help='Apply verbosity to all loggers, by default only loader level is set.')
+    parser.add_argument('-C', '--cleanup', dest='cleanup', default=False, action='store_true',
+                        help='Clean images and instances potentially created during a previous run')
     # parser = lsst.qserv.admin.logger.add_logfile_opt(parser)
     group = parser.add_argument_group('Cloud configuration options',
                                        'Options related to cloud-platform access and management')
-
-    parser.add_argument('-C', '--cleanup', dest='cleanup', default=False, action='store_true',
-                        help='Clean images and instances potentially created during a previous run')
     group.add_argument('-f', '--config', dest='configFile',
                         required=True, metavar='PATH',
                         help='Add cloud config file which contains instance characteristics')
@@ -113,15 +112,19 @@ class CloudManager(object):
 
         logging.debug("Use configuration file: %s", config_file_name)
 
-        config = ConfigParser.ConfigParser({'net-id': None,
+        self._creds = _get_nova_creds()
+        logging.debug("Openstack user: %s", self._creds['username'])
+        self._safe_username = self._creds['username'].replace('.', '')
+
+        default_instance_prefix = "{0}-qserv-".format(self._safe_username)
+
+        config = ConfigParser.ConfigParser({'instance-prefix': default_instance_prefix,
+                                            'net-id': None,
+                                            'ssh-private-key': '~/.ssh/id_rsa',
                                             'ssh_security_group': None})
 
         with open(config_file_name, 'r') as config_file:
             config.readfp(config_file)
-
-        self._creds = _get_nova_creds()
-        logging.debug("Openstack user: %s", self._creds['username'])
-        self._safe_username = self._creds['username'].replace('.', '')
 
         self._session = self._create_keystone_session()
 
@@ -151,12 +154,17 @@ class CloudManager(object):
         # Upload ssh public key
         if add_ssh_key:
             self.key = "{}-qserv".format(self._safe_username)
+            self.key_filename = config.get('openstack', 'ssh-private-key')
+            if not self.key_filename:
+                raise ValueError("Unspecified ssh private key")
+            self._manage_ssh_key()
         else:
             self.key = None
+            self.key_filename = None
 
-        self.key_filename = '~/.ssh/id_rsa'
-
-        self._hostname_tpl = "{0}-qserv-".format(self._safe_username)
+        self._hostname_tpl = config.get('openstack', 'instance-prefix')
+        if not self._hostname_tpl:
+            raise ValueError("Unspecified server name prefix")
 
     def get_hostname_tpl(self):
         """
@@ -274,7 +282,11 @@ class CloudManager(object):
         """
         Shut down and delete all Qserv servers
         belonging to current Openstack user.
+
+        Raise exception if instance name prefix is empty.
         """
+        if not self._hostname_tpl:
+            raise ValueError("Instance prefix is empty")
         for server in self.nova.servers.list():
             # server_name must be ascii
             if server.name.startswith(self._hostname_tpl):
@@ -282,7 +294,7 @@ class CloudManager(object):
                 server.delete()
 
 
-    def manage_ssh_key(self):
+    def _manage_ssh_key(self):
         """
         Upload user ssh public key on Openstack instances
         """
