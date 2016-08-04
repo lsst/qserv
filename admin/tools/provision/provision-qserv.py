@@ -36,7 +36,6 @@ import cloudmanager
 # -----------------------
 
 def main():
-    cloudManager.manage_ssh_key()
 
     userdata_node = cloudManager.build_cloudconfig(cloudmanager.SWARM_NODE)
 
