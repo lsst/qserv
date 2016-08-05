@@ -72,10 +72,12 @@ public:
     friend class QueryResourceDebug;
 
 private:
+    char const* _getRname(std::string const& rName);
     XrdSsiSession* _xrdSsiSession {nullptr}; ///< unowned, do not delete.
     std::shared_ptr<JobQuery> _jobQuery;
     std::string const _jobIdStr; ///< for debugging only
     util::InstanceCount _instC{"QueryResource"};
+    char* _rNameHolder;
 };
 
 }}} // namespace lsst::qserv::qdisp
