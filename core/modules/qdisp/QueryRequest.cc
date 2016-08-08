@@ -187,7 +187,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
     return true;
 }
 
-void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
+XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
@@ -195,7 +195,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
-            return;
+            return XrdSsiRequest::PRD_Normal;
         }
     }
     if (blen < 0) { // error, check errinfo object.
@@ -206,7 +206,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
              << " " << reason << ")");
         jq->getDescription().respHandler()->errorFlush("Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
         _errorFinish();
-        return;
+        return XrdSsiRequest::PRD_Normal;
     }
     jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
     bool flushOk = jq->getDescription().respHandler()->flush(blen, last);
@@ -226,7 +226,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
                  << " " << pbuf << " " << util::prettyCharList(buffer, 5));
             if (!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
-                return;
+                return XrdSsiRequest::PRD_Normal;
             }
         }
     } else {
@@ -238,6 +238,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         _retried.store(true); // Do not retry
         _errorFinish();
     }
+    return XrdSsiRequest::PRD_Normal;
 }
 
 void QueryRequest::cancel() {

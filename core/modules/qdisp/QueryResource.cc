@@ -50,14 +50,22 @@ namespace qserv {
 namespace qdisp {
 
 QueryResource::QueryResource(std::shared_ptr<JobQuery> const& jobQuery)
-  : Resource(::strdup(jobQuery->getDescription().resource().path().c_str())),
+  : Resource(_getRname(jobQuery->getDescription().resource().path())),
       _jobQuery(jobQuery), _jobIdStr(jobQuery->getIdStr()) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryResource");
 }
 
+// This method is here to hold storage for the "c" string passed to the
+// resource object until this object is deleted. Do *NOT* remove this code.
+//
+char const* QueryResource::_getRname(std::string const& rName) {
+    _rNameHolder = strdup(rName.c_str());
+    return _rNameHolder;
+}
+
 QueryResource::~QueryResource() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() ");
-    std::free(const_cast<char*>(rName));
+    free(_rNameHolder);
 }
 
 /// May not throw exceptions because the calling code comes from
