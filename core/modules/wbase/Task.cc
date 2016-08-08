@@ -43,7 +43,6 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
@@ -63,6 +62,13 @@ dump(std::ostream& os,
     }
     os << " rt=" << f.resulttable();
     return os;
+}
+
+/// Local EventThread for fifo serialization of mlock calls.
+lsst::qserv::util::EventThread ulockEvents{};
+std::once_flag ulockEventsFlag;
+void runUlockEventsThreadOnce() {
+    std::call_once(ulockEventsFlag, [](){ ulockEvents.run(); });
 }
 
 } // annonymous namespace
@@ -163,7 +169,7 @@ void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Task::freeTaskQueryRunner pointer didn't match!");
+        LOGS(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
     }
 }
 
@@ -199,13 +205,34 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
 }
 
 
-/// Wait for MemMan to finish reserving resources.
+/// Wait for MemMan to finish reserving resources. The mlock call can take several seconds
+/// and only one mlock call can be running at a time. Further, queries finish slightly faster
+/// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
+/// EventThread and CommandMlock class.
 void Task::waitForMemMan() {
+    class CommandMlock : public util::CommandTracked {
+    public:
+        using Ptr = std::shared_ptr<CommandMlock>;
+        CommandMlock(memman::MemMan::Ptr memMan, memman::MemMan::Handle handle) : _memMan{memMan}, _handle{handle} {}
+        void action(util::CmdData*) override {
+            if (_memMan->lock(_handle, true)) {
+                errorCode = (errno == EAGAIN ? ENOMEM : errno);
+            }
+        }
+        int errorCode{0}; ///< Error code if mlock fails.
+    private:
+        memman::MemMan::Ptr _memMan;
+        memman::MemMan::Handle _handle;
+    };
+
     LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
     if (_memMan != nullptr) {
-        auto err = _memMan->waitFor(_memHandle);
-        if (err) {
-            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << err);
+        runUlockEventsThreadOnce();
+        auto cmd = std::make_shared<CommandMlock>(_memMan, _memHandle);
+        ulockEvents.queCmd(cmd); // local EventThread for fifo serialization of mlock calls.
+        cmd->waitComplete();
+        if (cmd->errorCode) {
+            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << cmd->errorCode);
         }
     }
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");

@@ -121,7 +121,7 @@ void QueryRunner::_setDb() {
 }
 
 bool QueryRunner::runQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() " << _task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
@@ -133,18 +133,21 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    // Wait for memman to finish reserving resources.
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "QueryRunner MemMan wait begin");
+    if (_task->getCancelled()) {
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled before it started.");
+        return false;
+    }
+
+    // Wait for memman to finish reserving resources. This can take several seconds.
     _task->waitForMemMan();
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << "QueryRunner MemMan wait end");
 
     if (_task->getCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started. taskHash=" << _task->hash);
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
         return false;
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG, "Exec in flight for Db=" << _dbName);
+    LOGS(_log, LOG_LVL_DEBUG,  _task->getIdStr() << " Exec in flight for Db=" << _dbName);
     bool connOk = _initConnection();
     if (!connOk) { return false; }
 
@@ -153,14 +156,14 @@ bool QueryRunner::runQuery() {
         case 2:
             return _dispatchChannel(); // Run the query and send the results back.
         case 1:
-            throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
+            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
-            throw UnsupportedError("QueryRunner: Invalid protocol in TaskMsg");
+            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
         }
     } else {
-        throw UnsupportedError("QueryRunner: Expected protocol > 1 in TaskMsg");
+        throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END " << _task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery() END");
     return false;
 }
 

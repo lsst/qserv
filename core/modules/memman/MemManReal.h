@@ -44,7 +44,9 @@ class MemFileSet;
 class MemManReal : public MemMan {
 public:
 
-    Handle lock(std::vector<TableInfo> const& tables, int chunk) override;
+    int    lock(Handle handle, bool strict=false) override;
+
+    Handle prepare(std::vector<TableInfo> const& tables, int chunk) override;
 
     bool   unlock(Handle handle) override;
 
@@ -54,23 +56,22 @@ public:
 
     Status     getStatus(Handle handle) override;
 
-    int waitFor(Handle handle) override;
-
     MemManReal & operator=(const MemManReal&) = delete;
     MemManReal(const MemManReal&) = delete;
 
     MemManReal(std::string const& dbPath, uint64_t maxBytes)
-              : _memory(dbPath, maxBytes), _numLocks(0), _numErrors(0),
-                _numReqdFiles(0), _numFlexFiles(0) {}
+              : _memory(dbPath, maxBytes), _numErrors(0), _numLkerrs(0),
+                _numLocks(0), _numReqdFiles(0), _numFlexFiles(0) {}
 
     ~MemManReal() override {unlockAll();}
 
 private:
 
     Memory           _memory;
-    std::atomic_uint _numLocks;
     std::atomic_uint _numErrors;
-    uint32_t         _numReqdFiles;  // Under control of hanMutex
+    std::atomic_uint _numLkerrs;
+    uint32_t         _numLocks;      // Under control of hanMutex
+    uint32_t         _numReqdFiles;  // Ditto
     uint32_t         _numFlexFiles;  // Ditto
 };
 

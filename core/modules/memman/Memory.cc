@@ -30,18 +30,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <thread>
-
-// Qserv headers
-#include "util/EventThread.h"
-
-namespace {
-lsst::qserv::util::EventThread ulockEvents{};
-std::once_flag ulockEventsFlag;
-void runUlockEventsThreadOnce() {
-    std::call_once(ulockEventsFlag, [](){ ulockEvents.run(); });
-}
-}
 
 namespace lsst {
 namespace qserv {
@@ -99,7 +87,31 @@ std::string Memory::filePath(std::string const& dbTable,
 /*                               m e m L o c k                                */
 /******************************************************************************/
   
-MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
+int Memory::memLock(MemInfo mInfo, bool isFlex) {
+
+    // Verify that this is a valid mapping
+    //
+    if (!mInfo.isValid()) return EFAULT;
+
+    // Lock this map into memory. Return success if this worked.
+    //
+    if (!mlock(mInfo._memAddr, mInfo._memSize)) {
+        _lokBytes += mInfo._memSize;
+        if (isFlex) _flexNum++;
+        return 0;
+    }
+
+    // Return failure
+    //
+    _numLokErrs++;
+    return (errno == EAGAIN ? ENOMEM : errno);
+}
+
+/******************************************************************************/
+/*                               m a p F i l e                                */
+/******************************************************************************/
+  
+MemInfo Memory::mapFile(std::string const& fPath) {
 
     MemInfo     mInfo;
     struct stat sBuff;
@@ -108,7 +120,7 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
     // We first open the file. we currently open this R/W because we want to
     // disable copy on write operations when we memory map the file.
     //
-    fdNum = open(fPath.c_str(), O_RDWR);
+    fdNum = open(fPath.c_str(), O_RDONLY | O_CLOEXEC);
     if (fdNum < 0 || fstat(fdNum, &sBuff)) {
         mInfo.setErrCode(errno);
         if (fdNum >= 0) close(fdNum);
@@ -127,26 +139,13 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
 
     // Map the file into memory
     //
-    mInfo._memAddr = mmap(0, mInfo._memSize, PROT_WRITE, MAP_SHARED, fdNum, 0);
+    mInfo._memAddr = mmap(0, mInfo._memSize, PROT_READ, MAP_SHARED, fdNum, 0);
 
-    // Diagnose any errors or update statistics. If succeeded, try locking it.
+    // Diagnose any errors or update statistics.
     //
     if (mInfo._memAddr == MAP_FAILED) {
         mInfo.setErrCode(errno);
-    } else {
-        // Start a separate thread to call mlock as it is a slow call. The task needs to wait
-        // for the call to complete, so we need to hold onto cmdMlock so we know when mlock is done.
-        auto cmdMlock = std::make_shared<CommandMlock>(mInfo._memAddr, mInfo._memSize);
-        mInfo._cmdMlock = cmdMlock;
-
-        // Having multiple mlock's running at the same time causes a major slow down. Putting
-        // all calls into a single fifo EventThread call forces one mlock call at a time in the
-        // order they were scheduled.
-        runUlockEventsThreadOnce();
-        ulockEvents.queCmd(cmdMlock);
-
-        _lokBytes += mInfo._memSize;
-        if (isFlex) _flexNum++;
+        _numMapErrs++;
     }
 
     // Close the file and return result
@@ -159,16 +158,17 @@ MemInfo Memory::memLock(std::string const& fPath, bool isFlex) {
 /*                                m e m R e l                                 */
 /******************************************************************************/
   
-void Memory::memRel(MemInfo& mInfo) {
+void Memory::memRel(MemInfo& mInfo, bool islkd) {
 
-    // If this is a valid object then unlock it (munmap does it for us).
+    // If this is a valid object then unmap/unlock it (munmap does it for us).
     //
     if (mInfo._memSize > 0 && mInfo._memAddr != MAP_FAILED) {
         munmap(mInfo._memAddr, mInfo._memSize);
-        if (mInfo._memSize < _lokBytes) {
-            _lokBytes -= mInfo._memSize;
-        } else {
-            _lokBytes = 0;
+        if (islkd) {
+            _memMutex.lock();
+            if (_lokBytes > mInfo._memSize) _lokBytes -= mInfo._memSize;
+            else _lokBytes = 0;
+            _memMutex.unlock();
         }
         mInfo._memSize = 0;
         mInfo._memAddr = MAP_FAILED;
