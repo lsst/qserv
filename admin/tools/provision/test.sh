@@ -28,7 +28,7 @@ Usage: `basename $0` [options]
     -S          launch Qserv integration test using swarm, disable previous option
 
   Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
-  Openstack, theninstall Qserv and launch integration test on it.
+  Openstack, then install Qserv and launch integration test on it.
   If no option provided, use '-p -S' by default. 
 
   Pre-requisites: Openstack RC file need to be sourced and $DIR/env.sh available.
