@@ -97,9 +97,9 @@ public:
     };
 
 private:
-    int _chunkId;          ///< Chunk Id for all Tasks in this instance.
-    bool _active{false};   ///< True when this is the active chunk.
-    bool _resourceStarved; ///< True when advancement is prevented by lack of memory.
+    int _chunkId;                    ///< Chunk Id for all Tasks in this instance.
+    bool _active{false};            ///< True when this is the active chunk.
+    bool _resourceStarved{false};   ///< True when advancement is prevented by lack of memory.
     wbase::Task::Ptr              _readyTask{nullptr}; ///< Task that is ready to run with memory reserved.
     SlowTableHeap                 _activeTasks;        ///< All Tasks must be put on this before they can run.
     std::vector<wbase::Task::Ptr> _pendingTasks;       ///< Task that should not be run until later.
@@ -161,7 +161,7 @@ private:
 
     memman::MemMan::Ptr _memMan;
     std::atomic<int> _taskCount{0};
-    bool _resourceStarved;
+    bool _resourceStarved{false};
     SchedulerBase* _scheduler; ///< Pointer to scheduler that owns this. This can be nullptr.
 };
 
