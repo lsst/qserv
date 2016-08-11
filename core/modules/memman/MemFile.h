@@ -50,7 +50,7 @@ public:
     struct MLResult {
         uint64_t bLocked;
         int      retc;
-        MLResult() {}
+        MLResult() : bLocked(0), retc(0) {}
         MLResult(uint64_t lksz, int rc) : bLocked(lksz), retc(rc) {}
     };
 
@@ -77,7 +77,7 @@ public:
     struct MFResult {
         MemFile* mfP;
         int      retc;
-        MFResult() {}
+        MFResult() : mfP(nullptr), retc(0) {}
         MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
     };
 

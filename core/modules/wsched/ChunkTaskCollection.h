@@ -38,6 +38,8 @@ namespace wsched {
 /// this class will no longer be needed.
 class ChunkTaskCollection {
 public:
+    virtual ~ChunkTaskCollection() {}
+
     /// Queue a Task to be run later.
     virtual void queueTask(wbase::Task::Ptr const& task) = 0;
 
