@@ -37,26 +37,22 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-# Start dynamic DNS for local Docker containers
-docker rm -f docker_spy || echo "No existing container for docker_spy"
-
-# WARNING: Passing the docker sock down into a container is a fairly risky thing to do.
-# docker-spy needs it to track docker container creation/removal and manage
-# automatically related DNS entries
-docker run --name docker_spy --detach=true -e "DNS_DOMAIN=$DNS_DOMAIN" -v /var/run/docker.sock:/var/run/docker.sock iverberk/docker-spy
-
-DNS_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' docker_spy)
-
 docker rm -f "$MASTER" || echo "No existing container for $MASTER"
-docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" \
+docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_IMAGE"
+MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
 
 for i in $WORKERS;
 do
     docker rm -f "$i" || echo "No existing container for $i"
-    docker run --detach=true --dns="$DNS_IP" --dns-search="$DNS_DOMAIN" \
+    docker run --detach=true --add-host $MASTER:$MASTER_IP\
         -e "QSERV_MASTER=$MASTER" --name "$i" -h "${i}"  "$WORKER_IMAGE"
+	WORKER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
+	HOSTFILE="${HOSTFILE}$WORKER_IP    $i\n"
 done
+
+# Add worker entries to master hostfile, for data-loading
+docker exec -u root "$MASTER" sh -c "echo '$HOSTFILE' >> /etc/hosts"
 
 # Wait for Qserv services to be up and running
 for i in $MASTER $WORKERS;
