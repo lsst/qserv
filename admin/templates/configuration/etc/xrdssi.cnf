@@ -59,3 +59,12 @@ priority_fast = 2
 # maxActiveChunks_slow = 4
 # maxActiveChunks_med = 4
 # maxActiveChunks_fast = 4
+
+# Maximum time for all tasks in a user query to complete.
+# scanmaxminutes_fast = 60
+# scanmaxminutes_med = 480
+# scanmaxminutes_slow = 720
+# scanmaxminutes_snail = 4320
+
+# Maximum number of Tasks that can take too long before moving a query to the snail scan.
+# maxtasksbootedperuserquery = 5

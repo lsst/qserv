@@ -70,7 +70,7 @@ BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 
 BlendScheduler::BlendScheduler(std::string const& name,
-                               wpublish::QueryChunkStatistics::Ptr const& queries,
+                               wpublish::QueriesAndChunks::Ptr const& queries,
                                int schedMaxThreads,
                                std::shared_ptr<GroupScheduler> const& group,
                                std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -125,11 +125,14 @@ void BlendScheduler::_sortScanSchedulers() {
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    if (task == nullptr || task->msg == nullptr) {
+    if (task == nullptr) {
         LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
         _commandQueue.queCmd(cmd);
         notify(true);
         return;
+    }
+    if (task->msg == nullptr) {
+        throw Bug("BlendScheduler::queCmd task with null message!");
     }
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
 

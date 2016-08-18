@@ -70,6 +70,46 @@ public:
         return _threadPoolSize;
     }
 
+    /* Get the number of tasks that can be booted from a single user query.
+     *
+     * @return Maximum minutes for a user query to complete on the fast scan.
+     */
+    unsigned int getScanMaxMinutesFast() const {
+        return _scanMaxMinutesFast;
+    }
+
+    /* Get maximum time in minutes for all tasks in a user query to finish for the fast scan.
+     *
+     * @return Maximum minutes for a user query to complete on the fast scan.
+     */
+    unsigned int getMaxTasksBootedPerUserQuery() const {
+        return _maxTasksBootedPerUserQuery;
+    }
+
+    /* Get maximum time in minutes for all tasks in a user query to finish for the medium scan.
+     *
+     * @return Maximum minutes for a user query to complete on the medium scan.
+     */
+    unsigned int getScanMaxMinutesMed() const {
+        return _scanMaxMinutesMed;
+    }
+
+    /* Get maximum time in minutes for all tasks in a user query to finish for the slow scan.
+     *
+     * @return Maximum minutes for a user query to complete on the slow scan.
+     */
+    unsigned int getScanMaxMinutesSlow() const {
+        return _scanMaxMinutesSlow;
+    }
+
+    /* Get maximum time in minutes for all tasks in a user query to finish for the snail scan.
+     *
+     * @return Maximum minutes for a user query to complete on the snail scan.
+     */
+    unsigned int getScanMaxMinutesSnail() const {
+        return _scanMaxMinutesSnail;
+    }
+
     /* Get maximum number of task accepted in a group queue
      *
      * @return maximum number of task accepted in a group queue
@@ -242,6 +282,12 @@ private:
     unsigned int const _maxActiveChunksSnail;
     unsigned int const _maxActiveChunksMed;
     unsigned int const _maxActiveChunksFast;
+
+    unsigned int const _scanMaxMinutesFast;
+    unsigned int const _scanMaxMinutesMed;
+    unsigned int const _scanMaxMinutesSlow;
+    unsigned int const _scanMaxMinutesSnail;
+    unsigned int const _maxTasksBootedPerUserQuery;
 };
 
 }}} // namespace qserv::core::wconfig

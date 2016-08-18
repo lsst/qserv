@@ -53,7 +53,7 @@ namespace qserv {
 namespace wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
-    wpublish::QueryChunkStatistics::Ptr const& queries)
+    wpublish::QueriesAndChunks::Ptr const& queries)
     : _scheduler{s}, _mySqlConfig(mySqlConfig), _queries{queries} {
     // Make the chunk resource mgr
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_mySqlConfig);

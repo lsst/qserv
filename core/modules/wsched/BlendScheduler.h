@@ -27,7 +27,7 @@
 #include <map>
 
 // Qserv headers
-#include "wpublish/QueryChunkStatistics.h"
+#include "wpublish/QueriesAndChunks.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -97,7 +97,7 @@ public:
     static int getMinPoolSize(){ return 11; }
 
     BlendScheduler(std::string const& name,
-                   wpublish::QueryChunkStatistics::Ptr const& queries,
+                   wpublish::QueriesAndChunks::Ptr const& queries,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -138,7 +138,7 @@ private:
     std::atomic<bool> _flagReorderScans{false};
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
-    wpublish::QueryChunkStatistics::Ptr _queries; /// UserQuery statistics.
+    wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
 };
 
 }}} // namespace lsst::qserv::wsched

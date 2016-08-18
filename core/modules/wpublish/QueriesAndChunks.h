@@ -41,7 +41,7 @@ namespace qserv {
 namespace wpublish {
 
 
-class QueryChunkStatistics;
+class QueriesAndChunks;
 
 
 /// Statistics for a single user query.
@@ -57,7 +57,7 @@ public:
 
     int getTasksBooted();
 
-    friend class QueryChunkStatistics;
+    friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
@@ -120,7 +120,7 @@ public:
     ChunkTableStats::Ptr add(std::string const& scanTableName, double duration);
     ChunkTableStats::Ptr getStats(std::string const& scanTableName) const;
 
-    friend QueryChunkStatistics;
+    friend QueriesAndChunks;
 private:
     int const _chunkId;
     mutable std::mutex _tStatsMtx; ///< protects _tableStats;
@@ -129,13 +129,13 @@ private:
 };
 
 
-class QueryChunkStatistics {
+class QueriesAndChunks {
 public:
-    using Ptr = std::shared_ptr<QueryChunkStatistics>;
+    using Ptr = std::shared_ptr<QueriesAndChunks>;
 
-    QueryChunkStatistics(std::chrono::seconds deadAfter,
-                         std::chrono::seconds examineAfter);
-    virtual ~QueryChunkStatistics() {
+    QueriesAndChunks(std::chrono::seconds deadAfter,
+                         std::chrono::seconds examineAfter, int maxTasksBooted);
+    virtual ~QueriesAndChunks() {
         _loopRemoval = false;
         _loopExamine = false;
         _removalThread.join();
@@ -201,7 +201,7 @@ private:
     std::chrono::seconds _examineAfter{std::chrono::minutes(5)};
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxBooted{5}; // &&& remove magic number
+    int _maxTasksBooted{5};
 };
 
 

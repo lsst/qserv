@@ -37,7 +37,7 @@
 #include "proto/worker.pb.h"
 #include "util/EventThread.h"
 #include "wbase/Task.h"
-#include "wpublish/QueryChunkStatistics.h"
+#include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
 #include "wsched/BlendScheduler.h"
@@ -420,8 +420,8 @@ struct SchedFixture {
     }
 
     void setupQueriesBlend() {
-        queries = std::make_shared<lsst::qserv::wpublish::QueryChunkStatistics>(std::chrono::seconds(1),
-                std::chrono::seconds(_examineAllSleep));
+        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(std::chrono::seconds(1),
+                std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
     }
@@ -450,7 +450,7 @@ struct SchedFixture {
                 _maxScanTimeFast)};
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
 
-    lsst::qserv::wpublish::QueryChunkStatistics::Ptr queries;
+    lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
     wsched::BlendScheduler::Ptr blend;
 
 private:
@@ -841,9 +841,10 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
     if (queryStats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& booted=" << queryStats->getTasksBooted());
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
+
+
 
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
     pool->endAll();
