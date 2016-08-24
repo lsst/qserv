@@ -69,9 +69,8 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _scanMaxMinutesFast(configStore.getInt("scheduler.scanmaxminutes_fast", 60)),
       _scanMaxMinutesMed(configStore.getInt("scheduler.scanmaxminutes_med", 60*8)),
       _scanMaxMinutesSlow(configStore.getInt("scheduler.scanmaxminutes_slow", 60*12)),
-      _scanMaxMinutesSnail(configStore.getInt("scheduler.scanmaxminutes_snail", 60*72)),
-      _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5))
-{
+      _scanMaxMinutesSnail(configStore.getInt("scheduler.scanmaxminutes_snail", 60*24)),
+      _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)) {
 }
 
 std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {

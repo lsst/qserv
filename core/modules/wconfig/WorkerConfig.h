@@ -70,7 +70,17 @@ public:
         return _threadPoolSize;
     }
 
+
     /* Get the number of tasks that can be booted from a single user query.
+     *
+     * @return Maximum number of tasks that can be booted from a single user query.
+     */
+    unsigned int getMaxTasksBootedPerUserQuery() const {
+        return _maxTasksBootedPerUserQuery;
+    }
+
+
+    /* Get maximum time in minutes for all tasks in a user query to finish for the fast scan.
      *
      * @return Maximum minutes for a user query to complete on the fast scan.
      */
@@ -78,13 +88,6 @@ public:
         return _scanMaxMinutesFast;
     }
 
-    /* Get maximum time in minutes for all tasks in a user query to finish for the fast scan.
-     *
-     * @return Maximum minutes for a user query to complete on the fast scan.
-     */
-    unsigned int getMaxTasksBootedPerUserQuery() const {
-        return _maxTasksBootedPerUserQuery;
-    }
 
     /* Get maximum time in minutes for all tasks in a user query to finish for the medium scan.
      *

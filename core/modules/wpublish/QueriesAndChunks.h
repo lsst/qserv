@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H
-#define LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H
+#ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
+#define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
 // System headers
 
@@ -33,6 +33,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
     class SchedulerBase;
+    class ScanScheduler;
 }}}
 
 
@@ -133,14 +134,10 @@ class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
 
-    QueriesAndChunks(std::chrono::seconds deadAfter,
-                         std::chrono::seconds examineAfter, int maxTasksBooted);
-    virtual ~QueriesAndChunks() {
-        _loopRemoval = false;
-        _loopExamine = false;
-        _removalThread.join();
-        _examineThread.join();
-    }
+    QueriesAndChunks(std::shared_ptr<wsched::ScanScheduler> const& snailScan,
+                     std::chrono::seconds deadAfter,
+                     std::chrono::seconds examineAfter, int maxTasksBooted);
+    virtual ~QueriesAndChunks();
 
     std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
@@ -182,6 +179,8 @@ private:
     mutable std::mutex _chunkMtx;
     std::map<int, ChunkStatistics::Ptr> _chunkStats;///< Map of Chunk stats indexed by chunk id.
 
+    std::shared_ptr<wsched::ScanScheduler> _snailScan; ///< Pointer to the snail scan scheduler.
+
     // Query removal thread members. A user query is dead if all its tasks are complete and it hasn't
     // been touched for a period of time.
     std::thread _removalThread;
@@ -194,7 +193,7 @@ private:
     // Members for running a separate thread to examine all the running Tasks on the scan schedulers
     // and remove those that are taking too long (boot them). If too many Tasks in a single user query
     // take too long, move all remaining task to the snail scan.
-    // Booted Tasks are removed from he scheduler they were on but the Taskss should complete. Booting
+    // Booted Tasks are removed from he scheduler they were on but the Tasks should complete. Booting
     // them allows the scheduler to move onto other queries.
     std::thread _examineThread;
     std::atomic<bool> _loopExamine{true};
@@ -206,4 +205,5 @@ private:
 
 
 }}} // namespace lsst::qserv::wpublish
-#endif // LSST_QSERV_WPUBLISH_QUERYCHUNKSTATISTICS_H
+
+#endif // LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H

@@ -122,13 +122,13 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
         std::make_shared<wsched::ScanScheduler>(
             "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
-            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, fastScanMaxMinutes),
+            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, slowScanMaxMinutes),
         std::make_shared<wsched::ScanScheduler>(
             "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
             workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium, medScanMaxMinutes),
         std::make_shared<wsched::ScanScheduler>(
             "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
-            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, slowScanMaxMinutes),
+            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
 
     };
 
@@ -137,7 +137,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries =
-        std::make_shared<wpublish::QueriesAndChunks>(std::chrono::minutes(5), std::chrono::minutes(5),
+        std::make_shared<wpublish::QueriesAndChunks>(snail, std::chrono::minutes(5), std::chrono::minutes(5),
                 maxTasksBootedPerUserQuery);
     _foreman = std::make_shared<wcontrol::Foreman>(
         std::make_shared<wsched::BlendScheduler>("BlendSched", queries,

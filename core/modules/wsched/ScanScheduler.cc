@@ -72,10 +72,10 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (task == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
         return;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart " << task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " ScanScheduler::commandStart " << getName());
     // task was registered Inflight when getCmd() was called.
 }
 
@@ -83,7 +83,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
         return;
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
@@ -105,7 +105,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
 
     _decrChunkTaskCount(t->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
+    LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " ScanScheduler::commandFinish " << getName()
+                              << " inFlight=" << _inFlight);
     if (_taskQueue->nextTaskDifferentChunkId()) {
         applyPriority();
     }
@@ -189,6 +190,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     _infoChanged = true;
     _decrCountForUserQuery(task->getQueryId());
     _incrChunkTaskCount(task->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " getCmd " << getName() << " inflight=" << _inFlight);
     return task;
 }
 

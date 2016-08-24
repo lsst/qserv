@@ -420,7 +420,8 @@ struct SchedFixture {
     }
 
     void setupQueriesBlend() {
-        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(std::chrono::seconds(1),
+        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(scanSlow,
+                std::chrono::seconds(1),
                 std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
@@ -810,7 +811,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     f.queries->addTask(task);
     f.blend->queCmd(task);
     while (!running) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     running = false;
     // f.queries should now have a baseline for chunk 27.
@@ -824,10 +825,10 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     task->setFunc(slowFunc);
     f.queries->addTask(task);
     auto queryStats = f.queries->getStats(qid);
-        BOOST_CHECK(queryStats != nullptr);
-        if (queryStats != nullptr) {
-            BOOST_CHECK(queryStats->getTasksBooted() == 0);
-        }
+    BOOST_CHECK(queryStats != nullptr);
+    if (queryStats != nullptr) {
+        BOOST_CHECK(queryStats->getTasksBooted() == 0);
+    }
     f.blend->queCmd(task);
     //
     while (!running) {
