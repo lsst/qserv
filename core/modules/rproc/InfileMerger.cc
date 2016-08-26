@@ -237,7 +237,7 @@ bool InfileMerger::finalize() {
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
         LOGS(_log, LOG_LVL_DEBUG, "Cleaning up " << _mergeTable);
-#if 1 // Set to 0 when we want to retain mergeTables for debugging.
+#if 0 // Set to 0 when we want to retain mergeTables for debugging. &&& change back to 1
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
                                              _config.mySqlConfig.dbName);
