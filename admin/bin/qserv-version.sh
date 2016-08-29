@@ -20,10 +20,52 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-
-# Return Qserv version number
-# Used to determine if Qserv run dir is compliant with Qserv version
+# Return Qserv version or release number
 
 # @author  Fabrice Jammes, IN2P3
-QSERV_VERSION="2016_09"
-echo "${QSERV_VERSION}"
+QSERV_RELEASE="2016_07"
+
+set -e
+
+usage() {
+  cat << EOD
+
+Usage: `basename $0` [options]
+
+  Available options:
+    -h          this message
+    -R          print release number
+
+  Print Qserv (eups-based) version number,
+  or Qserv release on which this version is based
+
+EOD
+}
+
+PRINT_RELEASE=''
+
+# get the options
+while getopts hR c ; do
+    case $c in
+		h) usage ; exit 0 ;;
+		R) PRINT_RELEASE="TRUE" ;;
+		\?) usage ; exit 2 ;;
+    esac
+done
+shift `expr $OPTIND - 1`
+
+if [ $# -ne 0 ] ; then
+    usage
+    exit 2
+fi
+
+if [ -n "$PRINT_RELEASE" ] ; then
+    echo "${QSERV_RELEASE}"
+else
+	QSERV_VERSION=$(eups list qserv -s -V)
+	if [ -z "$QSERV_VERSION" ] ; then
+        echo "ERROR: Unable to detect eups-based Qserv version"
+        exit 1
+    fi
+    echo "${QSERV_VERSION}"
+fi

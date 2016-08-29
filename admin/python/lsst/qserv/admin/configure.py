@@ -107,7 +107,7 @@ def random_string(charset, size):
     """
     return ''.join(random.choice(charset) for _ in range(size))
 
-def exists_and_is_writable(dir):
+def _exists_and_is_writable(dir):
     """
     Test if a dir exists. If no creates it, if yes checks if it is writeable.
     Return True if a writeable directory exists at the end of function execution, else False
@@ -132,7 +132,7 @@ def update_root_dirs():
     for (section, option) in (('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
                              ('qserv', 'qserv_data_dir')):
         dir = config[section][option]
-        if not exists_and_is_writable(dir):
+        if not _exists_and_is_writable(dir):
             _LOG.fatal("%r is not writable check/update permissions or"
                        " change config[%r][%r]", dir, section, option)
             sys.exit(1)
@@ -140,13 +140,13 @@ def update_root_dirs():
     for suffix in ('etc', 'var', 'var/run',
                    'var/run/mysqld', 'var/lock/subsys'):
         dir = os.path.join(config['qserv']['qserv_run_dir'], suffix)
-        if not exists_and_is_writable(dir):
+        if not _exists_and_is_writable(dir):
             _LOG.fatal("%r is not writable check/update permissions", dir)
             sys.exit(1)
 
     # user config
     user_config_dir = os.path.join(os.getenv("HOME"), ".lsst")
-    if not exists_and_is_writable(user_config_dir):
+    if not _exists_and_is_writable(user_config_dir):
         _LOG.fatal("%r is not writable check/update permissions", dir)
         sys.exit(1)
     _LOG.info("Qserv directory structure creation succeeded")
@@ -178,148 +178,6 @@ def update_root_symlinks():
 def _symlink(target, link_name):
     _LOG.debug("Creating symlink, target: %r, link name: %r", target, link_name)
     os.symlink(target, link_name)
-
-template_params_dict = None
-def _get_template_params():
-    """ Compute templates parameters from Qserv meta-configuration file
-        from PATH or from environment variables for products not needed during build
-    """
-    config = commons.getConfig()
-
-    global template_params_dict
-
-    if template_params_dict is None:
-
-        if config['qserv']['node_type'] == 'mono':
-            comment_mono_node = '#MONO-NODE# '
-        else:
-            comment_mono_node = ''
-
-        testdata_dir = os.getenv('QSERV_TESTDATA_DIR', "NOT-AVAILABLE # please set environment variable QSERV_TESTDATA_DIR if needed")
-
-        scisql_dir = os.environ.get('SCISQL_DIR')
-        if scisql_dir is None:
-            _LOG.fatal("sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
-            sys.exit(1)
-
-        # find python executable in $PATH
-        python_bin = "NOT-AVAILABLE"
-        path = os.environ.get('PATH', '')
-        for p in path.split(os.pathsep):
-            python = os.path.join(p, 'python')
-            if os.access(p, os.X_OK):
-                python_bin = python
-                break
-
-        params_dict = {
-            'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
-            'COMMENT_MONO_NODE' : comment_mono_node,
-            'HOME': os.path.expanduser("~"),
-            'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
-            'LUA_DIR': os.path.join(config['lua']['base_dir']),
-            'MYSQLD_DATA_DIR': os.path.join(config['qserv']['qserv_data_dir'], "mysql"),
-            # used for mysql-proxy in mono-node
-            'MYSQLD_HOST': '127.0.0.1',
-            'MYSQLD_PASSWORD_MONITOR': config['mysqld']['password_monitor'],
-            'MYSQLD_PASSWORD_ROOT': config['mysqld']['password_root'],
-            'MYSQLD_PORT': config['mysqld']['port'],
-            'MYSQLD_SOCK': config['mysqld']['sock'],
-            'MYSQLD_USER_MONITOR': config['mysqld']['user_monitor'],
-            'MYSQLD_USER_QSERV': config['mysqld']['user_qserv'],
-            'MYSQL_DIR': config['mysqld']['base_dir'],
-            'MYSQLPROXY_DIR': config['mysql_proxy']['base_dir'],
-            'MYSQLPROXY_PORT': config['mysql_proxy']['port'],
-            'NODE_TYPE': config['qserv']['node_type'],
-            'PATH': os.environ.get('PATH'),
-            'PYTHONPATH': os.environ['PYTHONPATH'],
-            'PYTHON_BIN': python_bin,
-            'QSERV_DATA_DIR': config['qserv']['qserv_data_dir'],
-            'QSERV_DIR': config['qserv']['base_dir'],
-            'QSERV_LOG_DIR': config['qserv']['log_dir'],
-            'QSERV_MASTER': config['qserv']['master'],
-            'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
-            'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
-            'QSERV_RUN_DIR': config['qserv']['qserv_run_dir'],
-            'QSERV_UNIX_USER': getpass.getuser(),
-            'QSERV_VERSION': config['qserv']['version'],
-            'SCISQL_DIR': scisql_dir,
-            'WMGR_PASSWORD': random_string(string.ascii_letters + string.digits + string.punctuation, 23),
-            'WMGR_PORT': config['wmgr']['port'],
-            'WMGR_SECRET_KEY': random_string(string.ascii_letters + string.digits, 57),
-            'WMGR_USER_NAME': random_string(string.ascii_letters + string.digits, 12),
-            'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
-            'XROOTD_DIR': config['xrootd']['base_dir'],
-            'XROOTD_MANAGER_HOST': config['qserv']['master'],
-            'XROOTD_PORT': config['xrootd']['xrootd_port'],
-        }
-
-        _LOG.debug("Template input parameters:\n {0}".format(params_dict))
-        template_params_dict=params_dict
-    else:
-        params_dict=template_params_dict
-
-    return params_dict
-
-def _set_perms(file):
-    (path, basename) = os.path.split(file)
-    script_list = [c+".sh" for c in COMPONENTS]
-    if (os.path.basename(path) == "bin" or
-        os.path.basename(path) == "init.d" or
-        basename in script_list):
-        os.chmod(file, 0o760)
-    elif basename in SECRET_FILES:
-        os.chmod(file, 0o600)
-    else:
-        # all other files are configuration files
-        os.chmod(file, 0o660)
-
-def apply_tpl_once(src_file, target_file, params_dict = None):
-    """ Creating one configuration file from one template
-    """
-
-    _LOG.debug("Creating {0} from {1}".format(target_file, src_file))
-
-    if params_dict is None:
-        params_dict = _get_template_params()
-
-    with open(src_file, "r") as tpl:
-        t = QservConfigTemplate(tpl.read())
-
-    out_cfg = t.safe_substitute(**params_dict)
-    for match in t.pattern.findall(t.template):
-        name = match[1]
-        if len(name) != 0 and name not in params_dict:
-            _LOG.fatal("Template %r in file %r is not defined in configuration tool", name, src_file)
-            sys.exit(1)
-
-    dirname = os.path.dirname(target_file)
-    if not os.path.exists(dirname):
-        os.makedirs(os.path.dirname(target_file))
-    with open(target_file, "w") as cfg:
-        cfg.write(out_cfg)
-
-def apply_tpl_all(template_root, dest_root):
-
-    _LOG.info("Creating configuration from templates")
-    if not os.path.isdir(template_root):
-        _LOG.fatal("Template root directory: {0} doesn't exist.".format(template_root))
-        sys.exit(1)
-
-    for root, dirs, files in os.walk(template_root):
-        os.path.normpath(template_root)
-        suffix = root[len(template_root)+1:]
-        dest_dir = os.path.join(dest_root, suffix)
-        for fname in files:
-            src_file = os.path.join(root, fname)
-            target_file = os.path.join(dest_dir, fname)
-
-            apply_tpl_once(src_file, target_file)
-
-            # applying perms
-            _set_perms(target_file)
-
-    return True
-
 
 def keep_data(components, qserv_data_dir):
     """
@@ -369,8 +227,149 @@ def has_configuration_step(steps):
     """
     return bool(intersect(steps, CONFIGURATION_STEPS))
 
+class Templater(object):
 
-class QservConfigTemplate(string.Template):
+    def __init__(self, qserv_version):
+
+        self.qserv_version = qserv_version
+        self._templateParams = None
+
+    def _setPerms(self, file):
+        (path, basename) = os.path.split(file)
+        script_list = [c + ".sh" for c in COMPONENTS]
+        if (os.path.basename(path) == "bin" or
+                    os.path.basename(path) == "init.d" or
+                    basename in script_list):
+            os.chmod(file, 0o760)
+        elif basename in SECRET_FILES:
+            os.chmod(file, 0o600)
+        else:
+            # all other files are configuration files
+            os.chmod(file, 0o660)
+
+    def _initTemplateParams(self):
+        """ Compute templates parameters from Qserv meta-configuration file
+            from PATH or from environment variables for products not needed during build
+        """
+
+        if self._templateParams is None:
+
+            config = commons.getConfig()
+
+            if config['qserv']['node_type'] == 'mono':
+                comment_mono_node = '#MONO-NODE# '
+            else:
+                comment_mono_node = ''
+
+            scisql_dir = os.environ.get('SCISQL_DIR')
+            if scisql_dir is None:
+                _LOG.fatal(
+                    "sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+                sys.exit(1)
+
+            # find python executable in $PATH
+            python_bin = "NOT-AVAILABLE"
+            path = os.environ.get('PATH', '')
+            for p in path.split(os.pathsep):
+                python = os.path.join(p, 'python')
+                if os.access(p, os.X_OK):
+                    python_bin = python
+                    break
+
+            self._templateParams = {
+                'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
+                'COMMENT_MONO_NODE': comment_mono_node,
+                'HOME': os.path.expanduser("~"),
+                'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
+                'LUA_DIR': os.path.join(config['lua']['base_dir']),
+                'MYSQLD_DATA_DIR': os.path.join(config['qserv']['qserv_data_dir'], "mysql"),
+                # used for mysql-proxy in mono-node
+                'MYSQLD_HOST': '127.0.0.1',
+                'MYSQLD_PASSWORD_MONITOR': config['mysqld']['password_monitor'],
+                'MYSQLD_PASSWORD_ROOT': config['mysqld']['password_root'],
+                'MYSQLD_PORT': config['mysqld']['port'],
+                'MYSQLD_SOCK': config['mysqld']['sock'],
+                'MYSQLD_USER_MONITOR': config['mysqld']['user_monitor'],
+                'MYSQLD_USER_QSERV': config['mysqld']['user_qserv'],
+                'MYSQL_DIR': config['mysqld']['base_dir'],
+                'MYSQLPROXY_DIR': config['mysql_proxy']['base_dir'],
+                'MYSQLPROXY_PORT': config['mysql_proxy']['port'],
+                'NODE_TYPE': config['qserv']['node_type'],
+                'PATH': os.environ.get('PATH'),
+                'PYTHONPATH': os.environ['PYTHONPATH'],
+                'PYTHON_BIN': python_bin,
+                'QSERV_DATA_DIR': config['qserv']['qserv_data_dir'],
+                'QSERV_DIR': config['qserv']['base_dir'],
+                'QSERV_LOG_DIR': config['qserv']['log_dir'],
+                'QSERV_MASTER': config['qserv']['master'],
+                'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
+                'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
+                'QSERV_RUN_DIR': config['qserv']['qserv_run_dir'],
+                'QSERV_UNIX_USER': getpass.getuser(),
+                'QSERV_VERSION': self.qserv_version,
+                'SCISQL_DIR': scisql_dir,
+                'WMGR_PASSWORD': random_string(string.ascii_letters + string.digits + string.punctuation, 23),
+                'WMGR_PORT': config['wmgr']['port'],
+                'WMGR_SECRET_KEY': random_string(string.ascii_letters + string.digits, 57),
+                'WMGR_USER_NAME': random_string(string.ascii_letters + string.digits, 12),
+                'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
+                'XROOTD_DIR': config['xrootd']['base_dir'],
+                'XROOTD_MANAGER_HOST': config['qserv']['master'],
+                'XROOTD_PORT': config['xrootd']['xrootd_port'],
+            }
+
+            _LOG.debug("Template input parameters:\n {0}".format(self._templateParams))
+
+
+    def applyOnce(self, src_file, target_file, template_params=None):
+        """ Creating one configuration file from one template
+        """
+
+        _LOG.debug("Creating {0} from {1}".format(target_file, src_file))
+
+        if template_params is None:
+            self._initTemplateParams()
+            template_params = self._templateParams
+
+        with open(src_file, "r") as tpl:
+            t = _QservConfigTemplate(tpl.read())
+
+        out_cfg = t.safe_substitute(**template_params)
+        for match in t.pattern.findall(t.template):
+            name = match[1]
+            if len(name) != 0 and name not in template_params:
+                _LOG.fatal("Template %r in file %r is not defined in configuration tool", name, src_file)
+                sys.exit(1)
+
+        dirname = os.path.dirname(target_file)
+        if not os.path.exists(dirname):
+            os.makedirs(os.path.dirname(target_file))
+        with open(target_file, "w") as cfg:
+            cfg.write(out_cfg)
+
+    def applyAll(self, template_root, dest_root):
+
+        _LOG.info("Creating configuration from templates")
+        if not os.path.isdir(template_root):
+            _LOG.fatal("Template root directory: {0} doesn't exist.".format(template_root))
+            sys.exit(1)
+
+        for root, dirs, files in os.walk(template_root):
+            os.path.normpath(template_root)
+            suffix = root[len(template_root) + 1:]
+            dest_dir = os.path.join(dest_root, suffix)
+            for fname in files:
+                src_file = os.path.join(root, fname)
+                target_file = os.path.join(dest_dir, fname)
+
+                self.applyOnce(src_file, target_file)
+
+                # applying perms
+                self._setPerms(target_file)
+
+        return True
+
+class _QservConfigTemplate(string.Template):
 
 
     delimiter = '{{'
