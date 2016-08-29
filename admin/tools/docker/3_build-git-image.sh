@@ -15,6 +15,7 @@ Usage: $(basename "$0") [options] [local-path]
 Available options:
   -R git-ref    Use remote git branch/tag for the build
                 (from https://github.com/lsst/qserv)
+				Example: 'tickets/DM-6444'
   -h            This message
   -L            Do not push image to Docker Hub
   -T            Prefix for the name of the produced images,
