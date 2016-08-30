@@ -20,5 +20,6 @@ WORKDIR /home/qserv/src/qserv
 #   - declares it using 'qserv-dev' tag
 RUN bash -c ". /qserv/stack/loadLSST.bash && \
     setup -r . -t qserv-dev && \
-    eupspkg -er install decl -t qserv-dev"
+    eupspkg -er install && \
+    eupspkg -er decl -t qserv-dev"
 
