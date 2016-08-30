@@ -222,7 +222,10 @@ wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
     // Erase the task if it is in the chunk
     ChunkTasks::Ptr ct = iter->second;
     auto ret = ct->removeTask(task);
-    if (ret != nullptr) --_taskCount; // Need to do this by hand.
+    if (ret != nullptr) {
+        --_taskCount; // Need to do this by hand.
+        _readyChunk = nullptr; // There's a small chance this task was the next task to run. &&&
+    }
     return ret;
 }
 

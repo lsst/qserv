@@ -361,7 +361,9 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
             LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " entire UserQuery booting from " << sched->getName());
             auto removedList = removeQueryFrom(uq->_queryId, sched);
             for(auto const& task : removedList) {
+                //if (task->getState() == wbase:Task::State::CREATED, QUEUED, RUNNING, FINISHED) { &&& would this check be useful
                 _snailScan->queCmd(task);
+                //} &&&
             }
         }
     }

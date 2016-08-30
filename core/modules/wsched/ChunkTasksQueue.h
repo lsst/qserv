@@ -160,7 +160,7 @@ private:
     ChunkTasks::Ptr _readyChunk{nullptr}; ///< Chunk with the task that's ready to run.
 
     memman::MemMan::Ptr _memMan;
-    std::atomic<int> _taskCount{0};
+    std::atomic<int> _taskCount{0}; ///< Count of all tasks currently in _chunkMap.
     bool _resourceStarved{false};
     SchedulerBase* _scheduler; ///< Pointer to scheduler that owns this. This can be nullptr.
 };

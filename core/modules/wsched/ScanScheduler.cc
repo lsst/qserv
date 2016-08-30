@@ -75,7 +75,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
         return;
     }
-    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " ScanScheduler::commandStart " << getName());
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " commandStart " << getName());
     // task was registered Inflight when getCmd() was called.
 }
 
@@ -88,6 +88,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
+    LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " commandFinish " << getName()
+                                  << " inFlight=" << _inFlight);
     _taskQueue->taskComplete(t);
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -105,8 +107,6 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
 
     _decrChunkTaskCount(t->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " ScanScheduler::commandFinish " << getName()
-                              << " inFlight=" << _inFlight);
     if (_taskQueue->nextTaskDifferentChunkId()) {
         applyPriority();
     }
@@ -186,11 +186,13 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     }
     bool useFlexibleLock = (_inFlight < 1);
     auto task = _taskQueue->getTask(useFlexibleLock);
-    ++_inFlight; // in flight as soon as it is off the queue.
-    _infoChanged = true;
-    _decrCountForUserQuery(task->getQueryId());
-    _incrChunkTaskCount(task->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " getCmd " << getName() << " inflight=" << _inFlight);
+    if (task != nullptr) {
+        ++_inFlight; // in flight as soon as it is off the queue.
+        LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " getCmd " << getName() << " inflight=" << _inFlight);
+        _infoChanged = true;
+        _decrCountForUserQuery(task->getQueryId());
+        _incrChunkTaskCount(task->getChunkId());
+    }
     return task;
 }
 
