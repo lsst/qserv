@@ -33,6 +33,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
     class SchedulerBase;
+    class BlendScheduler;
     class ScanScheduler;
 }}}
 
@@ -94,6 +95,8 @@ public:
 
     void addTaskFinished(double minutes);
 
+    std::uint64_t getTasksCompleted();
+
     double getAvgCompletionTime();
 
 private:
@@ -134,10 +137,12 @@ class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
 
-    QueriesAndChunks(std::shared_ptr<wsched::ScanScheduler> const& snailScan,
-                     std::chrono::seconds deadAfter,
+    QueriesAndChunks(std::chrono::seconds deadAfter,
                      std::chrono::seconds examineAfter, int maxTasksBooted);
     virtual ~QueriesAndChunks();
+
+    void setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendsched);
+    void setRequiredTasksCompleted(uint value);
 
     std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
@@ -158,6 +163,7 @@ public:
     struct ChunkTimePercent {
         double shardTime{0.0};
         double percent{0.0};
+        bool valid{false};
     };
     // Store the time to scan entire table with time for each chunk within that table.
     struct ScanTableSums {
@@ -179,13 +185,13 @@ private:
     mutable std::mutex _chunkMtx;
     std::map<int, ChunkStatistics::Ptr> _chunkStats;///< Map of Chunk stats indexed by chunk id.
 
-    std::shared_ptr<wsched::ScanScheduler> _snailScan; ///< Pointer to the snail scan scheduler.
+    std::weak_ptr<wsched::BlendScheduler> _blendSched; ///< Pointer to the BlendScheduler.
 
     // Query removal thread members. A user query is dead if all its tasks are complete and it hasn't
     // been touched for a period of time.
     std::thread _removalThread;
     std::atomic<bool> _loopRemoval{true}; ///< While true, check to see if any Queries can be removed.
-    /// A user query must be inactive this long before it can be considered dead.
+    /// A user query must be complete and inactive this long before it can be considered dead.
     std::chrono::seconds _deadAfter{std::chrono::minutes(5)};
     std::mutex _deadMtx; ///< Protects _deadList.
     std::vector<QueryStatistics::Ptr> _deadList; ///< List of user queries that might be dead.
@@ -201,6 +207,10 @@ private:
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
     int _maxTasksBooted{5};
+
+    /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
+    /// considered valid enough to boot a Task.
+    uint _requiredTasksCompleted{1};
 };
 
 

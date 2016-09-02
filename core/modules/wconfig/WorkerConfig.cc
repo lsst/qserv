@@ -54,6 +54,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _memManLocation(configStore.getRequired("memman.location")),
       _threadPoolSize(configStore.getInt("scheduler.thread_pool_size", wsched::BlendScheduler::getMinPoolSize())),
       _maxGroupSize(configStore.getInt("scheduler.group_size", 1)),
+      _requiredTasksCompleted(configStore.getInt("scheduler.required_tasks_completed", 25)),
       _prioritySlow(configStore.getInt("scheduler.priority_slow", 2)),
       _prioritySnail(configStore.getInt("scheduler.priority_snail", 1)),
       _priorityMed(configStore.getInt("scheduler.priority_med", 3)),
@@ -79,6 +80,7 @@ std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {
         out << "MemManSizeMb=" << workerConfig._memManSizeMb;
     }
     out << " poolSize=" << workerConfig._threadPoolSize << ", maxGroupSize=" << workerConfig._maxGroupSize;
+    out << " requiredTasksCompleted=" << workerConfig._requiredTasksCompleted;
 
     out << " priority fast=" << workerConfig._priorityFast
         << " med=" << workerConfig._priorityMed

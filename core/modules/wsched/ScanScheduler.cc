@@ -30,7 +30,7 @@
   */
 
 // Class header
-#include <wsched/ChunkTasksQueue.h>
+
 #include "wsched/ScanScheduler.h"
 
 // System headers
@@ -47,6 +47,7 @@
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/ChunkDisk.h"
+#include "wsched/ChunkTasksQueue.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
@@ -93,6 +94,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     _taskQueue->taskComplete(t);
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish unlocking handle=" << _memManHandleToUnlock);
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
     }
@@ -102,7 +104,10 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // we don't want to release the tables in case the next Task wants some of them.
     if (!_taskQueue->empty()) {
         _memManHandleToUnlock = t->getMemHandle();
+        LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " setting handleToUnlock handle=" << _memManHandleToUnlock);
     } else {
+        LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " ScanScheduler::commandFinish unlocking handle="
+              << t->getMemHandle());
         _memMan->unlock(t->getMemHandle()); // Nothing on the queue, no reason to wait.
     }
 
@@ -160,6 +165,7 @@ bool ScanScheduler::_ready() {
     bool logMemStats = false;
     // If ready failed, holding onto this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock);
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
         logMemStats = true;
@@ -219,11 +225,12 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr());
     auto rmTask = _taskQueue->removeTask(task);
-    if (rmTask != nullptr) return rmTask;
+    bool inQueue = rmTask != nullptr;
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inQueue=" << inQueue);
+    if (inQueue) return rmTask;
 
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inflight");
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " not in queue");
     // Wasn't in the queue, could be in flight.
     /// The task can only leave the pool if it has been started, and there is a tiny
     /// window where the task could have been pulled from the queue but commandStart()

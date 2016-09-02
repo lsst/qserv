@@ -137,12 +137,17 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries =
-        std::make_shared<wpublish::QueriesAndChunks>(snail, std::chrono::minutes(5), std::chrono::minutes(5),
+        std::make_shared<wpublish::QueriesAndChunks>(std::chrono::minutes(5), std::chrono::minutes(5),
                 maxTasksBootedPerUserQuery);
+    wsched::BlendScheduler::Ptr blendSched = std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
+            maxThread, group, snail, scanSchedulers);
+    queries->setBlendScheduler(blendSched);
+
+    unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
+    queries->setRequiredTasksCompleted(requiredTasksCompleted);
+
     _foreman = std::make_shared<wcontrol::Foreman>(
-        std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
-                                                 maxThread, group, snail, scanSchedulers),
-        poolSize, workerConfig.getMySqlConfig(), queries);
+            blendSched, poolSize, workerConfig.getMySqlConfig(), queries);
 }
 
 SsiService::~SsiService() {

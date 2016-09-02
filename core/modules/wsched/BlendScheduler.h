@@ -119,6 +119,8 @@ public:
     void setFlagReorderScans() { _flagReorderScans = true; }
     int calcAvailableTheads();
 
+    bool isScanSnail(SchedulerBase::Ptr const& scan);
+    int moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source);
     int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
 
 private:

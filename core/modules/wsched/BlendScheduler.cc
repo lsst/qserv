@@ -346,6 +346,22 @@ void BlendScheduler::_logChunkStatus() {
 }
 
 
+bool BlendScheduler::isScanSnail(SchedulerBase::Ptr const& scan) {
+       return scan == std::static_pointer_cast<SchedulerBase>(_scanSnail);
+   }
+
+
+int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source) {
+    if (source == _scanSnail) {
+        LOGS(_log, LOG_LVL_INFO, QueryIdHelper::makeIdStr(qId)
+             << " moveUserQueryToSnail can't move, query is already on snail.");
+        // TODO: send a message back to czar asking to cancel query
+        return 0;
+    }
+    return moveUserQuery(qId, source, _scanSnail);
+}
+
+
 int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
                                   SchedulerBase::Ptr const& destination) {
     LOGS(_log, LOG_LVL_DEBUG, "moveUserQuery " << QueryIdHelper::makeIdStr(qId)

@@ -223,8 +223,7 @@ wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
     ChunkTasks::Ptr ct = iter->second;
     auto ret = ct->removeTask(task);
     if (ret != nullptr) {
-        --_taskCount; // Need to do this by hand.
-        _readyChunk = nullptr; // There's a small chance this task was the next task to run. &&&
+        --_taskCount; // Need to do this as getTask() wont be called for task.
     }
     return ret;
 }
@@ -353,16 +352,19 @@ bool ChunkTasks::readyToAdvance() {
 // If a Task is ready to be run, _readyTask will not be nullptr.
 ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     auto logMemManRes =
-        [this](bool starved, std::string const& msg, std::vector<memman::TableInfo> const& tblVect) {
-            setResourceStarved(starved);
-            if (starved) {
-                std::string str;
-                for (auto const& tblInfo:tblVect) {
-                    str += tblInfo.tableName + " ";
-                }
-                LOGS(_log, LOG_LVL_DEBUG, "ready memMan " << msg << " - " << str);
+            [this, useFlexibleLock](bool starved, std::string const& msg, int handle,
+                   std::vector<memman::TableInfo> const& tblVect) {
+        setResourceStarved(starved);
+        if (!starved) {
+            std::string str;
+            for (auto const& tblInfo:tblVect) {
+                str += tblInfo.tableName + " ";
             }
-        };
+            LOGS(_log, LOG_LVL_DEBUG, "ready memMan flex=" << useFlexibleLock
+                  << " handle=" << handle << " " << msg << " - " << str);
+        }
+    };
+
     if (_readyTask != nullptr) {
         return ChunkTasks::ReadyState::READY;
     }
@@ -395,7 +397,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:
-                logMemManRes(true, "ENOMEM", tblVect);
+                logMemManRes(true, "ENOMEM", handle, tblVect);
                 return ChunkTasks::ReadyState::NO_RESOURCES;
             case ENOENT:
                 LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock errno=ENOENT chunk not found " << task->getIdStr());
@@ -412,17 +414,12 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
             }
         }
         task->setMemHandle(handle);
-        logMemManRes(false, task->getIdStr() + " got handle", tblVect);
+        logMemManRes(false, task->getIdStr() + " got handle", handle, tblVect);
     }
 
     // There is a Task to run at this point, pull it off the heap to avoid confusion.
-    auto popped = _activeTasks.pop();
+    _activeTasks.pop();
     _readyTask = task;
-    if (popped != task) {
-        // This would be deadly.
-        throw Bug(std::string("ChunkTasks::ready popped and task don't match! ") +
-                "task=" + task->getIdStr() + " popped=" + popped->getIdStr());
-    }
     return ChunkTasks::ReadyState::READY;
 }
 

@@ -32,6 +32,10 @@ location = {{QSERV_DATA_DIR}}/mysql
 # thread_pool_size = 10
 thread_pool_size = 20
 
+# Required number of completed tasks for table in a chunk for the average time to be valid
+# required_tasks_completed = 25
+required_tasks_completed = 1
+
 # Maximum group size for GroupScheduler
 # group_size = 1
 group_size = 10

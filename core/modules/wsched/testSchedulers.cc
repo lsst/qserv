@@ -418,13 +418,15 @@ struct SchedFixture {
           : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
         setupQueriesBlend();
     }
+    ~SchedFixture() {}
 
     void setupQueriesBlend() {
-        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(scanSlow,
+        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(
                 std::chrono::seconds(1),
                 std::chrono::seconds(_examineAllSleep), 5);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
+        queries->setBlendScheduler(blend);
     }
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;

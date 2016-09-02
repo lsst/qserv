@@ -251,7 +251,7 @@ void Task::waitForMemMan() {
         memman::MemMan::Handle _handle;
     };
 
-    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin");
+    LOGS(_log,LOG_LVL_DEBUG, _idStr << " waitForMemMan begin handle=" << _memHandle);
     if (_memMan != nullptr) {
         runUlockEventsThreadOnce();
         auto cmd = std::make_shared<CommandMlock>(_memMan, _memHandle);

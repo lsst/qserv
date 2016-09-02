@@ -70,6 +70,14 @@ public:
         return _threadPoolSize;
     }
 
+    /* Get required number of completed tasks for table in a chunk for the average to be valid.
+     *
+     * @return required tasks completed before average time is valid.
+     */
+    unsigned int getRequiredTasksCompleted() const {
+        return _requiredTasksCompleted;
+    }
+
 
     /* Get the number of tasks that can be booted from a single user query.
      *
@@ -270,6 +278,7 @@ private:
 
     unsigned int const _threadPoolSize;
     unsigned int const _maxGroupSize;
+    unsigned int const _requiredTasksCompleted;
 
     unsigned int const _prioritySlow;
     unsigned int const _prioritySnail;

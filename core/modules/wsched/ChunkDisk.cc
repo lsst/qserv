@@ -194,6 +194,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
                 return false;
             }
         }
+        LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " setting memHandle=" << handle);
         task->setMemHandle(handle);
         logMemManRes(false, "got handle", tblVect);
         // Once the chunk has been granted, everything equal and below must go on pending.

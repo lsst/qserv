@@ -23,6 +23,7 @@
 
 // Class header
 #include "wpublish/QueriesAndChunks.h"
+#include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
 
@@ -38,11 +39,10 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-QueriesAndChunks::QueriesAndChunks(std::shared_ptr<wsched::ScanScheduler> const& snailScan,
-                                   std::chrono::seconds deadAfter,
+
+QueriesAndChunks::QueriesAndChunks(std::chrono::seconds deadAfter,
                                    std::chrono::seconds examineAfter, int maxTasksBooted)
-     : _snailScan{snailScan}, _deadAfter{deadAfter},
-       _examineAfter{examineAfter}, _maxTasksBooted{maxTasksBooted} {
+     : _deadAfter{deadAfter}, _examineAfter{examineAfter}, _maxTasksBooted{maxTasksBooted} {
     auto rDead = [this](){
         while (_loopRemoval) {
             removeDead();
@@ -79,6 +79,15 @@ QueriesAndChunks::~QueriesAndChunks() {
     }
 }
 
+
+void QueriesAndChunks::setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendSched) {
+    _blendSched = blendSched;
+}
+
+
+void QueriesAndChunks::setRequiredTasksCompleted(uint value) {
+    _requiredTasksCompleted = value;
+}
 
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
@@ -276,14 +285,15 @@ void QueriesAndChunks::examineAll() {
                 if (iterChunk != tblSums.chunkPercentages.end()) {
                     // We can only make the check if there's data on past chunks/tables.
                     double percent = iterChunk->second.percent;
+                    bool valid = iterChunk->second.valid;
                     double maxTimeChunk = percent * schedMaxTime;
                     auto runTimeMilli = task->getRunTime();
                     double runTimeMinutes = (double)runTimeMilli.count()/60000.0;
-                    bool booting = runTimeMinutes > maxTimeChunk;
+                    bool booting = runTimeMinutes > maxTimeChunk && valid;
                     auto lvl = booting ? LOG_LVL_INFO : LOG_LVL_DEBUG;
                     LOGS(_log, lvl, "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
                          << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
-                         << " runTimeMinutes=" << runTimeMinutes);
+                         << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
                     if (booting) {
                         _bootTask(uq, task, sched);
                     }
@@ -322,6 +332,7 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
                 sTSums.totalTime  += ele.second->getAvgCompletionTime();
                 ChunkTimePercent& ctp = sTSums.chunkPercentages[chunkId];
                 ctp.shardTime = ele.second->getAvgCompletionTime();
+                ctp.valid = ele.second->getTasksCompleted() >= _requiredTasksCompleted;
             }
         }
     }
@@ -349,7 +360,14 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
     LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " taking too long, booting from " << sched->getName());
     sched->removeTask(task);
     uq->_tasksBooted += 1;
-    if (sched == _snailScan) {
+
+    auto bSched = _blendSched.lock();
+    if (bSched == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, task->getIdStr()
+                             << " blendSched undefined, can't check user query");
+        return;
+    }
+    if (bSched->isScanSnail(sched)) {
         // If it's already on the snail scan, it has already been booted from another scan.
         if (uq->_tasksBooted > _maxTasksBooted + 1) {
             LOGS(_log, LOG_LVL_WARN, task->getIdStr() <<
@@ -358,13 +376,9 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
         }
     } else {
         if (uq->_tasksBooted > _maxTasksBooted) {
-            LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " entire UserQuery booting from " << sched->getName());
-            auto removedList = removeQueryFrom(uq->_queryId, sched);
-            for(auto const& task : removedList) {
-                //if (task->getState() == wbase:Task::State::CREATED, QUEUED, RUNNING, FINISHED) { &&& would this check be useful
-                _snailScan->queCmd(task);
-                //} &&&
-            }
+            LOGS(_log, LOG_LVL_INFO, task->getIdStr()
+                 << " entire UserQuery booting from " << sched->getName());
+            bSched->moveUserQueryToSnail(uq->_queryId, sched);
         }
     }
 }
@@ -503,9 +517,17 @@ void ChunkTableStats::addTaskFinished(double minutes) {
 }
 
 
+
+std::uint64_t ChunkTableStats::getTasksCompleted() {
+    std::lock_guard<std::mutex> g(_cStatsMtx);
+    return _tasksCompleted;
+}
+
+
 double ChunkTableStats::getAvgCompletionTime() {
     std::lock_guard<std::mutex> g(_cStatsMtx);
     return _avgCompletionTime;
 }
+
 
 }}} // namespace lsst:qserv:wpublish
