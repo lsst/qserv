@@ -1,6 +1,6 @@
 /ssh_config
-/env.sh
-/integration-tests-env.sh
+/env-openstack.sh
+/env-infrastructure.sh
 /LSST-openrc.sh
 /petasky-openrc.sh
 /ncsa.conf

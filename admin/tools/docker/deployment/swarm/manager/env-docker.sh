@@ -1,0 +1,22 @@
+# Configuration file sourced by Swarm scripts
+# Allow to customize Docker container execution
+
+# VERSION can be a git ticket branch but with _ instead of /
+# example: u_fjammes_DM-4295
+VERSION=tickets_DM-7139
+
+
+# `docker run` settings
+# =====================
+
+# Data directory location on docker host, optional
+# NOT SUPPORTED: mysql data created at configuration time is removed
+# HOST_DATA_DIR=/qserv/data
+
+# Log directory location on docker host, optional
+HOST_LOG_DIR=/qserv/log
+
+
+# Set images names
+printf -v MASTER_IMAGE "qserv/qserv:%s_master" "$VERSION"
+printf -v WORKER_IMAGE "qserv/qserv:%s_worker" "$VERSION"

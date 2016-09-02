@@ -416,32 +416,6 @@ class CloudManager(object):
         # cloud config
         cloud_config = '#cloud-config'
 
-        if server_profile == SWARM_MANAGER:
-            if not instance_last_id:
-                msg = "Must provide non-empty instance_last_id parameter in Swarm manager cloud-init file"
-                raise ValueError(msg)
-            cloud_config += '''
-
-write_files:
-- path: /tmp/swarm-env.sh
-  permissions: "0754"
-  owner: "root:docker"
-  content: |
-    #!/bin/sh
-
-    # Cluster parameters used to run
-    # swarm and docker
-
-    # @author  Fabrice Jammes, IN2P3
-
-    INSTANCE_LAST_ID={instance_last_id}
-    HOSTNAME_TPL="{hostname_tpl}"
-
-    DOCKER_PORT=2375
-
-    SWARM_HOSTNAME="{hostname_tpl}swarm"
-    SWARM_PORT=3376'''
-
         cloud_config += '''
 
 users:
@@ -481,29 +455,10 @@ runcmd:
   - [/bin/systemctl, daemon-reload]
   - [/bin/systemctl, restart,  docker.service]'''
 
-        branch = "master"
-        if server_profile == SWARM_MANAGER:
-            cloud_config += '''
-  - [su, qserv, -c, "git clone -b {branch} --single-branch https://github.com/lsst/qserv.git /home/qserv/src/qserv"]
-  - [cp, /tmp/swarm-env.sh, /home/qserv/src/qserv/admin/tools/docker/deployment/swarm]'''
-
-            cmd = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
-            try:
-                branch = subprocess.check_output(cmd).strip()
-            except subprocess.CalledProcessError:
-                logging.debug("Unable to retrieve current git branch, "
-                              "using qserv master branch"
-                              "to retrieve swarm procedure code.")
-
-                logging.debug("Cloning swarm procedure code from "
-                              "https://github.com/lsst/qserv.git "
-                              "(branch: {})".format(branch))
-
         fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
         public_key = fpubkey.read()
 
-        userdata = cloud_config.format(branch=branch,
-                                       instance_last_id=instance_last_id,
+        userdata = cloud_config.format(instance_last_id=instance_last_id,
                                        key=public_key,
                                        hostname_tpl=self._hostname_tpl)
 

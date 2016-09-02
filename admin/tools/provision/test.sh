@@ -31,7 +31,7 @@ Usage: `basename $0` [options]
   Openstack, then install Qserv and launch integration test on it.
   If no option provided, use '-p -S' by default. 
 
-  Pre-requisites: Openstack RC file need to be sourced and $DIR/env.sh available.
+  Pre-requisites: Openstack RC file need to be sourced and $DIR/env-openstack.sh available.
 
 EOD
 }
@@ -59,7 +59,7 @@ if [ "$OPTIND" -eq 1 ]; then
     SWARM="TRUE"
 fi
 
-. "$DIR/env.sh"
+. "$DIR/env-openstack.sh"
 
 if [ -n "$CREATE" ]; then
     echo "Create up to date snapshot image"
@@ -71,17 +71,43 @@ if [ -n "$PROVISION" ]; then
     "$DIR/provision-qserv.py" --cleanup --config "$CONF_FILE" --nb-servers "$NB_SERVERS" -vv
 fi
 
-. "$DIR/integration-tests-env.sh"
+. "$DIR/env-infrastructure.sh"
 
 if [ -n "$SWARM" ]; then
+	SWARM_DIR="$DIR/../docker/deployment/swarm"
+	SSH_CFG="$DIR/ssh_config"
     echo "Launch integration tests using Swarm"
-    echo "Configure Swarm node"
-    ssh -F ./ssh_config "$SWARM_NODE" \
-        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/swarm-setup.sh
+
+	scp -F "$SSH_CFG" -r "$SWARM_DIR/manager" "$SWARM_NODE":/home/qserv 
+    scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${SWARM_NODE}:/home/qserv/manager"
+    ssh -F "$SSH_CFG" "$SWARM_NODE" "docker swarm leave --force" || true
+    ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/1_create.sh"
+    JOIN_CMD="$(ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/2_print-join-cmd.sh")"
+
+    # Join swarm nodes:
+    #   - Qserv master has index 0
+    #   - QServ workers have indexes >= 1
+    for qserv_node in $MASTER $WORKERS 
+    do
+        echo "Join $qserv_node to swarm cluster"
+        ssh -F "$SSH_CFG" "$qserv_node" "docker swarm leave --force" || true
+	    ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD"
+    done
+    
+    # Start Qserv	
+	ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/3_start-qserv.sh"
+
+    echo "Wait for Qserv to start"
+    for qserv_node in $MASTER $WORKERS 
+    do
+	    scp -F "$SSH_CFG" "$SWARM_DIR/wait.sh" "$qserv_node":/home/qserv 
+	    ssh -F "$SSH_CFG" "$qserv_node" "/home/qserv/wait.sh"
+    done
 
     echo "Launch multinode tests"
-    ssh -F ./ssh_config "$SWARM_NODE" \
-        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/run-multinode-tests.sh
+	scp -F "$SSH_CFG" "$SWARM_DIR/run-multinode-tests.sh" "$MASTER":/home/qserv 
+    ssh -F "$SSH_CFG" "$SWARM_NODE" "$SWARM_DIR/run-multinode-tests.sh"
+
 elif [ -n "$SHMUX" ]; then
 
     echo "Launch integration tests using shmux"
