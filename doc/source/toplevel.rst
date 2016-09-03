@@ -6,8 +6,8 @@ Qserv documentation
 Available versions
 ******************
 
-* Latest release `2016_06 <2016_06>`_
-* Under development `2016_07 <2016_07>`_
+* Latest release `2016_08 <2016_08>`_
+* Under development `2016_09 <2016_09>`_
 
 Current build status for master branch: |travis|
 
