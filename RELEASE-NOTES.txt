@@ -1,3 +1,22 @@
+R E L E A S E   2016_08
+=======================
+
+Release highlights:
+  * DM-5913: Long running shared-scan queries now moved automatically to snail-scan
+
+Code improvements:
+  * DM-6813: Track statistics about queries and tasks running per chunk
+  * DM-7208: Minor fixes for issues flagged by Eclipse Neon C++ code analyzer
+  * DM-6972: Documentation updated for new location of newinstall.sh
+  * DM-7030: XRootD updated from upstream (now current to upstream SHA 03430C9)
+  * DM-6160: Enable configuration of "largeResultPoolSize" parameter via czar config file
+
+Docker:
+  * DM-6444: Docker container builds now run with -j$(nproc) for faster builds
+  * DM-7214: Fix for broken Travis CI builds (remove obsolete docker-spy)
+  * DM-5967: Docker cluster deploy now uses Docker Swarm instead of shmux
+  * DM-6922: Container build updated for new location of newinstall.sh
+
 R E L E A S E   2016_06
 =======================
 
