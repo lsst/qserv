@@ -163,7 +163,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
     wbase::Task::Ptr task = _activeTasks.top();
     // Try to get memHandle for the task if doesn't have one.
     if (!task->hasMemHandle()) {
-        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::MUSTLOCK;
+        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::REQUIRED;
         memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
         if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
         auto scanInfo = task-> getScanInfo();
@@ -174,7 +174,7 @@ bool ChunkDisk::_ready(bool useFlexibleLock) {
             tblVect.push_back(ti);
         }
         // If tblVect is empty, we should get the empty handle
-        memman::MemMan::Handle handle = _memMan->lock(tblVect, chunkId);
+        memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
         if (handle == 0) {
             switch (errno) {
             case ENOMEM:

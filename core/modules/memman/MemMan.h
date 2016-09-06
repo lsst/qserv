@@ -37,7 +37,7 @@ namespace memman {
 //-----------------------------------------------------------------------------
 //! @brief Describe a table that can be potentially locked in memory.
 //!
-//! A table marked as MUSTLOCK downgrades to FLEXIBLE if the same table was
+//! A table marked as REQUIRED downgrades to FLEXIBLE if the same table was
 //! previously added and marked FLEXIBLE. Tables marked FLEXIBLE are locked if
 //! there is sufficient memory. Otherwise, the required memory is reserved and
 //! a lock attempt is made when the table is encountered in the future.
@@ -50,8 +50,8 @@ public:
 
     enum class LockType {
         NOLOCK   = 0,         //< Item should not be locked
-        MUSTLOCK = 1,         //< Item must be locked or declare failure
-        FLEXIBLE = 2,         //< Item may  be locked but memory is reserved
+        REQUIRED = 1,         //< Item must be locked or declare failure
+        FLEXIBLE = 2,         //< Item may  be locked if memory can be reserved
         OPTIONAL = 3          //< Item may  be locked if possible or ignored
     };
 
@@ -61,13 +61,13 @@ public:
     //-----------------------------------------------------------------------------
     //! Constructor
     //!
-    //! @param  tabName   is the name of the table, with '/' separating database and table name.
+    //! @param  tabName   is the name of the table.
     //! @param  optData   lock options for the table's data
     //! @param  optIndex  lock options for the table's index
     //-----------------------------------------------------------------------------
 
     TableInfo(std::string const& tabName,
-              LockType optData=LockType::MUSTLOCK,
+              LockType optData=LockType::REQUIRED,
               LockType optIndex=LockType::NOLOCK)
              : tableName(tabName), theData(optData), theIndex(optIndex)
              {}
@@ -97,7 +97,39 @@ public:
     static MemMan* create(uint64_t maxBytes, std::string const& dbPath);
 
     //-----------------------------------------------------------------------------
-    //! @brief Lock a set of tables in memory for a particular chunk.
+    //! @brief Lock a set of tables in memory passed to the prepare() method.
+    //!
+    //! The lock() method fails if any REQUIRED table cannot be locked in; as
+    //! prepare() verified such tables could be locked. FLEXIBLE tables that
+    //! had memory reserved are locked but nothing fails if they cannot be.
+    //!
+    //! @param  handle - Handle returned by prepare() given a set of tables.
+    //! @param  strict - When false, if all the required tables are not locked
+    //!                  (i.e. return != 0) the handle is automatically deleted
+    //!                  and any partially locked resources are released.
+    //!                  Otherwise, the handle remains valid and any partially
+    //!                  locked resources remain locked. The handle must be
+    //!                  manually released by calling unlock().
+    //!
+    //! @return =0     - All required tables have been locked.
+    //! @return !0     - Not all required tables were locked. The return value
+    //!                  is the errno reason, as follows:
+    //!                  xxxxxx   - filesystem or memory error
+    //!                  ENOENT   - handle could not be found.
+    //!                  ENOMEM   - insufficient memory to fully satisfy request.
+    //-----------------------------------------------------------------------------
+
+    using Handle = uint64_t;
+
+    struct HandleType {
+        static const Handle INVALID=0;
+        static const Handle ISEMPTY=1;
+    };
+
+    virtual int    lock(Handle handle, bool strict=false) = 0;
+
+    //-----------------------------------------------------------------------------
+    //! @briefPrepare a set of tables for locking into memory.
     //!
     //! @param  tables - Reference to the tables to process.
     //! @param  chunk  - The chunk number associated with the tables.
@@ -110,19 +142,13 @@ public:
     //! @return !0     - Is the resource handle associated with this request.
     //-----------------------------------------------------------------------------
 
-    using Handle = uint64_t;
-
-    struct HandleType {
-        static const Handle INVALID=0;
-        static const Handle ISEMPTY=1;
-    };
-
-    virtual Handle lock(std::vector<TableInfo> const& tables, int chunk) = 0;
+    virtual Handle prepare(std::vector<TableInfo> const& tables, int chunk) = 0;
 
     //-----------------------------------------------------------------------------
-    //! @brief Unlock a set of tabes previously locked by the lock() method.
+    //! @brief Unlock a set of tables previously locked by the lock() or were
+    //!        prepared for locking by prepare().
     //!
-    //! @param  handle  - The resource handle returned by lock().
+    //! @param  handle  - The resource handle returned by prepare().
     //!
     //! @return false: The resource was not found.
     //! @return true:  The the memory associated with the resource has been
@@ -150,6 +176,8 @@ public:
         uint64_t bytesLockMax; //!< Maximum number of bytes to lock
         uint64_t bytesLocked;  //!< Current number of bytes locked
         uint64_t bytesReserved;//!< Current number of bytes reserved
+        uint32_t numMapErrors; //!< Number of mmap()  calls that failed
+        uint32_t numLokErrors; //!< Number of mlock() calls that failed
         uint32_t numFSets;     //!< Global  number of active file sets
         uint32_t numFiles;     //!< Global  number of active files
         uint32_t numReqdFiles; //!< Number  required files encountered
@@ -164,7 +192,7 @@ public:
     //-----------------------------------------------------------------------------
     //! @brief Obtain resource status.
     //!
-    //! @param  handle  - The handle returned by lock().
+    //! @param  handle  - The handle returned by prepare().
     //!
     //! @return The query status. If the resource was not found numTables is
     //!         set to zero.
@@ -176,16 +204,6 @@ public:
         int      chunk;     //!< Chunk number associated with resource
     };
 
-    //-----------------------------------------------------------------------------
-    //! @brief Wait for resource locking to finish.
-    //!
-    //! @param  handle  - The handle returned by lock().
-    //!
-    //! @return error code - non-zero if problems.
-    //-----------------------------------------------------------------------------
-
-    virtual int waitFor(Handle handle) = 0;
-
     virtual Status getStatus(Handle handle) = 0;
 
     //-----------------------------------------------------------------------------
@@ -195,6 +213,10 @@ public:
 
                   MemMan() {}
     virtual      ~MemMan() {}
+
+protected:
+
+    static uint64_t lockLimit;
 };
 
 }}} // namespace lsst:qserv:memman

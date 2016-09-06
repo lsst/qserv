@@ -47,6 +47,10 @@ MemFileSet::~MemFileSet() {
     //
     for (auto mfP : _lockFiles) {mfP->release();}
     for (auto mfP : _flexFiles) {mfP->release();}
+
+    // Unlock this file set if it is locked
+    //
+    serialize(false);
 }
 
 /******************************************************************************/
@@ -78,7 +82,7 @@ int MemFileSet::add(std::string const& tabname, int chunk,
 /*                               l o c k A l l                                */
 /******************************************************************************/
 
-int MemFileSet::lockAll() {
+int MemFileSet::lockAll(bool strict) {
 
     MemFile::MLResult mlResult;
     uint64_t totLocked = 0;
@@ -89,7 +93,7 @@ int MemFileSet::lockAll() {
     for (auto mfP : _lockFiles) {
         mlResult = mfP->memLock();
         totLocked += mlResult.bLocked;
-        if (mlResult.retc != 0) {
+        if (mlResult.retc != 0 && strict) {
             _lockBytes += totLocked;
             return mlResult.retc;
         }
@@ -113,6 +117,39 @@ int MemFileSet::lockAll() {
     return 0;
 }
 
+  
+/******************************************************************************/
+/*                                m a p A l l                                 */
+/******************************************************************************/
+
+int MemFileSet::mapAll() {
+
+    int rc;
+
+    // Try to map all of the required tables. Any failure is considered fatal.
+    // The caller should delete the fileset upon return in this case.
+    //
+    for (auto mfP : _lockFiles) {
+        rc = mfP->memMap();
+        if (rc != 0) return rc;
+    }
+
+    // Try locking as many flexible files as we can. At some point we will
+    // place unlocked flex files on a "want to lock" queue. FUTURE!!! In any
+    // case we ignore all errors here as these files may remain unlocked.
+    //
+    for (auto mfP : _flexFiles) {
+        if (mfP->memMap() != 0) break;
+    }
+
+    // We ignore optional files at this point. FUTURE!!!
+    //
+
+    // All done
+    //
+    return 0;
+}
+
 /******************************************************************************/
 /*                                s t a t u s                                 */
 /******************************************************************************/
@@ -128,22 +165,5 @@ MemMan::Status MemFileSet::status() {
     myStatus.chunk     = _chunk;
     return myStatus;
 }
-
-
-std::vector<CommandMlock::Ptr> MemFileSet::getCmdMlocks() {
-    std::vector<CommandMlock::Ptr> cmds;
-    auto func = [&cmds](std::vector<MemFile*> const& files) {
-        for (auto const& mfp : files) {
-            auto cmd = mfp->getCmdMlock();
-            if (cmd != nullptr) {
-                cmds.push_back(cmd);
-            }
-        }
-    };
-    func(_lockFiles);
-    func(_flexFiles);
-    return cmds;
-}
-
 }}} // namespace lsst:qserv:memman
 

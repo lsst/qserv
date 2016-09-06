@@ -153,7 +153,7 @@ public:
     void waitForMemMan();
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
-    std::string getIdStr() {return _idStr;}
+    std::string getIdStr() const {return _idStr;}
 
     /// @return true if qId and jId match this task's query and job ids.
     bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
