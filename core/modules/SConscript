@@ -197,7 +197,7 @@ shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
 # library implementing xrootd services (worker side)
 shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wlog wpublish wsched xrdsvc""",
                         libs="""qserv_common boost_regex boost_signals boost_thread
-                             mysqlclient_r protobuf log ssl crypto XrdSsi""")
+                             mysqlclient_r protobuf log ssl crypto XrdSsiLib""")
 
 # library with CSS code (regular C++ bindings)
 shlibs["qserv_css"] = dict(mods="""css""",
@@ -210,7 +210,7 @@ shlibs["qserv_qmeta"] = dict(mods="""qmeta""",
 # library with all czar C++ code
 shlibs["qserv_czar"] = dict(mods="""ccontrol czar parser qana query qdisp qproc rproc tests""",
                             libs="""qserv_css qserv_qmeta qserv_common antlr sphgeom
-                                 log XrdSsi boost_regex""")
+                                 log XrdSsiLib boost_regex""")
 
 # library with Lua bindings for czar C++ code
 shlibs["czarProxy"] = dict(mods="""proxy""",
