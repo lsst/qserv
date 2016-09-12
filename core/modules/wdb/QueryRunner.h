@@ -81,11 +81,11 @@ private:
     bool _dispatchChannel(); ///< Dispatch with output sent through a SendChannel
     MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
 
-    bool _fillRows(MYSQL_RES* result, int numFields);
+    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
     void _initMsg();
-    void _transmit(bool last);
+    void _transmit(bool last, uint rowCount, size_t size);
     void _transmitHeader(std::string& msg);
 
     ///< Actual task

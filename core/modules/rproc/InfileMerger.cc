@@ -146,12 +146,18 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
          << queryIdStr
-         << "largeResult=" << largeResult
+         << " largeResult=" << largeResult
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
-         << ", rowcount=" << response->result.row_size()
+         << ", rowCount=" << response->result.rowcount()
+         << ", row_size=" << response->result.row_size()
          << ", errCode=" << response->result.has_errorcode()
-         << "hasErrorMsg=" << response->result.has_errormsg() << ")");
+         << " hasErMsg=" << response->result.has_errormsg() << ")");
+
+    if ((int)response->result.rowcount() != response->result.row_size()) { // &&&
+        LOGS(_log, LOG_LVL_DEBUG, "&&& InfileMerger::merge rowcount(" << response->result.rowcount()
+             << ") != row_size(" << response->result.row_size() << ")");
+    } // &&&
 
     if (response->result.has_errorcode() || response->result.has_errormsg()) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
@@ -166,6 +172,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     // Nothing to do if size is zero.
     if (response->result.row_size() == 0) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ROW_SIZE IS ZERO");
         return true;
     }
 

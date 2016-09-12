@@ -105,9 +105,10 @@ bool JobQuery::runJob() {
 
 void JobQuery::provisioningFailed(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error provisioning, " << getIdStr() << " msg=" << msg
-         << " code=" << code << " " << *this << "\n    desc=" << _jobDescription);
+         << " code=" << code << "\n    desc=" << _jobDescription);
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
     _jobDescription.respHandler()->errorFlush(msg, code);
+    //&&&; // &&& does something else need to be done here? Does this trigger a re-try?
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
