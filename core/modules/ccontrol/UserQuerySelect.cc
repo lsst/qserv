@@ -233,6 +233,8 @@ void UserQuerySelect::submit() {
         ++sequence;
     }
 
+    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
+
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.
     qmeta::QInfo::QType const qType = qmeta::QInfo::SYNC;

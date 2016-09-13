@@ -51,7 +51,7 @@ public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
-    static JobQuery::Ptr newJobQuery(Executive* executive, JobDescription const& jobDescription,
+    static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
             QueryId qid) {
         Ptr jq{new JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, qid}};
@@ -93,7 +93,7 @@ public:
 
 protected:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
-    JobQuery(Executive* executive, JobDescription const& jobDescription,
+    JobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
@@ -106,9 +106,10 @@ protected:
         return _runAttemptsCount;
     }
     int _getMaxRetries() const { return 5; } // Arbitrary value until solid value with reason determined.
+    int _getRetrySleepSeconds() const { return 30; } // As above or until added to config file.
 
     // Values that don't change once set.
-    Executive* _executive;
+    std::weak_ptr<Executive>  _executive;
     /// The job description needs to survive until the task is complete. Some elements are passed to
     /// xrootd as raw pointers.
     JobDescription _jobDescription;

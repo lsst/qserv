@@ -88,7 +88,7 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
+Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms)
     : _config{*c}, _messageStore{ms} {
     _setup();
 }
@@ -96,6 +96,12 @@ Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
+}
+
+
+Executive::Ptr Executive::newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms) {
+    Executive::Ptr exec{new Executive(c, ms)}; // make_shared dislikes private constructor.
+    return exec;
 }
 
 
@@ -119,8 +125,9 @@ void Executive::add(JobDescription const& jobDesc) {
         }
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
-        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-        jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
+        Ptr thisPtr = shared_from_this();
+        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc.id());
+        jobQuery = JobQuery::newJobQuery(thisPtr, jobDesc, jobStatus, mcf, _id);
 
         if (!_addJobToMap(jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());

@@ -57,7 +57,7 @@ class QueryResource;
 
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.
-class Executive {
+class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::map<int, std::shared_ptr<JobQuery>> JobMap;
@@ -75,7 +75,7 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms);
+    static Executive::Ptr newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms);
 
     ~Executive();
 
@@ -115,6 +115,8 @@ public:
                          std::shared_ptr<QueryResource> const& sourceQr);
 
 private:
+    Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms);
+
     void _setup();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
@@ -161,17 +163,18 @@ class MarkCompleteFunc {
 public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;
 
-    MarkCompleteFunc(Executive* e, int jobId) : _executive(e), _jobId(jobId) {}
+    MarkCompleteFunc(Executive::Ptr const& e, int jobId) : _executive(e), _jobId(jobId) {}
     virtual ~MarkCompleteFunc() {}
 
     virtual void operator()(bool success) {
-        if (_executive) {
-            _executive->markCompleted(_jobId, success);
+        auto exec = _executive.lock();
+        if (exec != nullptr) {
+            exec->markCompleted(_jobId, success);
         }
     }
 
 private:
-    Executive* _executive;
+    std::weak_ptr<Executive> _executive;
     int _jobId;
 };
 

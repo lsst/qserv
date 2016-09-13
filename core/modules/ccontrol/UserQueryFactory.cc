@@ -118,7 +118,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = std::make_shared<qdisp::Executive>(_impl->executiveConfig, messageStore);
+            executive = qdisp::Executive::newExecutive(_impl->executiveConfig, messageStore);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
