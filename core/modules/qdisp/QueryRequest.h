@@ -110,7 +110,8 @@ public:
     XrdSsiRequest::PRD_Xeq ProcessResponseData(char *buff, int blen, bool last) override;
 
     void cancel();
-    bool isCancelled();
+    bool isQueryCancelled();
+    bool isQueryRequestCancelled();
     void doNotRetry() { _retried.store(true); }
     std::string getXrootdErr(int *eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.

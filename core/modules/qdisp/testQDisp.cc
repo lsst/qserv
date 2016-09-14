@@ -425,13 +425,13 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         ex->add(jobDesc);
         jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
-        BOOST_CHECK(jq->isCancelled() == false);
+        BOOST_CHECK(jq->isQueryCancelled() == false);
     }
     ex->squash();
     ex->squash(); // check that squashing twice doesn't cause issues.
     for (int jobId=first; jobId<=last; ++jobId) {
         jq = ex->getJobQuery(jobId);
-        BOOST_CHECK(jq->isCancelled() == true);
+        BOOST_CHECK(jq->isQueryCancelled() == true);
     }
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(true);
     usleep(250000); // Give mock threads a quarter second to complete.
@@ -452,12 +452,12 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, true, sessionMock, true);
     auto resource = jqTest->getQueryResource();
     auto request = jqTest->getQueryRequest();
-    BOOST_CHECK(resource->isCancelled() == false);
-    BOOST_CHECK(request->isCancelled() == false);
+    BOOST_CHECK(request->isQueryRequestCancelled() == false);
     BOOST_CHECK(respReq->_processCancelCalled == false);
     jqTest->cancel();
-    BOOST_CHECK(resource->isCancelled() == true);
-    BOOST_CHECK(request->isCancelled() == true);
+    BOOST_CHECK(resource->isQueryCancelled() == true);
+    BOOST_CHECK(request->isQueryCancelled() == true);
+    BOOST_CHECK(request->isQueryRequestCancelled() == true);
     BOOST_CHECK(respReq->_processCancelCalled == true);
 
 }

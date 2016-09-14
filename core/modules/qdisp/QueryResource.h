@@ -67,7 +67,7 @@ public:
     const char* eInfoGet(int &code);
 
     std::shared_ptr<JobQuery> getJobQuery() { return _jobQuery; }
-    bool isCancelled();
+    bool isQueryCancelled();
 
     friend class QueryResourceDebug;
 

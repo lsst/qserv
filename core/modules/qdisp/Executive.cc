@@ -250,11 +250,11 @@ void Executive::markCompleted(int jobId, bool success) {
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, _id << " Executive::squash() already cancelled! refusing.");
+        LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash() already cancelled! refusing.");
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, _id << " Executive::squash Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash Trying to cancel all queries...");
     std::deque<JobQuery::Ptr> jobsToCancel;
     {
         std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
@@ -264,9 +264,11 @@ void Executive::squash() {
     }
 
     for (auto const& job : jobsToCancel) {
+        LOGS_DEBUG(getIdStr() << " Executive::squash a " << job->getIdStr()); // &&&
         job->cancel();
+        LOGS_DEBUG(getIdStr() << " Executive::squash b " << job->getIdStr()); // &&&
     }
-    LOGS_DEBUG(_id << " Executive::squash done");
+    LOGS_DEBUG(getIdStr() << " Executive::squash done");
 }
 
 int Executive::getNumInflight() {

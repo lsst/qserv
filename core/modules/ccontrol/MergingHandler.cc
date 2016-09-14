@@ -210,7 +210,7 @@ void MergingHandler::_initState() {
 
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
-        if (job->isCancelled()) {
+        if (job->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
             return false;
         }

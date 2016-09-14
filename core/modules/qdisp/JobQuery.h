@@ -79,7 +79,8 @@ public:
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
     bool cancel();
-    bool isCancelled() { return _cancelled; }
+    // bool isCancelled() { return _cancelled; } &&&
+    bool isQueryCancelled();
 
     void freeQueryResource(QueryResource* qr);
 
@@ -131,7 +132,7 @@ protected:
     std::shared_ptr<QueryRequest> _queryRequestPtr;
 
     // Cancellation
-    std::atomic<bool> _cancelled {false};
+    std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
     util::InstanceCount _instC{"JobQuery"};
 };
 

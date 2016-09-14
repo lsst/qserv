@@ -98,7 +98,7 @@ void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
     // barrier for all threads when _go is false.
     _go.wait(true);
     // No attempt should be made to cancel a mock job after _go is set to true.
-    if (qr->getJobQuery()->isCancelled()) {
+    if (qr->getJobQuery()->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest job cancelled");
         // markComplete() should have been called by JobQuery::cancel(), shouldn't
         // call again due to possible race condition where Executive is already deleted.

@@ -88,13 +88,17 @@ bool JobQuery::runJob() {
         // To avoid a cancellation race condition, _queryResourcePtr = qr if and
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
+        LOGS_DEBUG(getIdStr() << " Jobquery calling xrdSsiProvision 1 &&&");
         bool success = executive->xrdSsiProvision(_queryResourcePtr, qr);
+        LOGS_DEBUG(getIdStr() << " Jobquery calling xrdSsiProvision 2 &&&");
         if (success) {
+            LOGS_DEBUG(getIdStr() << " Jobquery returning true &&&");
             return true;
         }
     }
 
-    LOGS_WARN("JobQuery Failed to RunJob failed. cancelled=" << cancelled << " reset=" << handlerReset);
+    LOGS_WARN(getIdStr() << " JobQuery Failed to RunJob failed. cancelled=" << cancelled
+              << " reset=" << handlerReset);
     return false;
 }
 
@@ -111,6 +115,7 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
         if (jobQuery == nullptr) return;
         LOGS(_log, LOG_LVL_DEBUG, jobQuery->getIdStr() << " retrying provisioningFailed");
         jobQuery->runJob();
+        LOGS(_log, LOG_LVL_DEBUG, jobQuery->getIdStr() << " retrying provisioningFailed done &&&");
     };
     std::weak_ptr<JobQuery> jqWeak = shared_from_this();
     std::thread retryThrd(retryFunc, jqWeak, _getRetrySleepSeconds());
@@ -158,6 +163,20 @@ void JobQuery::freeQueryResource(QueryResource* qr) {
     } else {
         LOGS(_log, LOG_LVL_WARN, "freeQueryResource called by wrong QueryResource.");
     }
+}
+
+
+/// @return true if this job's executive has been cancelled.
+/// There is enough delay between the executive being cancelled and the executive
+/// cancelling all the jobs that it makes a difference. If either the executive,
+/// or the job has cancelled, proceeding is probably not a good idea.
+bool JobQuery::isQueryCancelled() {
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS_WARN(getIdStr() << " _executive == nullptr");
+        return true; // Safer to assume the worst.
+    }
+    return exec->getCancelled();
 }
 
 std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {

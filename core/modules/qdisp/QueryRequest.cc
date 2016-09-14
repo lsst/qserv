@@ -98,7 +98,7 @@ void QueryRequest::RelRequestBuffer() {
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse");
     std::string errorDesc = _jobIdStr + " ";
-    if (isCancelled()) {
+    if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, _jobIdStr << " QueryRequest::ProcessResponse job already cancelled");
         cancel(); // calls _errorFinish()
         return true;
@@ -259,7 +259,22 @@ void QueryRequest::cancel() {
     _errorFinish(true);
 }
 
-bool QueryRequest::isCancelled() {
+
+/// @return true if this object's JobQuery, or its Executive has been cancelled.
+/// It takes time for the Executive to flag all jobs as being cancelled
+bool QueryRequest::isQueryCancelled() {
+    auto jq = _jobQuery;
+    if (jq == nullptr) {
+        // Need to check if _jobQuery is null due to cancellation.
+        return isQueryRequestCancelled();
+    }
+    return jq->isQueryCancelled();
+}
+
+
+/// @return true if QueryRequest::cancel() has been cancelled.
+/// QueryRequest::isCancelled() is a much better indicator of user query cancellation.
+bool QueryRequest::isQueryRequestCancelled() {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     return _cancelled;
 }
@@ -309,7 +324,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         // There's a slight race condition here. _jobQuery::runJob() creates a
         // new QueryResource object which is used to create a new QueryRequest object
         // which will replace this one in _jobQuery. The replacement could show up
-        // before this one's cleanup is called, so this will keep this alive.
+        // before this one's cleanup() is called, so this will keep this alive.
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish retrying");
         _keepAlive = _jobQuery->getQueryRequest(); // shared pointer to this
         if (!_jobQuery->runJob()) {
