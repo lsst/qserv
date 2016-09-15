@@ -64,8 +64,10 @@ char const* QueryResource::_getRname(std::string const& rName) {
 }
 
 QueryResource::~QueryResource() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() ");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource()");
     free(_rNameHolder);
+    _rNameHolder = nullptr;
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() &&&");
 }
 
 /// May not throw exceptions because the calling code comes from
@@ -101,13 +103,18 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
     }
     _xrdSsiSession = s;
 
+    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone a");
     QueryRequest::Ptr qr = std::make_shared<QueryRequest>(s, _jobQuery);
+    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone b");
     _jobQuery->setQueryRequest(qr);
+    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone c");
 
     // Hand off the request.
     _jobQuery->getStatus()->updateInfo(JobStatus::REQUEST);
+    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone d");
     _xrdSsiSession->ProcessRequest(qr.get()); // xrootd will not delete the QueryRequest.
     // There are no more requests for this session.
+    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone e");
 }
 
 const char* QueryResource::eInfoGet(int &code) {

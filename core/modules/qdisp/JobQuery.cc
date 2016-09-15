@@ -142,9 +142,12 @@ bool JobQuery::cancel() {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
                 return false;
             }
+            LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& a");
             executive->markCompleted(getIdInt(), false);
         }
+        LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& aa");
         _jobDescription.respHandler()->processCancel();
+        LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& bb");
         return true;
     }
     LOGS_DEBUG(getIdStr() << " cancel, skipping, already cancelled.");

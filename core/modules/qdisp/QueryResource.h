@@ -77,7 +77,7 @@ private:
     std::shared_ptr<JobQuery> _jobQuery;
     std::string const _jobIdStr; ///< for debugging only
     util::InstanceCount _instC{"QueryResource"};
-    char* _rNameHolder;
+    char* _rNameHolder{nullptr};
 };
 
 }}} // namespace lsst::qserv::qdisp

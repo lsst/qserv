@@ -76,15 +76,16 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
-    if (_finishStatus != ACTIVE) {
+    auto jq = _jobQuery;
+    if (_finishStatus != ACTIVE || jq == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::GetRequest called after job finished (cancelled?)");
         requestLength = 0;
         return const_cast<char*>("");
     }
-    requestLength = _jobQuery->getDescription().payload().size();
+    requestLength = jq->getDescription().payload().size();
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " Requesting, payload size: " << requestLength);
     // Andy promises that his code won't corrupt it.
-    return const_cast<char*>(_jobQuery->getDescription().payload().data());
+    return const_cast<char*>(jq->getDescription().payload().data());
 }
 
 // Deleting the buffer (payload) would cause us problems, as this class is not the owner.
@@ -174,14 +175,15 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 
 /// Process an incoming error.
 bool QueryRequest::_importError(std::string const& msg, int code) {
+    auto jq = _jobQuery;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE) {
+        if (_finishStatus != ACTIVE || jq == nullptr) {
             LOGS_WARN(_jobIdStr << " QueryRequest::_importError code=" << code
                       << " msg=" << msg << " not passed");
             return false;
         }
-        _jobQuery->getDescription().respHandler()->errorFlush(msg, code);
+        jq->getDescription().respHandler()->errorFlush(msg, code);
     }
     _errorFinish();
     return true;
@@ -194,7 +196,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     JobQuery::Ptr jq = _jobQuery;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE) {
+        if (_finishStatus != ACTIVE || jq == nullptr) {
             return XrdSsiRequest::PRD_Normal;
         }
     }
@@ -253,7 +255,8 @@ void QueryRequest::cancel() {
         _retried.store(true); // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
-            _jobQuery->getStatus()->updateInfo(JobStatus::CANCEL);
+            auto jq = _jobQuery;
+            if (jq != nullptr) jq->getStatus()->updateInfo(JobStatus::CANCEL);
         }
     }
     _errorFinish(true);
@@ -301,10 +304,11 @@ void QueryRequest::cleanup() {
 /// This function will destroy this object.
 void QueryRequest::_errorFinish(bool shouldCancel) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish() shouldCancel=" << shouldCancel);
+    auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE) {
+        if (_finishStatus != ACTIVE || jq == nullptr) {
             // Either _finish or _errorFinish has already been called.
             LOGS_DEBUG(_jobIdStr << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
             return;
@@ -326,8 +330,8 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         // which will replace this one in _jobQuery. The replacement could show up
         // before this one's cleanup() is called, so this will keep this alive.
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish retrying");
-        _keepAlive = _jobQuery->getQueryRequest(); // shared pointer to this
-        if (!_jobQuery->runJob()) {
+        _keepAlive = jq->getQueryRequest(); // shared pointer to this
+        if (!jq->runJob()) {
             // Retry failed, nothing left to try.
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "errorFinish retry failed");
             _callMarkComplete(false);
@@ -366,7 +370,8 @@ void QueryRequest::_finish() {
 // Call MarkCompleteFunc only once, it should only be called from _finish() or _errorFinish.
 void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
-        _jobQuery->getMarkCompleteFunc()->operator ()(success);
+        auto jq = _jobQuery;
+        if (jq != nullptr) jq->getMarkCompleteFunc()->operator ()(success);
     }
 }
 
