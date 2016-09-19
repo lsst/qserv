@@ -67,7 +67,6 @@ QueryResource::~QueryResource() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource()");
     free(_rNameHolder);
     _rNameHolder = nullptr;
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() &&&");
 }
 
 /// May not throw exceptions because the calling code comes from
@@ -87,34 +86,25 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
     };
     Destroyer destroyer(_jobQuery, this);
     if (!s) {
-        LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone - NO SESSION 1");
+        LOGS_WARN(_jobIdStr << "QueryResource::ProvisionDone - NO SESSION");
         // Check eInfo in resource for error details
         int code = 0;
         std::string msg = eInfoGet(code);
-        LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone - NO SESSION 2");
         _jobQuery->provisioningFailed(msg, code);
-        LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone - NO SESSION 3");
         return;
     }
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone - checking cancelled");
     if (isQueryCancelled()) {
-        LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone - was cancelled");
         return; // Don't bother doing anything if the job is cancelled.
     }
     _xrdSsiSession = s;
 
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone a");
     QueryRequest::Ptr qr = std::make_shared<QueryRequest>(s, _jobQuery);
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone b");
     _jobQuery->setQueryRequest(qr);
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone c");
 
     // Hand off the request.
     _jobQuery->getStatus()->updateInfo(JobStatus::REQUEST);
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone d");
     _xrdSsiSession->ProcessRequest(qr.get()); // xrootd will not delete the QueryRequest.
     // There are no more requests for this session.
-    LOGS_DEBUG(_jobIdStr << "&&& QueryResource::ProvisionDone e");
 }
 
 const char* QueryResource::eInfoGet(int &code) {

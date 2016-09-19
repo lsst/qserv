@@ -214,46 +214,42 @@ void Executive::markCompleted(int jobId, bool success) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr
             << " " << success);
     if (!success) {
-        LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted a");
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
-            LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted b");
             if (iter != _incompleteJobs.end()) {
-                LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted c");
                 err = iter->second->getDescription().respHandler()->getError();
             } else {
-                LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted d");
                 std::string msg = "Executive::markCompleted failed to find tracked " + idStr +
                         " size=" + std::to_string(_incompleteJobs.size());
-                throw Bug(msg);
+                LOGS(_log, LOG_LVL_DEBUG, msg);
+                // If the user query has been cancelled, this is expected for jobs that have not yet
+                // been tracked. In all other cases, it indicates a serious problem.
+                if (!getCancelled()) {
+                    throw Bug(msg);
+                }
+                return;
             }
         }
         LOGS(_log, LOG_LVL_ERROR, "Executive: error executing " << idStr
              << " " << err << " (status: " << err.getStatus() << ")");
         {
-            LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted e");
             std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
             _jobMap[jobId]->getStatus()->updateInfo(JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
         }
         {
-            LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted f");
             std::lock_guard<std::mutex> lock(_errorsMutex);
-            LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted g");
             _multiError.push_back(err);
             LOGS(_log, LOG_LVL_TRACE, "Currently " << _multiError.size()
                  << " registered errors: " << _multiError);
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted h");
     _unTrack(jobId);
-    LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted i");
     if (!success) {
         LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: "
              << idStr << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
     }
-    LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::markCompleted j");
 }
 
 
@@ -274,9 +270,7 @@ void Executive::squash() {
     }
 
     for (auto const& job : jobsToCancel) {
-        LOGS_DEBUG(getIdStr() << " Executive::squash a " << job->getIdStr()); // &&&
         job->cancel();
-        LOGS_DEBUG(getIdStr() << " Executive::squash b " << job->getIdStr()); // &&&
     }
     LOGS_DEBUG(getIdStr() << " Executive::squash done");
 }
@@ -348,22 +342,17 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
 }
 
 void Executive::_unTrack(int jobId) {
-    std::string idStr = QueryIdHelper::makeIdStr(_id, jobId); // &&&
-    LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::_unTrack a");
     bool untracked = false;
     int size = -1;
     std::ostringstream s;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
-        LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::_unTrack b");
         auto i = _incompleteJobs.find(jobId);
         if (i != _incompleteJobs.end()) {
-            LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::_unTrack c");
             _incompleteJobs.erase(i);
             untracked = true;
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
-        LOGS(_log, LOG_LVL_DEBUG, idStr << " &&& Executive::_unTrack d");
         size = _incompleteJobs.size();
         // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
         int c = 0;

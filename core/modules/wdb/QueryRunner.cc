@@ -276,9 +276,6 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         _result->set_errormsg(msg);
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
-    if (rowCount == 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ERROR no 0 row counts expected");
-    }
     _result->SerializeToString(&resultString);
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
@@ -287,8 +284,6 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
-            // &&& TODO: What is the best thing to do here? retry? cancel the task? retry then cancel?
-            // &&&       Should be considated with similar code in QueryRunner::_transmitHeader
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
@@ -315,8 +310,6 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         bool sent = _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
-            // &&& TODO: What is the best thing to do here? retry? cancel the task? retry then cancel?
-            // &&&       should be consolidated with similar code in QueryRunner::_transmit
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");

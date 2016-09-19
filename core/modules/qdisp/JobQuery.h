@@ -79,7 +79,6 @@ public:
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
     bool cancel();
-    // bool isCancelled() { return _cancelled; } &&&
     bool isQueryCancelled();
 
     void freeQueryResource(QueryResource* qr);

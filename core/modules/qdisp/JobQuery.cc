@@ -88,11 +88,8 @@ bool JobQuery::runJob() {
         // To avoid a cancellation race condition, _queryResourcePtr = qr if and
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
-        LOGS_DEBUG(getIdStr() << " Jobquery calling xrdSsiProvision 1 &&&");
         bool success = executive->xrdSsiProvision(_queryResourcePtr, qr);
-        LOGS_DEBUG(getIdStr() << " Jobquery calling xrdSsiProvision 2 &&&");
         if (success) {
-            LOGS_DEBUG(getIdStr() << " Jobquery returning true &&&");
             return true;
         }
     }
@@ -115,7 +112,6 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
         if (jobQuery == nullptr) return;
         LOGS(_log, LOG_LVL_DEBUG, jobQuery->getIdStr() << " retrying provisioningFailed");
         jobQuery->runJob();
-        LOGS(_log, LOG_LVL_DEBUG, jobQuery->getIdStr() << " retrying provisioningFailed done &&&");
     };
     std::weak_ptr<JobQuery> jqWeak = shared_from_this();
     std::thread retryThrd(retryFunc, jqWeak, _getRetrySleepSeconds());
@@ -142,12 +138,9 @@ bool JobQuery::cancel() {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
                 return false;
             }
-            LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& a");
             executive->markCompleted(getIdInt(), false);
         }
-        LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& aa");
         _jobDescription.respHandler()->processCancel();
-        LOGS_DEBUG(getIdStr() << " JobQuery::cancel() &&& bb");
         return true;
     }
     LOGS_DEBUG(getIdStr() << " cancel, skipping, already cancelled.");

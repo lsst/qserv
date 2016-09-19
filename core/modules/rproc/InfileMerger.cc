@@ -154,11 +154,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
          << ", errCode=" << response->result.has_errorcode()
          << " hasErMsg=" << response->result.has_errormsg() << ")");
 
-    if ((int)response->result.rowcount() != response->result.row_size()) { // &&&
-        LOGS(_log, LOG_LVL_DEBUG, "&&& InfileMerger::merge rowcount(" << response->result.rowcount()
-             << ") != row_size(" << response->result.row_size() << ")");
-    } // &&&
-
     if (response->result.has_errorcode() || response->result.has_errormsg()) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
@@ -172,7 +167,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     // Nothing to do if size is zero.
     if (response->result.row_size() == 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ROW_SIZE IS ZERO");
         return true;
     }
 
@@ -244,7 +238,7 @@ bool InfileMerger::finalize() {
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
         LOGS(_log, LOG_LVL_DEBUG, "Cleaning up " << _mergeTable);
-#if 0 // Set to 0 when we want to retain mergeTables for debugging. &&& change back to 1
+#if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
                                              _config.mySqlConfig.dbName);
