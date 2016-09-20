@@ -182,7 +182,7 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
 }
 
 
-Task::State Task::getState() {
+Task::State Task::getState() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
     return _state;
 }
@@ -216,7 +216,7 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
 
 
 /// @return the amount of time spent so far on the task in milliseconds.
-std::chrono::milliseconds Task::getRunTime() {
+std::chrono::milliseconds Task::getRunTime() const {
     std::chrono::milliseconds duration{0};
     {
         std::lock_guard<std::mutex> guard(_stateMtx);

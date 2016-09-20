@@ -81,7 +81,7 @@ public:
 
     void logMemManStats();
 
-    double getMaxTimeMinutes() { return _maxTimeMinutes; }
+    double getMaxTimeMinutes() const { return _maxTimeMinutes; }
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
 
 private:

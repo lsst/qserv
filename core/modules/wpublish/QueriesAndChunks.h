@@ -79,13 +79,20 @@ private:
     std::map<int, wbase::Task::Ptr> _taskMap; ///< Map of Tasks keyed by job id.
 };
 
-/// Statistics for a table in a chunk. Statistics are base on the slowest table in a query,
+/// Statistics for a table in a chunk. Statistics are based on the slowest table in a query,
 /// so this most likely includes values for queries on _scanTableName and queries that join
 /// against _scanTableName. Source is slower than Object, so joins with Source and Object will
 /// have their statistics logged with Source.
 class ChunkTableStats {
 public:
     using Ptr = std::shared_ptr<ChunkTableStats>;
+
+    /// Contains statistics data for this table in this chunk.
+    struct Data {
+        std::uint64_t tasksCompleted{0}; ///< Number of Tasks that have completed on this chunk/table.
+        std::uint64_t tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
+        double avgCompletionTime{0.0}; ///< weighted average of completion time in minutes.
+    };
 
     static std::string makeTableName(std::string const& db, std::string const& table) {
         return db + ":" + table;
@@ -95,19 +102,18 @@ public:
 
     void addTaskFinished(double minutes);
 
-    std::uint64_t getTasksCompleted();
-
-    double getAvgCompletionTime();
+    /// @return a copy of the statics data.
+    Data getData() {
+        std::lock_guard<std::mutex> g(_dataMtx);
+        return _data;
+    }
 
 private:
-    std::mutex _cStatsMtx;
+    std::mutex _dataMtx; ///< Protects _data.
     int const _chunkId;
     std::string const _scanTableName;
 
-    std::uint64_t _tasksCompleted{0}; ///< Number of Tasks that have completed on this chunk/table.
-    std::uint64_t _tasksBooted{0}; ///< Number of Tasks that have been booted for taking too long.
-
-    double _avgCompletionTime{0.0}; ///< weighted average of completion time in minutes.
+    Data _data; ///< Statistics for this table in this chunk.
     double _weightAvg{49.0}; ///< weight of previous average
     double _weightNew{1.0}; ///< weight of new measurement
     double _weightSum{_weightAvg + _weightNew}; ///< denominator
@@ -142,7 +148,7 @@ public:
     virtual ~QueriesAndChunks();
 
     void setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendsched);
-    void setRequiredTasksCompleted(uint value);
+    void setRequiredTasksCompleted(unsigned int value);
 
     std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);

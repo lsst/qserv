@@ -159,8 +159,8 @@ public:
     bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
 
     // Functions for tracking task state and statistics.
-    State getState();
-    std::chrono::milliseconds getRunTime();
+    State getState() const;
+    std::chrono::milliseconds getRunTime() const;
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
@@ -177,7 +177,7 @@ private:
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 
-    std::mutex _stateMtx; ///< Mutex to protect state related members _state, _???Time.
+    mutable std::mutex _stateMtx; ///< Mutex to protect state related members _state, _???Time.
     State _state{State::CREATED};
     std::chrono::system_clock::time_point _queueTime;
     std::chrono::system_clock::time_point _startTime;

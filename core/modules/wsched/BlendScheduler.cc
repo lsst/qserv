@@ -347,8 +347,8 @@ void BlendScheduler::_logChunkStatus() {
 
 
 bool BlendScheduler::isScanSnail(SchedulerBase::Ptr const& scan) {
-       return scan == std::static_pointer_cast<SchedulerBase>(_scanSnail);
-   }
+    return scan == _scanSnail;
+}
 
 
 int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source) {

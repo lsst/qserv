@@ -74,7 +74,7 @@ QueriesAndChunks::~QueriesAndChunks() {
     try {
         _removalThread.join();
         _examineThread.join();
-    } catch (std::system_error& e) {
+    } catch (std::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "~QueriesAndChunks " << e.what());
     }
 }
@@ -85,21 +85,20 @@ void QueriesAndChunks::setBlendScheduler(std::shared_ptr<wsched::BlendScheduler>
 }
 
 
-void QueriesAndChunks::setRequiredTasksCompleted(uint value) {
+void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) {
     _requiredTasksCompleted = value;
 }
 
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
-    auto ent = std::pair<QueryId, QueryStatistics::Ptr>(qid, nullptr);
 
     std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
-    auto res = _queryStats.insert(ent);
-    if (res.second) {
-        res.first->second = std::make_shared<QueryStatistics>(qid);
+    QueryStatistics::Ptr& stats = _queryStats[qid];
+    if (stats == nullptr) {
+        stats = std::make_shared<QueryStatistics>(qid);
     }
-    QueryStatistics::Ptr stats = res.first->second;
+
     guardStats.unlock();
     stats->addTask(task);
 }
@@ -327,12 +326,13 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
         std::lock_guard<std::mutex> lock(chunkStats->_tStatsMtx);
         for (auto const& ele : chunkStats->_tableStats) {
             auto const& tblName = ele.first;
-            if (tblName != "") {
+            if (!tblName.empty()) {
                 auto& sTSums = scanTblSums[tblName];
-                sTSums.totalTime  += ele.second->getAvgCompletionTime();
+                auto data = ele.second->getData();
+                sTSums.totalTime  += data.avgCompletionTime;
                 ChunkTimePercent& ctp = sTSums.chunkPercentages[chunkId];
-                ctp.shardTime = ele.second->getAvgCompletionTime();
-                ctp.valid = ele.second->getTasksCompleted() >= _requiredTasksCompleted;
+                ctp.shardTime = data.avgCompletionTime;
+                ctp.valid = data.tasksCompleted >= _requiredTasksCompleted;
             }
         }
     }
@@ -504,29 +504,16 @@ ChunkTableStats::Ptr ChunkStatistics::getStats(std::string const& scanTableName)
 
 /// Use the duration of the last Task completed to adjust the average completion time.
 void ChunkTableStats::addTaskFinished(double minutes) {
-    std::lock_guard<std::mutex> g(_cStatsMtx);
-    ++_tasksCompleted;
-    if (_tasksCompleted > 1) {
-        _avgCompletionTime = (_avgCompletionTime*_weightAvg + minutes*_weightNew)/_weightSum;
+    std::lock_guard<std::mutex> g(_dataMtx);
+    ++_data.tasksCompleted;
+    if (_data.tasksCompleted > 1) {
+        _data.avgCompletionTime = (_data.avgCompletionTime*_weightAvg + minutes*_weightNew)/_weightSum;
     } else {
-        _avgCompletionTime = minutes;
+        _data.avgCompletionTime = minutes;
     }
     LOGS(_log, LOG_LVL_DEBUG, "ChkId=" << _chunkId << ":tbl=" << _scanTableName
-         << " completed=" << _tasksCompleted
-         << " avgCompletionTime=" << _avgCompletionTime);
-}
-
-
-
-std::uint64_t ChunkTableStats::getTasksCompleted() {
-    std::lock_guard<std::mutex> g(_cStatsMtx);
-    return _tasksCompleted;
-}
-
-
-double ChunkTableStats::getAvgCompletionTime() {
-    std::lock_guard<std::mutex> g(_cStatsMtx);
-    return _avgCompletionTime;
+         << " completed=" << _data.tasksCompleted
+         << " avgCompletionTime=" << _data.avgCompletionTime);
 }
 
 
