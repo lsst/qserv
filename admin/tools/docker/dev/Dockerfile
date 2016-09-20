@@ -3,7 +3,7 @@ FROM qserv/qserv:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 USER root
-RUN apt-get update && apt-get -y install byobu git vim gdb lsof
+RUN apt-get -y update && apt-get -y install byobu gdb git lsof net-tools vim
 
 USER qserv
 WORKDIR /home/qserv
