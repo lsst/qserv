@@ -305,6 +305,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     }
 
     trans.commit();
+    LOGS(_log, LOG_LVL_DEBUG, qIdStr << " assigned to UserQuery:" << qInfo.queryText());
 
     return queryId;
 }

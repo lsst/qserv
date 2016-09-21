@@ -33,7 +33,7 @@
 #include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
-#include "wpublish/QueryChunkStatistics.h"
+#include "wpublish/QueriesAndChunks.h"
 
 
 // Forward declarations
@@ -70,7 +70,7 @@ public:
 class Foreman : public wbase::MsgProcessor {
 public:
     Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
-            wpublish::QueryChunkStatistics::Ptr const& queries);
+            wpublish::QueriesAndChunks::Ptr const& queries);
     virtual ~Foreman();
     // This class should not be copied.
     Foreman(Foreman const&) = delete;
@@ -83,7 +83,8 @@ private:
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;
     mysql::MySqlConfig const _mySqlConfig;
-    wpublish::QueryChunkStatistics::Ptr _queries;
+    wpublish::QueriesAndChunks::Ptr _queries;
+
 };
 
 }}}  // namespace lsst::qserv::wcontrol

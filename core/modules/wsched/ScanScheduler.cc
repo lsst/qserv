@@ -30,7 +30,7 @@
   */
 
 // Class header
-#include <wsched/ChunkTasksQueue.h>
+
 #include "wsched/ScanScheduler.h"
 
 // System headers
@@ -47,6 +47,7 @@
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/ChunkDisk.h"
+#include "wsched/ChunkTasksQueue.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
@@ -58,9 +59,10 @@ namespace wsched {
 
 ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
                              int maxActiveChunks, memman::MemMan::Ptr const& memMan,
-                             int minRating, int maxRating)
+                             int minRating, int maxRating, double maxTimeMinutes)
     : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
-      _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating} {
+      _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating},
+      _maxTimeMinutes{maxTimeMinutes} {
     //_taskQueue = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
     _taskQueue = std::make_shared<ChunkTasksQueue>(this, _memMan);
     assert(_minRating <= _maxRating);
@@ -71,10 +73,10 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (task == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
         return;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandStart " << task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " commandStart " << getName());
     // task was registered Inflight when getCmd() was called.
 }
 
@@ -82,14 +84,17 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion");
+        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
         return;
     }
     std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
     --_inFlight;
+    LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " commandFinish " << getName()
+                                  << " inFlight=" << _inFlight);
     _taskQueue->taskComplete(t);
 
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish unlocking handle=" << _memManHandleToUnlock);
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
     }
@@ -99,12 +104,14 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     // we don't want to release the tables in case the next Task wants some of them.
     if (!_taskQueue->empty()) {
         _memManHandleToUnlock = t->getMemHandle();
+        LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " setting handleToUnlock handle=" << _memManHandleToUnlock);
     } else {
+        LOGS(_log, LOG_LVL_DEBUG, t->getIdStr() << " ScanScheduler::commandFinish unlocking handle="
+              << t->getMemHandle());
         _memMan->unlock(t->getMemHandle()); // Nothing on the queue, no reason to wait.
     }
 
     _decrChunkTaskCount(t->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish inFlight=" << _inFlight);
     if (_taskQueue->nextTaskDifferentChunkId()) {
         applyPriority();
     }
@@ -158,6 +165,7 @@ bool ScanScheduler::_ready() {
     bool logMemStats = false;
     // If ready failed, holding onto this is unlikely to help, otherwise the new Task now has its own handle.
     if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
+        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready unlocking handle=" << _memManHandleToUnlock);
         _memMan->unlock(_memManHandleToUnlock);
         _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
         logMemStats = true;
@@ -184,10 +192,13 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     }
     bool useFlexibleLock = (_inFlight < 1);
     auto task = _taskQueue->getTask(useFlexibleLock);
-    ++_inFlight; // in flight as soon as it is off the queue.
-    _infoChanged = true;
-    _decrCountForUserQuery(task->getQueryId());
-    _incrChunkTaskCount(task->getChunkId());
+    if (task != nullptr) {
+        ++_inFlight; // in flight as soon as it is off the queue.
+        LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " getCmd " << getName() << " inflight=" << _inFlight);
+        _infoChanged = true;
+        _decrCountForUserQuery(task->getQueryId());
+        _incrChunkTaskCount(task->getChunkId());
+    }
     return task;
 }
 
@@ -214,11 +225,12 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr());
     auto rmTask = _taskQueue->removeTask(task);
-    if (rmTask != nullptr) return rmTask;
+    bool inQueue = rmTask != nullptr;
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inQueue=" << inQueue);
+    if (inQueue) return rmTask;
 
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inflight");
+    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " not in queue");
     // Wasn't in the queue, could be in flight.
     /// The task can only leave the pool if it has been started, and there is a tiny
     /// window where the task could have been pulled from the queue but commandStart()

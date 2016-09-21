@@ -27,7 +27,7 @@
 #include <map>
 
 // Qserv headers
-#include "wpublish/QueryChunkStatistics.h"
+#include "wpublish/QueriesAndChunks.h"
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
@@ -42,6 +42,20 @@ namespace wsched {
 namespace lsst {
 namespace qserv {
 namespace wsched {
+
+
+// Class to pass control commands to the pool thread.
+class ControlCommandQueue {
+public:
+    void queCmd(util::Command::Ptr const& cmd);
+    util::Command::Ptr getCmd();
+    bool ready();
+
+private:
+    std::deque<util::Command::Ptr> _qu{};
+    std::mutex _mx{};
+};
+
 
 /// BlendScheduler is a scheduler that places queries in one of
 /// 4 sub-schedulers. Interactive queries are placed on the GroupScheduler
@@ -83,7 +97,7 @@ public:
     static int getMinPoolSize(){ return 11; }
 
     BlendScheduler(std::string const& name,
-                   wpublish::QueryChunkStatistics::Ptr const& queries,
+                   wpublish::QueriesAndChunks::Ptr const& queries,
                    int subSchedMaxThreads,
                    std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
@@ -105,6 +119,8 @@ public:
     void setFlagReorderScans() { _flagReorderScans = true; }
     int calcAvailableTheads();
 
+    bool isScanSnail(SchedulerBase::Ptr const& scan);
+    int moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source);
     int moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source, SchedulerBase::Ptr const& destination);
 
 private:
@@ -112,6 +128,7 @@ private:
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
+    ControlCommandQueue _commandQueue;
 
     int _schedMaxThreads; ///< maximum number of threads that can run.
 
@@ -123,7 +140,7 @@ private:
     std::atomic<bool> _flagReorderScans{false};
     std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
 
-    wpublish::QueryChunkStatistics::Ptr _queries; /// UserQuery statistics.
+    wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
 };
 
 }}} // namespace lsst::qserv::wsched
