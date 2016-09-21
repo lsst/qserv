@@ -16,6 +16,11 @@ VERSION=tickets_DM-7139
 # Log directory location on docker host, optional
 HOST_LOG_DIR=/qserv/log
 
+# Use for debugging purpose
+# Alternate command to execute at container startup
+# in order no to launch Qserv at container startup
+#ALT_CMD="tail -f /dev/null"
+
 
 # Set images names
 printf -v MASTER_IMAGE "qserv/qserv:%s_master" "$VERSION"

@@ -11,7 +11,7 @@
 # @author  Fabrice Jammes, IN2P3
 
 set -e
-# set -x
+set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
@@ -29,7 +29,7 @@ Usage: `basename $0` [options]
 
   Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
   Openstack, then install Qserv and launch integration test on it.
-  If no option provided, use '-p -S' by default. 
+  If no option provided, use '-p -S' by default.
 
   Pre-requisites: Openstack RC file need to be sourced and $DIR/env-openstack.sh available.
 
@@ -39,12 +39,12 @@ EOD
 # get the options
 while getopts hcpsS c ; do
     case $c in
-	    h) usage ; exit 0 ;;
-	    c) CREATE="TRUE" ;;
-	    p) PROVISION="TRUE" ;;
-	    s) SHMUX="TRUE" ;;
-	    S) SWARM="TRUE" ;;
-	    \?) usage ; exit 2 ;;
+        h) usage ; exit 0 ;;
+        c) CREATE="TRUE" ;;
+        p) PROVISION="TRUE" ;;
+        s) SHMUX="TRUE" ;;
+        S) SWARM="TRUE" ;;
+        \?) usage ; exit 2 ;;
     esac
 done
 shift $(($OPTIND - 1))
@@ -78,35 +78,41 @@ if [ -n "$SWARM" ]; then
 	SSH_CFG="$DIR/ssh_config"
     echo "Launch integration tests using Swarm"
 
-	scp -F "$SSH_CFG" -r "$SWARM_DIR/manager" "$SWARM_NODE":/home/qserv 
+    for node in "$MASTER" $WORKERS "$SWARM_NODE"
+    do
+        echo "Request $node to leave swarm cluster"
+        ssh -F "$SSH_CFG" "$node" "docker swarm leave --force; \
+			docker network rm qserv || true"
+    done
+
+	scp -F "$SSH_CFG" -r "$SWARM_DIR/manager" "$SWARM_NODE":/home/qserv
     scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${SWARM_NODE}:/home/qserv/manager"
-    ssh -F "$SSH_CFG" "$SWARM_NODE" "docker swarm leave --force" || true
     ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/1_create.sh"
     JOIN_CMD="$(ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/2_print-join-cmd.sh")"
 
     # Join swarm nodes:
     #   - Qserv master has index 0
     #   - QServ workers have indexes >= 1
-    for qserv_node in $MASTER $WORKERS 
+    for qserv_node in $MASTER $WORKERS
     do
         echo "Join $qserv_node to swarm cluster"
-        ssh -F "$SSH_CFG" "$qserv_node" "docker swarm leave --force" || true
-	    ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD"
+		ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD"
+		#ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD \
+		#	--listen-addr \"\$(hostname --ip-address)\""
     done
-    
-    # Start Qserv	
+
+    # Start Qserv
 	ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/3_start-qserv.sh"
 
     echo "Wait for Qserv to start"
-    for qserv_node in $MASTER $WORKERS 
+    for qserv_node in $MASTER $WORKERS
     do
-	    scp -F "$SSH_CFG" "$SWARM_DIR/wait.sh" "$qserv_node":/home/qserv 
-	    ssh -F "$SSH_CFG" "$qserv_node" "/home/qserv/wait.sh"
+		scp -F "$SSH_CFG" "$SWARM_DIR/wait.sh" "$qserv_node":/home/qserv
+		ssh -F "$SSH_CFG" "$qserv_node" "/home/qserv/wait.sh"
     done
 
     echo "Launch multinode tests"
-	scp -F "$SSH_CFG" "$SWARM_DIR/run-multinode-tests.sh" "$MASTER":/home/qserv 
-    ssh -F "$SSH_CFG" "$SWARM_NODE" "$SWARM_DIR/run-multinode-tests.sh"
+	"$DIR"/test-swarm-run-multinode-tests.sh
 
 elif [ -n "$SHMUX" ]; then
 
