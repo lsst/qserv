@@ -80,8 +80,14 @@ void EventThread::run() {
 }
 
 
+PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
+: EventThread(q), _threadPool{threadPool} {
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::PoolEventThread() " << this);
+}
+
+
 PoolEventThread::~PoolEventThread() {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread()");
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread() " << this);
 }
 
 
@@ -89,7 +95,7 @@ PoolEventThread::~PoolEventThread() {
 void PoolEventThread::specialActions(Command::Ptr const& cmd) {
     CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
     if (cmdPool != nullptr) {
-        cmdPool->_poolEventThread = this;
+        cmdPool->setPoolEventThread(this);
     }
 }
 
@@ -103,7 +109,9 @@ void PoolEventThread::specialActions(Command::Ptr const& cmd) {
 bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool " << this);
     if (cmd.get() != getCurrentCommand()) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool different command" << this);
         // cmd must have finished before the event loop stopped.
         // The current command will complete normally, and the pool
         // should replace this thread with a new one when finishup()
@@ -112,11 +120,17 @@ bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     }
 
     // Have the CommandQueue deal with any accounting that needs to be done.
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool callCommandFinish start" << this);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool a cmd=" << cmd << " c=" << cmd.use_count());
     callCommandFinish(cmd);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool callCommandFinish start" << this);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool b cmd=" << cmd << " c=" << cmd.use_count());
 
     // Have the thread pool release this thread, which will cause a replacement thread
     // to be created.
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool finishup start" << this);
     finishup();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& PoolEventThread::leavePool finishup done" << this);
     return true;
 }
 
@@ -135,13 +149,19 @@ void PoolEventThread::finishup() {
         // 'pet' will keep this PoolEventThread instance alive until this thread completes,
         // otherwise it would likely be deleted when _threadPool->release(this) is called.
         PoolEventThread::Ptr pet = _threadPool->release(this);
+        LOGS(_log, LOG_LVL_DEBUG, "start finishup pet=" << pet << " c=" << pet.use_count());
         if (pet != nullptr) {
-            auto f = [pet](){ pet->join(); };
+            auto f = [pet](){
+                LOGS(_log, LOG_LVL_DEBUG, "calling pet join() " << pet << " c=" << pet.use_count());
+                pet->join();
+                LOGS(_log, LOG_LVL_DEBUG, "finished pet join() " << pet << " c=" << pet.use_count());
+            };
             std::thread t{f};
             t.detach();
         } else {
             LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
         }
+        LOGS(_log, LOG_LVL_DEBUG, "done finishup pet=" << pet << " c=" << pet.use_count());
     }
 }
 

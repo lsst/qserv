@@ -183,8 +183,7 @@ class ThreadPool;
 class PoolEventThread : public EventThread {
 public:
     using Ptr = std::shared_ptr<PoolEventThread>;
-    PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
-     : EventThread{q}, _threadPool{threadPool} {}
+    PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
     ~PoolEventThread();
 
     void leavePool();
@@ -207,10 +206,19 @@ public:
     CommandThreadPool() {}
     CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
 
-    PoolEventThread* getPoolEventThread() { return _poolEventThread; } //< Not thread safe.
+    PoolEventThread* getPoolEventThread() const {
+        std::lock_guard<std::mutex> lock(_poolEventThreadMtx);
+        return _poolEventThread;
+    }
 
     friend class PoolEventThread;
 private:
+    void setPoolEventThread(PoolEventThread* poolEventThread) {
+        std::lock_guard<std::mutex> lock(_poolEventThreadMtx);
+        _poolEventThread = poolEventThread;
+    }
+
+    mutable std::mutex _poolEventThreadMtx;
     PoolEventThread* _poolEventThread{nullptr};
 };
 

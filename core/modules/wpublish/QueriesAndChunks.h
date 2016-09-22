@@ -108,8 +108,10 @@ public:
         return _data;
     }
 
+    friend std::ostream& operator<<(std::ostream& os, ChunkTableStats const& cts);
+
 private:
-    std::mutex _dataMtx; ///< Protects _data.
+    mutable std::mutex _dataMtx; ///< Protects _data.
     int const _chunkId;
     std::string const _scanTableName;
 
@@ -131,6 +133,7 @@ public:
     ChunkTableStats::Ptr getStats(std::string const& scanTableName) const;
 
     friend QueriesAndChunks;
+    friend std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs);
 private:
     int const _chunkId;
     mutable std::mutex _tStatsMtx; ///< protects _tableStats;
@@ -178,6 +181,8 @@ public:
     };
     using ScanTableSumsMap = std::map<std::string, ScanTableSums>;
 
+    friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);
+
 private:
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                        std::shared_ptr<wsched::SchedulerBase> const& sched);
@@ -216,7 +221,7 @@ private:
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
-    uint _requiredTasksCompleted{1};
+    unsigned int _requiredTasksCompleted{1};
 };
 
 

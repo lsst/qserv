@@ -238,7 +238,9 @@ wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
     /// gum up its scheduler by being slow, but nothing terrible should happen. Waiting
     /// and calling this function again is probably the best option if needed.
     auto poolThread = task->getPoolEventThread();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ScanScheduler::removeTask a task=" << task << " c=" << task.use_count());
     if (poolThread != nullptr) poolThread->leavePool(task);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ScanScheduler::removeTask b task=" << task << " c=" << task.use_count());
     // If it was running, no Task pointer should be returned as it could
     // (erroneously) be scheduled to run again on a different scheduler.
     return nullptr;
