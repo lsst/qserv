@@ -29,7 +29,7 @@ STDOUT=$(shmux -Bm -S all -c "
     if docker inspect ${CONTAINER_NAME} 2> /dev/null
     then
         echo '${EXIST_MSG}'
-    fi" "$MASTER" $WORKERS)
+    fi" "$SSH_MASTER" $SSH_WORKERS)
 
 if echo "$STDOUT" | grep "${EXIST_MSG}"
 then
@@ -53,7 +53,7 @@ docker run --detach=true \
     $LOG_VOLUME_OPT \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
-    $MASTER_IMAGE" "$MASTER"
+    $MASTER_IMAGE" "$SSH_MASTER"
 
 echo
 echo "Launch Qserv containers on worker"
@@ -65,12 +65,12 @@ shmux -Bm -S all -c "docker run --detach=true \
     $LOG_VOLUME_OPT \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
-    $WORKER_IMAGE" $WORKERS
+    $WORKER_IMAGE" $SSH_WORKERS
 
 
 echo
 echo "Wait for Qserv services to be up and running on all nodes"
 echo "========================================================="
 echo
-shmux -Bm -S all -c "docker exec $CONTAINER_NAME /qserv/scripts/wait.sh" "$MASTER" $WORKERS
+shmux -Bm -S all -c "docker exec $CONTAINER_NAME /qserv/scripts/wait.sh" "$SSH_MASTER" $SSH_WORKERS
 
