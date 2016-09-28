@@ -818,21 +818,17 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     running = false;
     // f.queries should now have a baseline for chunk 27.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after fastFunc " << *f.queries);
-    std::cout << "Chunks after fastFunc " << *f.queries << "\n"; // &&&
 
     taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qid, 0);
     task = makeTask(taskMsg);
     std::atomic<bool> slowSleepDone{false};
     auto slowFunc = [&running, &slowSleepDone](lsst::qserv::util::CmdData*){
         running = true;
-        std::cout << "&&& slowFunc start\n";
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        std::cout << "&&& slowFunc sleep done\n";
         slowSleepDone = true;
         // Keep this thread running until told to stop.
         while (running) std::this_thread::sleep_for(std::chrono::milliseconds(100));
         LOGS(_log, LOG_LVL_DEBUG, "slowFunc end");
-        std::cout << "&&& slowFunc end\n";
     };
     task->setFunc(slowFunc);
     f.queries->addTask(task);
@@ -853,11 +849,9 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // By now the slowFunc query has taken a second, far longer than the 0.1 seconds it was allowed.
     // examineAll() should boot the query.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after slowFunc " << *f.queries);
-    std::cout << "Chunks after slowFunc " << *f.queries << "\n"; // &&&
     f.queries->examineAll();
     running = false; // allow slowFunc to exit its loop and finish.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after examineAll " << *f.queries);
-    std::cout << "Chunks after examineAll " << *f.queries << "\n"; // &&&
 
     // Check if the tasks booted value for qid has gone up.
     queryStats = f.queries->getStats(qid);

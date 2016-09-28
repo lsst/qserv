@@ -23,7 +23,6 @@
 
 // Class header
 #include "wpublish/QueriesAndChunks.h"
-#include <iostream> // &&&
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -231,7 +230,6 @@ QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
 void QueriesAndChunks::examineAll() {
     // Need to know how long it takes to complete tasks on each table
     // in each chunk, and their percentage total of the whole.
-    std::cout << "&&& QueriesAndChunks::examineAll a\n";
     auto scanTblSums = _calcScanTableSums();
 
     // Copy a vector of the Queries in the map and work with the copy
@@ -249,50 +247,37 @@ void QueriesAndChunks::examineAll() {
     // If a running Task is taking longer than its percent of total time, boot it.
     // Booting a Task may result in the entire user query it belongs to being moved
     // to the snail scan.
-    std::cout << "&&& QueriesAndChunks::examineAll b\n";
     for (auto const& uq : uqs) {
         // Copy all the running tasks that are on ScanSchedulers.
-        std::cout << "&&& QueriesAndChunks::examineAll c\n";
         std::vector<wbase::Task::Ptr> runningTasks;
         {
             std::lock_guard<std::mutex> lock(uq->_qStatsMtx);
-            std::cout << "&&& QueriesAndChunks::examineAll d\n";
             for (auto const& ele : uq->_taskMap) {
-                std::cout << "&&& QueriesAndChunks::examineAll e\n";
                 auto const& task = ele.second;
                 if (task->getState() == wbase::Task::State::RUNNING) {
-                    std::cout << "&&& QueriesAndChunks::examineAll f\n";
                     auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
                     if (sched != nullptr) {
-                        std::cout << "&&& QueriesAndChunks::examineAll g\n";
                         runningTasks.push_back(task);
                     }
                 }
             }
         }
 
-        std::cout << "&&& QueriesAndChunks::examineAll h\n";
         // For each running task, check if it is taking too long, or if the query is taking too long.
         for (auto const& task : runningTasks) {
             auto const& sched = std::dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
-            std::cout << "&&& QueriesAndChunks::examineAll i\n";
             if (sched == nullptr) {
                 continue;
             }
-            std::cout << "&&& QueriesAndChunks::examineAll j\n";
             double schedMaxTime = sched->getMaxTimeMinutes(); // Get max time for scheduler
             // Get the slowest scan table in task.
             auto begin = task->getScanInfo().infoTables.begin();
             if (begin == task->getScanInfo().infoTables.end()) {
-                std::cout << "&&& QueriesAndChunks::examineAll k\n";
                 continue;
             }
             std::string const& slowestTable = begin->db + ":" + begin->table;
-            std::cout << "&&& QueriesAndChunks::examineAll l\n";
             auto iterTbl = scanTblSums.find(slowestTable);
-            std::cout << "&&& QueriesAndChunks::examineAll m\n";
             if (iterTbl != scanTblSums.end()) {
-                std::cout << "&&& QueriesAndChunks::examineAll n\n";
                 LOGS(_log, LOG_LVL_DEBUG, "examineAll " << slowestTable
                                        << " chunkId=" << task->getChunkId());
                 ScanTableSums& tblSums = iterTbl->second;
@@ -309,18 +294,14 @@ void QueriesAndChunks::examineAll() {
                     LOGS(_log, lvl, "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
                             << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
                             << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
-                    std::cout << "&&& examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
-                            << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
-                            << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid << "\n";
                     if (booting) {
-                        std::cout << "&&& QueriesAndChunks::examineAll o\n";
                         _bootTask(uq, task, sched);
                     }
                 }
             }
         }
     }
-    std::cout << "&&& QueriesAndChunks::examineAll z\n";
+    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
 
@@ -486,10 +467,7 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId,
         if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
             // removeTask will only return the task if it was found on the
             // queue for its scheduler and removed.
-            LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << "&&& removeQueryFrom 1 task=" << task << " c=" << task.use_count());
             auto removedTask = taskSched->removeTask(task);
-            LOGS(_log, LOG_LVL_DEBUG, "&&& removeQueryFrom 2 task=" << task << " c=" << task.use_count()
-                    << " removedTask=" << removedTask << " c=" << removedTask.use_count());
             if (removedTask != nullptr) {
                 removedList.push_back(removedTask);
             }

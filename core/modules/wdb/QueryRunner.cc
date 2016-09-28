@@ -251,7 +251,12 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             // scheduler for this worker should stop waiting for this task. leavePool()
             // will tell the scheduler this task is finished and create a new thread in the pool
             // to replace this one.
-            _task->getPoolEventThread()->leavePool();
+            auto pet = _task->getAndNullPoolEventThread();
+            if (pet != nullptr) {
+                pet->leavePool();
+            } else {
+                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved.");
+            }
         }
     }
     return true;
