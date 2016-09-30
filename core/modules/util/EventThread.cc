@@ -149,17 +149,15 @@ void PoolEventThread::leavePool() {
 
 
 void PoolEventThread::finishup() {
-    PoolEventThread::Ptr pet;
     if (_finishupOnce.exchange(true) == false) {
         // 'pet' will keep this PoolEventThread instance alive until this thread completes,
         // otherwise it would likely be deleted when _threadPool->release(this) is called.
-        pet = _threadPool->release(this);
+        auto pet = _threadPool->release(this);
         LOGS(_log, LOG_LVL_DEBUG, "start finishup pet=" << pet << " c=" << pet.use_count());
         if (pet != nullptr) {
             auto f = [pet](){
-                LOGS(_log, LOG_LVL_DEBUG, "calling pet join() " << pet << " c=" << pet.use_count());
                 pet->join();
-                LOGS(_log, LOG_LVL_DEBUG, "finished pet join() " << pet << " c=" << pet.use_count());
+                LOGS(_log, LOG_LVL_DEBUG, "finishup pet join() " << pet << " c=" << pet.use_count());
             };
             std::thread t{f};
             t.detach();

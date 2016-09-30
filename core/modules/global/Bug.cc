@@ -40,13 +40,13 @@ namespace qserv {
 
 Bug::Bug(char const* msg) : std::logic_error(msg) {
     // Log the error immediately so it appears in the thread that is throwing.
-    LOGS(_log, LOG_LVL_ERROR, "Bug " << msg);
+    LOGS(_log, LOG_LVL_ERROR, "Bug::Bug:" << msg);
 }
 
 
 Bug::Bug(std::string const& msg) : std::logic_error(msg) {
     // Log the error immediately so it appears in the thread that is throwing.
-    LOGS(_log, LOG_LVL_ERROR, "Bug " << msg);
+    LOGS(_log, LOG_LVL_ERROR, "Bug::Bug:" << msg);
 }
 
 }} // namespace lsst::qserv

@@ -40,8 +40,8 @@ namespace util {
 ///
 class Tracker {
 public:
-    Tracker() {};
-    virtual ~Tracker() {};
+    Tracker() {}
+    virtual ~Tracker() {}
     enum class Status { INPROGRESS, COMPLETE };
     using Ptr = std::shared_ptr<Tracker>;
     void setComplete();

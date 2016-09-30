@@ -232,7 +232,7 @@ bool MergingHandler::_merge() {
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "setErr: code: " << code << ", message: " << msg);
+    LOGS(_log, LOG_LVL_DEBUG, "_setErr: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }
