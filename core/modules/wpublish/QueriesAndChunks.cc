@@ -23,12 +23,13 @@
 
 // Class header
 #include "wpublish/QueriesAndChunks.h"
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 
 namespace {
@@ -291,8 +292,8 @@ void QueriesAndChunks::examineAll() {
                     bool booting = runTimeMinutes > maxTimeChunk && valid;
                     auto lvl = booting ? LOG_LVL_INFO : LOG_LVL_DEBUG;
                     LOGS(_log, lvl, "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
-                         << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
-                         << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
+                            << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
+                            << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
                     if (booting) {
                         _bootTask(uq, task, sched);
                     }
@@ -300,6 +301,7 @@ void QueriesAndChunks::examineAll() {
             }
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
 
@@ -475,6 +477,18 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId,
 }
 
 
+std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc) {
+    std::lock_guard<std::mutex> g(qc._chunkMtx);
+    os << "Chunks(";
+    for (auto const& ele : qc._chunkStats) {
+        os << *(ele.second) << ";";
+    }
+    os << ")";
+    return os;
+}
+
+
+
 /// Add the duration to the statistics for the table. Create a statistics object if needed.
 /// @return the statistics for the table.
 ChunkTableStats::Ptr ChunkStatistics::add(std::string const& scanTableName, double minutes) {
@@ -502,6 +516,17 @@ ChunkTableStats::Ptr ChunkStatistics::getStats(std::string const& scanTableName)
 }
 
 
+std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs) {
+    std::lock_guard<std::mutex> g(cs._tStatsMtx);
+    os << "ChunkStatsistics(" << cs._chunkId << "(";
+    for (auto const& ele : cs._tableStats) {
+        os << *(ele.second) << ";";
+    }
+    os << ")";
+    return os;
+}
+
+
 /// Use the duration of the last Task completed to adjust the average completion time.
 void ChunkTableStats::addTaskFinished(double minutes) {
     std::lock_guard<std::mutex> g(_dataMtx);
@@ -514,6 +539,15 @@ void ChunkTableStats::addTaskFinished(double minutes) {
     LOGS(_log, LOG_LVL_DEBUG, "ChkId=" << _chunkId << ":tbl=" << _scanTableName
          << " completed=" << _data.tasksCompleted
          << " avgCompletionTime=" << _data.avgCompletionTime);
+}
+
+
+std::ostream& operator<<(std::ostream& os, ChunkTableStats const& cts) {
+    std::lock_guard<std::mutex> g(cts._dataMtx);
+    os << "ChunkTableStats(" << cts._chunkId << ":" << cts._scanTableName
+       << " tasks(completed=" << cts._data.tasksCompleted << ",avgTime=" << cts._data.avgCompletionTime
+       << ",booted=" << cts._data.tasksBooted << "))";
+    return os;
 }
 
 

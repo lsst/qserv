@@ -80,8 +80,22 @@ void EventThread::run() {
 }
 
 
+/// PoolEventThread factory to ensure shared_this.
+PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadPool> const& threadPool,
+                                                         CommandQueue::Ptr const& q) {
+    PoolEventThread::Ptr pet{new PoolEventThread(threadPool, q)};
+    return pet;
+}
+
+
+PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
+: EventThread(q), _threadPool{threadPool} {
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::PoolEventThread() " << this);
+}
+
+
 PoolEventThread::~PoolEventThread() {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread()");
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread() " << this);
 }
 
 
@@ -89,9 +103,11 @@ PoolEventThread::~PoolEventThread() {
 void PoolEventThread::specialActions(Command::Ptr const& cmd) {
     CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
     if (cmdPool != nullptr) {
-        cmdPool->_poolEventThread = this;
+        cmdPool->_setPoolEventThread(shared_from_this());
     }
 }
+
+
 
 
 /// Cause this thread to leave the thread pool, this can be called from outside of the
@@ -103,7 +119,9 @@ void PoolEventThread::specialActions(Command::Ptr const& cmd) {
 bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
+    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
     if (cmd.get() != getCurrentCommand()) {
+        LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
         // cmd must have finished before the event loop stopped.
         // The current command will complete normally, and the pool
         // should replace this thread with a new one when finishup()
@@ -134,15 +152,37 @@ void PoolEventThread::finishup() {
     if (_finishupOnce.exchange(true) == false) {
         // 'pet' will keep this PoolEventThread instance alive until this thread completes,
         // otherwise it would likely be deleted when _threadPool->release(this) is called.
-        PoolEventThread::Ptr pet = _threadPool->release(this);
+        auto pet = _threadPool->release(this);
+        LOGS(_log, LOG_LVL_DEBUG, "start finishup pet=" << pet << " c=" << pet.use_count());
         if (pet != nullptr) {
-            auto f = [pet](){ pet->join(); };
+            auto f = [pet](){
+                pet->join();
+                LOGS(_log, LOG_LVL_DEBUG, "finishup pet join() " << pet << " c=" << pet.use_count());
+            };
             std::thread t{f};
             t.detach();
         } else {
             LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
         }
+        LOGS(_log, LOG_LVL_DEBUG, "done finishup pet=" << pet << " c=" << pet.use_count());
     }
+}
+
+
+/// Set _poolEventThread pointer to the thread running this command.
+void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
+    _poolEventThread = poolEventThread;
+}
+
+
+/// Invalidate _poolEventThread so it can't be used again.
+/// At this point, the reason to get _poolEventThread is to
+/// have the thread leave the pool. This prevents that from
+/// happening more than once.
+PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
+    auto pet = _poolEventThread.lock();
+    _poolEventThread.reset();
+    return pet;
 }
 
 
@@ -191,7 +231,7 @@ void ThreadPool::_resize() {
     std::lock_guard<std::mutex> lock(_poolMutex);
     auto target = getTargetThrdCount();
     while (target > _pool.size()) {
-        auto t = std::make_shared<PoolEventThread>(shared_from_this(), _q);
+        auto t = PoolEventThread::newPoolEventThread(shared_from_this(), _q);
         _pool.push_back(t);
         t->run();
     }

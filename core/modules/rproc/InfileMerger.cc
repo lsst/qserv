@@ -146,12 +146,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
          << queryIdStr
-         << "largeResult=" << largeResult
+         << " largeResult=" << largeResult
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
-         << ", rowcount=" << response->result.row_size()
+         << ", rowCount=" << response->result.rowcount()
+         << ", row_size=" << response->result.row_size()
          << ", errCode=" << response->result.has_errorcode()
-         << "hasErrorMsg=" << response->result.has_errormsg() << ")");
+         << " hasErMsg=" << response->result.has_errormsg() << ")");
 
     if (response->result.has_errorcode() || response->result.has_errormsg()) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);

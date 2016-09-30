@@ -237,8 +237,13 @@ wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
     /// has not been called and 'task' does not know its poolThread. 'task' will possibly
     /// gum up its scheduler by being slow, but nothing terrible should happen. Waiting
     /// and calling this function again is probably the best option if needed.
-    auto poolThread = task->getPoolEventThread();
-    if (poolThread != nullptr) poolThread->leavePool(task);
+    auto poolThread = task->getAndNullPoolEventThread();
+    if (poolThread != nullptr) {
+        poolThread->leavePool(task);
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, "removeTask PoolEventThread was null, "
+                "presumably already moved for large result.");
+    }
     // If it was running, no Task pointer should be returned as it could
     // (erroneously) be scheduled to run again on a different scheduler.
     return nullptr;

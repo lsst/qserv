@@ -88,7 +88,7 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
+Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms)
     : _config{*c}, _messageStore{ms} {
     _setup();
 }
@@ -96,6 +96,12 @@ Executive::Executive(Config::Ptr c, std::shared_ptr<MessageStore> ms)
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
+}
+
+
+Executive::Ptr Executive::newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms) {
+    Executive::Ptr exec{new Executive(c, ms)}; // make_shared dislikes private constructor.
+    return exec;
 }
 
 
@@ -119,8 +125,9 @@ void Executive::add(JobDescription const& jobDesc) {
         }
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
-        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(this, jobDesc.id());
-        jobQuery = JobQuery::newJobQuery(this, jobDesc, jobStatus, mcf, _id);
+        Ptr thisPtr = shared_from_this();
+        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc.id());
+        jobQuery = JobQuery::newJobQuery(thisPtr, jobDesc, jobStatus, mcf, _id);
 
         if (!_addJobToMap(jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
@@ -215,7 +222,13 @@ void Executive::markCompleted(int jobId, bool success) {
             } else {
                 std::string msg = "Executive::markCompleted failed to find tracked " + idStr +
                         " size=" + std::to_string(_incompleteJobs.size());
-                throw Bug(msg);
+                LOGS(_log, LOG_LVL_DEBUG, msg);
+                // If the user query has been cancelled, this is expected for jobs that have not yet
+                // been tracked. In all other cases, it indicates a serious problem.
+                if (!getCancelled()) {
+                    throw Bug(msg);
+                }
+                return;
             }
         }
         LOGS(_log, LOG_LVL_ERROR, "Executive: error executing " << idStr
@@ -243,11 +256,11 @@ void Executive::markCompleted(int jobId, bool success) {
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, _id << " Executive::squash() already cancelled! refusing.");
+        LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash() already cancelled! refusing.");
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, _id << " Executive::squash Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash Trying to cancel all queries...");
     std::deque<JobQuery::Ptr> jobsToCancel;
     {
         std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
@@ -259,7 +272,7 @@ void Executive::squash() {
     for (auto const& job : jobsToCancel) {
         job->cancel();
     }
-    LOGS_DEBUG(_id << " Executive::squash done");
+    LOGS_DEBUG(getIdStr() << " Executive::squash done");
 }
 
 int Executive::getNumInflight() {
@@ -348,14 +361,9 @@ void Executive::_unTrack(int jobId) {
             ++c;
         }
     }
-    std::ostringstream os;
-    os << "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
-       << " size=" << size << " " << (untracked ? "success":"failed") << "::" << s.str();
-    if (untracked) {
-        LOGS(_log, LOG_LVL_DEBUG, os.str());
-    } else {
-        LOGS(_log, LOG_LVL_WARN, os.str());
-    }
+    LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
+         "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
+         << " size=" << size << " " << (untracked ? "success":"failed") << "::" << s.str());
 }
 
 /// Remove all jobs from the _incompleteJobs map that have errors.

@@ -817,13 +817,19 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     }
     running = false;
     // f.queries should now have a baseline for chunk 27.
+    LOGS(_log, LOG_LVL_DEBUG, "Chunks after fastFunc " << *f.queries);
 
     taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qid, 0);
     task = makeTask(taskMsg);
-    auto slowFunc = [&running](lsst::qserv::util::CmdData*){
-            running = true;
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-        };
+    std::atomic<bool> slowSleepDone{false};
+    auto slowFunc = [&running, &slowSleepDone](lsst::qserv::util::CmdData*){
+        running = true;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        slowSleepDone = true;
+        // Keep this thread running until told to stop.
+        while (running) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        LOGS(_log, LOG_LVL_DEBUG, "slowFunc end");
+    };
     task->setFunc(slowFunc);
     f.queries->addTask(task);
     auto queryStats = f.queries->getStats(qid);
@@ -832,13 +838,20 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         BOOST_CHECK(queryStats->getTasksBooted() == 0);
     }
     f.blend->queCmd(task);
-    //
+    // Wait for slowFunc to start running then wait for slowFunc to finish sleeping.
     while (!running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    // By now the query has taken a second, far longer than the 0.1 seconds it was allowed.
+    while (!slowSleepDone) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    // By now the slowFunc query has taken a second, far longer than the 0.1 seconds it was allowed.
+    // examineAll() should boot the query.
+    LOGS(_log, LOG_LVL_DEBUG, "Chunks after slowFunc " << *f.queries);
     f.queries->examineAll();
+    running = false; // allow slowFunc to exit its loop and finish.
+    LOGS(_log, LOG_LVL_DEBUG, "Chunks after examineAll " << *f.queries);
 
     // Check if the tasks booted value for qid has gone up.
     queryStats = f.queries->getStats(qid);

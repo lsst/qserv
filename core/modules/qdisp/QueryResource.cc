@@ -64,14 +64,15 @@ char const* QueryResource::_getRname(std::string const& rName) {
 }
 
 QueryResource::~QueryResource() {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource() ");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "~QueryResource()");
     free(_rNameHolder);
+    _rNameHolder = nullptr;
 }
 
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
 void QueryResource::ProvisionDone(XrdSsiSession* s) {
-    LOGS_DEBUG(_jobIdStr << "QueryResource::ProvisionDone ");
+    LOGS_DEBUG(_jobIdStr << " QueryResource::ProvisionDone");
     struct Destroyer {
         Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
         : _job{job},  _qr{qr} {}
@@ -85,13 +86,14 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
     };
     Destroyer destroyer(_jobQuery, this);
     if (!s) {
+        LOGS_WARN(_jobIdStr << "QueryResource::ProvisionDone - NO SESSION");
         // Check eInfo in resource for error details
         int code = 0;
         std::string msg = eInfoGet(code);
         _jobQuery->provisioningFailed(msg, code);
         return;
     }
-    if (isCancelled()) {
+    if (isQueryCancelled()) {
         return; // Don't bother doing anything if the job is cancelled.
     }
     _xrdSsiSession = s;
@@ -110,8 +112,11 @@ const char* QueryResource::eInfoGet(int &code) {
     return message ? message : "no message from XrdSsi, code may not be reliable";
 }
 
-bool QueryResource::isCancelled() {
-    return _jobQuery->isCancelled();
+
+bool QueryResource::isQueryCancelled() {
+    return _jobQuery->isQueryCancelled();
 }
+
+
 
 }}} // lsst::qserv::qdisp

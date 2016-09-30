@@ -70,7 +70,7 @@ public:
 class JobQueryTest : public qdisp::JobQuery {
 public:
     typedef std::shared_ptr<JobQueryTest> Ptr;
-    JobQueryTest(qdisp::Executive* executive,
+    JobQueryTest(qdisp::Executive::Ptr const& executive,
                  qdisp::JobDescription const& jobDescription,
                  qdisp::JobStatus::Ptr jobStatus,
                  qdisp::MarkCompleteFunc::Ptr markCompleteFunc)
@@ -89,7 +89,7 @@ public:
     // set createQueryResource=true to get a QueryResource.
     // Special ResponseHandlers need to be defined in JobDescription.
     static JobQueryTest::Ptr getJobQueryTest(
-            qdisp::Executive* executive, qdisp::JobDescription jobDesc,
+            qdisp::Executive::Ptr const& executive, qdisp::JobDescription jobDesc,
             qdisp::MarkCompleteFunc::Ptr markCompleteFunc,
             bool createQueryResource, XrdSsiSession* xsSession, bool createQueryRequest) {
         qdisp::JobStatus::Ptr status(new qdisp::JobStatus());
@@ -160,7 +160,7 @@ public:
 
 /** Add dummy requests to an executive corresponding to the requesters
  */
-void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string const& millisecs, RequesterVector& rv) {
+void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, std::string const& millisecs, RequesterVector& rv) {
     ResourceUnit ru;
     int copies = rv.size();
     std::vector<std::shared_ptr<qdisp::JobDescription>> s(copies);
@@ -170,7 +170,7 @@ void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string 
                 ru,        // dummy
                 millisecs, // Request = stringified milliseconds
                 rv[j]);
-        ex.add(job); // ex.add() is not thread safe.
+        ex->add(job); // ex->add() is not thread safe.
     }
 }
 
@@ -178,7 +178,8 @@ void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string 
  * before signaling to 'ex' that they are done.
  * Returns time to complete in seconds.
  */
-void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt &chunkId, std::string const& millisecs, int copies) {
+void executiveTest(qdisp::Executive::Ptr const& ex, SequentialInt &sequence,
+                   SequentialInt &chunkId, std::string const& millisecs, int copies) {
     // Test class Executive::add
     // Modeled after ccontrol::UserQuery::submit()
     ResourceUnit ru;
@@ -215,7 +216,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive ex(conf, ms);
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
     SequentialInt sequence(0);
     SequentialInt chunkId(1234);
     int jobs = 0;
@@ -226,15 +227,15 @@ BOOST_AUTO_TEST_CASE(Executive) {
     ++jobs;
     executiveTest(ex, sequence, chunkId, millis, 1);
     LOGS_DEBUG("jobs=" << jobs);
-    ex.join();
-    BOOST_CHECK(ex.getEmpty() == true);
+    ex->join();
+    BOOST_CHECK(ex->getEmpty() == true);
 
     // test adding 4 jobs
     LOGS_DEBUG("Executive test 2");
     executiveTest(ex, sequence, chunkId, millis, 4);
     jobs += 4;
-    ex.join();
-    BOOST_CHECK(ex.getEmpty() == true);
+    ex->join();
+    BOOST_CHECK(ex->getEmpty() == true);
 
     // Test that we can detect ex._empty == false.
     LOGS_DEBUG("Executive test 3");
@@ -246,11 +247,11 @@ BOOST_AUTO_TEST_CASE(Executive) {
                    << ") == jobs(" << jobs << ")");
         usleep(10000);
     }
-    BOOST_CHECK(ex.getEmpty() == false);
+    BOOST_CHECK(ex->getEmpty() == false);
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(true);
-    ex.join();
-    LOGS_DEBUG("ex.join() joined");
-    BOOST_CHECK(ex.getEmpty() == true);
+    ex->join();
+    LOGS_DEBUG("ex->join() joined");
+    BOOST_CHECK(ex->getEmpty() == true);
     done.exchange(true);
     timeoutT.join();
     LOGS_DEBUG("Executive test end");
@@ -277,7 +278,7 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive ex(conf, ms);
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -286,9 +287,9 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     ResourceUnit ru;
     qdisp::JobDescription jobDesc(jobId, ru, "a message",
             std::make_shared<ccontrol::MergingHandler>(cmr, infileMerger, chunkResultName));
-    qdisp::MarkCompleteFunc::Ptr mcf = std::make_shared<qdisp::MarkCompleteFunc>(&ex, jobId);
+    qdisp::MarkCompleteFunc::Ptr mcf = std::make_shared<qdisp::MarkCompleteFunc>(ex, jobId);
 
-    JobQueryTest::Ptr jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, nullptr, false);
+    JobQueryTest::Ptr jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, mcf, true, nullptr, false);
     qdisp::QueryResource::Ptr r = jqTest->getQueryResource();
     r->ProvisionDone(nullptr);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::PROVISION_NACK);
@@ -299,7 +300,7 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     strcpy(buf, qdisp::XrdSsiSessionMock::getMockString());
     auto xsMock = new qdisp::XrdSsiSessionMock(buf);
 
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, mcf, true, nullptr, false);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, mcf, true, nullptr, false);
     r = jqTest->getQueryResource();
     r->ProvisionDone(xsMock);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state  == qdisp::JobStatus::REQUEST);
@@ -312,7 +313,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // Setup Executive and RetryTest (JobQuery child)
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive ex(conf, ms);
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -330,7 +331,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     auto sessionMock = new qdisp::XrdSsiSessionMock(buf);
 
     JobQueryTest::Ptr jqTest =
-        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+        JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
 
     LOGS_DEBUG("QueryRequest::ProcessResponse test 1");
     // Test that ProcessResponse detects !isOk and retries.
@@ -345,7 +346,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 
     LOGS_DEBUG("QueryRequest::ProcessResponse test 2");
     // Test that ProcessResponse detects XrdSsiRespInfo::isError.
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->doNotRetry();
     int magicErrNum = 5678;
@@ -359,7 +360,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     BOOST_CHECK(finishTest->finishCalled);
 
     LOGS_DEBUG("QueryRequest::ProcessResponse test 3");
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->doNotRetry();
     rInfo.rType = XrdSsiRespInfo::isStream;
@@ -372,7 +373,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // or coding around that function call for the test. Failure of the path will have high visibility.
     LOGS_DEBUG("QueryRequest::ProcessResponseData test 1");
     finishTest->finishCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->doNotRetry();
     const char* ts="abcdefghijklmnop";
@@ -384,7 +385,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 
     LOGS_DEBUG("QueryRequest::ProcessResponseData test 2");
     finishTest->finishCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic()+1, true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::MERGE_ERROR);
@@ -393,7 +394,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     LOGS_DEBUG("QueryRequest::ProcessResponseData test 3");
     finishTest->finishCalled = false;
     jqTest->retryCalled = false;
-    jqTest = JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, false, sessionMock, true);
+    jqTest = JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, false, sessionMock, true);
     qrq = jqTest->getQueryRequest();
     qrq->ProcessResponseData(dataBuf, ResponseHandlerTest::magic(), true);
     BOOST_CHECK(jqTest->getStatus()->getInfo().state == qdisp::JobStatus::COMPLETE);
@@ -408,7 +409,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     // Setup Executive and JobQueryTest child
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive ex(conf, ms);
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
     int chunkId = 14;
     int first = 1;
     int last = 20;
@@ -421,16 +422,16 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(false); // Can't let jobs run or they are untracked before squash
     for (int jobId=first; jobId<=last; ++jobId) {
         qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
-        ex.add(jobDesc);
-        jq = ex.getJobQuery(jobId);
+        ex->add(jobDesc);
+        jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
-        BOOST_CHECK(jq->isCancelled() == false);
+        BOOST_CHECK(jq->isQueryCancelled() == false);
     }
-    ex.squash();
-    ex.squash(); // check that squashing twice doesn't cause issues.
+    ex->squash();
+    ex->squash(); // check that squashing twice doesn't cause issues.
     for (int jobId=first; jobId<=last; ++jobId) {
-        jq = ex.getJobQuery(jobId);
-        BOOST_CHECK(jq->isCancelled() == true);
+        jq = ex->getJobQuery(jobId);
+        BOOST_CHECK(jq->isQueryCancelled() == true);
     }
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(true);
     usleep(250000); // Give mock threads a quarter second to complete.
@@ -448,15 +449,15 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     auto sessionMock = new qdisp::XrdSsiSessionMock(buf);
 
     qdisp::JobQuery::Ptr jqTest =
-        JobQueryTest::getJobQueryTest(&ex, jobDesc, finishTest, true, sessionMock, true);
+        JobQueryTest::getJobQueryTest(ex, jobDesc, finishTest, true, sessionMock, true);
     auto resource = jqTest->getQueryResource();
     auto request = jqTest->getQueryRequest();
-    BOOST_CHECK(resource->isCancelled() == false);
-    BOOST_CHECK(request->isCancelled() == false);
+    BOOST_CHECK(request->isQueryRequestCancelled() == false);
     BOOST_CHECK(respReq->_processCancelCalled == false);
     jqTest->cancel();
-    BOOST_CHECK(resource->isCancelled() == true);
-    BOOST_CHECK(request->isCancelled() == true);
+    BOOST_CHECK(resource->isQueryCancelled() == true);
+    BOOST_CHECK(request->isQueryCancelled() == true);
+    BOOST_CHECK(request->isQueryRequestCancelled() == true);
     BOOST_CHECK(respReq->_processCancelCalled == true);
 
 }

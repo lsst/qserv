@@ -38,10 +38,6 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
-
-void logErr(std::string const& msg, lsst::qserv::qdisp::JobQuery* jq) {
-    LOGS(_log, LOG_LVL_ERROR, msg << " " << *jq);
-}
 } // anonymous namespace
 
 namespace lsst {
@@ -49,7 +45,7 @@ namespace qserv {
 namespace qdisp {
 
 
-JobQuery::JobQuery(Executive* executive, JobDescription const& jobDescription,
+JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
                    QueryId qid) :
@@ -69,23 +65,22 @@ JobQuery::~JobQuery() {
  */
 bool JobQuery::runJob() {
     LOGS(_log, LOG_LVL_DEBUG, "runJob " << *this);
-    if (_executive == nullptr) {
-        logErr("runJob failed _executive=nullptr", this);
+    auto executive = _executive.lock();
+    if (executive == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, getIdStr() << "runJob failed executive==nullptr");
         return false;
     }
-    bool cancelled = _executive->getCancelled();
+    bool cancelled = executive->getCancelled();
     bool handlerReset = _jobDescription.respHandler()->reset();
     if (!cancelled && handlerReset) {
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         if ( _runAttemptsCount < _getMaxRetries() ) {
             ++_runAttemptsCount;
-            if (_executive == nullptr) {
-                logErr("JobQuery couldn't run job as executive is null", this);
-                return false;
-            }
         } else {
-            logErr("JobQuery hit maximum number of retries!", this);
+            LOGS(_log, LOG_LVL_ERROR, getIdStr() << " hit maximum number of retries ("
+                 << _runAttemptsCount << ") Canceling user query!");
+            executive->squash(); // This should kill all jobs in this user query.
             return false;
         }
         _jobStatus->updateInfo(JobStatus::PROVISION);
@@ -93,21 +88,34 @@ bool JobQuery::runJob() {
         // To avoid a cancellation race condition, _queryResourcePtr = qr if and
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
-        bool success = _executive->xrdSsiProvision(_queryResourcePtr, qr);
+        bool success = executive->xrdSsiProvision(_queryResourcePtr, qr);
         if (success) {
             return true;
         }
     }
 
-    LOGS_WARN("JobQuery Failed to RunJob failed. cancelled=" << cancelled << " reset=" << handlerReset);
+    LOGS_WARN(getIdStr() << " JobQuery Failed to RunJob failed. cancelled=" << cancelled
+              << " reset=" << handlerReset);
     return false;
 }
 
 void JobQuery::provisioningFailed(std::string const& msg, int code) {
-    LOGS(_log, LOG_LVL_ERROR, "Error provisioning, " << getIdStr() << " msg=" << msg
-         << " code=" << code << " " << *this << "\n    desc=" << _jobDescription);
+    LOGS(_log, LOG_LVL_ERROR, getIdStr() << " provisioning failed, msg=" << msg
+         << " code=" << code << "\n    desc=" << _jobDescription);
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
     _jobDescription.respHandler()->errorFlush(msg, code);
+    LOGS(_log, LOG_LVL_INFO, getIdStr() << " will retry");
+    // Running in a separate thread as xrootd is waiting for this one to return.
+    auto retryFunc = [](std::weak_ptr<JobQuery> jqWeak, int sleepSeconds) {
+        sleep(sleepSeconds);
+        auto jobQuery = jqWeak.lock();
+        if (jobQuery == nullptr) return;
+        LOGS(_log, LOG_LVL_DEBUG, jobQuery->getIdStr() << " retrying provisioningFailed");
+        jobQuery->runJob();
+    };
+    std::weak_ptr<JobQuery> jqWeak = shared_from_this();
+    std::thread retryThrd(retryFunc, jqWeak, _getRetrySleepSeconds());
+    retryThrd.detach();
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
@@ -115,7 +123,8 @@ bool JobQuery::cancel() {
     LOGS_DEBUG(getIdStr() << " JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        // If _queryRequestPtr is not nullptr, then this job has been passed to xrootd and cancellation is complicated.
+        // If _queryRequestPtr is not nullptr, then this job has been passed to xrootd and
+        // cancellation is complicated.
         if (_queryRequestPtr != nullptr) {
             LOGS_DEBUG(getIdStr() << " cancel QueryRequest in progress");
             _queryRequestPtr->cancel();
@@ -124,7 +133,12 @@ bool JobQuery::cancel() {
             os << getIdStr() <<" cancel before QueryRequest" ;
             LOGS_DEBUG(os.str());
             getDescription().respHandler()->errorFlush(os.str(), -1);
-            _executive->markCompleted(getIdInt(), false);
+            auto executive = _executive.lock();
+            if (executive == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
+                return false;
+            }
+            executive->markCompleted(getIdInt(), false);
         }
         _jobDescription.respHandler()->processCancel();
         return true;
@@ -145,6 +159,20 @@ void JobQuery::freeQueryResource(QueryResource* qr) {
     } else {
         LOGS(_log, LOG_LVL_WARN, "freeQueryResource called by wrong QueryResource.");
     }
+}
+
+
+/// @return true if this job's executive has been cancelled.
+/// There is enough delay between the executive being cancelled and the executive
+/// cancelling all the jobs that it makes a difference. If either the executive,
+/// or the job has cancelled, proceeding is probably not a good idea.
+bool JobQuery::isQueryCancelled() {
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS_WARN(getIdStr() << " _executive == nullptr");
+        return true; // Safer to assume the worst.
+    }
+    return exec->getCancelled();
 }
 
 std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {

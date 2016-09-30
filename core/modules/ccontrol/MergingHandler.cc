@@ -210,7 +210,7 @@ void MergingHandler::_initState() {
 
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
-        if (job->isCancelled()) {
+        if (job->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
             return false;
         }
@@ -232,7 +232,7 @@ bool MergingHandler::_merge() {
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "setError: code: " << code << ", message: " << msg);
+    LOGS(_log, LOG_LVL_DEBUG, "_setErr: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }

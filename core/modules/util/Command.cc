@@ -29,9 +29,14 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Command");
+}
+
 namespace lsst {
 namespace qserv {
 namespace util {
+
 
 /// Set status to COMPLETE and notify everyone waiting for a status change.
 void Tracker::setComplete() {

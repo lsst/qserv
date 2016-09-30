@@ -215,9 +215,9 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 /// If the message has gotten larger than the desired message size,
 /// it will be transmitted with a flag set indicating the result
 /// continues in later messages.
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
+bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
-    size_t size = 0;
+
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
@@ -230,17 +230,20 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
                 rawRow->add_isnull(true);
             }
         }
-        size += rawRow->ByteSize();
+        tSize += rawRow->ByteSize();
+        ++rowCount;
 
         // Each element needs to be mysql-sanitized
-        if (size > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
-            if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
+        if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
+            if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << size << ", splitting message");
-            _transmit(false);
-            size = 0;
+            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
+                 << ", splitting message rowCount=" << rowCount);
+            _transmit(false, rowCount, tSize);
+            rowCount = 0;
+            tSize = 0;
             _initMsg();
             // This task is going to have multiple results to return to the czar and
             // the speed this task can be completed will be limited by the czar's ability to
@@ -248,7 +251,12 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
             // scheduler for this worker should stop waiting for this task. leavePool()
             // will tell the scheduler this task is finished and create a new thread in the pool
             // to replace this one.
-            _task->getPoolEventThread()->leavePool();
+            auto pet = _task->getAndNullPoolEventThread();
+            if (pet != nullptr) {
+                pet->leavePool();
+            } else {
+                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved.");
+            }
         }
     }
     return true;
@@ -257,13 +265,16 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields) {
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_transmit(bool last) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr());
+void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
+    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmit last=" << last
+         << " rowCount=" << rowCount << " tSize=" << tSize);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
     _result->set_continues(!last);
     _result->set_largeresult(_largeResult);
+    _result->set_rowcount(rowCount);
+    _result->set_transmitsize(tSize);
     if (!_multiError.empty()) {
         std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
@@ -275,11 +286,14 @@ void QueryRunner::_transmit(bool last) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
          << " resultString=" << util::prettyCharList(resultString, 5));
     if (!_cancelled) {
-        _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
+        bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
+        if (!sent) {
+            LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
+        }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
-    _largeResult = true;
+    _largeResult = true; // Transmits after the first are considered large results.
 }
 
 /// Transmit the protoHeader
@@ -298,9 +312,12 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     assert(protoHeaderString.size() < 255);
     auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
     if (!_cancelled) {
-        _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+        bool sent = _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
+        if (!sent) {
+            LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");
+        }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
     }
 }
 
@@ -349,6 +366,9 @@ bool QueryRunner::_dispatchChannel() {
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
 
+    uint rowCount = 0;
+    size_t tSize = 0;
+
     try {
         for(int i=0; i < m.fragment_size(); ++i) {
             if (_cancelled) {
@@ -372,7 +392,7 @@ bool QueryRunner::_dispatchChannel() {
                 // TODO fritzm: revisit this error strategy
                 // (see pull-request for DM-216)
                 // Now get rows...
-                if (!_fillRows(res, numFields)) {
+                if (!_fillRows(res, numFields, rowCount, tSize)) {
                     erred = true;
                 }
                 _mysqlConn->freeResult();
@@ -384,7 +404,7 @@ bool QueryRunner::_dispatchChannel() {
     }
     if (!_cancelled) {
         // Send results.
-        _transmit(true);
+        _transmit(true, rowCount, tSize);
     } else {
         erred = true;
         // Send poison error.

@@ -180,11 +180,12 @@ class ThreadPool;
 
 /// An EventThread to be used by the ThreadPool class.
 /// finishup() is used to tell the ThreadPool that this thread is finished.
-class PoolEventThread : public EventThread {
+class PoolEventThread : public EventThread, public std::enable_shared_from_this<PoolEventThread> {
 public:
     using Ptr = std::shared_ptr<PoolEventThread>;
-    PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
-     : EventThread{q}, _threadPool{threadPool} {}
+
+    static PoolEventThread::Ptr newPoolEventThread(std::shared_ptr<ThreadPool> const& threadPool,
+                                                   CommandQueue::Ptr const& q);
     ~PoolEventThread();
 
     void leavePool();
@@ -195,6 +196,9 @@ protected:
     void finishup() override;
     std::shared_ptr<ThreadPool> _threadPool;
     std::atomic<bool> _finishupOnce{false}; //< Ensure finishup() only called once.
+
+private:
+    PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
 };
 
 
@@ -207,11 +211,13 @@ public:
     CommandThreadPool() {}
     CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
 
-    PoolEventThread* getPoolEventThread() { return _poolEventThread; } //< Not thread safe.
+    PoolEventThread::Ptr getAndNullPoolEventThread();
 
     friend class PoolEventThread;
 private:
-    PoolEventThread* _poolEventThread{nullptr};
+    void _setPoolEventThread(PoolEventThread::Ptr const& poolEventThread);
+
+    std::weak_ptr<PoolEventThread> _poolEventThread;
 };
 
 

@@ -115,7 +115,7 @@ CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
                                                             std::make_shared<EmptyChunks>(emptyChunkPath)));
         }
     } else if (cssConfig.getTechnology() == "mysql") {
-        LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store");
+        LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store " << cssConfig.getMySqlConfig());
         auto kvi = std::make_shared<KvInterfaceImplMySql>(cssConfig.getMySqlConfig(), readOnly);
         return std::shared_ptr<CssAccess>(new CssAccess(kvi, std::make_shared<EmptyChunks>(emptyChunkPath)));
     } else {

@@ -97,6 +97,7 @@ std::string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
 
 
+
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
@@ -115,7 +116,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     timestr[0] = '\0';
 
     allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << _idStr << " : " << allIds);
+    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << _idStr << " this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = msg->scantable_size();
