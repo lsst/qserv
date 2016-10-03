@@ -227,10 +227,10 @@ def has_configuration_step(steps):
     """
     return bool(intersect(steps, CONFIGURATION_STEPS))
 
+
 class Templater(object):
 
     def __init__(self, qserv_version):
-
         self.qserv_version = qserv_version
         self._templateParams = None
 
@@ -238,8 +238,8 @@ class Templater(object):
         (path, basename) = os.path.split(file)
         script_list = [c + ".sh" for c in COMPONENTS]
         if (os.path.basename(path) == "bin" or
-                    os.path.basename(path) == "init.d" or
-                    basename in script_list):
+                os.path.basename(path) == "init.d" or
+                basename in script_list):
             os.chmod(file, 0o760)
         elif basename in SECRET_FILES:
             os.chmod(file, 0o600)
@@ -248,10 +248,11 @@ class Templater(object):
             os.chmod(file, 0o660)
 
     def _initTemplateParams(self):
-        """ Compute templates parameters from Qserv meta-configuration file
-            from PATH or from environment variables for products not needed during build
         """
-
+        Compute templates parameters from:
+            - Qserv meta-configuration file
+            - PATH or other environment variables
+        """
         if self._templateParams is None:
 
             config = commons.getConfig()
@@ -263,8 +264,8 @@ class Templater(object):
 
             scisql_dir = os.environ.get('SCISQL_DIR')
             if scisql_dir is None:
-                _LOG.fatal(
-                    "sciSQL install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+                _LOG.fatal("sciSQL install : sciSQL is missing, please install"
+                           "it and set SCISQL_DIR environment variable.")
                 sys.exit(1)
 
             # find python executable in $PATH
@@ -282,7 +283,9 @@ class Templater(object):
                 'HOME': os.path.expanduser("~"),
                 'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
                 'LUA_DIR': os.path.join(config['lua']['base_dir']),
-                'MYSQLD_DATA_DIR': os.path.join(config['qserv']['qserv_data_dir'], "mysql"),
+                'MYSQLD_DATA_DIR':
+                os.path.join(config['qserv']['qserv_data_dir'],
+                             "mysql"),
                 # used for mysql-proxy in mono-node
                 'MYSQLD_HOST': '127.0.0.1',
                 'MYSQLD_PASSWORD_MONITOR': config['mysqld']['password_monitor'],

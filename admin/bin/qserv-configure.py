@@ -324,8 +324,8 @@ class Configurator(object):
                 # used in templates targets comments
                 config['qserv']['meta_config_file'] = self._meta_config_file
 
-            except ConfigParser.NoOptionError as exception:
-                _LOG.fatal("Missing option in meta-configuration file: %s", exception)
+            except ConfigParser.NoOptionError as exc:
+                _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 
             if configure.DIRTREE in self.args.step_list:
