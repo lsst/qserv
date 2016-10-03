@@ -31,15 +31,22 @@ check_writable ${NAME} "QSERV_LOG_DIR"
 check_readable ${NAME} "XROOTD_DIR"
 
 err_msg="Failure while starting ${NAME}:"
-if [ -z "${NODE_TYPE}" ]; then
+if [ -z "${NODE_TYPE}" ]
+then
     log_failure_msg "${local_err_msg} \$NODE_TYPE is an empty string"
     exit 1
+elif [ "${NODE_TYPE}" = "mono" ]
+then
+    XROOTD_INSTANCE_NAME="worker"
+	XRD_SERVICES="xrootd"
+else
+    XROOTD_INSTANCE_NAME="$NODE_TYPE"
+	XRD_SERVICES="xrootd cmsd"
 fi
 
 XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"
 # Add configuration for xrdssi, used only on Qserv workers, not Czar
 XRDSSI_CONFIG="${QSERV_RUN_DIR}/etc/xrdssi.cnf"
-XROOTD_INSTANCE_NAME="worker"
 
 PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
 LOG_DIR=${QSERV_LOG_DIR}
@@ -95,55 +102,38 @@ stop_service() {
 }
 
 start_all() {
-    local xrootd_started cmsd_started=0 retval=1
     mkdir -p ${PID_DIR} || {
         log_failure_msg "Failed to create ${PID_DIR}"
         return 1
     }
 
-    start_service "xrootd"
-    xrootd_started=$?
-
-    if [ ${NODE_TYPE} != "mono" ]; then
-        start_service "cmsd"
-        cmsd_started=$?
-    fi
-
-    test $xrootd_started -eq 0 -a $cmsd_started -eq 0
+    ret_val=0
+	for service in $XRD_SERVICES
+	do
+        start_service "$service" || ret_val=1
+	done
+	return "$ret_val"
 }
 
 stop_all() {
-    local xrootd_stopped cmsd_stopped=0 retval=1
+    ret_val=0
+	for service in $XRD_SERVICES
+	do
+        stop_service "$service" || ret_val=1
+	done
+	return "$ret_val"
 
-    stop_service "xrootd"
-    xrootd_stopped=$?
-
-    if [ ${NODE_TYPE} != "mono" ]; then
-        stop_service "cmsd"
-        cmsd_stopped=$?
-    fi
-
-    test $xrootd_stopped -eq 0 -a $cmsd_stopped -eq 0
 }
 
 status_all () {
-    local xrootd_status cmsd_status=0 retval=1
-
-    NAME="xrootd"
-    DAEMON=${XROOTD_DIR}/bin/${NAME}
-    pidfile=$(pid_file_name $NAME)
-    status_of_proc -p $pidfile "$DAEMON" "$NAME"
-    xrootd_status=$?
-
-    if [ ${NODE_TYPE} != "mono" ]; then
-        NAME="cmsd"
-        DAEMON=${XROOTD_DIR}/bin/${NAME}
-        pidfile=$(pid_file_name $NAME)
-        status_of_proc -p $pidfile "$DAEMON" "$NAME"
-        cmsd_status=$?
-    fi
-
-    test $xrootd_status -eq 0 -a $cmsd_status -eq 0
+    ret_val=0
+	for service in $XRD_SERVICES
+	do
+        DAEMON="${XROOTD_DIR}/bin/${service}"
+		pidfile=$(pid_file_name $service)
+		status_of_proc -p $pidfile "$DAEMON" "$service" || ret_val=1
+	done
+	return "$ret_val"
 }
 
 
