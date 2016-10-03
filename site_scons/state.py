@@ -75,15 +75,6 @@ def _getBinPath(binName, msg=None):
         log.debug("Found %s here %s" % (binName, binFullPath))
         return binFullPath
 
-def _getEupsVersion():
-    binName = 'pkgautoversion'
-    try:
-        version = subprocess.check_output(['pkgautoversion'])
-        version = version.strip()
-    except subprocess.CalledProcessError:
-        version = "UNDEFINED"
-    return version
-
 def _getBinPathFromBinList(binList, msg=None):
     binFullPath = None
     i=0
@@ -136,7 +127,6 @@ def _setEnvWithDependencies():
     log.info("Adding build dependencies information in scons environment")
     opts.AddVariables(
         (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
-        ('QSERV_PKGAUTOVERSION', 'eups/pkgautoversion output', _getEupsVersion()),
         (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc', "Looking for protoc compiler"),
                       PathVariable.PathIsFile)),
         (PathVariable('SWIG_BIN', 'swig binary path', _getBinPath('swig', "Looking for swig preprocessor"),
@@ -193,7 +183,7 @@ def _setEnvWithDependencies():
 
     opts.AddVariables(
             (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathAccept))
-	    )
+            )
     opts.Update(env)
 
     # Allow one to specify where boost is

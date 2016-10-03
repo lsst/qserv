@@ -11,17 +11,17 @@ services:
 
 language: c++
 
-install:
-  # Retrieve container with Qserv dependencies
-  - docker pull qserv/qserv:dev
-
-before_script:
+before_install:
   # Move git repository from 'detached' state to current branch HEAD
   - export PR=https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/$TRAVIS_PULL_REQUEST
   - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo `curl -s $PR | jq -r .head.ref`; fi)
   - git checkout "$BRANCH"
   # Set up parameters for containers deployment
   - cp ./admin/tools/docker/deployment/travis/env.sh ./admin/tools/docker/deployment/localhost/env.sh
+
+install:
+  # Retrieve container with Qserv dependencies
+  - docker pull qserv/qserv:dev
 
 script:
   - ./admin/tools/docker/3_build-git-image.sh -L -T travis "$PWD"

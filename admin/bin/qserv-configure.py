@@ -46,6 +46,7 @@ import argparse
 import ConfigParser
 import logging
 import os
+import re
 import shutil
 from subprocess import check_output
 import sys
@@ -76,8 +77,11 @@ class Configurator(object):
 
         qserv_version = check_output(["qserv-version.sh"])
         qserv_version = qserv_version.strip(' \t\n\r')
+        valid_dir_name = re.sub('[^\w_.-]', '_', qserv_version)
         default_qserv_run_dir = os.path.join(
-            os.path.expanduser("~"), "qserv-run", qserv_version)
+            os.path.expanduser("~"), "qserv-run", valid_dir_name)
+
+        self._templater = configure.Templater(qserv_version)
 
         parser = argparse.ArgumentParser(
             description="Qserv services configuration tool.",
@@ -178,7 +182,6 @@ class Configurator(object):
         elif self.args.step_list is None:
             self.args.step_list = configure.CONFIGURATION_STEPS
 
-
         qserv_dir = os.path.abspath(
             os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
@@ -210,7 +213,7 @@ class Configurator(object):
         cfg_file = os.path.join(
             self.args.qserv_run_dir, "etc", filename
         )
-        configure.apply_tpl_once(
+        self._templater.applyOnce(
             template_file,
             cfg_file
         )
@@ -289,7 +292,8 @@ class Configurator(object):
             if os.path.exists(self.args.qserv_run_dir):
 
                 if self.args.force or configure.user_yes_no_query(
-                                "WARNING : Do you want to erase all configuration data in {0} ?".format(self.args.qserv_run_dir)
+                                "WARNING : Do you want to erase all configuration data "
+                                "in {0}?".format(self.args.qserv_run_dir)
                 ):
                     shutil.rmtree(self.args.qserv_run_dir)
                 else:
@@ -304,8 +308,7 @@ class Configurator(object):
                 'QSERV_DATA_DIR': self._qserv_data_dir
             }
             _LOG.info("Store data in: %s" % self._qserv_data_dir)
-            configure.apply_tpl_once(
-                in_meta_config_file, self._meta_config_file, params_dict)
+            self._templater.applyOnce(in_meta_config_file, self._meta_config_file, params_dict)
 
         ###################################
         #
@@ -354,7 +357,7 @@ class Configurator(object):
                 # shutil.copytree(in_template_config_dir, out_template_config_dir)
 
                 dest_root = os.path.join(qserv_run_dir)
-                configure.apply_tpl_all( self._template_root, dest_root)
+                self._templater.applyAll(self._template_root, dest_root)
 
             component_cfg_steps = configure.intersect(
                 self.args.step_list, configure.COMPONENTS)
@@ -394,8 +397,8 @@ class Configurator(object):
 if __name__ == '__main__':
     try:
         configurator = Configurator()
-        sys.exit(configurator.run())
+        retcode = configurator.run()
+        sys.exit(retcode)
     except Exception as exc:
         _LOG.critical('Exception occured: %s', exc, exc_info=True)
         sys.exit(1)
-
