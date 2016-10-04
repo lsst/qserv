@@ -46,8 +46,6 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "global/constants.h"
-#include "sql/SqlConnection.h"
-#include "sql/SqlErrorObject.h"
 #include "sql/SqlResults.h"
 #include "wbase/Base.h"
 #include "wdb/QuerySql.h"
@@ -156,221 +154,190 @@ IntVector const& ChunkResource::getSubChunkIds() const {
     return _info->subChunkIds;
 }
 
-struct ScTable {
-    ScTable(std::string const& db_, int chunkId_,
-            std::string const& table_, int subChunkId_)
-        : db(db_), chunkId(chunkId_), table(table_), subChunkId(subChunkId_) {
-    }
 
-    std::string db;
-    int chunkId;
-    std::string table;
-    int subChunkId;
-};
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
     return os << SUBCHUNKDB_PREFIX << st.db << "_" << st.chunkId << "."
               << st.table << "_" << st.subChunkId;
 }
-typedef std::vector<ScTable> ScTableVector;
 
-class Backend {
-public:
-    virtual ~Backend() {
-        _memLockRelease();
-    }
-    typedef std::shared_ptr<Backend> Ptr;
-    bool load(ScTableVector const& v, sql::SqlErrorObject& err) {
-        using namespace lsst::qserv::wbase;
-        if (_isFake) {
-            std::cout << "Pretending to load:";
-            std::copy(v.begin(), v.end(),
-                      std::ostream_iterator<ScTable>(std::cout, ","));
-            std::cout << std::endl;
-        } else {
-            memLockRequireOwnership();
-            for(ScTableVector::const_iterator i=v.begin(), e=v.end();
-                i != e; ++i) {
-                std::string const* createScript = nullptr;
-                if (i->chunkId == DUMMY_CHUNK) {
-                    createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
-                } else {
-                    createScript = &CREATE_SUBCHUNK_SCRIPT;
-                }
-                std::string create =
-                    (boost::format(*createScript)
-                     % i->db % i->table % SUB_CHUNK_COLUMN
-                     % i->chunkId % i->subChunkId).str();
-                if (!_sqlConn.runQuery(create, err)) {
-                    _discard(v.begin(), i);
-                    return false;
-                }
+
+bool Backend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
+    using namespace lsst::qserv::wbase;
+    if (_isFake) {
+        std::cout << "Pretending to load:";
+        std::copy(v.begin(), v.end(),
+                  std::ostream_iterator<ScTable>(std::cout, ","));
+        std::cout << std::endl;
+        for (auto& scTbl : v) {
+            std::string key = makeFakeKey(scTbl);
+            fakeSet.insert(key);
+        }
+    } else {
+        memLockRequireOwnership();
+        for(ScTableVector::const_iterator i=v.begin(), e=v.end();
+            i != e; ++i) {
+            std::string const* createScript = nullptr;
+            if (i->chunkId == DUMMY_CHUNK) {
+                createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
+            } else {
+                createScript = &CREATE_SUBCHUNK_SCRIPT;
             }
-        }
-        return true;
-    }
-
-    void discard(ScTableVector const& v) {
-        _discard(v.begin(), v.end());
-    }
-
-    enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
-
-    void memLockRequireOwnership() {
-        if (!_isFake && _memLockStatus() != LOCKED_OURS) {
-            _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
-        }
-    }
-
-    static std::shared_ptr<Backend>
-    newInstance(mysql::MySqlConfig const& mc) {
-        return std::shared_ptr<Backend>(new Backend(mc));
-    }
-    static std::shared_ptr<Backend>
-    newFakeInstance() {
-        return std::shared_ptr<Backend>(new Backend('f'));
-    }
-
-private:
-    /// Construct a fake instance
-    Backend(char)
-        : _isFake(true), _lockConflict(false), _uid(getpid()) {}
-    Backend(mysql::MySqlConfig const& mc)
-        : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
-        _memLockAcquire();
-    }
-
-    void _discard(ScTableVector::const_iterator begin,
-                  ScTableVector::const_iterator end) {
-        if (_isFake) {
-            std::cout << "Pretending to discard:";
-            std::copy(begin, end, std::ostream_iterator<ScTable>(std::cout, ","));
-            std::cout << std::endl;
-        } else {
-            memLockRequireOwnership();
-            for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
-                std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
-                     % i->db % i->table  % i->chunkId % i->subChunkId).str();
-                sql::SqlErrorObject err;
-                if (!_sqlConn.runQuery(discard, err)) {
-                    throw err;
-                }
+            std::string create =
+                (boost::format(*createScript)
+                 % i->db % i->table % SUB_CHUNK_COLUMN
+                 % i->chunkId % i->subChunkId).str();
+            if (!_sqlConn.runQuery(create, err)) {
+                _discard(v.begin(), i);
+                return false;
             }
         }
     }
+    return true;
+}
 
-    /// Run the 'query'. If it fails, terminate the program.
-    void _execLockSql(std::string const& query) {
-        LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
-        sql::SqlErrorObject err;
-        if (!_sqlConn.runQuery(query, err)) {
-            _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
+
+void Backend::discard(ScTableVector const& v) {
+    if (_isFake) {
+        for(auto const& scTbl : v) {
+            fakeSet.erase(makeFakeKey(scTbl));
         }
     }
+    _discard(v.begin(), v.end());
+}
 
-    /// Return the status of the lock on the in memory tables.
-    LockStatus _memLockStatus() {
-        std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
-        sql::SqlResults results;
-        sql::SqlErrorObject err;
-        if (!_sqlConn.runQuery(sql, results, err)) {
-            // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
-            // or we are about to try to lock. Failure to lock will cause the program to exit.
-            LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
-            return UNLOCKED;
+
+void Backend::memLockRequireOwnership() {
+    if (!_isFake && _memLockStatus() != LOCKED_OURS) {
+        _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
+    }
+}
+
+
+void Backend::_discard(ScTableVector::const_iterator begin,
+              ScTableVector::const_iterator end) {
+    if (_isFake) {
+        std::cout << "Pretending to discard:";
+        std::copy(begin, end, std::ostream_iterator<ScTable>(std::cout, ","));
+        std::cout << std::endl;
+    } else {
+        memLockRequireOwnership();
+        for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
+            std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
+                 % i->db % i->table  % i->chunkId % i->subChunkId).str();
+            sql::SqlErrorObject err;
+            if (!_sqlConn.runQuery(discard, err)) {
+                throw err;
+            }
         }
-        std::string uidStr;
-        if (!results.extractFirstValue(uidStr, err)) {
-            LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
-            return LOCKED_OTHER;
-        }
-        int uid = atoi(uidStr.c_str());
-        if (uid != _uid) {
-            LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
-                 << _uid << " got " << uid << " err=" << err.printErrMsg());
-            return LOCKED_OTHER;
-        }
-        return LOCKED_OURS;
+    }
+}
+
+/// Run the 'query'. If it fails, terminate the program.
+void Backend::_execLockSql(std::string const& query) {
+    LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
+    sql::SqlErrorObject err;
+    if (!_sqlConn.runQuery(query, err)) {
+        _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
+    }
+}
+
+/// Return the status of the lock on the in memory tables.
+Backend::LockStatus Backend::_memLockStatus() {
+    std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
+    sql::SqlResults results;
+    sql::SqlErrorObject err;
+    if (!_sqlConn.runQuery(sql, results, err)) {
+        // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
+        // or we are about to try to lock. Failure to lock will cause the program to exit.
+        LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
+        return UNLOCKED;
+    }
+    std::string uidStr;
+    if (!results.extractFirstValue(uidStr, err)) {
+        LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
+        return LOCKED_OTHER;
+    }
+    int uid = atoi(uidStr.c_str());
+    if (uid != _uid) {
+        LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
+             << _uid << " got " << uid << " err=" << err.printErrMsg());
+        return LOCKED_OTHER;
+    }
+    return LOCKED_OURS;
+}
+
+/// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
+// This must be run before any other operations on in memory tables.
+void Backend::_memLockAcquire() {
+    _lockDb = MEMLOCKDB;
+    _lockTbl = MEMLOCKTBL;
+    _lockDbTbl = _lockDb + "." + _lockTbl;
+    LockStatus mls = _memLockStatus();
+    if (mls != UNLOCKED) {
+        LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
     }
 
-    /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
-    // This must be run before any other operations on in memory tables.
-    void _memLockAcquire() {
-        _lockDb = MEMLOCKDB;
-        _lockTbl = MEMLOCKTBL;
-        _lockDbTbl = _lockDb + "." + _lockTbl;
-        LockStatus mls = _memLockStatus();
-        if (mls != UNLOCKED) {
-            LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
-        }
+    // Lock the memory tables.
+    std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
+    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid INT ) ENGINE = MEMORY;";
+    _execLockSql(sql);
+    // The following 2 lines will cause the new worker to always take the lock.
+    sql = "TRUNCATE TABLE " + _lockDbTbl;
+    _execLockSql(sql);
+    std::ostringstream insert;
+    insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, " << _uid << " )";
+    _execLockSql(insert.str());
 
-        // Lock the memory tables.
-        std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
-        sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid INT ) ENGINE = MEMORY;";
+    // Delete any old in memory databases. They could be empty or otherwise wrong.
+    // Empty tables would prevent new tables from being created.
+    std::string subChunkPrefix = SUBCHUNKDB_PREFIX;
+    sql = "SHOW DATABASES LIKE '" + subChunkPrefix + "%'";
+    sql::SqlResults results;
+    sql::SqlErrorObject err;
+    if (!_sqlConn.runQuery(sql, results, err)) {
+        _exitDueToConflict("Memory database query failed, exiting. " + sql + " err=" + err.printErrMsg());
+    }
+    std::vector<std::string> databases;
+    results.extractFirstColumn(databases, err);
+    for (auto iter=databases.begin(), end=databases.end(); iter != end;) {
+        // Delete in blocks of 50 to save time.
+        std::string dropDb = "";
+        int count = 0;
+        while (iter != end && count < 50) {
+            std::string db = *iter;
+            ++iter;
+            // Check that the name is actually a match to subChunkPrefix and not a wild card match.
+            if (db.compare(0, subChunkPrefix.length(), subChunkPrefix)==0 ) {
+                dropDb += "DROP DATABASE " + db + ";";
+                ++count;
+            }
+        }
+        if (count > 0) {
+            _execLockSql(dropDb);
+        }
+    }
+}
+
+/// Delete the memory lock database and everything in it.
+void Backend::_memLockRelease() {
+    LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
+    if (!_isFake && !_lockConflict) {
+        LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
+        std::string sql = "DROP DATABASE " + _lockDb + ";";
         _execLockSql(sql);
-        // The following 2 lines will cause the new worker to always take the lock.
-        sql = "TRUNCATE TABLE " + _lockDbTbl;
-        _execLockSql(sql);
-        std::ostringstream insert;
-        insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, " << _uid << " )";
-        _execLockSql(insert.str());
-
-        // Delete any old in memory databases. They could be empty or otherwise wrong.
-        // Empty tables would prevent new tables from being created.
-        std::string subChunkPrefix = SUBCHUNKDB_PREFIX;
-        sql = "SHOW DATABASES LIKE '" + subChunkPrefix + "%'";
-        sql::SqlResults results;
-        sql::SqlErrorObject err;
-        if (!_sqlConn.runQuery(sql, results, err)) {
-            _exitDueToConflict("Memory database query failed, exiting. " + sql + " err=" + err.printErrMsg());
-        }
-        std::vector<std::string> databases;
-        results.extractFirstColumn(databases, err);
-        for (auto iter=databases.begin(), end=databases.end(); iter != end;) {
-            // Delete in blocks of 50 to save time.
-            std::string dropDb = "";
-            int count = 0;
-            while (iter != end && count < 50) {
-                std::string db = *iter;
-                ++iter;
-                // Check that the name is actually a match to subChunkPrefix and not a wild card match.
-                if (db.compare(0, subChunkPrefix.length(), subChunkPrefix)==0 ) {
-                    dropDb += "DROP DATABASE " + db + ";";
-                    ++count;
-                }
-            }
-            if (count > 0) {
-                _execLockSql(dropDb);
-            }
-        }
     }
+}
 
-    /// Delete the memory lock database and everything in it.
-    void _memLockRelease() {
-        LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
-        if (!_isFake && !_lockConflict) {
-            LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
-            std::string sql = "DROP DATABASE " + _lockDb + ";";
-            _execLockSql(sql);
-        }
-    }
+/// Exit the program immediately to reduce minimize possible problems.
+void Backend::_exitDueToConflict(const std::string& msg) {
+    _lockConflict = true;
+    LOGS(_log, LOG_LVL_ERROR, msg);
+    exit(EXIT_FAILURE);
+}
 
-    /// Exit the program immediately to reduce minimize possible problems.
-    void _exitDueToConflict(const std::string& msg) {
-        _lockConflict = true;
-        LOGS(_log, LOG_LVL_ERROR, msg);
-        exit(EXIT_FAILURE);
-    }
 
-    bool _isFake;
-    sql::SqlConnection _sqlConn;
 
-    // Memory lock table members.
-    bool _lockConflict;
-    std::string _lockDb;
-    std::string _lockTbl;
-    std::string _lockDbTbl;
-    int _uid;
-};
+
 
 std::ostream& operator<<(std::ostream& os, const Backend::LockStatus& ls) {
     switch (ls) {
@@ -571,6 +538,8 @@ public:
         ChunkEntry& ce =  *(it->second.get());
         return ce.getRefCount();
     }
+
+    Backend::Ptr getBackend() const override { return _backend; }
 
 private:
     Impl(mysql::MySqlConfig const& c) : _backend(Backend::newInstance(c)) {}

@@ -45,6 +45,8 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
+#include "sql/SqlConnection.h"
+#include "sql/SqlErrorObject.h"
 
 // Forward declarations
 namespace lsst {
@@ -90,6 +92,98 @@ private:
     std::unique_ptr<Info> _info;
 };
 
+
+struct ScTable {
+    ScTable(std::string const& db_, int chunkId_,
+            std::string const& table_, int subChunkId_)
+        : db(db_), chunkId(chunkId_), table(table_), subChunkId(subChunkId_) {
+    }
+
+    std::string db;
+    int chunkId;
+    std::string table;
+    int subChunkId;
+};
+
+
+typedef std::vector<ScTable> ScTableVector;
+
+
+/// This class maintains a connection to the database for making temporary in memory tables
+/// for subchunks.
+/// It is important at startup that any tables from a previous run are deleted. This happens
+/// in the Backend constructor call to Backend::_memLockAcquire(). The reason it is so important
+/// is that the in memory tables have their schema written to disk but no data, so they are
+/// just a bunch of empty tables when the program starts up.
+class Backend {
+public:
+    virtual ~Backend() {
+        _memLockRelease();
+    }
+    typedef std::shared_ptr<Backend> Ptr;
+    bool load(ScTableVector const& v, sql::SqlErrorObject& err);
+
+    void discard(ScTableVector const& v);
+
+    enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
+
+    void memLockRequireOwnership();
+
+    static std::shared_ptr<Backend> newInstance(mysql::MySqlConfig const& mc) {
+        return std::shared_ptr<Backend>(new Backend(mc));
+    }
+    static std::shared_ptr<Backend> newFakeInstance() {
+        return std::shared_ptr<Backend>(new Backend('f'));
+    }
+
+    /// For unit tests only.
+    static std::string makeFakeKey(ScTable const& sctbl) {
+        std::string str = sctbl.db + ":" + std::to_string(sctbl.chunkId) + ":"
+                + sctbl.table + ":" + std::to_string(sctbl.subChunkId);
+        return str;
+    }
+    std::set<std::string> fakeSet; ///< For unit tests only.
+
+
+private:
+    Backend(mysql::MySqlConfig const& mc)
+        : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
+        _memLockAcquire();
+    }
+
+    /// Construct a fake instance
+    Backend(char) : _isFake(true), _lockConflict(false), _uid(getpid()) {}
+
+    void _discard(ScTableVector::const_iterator begin,
+                  ScTableVector::const_iterator end);
+
+    /// Run the 'query'. If it fails, terminate the program.
+    void _execLockSql(std::string const& query);
+
+    /// Return the status of the lock on the in memory tables.
+    LockStatus _memLockStatus();
+
+    /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
+    // This must be run before any other operations on in memory tables.
+    void _memLockAcquire();
+
+    /// Delete the memory lock database and everything in it.
+    void _memLockRelease();
+    /// Exit the program immediately to reduce minimize possible problems.
+    void _exitDueToConflict(const std::string& msg);
+
+    bool _isFake;
+    sql::SqlConnection _sqlConn;
+
+    // Memory lock table members.
+    bool _lockConflict;
+    std::string _lockDb;
+    std::string _lockTbl;
+    std::string _lockDbTbl;
+    int _uid;
+};
+
+
 /// ChunkResourceMgr is a lightweight manager for holding reservations on
 /// subchunks.
 class ChunkResourceMgr {
@@ -128,9 +222,12 @@ public:
 
     /// @return the reference count for the database and chunkId.
     virtual int getRefCount(std::string const& db, int chunkId) = 0;
+
+    virtual Backend::Ptr getBackend() const = 0;
 private:
     class Impl; // Nested to share friend access to ChunkResource
 };
+
 }}} // namespace lsst::qserv::wdb
 
 #endif // LSST_QSERV_WDB_CHUNKRESOURCE_H
