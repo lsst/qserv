@@ -65,19 +65,27 @@ BOOST_AUTO_TEST_CASE(Basic) {
 
     std::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
     {
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 0);
         ChunkResource cr12345(crm->acquire(thedb, 12345, tables));
         ChunkResource cr12345sub(crm->acquire(thedb, 12345, tables, subchunks));
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 2);
         {
             ChunkResource foo = cr12345;
+            BOOST_CHECK(crm->getRefCount(thedb, 12345) == 3);
             ChunkResource bar(cr12345sub);
+            BOOST_CHECK(crm->getRefCount(thedb, 12345) == 4);
         }
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 2);
         {
             ChunkResource foo = cr12345sub;
+            BOOST_CHECK(crm->getRefCount(thedb, 12345) == 3);
             ChunkResource bar(cr12345);
+            BOOST_CHECK(crm->getRefCount(thedb, 12345) == 4);
         }
         // now, these resources should be in acquired
     }
     // Now, these resources should be freed.
+    BOOST_CHECK(crm->getRefCount(thedb, 12345) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(TwoChunk) {
@@ -89,13 +97,27 @@ BOOST_AUTO_TEST_CASE(TwoChunk) {
     std::string tarray[] = {"hello","goodbye"};
     std::vector<std::string> tables(tarray, tarray+2);
     {
+        BOOST_CHECK(crm->getRefCount(thedb, 1) == 0);
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 0);
+
         ChunkResource cr12345(crm->acquire(thedb, 12345, tables));
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);
+
         ChunkResource cr12345sub(crm->acquire(thedb, 1, tables, subchunks));
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);
+        BOOST_CHECK(crm->getRefCount(thedb, 1) == 1);
+
         ChunkResource foo = cr12345sub;
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);
+        BOOST_CHECK(crm->getRefCount(thedb, 1) == 2);
+
         ChunkResource bar(cr12345sub);
+        BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);
+        BOOST_CHECK(crm->getRefCount(thedb, 1) == 3);
         // now, these resources should be in acquired
     }
     // Now, these resources should be freed.
+    BOOST_CHECK(crm->getRefCount(thedb, 12345) == 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

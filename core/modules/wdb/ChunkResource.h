@@ -95,6 +95,7 @@ private:
 class ChunkResourceMgr {
 public:
     using Ptr = std::shared_ptr<ChunkResourceMgr>;
+
     /// Factory
     static Ptr newMgr(mysql::MySqlConfig const& c);
     static Ptr newFakeMgr();
@@ -124,6 +125,9 @@ public:
     /// Acquire a reservation. Block until it is available if it is not
     /// already. Clients should not need to call this explicitly.
     virtual void acquireUnit(ChunkResource::Info const& i) = 0;
+
+    /// @return the reference count for the database and chunkId.
+    virtual int getRefCount(std::string const& db, int chunkId) = 0;
 private:
     class Impl; // Nested to share friend access to ChunkResource
 };

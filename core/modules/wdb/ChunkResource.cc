@@ -229,6 +229,7 @@ public:
     newFakeInstance() {
         return std::shared_ptr<Backend>(new Backend('f'));
     }
+
 private:
     /// Construct a fake instance
     Backend(char)
@@ -398,6 +399,18 @@ public:
 
     ChunkEntry(int chunkId) : _chunkId(chunkId), _refCount(0) {}
 
+    int getRefCount() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _refCount;
+    }
+
+    /// @return a copy of _tableMap
+    TableMap getTableMapCopy() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _tableMap;
+    }
+
+
     /// Acquire a resource, loading if needed
     void acquire(std::string const& db,
                  StringVector const& tables,
@@ -509,7 +522,7 @@ private:
     int _chunkId;
     int _refCount; ///< Number of known users
     TableMap _tableMap; ///< tables in use
-    std::mutex _mutex;
+    mutable std::mutex _mutex;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -533,35 +546,35 @@ public:
         return cr;
     }
 
-    virtual void release(ChunkResource::Info const& i) {
-        if (_isFake) {
-            std::cout << "Releasing: " << i << std::endl;
-        }
-        {
-            std::lock_guard<std::mutex> lock(_mapMutex);
-            Map& map = _getMap(i.db);
-            ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
-            ce.release(i.db, i.tables, i.subChunkIds, _backend);
-        }
+    void release(ChunkResource::Info const& i) override {
+        std::lock_guard<std::mutex> lock(_mapMutex);
+        Map& map = _getMap(i.db);
+        ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+        ce.release(i.db, i.tables, i.subChunkIds, _backend);
     }
-    virtual void acquireUnit(ChunkResource::Info const& i) {
-        if (_isFake) {
-            std::cout << "Acquiring: " << i << std::endl;
+
+    void acquireUnit(ChunkResource::Info const& i) override {
+        std::lock_guard<std::mutex> lock(_mapMutex);
+        Map& map = _getMap(i.db); // Select db
+        ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+        // Actually acquire
+        ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
+    }
+
+    int getRefCount(std::string const& db, int chunkId) {
+        std::lock_guard<std::mutex> lock(_mapMutex);
+        Map& map = _getMap(db); // Select db
+        Map::iterator it = map.find(chunkId); // Select chunkId
+        if (it == map.end()) {
+            return 0;
         }
-        {
-            std::lock_guard<std::mutex> lock(_mapMutex);
-            Map& map = _getMap(i.db); // Select db
-            ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
-            // Actually acquire
-            ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
-        }
+        ChunkEntry& ce =  *(it->second.get());
+        return ce.getRefCount();
     }
 
 private:
-    Impl(mysql::MySqlConfig const& c)
-        : _isFake(false), _backend(Backend::newInstance(c)) {
-    }
-    Impl() : _isFake(true), _backend(Backend::newFakeInstance()) {}
+    Impl(mysql::MySqlConfig const& c) : _backend(Backend::newInstance(c)) {}
+    Impl() : _backend(Backend::newFakeInstance()) {}
 
     /// precondition: _mapMutex is held (locked by the caller)
     /// Get the ChunkEntry map for a db, creating if necessary
@@ -590,7 +603,6 @@ private:
     }
 
     friend class ChunkResourceMgr;
-    bool _isFake; // Fake versions don't issue any sql queries.
     DbMap _dbMap;
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
