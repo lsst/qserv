@@ -22,10 +22,10 @@ then
     echo '${CONTAINER_NAME} container is running'
 else
     echo '${CONTAINER_NAME} container is stopped or non-existent'
-fi" "$MASTER" $WORKERS
+fi" "$SSH_MASTER" $SSH_WORKERS
 
 echo
 echo "Check that Qserv services are running on all these containers"
 echo "============================================================="
 echo
-shmux -Bm -S all -c "docker exec $CONTAINER_NAME /qserv/run/bin/qserv-status.sh" "$MASTER" $WORKERS
+shmux -Bm -S all -c "docker exec $CONTAINER_NAME /qserv/run/bin/qserv-status.sh" "$SSH_MASTER" $SSH_WORKERS

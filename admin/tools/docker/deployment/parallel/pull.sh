@@ -10,5 +10,5 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 . "${DIR}/env.sh"
 
-ssh "$MASTER" "docker pull ${MASTER_IMAGE}"
-shmux -B -S all -c "docker pull ${WORKER_IMAGE}" $WORKERS
+ssh "$SSH_MASTER" "docker pull ${MASTER_IMAGE}"
+shmux -B -S all -c "docker pull ${WORKER_IMAGE}" $SSH_WORKERS
