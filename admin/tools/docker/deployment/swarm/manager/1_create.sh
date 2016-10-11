@@ -15,4 +15,5 @@ HOST_IP=$(hostname --ip-address)
 docker swarm init --advertise-addr "$HOST_IP" --listen-addr "$HOST_IP"
 
 # Create swarm network to enable communication between containers
-docker network create --driver overlay "$QSERV_NETWORK"
+MTU=$(cat /sys/class/net/eth0/mtu)
+docker network create  -o "com.docker.network.driver.mtu"="$MTU" --driver overlay "$QSERV_NETWORK"

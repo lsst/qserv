@@ -104,9 +104,9 @@ if [ -n "$SWARM" ]; then
     # Start Qserv
 	ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/3_start-qserv.sh"
 
-    echo "Wait for Qserv to start"
     for qserv_node in $MASTER $WORKERS
     do
+		echo "Wait for Qserv to start on $qserv_node"
 		scp -F "$SSH_CFG" "$SWARM_DIR/wait.sh" "$qserv_node":/home/qserv
 		ssh -F "$SSH_CFG" "$qserv_node" "/home/qserv/wait.sh"
     done
@@ -139,6 +139,7 @@ elif [ -n "$SHMUX" ]; then
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     # Run multinode tests
+    echo "Launch multinode tests"
     ./run-multinode-tests.sh
 
     if [ -f "$SSH_CONFIG_BACKUP" ]; then
