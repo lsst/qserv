@@ -40,10 +40,10 @@
 namespace lsst {
 namespace qserv {
 namespace wdb {
+    class SQLBackend;
     class ChunkResourceMgr;
     class QueryRunner;
-}
-}}
+}}}
 
 namespace lsst {
 namespace qserv {
@@ -79,6 +79,7 @@ public:
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
 private:
+    std::shared_ptr<wdb::SQLBackend> _backend;
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;

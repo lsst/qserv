@@ -103,7 +103,9 @@ BOOST_AUTO_TEST_CASE(Simple) {
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
     std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
-    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, ChunkResourceMgr::newFakeMgr(), newMySqlConfig())};
+    auto backend = lsst::qserv::wdb::SQLBackend::newFakeInstance();
+    std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
+    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
     BOOST_CHECK(a->runQuery());
 }
 
@@ -112,7 +114,9 @@ BOOST_AUTO_TEST_CASE(Output) {
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
     std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
-    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, ChunkResourceMgr::newFakeMgr(), newMySqlConfig())};
+    auto backend = lsst::qserv::wdb::SQLBackend::newFakeInstance();
+    std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
+    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
     BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());

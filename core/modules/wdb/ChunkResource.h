@@ -109,18 +109,25 @@ struct ScTable {
 typedef std::vector<ScTable> ScTableVector;
 
 
-/// This class maintains a connection to the database for making temporary in memory tables
+/// This class maintains a connection to the database for making temporary in-memory tables
 /// for subchunks.
 /// It is important at startup that any tables from a previous run are deleted. This happens
-/// in the Backend constructor call to Backend::_memLockAcquire(). The reason it is so important
-/// is that the in memory tables have their schema written to disk but no data, so they are
+/// in the SQLBackend constructor call to SQLBackend::_memLockAcquire(). The reason it is so important
+/// is that the in-memory tables have their schema written to disk but no data, so they are
 /// just a bunch of empty tables when the program starts up.
-class Backend {
+class SQLBackend {
 public:
-    virtual ~Backend() {
+    using Ptr=std::shared_ptr<SQLBackend>;
+
+    SQLBackend(mysql::MySqlConfig const& mc)
+        : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
+        _memLockAcquire();
+    }
+
+    virtual ~SQLBackend() {
         _memLockRelease();
     }
-    typedef std::shared_ptr<Backend> Ptr;
+
     bool load(ScTableVector const& v, sql::SqlErrorObject& err);
 
     void discard(ScTableVector const& v);
@@ -129,11 +136,8 @@ public:
 
     void memLockRequireOwnership();
 
-    static std::shared_ptr<Backend> newInstance(mysql::MySqlConfig const& mc) {
-        return std::shared_ptr<Backend>(new Backend(mc));
-    }
-    static std::shared_ptr<Backend> newFakeInstance() {
-        return std::shared_ptr<Backend>(new Backend('f'));
+    static std::shared_ptr<SQLBackend> newFakeInstance() {
+        return std::shared_ptr<SQLBackend>(new SQLBackend('f'));
     }
 
     /// For unit tests only.
@@ -144,15 +148,9 @@ public:
     }
     std::set<std::string> fakeSet; ///< For unit tests only.
 
-
 private:
-    Backend(mysql::MySqlConfig const& mc)
-        : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
-        _memLockAcquire();
-    }
-
     /// Construct a fake instance
-    Backend(char) : _isFake(true), _lockConflict(false), _uid(getpid()) {}
+    SQLBackend(char) : _isFake(true), _lockConflict(false), _uid(getpid()) {}
 
     void _discard(ScTableVector::const_iterator begin,
                   ScTableVector::const_iterator end);
@@ -191,8 +189,7 @@ public:
     using Ptr = std::shared_ptr<ChunkResourceMgr>;
 
     /// Factory
-    static Ptr newMgr(mysql::MySqlConfig const& c);
-    static Ptr newFakeMgr();
+    static Ptr newMgr(SQLBackend::Ptr const& backend);
     virtual ~ChunkResourceMgr() {}
 
     /// Reserve a chunk. Currently, this does not result in any explicit chunk
@@ -223,7 +220,6 @@ public:
     /// @return the reference count for the database and chunkId.
     virtual int getRefCount(std::string const& db, int chunkId) = 0;
 
-    virtual Backend::Ptr getBackend() const = 0;
 private:
     class Impl; // Nested to share friend access to ChunkResource
 };

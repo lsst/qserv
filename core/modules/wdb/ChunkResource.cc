@@ -161,7 +161,7 @@ std::ostream& operator<<(std::ostream& os, ScTable const& st) {
 }
 
 
-bool Backend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
+bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     using namespace lsst::qserv::wbase;
     if (_isFake) {
         std::cout << "Pretending to load:";
@@ -196,7 +196,7 @@ bool Backend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
 }
 
 
-void Backend::discard(ScTableVector const& v) {
+void SQLBackend::discard(ScTableVector const& v) {
     if (_isFake) {
         for(auto const& scTbl : v) {
             fakeSet.erase(makeFakeKey(scTbl));
@@ -206,14 +206,14 @@ void Backend::discard(ScTableVector const& v) {
 }
 
 
-void Backend::memLockRequireOwnership() {
+void SQLBackend::memLockRequireOwnership() {
     if (!_isFake && _memLockStatus() != LOCKED_OURS) {
         _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
     }
 }
 
 
-void Backend::_discard(ScTableVector::const_iterator begin,
+void SQLBackend::_discard(ScTableVector::const_iterator begin,
               ScTableVector::const_iterator end) {
     if (_isFake) {
         std::cout << "Pretending to discard:";
@@ -233,7 +233,7 @@ void Backend::_discard(ScTableVector::const_iterator begin,
 }
 
 /// Run the 'query'. If it fails, terminate the program.
-void Backend::_execLockSql(std::string const& query) {
+void SQLBackend::_execLockSql(std::string const& query) {
     LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
     sql::SqlErrorObject err;
     if (!_sqlConn.runQuery(query, err)) {
@@ -242,7 +242,7 @@ void Backend::_execLockSql(std::string const& query) {
 }
 
 /// Return the status of the lock on the in memory tables.
-Backend::LockStatus Backend::_memLockStatus() {
+SQLBackend::LockStatus SQLBackend::_memLockStatus() {
     std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
     sql::SqlResults results;
     sql::SqlErrorObject err;
@@ -268,7 +268,7 @@ Backend::LockStatus Backend::_memLockStatus() {
 
 /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
 // This must be run before any other operations on in memory tables.
-void Backend::_memLockAcquire() {
+void SQLBackend::_memLockAcquire() {
     _lockDb = MEMLOCKDB;
     _lockTbl = MEMLOCKTBL;
     _lockDbTbl = _lockDb + "." + _lockTbl;
@@ -319,7 +319,7 @@ void Backend::_memLockAcquire() {
 }
 
 /// Delete the memory lock database and everything in it.
-void Backend::_memLockRelease() {
+void SQLBackend::_memLockRelease() {
     LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
     if (!_isFake && !_lockConflict) {
         LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
@@ -329,7 +329,7 @@ void Backend::_memLockRelease() {
 }
 
 /// Exit the program immediately to reduce minimize possible problems.
-void Backend::_exitDueToConflict(const std::string& msg) {
+void SQLBackend::_exitDueToConflict(const std::string& msg) {
     _lockConflict = true;
     LOGS(_log, LOG_LVL_ERROR, msg);
     exit(EXIT_FAILURE);
@@ -339,15 +339,15 @@ void Backend::_exitDueToConflict(const std::string& msg) {
 
 
 
-std::ostream& operator<<(std::ostream& os, const Backend::LockStatus& ls) {
+std::ostream& operator<<(std::ostream& os, const SQLBackend::LockStatus& ls) {
     switch (ls) {
-    case Backend::UNLOCKED:
+    case SQLBackend::UNLOCKED:
         os << "UNLOCKED";
         break;
-    case Backend::LOCKED_OTHER:
+    case SQLBackend::LOCKED_OTHER:
         os << "LOCKED_OTHER";
         break;
-    case Backend::LOCKED_OURS:
+    case SQLBackend::LOCKED_OURS:
         os << "LOCKED_OURS";
         break;
     }
@@ -381,7 +381,7 @@ public:
     /// Acquire a resource, loading if needed
     void acquire(std::string const& db,
                  StringVector const& tables,
-                 IntVector const& sc, Backend::Ptr backend) {
+                 IntVector const& sc, SQLBackend::Ptr backend) {
         ScTableVector needed;
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
@@ -417,7 +417,7 @@ public:
     /// Release a resource, flushing if no more users need it.
     void release(std::string const& db,
                  StringVector const& tables,
-                 IntVector const& sc, Backend::Ptr backend) {
+                 IntVector const& sc, SQLBackend::Ptr backend) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             backend->memLockRequireOwnership();
@@ -441,7 +441,7 @@ public:
     }
 
     /// Flush resources no longer needed by anybody
-    void flush(std::string const& db, Backend::Ptr backend) {
+    void flush(std::string const& db, SQLBackend::Ptr backend) {
         ScTableVector discardable;
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
@@ -485,7 +485,7 @@ private:
         }
     }
 
-    std::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
+    std::shared_ptr<SQLBackend> _backend; ///< Delegate stage/unstage
     int _chunkId;
     int _refCount; ///< Number of known users
     TableMap _tableMap; ///< tables in use
@@ -539,11 +539,8 @@ public:
         return ce.getRefCount();
     }
 
-    Backend::Ptr getBackend() const override { return _backend; }
-
 private:
-    Impl(mysql::MySqlConfig const& c) : _backend(Backend::newInstance(c)) {}
-    Impl() : _backend(Backend::newFakeInstance()) {}
+    Impl(std::shared_ptr<SQLBackend> const& backend) : _backend(backend) {}
 
     /// precondition: _mapMutex is held (locked by the caller)
     /// Get the ChunkEntry map for a db, creating if necessary
@@ -575,19 +572,16 @@ private:
     DbMap _dbMap;
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
-    std::shared_ptr<Backend> _backend;
+    std::shared_ptr<SQLBackend> _backend;
     std::mutex _mapMutex; // Do not alter map without this mutex
 };
 
 ////////////////////////////////////////////////////////////////////////
 // ChunkResourceMgr
 ////////////////////////////////////////////////////////////////////////
-ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
-    return std::shared_ptr<ChunkResourceMgr>(new Impl(c));
-}
 
-ChunkResourceMgr::Ptr ChunkResourceMgr::newFakeMgr() {
-    return std::shared_ptr<ChunkResourceMgr>(new Impl());
+ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(SQLBackend::Ptr const& backend) {
+    return std::shared_ptr<ChunkResourceMgr>(new Impl(backend));
 }
 
 }}} // namespace lsst::qserv::wdb
