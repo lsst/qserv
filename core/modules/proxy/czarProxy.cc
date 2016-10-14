@@ -113,9 +113,10 @@ killQuery(std::string const& query, std::string const& clientId) {
 void log(std::string const& loggername, std::string const& level,
          std::string const& filename, std::string const& funcname,
          unsigned int lineno, std::string const& message) {
-    lsst::log::Log::logMsg(lsst::log::Log::getLogger(loggername), log4cxx::Level::toLevel(level),
-                           log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
-                           message);
+    auto logger = lsst::log::Log::getLogger(loggername);
+    logger.logMsg(log4cxx::Level::toLevel(level),
+                  log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
+                  message);
 }
 
 
