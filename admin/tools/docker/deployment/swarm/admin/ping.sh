@@ -1,16 +1,17 @@
 #!/bin/bash
 
-# Test Docker network is working,
-# indeed it might have erratic behavior
+# Test ping between Qserv containers
+
+# @author Fabrice Jammes SLAC/IN2P3
 
 set -e
 set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-. "$DIR/env-infrastructure.sh"
-
-SSH_CFG="$DIR/ssh_config"
+PARENT_DIR="$DIR/.."
+. "$PARENT_DIR/env-infrastructure.sh"
+SSH_CFG="$PARENT_DIR/ssh_config"
 
 for qserv_node in $MASTER $WORKERS 
 do

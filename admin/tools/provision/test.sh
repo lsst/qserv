@@ -75,44 +75,11 @@ fi
 
 if [ -n "$SWARM" ]; then
 	SWARM_DIR="$DIR/../docker/deployment/swarm"
-	SSH_CFG="$DIR/ssh_config"
-    echo "Launch integration tests using Swarm"
+	ln -f "$DIR/ssh_config" "$SWARM_DIR"
+	ln -f "$DIR/env-infrastructure.sh" "$SWARM_DIR"
+	SSH_CFG="$SWARM_DIR/ssh_config"
 
-    for node in "$MASTER" $WORKERS "$SWARM_NODE"
-    do
-        echo "Request $node to leave swarm cluster"
-        ssh -F "$SSH_CFG" "$node" "docker swarm leave --force; \
-			docker network rm qserv || true"
-    done
-
-	scp -F "$SSH_CFG" -r "$SWARM_DIR/manager" "$SWARM_NODE":/home/qserv
-    scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${SWARM_NODE}:/home/qserv/manager"
-    ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/1_create.sh"
-    JOIN_CMD="$(ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/2_print-join-cmd.sh")"
-
-    # Join swarm nodes:
-    #   - Qserv master has index 0
-    #   - QServ workers have indexes >= 1
-    for qserv_node in $MASTER $WORKERS
-    do
-        echo "Join $qserv_node to swarm cluster"
-		ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD"
-		#ssh -F "$SSH_CFG" "$qserv_node" "$JOIN_CMD \
-		#	--listen-addr \"\$(hostname --ip-address)\""
-    done
-
-    # Start Qserv
-	ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/manager/3_start-qserv.sh"
-
-    for qserv_node in $MASTER $WORKERS
-    do
-		echo "Wait for Qserv to start on $qserv_node"
-		scp -F "$SSH_CFG" "$SWARM_DIR/wait.sh" "$qserv_node":/home/qserv
-		ssh -F "$SSH_CFG" "$qserv_node" "/home/qserv/wait.sh"
-    done
-
-    echo "Launch multinode tests"
-	"$DIR"/test-swarm-run-multinode-tests.sh
+	"$SWARM_DIR"/setup-and-test.sh
 
 elif [ -n "$SHMUX" ]; then
 
@@ -134,8 +101,6 @@ elif [ -n "$SHMUX" ]; then
     # Update env.sh
     cp env.example.sh env.sh
     sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}%g\"/" env.sh
-    sed -i "s/MASTER_ID=1/MASTER_ID=0/" env.sh
-    sed -i "s/WORKER_FIRST_ID=2/WORKER_FIRST_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     # Run multinode tests

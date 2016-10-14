@@ -2,7 +2,7 @@
 # Allow to customize Docker container execution
 
 # VERSION can be a git ticket branch but with _ instead of /
-# example: u_fjammes_DM-4295
+# example: tickets_DM-7139, or dev
 VERSION=tickets_DM-7139
 
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Print command to join a worker node to swarm manager
-# Current script must be lunach on mananger and pinrted command
+# Current script must be launched on manager and printed command
 # must be launched on worker
 
 # @author  Fabrice Jammes, IN2P3
