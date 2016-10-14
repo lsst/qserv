@@ -61,6 +61,7 @@ using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
+using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 
 struct Fixture {
@@ -103,7 +104,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
     std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
-    auto backend = lsst::qserv::wdb::SQLBackend::newFakeInstance();
+    FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
     BOOST_CHECK(a->runQuery());
@@ -114,7 +115,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
     std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
-    auto backend = lsst::qserv::wdb::SQLBackend::newFakeInstance();
+    FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
     BOOST_CHECK(a->runQuery());

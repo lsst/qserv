@@ -33,6 +33,7 @@
   */
 
 // System headers
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <ostream>
@@ -120,7 +121,7 @@ public:
     using Ptr=std::shared_ptr<SQLBackend>;
 
     SQLBackend(mysql::MySqlConfig const& mc)
-        : _isFake(false), _sqlConn(mc), _lockConflict(false), _uid(getpid()) {
+        : _sqlConn(mc), _uid(getpid()) {
         _memLockAcquire();
     }
 
@@ -128,32 +129,21 @@ public:
         _memLockRelease();
     }
 
-    bool load(ScTableVector const& v, sql::SqlErrorObject& err);
+    virtual bool load(ScTableVector const& v, sql::SqlErrorObject& err);
 
-    void discard(ScTableVector const& v);
+    virtual void discard(ScTableVector const& v);
 
     enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
 
-    void memLockRequireOwnership();
+    virtual void memLockRequireOwnership();
 
-    static std::shared_ptr<SQLBackend> newFakeInstance() {
-        return std::shared_ptr<SQLBackend>(new SQLBackend('f'));
-    }
+protected:
+    SQLBackend() : _uid(getpid()) {};
 
-    /// For unit tests only.
-    static std::string makeFakeKey(ScTable const& sctbl) {
-        std::string str = sctbl.db + ":" + std::to_string(sctbl.chunkId) + ":"
-                + sctbl.table + ":" + std::to_string(sctbl.subChunkId);
-        return str;
-    }
-    std::set<std::string> fakeSet; ///< For unit tests only.
-
-private:
     /// Construct a fake instance
-    SQLBackend(char) : _isFake(true), _lockConflict(false), _uid(getpid()) {}
+    SQLBackend(char) : _uid(getpid()) {}
 
-    void _discard(ScTableVector::const_iterator begin,
-                  ScTableVector::const_iterator end);
+    virtual void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end);
 
     /// Run the 'query'. If it fails, terminate the program.
     void _execLockSql(std::string const& query);
@@ -170,16 +160,45 @@ private:
     /// Exit the program immediately to reduce minimize possible problems.
     void _exitDueToConflict(const std::string& msg);
 
-    bool _isFake;
     sql::SqlConnection _sqlConn;
 
     // Memory lock table members.
-    bool _lockConflict;
+    std::atomic<bool> _lockConflict{false};
+    std::atomic<bool> _lockAquired{false};
     std::string _lockDb;
     std::string _lockTbl;
     std::string _lockDbTbl;
     int _uid;
 };
+
+
+class FakeBackend : public SQLBackend {
+public:
+    using Ptr=std::shared_ptr<FakeBackend>;
+
+    FakeBackend() {}
+
+    virtual ~FakeBackend() {}
+
+    bool load(ScTableVector const& v, sql::SqlErrorObject& err) override;
+
+    void discard(ScTableVector const& v) override;
+
+    void memLockRequireOwnership() override {}; ///< Do nothing for fake version.
+
+    /// For unit tests only.
+    static std::string makeFakeKey(ScTable const& sctbl) {
+        std::string str = sctbl.db + ":" + std::to_string(sctbl.chunkId) + ":"
+                + sctbl.table + ":" + std::to_string(sctbl.subChunkId);
+        return str;
+    }
+    std::set<std::string> fakeSet; ///< For unit tests only.
+
+private:
+    void _discard(ScTableVector::const_iterator begin,
+                  ScTableVector::const_iterator end) override;
+};
+
 
 
 /// ChunkResourceMgr is a lightweight manager for holding reservations on

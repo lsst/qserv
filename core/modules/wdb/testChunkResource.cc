@@ -38,7 +38,7 @@
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::wdb::SQLBackend;
+using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 
@@ -64,7 +64,7 @@ BOOST_FIXTURE_TEST_SUITE(All, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
 
-    auto backend = SQLBackend::newFakeInstance();
+    auto backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     BOOST_CHECK(backend->fakeSet.empty());
     BOOST_CHECK(crm->getRefCount(thedb, 12345) == 0);
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(Basic) {
 }
 
 BOOST_AUTO_TEST_CASE(TwoChunk) {
-    auto backend = SQLBackend::newFakeInstance();
+    auto backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     int scarray[] = {11, 12, 13, 14, 15};
     std::vector<int> subchunks(scarray, scarray+5);
