@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,7 +33,6 @@
   */
 
 // System headers
-#include <atomic>
 #include <deque>
 #include <memory>
 #include <ostream>
@@ -46,15 +45,11 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
-#include "sql/SqlConnection.h"
-#include "sql/SqlErrorObject.h"
+#include "wdb/SQLBackend.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace mysql {
-    class MySqlConfig;
-}
 namespace proto {
     class TaskMsg_Fragment;
 }
@@ -94,115 +89,7 @@ private:
 };
 
 
-struct ScTable {
-    ScTable(std::string const& db_, int chunkId_,
-            std::string const& table_, int subChunkId_)
-        : db(db_), chunkId(chunkId_), table(table_), subChunkId(subChunkId_) {
-    }
-
-    std::string db;
-    int chunkId;
-    std::string table;
-    int subChunkId;
-};
-
-
-typedef std::vector<ScTable> ScTableVector;
-
-
-/// This class maintains a connection to the database for making temporary in-memory tables
-/// for subchunks.
-/// It is important at startup that any tables from a previous run are deleted. This happens
-/// in the SQLBackend constructor call to SQLBackend::_memLockAcquire(). The reason it is so important
-/// is that the in-memory tables have their schema written to disk but no data, so they are
-/// just a bunch of empty tables when the program starts up.
-class SQLBackend {
-public:
-    using Ptr=std::shared_ptr<SQLBackend>;
-
-    SQLBackend(mysql::MySqlConfig const& mc)
-        : _sqlConn(mc), _uid(getpid()) {
-        _memLockAcquire();
-    }
-
-    virtual ~SQLBackend() {
-        _memLockRelease();
-    }
-
-    virtual bool load(ScTableVector const& v, sql::SqlErrorObject& err);
-
-    virtual void discard(ScTableVector const& v);
-
-    enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
-
-    virtual void memLockRequireOwnership();
-
-protected:
-    SQLBackend() : _uid(getpid()) {};
-
-    /// Construct a fake instance
-    SQLBackend(char) : _uid(getpid()) {}
-
-    virtual void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end);
-
-    /// Run the 'query'. If it fails, terminate the program.
-    void _execLockSql(std::string const& query);
-
-    /// Return the status of the lock on the in memory tables.
-    LockStatus _memLockStatus();
-
-    /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
-    // This must be run before any other operations on in memory tables.
-    void _memLockAcquire();
-
-    /// Delete the memory lock database and everything in it.
-    void _memLockRelease();
-    /// Exit the program immediately to reduce minimize possible problems.
-    void _exitDueToConflict(const std::string& msg);
-
-    sql::SqlConnection _sqlConn;
-
-    // Memory lock table members.
-    std::atomic<bool> _lockConflict{false};
-    std::atomic<bool> _lockAquired{false};
-    std::string _lockDb;
-    std::string _lockTbl;
-    std::string _lockDbTbl;
-    int _uid;
-};
-
-
-class FakeBackend : public SQLBackend {
-public:
-    using Ptr=std::shared_ptr<FakeBackend>;
-
-    FakeBackend() {}
-
-    virtual ~FakeBackend() {}
-
-    bool load(ScTableVector const& v, sql::SqlErrorObject& err) override;
-
-    void discard(ScTableVector const& v) override;
-
-    void memLockRequireOwnership() override {}; ///< Do nothing for fake version.
-
-    /// For unit tests only.
-    static std::string makeFakeKey(ScTable const& sctbl) {
-        std::string str = sctbl.db + ":" + std::to_string(sctbl.chunkId) + ":"
-                + sctbl.table + ":" + std::to_string(sctbl.subChunkId);
-        return str;
-    }
-    std::set<std::string> fakeSet; ///< For unit tests only.
-
-private:
-    void _discard(ScTableVector::const_iterator begin,
-                  ScTableVector::const_iterator end) override;
-};
-
-
-
-/// ChunkResourceMgr is a lightweight manager for holding reservations on
-/// subchunks.
+/// ChunkResourceMgr is a lightweight manager for holding reservations on subchunks.
 class ChunkResourceMgr {
 public:
     using Ptr = std::shared_ptr<ChunkResourceMgr>;
