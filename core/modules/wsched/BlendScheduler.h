@@ -128,7 +128,7 @@ private:
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
-    ControlCommandQueue _commandQueue;
+    ControlCommandQueue _ctrlCmdQueue; ///< Needed for changing thread pool size.
 
     int _schedMaxThreads; ///< maximum number of threads that can run.
 

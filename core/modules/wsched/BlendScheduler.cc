@@ -127,7 +127,8 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (task == nullptr) {
         LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
-        _commandQueue.queCmd(cmd);
+        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+        _ctrlCmdQueue.queCmd(cmd);
         notify(true);
         return;
     }
@@ -251,7 +252,7 @@ bool BlendScheduler::_ready() {
         if (ready) break;
     }
     if (!ready) {
-        ready = _commandQueue.ready();
+        ready = _ctrlCmdQueue.ready();
     }
     if (changed) {
         LOGS(_log, LOG_LVL_DEBUG, getName() << "_ready() " << os.str());
@@ -280,7 +281,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
     }
     if (cmd == nullptr) {
-       cmd = _commandQueue.getCmd();
+       cmd = _ctrlCmdQueue.getCmd();
     }
     if (cmd != nullptr) {
         _infoChanged = true;
