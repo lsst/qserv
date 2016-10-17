@@ -34,7 +34,6 @@
 
 // System headers
 #include <cstddef>
-#include <iostream>
 #include <mutex>
 
 // Third-party headers
@@ -155,199 +154,15 @@ IntVector const& ChunkResource::getSubChunkIds() const {
 }
 
 
-std::ostream& operator<<(std::ostream& os, ScTable const& st) {
-    return os << SUBCHUNKDB_PREFIX << st.db << "_" << st.chunkId << "."
-              << st.table << "_" << st.subChunkId;
-}
-
-
-bool Backend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
-    using namespace lsst::qserv::wbase;
-    if (_isFake) {
-        std::cout << "Pretending to load:";
-        std::copy(v.begin(), v.end(),
-                  std::ostream_iterator<ScTable>(std::cout, ","));
-        std::cout << std::endl;
-        for (auto& scTbl : v) {
-            std::string key = makeFakeKey(scTbl);
-            fakeSet.insert(key);
-        }
-    } else {
-        memLockRequireOwnership();
-        for(ScTableVector::const_iterator i=v.begin(), e=v.end();
-            i != e; ++i) {
-            std::string const* createScript = nullptr;
-            if (i->chunkId == DUMMY_CHUNK) {
-                createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
-            } else {
-                createScript = &CREATE_SUBCHUNK_SCRIPT;
-            }
-            std::string create =
-                (boost::format(*createScript)
-                 % i->db % i->table % SUB_CHUNK_COLUMN
-                 % i->chunkId % i->subChunkId).str();
-            if (!_sqlConn.runQuery(create, err)) {
-                _discard(v.begin(), i);
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-
-void Backend::discard(ScTableVector const& v) {
-    if (_isFake) {
-        for(auto const& scTbl : v) {
-            fakeSet.erase(makeFakeKey(scTbl));
-        }
-    }
-    _discard(v.begin(), v.end());
-}
-
-
-void Backend::memLockRequireOwnership() {
-    if (!_isFake && _memLockStatus() != LOCKED_OURS) {
-        _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
-    }
-}
-
-
-void Backend::_discard(ScTableVector::const_iterator begin,
-              ScTableVector::const_iterator end) {
-    if (_isFake) {
-        std::cout << "Pretending to discard:";
-        std::copy(begin, end, std::ostream_iterator<ScTable>(std::cout, ","));
-        std::cout << std::endl;
-    } else {
-        memLockRequireOwnership();
-        for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
-            std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
-                 % i->db % i->table  % i->chunkId % i->subChunkId).str();
-            sql::SqlErrorObject err;
-            if (!_sqlConn.runQuery(discard, err)) {
-                throw err;
-            }
-        }
-    }
-}
-
-/// Run the 'query'. If it fails, terminate the program.
-void Backend::_execLockSql(std::string const& query) {
-    LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
-    sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(query, err)) {
-        _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
-    }
-}
-
-/// Return the status of the lock on the in memory tables.
-Backend::LockStatus Backend::_memLockStatus() {
-    std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
-    sql::SqlResults results;
-    sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(sql, results, err)) {
-        // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
-        // or we are about to try to lock. Failure to lock will cause the program to exit.
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
-        return UNLOCKED;
-    }
-    std::string uidStr;
-    if (!results.extractFirstValue(uidStr, err)) {
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
-        return LOCKED_OTHER;
-    }
-    int uid = atoi(uidStr.c_str());
-    if (uid != _uid) {
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
-             << _uid << " got " << uid << " err=" << err.printErrMsg());
-        return LOCKED_OTHER;
-    }
-    return LOCKED_OURS;
-}
-
-/// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
-// This must be run before any other operations on in memory tables.
-void Backend::_memLockAcquire() {
-    _lockDb = MEMLOCKDB;
-    _lockTbl = MEMLOCKTBL;
-    _lockDbTbl = _lockDb + "." + _lockTbl;
-    LockStatus mls = _memLockStatus();
-    if (mls != UNLOCKED) {
-        LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
-    }
-
-    // Lock the memory tables.
-    std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
-    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid INT ) ENGINE = MEMORY;";
-    _execLockSql(sql);
-    // The following 2 lines will cause the new worker to always take the lock.
-    sql = "TRUNCATE TABLE " + _lockDbTbl;
-    _execLockSql(sql);
-    std::ostringstream insert;
-    insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, " << _uid << " )";
-    _execLockSql(insert.str());
-
-    // Delete any old in memory databases. They could be empty or otherwise wrong.
-    // Empty tables would prevent new tables from being created.
-    std::string subChunkPrefix = SUBCHUNKDB_PREFIX;
-    sql = "SHOW DATABASES LIKE '" + subChunkPrefix + "%'";
-    sql::SqlResults results;
-    sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(sql, results, err)) {
-        _exitDueToConflict("Memory database query failed, exiting. " + sql + " err=" + err.printErrMsg());
-    }
-    std::vector<std::string> databases;
-    results.extractFirstColumn(databases, err);
-    for (auto iter=databases.begin(), end=databases.end(); iter != end;) {
-        // Delete in blocks of 50 to save time.
-        std::string dropDb = "";
-        int count = 0;
-        while (iter != end && count < 50) {
-            std::string db = *iter;
-            ++iter;
-            // Check that the name is actually a match to subChunkPrefix and not a wild card match.
-            if (db.compare(0, subChunkPrefix.length(), subChunkPrefix)==0 ) {
-                dropDb += "DROP DATABASE " + db + ";";
-                ++count;
-            }
-        }
-        if (count > 0) {
-            _execLockSql(dropDb);
-        }
-    }
-}
-
-/// Delete the memory lock database and everything in it.
-void Backend::_memLockRelease() {
-    LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
-    if (!_isFake && !_lockConflict) {
-        LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
-        std::string sql = "DROP DATABASE " + _lockDb + ";";
-        _execLockSql(sql);
-    }
-}
-
-/// Exit the program immediately to reduce minimize possible problems.
-void Backend::_exitDueToConflict(const std::string& msg) {
-    _lockConflict = true;
-    LOGS(_log, LOG_LVL_ERROR, msg);
-    exit(EXIT_FAILURE);
-}
-
-
-
-
-
-std::ostream& operator<<(std::ostream& os, const Backend::LockStatus& ls) {
+std::ostream& operator<<(std::ostream& os, const SQLBackend::LockStatus& ls) {
     switch (ls) {
-    case Backend::UNLOCKED:
+    case SQLBackend::UNLOCKED:
         os << "UNLOCKED";
         break;
-    case Backend::LOCKED_OTHER:
+    case SQLBackend::LOCKED_OTHER:
         os << "LOCKED_OTHER";
         break;
-    case Backend::LOCKED_OURS:
+    case SQLBackend::LOCKED_OURS:
         os << "LOCKED_OURS";
         break;
     }
@@ -381,7 +196,7 @@ public:
     /// Acquire a resource, loading if needed
     void acquire(std::string const& db,
                  StringVector const& tables,
-                 IntVector const& sc, Backend::Ptr backend) {
+                 IntVector const& sc, SQLBackend::Ptr backend) {
         ScTableVector needed;
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
@@ -417,7 +232,7 @@ public:
     /// Release a resource, flushing if no more users need it.
     void release(std::string const& db,
                  StringVector const& tables,
-                 IntVector const& sc, Backend::Ptr backend) {
+                 IntVector const& sc, SQLBackend::Ptr backend) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             backend->memLockRequireOwnership();
@@ -441,7 +256,7 @@ public:
     }
 
     /// Flush resources no longer needed by anybody
-    void flush(std::string const& db, Backend::Ptr backend) {
+    void flush(std::string const& db, SQLBackend::Ptr backend) {
         ScTableVector discardable;
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
@@ -485,7 +300,7 @@ private:
         }
     }
 
-    std::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
+    std::shared_ptr<SQLBackend> _backend; ///< Delegate stage/unstage
     int _chunkId;
     int _refCount; ///< Number of known users
     TableMap _tableMap; ///< tables in use
@@ -539,11 +354,8 @@ public:
         return ce.getRefCount();
     }
 
-    Backend::Ptr getBackend() const override { return _backend; }
-
 private:
-    Impl(mysql::MySqlConfig const& c) : _backend(Backend::newInstance(c)) {}
-    Impl() : _backend(Backend::newFakeInstance()) {}
+    Impl(std::shared_ptr<SQLBackend> const& backend) : _backend(backend) {}
 
     /// precondition: _mapMutex is held (locked by the caller)
     /// Get the ChunkEntry map for a db, creating if necessary
@@ -575,19 +387,16 @@ private:
     DbMap _dbMap;
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
-    std::shared_ptr<Backend> _backend;
+    std::shared_ptr<SQLBackend> _backend;
     std::mutex _mapMutex; // Do not alter map without this mutex
 };
 
 ////////////////////////////////////////////////////////////////////////
 // ChunkResourceMgr
 ////////////////////////////////////////////////////////////////////////
-ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
-    return std::shared_ptr<ChunkResourceMgr>(new Impl(c));
-}
 
-ChunkResourceMgr::Ptr ChunkResourceMgr::newFakeMgr() {
-    return std::shared_ptr<ChunkResourceMgr>(new Impl());
+ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(SQLBackend::Ptr const& backend) {
+    return std::shared_ptr<ChunkResourceMgr>(new Impl(backend));
 }
 
 }}} // namespace lsst::qserv::wdb
