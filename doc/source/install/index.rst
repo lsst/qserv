@@ -6,6 +6,5 @@ Installation
    :maxdepth: 2
 
    quick-start
-   internet-free
    automated
    docker
