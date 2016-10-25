@@ -43,10 +43,6 @@ for service in $services_rev; do
     ${QSERV_RUN_DIR}/etc/init.d/$service stop || service_failed_nb=$((service_failed_nb+1))
 done
 
-# still usefull ?
-echo "Cleaning  ${QSERV_RUN_DIR}/xrootd-run/result/"
-rm -f ${QSERV_RUN_DIR}/xrootd-run/result/*
-
 if [ $service_failed_nb -eq $service_nb ]; then
     exit 127
 else
