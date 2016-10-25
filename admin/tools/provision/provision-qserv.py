@@ -37,7 +37,7 @@ import cloudmanager
 
 def main():
 
-    userdata_node = cloudManager.build_cloudconfig(cloudmanager.SWARM_NODE)
+    userdata = cloudManager.build_cloudconfig(cloudmanager.SWARM_NODE)
 
     # Create instances list
     instances = []
@@ -48,7 +48,7 @@ def main():
     # Create gateway instance and add floating_ip to it
     gateway_id = 0
     gateway_instance = cloudManager.nova_servers_create(gateway_id,
-                                                        userdata_node)
+                                                        userdata)
 
     # Find a floating ip address for gateway
     floating_ip = cloudManager.get_floating_ip()
@@ -74,14 +74,12 @@ def main():
     # Create worker instances
     for instance_id in range(1, args.nbServers):
         worker_instance = cloudManager.nova_servers_create(instance_id,
-                                                           userdata_node)
+                                                           userdata)
         instances.append(worker_instance)
 
     instance_id = 'swarm'
-    userdata_swarm_mgr = cloudManager.build_cloudconfig(cloudmanager.SWARM_MANAGER,
-                                                        args.nbServers-1)
     swarm_instance = cloudManager.nova_servers_create(instance_id,
-                                                      userdata_swarm_mgr)
+                                                      userdata)
     instances.append(swarm_instance)
 
     envfile_tpl = '''# Parameters related to Openstack instructure

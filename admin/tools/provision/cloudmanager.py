@@ -57,7 +57,6 @@ SNAPSHOT_IMAGE_KEY='snapshot_name'
 
 # Profile used to build cloud-init file
 DOCKER_NODE = "docker_node"
-SWARM_MANAGER = "swarm_manager"
 SWARM_NODE = "swarm_node"
 
 def add_parser_args(parser):
@@ -247,6 +246,8 @@ class CloudManager(object):
         instance_name = self._build_instance_name(instance_id)
         logging.info("Launch an instance %s", instance_name)
 
+        userdata = userdata.format(node_id=instance_id)
+
         # Launch an instance from an image
         instance = self.nova.servers.create(name=instance_name,
                                             image=self.image,
@@ -410,13 +411,15 @@ class CloudManager(object):
         """
         Build cloudconfig configuration for a given server profile
 
-        @param server_profile:      Can be DOCKER_NODE, SWARM_NODE or SWARM_MANAGER
-        @param instance_last_id:    Must not be empty if server_profile is SWARM_MANAGER
+        @param server_profile:      Can be DOCKER_NODE or SWARM_NODE
         """
-        # cloud config
-        cloud_config = '#cloud-config'
 
-        cloud_config += '''
+        cloud_config = '''
+#cloud-config
+
+
+host: {hostname_tpl}
+fqdn: {hostname_tpl}
 
 users:
 - name: qserv
@@ -428,12 +431,6 @@ users:
   - {key}
   sudo: ALL=(ALL) NOPASSWD:ALL'''
 
-        if server_profile == SWARM_MANAGER:
-            cloud_config += '''
-
-packages:
-- git'''
-
         cloud_config += '''
 
 runcmd:
@@ -442,8 +439,7 @@ runcmd:
 
         if server_profile == SWARM_NODE:
             cloud_config += '''
-  # Option below crash mysqld inside Qservcontainer, but is required by Swarm manager???
-  #- [sed, -i, '/--exec-opt native.cgroupdriver=systemd/d', /usr/lib/systemd/system/docker.service]
+  # Use overlay storage
   - [sed, -i, 's,ExecStart=/usr/bin/docker daemon -H fd://,ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375 --storage-driver=overlay,', /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/data]
@@ -458,9 +454,8 @@ runcmd:
         fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
         public_key = fpubkey.read()
 
-        userdata = cloud_config.format(instance_last_id=instance_last_id,
-                                       key=public_key,
-                                       hostname_tpl=self._hostname_tpl)
+        userdata = cloud_config.format(key=public_key,
+                                       hostname_tpl=self._hostname_tpl+"{node_id}")
 
         logging.debug("cloud-config userdata: \n%s", userdata)
         return userdata
