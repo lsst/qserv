@@ -9,7 +9,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 SSH_CFG="$DIR/ssh_config"
 
 echo "Destroy Swarm cluster and related network"
-for node in "$MASTER" $WORKERS "$SWARM_NODE"
+for node in "$MASTER" $WORKERS $SWARM_NODES
 do
     echo "Request $node to leave swarm cluster"
     ssh -F "$SSH_CFG" "$node" "docker swarm leave --force; \

@@ -10,7 +10,7 @@ PARENT_DIR="$DIR/.."
 . "$PARENT_DIR/env-infrastructure.sh"
 SSH_CFG="$PARENT_DIR/ssh_config"
 
-for qserv_node in $MASTER $WORKERS $SWARM_NODE
+for qserv_node in $MASTER $WORKERS $SWARM_NODES
 do
 	ssh -t -F "$SSH_CFG" "$qserv_node" "docker network inspect -f '{{range .Containers}}{{.Name}}:  {{.IPv4Address}}{{end}}' qserv"
 done
