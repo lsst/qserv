@@ -1,46 +1,45 @@
 # Unified configuration for xrootd/cmsd for both manager and server instances
 # "if"-block separates manager-only and server-only configuration.
 
-# if regexp block.  Test whether the hostname matches the regexp,
-# Example: tuson121 is the hostname of our manager node within our
-# allocation at LLNL.
 
 ###################################################################################
-# WARNING : for mono-node installation, comment manager configuration, and
-# don't start cmsd
+# NOTE : mono-node support requires to comment out some configuration directives
+#        and do not start cmsd. Mono-node uses server mode.
 ###################################################################################
 
-############
-# if manager
-############
-{{COMMENT_MONO_NODE}}if named master
-# Use manager mode
-{{COMMENT_MONO_NODE}}all.role manager
+############################
+# if: manager node
+# test xrootd instance name
+############################
+if named master
 
-# Enable support for multiple writable file copies
-{{COMMENT_MONO_NODE}}cms.space mwfiles linger 0
+    # Use manager mode
+    all.role manager
 
-##########################
-# else: non-manager nodes
-##########################
-{{COMMENT_MONO_NODE}}else
+    # Enable support for multiple writable file copies
+    cms.space mwfiles linger 0
 
-# Use server mode
-{{COMMENT_MONO_NODE}}all.role server
+############################
+# else: server nodes
+############################
+else
 
-# Use qserv worker filesystem plugin
-# default path is {{QSERV_RUN_DIR}}/xrootd-run/
-xrootd.fslib libXrdSsi.so
-oss.statlib -2 libXrdSsi.so
+    # Use server mode
+    all.role server
 
-# Qserv uses the xrootd XrdSsi, which needs the configuration to
-# force-disable asyncronous access.
-xrootd.async off
-ssi.trace all debug
+    # Use XrdSsi plugin
+    xrootd.fslib libXrdSsi.so
+    ssi.svclib libxrdsvc.so
+    oss.statlib -2 libXrdSsi.so
 
-{{COMMENT_MONO_NODE}}fi
+    # Force disable asyncronous access
+    # because of XrdSsi
+    xrootd.async off
 
-ssi.svclib libxrdsvc.so
+    ssi.trace all debug
+
+fi
+
 ssi.loglib libxrdlog.so
 
 ########################################
@@ -50,7 +49,8 @@ ssi.loglib libxrdlog.so
 # Writable paths for administration
 # cmsd and xrootd paths for pid
 all.pidpath {{QSERV_PID_DIR}}
-# path to write logging and other information
+
+# Path to write logging and other information
 all.adminpath {{XROOTD_ADMIN_DIR}}
 
 # host:port of manager instance (2131 is default)
