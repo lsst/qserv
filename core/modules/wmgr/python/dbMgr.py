@@ -48,7 +48,7 @@ from werkzeug.urls import url_decode
 from sqlalchemy.exc import NoSuchTableError, OperationalError, SQLAlchemyError
 
 from lsst.db import utils
-import lsst.qserv.css
+from lsst.qserv import css
 
 
 #----------------------------------
@@ -221,7 +221,7 @@ def dropDb(dbName):
         raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
     try:
         utils.dropDb(dbConn, dbName)
-    except SQLAlchemyError as exc:
+    except SQLAlchemyErr as exc:
         _log.error('Db exception when dropping database %s: %s', dbName, exc)
         raise
 
@@ -330,14 +330,14 @@ def createTable(dbName):
             css = Config.instance().cssAccess()
             schema = css.getTableSchema(dbName, tblName)
             _log.debug('schema from CSS: %s', schema)
-        except lsst.qserv.css.CssError as exc:
+        except css.CssError as exc:
             _log.error('Failed to retrieve table schema from CSS: %s', exc)
             raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
 
         # schema in CSS is stored without CREATE TABLE, so we are already OK
         try:
             utils.createTable(dbConn, tblName, schema, dbName)
-        except utils.TableExistsError as exc:
+        except TableExistsError as exc:
             _log.error('Exception when creating table: %s', exc)
             raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
     _log.debug('table %s.%s created succesfully', dbName, tblName)
@@ -590,7 +590,7 @@ def createChunk(dbName, tblName):
             _log.debug('make chunk table: %s', chunkTable)
             try:
                 utils.createTableLike(dbConn, dbName, chunkTable, dbName, tblName)
-            except utils.TableExistsError as exc:
+            except utils.TableExistError as exc:
                 _log.error('Db exception when creating table: %s', exc)
                 raise ExceptionResponse(409, "TableExists",
                                         "Table %s.%s already exists" % (dbName, chunkTable))
