@@ -5,3 +5,12 @@ base_image_name: CentOS 7
 snapshot_name: centos-7-qserv
 flavor_name: c1.medium
 network_name: petasky-net
+
+# Prefix used to name Openstack instances
+# Optional, default to Openstack user name
+instance-prefix: lsst-fabricejammes-qserv-
+
+# ssh key used to access Openstack instances
+# Optional, default to ~/.ssh/id_rsa
+ssh-private-key: ~/.ssh/id_rsa_openstack
+

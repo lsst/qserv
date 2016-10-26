@@ -14,39 +14,41 @@ BRANCH=dev
 # =====================
 
 # Data directory location on docker host, optional
-# HOST_DATA_DIR=/qserv/data               
+#HOST_DATA_DIR=/qserv/data
 
 # Log directory location on docker host, optional
-# HOST_LOG_DIR=/qserv/log
+HOST_LOG_DIR=/qserv/log
 
 # ulimit memory lock setting, in bytes, optional
-# ULIMIT_MEMLOCK=10485760
+ULIMIT_MEMLOCK=10737418240
 
 # Nodes names
 # ===========
 
-# Format for all node names
+# Master id
+MASTER_ID=0
+
+# Optional, default to <HOSTNAME_FORMAT>
+# MASTER_FORMAT="lsst-qserv-master%02g"
+
+# Optional, default to <SSH_HOSTNAME_FORMAT>
+# then $MASTER"
+# SSH_MASTER_FORMAT="qserv-master01"
+
+# Format for all node's hostname
 HOSTNAME_FORMAT="qserv%g.domain.org"
 
-# Master id
-MASTER_ID=1
+# Optional, format for node's ssh name
+# Used at NCSA
+# SSH_HOSTNAME_FORMAT="qserv-db%02g"
 
 # Workers range
-WORKER_FIRST_ID=2
+WORKER_FIRST_ID=1
 WORKER_LAST_ID=3
-
-# Disjoint sequences of host names can
-# be set directly using variables below
-MASTER=$(printf "$HOSTNAME_FORMAT" "$MASTER_ID")    # Master hostname. Do not edit
-WORKERS=$(seq --format "$HOSTNAME_FORMAT" \
-    --separator=' ' "$WORKER_FIRST_ID" \
-    "$WORKER_LAST_ID")                              # Worker hostnames list. Do not edit
-
 
 # Advanced configuration
 # ======================
 
-CONTAINER_NAME=qserv                                # Do not edit
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "${DIR}/common.sh"
 
-MASTER_IMAGE="qserv/qserv:${BRANCH}_master"         # Do not edit
-WORKER_IMAGE="qserv/qserv:${BRANCH}_worker"         # Do not edit

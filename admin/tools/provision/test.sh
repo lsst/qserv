@@ -11,7 +11,7 @@
 # @author  Fabrice Jammes, IN2P3
 
 set -e
-# set -x
+set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
@@ -29,9 +29,9 @@ Usage: `basename $0` [options]
 
   Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
   Openstack, then install Qserv and launch integration test on it.
-  If no option provided, use '-p -S' by default. 
+  If no option provided, use '-p -S' by default.
 
-  Pre-requisites: Openstack RC file need to be sourced and $DIR/env.sh available.
+  Pre-requisites: Openstack RC file need to be sourced and $DIR/env-openstack.sh available.
 
 EOD
 }
@@ -39,12 +39,12 @@ EOD
 # get the options
 while getopts hcpsS c ; do
     case $c in
-	    h) usage ; exit 0 ;;
-	    c) CREATE="TRUE" ;;
-	    p) PROVISION="TRUE" ;;
-	    s) SHMUX="TRUE" ;;
-	    S) SWARM="TRUE" ;;
-	    \?) usage ; exit 2 ;;
+        h) usage ; exit 0 ;;
+        c) CREATE="TRUE" ;;
+        p) PROVISION="TRUE" ;;
+        s) SHMUX="TRUE" ;;
+        S) SWARM="TRUE" ;;
+        \?) usage ; exit 2 ;;
     esac
 done
 shift $(($OPTIND - 1))
@@ -59,7 +59,7 @@ if [ "$OPTIND" -eq 1 ]; then
     SWARM="TRUE"
 fi
 
-. "$DIR/env.sh"
+. "$DIR/env-openstack.sh"
 
 if [ -n "$CREATE" ]; then
     echo "Create up to date snapshot image"
@@ -71,17 +71,16 @@ if [ -n "$PROVISION" ]; then
     "$DIR/provision-qserv.py" --cleanup --config "$CONF_FILE" --nb-servers "$NB_SERVERS" -vv
 fi
 
-. "$DIR/integration-tests-env.sh"
+. "$DIR/env-infrastructure.sh"
 
 if [ -n "$SWARM" ]; then
-    echo "Launch integration tests using Swarm"
-    echo "Configure Swarm node"
-    ssh -F ./ssh_config "$SWARM_NODE" \
-        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/swarm-setup.sh
+	SWARM_DIR="$DIR/../docker/deployment/swarm"
+	ln -f "$DIR/ssh_config" "$SWARM_DIR"
+	ln -f "$DIR/env-infrastructure.sh" "$SWARM_DIR"
+	SSH_CFG="$SWARM_DIR/ssh_config"
 
-    echo "Launch multinode tests"
-    ssh -F ./ssh_config "$SWARM_NODE" \
-        /home/qserv/src/qserv/admin/tools/docker/deployment/swarm/run-multinode-tests.sh
+	"$SWARM_DIR"/setup-and-test.sh
+
 elif [ -n "$SHMUX" ]; then
 
     echo "Launch integration tests using shmux"
@@ -102,11 +101,10 @@ elif [ -n "$SHMUX" ]; then
     # Update env.sh
     cp env.example.sh env.sh
     sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}%g\"/" env.sh
-    sed -i "s/MASTER_ID=1/MASTER_ID=0/" env.sh
-    sed -i "s/WORKER_FIRST_ID=2/WORKER_FIRST_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     # Run multinode tests
+    echo "Launch multinode tests"
     ./run-multinode-tests.sh
 
     if [ -f "$SSH_CONFIG_BACKUP" ]; then
