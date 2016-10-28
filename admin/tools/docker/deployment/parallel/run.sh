@@ -51,6 +51,7 @@ docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    -v /etc/localtime:/etc/localtime:ro \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $MASTER_IMAGE" "$SSH_MASTER"
@@ -63,6 +64,7 @@ shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    -v /etc/localtime:/etc/localtime:ro \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $WORKER_IMAGE" $SSH_WORKERS
