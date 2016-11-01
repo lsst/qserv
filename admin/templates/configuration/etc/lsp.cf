@@ -26,12 +26,13 @@
 {{COMMENT_MONO_NODE}}else
 
 # Use server mode
-all.role server
+{{COMMENT_MONO_NODE}}all.role server
 
 # Use qserv worker filesystem plugin
 # default path is {{QSERV_RUN_DIR}}/xrootd-run/
 xrootd.fslib libXrdSsi.so
 ssi.svclib libxrdsvc.so
+ssi.loglib libxrdlog.so
 oss.statlib -2 libXrdSsi.so
 
 # Qserv uses the xrootd XrdSsi, which needs the configuration to
