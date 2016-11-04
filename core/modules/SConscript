@@ -194,8 +194,12 @@ shlibs = {}
 shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
                               libs="""log protobuf mysqlclient_r boost_thread crypto""")
 
+# library implementing xrootd logging intercept (worker side)
+shlibs["xrdlog"] = dict(mods="""xrdlog""",
+                        libs="""log XrdSsiLib""")
+
 # library implementing xrootd services (worker side)
-shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wlog wpublish wsched xrdsvc""",
+shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wpublish wsched xrdsvc""",
                         libs="""qserv_common boost_regex boost_signals boost_thread
                              mysqlclient_r protobuf log ssl crypto XrdSsiLib""")
 

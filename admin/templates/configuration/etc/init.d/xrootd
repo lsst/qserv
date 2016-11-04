@@ -74,7 +74,8 @@ start_service() {
     pidfile=$(pid_file_name $prog)
     lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
     BINARY=${XROOTD_DIR}/bin/${prog}
-    logfile=${LOG_DIR}/${prog}.log
+#   logfile=${LOG_DIR}/${prog}.log
+    logfile=@libXrdSsiLog.so
     [ -x ${BINARY} ] || exit 5
     [ -f ${XROOTD_CONFIG} ] || exit 6
 
