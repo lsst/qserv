@@ -51,6 +51,7 @@ void QservLogger(struct timeval const& mtime,
 
     if (myLog.isInfoEnabled()) {
         std::string theMsg(msg, mlen);
+        if (mlen && theMsg[mlen-1] == '\n') theMsg.erase(mlen-1, 1);
         lsst::log::Log::MDC("LWP", std::to_string(tID));
         myLog.logMsg(log4cxx::Level::getInfo(), xrdLoc, theMsg);
     }
