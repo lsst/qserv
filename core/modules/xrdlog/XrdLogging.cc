@@ -53,8 +53,8 @@ void QservLogger(struct timeval const& mtime,
     static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
 
     if (myLog.isInfoEnabled()) {
+        while (mlen && msg[mlen-1] == '\n') --mlen;  // strip all trailing newlines
         std::string theMsg(msg, mlen);
-        if (mlen && theMsg[mlen-1] == '\n') theMsg.erase(mlen-1, 1);
         lsst::log::Log::MDC("LWP", std::to_string(tID));
         myLog.logMsg(log4cxx::Level::getInfo(), xrdLoc, theMsg);
     }
