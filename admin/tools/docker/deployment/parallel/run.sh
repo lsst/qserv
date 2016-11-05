@@ -20,6 +20,17 @@ if [ -n "$ULIMIT_MEMLOCK" ]; then
     ULIMIT_OPT="--ulimit memlock=$ULIMIT_MEMLOCK"
 fi
 
+# Capture the local timezone as it needs to be passed down
+# into the containers.
+SET_CONTAINER_TIMEZONE=false
+LOCALTIME=$(readlink /etc/localtime)
+if [ -n "$LOCALTIME" ]; then
+    CONTAINER_TIMEZONE=${LOCALTIME#/usr/share/zoneinfo/}
+    if [ -n "$CONTAINER_TIMEZONE" ]; then
+        SET_CONTAINER_TIMEZONE=true
+    fi
+fi
+
 echo
 echo "Check for existing Qserv containers"
 echo "==================================="
@@ -51,7 +62,8 @@ docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
-    -v /etc/localtime:/etc/localtime:ro \
+    -e "SET_CONTAINER_TIMEZONE=$SET_CONTAINER_TIMEZONE" \
+    -e "CONTAINER_TIMEZONE=$CONTAINER_TIMEZONE" \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $MASTER_IMAGE" "$SSH_MASTER"
@@ -64,7 +76,8 @@ shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
-    -v /etc/localtime:/etc/localtime:ro \
+    -e "SET_CONTAINER_TIMEZONE=$SET_CONTAINER_TIMEZONE" \
+    -e "CONTAINER_TIMEZONE=$CONTAINER_TIMEZONE" \
     $ULIMIT_OPT \
     --name $CONTAINER_NAME --net=host \
     $WORKER_IMAGE" $SSH_WORKERS

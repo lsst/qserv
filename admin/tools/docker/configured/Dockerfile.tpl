@@ -23,3 +23,9 @@ COPY wmgr.secret /qserv/run/etc/wmgr.secret.example
 
 # This script does not exit
 CMD /qserv/scripts/start.sh
+
+# Set this environment variable to true to set timezone on container start.
+ENV SET_CONTAINER_TIMEZONE false
+
+# Default container timezone as found under the directory /usr/share/zoneinfo/.
+ENV CONTAINER_TIMEZONE Etc/UTC
