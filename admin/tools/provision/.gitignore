@@ -2,6 +2,6 @@
 /env-openstack.sh
 /env-infrastructure.sh
 /LSST-openrc.sh
-/petasky-openrc.sh
+/galactica-openrc.sh
 /ncsa.conf
 /galactica.conf

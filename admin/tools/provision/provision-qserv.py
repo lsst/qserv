@@ -35,6 +35,8 @@ import cloudmanager
 # Exported definitions --
 # -----------------------
 
+logger = logging.getLogger()
+
 def main():
 
     userdata_node = cloudManager.build_cloudconfig(cloudmanager.SWARM_NODE)
@@ -49,14 +51,22 @@ def main():
     gateway_id = 0
     gateway_instance = cloudManager.nova_servers_create(gateway_id,
                                                         userdata_node)
+    data_volume_name = "qserv-data-10{0}".format(gateway_id)
+    data_volumes = cloudManager.cinder.volumes.list(search_opts={'name': data_volume_name})
+    if (not len(data_volumes) == 1):
+        raise ValueError('Cinder data volume not found (volumes found: %s)', data_volumes)
+
+    data_volume_id = data_volumes[0].id
+
+    logging.debug("Volumes: %s", data_volumes)
+    cloudManager.nova.volumes.create_server_volume(gateway_instance.id, data_volume_id, '/dev/vdb')
 
     # Find a floating ip address for gateway
     floating_ip = cloudManager.get_floating_ip()
     if not floating_ip:
         logging.critical("Unable to add public ip to Qserv gateway")
         sys.exit(1)
-    logging.info("Add floating ip ({0}) to {1}".format(floating_ip,
-                                                       gateway_instance.name))
+    logging.info("Add floating ip (%s) to %s", floating_ip, gateway_instance.name)
     try:
         gateway_instance.add_floating_ip(floating_ip)
     except BadRequest as exc:
@@ -75,6 +85,9 @@ def main():
     for instance_id in range(1, args.nbServers):
         worker_instance = cloudManager.nova_servers_create(instance_id,
                                                            userdata_node)
+        volume_name = "qserv-data-%s".format(instance_id)
+        volumes = cloudManager.nova.volumes.list()
+        cloudManager.nova.volumes.create_server_volume(worker_instance, volumes[0], '/dev/vdb')
         instances.append(worker_instance)
 
     instance_id = 'swarm'
@@ -133,8 +146,7 @@ if __name__ == "__main__":
         cloudmanager.add_parser_args(parser)
         args = parser.parse_args()
 
-        loggerName = "Provisioner"
-        cloudmanager.config_logger(loggerName, args.verbose, args.verboseAll)
+        cloudmanager.config_logger(args.verbose, args.verboseAll)
 
         cloudManager = cloudmanager.CloudManager(config_file_name=args.configFile,
                                                  used_image_key=cloudmanager.SNAPSHOT_IMAGE_KEY,

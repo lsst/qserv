@@ -24,6 +24,7 @@ import warnings
 # Imports for other modules --
 # ----------------------------
 
+from cinderclient import client as cinder_client
 from keystoneauth1 import loading
 from keystoneauth1 import session
 from novaclient import client
@@ -79,7 +80,7 @@ def add_parser_args(parser):
 
     return parser
 
-def config_logger(loggerName, verbose, verboseAll):
+def config_logger(verbose, verboseAll):
     """
     Configure the logger
     """
@@ -92,11 +93,17 @@ def config_logger(loggerName, verbose, verboseAll):
             logging.getLogger(logger_name).setLevel(logging.ERROR)
         warnings.filterwarnings("ignore")
 
-    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(name)-15s'
-                               ' %(message)s',
-                        level=levels.get(verbosity, logging.DEBUG))
+    logger = logging.getLogger('')
 
+    # create console handler and set level to debug
+    console = logging.StreamHandler()
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(name)-15s %(message)s')
+    # add formatter to ch
+    console.setFormatter(formatter)
 
+    logger.handlers = [console]
+    logger.setLevel(levels.get(verbosity, logging.DEBUG))
 
 class CloudManager(object):
     """Application class for common definitions for creation of snapshot and provision qserv"""
@@ -129,6 +136,7 @@ class CloudManager(object):
         self._session = self._create_keystone_session()
 
         self.nova = client.Client(_OPENSTACK_API_VERSION, session=self._session)
+        self.cinder = cinder_client.Client(_OPENSTACK_API_VERSION, session=self._session)
         base_image_name = config.get('openstack', used_image_key)
         self.snapshot_name = config.get('openstack', 'snapshot_name')
         try:
