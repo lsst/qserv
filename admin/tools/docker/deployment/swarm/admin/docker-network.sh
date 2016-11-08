@@ -12,5 +12,8 @@ SSH_CFG="$PARENT_DIR/ssh_config"
 
 for qserv_node in $MASTER $WORKERS $SWARM_NODES
 do
-	ssh -t -F "$SSH_CFG" "$qserv_node" "docker network inspect -f '{{range .Containers}}{{.Name}}:  {{.IPv4Address}}{{end}}' qserv"
+    FORMAT='{{.Id}} {{range .Containers}}{{.Name}}:  {{.IPv4Address}}{{end}}'
+	ssh -F "$SSH_CFG" -o LogLevel=quiet -o UserKnownHostsFile=/dev/null  \
+        -o StrictHostKeyChecking=no "$qserv_node" \
+        "hostname && docker network inspect -f '$FORMAT' qserv"
 done
