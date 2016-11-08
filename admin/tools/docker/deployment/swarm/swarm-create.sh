@@ -22,9 +22,9 @@ JOIN_CMD_MANAGER="$(ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/2.1_p
 # Join swarm manager nodes:
 for node in $SWARM_NODES
 do
-	if "$node" != "$SWARM_LEADER"; then
+    if [ "$node" != "$SWARM_LEADER" ]; then
         echo "Join manager $node to swarm cluster"
-		ssh -F "$SSH_CFG" "$node" "$JOIN_CMD_MANAGER"
+        ssh -F "$SSH_CFG" "$node" "$JOIN_CMD_MANAGER"
     fi
 done
 
@@ -34,5 +34,5 @@ JOIN_CMD="$(ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/2_print-join-
 for node in $MASTER $WORKERS
 do
     echo "Join worker $node to swarm cluster"
-	ssh -F "$SSH_CFG" "$node" "$JOIN_CMD"
+    ssh -F "$SSH_CFG" "$node" "$JOIN_CMD"
 done

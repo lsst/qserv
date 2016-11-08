@@ -46,7 +46,7 @@ Provision Qserv & run multinode tests
 
    # Update the configuration file which contains instance parameters
    # Add special tuning if needed
-   cp ncsa.conf.example ncsa.conf
+   cp openstack-ncsa.conf.example openstack.conf
 
 * Create customized image, provision openstack cluster and run integration tests
 

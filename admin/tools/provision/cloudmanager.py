@@ -259,7 +259,7 @@ class CloudManager(object):
 
     def nova_servers_create(self, instance_id, userdata):
         """
-        Boot an instance and returns when its status is "ACTIVE"
+        Boot an instance and returns
         """
         instance_name = self._build_instance_name(instance_id)
         logging.info("Launch an instance %s", instance_name)
@@ -273,16 +273,19 @@ class CloudManager(object):
                                             userdata=userdata,
                                             key_name=self.key,
                                             nics=self.nics)
+        return instance
+
+    def wait_active(self, instance):
+        """
+        Wait for an instance to have 'ACTIVE' status
+        """
         # Poll at 5 second intervals, until the status is 'ACTIVE'
         status = instance.status
         while status != 'ACTIVE':
             time.sleep(5)
             instance.get()
             status = instance.status
-        logging.info("status: %s", status)
-        logging.info("Instance %s is active", instance_name)
-
-        return instance
+        logging.info("Instance %s is %s", instance.name, status)
 
     def detect_end_cloud_config(self, instance):
         """
@@ -363,7 +366,7 @@ class CloudManager(object):
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
         PasswordAuthentication no
-        ProxyCommand ssh -i {key_filename} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p qserv@{floating_ip}
+        ProxyCommand ssh -i {key_filename} -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p qserv@{floating_ip}
         IdentityFile {key_filename}
         IdentitiesOnly yes
         LogLevel FATAL
@@ -455,7 +458,7 @@ runcmd:
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/data]
   - [mkdir, -p, /qserv/log]
-  - [chown, -R, qserv, /qserv]
+  - [chown, -R, '1000:1000', /qserv]
   - [/bin/systemctl, daemon-reload]
   - [/bin/systemctl, restart,  docker.service]'''
 
