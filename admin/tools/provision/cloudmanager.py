@@ -273,6 +273,21 @@ class CloudManager(object):
 
         return instance
 
+    def nova_create_server_volume(self, instance, data_volume_name):
+        """
+        Attach a volume to a server, in /dev/vdb
+        @param instance: openstack server instance
+        @param data_volume_name: name of data volume to attach
+        """
+        data_volumes = self.cinder.volumes.list(search_opts={'name': data_volume_name})
+        if (not len(data_volumes) == 1):
+            raise ValueError('Cinder data volume not found (volumes found: %s)', data_volumes)
+
+        data_volume_id = data_volumes[0].id
+
+        logging.debug("Volumes: %s", data_volumes)
+        self.nova.volumes.create_server_volume(instance.id, data_volume_id, '/dev/vdb')
+
     def detect_end_cloud_config(self, instance):
         """
         Wait for cloud-init completion
