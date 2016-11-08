@@ -40,9 +40,13 @@ Provision Qserv & run multinode tests
    # This is an example for NCSA
    . ./LSST-openrc.sh
 
+   # Create a configuration file for Openstack
+   # Add special tuning if needed
+   cp env-openstack.example.sh env-openstack.sh
+
    # Update the configuration file which contains instance parameters
    # Add special tuning if needed
-   mv ncsa.conf.example ncsa.conf
+   cp ncsa.conf.example ncsa.conf
 
 * Create customized image, provision openstack cluster and run integration tests
 
