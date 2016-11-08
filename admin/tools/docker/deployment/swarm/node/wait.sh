@@ -2,7 +2,6 @@
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
-set -x
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
@@ -21,9 +20,11 @@ EOD
 }
 
 while true; do
+    # FIXME: add container name to avoid using wrong container
     CONTAINER_ID=$(docker ps -q)
     [ -n  "$CONTAINER_ID" ] && break
-	sleep 1
+    echo "Waiting for Qserv container availability on $(hostname)"
+    sleep 2
 done
 
 docker exec "$CONTAINER_ID" /qserv/scripts/wait.sh

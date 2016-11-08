@@ -42,6 +42,7 @@ else
 
 fi
 
+xrd.network rpipa
 ssi.loglib libxrdlog.so
 
 ########################################

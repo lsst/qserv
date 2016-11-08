@@ -292,13 +292,13 @@ class CloudManager(object):
         Wait for cloud-init completion
         """
         check_word = "---SYSTEM READY FOR SNAPSHOT---"
-        end_word = None
-        while not end_word:
-            time.sleep(10)
+        found = None
+        while not found:
+            time.sleep(5)
             output = instance.get_console_output()
             logging.debug("console output: %s", output)
             logging.debug("instance: %s", instance)
-            end_word = re.search(check_word, output)
+            found = re.search(check_word, output)
 
     def nova_servers_cleanup(self, last_instance_id):
         """
