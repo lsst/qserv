@@ -19,6 +19,9 @@ BRANCH=dev
 # Log directory location on docker host, optional
 HOST_LOG_DIR=/qserv/log
 
+# Temporary directory location on docker host, optional
+#HOST_TMP_DIR=/qserv/tmp
+
 # ulimit memory lock setting, in bytes, optional
 ULIMIT_MEMLOCK=10737418240
 

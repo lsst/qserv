@@ -16,6 +16,9 @@ fi
 if [ -n "$HOST_DATA_DIR" ]; then
     DATA_VOLUME_OPT="--volume $HOST_DATA_DIR:/qserv/data"
 fi
+if [ -n "$HOST_TMP_DIR" ]; then
+    TMP_VOLUME_OPT="--volume $HOST_TMP_DIR:/qserv/run/tmp/"
+fi
 if [ -n "$ULIMIT_MEMLOCK" ]; then
     ULIMIT_OPT="--ulimit memlock=$ULIMIT_MEMLOCK"
 fi
@@ -62,6 +65,7 @@ docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    $TMP_VOLUME_OPT \
     -e "SET_CONTAINER_TIMEZONE=$SET_CONTAINER_TIMEZONE" \
     -e "CONTAINER_TIMEZONE=$CONTAINER_TIMEZONE" \
     $ULIMIT_OPT \
@@ -76,6 +80,7 @@ shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
+    $TMP_VOLUME_OPT \
     -e "SET_CONTAINER_TIMEZONE=$SET_CONTAINER_TIMEZONE" \
     -e "CONTAINER_TIMEZONE=$CONTAINER_TIMEZONE" \
     $ULIMIT_OPT \
