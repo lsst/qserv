@@ -31,8 +31,6 @@
 # Use qserv worker filesystem plugin
 # default path is {{QSERV_RUN_DIR}}/xrootd-run/
 xrootd.fslib libXrdSsi.so
-ssi.svclib libxrdsvc.so
-ssi.loglib libxrdlog.so
 oss.statlib -2 libXrdSsi.so
 
 # Qserv uses the xrootd XrdSsi, which needs the configuration to
@@ -41,6 +39,9 @@ xrootd.async off
 ssi.trace all debug
 
 {{COMMENT_MONO_NODE}}fi
+
+ssi.svclib libxrdsvc.so
+ssi.loglib libxrdlog.so
 
 ########################################
 # Shared directives (manager and server)
