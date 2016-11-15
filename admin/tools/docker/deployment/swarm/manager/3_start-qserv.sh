@@ -49,7 +49,6 @@ MASTER_OPT="-e QSERV_MASTER=master"
 QSERV_NETWORK="qserv"
 NETWORK_OPT="--network $QSERV_NETWORK"
 
-docker service rm master || echo "No existing container for $MASTER"
 docker service create --constraint node.hostname=="$MASTER" \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
@@ -62,7 +61,6 @@ docker service create --constraint node.hostname=="$MASTER" \
 j=1
 for i in $WORKERS;
 do
-    docker service rm "worker-$j" || echo "No existing container for $i"
     docker service create --constraint node.hostname=="$i" \
 	    $DATA_VOLUME_OPT \
         $LOG_VOLUME_OPT \
