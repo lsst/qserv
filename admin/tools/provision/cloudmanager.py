@@ -469,9 +469,13 @@ runcmd:
   #- [sed, -i, '/--exec-opt native.cgroupdriver=systemd/d', /usr/lib/systemd/system/docker.service]
   - [sed, -i, 's,ExecStart=/usr/bin/docker daemon -H fd://,ExecStart=/usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375 --storage-driver=overlay,', /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
-  - [mkdir, -p, /qserv/data]
+  - [mkdir, -p, /qserv]
+  - [mkdir, -p, /mnt/qserv]
   - [mkdir, -p, /qserv/log]
-  - [chown, -R, qserv, /qserv]
+  - [mount, /dev/vdb1, /mnt/qserv]
+  - [ln, -s, /mnt/qserv/data, /qserv/data]
+  - [chown, -R, '1000:1000', /mnt/qserv]
+  - [chown, -R, '1000:1000', /qserv]
 '''
 
         cloud_config += '''

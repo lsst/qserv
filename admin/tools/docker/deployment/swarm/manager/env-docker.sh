@@ -11,7 +11,7 @@ VERSION=tickets_DM-7139
 
 # Data directory location on docker host, optional
 # NOT SUPPORTED: mysql data created at configuration time is removed
-# HOST_DATA_DIR=/qserv/data
+HOST_DATA_DIR=/qserv/data
 
 # Log directory location on docker host, optional
 HOST_LOG_DIR=/qserv/log

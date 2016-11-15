@@ -12,4 +12,4 @@ echo "Setup Swarm cluster and launch Qserv integration tests"
 "$DIR"/swarm-destroy.sh
 "$DIR"/swarm-create.sh
 "$DIR"/run.sh
-"$DIR"/run-multinode-tests.sh
+"$DIR"/run-large-scale-tests.sh
