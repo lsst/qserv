@@ -7,8 +7,8 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Default values below may be overidden by cmd-line options
 MODE="internet mode"
-NEWINSTALL_URL="https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh"
-VERSION="-t qserv"
+NEWINSTALL_URL="https://raw.githubusercontent.com/lsst/lsst/12.0/scripts/newinstall.sh"
+VERSION="-t qserv_latest"
 
 underline() {
     printf "\n%s\n" "${1}"
@@ -24,32 +24,14 @@ This script install Qserv according to LSST packaging standards.
 
 OPTIONS:
    -h      Show this message and exit
-   -r      Local distribution server root directory,
-           used in internet-free mode
    -i      Install directory : MANDATORY, MUST BE AN ABSOLUTE PATH
    -v      Qserv version to install, default to the one with the 'qserv' tag
    -d      Install Qserv version tagged 'qserv-dev'
 EOF
 }
 
-while getopts "r:i:v:dh" o; do
+while getopts "i:v:dh" o; do
         case "$o" in
-        r)
-                LOCAL_OPTION=1
-                MODE="internet-free mode"
-                LOCAL_DISTSERVER_ROOT="${OPTARG}"
-                if [ ! -d "${LOCAL_DISTSERVER_ROOT}" ]; then
-                    >&2 printf "ERROR : %s require a local distribution\
- server\n" "$MODE"
-                    usage
-                    exit 1
-                fi
-                export EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
-                NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
-                export EUPS_VERSION="1.5.0"
-                export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/${EUPS_VERSION}.tar.gz
-                export EUPS_GIT_REPO=${LOCAL_DISTSERVER_ROOT}/eups.git
-                ;;
         i)
                 # Remove trailing slashes
                 STACK_DIR=`printf "%s" "${OPTARG}" | sed 's#/*$##'`

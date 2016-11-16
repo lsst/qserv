@@ -9,7 +9,6 @@ Development reference
    scons-targets
    build-qserv-with-specific-dependencies
    bisect 
-   package-internet-free-distserver
    build-partition-without-eups
    css
    wmgr-api

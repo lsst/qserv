@@ -3,8 +3,6 @@ MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 USER root
 
-RUN apt-get update && apt-get -y install byobu git vim
-
 RUN groupadd dev && useradd -m -g dev -G qserv dev && usermod -s /bin/bash dev
 
 COPY scripts/startup.py /home/dev/.eups/

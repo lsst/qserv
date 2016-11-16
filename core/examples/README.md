@@ -12,9 +12,12 @@ to check required permissions on Qserv czar and worker node
 
 # Qserv configuration
 
-- *.lsp.cf files contains xrootd configuration examples
-- see ../../admin/templates/configuration/etc/lsp.cf to check default
-  configuration template for xrootd (on the worker side)
--  see ../../admin/templates/configuration/etc/qserv-czar.cnf to check
-  default configuration template for Qserv Czar.
+Default configuration template for Qserv Czar:
+     ../../admin/templates/configuration/etc/qserv-czar.cnf
+
+Default configuration for xrootd (manager and server side):
+    ../../admin/templates/configuration/etc/lsp.cf
+
+Default configuration for XrdSsi plugin:
+    ../../admin/templates/configuration/etc/xrdssi.cnf
 
