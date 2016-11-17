@@ -147,11 +147,6 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
        _killed(false), _errorExtra(errorExtra) {
-    // register query in qmeta, this may throw
-    _qMetaRegister();
-
-    _resultTable = "result_";
-    _resultTable += std::to_string(_qMetaQueryId);
 }
 
 std::string UserQuerySelect::getError() const {
@@ -348,7 +343,7 @@ void UserQuerySelect::setupChunking() {
 }
 
 // register query in qmeta database
-void UserQuerySelect::_qMetaRegister()
+void UserQuerySelect::qMetaRegister()
 {
     qmeta::QInfo::QType qType = qmeta::QInfo::SYNC;  // now all queries are SYNC
     std::string user = "anonymous";    // we do not have access to that info yet
@@ -396,6 +391,7 @@ void UserQuerySelect::_qMetaRegister()
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
+    _resultTable += "result_" + std::to_string(_qMetaQueryId);
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuery registered " << _qSession->getOriginal());
     if (_executive != nullptr) {
         _executive->setQueryId(_qMetaQueryId);

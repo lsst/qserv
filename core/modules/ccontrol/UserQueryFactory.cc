@@ -125,6 +125,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->qMetaCzarId, errorExtra);
         if (sessionValid) {
+            uq->qMetaRegister();
             uq->setupChunking();
         }
         return uq;

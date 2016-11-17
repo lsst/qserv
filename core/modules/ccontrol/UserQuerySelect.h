@@ -85,6 +85,8 @@ public:
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
 
+    void qMetaRegister();
+
     // Accessors
 
     /// @return a non-empty string describing the current error state
@@ -124,7 +126,7 @@ public:
 private:
     void _setupMerger();
     void _discardMerger();
-    void _qMetaRegister();
+
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
 
@@ -137,14 +139,14 @@ private:
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
 
-    qmeta::CzarId _qMetaCzarId;     ///< Czar ID in QMeta database
-    QueryId _qMetaQueryId;   ///< Query ID in QMeta database
+    qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
+    QueryId _qMetaQueryId;      ///< Query ID in QMeta database
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed;
     std::mutex _killMutex;
-    std::string _errorExtra;        ///< Additional error information
-    std::string _resultTable;       ///< Result table name
+    std::string _errorExtra;    ///< Additional error information
+    std::string _resultTable;   ///< Result table name
 };
 
 }}} // namespace lsst::qserv:ccontrol
