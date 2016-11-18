@@ -106,6 +106,7 @@ elif [ -n "$SHMUX" ]; then
     cp env.example.sh env.sh
     sed -i "s/# MASTER_FORMAT=\"lsst-qserv-master%02g\"/MASTER_FORMAT=\"${HOSTNAME_TPL}master-%g\"/" env.sh
     sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}worker-%g\"/" env.sh
+    sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     # Run multinode tests

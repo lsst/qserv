@@ -14,11 +14,11 @@ WORKDIR /qserv
 
 USER qserv
 
-# Respectively qserv-watcher xrootd ports
+# Respectively xrootd, qserv-wmanager ports
 # Used on both worker and master
-EXPOSE 5012 1094
+EXPOSE 1094 5012
 
-# Respectively cmsd mysql-proxy ports
+# Respectively cmsd, mysql-proxy ports
 # Used on master only
 <COMMENT_ON_WORKER>EXPOSE 2131 4040
 

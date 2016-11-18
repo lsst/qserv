@@ -22,6 +22,7 @@ do
         echo "Waiting for Qserv to start on $node"
         sleep 1
     done
+    sleep 5
     $DIR/run-query.sh
     i=$((i+1))
 done
