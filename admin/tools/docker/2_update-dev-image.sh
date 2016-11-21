@@ -34,8 +34,10 @@ usage() {
   Available options:
     -h          this message
 
-  Create a docker image containing cutting-edge Qserv dependencies
-  use a Docker image containing latest Qserv stack as input.
+  Create a docker image named 'qserv/qserv:dev':
+    - based on 'qserv-dev' eups tag
+    - containing cutting-edge Qserv dependencies
+    - use previous version of 'qserv/qserv:dev' as input
 
 EOD
 }

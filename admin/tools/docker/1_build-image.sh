@@ -29,6 +29,8 @@
 
 set -e
 
+EUPS_TAG='qserv_latest'
+TAG='qserv/qserv:latest'
 VERSION=$(date --date='-1 month' +'%Y-%m')
 
 usage() {
@@ -37,24 +39,24 @@ usage() {
   Usage: $(basename "$0") [options]
 
   Available options:
-    -h          this message
-    -v          Qserv release to be packaged, default to $VERSION
     -C          Rebuild the images from scratch
-    -d path     directory containing dependency scripts, default to
+    -d path     Directory containing dependency scripts, default to
                 \$QSERV_DIR/admin/bootstrap
+    -D          Build using 'qserv-dev' eups tag instead of 'qserv_latest'
+    -h          This message
 
-  Create Docker images for Qserv release
+    Create Docker images from 'qserv_latest' (default) or 'qserv-dev' eups tags.
 
 EOD
 }
 
 # get the options
-while getopts hd:v:C c ; do
+while getopts Cd:Dh c ; do
     case $c in
-            h) usage ; exit 0 ;;
             C) CACHE_OPT="--no-cache=true" ;;
             d) DEPS_DIR="$OPTARG" ;;
-            v) VERSION="$OPTARG" ;;
+            D) EUPS_TAG="qserv-dev" ; TAG="qserv/qserv:dev" ;;
+            h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
     esac
 done
@@ -91,22 +93,19 @@ TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-debian8.sh"
 printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIPT"
 ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 
-# Build the release image
-TAG="qserv/qserv:$VERSION"
-printf "Building latest release image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build $CACHE_OPT --tag="$TAG" "$DOCKERDIR"
+# Build the image
+printf "Building image %s from %s, using eups tag %s\n" \
+    "$TAG" "$DOCKERDIR" "$EUPS_TAG"
+docker build $CACHE_OPT --build-arg EUPS_TAG="$EUPS_TAG" --tag="$TAG" "$DOCKERDIR"
 
-# Use 'latest' as tag alias
-LATEST_VERSION=$(basename "$DOCKERDIR")
-LATEST_TAG="qserv/qserv:$LATEST_VERSION"
-docker tag "$TAG" "$LATEST_TAG"
-docker push "$TAG"
-docker push "$LATEST_TAG"
+# Additional tag for release image
+if [ "$EUPS_TAG" = 'qserv_latest' ]; then
+    VERSION_TAG="qserv/qserv:$VERSION"
 
-# dev and release are the same at
-# release time
-DEV_TAG="qserv/qserv:dev"
-docker tag "$TAG" "$DEV_TAG"
-docker push "$DEV_TAG"
+    docker tag "$TAG" "$VERSION_TAG"
+    docker push "$TAG"
+    docker push "$VERSION_TAG"
+
+fi
 
 printf "Image %s built successfully\n" "$TAG"

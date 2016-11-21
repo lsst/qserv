@@ -102,3 +102,5 @@ if [ "$PUSH_TO_HUB" = "true" ]; then
     docker push "$DOCKERTAG"
     printf "Image %s pushed successfully\n" "$TAG"
 fi
+
+rm -rf "$DOCKERDIR/src/qserv"
