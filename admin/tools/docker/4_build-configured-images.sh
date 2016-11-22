@@ -26,7 +26,9 @@
 
 set -e
 
-DOCKER_IMAGE="qserv/qserv:dev"
+. "$(cd "$(dirname "$0")"; pwd)/conf.sh"
+
+DOCKER_IMAGE="$DOCKER_REPO:dev"
 PUSH_TO_HUB="true"
 
 usage() {

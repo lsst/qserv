@@ -6,6 +6,9 @@
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+
+. "$(cd "$(dirname "$0")"; pwd)/conf.sh"
+
 set -x
 
 usage() {
@@ -93,9 +96,10 @@ git clone -b "$GIT_REF" --single-branch "$GIT_REPO" "$DOCKERDIR/src/qserv"
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
     TAG=$(echo "$GIT_REF" | tr '/' '_')
-    DOCKERTAG="qserv/qserv:$TAG"
+    DOCKERTAG="$DOCKER_REPO:$TAG"
 fi
 
+sed -i "s|^FROM .*|FROM $DOCKERTAG|" "$DOCKERDIR/Dockerfile"
 docker build --tag="$DOCKERTAG" "$DOCKERDIR"
 
 if [ "$PUSH_TO_HUB" = "true" ]; then

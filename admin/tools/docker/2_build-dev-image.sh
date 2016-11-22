@@ -26,6 +26,8 @@
 
 set -e
 
+. "$(cd "$(dirname "$0")"; pwd)/conf.sh"
+
 usage() {
   cat << EOD
 
@@ -57,8 +59,9 @@ fi
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/dev"
 
-TAG="qserv/qserv:dev"
+TAG="$DOCKER_REPO:dev"
 printf "Building image with cutting edge dependencies (%s) from %s\n" "$TAG" "$DOCKERDIR"
+sed -i "s|^FROM .*|FROM $TAG|" "$DOCKERDIR/Dockerfile"
 docker build --tag="$TAG" "$DOCKERDIR"
 docker push "$TAG"
 
