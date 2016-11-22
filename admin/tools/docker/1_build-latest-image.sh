@@ -29,6 +29,8 @@
 
 set -e
 
+. "$(cd "$(dirname "$0")"; pwd)/conf.sh"
+
 VERSION=$(date --date='-1 month' +'%Y-%m')
 
 usage() {
@@ -70,7 +72,6 @@ if [ -z "$DEPS_DIR" -a -z "$QSERV_DIR" ] ; then
     usage
     exit 3
 fi
-test "$DEPS_DIR" || DEPS_DIR=$QSERV_DIR/admin/bootstrap
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/latest"
@@ -92,20 +93,20 @@ printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIP
 ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
 
 # Build the release image
-TAG="qserv/qserv:$VERSION"
+TAG="$DOCKER_REPO:$VERSION"
 printf "Building latest release image %s from %s\n" "$TAG" "$DOCKERDIR"
 docker build $CACHE_OPT --tag="$TAG" "$DOCKERDIR"
 
 # Use 'latest' as tag alias
 LATEST_VERSION=$(basename "$DOCKERDIR")
-LATEST_TAG="qserv/qserv:$LATEST_VERSION"
+LATEST_TAG="$DOCKER_REPO:$LATEST_VERSION"
 docker tag "$TAG" "$LATEST_TAG"
 docker push "$TAG"
 docker push "$LATEST_TAG"
 
 # dev and release are the same at
 # release time
-DEV_TAG="qserv/qserv:dev"
+DEV_TAG="$DOCKER_REPO:dev"
 docker tag "$TAG" "$DEV_TAG"
 docker push "$DEV_TAG"
 
