@@ -23,14 +23,17 @@ Usage: `basename $0` [options]
   Available options:
     -h          this message
     -c          update CentOS7/Docker snapshot
-    -L          Run S15 queries
+    -L          run S15 queries
+    -k          launch Qserv integration test using kubernetes 
     -p          provision Qserv cluster on Openstack
     -s          launch Qserv integration test using shmux
-    -S          launch Qserv integration test using swarm, disable previous option
+    -S          launch Qserv integration test using swarm
+                -S has priority on -k which has priority on -s
 
   Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
   Openstack, then install Qserv and launch integration test on it.
   If no option provided, use '-p -S' by default.
+
 
   Pre-requisites: Openstack RC file need to be sourced and $DIR/env-openstack.sh available.
 
@@ -38,10 +41,11 @@ EOD
 }
 
 # get the options
-while getopts hcLpsS c ; do
+while getopts hckLpsS c ; do
     case $c in
         h) usage ; exit 0 ;;
         c) CREATE="TRUE" ;;
+        k) KUBERNETES="TRUE" ;;
         L) LARGE="TRUE" ;;
         p) PROVISION="TRUE" ;;
         s) SHMUX="TRUE" ;;
@@ -91,6 +95,14 @@ if [ -n "$SWARM" ]; then
     SSH_CFG="$SWARM_DIR/ssh_config"
 
     "$SWARM_DIR"/setup-and-test.sh
+
+elif [ -n "$KUBERNETES" ]; then
+	WORK_DIR="$DIR/../docker/deployment/kubernetes"
+	ln -f "$DIR/ssh_config" "$WORK_DIR"
+	ln -f "$DIR/env-infrastructure.sh" "$WORK_DIR"
+	SSH_CFG="$WORK_DIR/ssh_config"
+
+	"$WORK_DIR"/setup-and-test.sh
 
 elif [ -n "$SHMUX" ]; then
 
