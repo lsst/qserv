@@ -391,7 +391,7 @@ void UserQuerySelect::qMetaRegister()
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
-    _resultTable += "result_" + std::to_string(_qMetaQueryId);
+    _resultTable = "result_" + std::to_string(_qMetaQueryId);
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuery registered " << _qSession->getOriginal());
     if (_executive != nullptr) {
         _executive->setQueryId(_qMetaQueryId);
