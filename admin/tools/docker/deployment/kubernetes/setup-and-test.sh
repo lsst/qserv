@@ -11,5 +11,5 @@ echo "Setup Kubernetes cluster and launch Qserv integration tests"
 
 "$DIR"/kube-destroy.sh
 "$DIR"/kube-create.sh
-#"$DIR"/run.sh
-#"$DIR"/run-multinode-tests.sh
+"$DIR"/run.sh
+"$DIR"/run-multinode-tests.sh
