@@ -568,9 +568,11 @@ std::string KvInterfaceImplMySql::dumpKV() {
         if (row[1].first == nullptr or *row[1].first == '\0') {
             result += "\\N";
         } else {
+/*
             if (strchr(row[1].first, '\n') != nullptr) {
                 throw CssError("KvInterfaceImplMySql::dumpKV - value contains newline");
             }
+*/
             result += row[1].first;
         }
     }
