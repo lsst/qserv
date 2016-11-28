@@ -16,8 +16,10 @@ if named master
     # Use manager mode
     all.role manager
 
-    # Enable support for multiple writable file copies
-    cms.space mwfiles linger 0
+    # Specify that no significant free space is required on servers
+    # Indeed urrent configuration doesn't expect to be dynamically
+    # written to but export the space in R/W mode
+    cms.space 1k 2k
 
 ############################
 # else: server nodes
