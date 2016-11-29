@@ -800,6 +800,33 @@ CssAccess::addChunk(std::string const& dbName,
     }
 }
 
+void
+CssAccess::deleteChunk(std::string const& dbName,
+                       std::string const& tableName,
+                       int chunk) {
+    LOGS(_log, LOG_LVL_DEBUG, "deleteChunk(" << dbName << ", "
+         << tableName << ", " << chunk << ")");
+    _checkVersion();
+
+    // delete a whole tree for this chunk
+    std::vector<std::string> const keys{
+        _prefix + (boost::format("/DBS/%s/TABLES/%s/CHUNKS/%s") %
+            dbName % tableName % chunk).str()
+    };
+
+    for(std::string const &key: keys) {
+        // key is supposed to exist
+        try {
+            LOGS(_log, LOG_LVL_DEBUG, "deleteChunk: try to delete key: " << key);
+            _kvI->deleteKey(key);
+        } catch (NoSuchKey const& exc) {
+            LOGS(_log, LOG_LVL_DEBUG, "deleteChunk: key is not found: " << key);
+            throw exc;
+        }
+    }
+}
+
+
 std::map<int, std::vector<std::string>>
 CssAccess::getChunks(std::string const& dbName, std::string const& tableName) {
     LOGS(_log, LOG_LVL_DEBUG, "getChunks(" << dbName << ", " << tableName << ")");

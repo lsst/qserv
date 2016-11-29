@@ -452,6 +452,22 @@ public:
                   std::vector<std::string> const& nodeNames);
 
     /**
+     * @brief Delete an existing chunk from CSS
+     *
+     * Note: this method will likely be removed when we have new
+     * dynamic data replication system.
+     *
+     * @param dbName: database name
+     * @param tableName: table name
+     * @param chunk: chunk number or ID
+     * @throws ReadonlyCss: if CSS is using read-only storage
+     * @throws CssError: for all CSS errors
+     */
+    void deleteChunk(std::string const& dbName,
+                     std::string const& tableName,
+                     int chunk);
+ 
+    /**
      * @brief Returns metadata for all chunks of given table.
      *
      * Returned object is a mapping where key is the chunk number and value
