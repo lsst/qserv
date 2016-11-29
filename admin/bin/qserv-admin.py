@@ -281,8 +281,6 @@ class CommandParser(object):
         l = len(tokens)
         if l == 2:
             (dbTbName, configFile) = tokens
-            if '.' not in dbTbName:
-                raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
             dbName, tbName = CommandParser._parseDbTable(dbTbName)
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processTbOptions(dbName, options)
