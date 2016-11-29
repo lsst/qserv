@@ -9,7 +9,7 @@ RUN chown -R qserv:qserv /home/qserv/src/qserv
 
 USER qserv
 
-WORKDIR /home/qserv/src/qserv
+WORKDIR /home/qserv
 
 # * Update to latest qserv dependencies:
 #   dependencies need to be publish on distribution server, see
@@ -19,7 +19,9 @@ WORKDIR /home/qserv/src/qserv
 #   - installs Qserv inside LSST stack (i.e. /qserv/stack/Linux64/qserv/branch-version)
 #   - declares it using 'qserv-dev' tag
 RUN bash -c ". /qserv/stack/loadLSST.bash && \
+    cp -r /home/qserv/src/qserv /tmp && \
+    cd /tmp/qserv && \
     setup -r . -t qserv-dev && \
     eupspkg -er install && \
-    eupspkg -er decl -t qserv-dev"
-
+    eupspkg -er decl -t qserv-dev && \
+    rm -rf /tmp/qserv"

@@ -68,15 +68,19 @@ fi
 
 if [ -n "$PROVISION" ]; then
     echo "Provision Qserv cluster on Openstack"
-    "$DIR/provision-qserv.py" --cleanup --config "$CONF_FILE" --nb-servers "$NB_SERVERS" -vv
+    "$DIR/provision-qserv.py" --cleanup \
+        --config "$CONF_FILE" \
+        --nb-worker "$NB_WORKER"  \
+        --nb-swarm "$NB_SWARM"  \
+        -vv
 fi
 
 . "$DIR/env-infrastructure.sh"
 
 if [ -n "$SWARM" ]; then
 	SWARM_DIR="$DIR/../docker/deployment/swarm"
-	ln -f "$DIR/ssh_config" "$SWARM_DIR"
-	ln -f "$DIR/env-infrastructure.sh" "$SWARM_DIR"
+	ln -sf "$DIR/ssh_config" "$SWARM_DIR"
+	ln -sf "$DIR/env-infrastructure.sh" "$SWARM_DIR"
 	SSH_CFG="$SWARM_DIR/ssh_config"
 
 	"$SWARM_DIR"/setup-and-test.sh
@@ -100,7 +104,9 @@ elif [ -n "$SHMUX" ]; then
 
     # Update env.sh
     cp env.example.sh env.sh
-    sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}%g\"/" env.sh
+    sed -i "s/# MASTER_FORMAT=\"lsst-qserv-master%02g\"/MASTER_FORMAT=\"${HOSTNAME_TPL}master-%g\"/" env.sh
+    sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}worker-%g\"/" env.sh
+    sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     # Run multinode tests

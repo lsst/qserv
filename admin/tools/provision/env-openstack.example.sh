@@ -15,5 +15,6 @@ if [ -z "$OS_USERNAME" ]; then
     fi
 
 # Choose a number of instances to boot
-NB_SERVERS=3
+NB_WORKER=4
+NB_SWARM=3
 
