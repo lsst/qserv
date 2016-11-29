@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Print command to join a manager node to swarm cluster
-# Current script must be lunach on manager and printed command
+# Current script must be launched on manager and printed command
 # must be launched on other manager
 
 # @author  Fabrice Jammes, IN2P3

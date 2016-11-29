@@ -259,7 +259,7 @@ class CloudManager(object):
 
     def nova_servers_create(self, instance_id, userdata):
         """
-        Boot an instance and returns
+        Boot an instance and return
         """
         instance_name = self._build_instance_name(instance_id)
         logging.info("Launch an instance %s", instance_name)
