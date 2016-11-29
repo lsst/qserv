@@ -44,6 +44,7 @@ import tempfile
 from lsst.qserv import css
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
+from lsst.qserv.wmgr.client import ServerError
 
 #----------------------------------
 # Local non-exported definitions --
@@ -495,8 +496,13 @@ class DataLoader(object):
         for name, wmgr in self._connections(useCzar=True, useWorkers=True):
             self._log.info('Creating table %r in %r', table, name)
             chunkColumns = bool(self.partitioned)
-            wmgr.createTable(database, table, schema=self.schema, chunkColumns=chunkColumns)
-
+            try:
+                wmgr.createTable(database, table, schema=self.schema, chunkColumns=chunkColumns)
+            except ServerError as exc:
+                if exc.code == 409:
+                    self._log.info('Table %r exists in %r', table, name)
+                else:
+                    self._log.critical('Failed to create table %r in %r', table, name)
 
     def _loadData(self, database, table, files):
         """
@@ -765,7 +771,7 @@ class DataLoader(object):
         self._log.info('Generating index %r.%r', self.indexDb, metaTable)
 
         # try to delete existing table first
-        self.czarWmgr.dropTable(self.indexDb, metaTable, mustExist=False)
+        #self.czarWmgr.dropTable(self.indexDb, metaTable, mustExist=False)
 
         # index column
         idxCol = self.partOptions['id']
@@ -778,7 +784,7 @@ class DataLoader(object):
                 break
 
         # make a table, InnoDB engine is required for scalability
-        schema = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
+        schema = "CREATE TABLE IF NOT EXISTS {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
         schema += " ENGINE = INNODB"
         schema = schema.format(table=metaTable, column=idxCol, type=idxColType)
         self.czarWmgr.createTable(self.indexDb, metaTable, schema=schema)
