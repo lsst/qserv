@@ -169,6 +169,9 @@ class CommandParser(object):
     RESTORE <inFile>;
     SHOW DATABASES;
     SHOW NODES;
+    CREATE CHUNK <dbName>.<tableName> <chunk> <nodeName>;
+    DELETE CHUNK <dbName>.<tableName> <chunk>;
+    SHOW CHUNKS <dbName>.<tableName>;
     QUIT;
     EXIT;
     ...more coming soon
@@ -214,6 +217,23 @@ class CommandParser(object):
         else:
             raise _NotImplementedError(cmd)
 
+    @staticmethod
+    def _parseDbTable(val):
+        """
+        Parse the dot-separate paremeter specifying the database and
+        the table names. Example:
+
+           Db1.Table2
+
+        Return a sequence of two names: (<db>,<table>)
+        Throw an exception if a wrong sring passed into the method.
+        """
+        tokens = val.split('.')
+        if len(tokens) != 2:
+            raise _WrongParamError(val)
+
+        return tokens
+
     def _parseCreate(self, tokens):
         """
         Subparser - handles all CREATE requests.
@@ -225,6 +245,8 @@ class CommandParser(object):
             self._parseCreateTable(tokens[1:])
         elif t == 'NODE':
             self._parseCreateNode(tokens[1:])
+        elif t == 'CHUNK':
+            self._parseCreateChunk(tokens[1:])
         else:
             raise _IllegalCommandError(t)
 
@@ -259,9 +281,7 @@ class CommandParser(object):
         l = len(tokens)
         if l == 2:
             (dbTbName, configFile) = tokens
-            if '.' not in dbTbName:
-                raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
-            (dbName, tbName) = dbTbName.split('.')
+            dbName, tbName = CommandParser._parseDbTable(dbTbName)
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processTbOptions(dbName, options)
             if options.get('match', False):
@@ -276,9 +296,11 @@ class CommandParser(object):
                                                  options['dirColName'], options['latColName'],
                                                  options['lonColName'], options.get('overlap', 0.0),
                                                  True, bool(int(options['subChunks'])))
+                    sParams = css.ScanTableParams(bool(options.get('lockInMem', False)), int(options.get('scanRating', 0)))
                 else:
                     params = css.PartTableParams()
-                self._css.createTable(dbName, tbName, options['schema'], params)
+                    sParams = css.ScanTableParams()
+                self._css.createTable(dbName, tbName, options['schema'], params, sParams)
         else:
             raise _IllegalCommandError("Unexpected number of arguments.")
 
@@ -306,6 +328,27 @@ class CommandParser(object):
                                 int(options.get('port', 0)), options['state'])
         self._css.addNode(options['nodeName'], params)
 
+    def _parseCreateChunk(self, tokens):
+        """
+        Subparser - handles all CREATE CHUNK requests.
+        Throws css.CssError, _ToolError.
+        """
+        if len(tokens) != 3:
+            raise _IllegalCommandError("Unexpected number of arguments.")
+
+        (dbTbName, chunkIdStr, nodeName) = tokens
+        if '.' not in dbTbName:
+            raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
+
+        dbName, tbName = CommandParser._parseDbTable(dbTbName)
+
+        if not chunkIdStr.isdigit():
+            raise _IllegalCommandError("Invalid argument '{0}', should be chunk identifier".format(chunkIdStr))
+
+        chunkId = int(chunkIdStr)
+
+        self._css.addChunk(dbName, tbName, chunkId, (nodeName,))
+
     def _parseDrop(self, tokens):
         """
         Subparser - handles all DROP requests.
@@ -322,7 +365,7 @@ class CommandParser(object):
                 raise _IllegalCommandError("unexpected number of arguments")
             if '.' not in tokens[1]:
                 raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(tokens[1]))
-            dbName, tbName = tokens[1].split('.')
+            dbName, tbName = CommandParser._parseDbTable(tokens[1])
             self._css.dropTable(dbName, tbName)
         elif t == 'EVERYTHING':
             raise _NotImplementedError(t)
@@ -340,8 +383,32 @@ class CommandParser(object):
             if l != 2:
                 raise _IllegalCommandError("unexpected number of arguments")
             self._css.deleteNode(tokens[1])
+        elif t == 'CHUNK':
+            self._deleteChunk(tokens[1:])
         else:
             raise _IllegalCommandError(t)
+
+    def _deleteChunk(self, tokens):
+        """
+        Subparser - handles all DELETE CHUNK requests.
+        Throws css.CssError, _ToolError.
+        """
+        if len(tokens) != 2:
+            raise _IllegalCommandError("unexpected number of arguments")
+
+        dbTbName, chunkIdStr = tokens
+
+        if '.' not in dbTbName:
+            raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
+
+        dbName, tbName = CommandParser._parseDbTable(dbTbName)
+
+        if not chunkIdStr.isdigit():
+            raise _IllegalCommandError("Invalid argument '{0}', should be a chunk number".format(chunkIdStr))
+
+        chunkId = int(chunkIdStr)
+ 
+        self._css.deleteChunk(dbName, tbName, chunkId)
 
     def _parseDump(self, tokens):
         """
@@ -394,6 +461,8 @@ class CommandParser(object):
                 print(name)
         elif t == 'NODES':
             self._parseShowNodes()
+        elif t == 'CHUNKS':
+            self._parseShowChunks(tokens[1:])
         else:
             raise _IllegalCommandError(t)
 
@@ -407,6 +476,27 @@ class CommandParser(object):
         for node, params in sorted(nodes.items()):
             print("{0} type={1} host={2} port={3} state={4}".format(node, params.type, params.host,
                                                                      params.port, params.state))
+
+    def _parseShowChunks(self, tokens):
+        """
+        Subparser, handle all SHOW CHUNKS requests.
+        """
+
+        if len(tokens) != 1:
+            raise _IllegalCommandError("Unexpected number of arguments.")
+
+        (dbTbName,) = tokens
+        if '.' not in dbTbName:
+            raise _IllegalCommandError("Invalid argument '{0}', should be <dbName>.<tbName>".format(dbTbName))
+
+        dbName, tbName = CommandParser._parseDbTable(dbTbName)
+
+        chunks = self._css.getChunks(dbName, tbName)
+        for chunk,nodes in chunks.items():
+            print("chunk: {0}".format(chunk))
+            for node in nodes:
+                print("    worker node: {0}".format(node))
+
 
     def _parseUpdate(self, tokens):
         """
@@ -553,6 +643,7 @@ class CommandParser(object):
                 self._checkExist(opts, CommandParser.requiredOpts["createTableDir"])
             else: # child table
                 self._checkExist(opts, CommandParser.requiredOpts["createChildTable"])
+
         return opts
 
 
