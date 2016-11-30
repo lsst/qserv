@@ -20,11 +20,12 @@ ssh -F "$SSH_CFG" "$SWARM_NODE" "/home/qserv/orchestration/start-qserv.sh"
 while true 
 do
     GO_TPL='{{range .items}}{{if ne .status.phase "Running"}}'
-    GO_TPL="$GO_TPL{{.metadata.name}}{{.status.phase}}{{\"\n\"}}{{end}}{{end}}"
+    GO_TPL="$GO_TPL- {{.metadata.name}} state: {{.status.phase}}{{\"\n\"}}{{end}}{{end}}"
     PODS=$(ssh -F "$SSH_CFG" "$SWARM_NODE" \
         "kubectl get pods -l app=qserv -o go-template --template '$GO_TPL'")
     if [ -n "$PODS" ]; then
-        echo "Wait for pods to be in 'Running' state:\n $PODS"
+        echo "Wait for pods to be in 'Running' state:"
+        echo "$PODS"
         sleep 2
     else
         break
@@ -33,7 +34,6 @@ done
 
 echo "Wait for Qserv to start on master"
 ssh -t -F "$SSH_CFG" "$SWARM_NODE" "kubectl -it exec master /qserv/scripts/wait.sh"
-echo "XXXXX"
 
 j=1
 for qserv_node in $WORKERS
@@ -42,4 +42,3 @@ do
 	ssh -t -F "$SSH_CFG" "$SWARM_NODE" "kubectl -it exec worker-$i /qserv/scripts/wait.sh"
     j=$((j+1));
 done
-

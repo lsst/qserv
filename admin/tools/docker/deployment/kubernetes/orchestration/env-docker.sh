@@ -3,7 +3,7 @@
 
 # VERSION can be a git ticket branch but with _ instead of /
 # example: tickets_DM-7139, or dev
-VERSION=tickets_DM-7139
+VERSION=dev
 
 
 # `docker run` settings

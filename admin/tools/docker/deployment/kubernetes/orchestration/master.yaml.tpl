@@ -9,10 +9,10 @@ spec:
   subdomain: qserv
   containers:
   - name: master
-    image: "qserv/qserv:dev_master"
+    image: "<MASTER_IMAGE>"
     env:
-    - name: QSERV_MASTER
+    - name: QSERV_MASTER 
       value: "master.qserv.default.svc.cluster.local"
     # command: ["tail","-f", "/dev/null"]
   nodeSelector:
-    kubernetes.io/hostname: lsst-fabricejammes-kube-0
+    kubernetes.io/hostname: <HOST> 
