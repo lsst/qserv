@@ -5,6 +5,7 @@
 # @author Fabrice Jammes IN2P3
 
 set -e
+set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
@@ -26,12 +27,15 @@ fi
 # Capture the local timezone as it needs to be passed down
 # into the containers.
 SET_CONTAINER_TIMEZONE=false
-LOCALTIME=$(readlink /etc/localtime)
-if [ -n "$LOCALTIME" ]; then
-    CONTAINER_TIMEZONE=${LOCALTIME#/usr/share/zoneinfo/}
-    if [ -n "$CONTAINER_TIMEZONE" ]; then
-        SET_CONTAINER_TIMEZONE=true
-    fi
+# Debian way to get timezone
+if [ -f /etc/timezone ]; then
+    CONTAINER_TIMEZONE=$(cat /etc/timezone)
+# Redhat way
+elif [ -h /etc/localtime ]; then
+    CONTAINER_TIMEZONE=$(readlink /etc/localtime | sed "s/\/usr\/share\/zoneinfo\///")
+fi
+if [ -n "$CONTAINER_TIMEZONE" ]; then
+    SET_CONTAINER_TIMEZONE=true
 fi
 
 echo
