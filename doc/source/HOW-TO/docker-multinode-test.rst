@@ -4,21 +4,17 @@ Run multinode test inside Docker containers
 
 .. note::
 
-   This procedure was tested with Docker 1.7 and 1.8.
+   This procedure was tested with Docker 1.12
 
 **************
 Pre-requisites
 **************
 
-- A Qserv master and a worker image made from the github branch/tag which will be tested, see :ref:`docker-github`
-
 .. note::
 
-   All pre-requisites below can be handled automatically by using Vagrant and a
-   Cloud-Computing infrastructure. An example for NCSA Openstack platform is
-   available here: vagrant-openstack-example_.
-   You can also fully automate VM images creation by using Packer, see example:
-   packer-openstack-example_.
+   All pre-requisites below can be handled automatically by using a
+   Cloud-Computing infrastructure. We provide Openstack support in pre-alpha
+   version, please contact us for additional information.
 
 .. _vagrant-openstack-example: https://github.com/fjammes/vagrant-openstack-example
 .. _packer-openstack-example: https://github.com/fjammes/packer-openstack-example
@@ -35,6 +31,10 @@ Pre-requisites
 
      sudo usermod -a -G docker myuser
 
+.. note::
+
+   It is possible to run a development version of Qserv by generating Qserv master and a worker images from a given github branch/tag, see :ref:`docker-github`
+
 ******************
 Run multinode test
 ******************
@@ -44,7 +44,7 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
 .. code-block:: bash
 
    git clone git@github.com:lsst/qserv.git
-   cd ${SRC_DIR}/qserv/admin/tools/docker/deployment
+   cd ${SRC_DIR}/qserv/admin/tools/docker/deployment/parallel
 
 create and adapt next example scripts to prepare multinode test execution:
 
@@ -54,21 +54,16 @@ In :file:`env.sh`, prepare your host list and set the name of your images:
    :language: bash
    :linenos:
 
-In :file:`pull.sh`, download latest container version on each node:
-
-.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/pull.sh
-   :language: bash
-   :linenos:
-
-In :file:`run-multinode-tests.sh`, run multinode test:
-
-.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/run-multinode-tests.sh
-   :language: bash
-   :linenos:
-
-Then, launch multinode test:
+Then, install Qserv and launch multinodes integration tests.
 
 .. code-block:: bash
 
+   # download latest docker image on each node:
+   ./pull.sh
+   # Start Qserv and run multinode test:
    ./run-multinode-tests.sh
+   # Check Qserv status
+   ./status.sh
+   # Stop Qserv
+   ./stop.sh
 
