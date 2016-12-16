@@ -1,3 +1,6 @@
 /*/docker.cid
 /*/scripts/install-deps.sh
-/cfg/Dockerfile
+/configured/Dockerfile
+/dev/Dockerfile
+/git/Dockerfile
+/work/Dockerfile

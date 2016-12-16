@@ -1,4 +1,4 @@
-FROM qserv/qserv:dev
+FROM <DOCKER_REPO>:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 USER root

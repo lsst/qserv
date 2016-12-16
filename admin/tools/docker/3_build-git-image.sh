@@ -8,6 +8,9 @@
 set -e
 set -x
 
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
 usage() {
     cat << EOD
 Usage: $(basename "$0") [options] [local-path]
@@ -32,12 +35,11 @@ Qserv is build using a given git repository:
   for the build. local-path argument must not be provided.
 
 All builds use a Docker image containing latest Qserv stack as input
-(i.e. image named qserv/qserv:dev).
+(i.e. image named $DOCKER_REPO:dev).
 
 EOD
 }
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/git"
 DOCKERTAG=''
 GIT_REF='master'
@@ -93,8 +95,15 @@ git clone -b "$GIT_REF" --single-branch "$GIT_REPO" "$DOCKERDIR/src/qserv"
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
     TAG=$(echo "$GIT_REF" | tr '/' '_')
-    DOCKERTAG="qserv/qserv:$TAG"
+    DOCKERTAG="$DOCKER_REPO:$TAG"
 fi
+
+DOCKERFILE="$DOCKERDIR/Dockerfile"
+
+awk \
+-v DOCKER_REPO="$DOCKER_REPO" \
+'{gsub(/<DOCKER_REPO>/, DOCKER_REPO);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 docker build --tag="$DOCKERTAG" "$DOCKERDIR"
 

@@ -26,6 +26,9 @@
 
 set -e
 
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
 usage() {
   cat << EOD
 
@@ -34,10 +37,10 @@ usage() {
   Available options:
     -h          this message
 
-  Create a docker image named 'qserv/qserv:dev':
+  Create a docker image named '$DOCKER_REPO:dev':
     - based on 'qserv-dev' eups tag
     - containing cutting-edge Qserv dependencies
-    - use previous version of 'qserv/qserv:dev' as input
+    - use previous version of '$DOCKER_REPO:dev' as input
 
 EOD
 }
@@ -56,10 +59,15 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/dev"
+DOCKERFILE="$DOCKERDIR/Dockerfile"
 
-TAG="qserv/qserv:dev"
+awk \
+-v DOCKER_REPO="$DOCKER_REPO" \
+'{gsub(/<DOCKER_REPO>/, DOCKER_REPO);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+
+TAG="$DOCKER_REPO:dev"
 printf "Building image with cutting edge dependencies (%s) from %s\n" "$TAG" "$DOCKERDIR"
 docker build --tag="$TAG" "$DOCKERDIR"
 docker push "$TAG"

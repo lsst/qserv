@@ -28,7 +28,10 @@
 
 set -e
 
-DEFAULT_IMAGE="qserv/qserv:work"
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
+DEFAULT_IMAGE="$DOCKER_REPO:work"
 IMAGE="$DEFAULT_IMAGE"
 
 usage() {

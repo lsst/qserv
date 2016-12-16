@@ -26,6 +26,9 @@
 
 set -e
 
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
 DOCKER_NAMESPACE=qserv
 
 usage() {
@@ -61,6 +64,13 @@ fi
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/work"
+
+DOCKERFILE="$DOCKERDIR/Dockerfile"
+
+awk \
+-v DOCKER_REPO="$DOCKER_REPO" \
+'{gsub(/<DOCKER_REPO>/, DOCKER_REPO);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="$DOCKER_NAMESPACE/qserv:work"
 printf "Building development image %s from %s\n" "$TAG" "$DOCKERDIR"
