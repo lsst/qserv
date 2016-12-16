@@ -13,8 +13,8 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 SSH_CFG="$DIR/ssh_config"
 
 echo "Create Kubernetes cluster"
-ssh -t -F "$SSH_CFG" "$SWARM_NODE" "sudo systemctl start kubelet.service"
-OUTPUT=$(ssh -t -F "$SSH_CFG" "$SWARM_NODE" "sudo kubeadm init")
+ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "sudo systemctl start kubelet.service"
+OUTPUT=$(ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "sudo kubeadm init")
 
 JOIN_CMD=$(echo "$OUTPUT" | tail -n 1 | sed "s/\r//")
 
@@ -25,4 +25,4 @@ do
     ssh -t -F "$SSH_CFG" "$qserv_node" "sudo $JOIN_CMD"
 done
 
-ssh -t -F "$SSH_CFG" "$SWARM_NODE" "kubectl apply -f https://git.io/weave-kube"
+ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl apply -f https://git.io/weave-kube"

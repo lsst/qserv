@@ -20,7 +20,7 @@ host=worker-${i}.qserv.default.svc.cluster.local; "
     i=$((i+1))
 done
 
-ssh -F "$SSH_CFG" "$SWARM_NODE" "kubectl exec master -- bash -c '. /qserv/stack/loadLSST.bash && \
+ssh -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl exec master -- bash -c '. /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py && \
     qserv-test-integration.py -V DEBUG'"

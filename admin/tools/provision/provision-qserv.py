@@ -114,7 +114,7 @@ do
 done
 
 # Swarm leader at initialization has id=0
-printf -v SWARM_LEADER "%sswarm-1" "$HOSTNAME_TPL"
+printf -v ORCHESTRATOR "%sswarm-1" "$HOSTNAME_TPL"
 
 for i in $(seq 1 "$WORKER_LAST_ID");
 do
