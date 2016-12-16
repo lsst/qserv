@@ -159,34 +159,4 @@ void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
     }
 }
 
-////////////////////////////////////////////////////////////////////////
-// DuplSelectExprPluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class DuplSelectExprPluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<DuplSelectExprPluginFactory> Ptr;
-    DuplSelectExprPluginFactory() {}
-    virtual ~DuplSelectExprPluginFactory() {}
-
-    virtual std::string getName() const { return "DuplicateSelectExpr"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<DuplSelectExprPlugin>();
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerTablePlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        DuplSelectExprPluginFactory::Ptr f = std::make_shared<DuplSelectExprPluginFactory>();
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerDuplSelectExprPlugin;
-} // annonymous namespace
-
 }}} // namespace lsst::qserv::qana

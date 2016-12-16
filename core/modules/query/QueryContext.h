@@ -39,6 +39,7 @@
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
+#include "query/FromList.h"
 #include "query/TableAlias.h"
 #include "global/stringTypes.h"
 
@@ -73,6 +74,7 @@ public:
     std::string userName{"default"}; ///< unused, but reserved.
     std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
     mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
+    std::map<std::string, DbTableSet> columnToTablesMap;
 
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
@@ -85,7 +87,9 @@ public:
     std::shared_ptr<qana::QueryMapping> queryMapping;
     std::shared_ptr<RestrList> restrictors;
 
-    void getTableSchema(std::string const& dbName, std::string const& tableName);
+    void collectTopLevelTableSchema(FromList& fromList);
+    std::string columnToTablesMapToString() const;
+    std::vector<std::string> getTableSchema(std::string const& dbName, std::string const& tableName);
 
     int chunkCount{0}; //< -1: all, 0: none, N: #chunks
 
@@ -101,7 +105,8 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    DbTablePair resolve(std::shared_ptr<ColumnRef> cr);
+    // DbTablePair resolve(std::shared_ptr<ColumnRef> cr); &&& delete
+    DbTableSet resolve(std::shared_ptr<ColumnRef> cr);
 };
 
 }}} // namespace lsst::qserv::query

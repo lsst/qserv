@@ -63,7 +63,7 @@ using lsst::qserv::query::WhereClause;
 namespace lsst {
 namespace qserv {
 namespace qana {
-/* &&&
+
 /// MatchTablePlugin fixes up queries on match tables which are not joins
 /// so that they do not return duplicate rows potentially introduced by
 /// the partitioning process.
@@ -92,49 +92,7 @@ namespace qana {
 /// Determining whether a table is a match table or not requires a metadata
 /// lookup. This in turn requires knowledge of that table's containing
 /// database. As a result, MatchTablePlugin must run after TablePlugin.
-class MatchTablePlugin : public QueryPlugin {
-public:
-    typedef std::shared_ptr<MatchTablePlugin> Ptr;
 
-    virtual ~MatchTablePlugin() {}
-
-    virtual void prepare() {}
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext& ctx);
-    virtual void applyPhysical(QueryPlugin::Plan& p,
-                               query::QueryContext& ctx) {}
-};
-*/ // &&&
-/// MatchTablePluginFactory creates MatchTablePlugin instances.
-class MatchTablePluginFactory : public QueryPlugin::Factory {
-public:
-    typedef std::shared_ptr<MatchTablePluginFactory> Ptr;
-
-    MatchTablePluginFactory() {}
-    virtual ~MatchTablePluginFactory() {}
-
-    virtual std::string getName() const {
-        return "MatchTable";
-    }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<MatchTablePlugin>();
-    }
-};
-
-// MatchTablePlugin registration
-
-namespace {
-    struct registerPlugin {
-        registerPlugin() {
-            QueryPlugin::registerClass(
-                 std::make_shared<MatchTablePluginFactory>());
-        }
-    };
-
-    registerPlugin registerTablePlugin; // static registration
-}
-
-// MatchTablePlugin implementation
 
 void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
                                     query::QueryContext& ctx)

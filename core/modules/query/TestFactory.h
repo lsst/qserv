@@ -50,11 +50,6 @@ namespace query {
 class TestFactory {
 public:
     TestFactory() {}
-    /* &&&
-    std::shared_ptr<QueryContext> newContext();
-    std::shared_ptr<QueryContext> newContext(
-                         std::shared_ptr<css::CssAccess> css);
-    */ // &&&
     std::shared_ptr<QueryContext> newContext(
             std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg);
     std::shared_ptr<SelectStmt> newSimpleStmt();

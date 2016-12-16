@@ -41,20 +41,9 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-/* &&&
-std::shared_ptr<QueryContext>
-TestFactory::newContext() {
-    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
-    context->defaultDb = "Somedb";
-    context->userName = "alice";
-    return context;
-}
-*/ // &&&
-
 std::shared_ptr<QueryContext>
 TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg) {
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, schemaCfg);
-    // context->css = css; &&&
     context->defaultDb = "Somedb";
     context->userName = "alice";
     return context;

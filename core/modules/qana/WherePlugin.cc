@@ -26,10 +26,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no WherePlugin.h) &&& delete
 // Parent class
 #include "qana/WherePlugin.h"
-// #include "qana/QueryPlugin.h" &&&
 
 // System headers
 #include <stdexcept>
@@ -52,52 +50,6 @@ namespace qana {
 ////////////////////////////////////////////////////////////////////////
 // WherePlugin declaration
 ////////////////////////////////////////////////////////////////////////
-/* &&&
-/// WherePlugin optimizes out extraneous OR_OP and AND_OP from the
-// WhereClause predicate.
-class WherePlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<WherePlugin> Ptr;
-
-    virtual ~WherePlugin() {}
-
-    virtual void prepare() {}
-
-    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
-    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) {}
-};
-*/ // &&&
-
-////////////////////////////////////////////////////////////////////////
-// WherePluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class WherePluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<WherePluginFactory> Ptr;
-    WherePluginFactory() {}
-    virtual ~WherePluginFactory() {}
-
-    virtual std::string getName() const { return "Where"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<WherePlugin>();
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerWherePlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        WherePluginFactory::Ptr f = std::make_shared<WherePluginFactory>();
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerWherePlugin;
-} // annonymous namespace
 
 void
 WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {

@@ -265,32 +265,13 @@ QuerySession::QuerySession(Test& t)
 
 
 void QuerySession::_initContext() {
-    /* &&&
-    _context = std::make_shared<query::QueryContext>();
-    _context->defaultDb = _defaultDb;
-    _context->username = "default";
-    _context->needsMerge = false;
-    _context->chunkCount = 0;
-    _context->css = _css;
-    */ // &&&
     _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _mysqlSchemaConfig);
 }
 
 
 void QuerySession::_preparePlugins() {
-    // TODO: use C++11 syntax to refactor this code
     _plugins = std::make_shared<QueryPluginPtrVector>();
 
-    /* &&&
-    _plugins->push_back(qana::QueryPlugin::newInstance("DuplicateSelectExpr"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("MatchTable"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Post"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("ScanTable"));
-    */ // &&&
     _plugins->push_back(std::make_shared<qana::DuplSelectExprPlugin>());
     _plugins->push_back(std::make_shared<qana::WherePlugin>());
     _plugins->push_back(std::make_shared<qana::AggregatePlugin>());

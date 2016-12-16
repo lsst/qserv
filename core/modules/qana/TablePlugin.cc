@@ -231,65 +231,6 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////
-// TablePlugin declaration
-////////////////////////////////////////////////////////////////////////
-/* &&&
-/// TablePlugin is a query plugin that inserts placeholders for table
-/// name substitution.
-class TablePlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<TablePlugin> Ptr;
-
-    virtual ~TablePlugin() {}
-
-    virtual void prepare() {}
-
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext& context);
-    virtual void applyPhysical(QueryPlugin::Plan& p,
-                               query::QueryContext& context);
-private:
-    int _rewriteTables(SelectStmtPtrVector& outList,
-                       query::SelectStmt& in,
-                       query::QueryContext& context,
-                       std::shared_ptr<qana::QueryMapping>& mapping);
-
-    std::string _dominantDb;
-};
-*/ // &&&
-
-////////////////////////////////////////////////////////////////////////
-// TablePluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class TablePluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<TablePluginFactory> Ptr;
-    TablePluginFactory() {}
-    virtual ~TablePluginFactory() {}
-
-    virtual std::string getName() const { return "Table"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<TablePlugin>();
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerTablePlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        TablePluginFactory::Ptr f = std::make_shared<TablePluginFactory>();
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerTablePlugin;
-} // annonymous namespace
-
-////////////////////////////////////////////////////////////////////////
 // TablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
@@ -297,6 +238,8 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
                           query::QueryContext& context) {
 
     query::FromList& fList = stmt.getFromList();
+    context.collectTopLevelTableSchema(fList);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& topLevelTableSchema:" << context.columnToTablesMapToString());
     query::TableRefList& tList = fList.getTableRefList();
     // Fill-in default db context.
     query::DbTableVector v = fList.computeResolverTables();
@@ -322,8 +265,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     int seq=0;
     addMap addMapContext(context.tableAliases, context.tableAliasReverses);
     std::for_each(tList.begin(), tList.end(),
-                  addAlias<generateAlias,addMap>(generateAlias(seq),
-                                                 addMapContext));
+                  addAlias<generateAlias,addMap>(generateAlias(seq), addMapContext));
 
     // Patch table references in the select list,
     query::SelectList& sList = stmt.getSelectList();

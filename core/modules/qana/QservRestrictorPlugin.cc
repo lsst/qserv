@@ -76,17 +76,22 @@ namespace qana {
 
 typedef std::pair<std::string, std::string> StringPair;
 
-std::shared_ptr<query::ColumnRef>
-resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
-    std::shared_ptr<query::ColumnRef> cr = vexpr->copyAsColumnRef();
+
+query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
+    query::ColumnRef::Vector columnRefs;
+    query::ColumnRef::Ptr cr = vexpr->copyAsColumnRef();
     if (!cr) {
-        return cr;
+        return columnRefs;
     }
-    query::DbTablePair p = context.resolve(cr);
-    cr->table = p.table;
-    cr->db = p.db;
-    return cr;
+    std::string column = cr->column;
+    query::DbTableSet set = context.resolve(cr);
+    for (auto const& dbTblPair : set) {
+        cr = std::make_shared<query::ColumnRef>(dbTblPair.db, dbTblPair.table, column);
+        columnRefs.push_back(cr);
+    }
+    return columnRefs;
 }
+
 
 /// @return true if cr represents a valid secondary index column.
 bool
@@ -208,7 +213,7 @@ query::QsRestrictor::Ptr newRestrictor(
 /**  Create QSRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
- *                    columns names and find if they are in secondary index.
+ *                    column names and find if they are in secondary index.
  *   @param andTerm:  Intermediatre representation of a subset of a SQL WHERE clause
  *
  *   @return:         Qserv restrictors list
@@ -225,12 +230,100 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
 
+            query::ColumnRef::Vector columnRefs;
+            // std::shared_ptr<query::ColumnRef> column_ref; &&&
+            query::QsRestrictor::Ptr restrictor;
+
+            // Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
+            // but this is not obvious because it would move restrictor-related code outside of current plugin.
+            // IN predicate
+            if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors IN");
+                // column_ref = resolveAsColumnRef(context, inPredicate->value); &&&
+                columnRefs = resolveAsColumnRef(context, inPredicate->value);
+                for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
+                    if (column_ref && lookupSecIndex(context, column_ref)) {
+                        restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
+                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor); // &&& back to TRACE
+                        break; // only one per column.
+                    }
+                }
+            } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
+                // '=' predicate
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors =");
+                query::ValueExprPtr literalValue;
+
+                // If the left side doesn't match any columns, check the right side.
+                columnRefs = resolveAsColumnRef(context, compPredicate->left);
+                if (columnRefs.empty()) {
+                    columnRefs = resolveAsColumnRef(context, compPredicate->right);
+                    literalValue = compPredicate->left;
+                } else {
+                    literalValue = compPredicate->right;
+                }
+
+                for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
+                    if (lookupSecIndex(context, column_ref)) {
+                        query::ValueExprPtrVector cands(1, literalValue);
+                        restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
+                        if (restrictor) {
+                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " // &&& back to TRACE
+                                    << *restrictor << " for '=' predicate");
+                            break; // only one per column.
+                        } else {
+                            LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_IN restrictor found"); // &&& back to TRACE
+                        }
+                    }
+                }
+            } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
+                // BETWEEN predicate
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors BETWEEN");
+                //column_ref = resolveAsColumnRef(context, betweenPredicate->value); &&&
+                columnRefs = resolveAsColumnRef(context, betweenPredicate->value);
+                for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
+                    if (column_ref && lookupSecIndex(context, column_ref)) {
+                        query::ValueExprPtrVector cands;
+
+                        cands.push_back(betweenPredicate->minValue);
+                        cands.push_back(betweenPredicate->maxValue);
+
+                        restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
+                        if (restrictor) {
+                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: " // &&& back to TRACE
+                                    << *restrictor << " for '=' predicate");
+                            break; // only one per column.
+                        } else {
+                            LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_BETWEEN restrictor found"); // &&& back to TRACE
+                        }
+                    }
+                }
+            }
+
+            if (restrictor) {
+                result.push_back(restrictor);
+            }
+        }
+    }
+    return result;
+}
+/* &&&
+query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
+                                                      query::AndTerm::Ptr andTerm) {
+    query::QsRestrictor::PtrVector result;
+    LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors");
+    if (not andTerm) return result;
+
+    for (auto term : andTerm->_terms) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& term=" << term);
+        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
+        if (!factor) continue;
+        for (auto factorTerm : factor->_terms) {
+
             std::shared_ptr<query::ColumnRef> column_ref;
             query::QsRestrictor::Ptr restrictor;
 
-            /* Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
-             * but this is not obvious because it would move restrictor-related code outside of current plugin.
-             */
+            // Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
+            // but this is not obvious because it would move restrictor-related code outside of current plugin.
 
             // IN predicate
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
@@ -291,6 +384,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
     }
     return result;
 }
+*/ // &&&
 
 query::PassTerm::Ptr newPass(std::string const& s) {
     query::PassTerm::Ptr p = std::make_shared<query::PassTerm>();
@@ -348,21 +442,7 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
     return fe;
 }
 
-/* &&&
-struct RestrictorEntry {
-    RestrictorEntry(std::string const& alias_,
-                 StringPair const& chunkColumns_,
-                 std::string const& secIndexColumn_)
-        : alias(alias_),
-          chunkColumns(chunkColumns_),
-          secIndexColumn(secIndexColumn_)
-        {}
-    std::string alias;
-    StringPair chunkColumns;
-    std::string secIndexColumn;
-};
 
-*/ // &&&
 typedef std::deque<RestrictorEntry> RestrictorEntries;
 
 class getTable : public query::TableRef::Func {
@@ -414,33 +494,7 @@ public:
     css::CssAccess& _css;
     RestrictorEntries& _entries;
 };
-////////////////////////////////////////////////////////////////////////
-// QservRestrictorPlugin declaration
-////////////////////////////////////////////////////////////////////////
-/* &&&
-/// QservRestrictorPlugin replaces a qserv restrictor spec with directives
-/// that can be executed on a qserv mysqld. This plugin should be
-/// execute after aliases for tables have been generates, so that the
-/// new restrictor function clauses/phrases can use the aliases.
-class QservRestrictorPlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<QservRestrictorPlugin> Ptr;
-    class Restriction;
 
-    virtual ~QservRestrictorPlugin() {}
-
-    virtual void prepare() {}
-
-    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
-    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context);
-
-private:
-    query::BoolTerm::Ptr
-        _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
-                       RestrictorEntry const& restrictorEntry);
-};
-*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin::Restriction
@@ -535,36 +589,6 @@ private:
     std::shared_ptr<Generator> _generator;
 };
 
-
-////////////////////////////////////////////////////////////////////////
-// QservRestrictorPluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class QservRestrictorPluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<QservRestrictorPluginFactory> Ptr;
-    QservRestrictorPluginFactory() {}
-    virtual ~QservRestrictorPluginFactory() {}
-
-    virtual std::string getName() const { return "QservRestrictor"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<QservRestrictorPlugin>();
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerQservRestrictorPlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        QservRestrictorPluginFactory::Ptr f = std::make_shared<QservRestrictorPluginFactory>();
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerQservRestrictorPlugin;
-}
 
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin implementation
