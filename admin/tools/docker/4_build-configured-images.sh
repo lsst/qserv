@@ -26,7 +26,10 @@
 
 set -e
 
-DOCKER_IMAGE="qserv/qserv:dev"
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
+DOCKER_IMAGE="$DOCKER_REPO:dev"
 PUSH_TO_HUB="true"
 
 usage() {
@@ -59,8 +62,6 @@ if [ $# -ne 0 ] ; then
     usage
     exit 2
 fi
-
-DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Build the master image
 

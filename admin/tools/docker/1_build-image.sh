@@ -29,8 +29,11 @@
 
 set -e
 
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR/conf.sh"
+
 EUPS_TAG='qserv_latest'
-TAG='qserv/qserv:latest'
+TAG='$DOCKER_REPO:latest'
 VERSION=$(date --date='-1 month' +'%Y-%m')
 
 usage() {
@@ -52,7 +55,7 @@ EOD
 while getopts CDh c ; do
     case $c in
             C) CACHE_OPT="--no-cache=true" ;;
-            D) EUPS_TAG="qserv-dev" ; TAG="qserv/qserv:dev" ;;
+            D) EUPS_TAG="qserv-dev" ; TAG="$DOCKER_REPO:dev" ;;
             h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
     esac
@@ -64,7 +67,6 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
 DEPS_DIR=$(readlink -e "$DIR/../../bootstrap")
 
 if [ ! -d "$DEPS_DIR" ] ; then
@@ -98,7 +100,7 @@ docker build $CACHE_OPT --build-arg EUPS_TAG="$EUPS_TAG" --tag="$TAG" "$DOCKERDI
 
 # Additional tag for release image
 if [ "$EUPS_TAG" = 'qserv_latest' ]; then
-    VERSION_TAG="qserv/qserv:$VERSION"
+    VERSION_TAG="$DOCKER_REPO:$VERSION"
 
     docker tag "$TAG" "$VERSION_TAG"
     docker push "$TAG"

@@ -1,5 +1,5 @@
 # dev and release are the same at release time
-FROM qserv/qserv:dev
+FROM <DOCKER_REPO>:dev
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 USER root
