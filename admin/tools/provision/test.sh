@@ -37,10 +37,11 @@ EOD
 }
 
 # get the options
-while getopts hcpsS c ; do
+while getopts hcLpsS c ; do
     case $c in
         h) usage ; exit 0 ;;
         c) CREATE="TRUE" ;;
+        L) LARGE=true ;;
         p) PROVISION="TRUE" ;;
         s) SHMUX="TRUE" ;;
         S) SWARM="TRUE" ;;
@@ -109,9 +110,15 @@ elif [ -n "$SHMUX" ]; then
     sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
-    # Run multinode tests
-    echo "Launch multinode tests"
-    ./run-multinode-tests.sh
+	if $LARGE; then
+        sed -i "s,#HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," env.sh
+		./run.sh
+        ./run-large-scale-tests.sh
+	else
+        # Run multinode tests
+        echo "Launch multinode tests"
+        ./run-multinode-tests.sh
+	fi
 
     if [ -f "$SSH_CONFIG_BACKUP" ]; then
         echo  "Restoring backup of $SSH_CONFIG"

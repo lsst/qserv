@@ -24,6 +24,7 @@ import warnings
 # Imports for other modules --
 # ----------------------------
 
+from cinderclient import client as cinder_client
 from keystoneauth1 import loading
 from keystoneauth1 import session
 from novaclient import client
@@ -96,9 +97,17 @@ def config_logger(loggerName, verbose, verboseAll):
             logging.getLogger(logger_name).setLevel(logging.ERROR)
         warnings.filterwarnings("ignore")
 
-    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(name)-15s'
-                               ' %(message)s',
-                        level=levels.get(verbosity, logging.DEBUG))
+        logger = logging.getLogger('')
+
+        # create console handler and set level to debug
+        console = logging.StreamHandler()
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(name)-15s %(message)s')
+        # add formatter to ch
+        console.setFormatter(formatter)
+
+        logger.handlers = [console]
+        logger.setLevel(levels.get(verbosity, logging.DEBUG))
 
 
 class CloudManager(object):
@@ -128,10 +137,11 @@ class CloudManager(object):
 
         default_instance_prefix = "{0}-qserv-".format(self._safe_username)
 
-        config = ConfigParser.ConfigParser({'instance-prefix': default_instance_prefix,
-                                            'net-id': None,
-                                            'ssh-private-key': '~/.ssh/id_rsa',
-                                            'ssh_security_group': None})
+        config = ConfigParser.ConfigParser(
+            {'instance-prefix': default_instance_prefix,
+             'net-id': None,
+             'ssh-private-key': '~/.ssh/id_rsa',
+             'ssh_security_group': None})
 
         with open(config_file_name, 'r') as config_file:
             config.readfp(config_file)
@@ -140,6 +150,8 @@ class CloudManager(object):
 
         self.nova = client.Client(_OPENSTACK_API_VERSION,
                                   session=self._session)
+        self.cinder = cinder_client.Client(_OPENSTACK_API_VERSION,
+                                           session=self._session)
         base_image_name = config.get('openstack', used_image_key)
         self.snapshot_name = config.get('openstack', 'snapshot_name')
         try:
@@ -287,6 +299,24 @@ class CloudManager(object):
             status = instance.status
         logging.info("Instance %s is %s", instance.name, status)
 
+    def nova_create_server_volume(self, instance_id, data_volume_name):
+        """
+        Attach a volume to a server, in /dev/vdb
+        @param instance_id: openstack server instance id
+        @param data_volume_name: name of data volume to attach
+        """
+        data_volumes = self.cinder.volumes.list(search_opts={'name':
+                                                data_volume_name})
+        if (not len(data_volumes) == 1):
+            raise ValueError('Cinder data volume not found '
+                             '(volumes found: %s)', data_volumes)
+
+        data_volume_id = data_volumes[0].id
+
+        logging.debug("Volumes: %s", data_volumes)
+        self.nova.volumes.create_server_volume(instance_id,
+                                               data_volume_id, '/dev/vdb')
+
     def detect_end_cloud_config(self, instance):
         """
         Wait for cloud-init completion
@@ -397,10 +427,13 @@ class CloudManager(object):
                     subprocess.check_output(cmd)
                     success = True
                 except subprocess.CalledProcessError as exc:
-                    logging.warn("Waiting for ssh to be available on %s: %s", instance.name, exc.output)
+                    logging.warn("Waiting for ssh to be available on %s: %s",
+                                 instance.name, exc.output)
                     nb_try += 1
                     if nb_try > 10:
-                        logging.critical("No available ssh on %s OpenStack clean up is required", instance.name)
+                        logging.critical("No available ssh on %s OpenStack"
+                                         " clean up is required",
+                                         instance.name)
                         sys.exit(1)
                     time.sleep(2)
             logging.debug("ssh available on %s", instance.name)
@@ -420,13 +453,31 @@ class CloudManager(object):
 
         for instance in instances:
             cmd = ['ssh', '-t', '-F', './ssh_config', instance.name,
-                   'sudo sh -c "echo \'{hostfile}\' >> /etc/hosts"'.format(hostfile=hostfile)]
+                   'sudo sh -c '
+                   '"echo \'{hostfile}\' >> /etc/hosts"'.format(
+                       hostfile=hostfile)]
             try:
                 subprocess.check_output(cmd)
             except subprocess.CalledProcessError as exc:
                 logging.error("ERROR while updating /etc/hosts: %s",
                               exc.output)
                 sys.exit(1)
+            logging.debug("/etc/hosts updated on %s", instance.name)
+
+    def mount_volume(self, instances):
+        """
+        Mount /dev/vdb1 on /mnt/qserv on each instance
+        """
+        for instance in instances:
+            cmd = ['ssh', '-t', '-F', './ssh_config', instance.name,
+                   'sudo sh -c "/tmp/mount_volume.sh"']
+            try:
+                subprocess.check_output(cmd)
+            except subprocess.CalledProcessError as exc:
+                logging.error("ERROR while updating /etc/hosts: %s",
+                              exc.output)
+                sys.exit(1)
+            logging.debug("/dev/vdb1 mounted on %s", instance.name)
 
     def build_cloudconfig(self):
         """
@@ -441,6 +492,21 @@ class CloudManager(object):
 host: {hostname_tpl}
 fqdn: {hostname_tpl}
 
+write_files:
+- path: "/tmp/mount_volume.sh"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    #!/bin/sh
+    set -e
+    while [ ! -b /dev/vdb1 ] ;
+    do
+      sleep 2
+      echo "---WAITING FOR CINDER VOLUME---"
+    done
+    mount /dev/vdb1 /mnt/qserv
+    chown -R 1000:1000 /mnt/qserv
+
 users:
 - name: qserv
   gecos: Qserv daemon
@@ -454,10 +520,13 @@ users:
 runcmd:
   - [/tmp/detect_end_cloud_config.sh]
   # Use overlay storage
-  - [sed, -i, 's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd --storage-driver=overlay|', /usr/lib/systemd/system/docker.service]
+  - [sed, -i,
+     's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd --storage-driver=overlay|',
+     /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/data]
   - [mkdir, -p, /qserv/log]
+  - [mkdir, /mnt/qserv]
   - [chown, -R, '1000:1000', /qserv]
   - [/bin/systemctl, daemon-reload]
   - [/bin/systemctl, restart,  docker.service]'''
@@ -471,4 +540,3 @@ runcmd:
 
         logging.debug("cloud-config userdata: \n%s", userdata)
         return userdata
-
