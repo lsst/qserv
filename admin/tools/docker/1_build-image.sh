@@ -40,8 +40,6 @@ usage() {
 
   Available options:
     -C          Rebuild the images from scratch
-    -d path     Directory containing dependency scripts, default to
-                \$QSERV_DIR/admin/bootstrap
     -D          Build using 'qserv-dev' eups tag instead of 'qserv_latest'
     -h          This message
 
@@ -51,10 +49,9 @@ EOD
 }
 
 # get the options
-while getopts Cd:Dh c ; do
+while getopts CDh c ; do
     case $c in
             C) CACHE_OPT="--no-cache=true" ;;
-            d) DEPS_DIR="$OPTARG" ;;
             D) EUPS_TAG="qserv-dev" ; TAG="qserv/qserv:dev" ;;
             h) usage ; exit 0 ;;
             \?) usage ; exit 2 ;;
@@ -67,14 +64,15 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-if [ -z "$DEPS_DIR" -a -z "$QSERV_DIR" ] ; then
-    printf "ERROR: directory containing dependency scripts not specified"
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+DEPS_DIR=$(readlink -e "$DIR/../../bootstrap")
+
+if [ ! -d "$DEPS_DIR" ] ; then
+	printf "ERROR: incorrect dependencies directory (value: $DEPS_DIR)"
     usage
     exit 3
 fi
-test "$DEPS_DIR" || DEPS_DIR=$QSERV_DIR/admin/bootstrap
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
 DOCKERDIR="$DIR/latest"
 
 # strip trailing slash
