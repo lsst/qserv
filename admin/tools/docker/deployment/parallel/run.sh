@@ -32,7 +32,7 @@ if [ -f /etc/timezone ]; then
     CONTAINER_TIMEZONE=$(cat /etc/timezone)
 # Redhat way
 elif [ -h /etc/localtime ]; then
-    CONTAINER_TIMEZONE=$(readlink /etc/localtime | sed "s/\/usr\/share\/zoneinfo\///")
+    CONTAINER_TIMEZONE=$(readlink -e /etc/localtime | sed "s/\/usr\/share\/zoneinfo\///")
 fi
 if [ -n "$CONTAINER_TIMEZONE" ]; then
     SET_CONTAINER_TIMEZONE=true
