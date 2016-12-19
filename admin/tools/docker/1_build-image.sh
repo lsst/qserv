@@ -33,7 +33,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/conf.sh"
 
 EUPS_TAG='qserv_latest'
-TAG='$DOCKER_REPO:latest'
+TAG="$DOCKER_REPO:latest"
 VERSION=$(date --date='-1 month' +'%Y-%m')
 
 usage() {
