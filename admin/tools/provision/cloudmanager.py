@@ -54,10 +54,6 @@ def _get_nova_creds():
 # Exported definitions --
 # -----------------------
 
-BASE_IMAGE_KEY = 'base_image_name'
-SNAPSHOT_IMAGE_KEY = 'snapshot_name'
-
-
 def add_parser_args(parser):
     """
     Configure the parser
@@ -116,8 +112,7 @@ class CloudManager(object):
     and provision qserv
     """
 
-    def __init__(self, config_file_name, used_image_key=BASE_IMAGE_KEY,
-                 add_ssh_key=False):
+    def __init__(self, config_file_name, add_ssh_key=False, use_snapshot_image=True):
         """
         Constructor parse all arguments
 
@@ -137,48 +132,67 @@ class CloudManager(object):
 
         default_instance_prefix = "{0}-qserv-".format(self._safe_username)
 
-        config = ConfigParser.ConfigParser(
-            {'instance-prefix': default_instance_prefix,
+        config = ConfigParser.RawConfigParser(
+            {'registry_host': None,
+             'registry_port': 5000,
+             'instance-prefix': default_instance_prefix,
              'net-id': None,
              'ssh-private-key': '~/.ssh/id_rsa',
-             'ssh_security_group': None})
-
-        with open(config_file_name, 'r') as config_file:
-            config.readfp(config_file)
+             'ssh_security_group': None,
+             'nb_worker': 3,
+             'nb_orchestrator': 2,
+             'format': None,
+             'first_id': None,
+             'last_id': None})
 
         self._session = self._create_keystone_session()
-
         self.nova = client.Client(_OPENSTACK_API_VERSION,
                                   session=self._session)
         self.cinder = cinder_client.Client(_OPENSTACK_API_VERSION,
                                            session=self._session)
-        base_image_name = config.get('openstack', used_image_key)
-        self.snapshot_name = config.get('openstack', 'snapshot_name')
+
+        with open(config_file_name, 'r') as config_file:
+            config.readfp(config_file)
+
+        # Read Docker related parameters
+        self._registry_host = config.get('docker', 'registry_host')
+        self._registry_port = config.getint('docker', 'registry_port')
+
+
+        # Read Openstack servers related parameters
+        if use_snapshot_image:
+            image_name = config.get('server', 'snapshot')
+        else:
+            image_name = config.get('server', 'base_image')
+
         try:
-            self.image = self.nova.images.find(name=base_image_name)
+            self.image = self.nova.images.find(name=image_name)
         except novaclient.exceptions.NoUniqueMatch:
-            logging.critical("Image %s not unique", base_image_name)
+            logging.critical("Image %s not unique", image_name)
             sys.exit(1)
         except novaclient.exceptions.NotFound:
             logging.critical("Image %s do not exist. Create it first",
-                             base_image_name)
+                             image_name)
             sys.exit(1)
 
-        flavor_name = config.get('openstack', 'flavor_name')
+        flavor_name = config.get('server', 'flavor')
         self.flavor = self.nova.flavors.find(name=flavor_name)
 
-        self.network_name = config.get('openstack', 'network_name')
-        if config.get('openstack', 'net-id'):
-            self.nics = [{'net-id': config.get('openstack', 'net-id')}]
+        snapshot_flavor_name = config.get('server', 'snapshot_flavor')
+        self.snapshot_flavor = self.nova.flavors.find(name=snapshot_flavor_name)
+
+        self.network_name = config.get('server', 'network')
+        if config.get('server', 'net-id'):
+            self.nics = [{'net-id': config.get('server', 'net-id')}]
         else:
             self.nics = []
 
-        self.ssh_security_group = config.get('openstack', 'ssh_security_group')
+        self.ssh_security_group = config.get('server', 'ssh_security_group')
 
         # Upload ssh public key
         if add_ssh_key:
             self.key = "{}-qserv".format(self._safe_username)
-            self.key_filename = config.get('openstack', 'ssh-private-key')
+            self.key_filename = config.get('server', 'ssh-private-key')
             if not self.key_filename:
                 raise ValueError("Unspecified ssh private key")
             self._manage_ssh_key()
@@ -186,9 +200,23 @@ class CloudManager(object):
             self.key = None
             self.key_filename = None
 
-        self._hostname_tpl = config.get('openstack', 'instance-prefix')
+        self._hostname_tpl = config.get('server', 'instance-prefix')
         if not self._hostname_tpl:
             raise ValueError("Unspecified server name prefix")
+
+        self.nbWorker = config.getint('server', 'nb_worker')
+        self.nbOrchestrator = config.getint('server', 'nb_orchestrator')
+
+        # Read Openstack volumes related parameters
+        volume_format = config.get('volume', 'format')
+        volume_first_id = config.getint('volume', 'first_id')
+        volume_last_id = config.getint('volume', 'last_id')
+
+        if volume_format:
+            volume_ids = range(volume_first_id, volume_last_id+1)
+            self.volume_names = [volume_format.format(i) for i in volume_ids]
+        else:
+            self.volume_names = None
 
     def get_hostname_tpl(self):
         """
@@ -269,7 +297,7 @@ class CloudManager(object):
         instance_name = "{0}{1}".format(self._hostname_tpl, instance_id)
         return instance_name
 
-    def nova_servers_create(self, instance_id, userdata):
+    def nova_servers_create(self, instance_id, userdata, flavor=None):
         """
         Boot an instance and return
         """
@@ -278,10 +306,13 @@ class CloudManager(object):
 
         userdata = userdata.format(node_id=instance_id)
 
+        if not flavor:
+            flavor = self.flavor
+
         # Launch an instance from an image
         instance = self.nova.servers.create(name=instance_name,
                                             image=self.image,
-                                            flavor=self.flavor,
+                                            flavor=flavor,
                                             userdata=userdata,
                                             key_name=self.key,
                                             nics=self.nics)
@@ -330,10 +361,10 @@ class CloudManager(object):
             logging.debug("instance: %s", instance)
             found = re.search(check_word, output)
 
-    def nova_servers_cleanup(self, last_instance_id):
+    def nova_servers_cleanup(self):
         """
         Shut down and delete all Qserv servers
-        belonging to current Openstack user.
+        starting with '_hostname_tpl' string.
 
         Raise exception if instance name prefix is empty.
         """
@@ -519,24 +550,32 @@ users:
 
 runcmd:
   - [/tmp/detect_end_cloud_config.sh]
-  # Use overlay storage
-  - [sed, -i,
-     's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd --storage-driver=overlay|',
-     /usr/lib/systemd/system/docker.service]
+  # Use overlay storage and docker registry
+  - [sed, -i, 's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd {docker_opts}|', /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/data]
   - [mkdir, -p, /qserv/log]
   - [mkdir, /mnt/qserv]
   - [chown, -R, '1000:1000', /qserv]
   - [/bin/systemctl, daemon-reload]
-  - [/bin/systemctl, restart,  docker.service]'''
+  - [/bin/systemctl, restart,  docker.service]
+  '''
 
         fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
         public_key = fpubkey.read()
 
-        userdata = cloud_config.format(key=public_key,
-                                       hostname_tpl=self._hostname_tpl
-                                       + "{node_id}")
+        docker_opts = "--storage-driver=overlay"
+        if self._registry_host:
+            docker_opts = "{docker_opts} --insecure-registry {registry_host}  " \
+                          "--registry-mirror=http://{registry_host}:{registry_port}".format(docker_opts=docker_opts,
+                                                                                            registry_host=self._registry_host,
+                                                                                            registry_port=self._registry_port)
+
+        userdata = cloud_config.format(hostname_tpl=self._hostname_tpl
+                                       + "{node_id}",
+                                       key=public_key,
+                                       docker_opts=docker_opts
+                                       )
 
         logging.debug("cloud-config userdata: \n%s", userdata)
         return userdata

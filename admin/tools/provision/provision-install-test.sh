@@ -60,7 +60,14 @@ if [ "$OPTIND" -eq 1 ]; then
     SWARM="TRUE"
 fi
 
-. "$DIR/env-openstack.sh"
+# Check if openstack connection parameters are available
+if [ -z "$OS_PROJECT_NAME" ]; then
+    echo "ERROR: Openstack resource file not sourced"
+        exit 1    
+fi
+
+# Choose the configuration file which contains instance parameters
+CONF_FILE="${OS_PROJECT_NAME}.conf"
 
 if [ -n "$CREATE" ]; then
     echo "Create up to date snapshot image"
@@ -71,8 +78,6 @@ if [ -n "$PROVISION" ]; then
     echo "Provision Qserv cluster on Openstack"
     "$DIR/provision-qserv.py" --cleanup \
         --config "$CONF_FILE" \
-        --nb-worker "$NB_WORKER"  \
-        --nb-swarm "$NB_SWARM"  \
         -vv
 fi
 
@@ -110,7 +115,7 @@ elif [ -n "$SHMUX" ]; then
     sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
-	if $LARGE; then
+	if [ "$LARGE" = true ]; then
         sed -i "s,#HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," env.sh
 		./run.sh
         ./run-large-scale-tests.sh

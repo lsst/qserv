@@ -65,14 +65,6 @@ write_files:
 groups:
 - docker
 
-users:
-- name: qserv
-  gecos: Qserv daemon
-  groups: docker
-  lock-passwd: true
-  shell: /bin/bash
-  sudo: ALL=(ALL) NOPASSWD:ALL
-
 packages:
 - docker-engine
 - util-linux
@@ -84,6 +76,8 @@ runcmd:
 package_upgrade: true
 package_reboot_if_required: true
 timezone: Europe/Paris
+
+final_message: "The system is finally up, after $UPTIME seconds"
 '''
 
     return userdata
@@ -114,7 +108,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         instance_id = "source"
-        instance_for_snapshot = cloudManager.nova_servers_create(instance_id, userdata_snapshot)
+        instance_for_snapshot = cloudManager.nova_servers_create(instance_id, userdata_snapshot, cloudManager.snapshot_flavor)
 
         # Wait for cloud config completion
         cloudManager.detect_end_cloud_config(instance_for_snapshot)

@@ -1,5 +1,4 @@
 /ssh_config
-/env-openstack.sh
 /env-infrastructure.sh
 /*-openrc.sh
 /*.conf
