@@ -239,7 +239,6 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
 
     query::FromList& fList = stmt.getFromList();
     context.collectTopLevelTableSchema(fList);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& topLevelTableSchema:" << context.columnToTablesMapToString());
     query::TableRefList& tList = fList.getTableRefList();
     // Fill-in default db context.
     query::DbTableVector v = fList.computeResolverTables();

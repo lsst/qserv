@@ -27,7 +27,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Parent class
+// Class header
 #include "qana/AggregatePlugin.h"
 
 // System headers

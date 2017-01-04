@@ -33,18 +33,19 @@ namespace qana {
 
 
 /// WherePlugin optimizes out extraneous OR_OP and AND_OP from the
-// WhereClause predicate.
+/// WhereClause predicate.
 class WherePlugin : public QueryPlugin {
 public:
     // Types
     typedef std::shared_ptr<WherePlugin> Ptr;
 
+    WherePlugin() {}
     virtual ~WherePlugin() {}
 
-    virtual void prepare() {}
+    void prepare() override {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
-    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) {}
+    void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
+    void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) override {}
 };
 
 }}} // namespace lsst::qserv::qana

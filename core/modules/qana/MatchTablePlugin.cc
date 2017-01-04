@@ -27,7 +27,7 @@
   */
 
 // Class header
-#include "TablePlugin.h"
+#include "MatchTablePlugin.h"
 
 // System headers
 #include <string>

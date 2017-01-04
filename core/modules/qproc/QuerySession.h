@@ -75,7 +75,7 @@ public:
     friend class Iter;
     typedef std::shared_ptr<QuerySession> Ptr;
 
-    explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const mysqlSchemaConfig)
+    explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& mysqlSchemaConfig)
         : _css(css), _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
     std::string const& getOriginal() const { return _original; }

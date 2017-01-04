@@ -75,8 +75,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 BOOST_AUTO_TEST_CASE(Exceptions) {
     // Should throw an Analysis error, because columnref is invalid.
     // Under normal operation, the columnref is patched by the TablePlugin
-    // QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor"); &&&
-    QueryPlugin::Ptr qp{new lsst::qserv::qana::QservRestrictorPlugin()};
+    QueryPlugin::Ptr qp(new lsst::qserv::qana::QservRestrictorPlugin());
     TestFactory factory;
     std::shared_ptr<QueryContext> qc = factory.newContext(css, schemaCfg);
     std::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
@@ -93,8 +92,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
 }
 
 BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
-    // QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr"); &&&
-    QueryPlugin::Ptr qp{new lsst::qserv::qana::DuplSelectExprPlugin()};
+    QueryPlugin::Ptr qp(new lsst::qserv::qana::DuplSelectExprPlugin());
     TestFactory factory;
     std::shared_ptr<QueryContext> qc = factory.newContext(css, schemaCfg);
     std::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();

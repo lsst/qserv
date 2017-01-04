@@ -106,7 +106,7 @@ public:
     /// @return - If task was still in the queue, return true.
     /// Most schedulers do not support this operation. Currently only supports
     /// moving from/to ScanSchedulers.
-    bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override {return false;}
+    bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override { return false; }
 
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.

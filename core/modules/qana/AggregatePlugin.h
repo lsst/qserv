@@ -43,10 +43,9 @@ public:
 
     virtual ~AggregatePlugin() {}
 
-    virtual void prepare() {}
+    void prepare() override {}
 
-    virtual void applyPhysical(QueryPlugin::Plan& plan,
-                               query::QueryContext&);
+    void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&) override;
 private:
     query::AggOp::Mgr _aMgr;
 };

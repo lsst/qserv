@@ -76,7 +76,13 @@ namespace qana {
 
 typedef std::pair<std::string, std::string> StringPair;
 
-
+/// Returns a list of column references.
+/// This class will usually check the list if any can be used
+/// to restrict the query to a subset of worker nodes via the secondary index.
+/// If there is ambiguity in the possible table that a column belongs to,
+/// the SQL statement should cause an error when tried on the local database,
+/// so that check can be skipped.
+///
 query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
     query::ColumnRef::Vector columnRefs;
     query::ColumnRef::Ptr cr = vexpr->copyAsColumnRef();
@@ -86,8 +92,7 @@ query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query:
     std::string column = cr->column;
     query::DbTableSet set = context.resolve(cr);
     for (auto const& dbTblPair : set) {
-        cr = std::make_shared<query::ColumnRef>(dbTblPair.db, dbTblPair.table, column);
-        columnRefs.push_back(cr);
+        columnRefs.push_back(std::make_shared<query::ColumnRef>(dbTblPair.db, dbTblPair.table, column));
     }
     return columnRefs;
 }
@@ -99,7 +104,6 @@ lookupSecIndex(query::QueryContext& context,
                std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    LOGS(_log, LOG_LVL_DEBUG, "&&& cr=" << cr);
     if ((!cr) || !context.css) { return false; }
     if (!context.css->containsDb(cr->db)
        || !context.css->containsTable(cr->db, cr->table)) {
@@ -110,7 +114,6 @@ lookupSecIndex(query::QueryContext& context,
     }
     std::vector<std::string> sics = context.css->getPartTableParams(
         cr->db, cr->table).secIndexColNames();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&  sics=" << (sics.empty() ? "EMPTY":sics.at(0)));
     return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
 }
 
@@ -221,36 +224,34 @@ query::QsRestrictor::Ptr newRestrictor(
 query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
                                                       query::AndTerm::Ptr andTerm) {
     query::QsRestrictor::PtrVector result;
-    LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors");
     if (not andTerm) return result;
 
     for (auto term : andTerm->_terms) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& term=" << term);
         query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
 
             query::ColumnRef::Vector columnRefs;
-            // std::shared_ptr<query::ColumnRef> column_ref; &&&
             query::QsRestrictor::Ptr restrictor;
 
             // Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
-            // but this is not obvious because it would move restrictor-related code outside of current plugin.
+            // but this is not obvious because it would move restrictor-related code outside of
+            // the current plugin.
             // IN predicate
+            LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_IN restrictor");
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors IN");
-                // column_ref = resolveAsColumnRef(context, inPredicate->value); &&&
                 columnRefs = resolveAsColumnRef(context, inPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (column_ref && lookupSecIndex(context, column_ref)) {
-                        restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
-                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor); // &&& back to TRACE
-                        break; // only one per column.
+                    if (lookupSecIndex(context, column_ref)) {
+                        restrictor = newRestrictor(
+                                     SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
+                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
+                        break; // Only want one per column.
                     }
                 }
-            } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
+            } else if (auto const compPredicate =
+                       std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 // '=' predicate
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors =");
                 query::ValueExprPtr literalValue;
 
                 // If the left side doesn't match any columns, check the right side.
@@ -267,33 +268,28 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                         query::ValueExprPtrVector cands(1, literalValue);
                         restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
                         if (restrictor) {
-                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " // &&& back to TRACE
+                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: "
                                     << *restrictor << " for '=' predicate");
-                            break; // only one per column.
-                        } else {
-                            LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_IN restrictor found"); // &&& back to TRACE
+                            break; // Only want one per column.
                         }
                     }
                 }
-            } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
+            } else if (auto const betweenPredicate =
+                       std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
                 // BETWEEN predicate
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors BETWEEN");
-                //column_ref = resolveAsColumnRef(context, betweenPredicate->value); &&&
+                LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_BETWEEN restrictor");
                 columnRefs = resolveAsColumnRef(context, betweenPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (column_ref && lookupSecIndex(context, column_ref)) {
+                    if (lookupSecIndex(context, column_ref)) {
                         query::ValueExprPtrVector cands;
-
                         cands.push_back(betweenPredicate->minValue);
                         cands.push_back(betweenPredicate->maxValue);
-
-                        restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
+                        restrictor = newRestrictor(
+                            RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
                         if (restrictor) {
-                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: " // &&& back to TRACE
-                                    << *restrictor << " for '=' predicate");
-                            break; // only one per column.
-                        } else {
-                            LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_BETWEEN restrictor found"); // &&& back to TRACE
+                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: "
+                                                      << *restrictor);
+                            break; // Only want one per column.
                         }
                     }
                 }
@@ -306,85 +302,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
     }
     return result;
 }
-/* &&&
-query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
-                                                      query::AndTerm::Ptr andTerm) {
-    query::QsRestrictor::PtrVector result;
-    LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors");
-    if (not andTerm) return result;
 
-    for (auto term : andTerm->_terms) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& term=" << term);
-        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
-        if (!factor) continue;
-        for (auto factorTerm : factor->_terms) {
-
-            std::shared_ptr<query::ColumnRef> column_ref;
-            query::QsRestrictor::Ptr restrictor;
-
-            // Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
-            // but this is not obvious because it would move restrictor-related code outside of current plugin.
-
-            // IN predicate
-            if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors IN");
-                column_ref = resolveAsColumnRef(context, inPredicate->value);
-                if (column_ref && lookupSecIndex(context, column_ref)) {
-                    restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
-                    LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor); // &&& back to TRACE
-                }
-            } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
-                // '=' predicate
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors =");
-                query::ValueExprPtr literalValue;
-                column_ref = resolveAsColumnRef(context, compPredicate->left);
-
-                // Find the secondary index column ref: Is it on the rhs or lhs?
-                if (column_ref) {
-                    literalValue = compPredicate->right;
-                } else  {
-                    column_ref = resolveAsColumnRef(context, compPredicate->right);
-                    literalValue = compPredicate->left;
-                }
-
-                if (column_ref && lookupSecIndex(context, column_ref)) {
-                    query::ValueExprPtrVector cands(1, literalValue);
-                    restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
-                    if (restrictor) {
-                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " // &&& back to TRACE
-                             << *restrictor << " for '=' predicate");
-                    } else {
-                        LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_IN restrictor found"); // &&& back to TRACE
-                    }
-                }
-            } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-                // BETWEEN predicate
-                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors BETWEEN");
-                column_ref = resolveAsColumnRef(context, betweenPredicate->value);
-                if (column_ref && lookupSecIndex(context, column_ref)) {
-                    query::ValueExprPtrVector cands;
-
-                    cands.push_back(betweenPredicate->minValue);
-                    cands.push_back(betweenPredicate->maxValue);
-
-                    restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
-                    if (restrictor) {
-                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: " // &&& back to TRACE
-                             << *restrictor << " for '=' predicate");
-                    } else {
-                        LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_BETWEEN restrictor found"); // &&& back to TRACE
-                    }
-                }
-            }
-
-            if (restrictor) {
-                result.push_back(restrictor);
-            }
-        }
-    }
-    return result;
-}
-*/ // &&&
 
 query::PassTerm::Ptr newPass(std::string const& s) {
     query::PassTerm::Ptr p = std::make_shared<query::PassTerm>();

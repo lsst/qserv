@@ -50,13 +50,13 @@ public:
     virtual ~PostPlugin() {}
 
     /// Prepare the plugin for a query
-    virtual void prepare() {}
+    void prepare() override {}
 
     /// Apply the plugin's actions to the parsed, but not planned query
-    virtual void applyLogical(query::SelectStmt&, query::QueryContext&);
+    void applyLogical(query::SelectStmt&, query::QueryContext&) override;
 
     /// Apply the plugins's actions to the concrete query plan.
-    virtual void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&);
+    void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&) override;
 
     int _limit;
     std::shared_ptr<query::OrderByClause> _orderBy;

@@ -35,9 +35,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "mysql/MySqlConnection.h"
-#include "mysql/SchemaFactory.h"
 #include "query/ColumnRef.h"
+#include "sql/SqlConnection.h"
+#include "sql/SqlResults.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryContext");
@@ -48,31 +48,26 @@ namespace qserv {
 namespace query {
 
 
+/// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
+/// This should be adequate and possibly desirable as this information is being used
+/// to restrict queries to particular nodes via the secondary index. Sub-queries are not
+/// supported and even if they were, it could be difficult to determine if a restriction
+/// in a sub-query would be a valid restriction on the entire query.
 void QueryContext::collectTopLevelTableSchema(FromList& fromList) {
-    using ColumnSet=std::set<std::string>;
-    std::map<DbTablePair, ColumnSet> tableColumnMap;
+    columnToTablesMap.clear();
     for (TableRef::Ptr tblRefPtr : fromList.getTableRefList()) {
         DbTablePair dbTblPair(tblRefPtr->getDb(), tblRefPtr->getTable()); // DbTablePair has comparisons defined.
+        if (dbTblPair.db.empty()) dbTblPair.db = defaultDb;
+        LOGS(_log, LOG_LVL_DEBUG, "db=" << dbTblPair.db << " table=" << dbTblPair.table);
         if (!dbTblPair.db.empty() && !dbTblPair.table.empty()) {
             // Get the columns in the table from the DB schema and put them in the tableColumnMap.
             auto columns = getTableSchema(dbTblPair.db, dbTblPair.table);
             if (!columns.empty()) {
-                ColumnSet& colSet = tableColumnMap[dbTblPair];
                 for (auto const& col : columns) {
-                    colSet.insert(col);
+                    DbTableSet& st = columnToTablesMap[col];
+                    st.insert(dbTblPair);
                 }
             }
-        }
-    }
-
-    // Use the tableToColumnMap to create the columnToTablesMap.
-    columnToTablesMap.clear();
-    for (auto const& tblToColPair : tableColumnMap) {
-        auto const& dbTbl = tblToColPair.first;
-        auto const& colSet = tblToColPair.second;
-        for (auto const& col : colSet) {
-            DbTableSet& st = columnToTablesMap[col];
-            st.insert(dbTbl);
         }
     }
 }
@@ -92,64 +87,48 @@ std::string QueryContext::columnToTablesMapToString() const {
 }
 
 
-std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName, std::string const& tableName) {
-    // Check if it is in our list of table schemas
-    DbTablePair dTPair(dbName, tableName);
-
+///
+/// Get the table schema from the mysqlSchemaConfig database. Primarily, this is
+/// used to map column names to particular tables.
+std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
+                                                      std::string const& tableName) {
     // Get the table schema from the local database.
+    DbTablePair dTPair(dbName, tableName);
     std::vector<std::string> colNames;
-    mysql::MySqlConnection mysqlConn{mysqlSchemaConfig};
-    if (!mysqlConn.connected()) {
-        LOGS(_log, LOG_LVL_ERROR, "QueryContext::getTableSchema failed to connect to schema database!");
-        return colNames; // Reconnection failed. This is an error.
-    }
+    sql::SqlConnection sqlConn{mysqlSchemaConfig};
 
-    // SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'tbl_name' AND table_schema = 'db_name'
+    // SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+    // WHERE table_name = 'tbl_name' AND table_schema = 'db_name'
     std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS ");
     sql += "WHERE table_name = '" + tableName + "' " +
            "AND table_schema = '" + dbName + "'";
-    LOGS(_log, LOG_LVL_DEBUG, "tableSchema sql=" << sql);
-    int rc = mysql_real_query(mysqlConn.getMySql(), sql.data(), sql.size());
-
-    if (rc) { return colNames; }
-    MYSQL_RES* result = mysql_use_result(mysqlConn.getMySql());
-
-    auto resSchema = mysql::SchemaFactory::newFromResult(result);
-    std::string resSchemaStr;
-    for(auto i=resSchema.columns.begin(), e=resSchema.columns.end(); i != e; ++i) {
-        resSchemaStr += i->name + ", ";
+    sql::SqlResults results;
+    sql::SqlErrorObject errObj;
+    if (not sqlConn.runQuery(sql, results, errObj)) {
+        LOGS(_log, LOG_LVL_WARN, "getTableSchema query failed: " << sql);
+        return colNames;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "tableSchema resSchema=" << resSchemaStr);
 
-    // int numFields = mysql_num_fields(result); &&&
-    MYSQL_ROW row;
     int j = 0;
-    while ((row = mysql_fetch_row(result))) {
-        auto lengths = mysql_fetch_lengths(result);
-        colNames.emplace_back(row[0], lengths[0]);
-        LOGS(_log, LOG_LVL_DEBUG, "tableSchema row[" << j << "]=" << colNames[j]);
+    for (auto const& row : results) {
+        colNames.emplace_back(row[0].first, row[0].second);
         ++j;
     }
     return colNames;
 }
 
 
-/// Resolve a column ref to a concrete (db,table)
-/// @return the concrete (db,table), based on current context.
-DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {   //&&& needs to return list of DbTablePair or QservRestrictorPlugin lookupSecIndex() and getSecIndexRestrictors need work
-    LOGS(_log, LOG_LVL_DEBUG, "&&& resolve cr=" << cr);
+/// Resolve a column ref to a set of concrete (db,table).
+/// In most cases this returns a set with a single element. It is possible that a non-fully qualified
+/// column could exist in more than one table.
+/// @return a set of concrete (db,table), based on current context.
+DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
     DbTableSet dbTableSet;
     if (!cr) { return dbTableSet; }
-
-    auto dbTableStr = [](DbTablePair const& dbT) -> std::string { // &&& delete
-        std::string str = dbT.db + "." + dbT.table;
-        return str;
-    };
 
     // If alias, retrieve real reference.
     if (cr->db.empty() && !cr->table.empty()) {
         DbTablePair concrete = tableAliases.get(cr->table);
-        LOGS(_log, LOG_LVL_DEBUG, "&&& resolve db.empty concrete=" << dbTableStr(concrete));
         if (!concrete.empty()) {
             if (concrete.db.empty()) {
                 concrete.db = defaultDb;
@@ -160,36 +139,45 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {   //&&& needs 
     }
     // Set default db and table.
     DbTablePair p;
-    if (cr->table.empty()) { // No db or table: choose first resolver pair
-        // p = resolverTables[0]; &&&
-        // LOGS(_log, LOG_LVL_DEBUG, "&&& resolve table.empty p=" << dbTableStr(p)); &&&
-        // TODO: We can be fancy and check the column name against the
-        // schema for the entries on the resolverTables, and choose
-        // the matching entry.
-        std::string column = cr->column;
-        std::string debugMsg; // &&& keep or not?
-        if (!column.empty()) {
-            auto iter = columnToTablesMap.find(column);
-            if (iter != columnToTablesMap.end()) {
-                auto const& dTSet = iter->second;
-                for (auto const& dT : dTSet) {
-                    dbTableSet.insert(dT);
-                    debugMsg += dT.db + "." + dT.table + ",";
+    if (cr->table.empty()) { // No db or table.
+        if (columnToTablesMap.empty()) {
+            // This should only be the case if all of the table names in the from statement were invalid
+            // or no connection to the database could be made (in which case there would be other errors
+            // during normal operation).
+            p = resolverTables[0];
+            LOGS(_log, LOG_LVL_WARN,
+                 "columnToTablesMap was empty, using first resolverTable. " << p.db << "." << p.table);
+        } else {
+            // Check the column name against the schema for the entries
+            // on the columnToTablesMap, and choose the matching entry.
+            // It is possible that the column exists in more than one table.
+            if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+                LOGS(_log, LOG_LVL_DEBUG, "columnToTablesMap=" << columnToTablesMapToString());
+            }
+            std::string column = cr->column;
+            if (!column.empty()) {
+                auto iter = columnToTablesMap.find(column);
+                if (iter != columnToTablesMap.end()) {
+                    auto const& dTSet = iter->second;
+                    for (auto const& dT : dTSet) {
+                        dbTableSet.insert(dT);
+                        LOGS(_log, LOG_LVL_DEBUG, "cr->table.empty column=" << column
+                             << " adding " << dT.db << "." << dT.table);
+                    }
                 }
             }
+            return dbTableSet;
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&& resolve table.empty " << debugMsg);
-        return dbTableSet;
     } else if (cr->db.empty()) { // Table, but not alias.
         // Match against resolver stack
-        DbTableVector::const_iterator i=resolverTables.begin(), e=resolverTables.end(); // &&& auto
+        DbTableVector::const_iterator i=resolverTables.begin(), e=resolverTables.end();
         for(; i != e; ++i) {
             if (i->table == cr->table) {
                 p = *i;
                 break;
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&& resolve found=" << (i != e) << " db.empty p=" << dbTableStr(p));
+        LOGS(_log, LOG_LVL_TRACE, "resolve found=" << (i != e) << " db.empty p=" << p.db << "." << p.table);
         if (i == e) return dbTableSet; // No resolution.
     } else { // both table and db exist, so return them
         DbTablePair dtp(cr->db, cr->table);
@@ -198,10 +186,9 @@ DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {   //&&& needs 
     }
     if (p.db.empty()) {
         // Fill partially-resolved empty db with user db context
-        LOGS(_log, LOG_LVL_DEBUG, "&&& resolve p.db.empty");
         p.db = defaultDb;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& resolve p=" << dbTableStr(p));
+    LOGS(_log, LOG_LVL_TRACE, "resolve p=" << p.db << "." << p.table);
     {
         DbTablePair dtp(p.db, p.table);
         dbTableSet.insert(dtp);

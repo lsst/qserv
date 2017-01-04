@@ -46,13 +46,13 @@ public:
     // Types
     typedef std::shared_ptr<ScanTablePlugin> Ptr;
 
+    ScanTablePlugin() {}
     virtual ~ScanTablePlugin() {}
 
-    virtual void prepare() {}
+    void prepare() override {}
 
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext&);
-    virtual void applyFinal(query::QueryContext& context);
+    void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
+    void applyFinal(query::QueryContext& context) override;
 
 private:
     proto::ScanInfo _findScanTables(query::SelectStmt& stmt,

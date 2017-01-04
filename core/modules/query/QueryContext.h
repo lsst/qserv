@@ -105,7 +105,6 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    // DbTablePair resolve(std::shared_ptr<ColumnRef> cr); &&& delete
     DbTableSet resolve(std::shared_ptr<ColumnRef> cr);
 };
 

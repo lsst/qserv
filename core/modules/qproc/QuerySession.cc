@@ -60,6 +60,7 @@
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
+#include "qana/MatchTablePlugin.h"
 #include "qana/PostPlugin.h"
 #include "qana/QservRestrictorPlugin.h"
 #include "qana/QueryMapping.h"
@@ -367,8 +368,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     QueryTplVector queryTemplates;
 
     typedef query::SelectStmtPtrVector::const_iterator Iter;
-    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
-        i != e; ++i) {
+    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end(); i != e; ++i) {
         queryTemplates.push_back((**i).getQueryTemplate());
     }
     if (!queryMapping.hasSubChunks()) { // Non-subchunked?
