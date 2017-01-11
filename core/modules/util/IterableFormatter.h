@@ -34,6 +34,7 @@
 // System headers
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <utility>
 

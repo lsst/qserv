@@ -30,6 +30,7 @@
 // System headers
 #include <algorithm>
 #include <cctype>
+#include <sstream>
 
 namespace lsst {
 namespace qserv {
@@ -67,6 +68,16 @@ sanitizeName(std::string const& name) {
                         std::not1(isNameSafePred()));
 
     return out;
+}
+
+
+//// @return: string version of the contents of 'a'.
+template <typename A>
+std::string toString(A&& a) {
+    //  boost::lexical_cast<std::string> is another option.
+    std::ostringstream os;
+    os << std::forward<A>(a);
+    return os.str();
 }
 
 }} // namespace lsst::qserv

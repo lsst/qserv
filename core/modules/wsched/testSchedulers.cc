@@ -429,6 +429,7 @@ struct SchedFixture {
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
                 group, scanSlow, scanSchedulers);
         queries->setBlendScheduler(blend);
+        queries->setRequiredTasksCompleted(1); // Make it easy to set a baseline.
     }
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
