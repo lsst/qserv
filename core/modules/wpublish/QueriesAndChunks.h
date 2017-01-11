@@ -218,11 +218,11 @@ private:
     std::chrono::seconds _examineAfter{std::chrono::minutes(5)};
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxTasksBooted{5};
+    int _maxTasksBooted{25};
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
-    unsigned int _requiredTasksCompleted{1};
+    unsigned int _requiredTasksCompleted{50};
 };
 
 

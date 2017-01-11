@@ -378,6 +378,7 @@ bool QueryRunner::_dispatchChannel() {
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
             for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
+                LOGS(_log, LOG_LVL_DEBUG, "running fragment=" << fragment.query(qi));
                 MYSQL_RES* res = _primeResult(fragment.query(qi)); // This runs the SQL query.
                 if (!res) {
                     erred = true;

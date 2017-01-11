@@ -67,8 +67,8 @@ public:
 
     std::string sqlFragment() const;
     std::shared_ptr<ValueExpr>& getExpr() { return _expr; }
+    std::shared_ptr<ValueExpr> const& getExpr() const { return _expr; }
     Order getOrder() const;
-    std::string getCollate() const;
     void renderTo(QueryTemplate& qt) const;
 
 private:
@@ -94,6 +94,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();
+    std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
 
     void findValueExprs(ValueExprPtrVector& list);
 private:
