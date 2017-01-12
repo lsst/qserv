@@ -144,9 +144,9 @@ done
         if len(cloudManager.volume_names) != len(qserv_instances):
             logging.error("Data volumes: %s", cloudManager.volume_names)
             raise ValueError("Invalid number of cinder data volumes")
-        for (i, instance) in enumerate(qserv_instances):
-            cloudManager.nova_create_server_volume(instance.id,
-                                                   cloudManager.volume_names[i])
+        for (instance, vol_name) in zip(qserv_instances,
+                                        cloudManager.volume_names):
+                cloudManager.nova_create_server_volume(instance.id, vol_name)
         cloudManager.mount_volume(qserv_instances)
 
     logging.debug("SUCCESS: Qserv Openstack cluster is up")

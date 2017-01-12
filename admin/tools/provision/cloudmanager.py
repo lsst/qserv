@@ -93,7 +93,7 @@ def config_logger(loggerName, verbose, verboseAll):
             logging.getLogger(logger_name).setLevel(logging.ERROR)
         warnings.filterwarnings("ignore")
 
-        logger = logging.getLogger('')
+        logger = logging.getLogger()
 
         # create console handler and set level to debug
         console = logging.StreamHandler()
@@ -339,8 +339,9 @@ class CloudManager(object):
         data_volumes = self.cinder.volumes.list(search_opts={'name':
                                                 data_volume_name})
         if (not len(data_volumes) == 1):
-            raise ValueError('Cinder data volume not found '
-                             '(volumes found: %s)', data_volumes)
+            msg = "Cinder data volume not found "
+            "(volumes found: {})".format(data_volumes)
+            raise ValueError(msg)
 
         data_volume_id = data_volumes[0].id
 
@@ -505,7 +506,8 @@ class CloudManager(object):
             try:
                 subprocess.check_output(cmd)
             except subprocess.CalledProcessError as exc:
-                logging.error("ERROR while updating /etc/hosts: %s",
+                logging.error("ERROR failed to mount /dev/vdb1 on %s: %s",
+                              instance.name,
                               exc.output)
                 sys.exit(1)
             logging.debug("/dev/vdb1 mounted on %s", instance.name)
