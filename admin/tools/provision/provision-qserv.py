@@ -34,15 +34,17 @@ import cloudmanager
 # Exported definitions --
 # -----------------------
 
+
 def main():
 
     userdata = cloudManager.build_cloudconfig()
 
     # Create instances list
     instances = []
+    qserv_instances = []
 
     if args.cleanup:
-        cloudManager.nova_servers_cleanup(args.nbWorker)
+        cloudManager.nova_servers_cleanup()
 
     # Create gateway instance and add floating_ip to it
     instance_name = "gateway"
@@ -74,22 +76,24 @@ def main():
     instance_name = "master-1"
     instance = cloudManager.nova_servers_create(instance_name,
                                                 userdata)
-    instances.append(instance)
+    qserv_instances.append(instance)
+
 
     # Create worker instances
-    for instance_id in range(1, args.nbWorker+1):
+    for instance_id in range(1, cloudManager.nbWorker+1):
         instance_name = 'worker-{}'.format(instance_id)
         instance = cloudManager.nova_servers_create(instance_name,
                                                     userdata)
-        instances.append(instance)
+        qserv_instances.append(instance)
+
+    instances = instances + qserv_instances
 
     # Create swarm instances
-    for instance_id in range(1, args.nbSwarm+1):
+    for instance_id in range(1, cloudManager.nbOrchestrator+1):
         instance_name = 'swarm-{}'.format(instance_id)
         instance = cloudManager.nova_servers_create(instance_name,
                                                     userdata)
         instances.append(instance)
-
     for instance in instances:
         cloudManager.wait_active(instance)
 
@@ -118,9 +122,9 @@ do
 done
 '''
 
-    envfile = envfile_tpl.format(swarm_last_id = args.nbSwarm,
+    envfile = envfile_tpl.format(swarm_last_id = cloudManager.nbOrchestrator,
                                  hostname_tpl = cloudManager.get_hostname_tpl(),
-                                 worker_last_id = args.nbWorker)
+                                 worker_last_id = cloudManager.nbWorker)
     filep = open('env-infrastructure.sh', 'w')
     filep.write(envfile)
     filep.close()
@@ -135,19 +139,24 @@ done
 
     cloudManager.update_etc_hosts(instances)
 
+    # Attach and mount cinder volumes
+    if cloudManager.volume_names:
+        if len(cloudManager.volume_names) != len(qserv_instances):
+            logging.error("Data volumes: %s", cloudManager.volume_names)
+            raise ValueError("Invalid number of cinder data volumes")
+        for (instance, vol_name) in zip(qserv_instances,
+                                        cloudManager.volume_names):
+                cloudManager.nova_create_server_volume(instance.id, vol_name)
+        cloudManager.mount_volume(qserv_instances)
+
     logging.debug("SUCCESS: Qserv Openstack cluster is up")
 
 
 if __name__ == "__main__":
     try:
         # Define command-line arguments
-        parser = argparse.ArgumentParser(description='Boot instances from image containing Docker.')
-        parser.add_argument('-w', '--nb-worker', dest='nbWorker',
-                            required=False, default=4, type=int,
-                            help='Number of worker nodes to boot')
-        parser.add_argument('-s', '--nb-swarm', dest='nbSwarm',
-                            required=False, default=3, type=int,
-                            help='Number of swarm management nodes to boot')
+        parser = argparse.ArgumentParser(
+            description='Boot instances from image containing Docker.')
 
         cloudmanager.add_parser_args(parser)
         args = parser.parse_args()
@@ -155,9 +164,9 @@ if __name__ == "__main__":
         loggerName = "Provisioner"
         cloudmanager.config_logger(loggerName, args.verbose, args.verboseAll)
 
-        cloudManager = cloudmanager.CloudManager(config_file_name=args.configFile,
-                                                 used_image_key=cloudmanager.SNAPSHOT_IMAGE_KEY,
-                                                 add_ssh_key=True)
+        cloudManager = cloudmanager.CloudManager(
+            config_file_name=args.configFile,
+            add_ssh_key=True)
 
         main()
     except Exception as exc:

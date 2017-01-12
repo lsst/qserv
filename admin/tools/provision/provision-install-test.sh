@@ -37,10 +37,11 @@ EOD
 }
 
 # get the options
-while getopts hcpsS c ; do
+while getopts hcLpsS c ; do
     case $c in
         h) usage ; exit 0 ;;
         c) CREATE="TRUE" ;;
+        L) LARGE="TRUE" ;;
         p) PROVISION="TRUE" ;;
         s) SHMUX="TRUE" ;;
         S) SWARM="TRUE" ;;
@@ -59,7 +60,14 @@ if [ "$OPTIND" -eq 1 ]; then
     SWARM="TRUE"
 fi
 
-. "$DIR/env-openstack.sh"
+# Check if openstack connection parameters are available
+if [ -z "$OS_PROJECT_NAME" ]; then
+    echo "ERROR: Openstack resource file not sourced"
+        exit 1
+fi
+
+# Choose the configuration file which contains instance parameters
+CONF_FILE="${OS_PROJECT_NAME}.conf"
 
 if [ -n "$CREATE" ]; then
     echo "Create up to date snapshot image"
@@ -70,20 +78,18 @@ if [ -n "$PROVISION" ]; then
     echo "Provision Qserv cluster on Openstack"
     "$DIR/provision-qserv.py" --cleanup \
         --config "$CONF_FILE" \
-        --nb-worker "$NB_WORKER"  \
-        --nb-swarm "$NB_SWARM"  \
         -vv
 fi
 
 . "$DIR/env-infrastructure.sh"
 
 if [ -n "$SWARM" ]; then
-	SWARM_DIR="$DIR/../docker/deployment/swarm"
-	ln -sf "$DIR/ssh_config" "$SWARM_DIR"
-	ln -sf "$DIR/env-infrastructure.sh" "$SWARM_DIR"
-	SSH_CFG="$SWARM_DIR/ssh_config"
+    SWARM_DIR="$DIR/../docker/deployment/swarm"
+    ln -sf "$DIR/ssh_config" "$SWARM_DIR"
+    ln -sf "$DIR/env-infrastructure.sh" "$SWARM_DIR"
+    SSH_CFG="$SWARM_DIR/ssh_config"
 
-	"$SWARM_DIR"/setup-and-test.sh
+    "$SWARM_DIR"/setup-and-test.sh
 
 elif [ -n "$SHMUX" ]; then
 
@@ -109,9 +115,15 @@ elif [ -n "$SHMUX" ]; then
     sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
-    # Run multinode tests
-    echo "Launch multinode tests"
-    ./run-multinode-tests.sh
+    if [ -n "$LARGE" ]; then
+        sed -i "s,#HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," env.sh
+        ./run.sh
+        ./run-large-scale-tests.sh
+    else
+        # Run multinode tests
+        echo "Launch multinode tests"
+        ./run-multinode-tests.sh
+    fi
 
     if [ -f "$SSH_CONFIG_BACKUP" ]; then
         echo  "Restoring backup of $SSH_CONFIG"

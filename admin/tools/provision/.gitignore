@@ -1,8 +1,4 @@
 /ssh_config
-/env-openstack.sh
 /env-infrastructure.sh
-/LSST-openrc.sh
-/petasky-openrc.sh
-/ncsa.conf
-/galactica.conf
-/openstack.conf
+/*-openrc.sh
+/*.conf
