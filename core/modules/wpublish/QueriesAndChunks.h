@@ -58,6 +58,7 @@ public:
     bool isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now);
 
     int getTasksBooted();
+    bool getQueryBooted() { return _queryBooted; }
 
     friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
@@ -73,6 +74,7 @@ private:
     int _tasksCompleted{0};
     int _tasksRunning{0};
     int _tasksBooted{0}; ///< Number of Tasks booted for being too slow.
+    std::atomic<bool> _queryBooted{false}; ///< True when the entire query booted.
 
     double _totalTimeMinutes{0.0};
 
@@ -188,7 +190,6 @@ private:
                        std::shared_ptr<wsched::SchedulerBase> const& sched);
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
-
 
     mutable std::mutex _queryStatsMtx; ///< protects _queryStats;
     std::map<QueryId, QueryStatistics::Ptr> _queryStats; ///< Map of Query stats indexed by QueryId.

@@ -76,7 +76,7 @@ public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
-    virtual std::shared_ptr<Task> removeTask(std::shared_ptr<Task> const& task)=0;
+    virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning)=0;
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -151,6 +151,8 @@ public:
     void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
     void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
     void waitForMemMan();
+    bool getSafeToMoveRunning() { return _safeToMoveRunning; }
+    void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; } ///< For testing only.
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
     std::string getIdStr() const {return _idStr;}
@@ -171,6 +173,7 @@ private:
     std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 
     std::atomic<bool> _cancelled{false};
+    std::atomic<bool> _safeToMoveRunning{false}; ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
