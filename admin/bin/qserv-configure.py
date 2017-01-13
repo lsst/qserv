@@ -145,6 +145,13 @@ class Configurator(object):
                             help="Answer yes to all questions, use with care. Default: %(default)s"
                             )
 
+        # directory containing custom configuration files templates which will override default configuration
+        parser.add_argument("-C", "--qserv-custom-dir", dest="qserv_custom_templates_root",
+                            default=None,
+                            help="Absolute path to directory containing custom configuration files templates "
+                                 "which will override default configuration files templates."
+                            )
+
         # run dir, all configuration/log data related to a qserv running instance are located here
         parser.add_argument("-R", "--qserv-run-dir", dest="qserv_run_dir",
                             default=default_qserv_run_dir,
@@ -189,6 +196,7 @@ class Configurator(object):
         )
         self._in_config_dir = os.path.join(qserv_dir, "share", "qserv", "configuration")
         self._template_root = os.path.join(self._in_config_dir, "templates")
+        self._custom_template_root = self.args.qserv_custom_templates_root
 
         if self.args.qserv_data_dir:
             self._qserv_data_dir = self.args.qserv_data_dir
@@ -358,6 +366,9 @@ class Configurator(object):
 
                 dest_root = os.path.join(qserv_run_dir)
                 self._templater.applyAll(self._template_root, dest_root)
+                # Override default templates
+                if self._custom_template_root:
+                    self._templater.applyAll(self._custom_template_root, dest_root)
 
             component_cfg_steps = configure.intersect(
                 self.args.step_list, configure.COMPONENTS)

@@ -555,8 +555,10 @@ runcmd:
   # Use overlay storage and docker registry
   - [sed, -i, 's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd {docker_opts}|', /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
-  - [mkdir, -p, /qserv/data]
-  - [mkdir, -p, /qserv/log]
+  - [mkdir, -p, /qserv/custom]
+  - [mkdir, /qserv/data]
+  - [mkdir, /qserv/log]
+  - [mkdir, /qserv/tmp]
   - [mkdir, /mnt/qserv]
   - [chown, -R, '1000:1000', /qserv]
   - [/bin/systemctl, daemon-reload]

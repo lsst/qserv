@@ -44,3 +44,6 @@ QSERV_RUN_DIR="$INSTALL_BASE/run"
 
 # Local directory which will contains Qserv data
 QSERV_DATA_DIR="$INSTALL_BASE/data"
+
+# Local directory which contains custom templates for configuration files
+QSERV_CUSTOM_DIR="$INSTALL_BASE/custom"
