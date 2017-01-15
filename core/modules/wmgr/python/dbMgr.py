@@ -137,8 +137,8 @@ def listDbs():
     _log.debug('GET => get database list')
 
     # use non-privileged account, may limit the list of databases returned.
-    dbConn = Config.instance().dbEngine().connect()
-    dbs = utils.listDbs(dbConn)
+    with Config.instance().dbEngine().begin() as dbConn:
+        dbs = utils.listDbs(dbConn)
 
     _log.debug('dbs = %s', dbs)
 
@@ -175,26 +175,26 @@ def createDb():
     _validateDbName(dbName)
 
     # create database, use privileged account
-    dbConn = Config.instance().privDbEngine().connect()
-    try:
-        utils.createDb(dbConn, dbName)
-    except utils.DatabaseExistsError as e:
-        _log.error('exception when creating database %s: %s', dbName, e)
-        raise ExceptionResponse(409, "DatabaseExists", "Database %s already exists" % dbName)
-
-    _log.debug('database %s created', dbName)
-
-    # grant full access to non-privileged account
-    cmd = "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}'"
-    user = Config.instance().dbUser
-    hostnames = ['localhost']
-    for host in hostnames:
+    with Config.instance().privDbEngine().begin() as dbConn:
         try:
-            dbConn.execute(cmd.format(dbName, user, host))
-        except OperationalError as exc:
-            _log.error('exception when adding grants on database: %s', exc)
-            raise ExceptionResponse(500, "GrantFailed", "Database %s created but GRANT failed" % dbName,
-                                    str(exc))
+            utils.createDb(dbConn, dbName)
+        except utils.DatabaseExistsError as e:
+            _log.error('exception when creating database %s: %s', dbName, e)
+            raise ExceptionResponse(409, "DatabaseExists", "Database %s already exists" % dbName)
+
+        _log.debug('database %s created', dbName)
+
+        # grant full access to non-privileged account
+        cmd = "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}'"
+        user = Config.instance().dbUser
+        hostnames = ['localhost']
+        for host in hostnames:
+            try:
+                dbConn.execute(cmd.format(dbName, user, host))
+            except OperationalError as exc:
+                _log.error('exception when adding grants on database: %s', exc)
+                raise ExceptionResponse(500, "GrantFailed", "Database %s created but GRANT failed" % dbName,
+                                        str(exc))
 
     _log.debug('grants added')
 
@@ -216,14 +216,14 @@ def dropDb(dbName):
     _validateDbName(dbName)
 
     # use non-privileged account
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.dbExists(dbConn, dbName):
-        raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
-    try:
-        utils.dropDb(dbConn, dbName)
-    except SQLAlchemyError as exc:
-        _log.error('Db exception when dropping database %s: %s', dbName, exc)
-        raise
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.dbExists(dbConn, dbName):
+            raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
+        try:
+            utils.dropDb(dbConn, dbName)
+        except SQLAlchemyError as exc:
+            _log.error('Db exception when dropping database %s: %s', dbName, exc)
+            raise
 
     _log.debug('successfully dropped database %s', dbName)
 
@@ -242,12 +242,13 @@ def listTables(dbName):
     _validateDbName(dbName)
 
     # check the db exists (listTables() does not fail on non-existing databases)
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.dbExists(dbConn, dbName):
-        raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.dbExists(dbConn, dbName):
+            raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
 
-    # list tables
-    tables = utils.listTables(dbConn, dbName)
+        # list tables
+        tables = utils.listTables(dbConn, dbName)
+
     _log.debug('tables=%s', tables)
     tblData = [_tblDict(dbName, tblName) for tblName in tables]
 
@@ -310,69 +311,69 @@ def createTable(dbName):
         raise ExceptionResponse(400, "InvalidArgument",
                                 "`schemaSource` parameter has unexpected value \"%s\"" % schemaSource)
 
-    dbConn = Config.instance().dbEngine().connect()
+    with Config.instance().dbEngine().begin() as dbConn:
 
-    # create table
-    if schemaSource == 'request':
+        # create table
+        if schemaSource == 'request':
 
-        # assume that we have correct SQL already
-        try:
-            utils.useDb(dbConn, dbName)
-            utils.createTableFromSchema(dbConn, schema)
-        except utils.TableExistsError as exc:
-            _log.error('Exception when creating table: %s', exc)
-            raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
+            # assume that we have correct SQL already
+            try:
+                utils.useDb(dbConn, dbName)
+                utils.createTableFromSchema(dbConn, schema)
+            except utils.TableExistsError as exc:
+                _log.error('Exception when creating table: %s', exc)
+                raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
 
-    elif schemaSource == 'css':
+        elif schemaSource == 'css':
 
-        # get table schema from CSS
-        try:
-            css = Config.instance().cssAccess()
-            schema = css.getTableSchema(dbName, tblName)
-            _log.debug('schema from CSS: %s', schema)
-        except lsst.qserv.css.CssError as exc:
-            _log.error('Failed to retrieve table schema from CSS: %s', exc)
-            raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
+            # get table schema from CSS
+            try:
+                css = Config.instance().cssAccess()
+                schema = css.getTableSchema(dbName, tblName)
+                _log.debug('schema from CSS: %s', schema)
+            except lsst.qserv.css.CssError as exc:
+                _log.error('Failed to retrieve table schema from CSS: %s', exc)
+                raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
 
-        # schema in CSS is stored without CREATE TABLE, so we are already OK
-        try:
-            utils.createTable(dbConn, tblName, schema, dbName)
-        except utils.TableExistsError as exc:
-            _log.error('Exception when creating table: %s', exc)
-            raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
-    _log.debug('table %s.%s created succesfully', dbName, tblName)
+            # schema in CSS is stored without CREATE TABLE, so we are already OK
+            try:
+                utils.createTable(dbConn, tblName, schema, dbName)
+            except utils.TableExistsError as exc:
+                _log.error('Exception when creating table: %s', exc)
+                raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
+        _log.debug('table %s.%s created succesfully', dbName, tblName)
 
-    if chunkColumns:
-        # Change table schema, drop _chunkId, _subChunkId, add chunkId, subChunkId
+        if chunkColumns:
+            # Change table schema, drop _chunkId, _subChunkId, add chunkId, subChunkId
 
-        try:
-            table = '`{0}`.`{1}`'.format(dbName, tblName)
+            try:
+                table = '`{0}`.`{1}`'.format(dbName, tblName)
 
-            # get current column set
-            q = "SHOW COLUMNS FROM %s" % table
-            result = dbConn.execute(q)
-            rows = result.fetchall()
-            columns = set(row[0] for row in rows)
+                # get current column set
+                q = "SHOW COLUMNS FROM %s" % table
+                result = dbConn.execute(q)
+                rows = result.fetchall()
+                columns = set(row[0] for row in rows)
 
-            # delete rows
-            toDelete = set(["_chunkId", "_subChunkId"]) & columns
-            mods = ['DROP COLUMN %s' % col for col in toDelete]
+                # delete rows
+                toDelete = set(["_chunkId", "_subChunkId"]) & columns
+                mods = ['DROP COLUMN %s' % col for col in toDelete]
 
-            # create rows, want them in that order
-            toAdd = ["chunkId", "subChunkId"]
-            mods += ['ADD COLUMN %s INT(11) NOT NULL' % col for col in toAdd if col not in columns]
+                # create rows, want them in that order
+                toAdd = ["chunkId", "subChunkId"]
+                mods += ['ADD COLUMN %s INT(11) NOT NULL' % col for col in toAdd if col not in columns]
 
-            if mods:
-                _log.info('Altering schema for table %s', table)
+                if mods:
+                    _log.info('Altering schema for table %s', table)
 
-                q = 'ALTER TABLE %s ' % table
-                q += ', '.join(mods)
+                    q = 'ALTER TABLE %s ' % table
+                    q += ', '.join(mods)
 
-                _log.debug('query: %s', q)
-                dbConn.execute(q)
-        except Exception as exc:
-            _log.error('Failed to alter database table: %s', exc)
-            raise ExceptionResponse(500, "DbError", "Failed to alter database table", str(exc))
+                    _log.debug('query: %s', q)
+                    dbConn.execute(q)
+            except Exception as exc:
+                _log.error('Failed to alter database table: %s', exc)
+                raise ExceptionResponse(500, "DbError", "Failed to alter database table", str(exc))
 
     # return representation for new database, 201 code is for CREATED
     response = json.jsonify(result=_tblDict(dbName, tblName))
@@ -401,33 +402,33 @@ def deleteTable(dbName, tblName):
     dropChunks = _getArgFlag(request.args, 'dropChunks', False)
     _log.debug('dropChunks: %s', dropChunks)
 
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.dbExists(dbConn, dbName):
-        raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.dbExists(dbConn, dbName):
+            raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
 
-    try:
-        # drop chunks first
-        nChunks = 0
-        if dropChunks:
-            # regexp matching all chunk table names
-            tblRe = re.compile('^' + tblName + '(FullOverlap)?_[0-9]+$')
-            for table in utils.listTables(dbConn, dbName):
-                if tblRe.match(table):
-                    _log.debug('dropping chunk table %s.%s', dbName, table)
-                    utils.dropTable(dbConn, table, dbName)
-                    nChunks += 1
+        try:
+            # drop chunks first
+            nChunks = 0
+            if dropChunks:
+                # regexp matching all chunk table names
+                tblRe = re.compile('^' + tblName + '(FullOverlap)?_[0-9]+$')
+                for table in utils.listTables(dbConn, dbName):
+                    if tblRe.match(table):
+                        _log.debug('dropping chunk table %s.%s', dbName, table)
+                        utils.dropTable(dbConn, table, dbName)
+                        nChunks += 1
 
-        # drop main table
-        _log.debug('dropping main table %s.%s', dbName, tblName)
-        utils.dropTable(dbConn, tblName, dbName)
+            # drop main table
+            _log.debug('dropping main table %s.%s', dbName, tblName)
+            utils.dropTable(dbConn, tblName, dbName)
 
-    except NoSuchTableError as exc:
-        _log.error('Exception when dropping table: %s', exc)
-        chunkMsg = ""
-        if nChunks:
-            chunkMsg = ", but {0} chunk tables have been dropped".format(nChunks)
-        raise ExceptionResponse(404, "TableMissing",
-                                "Table %s.%s does not exist%s" % (dbName, tblName, chunkMsg))
+        except NoSuchTableError as exc:
+            _log.error('Exception when dropping table: %s', exc)
+            chunkMsg = ""
+            if nChunks:
+                chunkMsg = ", but {0} chunk tables have been dropped".format(nChunks)
+            raise ExceptionResponse(404, "TableMissing",
+                                    "Table %s.%s does not exist%s" % (dbName, tblName, chunkMsg))
 
     return json.jsonify(result=_tblDict(dbName, tblName))
 
@@ -444,12 +445,12 @@ def tableSchema(dbName, tblName):
     _validateTableName(tblName)
 
     # check the db exists (listTables() does not fail on non-existing databases)
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    query = "SHOW CREATE TABLE `%s`.`%s`" % (dbName, tblName)
-    rows = dbConn.execute(query)
+        query = "SHOW CREATE TABLE `%s`.`%s`" % (dbName, tblName)
+        rows = dbConn.execute(query)
 
     return json.jsonify(result=rows.first()[1])
 
@@ -466,13 +467,13 @@ def tableColumns(dbName, tblName):
     _validateTableName(tblName)
 
     # check the db exists (listTables() does not fail on non-existing databases)
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    query = "SHOW COLUMNS FROM `%s`.`%s`" % (dbName, tblName)
-    rows = dbConn.execute(query)
-    columns = [_columnDict(row) for row in rows]
+        query = "SHOW COLUMNS FROM `%s`.`%s`" % (dbName, tblName)
+        rows = dbConn.execute(query)
+        columns = [_columnDict(row) for row in rows]
 
     return json.jsonify(results=columns)
 
@@ -489,26 +490,26 @@ def listChunks(dbName, tblName):
     _validateTableName(tblName)
 
     # check the db exists (listTables() does not fail on non-existing databases)
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    # regexp matching chunk table names
-    # TODO: we need some central location for things like this
-    tblRe = re.compile('^' + tblName + '(FullOverlap)?_([0-9]+)$')
-    chunks = {}
-    for table in utils.listTables(dbConn, dbName):
-        match = tblRe.match(table)
-        if match is not None:
-            chunkId = int(match.group(2))
-            chunk = chunks.get(chunkId)
-            if chunk is None:
-                chunk = _chunkDict(dbName, tblName, chunkId)
-                chunks[chunkId] = chunk
-            if match.group(1) is None:
-                chunk['chunkTable'] = True
-            else:
-                chunk['overlapTable'] = True
+        # regexp matching chunk table names
+        # TODO: we need some central location for things like this
+        tblRe = re.compile('^' + tblName + '(FullOverlap)?_([0-9]+)$')
+        chunks = {}
+        for table in utils.listTables(dbConn, dbName):
+            match = tblRe.match(table)
+            if match is not None:
+                chunkId = int(match.group(2))
+                chunk = chunks.get(chunkId)
+                if chunk is None:
+                    chunk = _chunkDict(dbName, tblName, chunkId)
+                    chunks[chunkId] = chunk
+                if match.group(1) is None:
+                    chunk['chunkTable'] = True
+                else:
+                    chunk['overlapTable'] = True
 
     _log.debug('found chunks: %s', chunks.keys())
 
@@ -550,55 +551,55 @@ def createChunk(dbName, tblName):
     overlapFlag = _getArgFlag(request.form, 'overlapFlag', True)
 
     # check that table exists
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    chunkRepr = _chunkDict(dbName, tblName, chunkId)
+        chunkRepr = _chunkDict(dbName, tblName, chunkId)
 
-    # make chunk table names
-    # TODO: we need some central location for things like this
-    tables = {'chunkTable': tblName + '_' + str(chunkId)}
-    if overlapFlag:
-        tables['overlapTable'] = tblName + 'FullOverlap_' + str(chunkId)
-    _log.debug('will create tables: %s', tables)
-    for tblType, chunkTable in tables.items():
+        # make chunk table names
+        # TODO: we need some central location for things like this
+        tables = {'chunkTable': tblName + '_' + str(chunkId)}
+        if overlapFlag:
+            tables['overlapTable'] = tblName + 'FullOverlap_' + str(chunkId)
+        _log.debug('will create tables: %s', tables)
+        for tblType, chunkTable in tables.items():
 
-        # check if this table is actually a view
-        if utils.isView(dbConn, tblName, dbName):
+            # check if this table is actually a view
+            if utils.isView(dbConn, tblName, dbName):
 
-            # view needs more complicated algorithm to copy its definition, first copy
-            # its current definition, then rename existing view and then re-create it again
+                # view needs more complicated algorithm to copy its definition, first copy
+                # its current definition, then rename existing view and then re-create it again
 
-            _log.debug('table %s is a view', tblName)
+                _log.debug('table %s is a view', tblName)
 
-            # get its current definition
-            query = "SHOW CREATE VIEW `{0}`.`{1}`".format(dbName, tblName)
-            rows = dbConn.execute(query)
-            viewDef = rows.first()[1]
+                # get its current definition
+                query = "SHOW CREATE VIEW `{0}`.`{1}`".format(dbName, tblName)
+                rows = dbConn.execute(query)
+                viewDef = rows.first()[1]
 
-            # rename it
-            query = "RENAME TABLE `{0}`.`{1}` to `{0}`.`{2}`".format(dbName, tblName, chunkTable)
-            dbConn.execute(query)
+                # rename it
+                query = "RENAME TABLE `{0}`.`{1}` to `{0}`.`{2}`".format(dbName, tblName, chunkTable)
+                dbConn.execute(query)
 
-            # re-create it
-            dbConn.execute(viewDef)
+                # re-create it
+                dbConn.execute(viewDef)
 
-        else:
+            else:
 
-            # make table using DDL from non-chunked one
-            _log.debug('make chunk table: %s', chunkTable)
-            try:
-                utils.createTableLike(dbConn, dbName, chunkTable, dbName, tblName)
-            except utils.TableExistsError as exc:
-                _log.error('Db exception when creating table: %s', exc)
-                raise ExceptionResponse(409, "TableExists",
-                                        "Table %s.%s already exists" % (dbName, chunkTable))
+                # make table using DDL from non-chunked one
+                _log.debug('make chunk table: %s', chunkTable)
+                try:
+                    utils.createTableLike(dbConn, dbName, chunkTable, dbName, tblName)
+                except utils.TableExistsError as exc:
+                    _log.error('Db exception when creating table: %s', exc)
+                    raise ExceptionResponse(409, "TableExists",
+                                            "Table %s.%s already exists" % (dbName, chunkTable))
 
-            if tblType == 'overlapTable':
-                _fixOverlapIndices(dbConn, dbName, chunkTable)
+                if tblType == 'overlapTable':
+                    _fixOverlapIndices(dbConn, dbName, chunkTable)
 
-        chunkRepr[tblType] = True
+            chunkRepr[tblType] = True
 
     response = json.jsonify(result=chunkRepr)
     response.status_code = 201
@@ -656,41 +657,41 @@ def deleteChunk(dbName, tblName, chunkId):
         raise ExceptionResponse(400, "InvalidArgument", "Chunk ID argument is negative")
 
     # check that table exists
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    chunkRepr = None
+        chunkRepr = None
 
-    # chunk data table
-    # TODO: we need some central location for things like this
-    table = tblName + '_' + str(chunkId)
-    if utils.tableExists(dbConn, table, dbName):
+        # chunk data table
+        # TODO: we need some central location for things like this
+        table = tblName + '_' + str(chunkId)
+        if utils.tableExists(dbConn, table, dbName):
 
-        # drop table
-        _log.debug('drop chunk table: %s', table)
-        utils.dropTable(dbConn, table, dbName)
+            # drop table
+            _log.debug('drop chunk table: %s', table)
+            utils.dropTable(dbConn, table, dbName)
 
-        chunkRepr = _chunkDict(dbName, tblName, chunkId)
-        chunkRepr['chunkTable'] = True
+            chunkRepr = _chunkDict(dbName, tblName, chunkId)
+            chunkRepr['chunkTable'] = True
 
-    # overlap data table
-    # TODO: we need some central location for things like this
-    table = tblName + 'FullOverlap_' + str(chunkId)
-    if utils.tableExists(dbConn, table, dbName):
+        # overlap data table
+        # TODO: we need some central location for things like this
+        table = tblName + 'FullOverlap_' + str(chunkId)
+        if utils.tableExists(dbConn, table, dbName):
 
-        # drop table
-        _log.debug('drop chunk table: %s', table)
-        utils.dropTable(dbConn, table, dbName)
+            # drop table
+            _log.debug('drop chunk table: %s', table)
+            utils.dropTable(dbConn, table, dbName)
 
-        if chunkRepr is not None:
-            chunkRepr['overlapTable'] = True
-        else:
-            # chunk data table is missing
-            _log.error('Chunk does not exist, but overlap does')
-            raise ExceptionResponse(404, "ChunkDeleteFailed", "Cannot delete chunk data table",
-                                    "Chunk %s is not found for table %s.%s (but overlap table was deleted)" %
-                                    (chunkId, dbName, tblName))
+            if chunkRepr is not None:
+                chunkRepr['overlapTable'] = True
+            else:
+                # chunk data table is missing
+                _log.error('Chunk does not exist, but overlap does')
+                raise ExceptionResponse(404, "ChunkDeleteFailed", "Cannot delete chunk data table",
+                                        "Chunk %s is not found for table %s.%s "
+                                        "(but overlap table was deleted)" % (chunkId, dbName, tblName))
 
     if chunkRepr is None:
         # nothing found
@@ -767,70 +768,70 @@ def loadData(dbName, tblName, chunkId=None):
     _validateTableName(tblName)
 
     # check that table exists
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
-
-    # determine chunk table name (if loading to chunk)
-    if chunkId is not None:
-        if request.path.endswith('/overlap'):
-            tblName = tblName + 'FullOverlap_' + str(chunkId)
-        else:
-            tblName = tblName + '_' + str(chunkId)
+    with Config.instance().dbEngine().begin() as dbConn:
         if not utils.tableExists(dbConn, tblName, dbName):
-            raise ExceptionResponse(404, "ChunkTableMissing",
-                                    "Chunk table %s.%s does not exist" % (dbName, tblName))
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    # optional load-options
-    options = dict(delimiter='\t', enclose='', escape='\\', terminate='\n', compressed=None)
-    formOptions = request.form.get('load-options')
-    _log.debug('formOptions: %s', formOptions)
-    if formOptions:
-        formOptions = url_decode(formOptions)
+        # determine chunk table name (if loading to chunk)
+        if chunkId is not None:
+            if request.path.endswith('/overlap'):
+                tblName = tblName + 'FullOverlap_' + str(chunkId)
+            else:
+                tblName = tblName + '_' + str(chunkId)
+            if not utils.tableExists(dbConn, tblName, dbName):
+                raise ExceptionResponse(404, "ChunkTableMissing",
+                                        "Chunk table %s.%s does not exist" % (dbName, tblName))
 
-        # check that there are no non-recognized options
-        for key, value in formOptions.items():
-            if key not in options:
-                raise ExceptionResponse(400, "IllegalOption",
-                                        "unrecognized option %s in load-options" % key)
-            options[key] = value
-        _log.debug('options: %s', options)
+        # optional load-options
+        options = dict(delimiter='\t', enclose='', escape='\\', terminate='\n', compressed=None)
+        formOptions = request.form.get('load-options')
+        _log.debug('formOptions: %s', formOptions)
+        if formOptions:
+            formOptions = url_decode(formOptions)
 
-    # get table data
-    table_data = request.files.get('table-data')
-    if table_data is None:
-        _log.debug("table-data part is missing from request")
-        raise ExceptionResponse(400, "MissingFileData", "table-data part is missing from request")
-    with closing(table_data) as data:
-        _log.debug('data: name=%s filename=%s', data.name, data.filename)
+            # check that there are no non-recognized options
+            for key, value in formOptions.items():
+                if key not in options:
+                    raise ExceptionResponse(400, "IllegalOption",
+                                            "unrecognized option %s in load-options" % key)
+                options[key] = value
+            _log.debug('options: %s', options)
 
-        # named pipe to send data to mysql, make it in a temporary dir
-        with tmpDirMaker() as tmpDir:
-            fifoName = os.path.join(tmpDir, 'tabledata.dat')
-            os.mkfifo(fifoName, 0o600)
+        # get table data
+        table_data = request.files.get('table-data')
+        if table_data is None:
+            _log.debug("table-data part is missing from request")
+            raise ExceptionResponse(400, "MissingFileData", "table-data part is missing from request")
+        with closing(table_data) as data:
+            _log.debug('data: name=%s filename=%s', data.name, data.filename)
 
-            # do we need to uncompress?
-            compressed = _getArgFlag(options, 'compressed', None)
-            if compressed is None:
-                compressed = data.filename.endswith('.gz')
+            # named pipe to send data to mysql, make it in a temporary dir
+            with tmpDirMaker() as tmpDir:
+                fifoName = os.path.join(tmpDir, 'tabledata.dat')
+                os.mkfifo(fifoName, 0o600)
 
-            _log.debug('starting data copy thread')
-            args = data, fifoName, compressed
-            with threadStartJoin(Thread(target=_copy, args=args)) as copyThread:
+                # do we need to uncompress?
+                compressed = _getArgFlag(options, 'compressed', None)
+                if compressed is None:
+                    compressed = data.filename.endswith('.gz')
 
-                # Build the query, we use LOCAL data loading to avoid messing with grants and
-                # file protection.
-                sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(dbName, tblName)
-                sql += " FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s \
-                         ESCAPED BY %(escape)s LINES TERMINATED BY %(terminate)s"
+                _log.debug('starting data copy thread')
+                args = data, fifoName, compressed
+                with threadStartJoin(Thread(target=_copy, args=args)) as copyThread:
 
-                del options['compressed']
-                options['file'] = fifoName
+                    # Build the query, we use LOCAL data loading to avoid messing with grants and
+                    # file protection.
+                    sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(dbName, tblName)
+                    sql += " FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s \
+                             ESCAPED BY %(escape)s LINES TERMINATED BY %(terminate)s"
 
-                # execute query
-                _log.debug("query: %s, data: %s", sql, options)
-                results = dbConn.execute(sql, options)
-                count = results.rowcount
+                    del options['compressed']
+                    options['file'] = fifoName
+
+                    # execute query
+                    _log.debug("query: %s, data: %s", sql, options)
+                    results = dbConn.execute(sql, options)
+                    count = results.rowcount
 
     return json.jsonify(result=dict(status="OK", count=count))
 
@@ -865,54 +866,56 @@ def getIndex(dbName, tblName, chunkId=None):
                                 "'columns' parameter requires comma-separated list of three column names")
 
     # check that table exists
-    dbConn = Config.instance().dbEngine().connect()
-    if not utils.tableExists(dbConn, tblName, dbName):
-        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-    # regexp matching chunk table names (but not overlap tables).
-    # TODO: we need some central location for things like this
-    tblRe = re.compile('^' + tblName + '_([0-9]+)$')
-    tables = []
-    for table in utils.listTables(dbConn, dbName):
-        match = tblRe.match(table)
-        if match is not None:
-            if chunkId is not None:
-                if chunkId == int(match.group(1)):
+        # regexp matching chunk table names (but not overlap tables).
+        # TODO: we need some central location for things like this
+        tblRe = re.compile('^' + tblName + '_([0-9]+)$')
+        tables = []
+        for table in utils.listTables(dbConn, dbName):
+            match = tblRe.match(table)
+            if match is not None:
+                if chunkId is not None:
+                    if chunkId == int(match.group(1)):
+                        tables.append(table)
+                        break  # only one table can match
+                else:
                     tables.append(table)
-                    break                 # only one table can match
+
+        # we expect at least one chunk table to be found
+        if not tables:
+            _log.error('No matching chunk tables found for table %s.%s chunkId=%s',
+                       dbName, tblName, chunkId)
+            raise ExceptionResponse(404, "NoMatchingChunks", "Failed to find any chunk data table",
+                                    "No matching chunks for table %s.%s chunkId=%s" %
+                                    (dbName, tblName, chunkId))
+
+        _log.debug("tables to scan: %s", tables)
+
+        # TODO: list of lists is probably not the most efficient storage
+        result = []
+        for table in tables:
+            query = "SELECT {0}, {1}, {2} FROM {3}.{4}"
+            query = query.format(columns[0], columns[1], columns[2], dbName, table)
+
+            _log.debug('query: %s', query)
+            allRows = dbConn.execute(query)
+
+            if allRows.keys():
+                descr = [dict(name=d[0], type=utils.typeCode2Name(dbConn, d[1]))
+                         for d in allRows.cursor.description]
             else:
-                tables.append(table)
+                descr = [dict(name=name) for name in columns]
+            _log.debug("description: %s", descr)
 
-    # we expect at least one chunk table to be found
-    if not tables:
-        _log.error('No matching chunk tables found for table %s.%s chunkId=%s',
-                   dbName, tblName, chunkId)
-        raise ExceptionResponse(404, "NoMatchingChunks", "Failed to find any chunk data table",
-                                "No matching chunks for table %s.%s chunkId=%s" % (dbName, tblName, chunkId))
-
-    _log.debug("tables to scan: %s", tables)
-
-    # TODO: list of lists is probably not the most efficient storage
-    result = []
-    for table in tables:
-        query = "SELECT {0}, {1}, {2} FROM {3}.{4}"
-        query = query.format(columns[0], columns[1], columns[2], dbName, table)
-
-        _log.debug('query: %s', query)
-        allRows = dbConn.execute(query)
-
-        if allRows.keys():
-            descr = [dict(name=d[0], type=utils.typeCode2Name(dbConn, d[1])) for d in allRows.cursor.description]
-        else:
-            descr = [dict(name=name) for name in columns]
-        _log.debug("description: %s", descr)
-
-        while True:
-            rows = allRows.fetchmany(1000000)
-            if not rows:
-                break
-            for row in rows:
-                result.append(tuple(row))
+            while True:
+                rows = allRows.fetchmany(1000000)
+                if not rows:
+                    break
+                for row in rows:
+                    result.append(tuple(row))
 
     _log.debug("retrieved %d index rows", len(result))
 
@@ -944,14 +947,16 @@ def resetChunksCache(dbName):
     # validate params
     _validateDbName(dbName)
 
-    dbConn = Config.instance().proxyDbEngine().connect()
+    # proxy does not support COMMIT so make sure we do not use transactions here
+    # by using connect() over usual begin()
+    with Config.instance().proxyDbEngine().connect() as dbConn:
 
-    try:
-        query = "FLUSH QSERV_CHUNKS_CACHE FOR {}".format(dbName)
-        dbConn.execute(query)
-    except Exception as exc:
-        _log.error('exception executing FLUSH QSERV_CHUNKS_CACHE: %s', exc)
-        raise ExceptionResponse(500, "FLushFailed", "FLUSH QSERV_CHUNKS_CACHE failed for database %s" % dbName,
-                                str(exc))
+        try:
+            query = "FLUSH QSERV_CHUNKS_CACHE FOR {}".format(dbName)
+            dbConn.execute(query)
+        except Exception as exc:
+            _log.error('exception executing FLUSH QSERV_CHUNKS_CACHE: %s', exc)
+            raise ExceptionResponse(500, "FLushFailed",
+                                    "FLUSH QSERV_CHUNKS_CACHE failed for database %s" % dbName, str(exc))
 
     return json.jsonify(result=dict(status="OK"))
