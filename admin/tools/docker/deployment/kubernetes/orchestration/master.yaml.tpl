@@ -12,7 +12,7 @@ spec:
     image: "<MASTER_IMAGE>"
     env:
     - name: QSERV_MASTER 
-      value: "master.qserv.default.svc.cluster.local"
+      value: "master.qserv"
     # command: ["tail","-f", "/dev/null"]
   nodeSelector:
     kubernetes.io/hostname: <HOST> 

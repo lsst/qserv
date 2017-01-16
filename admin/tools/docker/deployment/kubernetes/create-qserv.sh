@@ -18,6 +18,7 @@ scp -F "$SSH_CFG" -r "$DIR/orchestration" "$ORCHESTRATOR":/home/qserv
 scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${ORCHESTRATOR}:/home/qserv/orchestration"
 ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/start-qserv.sh"
 
+# Wait for all pods to be in running state
 while true 
 do
     GO_TPL='{{range .items}}{{if ne .status.phase "Running"}}'
@@ -33,13 +34,15 @@ do
     fi
 done
 
+# k8s might try to restart pods in-between, so there is no garantee qserv
+# containers are started, race condition is unavoidable
 echo "Wait for Qserv to start on master"
-ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl -it exec master /qserv/scripts/wait.sh"
+ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl exec master /qserv/scripts/wait.sh"
 
 j=1
 for qserv_node in $WORKERS
 do
 	echo "Wait for Qserv to start on $qserv_node"
-	ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl -it exec worker-$i /qserv/scripts/wait.sh"
+	ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl exec worker-$i /qserv/scripts/wait.sh"
     j=$((j+1));
 done
