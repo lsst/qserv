@@ -15,6 +15,8 @@ BRANCH=dev
 
 # Customized configuration templates directory location
 # on docker host, optional
+# See <qserv-src-dir>/doc/source/HOW-TO/docker-custom-configuration.rst
+# for additional information
 HOST_CUSTOM_DIR=/qserv/custom
 
 # Data directory location on docker host, optional
