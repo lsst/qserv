@@ -161,6 +161,11 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
                 }
             }
         }
+        // If the user query for this task has been booted, put this task on the snail scheduler.
+        auto queryStats = _queries->getStats(task->getQueryId());
+        if (queryStats && queryStats->getQueryBooted()) {
+            s = _scanSnail;
+        }
         if (s == nullptr) {
             // Task wasn't assigned with a scheduler, assuming it is terribly slow.
             // Assign it to the slowest scheduler so it does the least damage to other queries.
@@ -207,12 +212,12 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         return;
     }
     wcontrol::Scheduler::Ptr s = std::dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found " << t->getIdStr());
     }
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
     _infoChanged = true;
     _logChunkStatus();
 
@@ -375,7 +380,8 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
     }
     // Go through the Tasks in the query and remove any that are not already on the 'destination'.
     auto taskList = _queries->removeQueryFrom(qId, source);
-    // Add the tasks in taskList to 'destination'.
+    // Add the tasks in taskList to 'destination'. taskList only contains tasks that were on the queue,
+    // not tasks that were running.
     for (auto const& task : taskList) {
         // Change the scheduler to the new scheduler as normally this is done in BlendScheduler::queCmd
         LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " moving to " << destination->getName());

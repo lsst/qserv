@@ -220,33 +220,46 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 }
 
 
-/// @returns - If task was removed from the queue, a pointer to the removed Task
-///            is returned
-wbase::Task::Ptr ScanScheduler::removeTask(wbase::Task::Ptr const& task) {
+/// @returns - true if a task was removed from the queue. If the task was running
+///            or not found, false is returned. A return value of true indicates
+///            that the task still needs to be started.
+/// If the task is running: the task continues to run, but the scheduler is told
+/// it is finished (this allows the scheduler to move on), and its thread is removed
+/// from the thread pool (the thread pool creates a new thread to replace it).
+bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
     auto rmTask = _taskQueue->removeTask(task);
     bool inQueue = rmTask != nullptr;
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " inQueue=" << inQueue);
-    if (inQueue) return rmTask;
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " removeTask inQueue=" << inQueue);
+    if (inQueue) {
+        LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " removeTask moving task on queue");
+        return true;
+    }
 
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " not in queue");
+    LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " removeTask not in queue");
     // Wasn't in the queue, could be in flight.
-    /// The task can only leave the pool if it has been started, and there is a tiny
-    /// window where the task could have been pulled from the queue but commandStart()
-    /// has not been called and 'task' does not know its poolThread. 'task' will possibly
-    /// gum up its scheduler by being slow, but nothing terrible should happen. Waiting
-    /// and calling this function again is probably the best option if needed.
+    if (!removeRunning) {
+        LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " removeTask not removing running tasks");
+        return false;
+    }
+    // Removing the task before we're done with MemMan could cause undefined behavior.
+    if (!task->getSafeToMoveRunning()) {
+        LOGS(_log, LOG_LVL_WARN, task->getIdStr()
+                << " removeTask couldn't move as still waiting on MemMan");
+        return false;
+    }
+    /// The task can only leave the pool if it has been started, poolThread should be set as
+    /// it is safe to move the running task according to the test above.
     auto poolThread = task->getAndNullPoolEventThread();
     if (poolThread != nullptr) {
+        LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " removeTask moving running task");
         poolThread->leavePool(task);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "removeTask PoolEventThread was null, "
                 "presumably already moved for large result.");
     }
-    // If it was running, no Task pointer should be returned as it could
-    // (erroneously) be scheduled to run again on a different scheduler.
-    return nullptr;
+    return false;
 }
 
 

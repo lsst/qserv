@@ -360,7 +360,7 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                      wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " taking too long, booting from " << sched->getName());
-    sched->removeTask(task);
+    sched->removeTask(task, true);
     uq->_tasksBooted += 1;
 
     auto bSched = _blendSched.lock();
@@ -380,6 +380,7 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
         if (uq->_tasksBooted > _maxTasksBooted) {
             LOGS(_log, LOG_LVL_INFO, task->getIdStr()
                  << " entire UserQuery booting from " << sched->getName());
+            uq->_queryBooted = true;
             bSched->moveUserQueryToSnail(uq->_queryId, sched);
         }
     }
@@ -437,8 +438,7 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
 /// current scheduler. Stopping and rescheduling them would be difficult at best, and
 /// probably not very helpful.
 std::vector<wbase::Task::Ptr>
-QueriesAndChunks::removeQueryFrom(QueryId const& qId,
-                                      std::shared_ptr<wsched::SchedulerBase> const& sched) {
+QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr const& sched) {
 
     std::vector<wbase::Task::Ptr> removedList; // Return value;
 
@@ -462,17 +462,30 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId,
         }
     }
 
-    for(auto const& task : taskList) {
-        auto taskSched = task->getTaskScheduler();
-        if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
-            // removeTask will only return the task if it was found on the
-            // queue for its scheduler and removed.
-            auto removedTask = taskSched->removeTask(task);
-            if (removedTask != nullptr) {
-                removedList.push_back(removedTask);
+    auto moveTasks = [&sched, &taskList, &removedList](bool moveRunning) {
+        std::vector<wbase::Task::Ptr> taskListNotRemoved;
+        for(auto const& task : taskList) {
+            auto taskSched = task->getTaskScheduler();
+            if (taskSched != nullptr && (taskSched == sched || sched == nullptr)) {
+                // Returns true only if the task still needs to be scheduled.
+                if (taskSched->removeTask(task, moveRunning)) {
+                    removedList.push_back(task);
+                } else {
+                    taskListNotRemoved.push_back(task);
+                }
             }
         }
-    }
+        taskList = taskListNotRemoved;
+    };
+
+    // Remove as many non-running tasks as possible from the scheduler queue. This
+    // needs to be done before removing running tasks to avoid a race condition where
+    // tasks are pulled off the scheduler queue every time a running one is removed.
+    moveTasks(false);
+
+    // Remove all remaining tasks. Most likely, all will be running.
+    moveTasks(true);
+
     return removedList;
 }
 

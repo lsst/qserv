@@ -261,8 +261,10 @@ void Task::waitForMemMan() {
         if (cmd->errorCode) {
             LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << cmd->errorCode);
         }
+
     }
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan end");
+    _safeToMoveRunning = true;
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {

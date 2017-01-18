@@ -63,7 +63,9 @@ using lsst::qserv::wbase::SendChannel;
 double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    return std::make_shared<Task>(tm, std::shared_ptr<SendChannel>());
+    auto task = std::make_shared<Task>(tm, std::shared_ptr<SendChannel>());
+    task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
+    return task;
 }
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;

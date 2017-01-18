@@ -231,6 +231,7 @@ void ThreadPool::_resize() {
     std::lock_guard<std::mutex> lock(_poolMutex);
     auto target = getTargetThrdCount();
     while (target > _pool.size()) {
+        LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize creating new PoolEventThread");
         auto t = PoolEventThread::newPoolEventThread(shared_from_this(), _q);
         _pool.push_back(t);
         t->run();

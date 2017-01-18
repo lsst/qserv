@@ -107,7 +107,7 @@ public:
     ///           removed Task, otherwise return nullptr.
     /// Most schedulers do not support this operation. Currently only supports
     /// moving from/to ScanSchedulers.
-    wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override {return nullptr;}
+    bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override {return nullptr;}
 
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
