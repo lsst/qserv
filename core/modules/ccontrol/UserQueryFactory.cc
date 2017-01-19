@@ -100,7 +100,8 @@ UserQueryFactory::newUserQuery(std::string const& query,
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
-        qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css);
+        // Currently using the database for results to get schema information.
+        qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css,_impl->mysqlResultConfig);
         try {
             qs->setDefaultDb(defaultDb);
             qs->analyzeQuery(query);

@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "mysql/MySqlConfig.h"
 #include "qana/AnalysisError.h"
 #include "qana/QueryPlugin.h"
 #include "query/QueryContext.h"
@@ -62,6 +63,7 @@ struct TestFixture {
     ~TestFixture(void) {}
 
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
+    lsst::qserv::mysql::MySqlConfig schemaCfg;
     int metaSession;
 };
 
@@ -73,7 +75,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     // Under normal operation, the columnref is patched by the TablePlugin
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor");
     TestFactory factory;
-    std::shared_ptr<QueryContext> qc = factory.newContext(css);
+    std::shared_ptr<QueryContext> qc = factory.newContext(css, schemaCfg);
     std::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
@@ -90,7 +92,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
 BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr");
     TestFactory factory;
-    std::shared_ptr<QueryContext> qc = factory.newContext(css);
+    std::shared_ptr<QueryContext> qc = factory.newContext(css, schemaCfg);
     std::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);

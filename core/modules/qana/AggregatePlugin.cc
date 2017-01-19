@@ -27,9 +27,9 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no AggregatePlugin.h)
+// No public interface (no AggregatePlugin.h) &&& delete
 // Parent class
-#include "qana/QueryPlugin.h"
+#include "qana/AggregatePlugin.h"
 
 // System headers
 #include <string>
@@ -152,6 +152,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // AggregatePlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// AggregatePlugin primarily operates in
 /// the second phase of query manipulation. It rewrites the
 /// select-list of a query in their parallel and merging instances so
@@ -171,6 +172,7 @@ public:
 private:
     query::AggOp::Mgr _aMgr;
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // AggregatePluginFactory declaration+implementation

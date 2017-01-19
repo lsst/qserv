@@ -26,9 +26,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no WherePlugin.h)
+// No public interface (no WherePlugin.h) &&& delete
 // Parent class
-#include "qana/QueryPlugin.h"
+#include "qana/WherePlugin.h"
+// #include "qana/QueryPlugin.h" &&&
 
 // System headers
 #include <stdexcept>
@@ -51,6 +52,7 @@ namespace qana {
 ////////////////////////////////////////////////////////////////////////
 // WherePlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// WherePlugin optimizes out extraneous OR_OP and AND_OP from the
 // WhereClause predicate.
 class WherePlugin : public QueryPlugin {
@@ -65,6 +67,7 @@ public:
     virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
     virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) {}
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // WherePluginFactory declaration+implementation

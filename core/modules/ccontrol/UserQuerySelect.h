@@ -126,7 +126,6 @@ public:
 private:
     void _setupMerger();
     void _discardMerger();
-
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
 

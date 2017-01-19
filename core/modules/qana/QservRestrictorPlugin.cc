@@ -28,9 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no QservRestrictorPlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/QservRestrictorPlugin.h"
 
 // System headers
 #include <algorithm>
@@ -95,6 +94,7 @@ lookupSecIndex(query::QueryContext& context,
                std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
+    LOGS(_log, LOG_LVL_DEBUG, "&&& cr=" << cr);
     if ((!cr) || !context.css) { return false; }
     if (!context.css->containsDb(cr->db)
        || !context.css->containsTable(cr->db, cr->table)) {
@@ -105,6 +105,7 @@ lookupSecIndex(query::QueryContext& context,
     }
     std::vector<std::string> sics = context.css->getPartTableParams(
         cr->db, cr->table).secIndexColNames();
+    LOGS(_log, LOG_LVL_DEBUG, "&&&  sics=" << (sics.empty() ? "EMPTY":sics.at(0)));
     return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
 }
 
@@ -186,14 +187,14 @@ query::QsRestrictor::Ptr newRestrictor(
                 return query::QsRestrictor::Ptr();
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Using dirDb " << dirDb << ", dirTable " << dirTable
+        LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
              << ", dirCol " << dirCol << " as sIndex for " << cr->db << "." << cr->table
              << "." << cr->column);
         restrictor->_params.push_back(dirDb);
         restrictor->_params.push_back(dirTable);
         restrictor->_params.push_back(dirCol);
     } else {
-        LOGS_DEBUG("Using " << cr->db << "." << cr->table <<  "." << cr->column
+        LOGS_DEBUG("Restrictor " << cr->db << "." << cr->table <<  "." << cr->column
                    << " as sIndex");
         restrictor->_params.push_back(cr->db);
         restrictor->_params.push_back(cr->table);
@@ -215,10 +216,11 @@ query::QsRestrictor::Ptr newRestrictor(
 query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
                                                       query::AndTerm::Ptr andTerm) {
     query::QsRestrictor::PtrVector result;
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors");
     if (not andTerm) return result;
 
     for (auto term : andTerm->_terms) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& term=" << term);
         query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(term.get());
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
@@ -232,13 +234,15 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
 
             // IN predicate
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors IN");
                 column_ref = resolveAsColumnRef(context, inPredicate->value);
                 if (column_ref && lookupSecIndex(context, column_ref)) {
                     restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref, inPredicate->cands);
-                    LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
+                    LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor); // &&& back to TRACE
                 }
             } else if (auto const compPredicate = std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 // '=' predicate
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors =");
                 query::ValueExprPtr literalValue;
                 column_ref = resolveAsColumnRef(context, compPredicate->left);
 
@@ -254,14 +258,15 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                     query::ValueExprPtrVector cands(1, literalValue);
                     restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
                     if (restrictor) {
-                        LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_IN restrictor: "
+                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " // &&& back to TRACE
                              << *restrictor << " for '=' predicate");
                     } else {
-                        LOGS(_log, LOG_LVL_TRACE, "No SECONDARY_INDEX_IN restrictor found");
+                        LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_IN restrictor found"); // &&& back to TRACE
                     }
                 }
             } else if (auto const betweenPredicate = std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-            // BETWEEN predicate
+                // BETWEEN predicate
+                LOGS(_log, LOG_LVL_DEBUG, "&&& getSecIndexRestrictors BETWEEN");
                 column_ref = resolveAsColumnRef(context, betweenPredicate->value);
                 if (column_ref && lookupSecIndex(context, column_ref)) {
                     query::ValueExprPtrVector cands;
@@ -271,10 +276,10 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
 
                     restrictor = newRestrictor(RestrictorType::SECONDARY_INDEX_BETWEEN, context, column_ref, cands);
                     if (restrictor) {
-                        LOGS(_log, LOG_LVL_TRACE, "Add SECONDARY_INDEX_BETWEEN restrictor: "
+                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: " // &&& back to TRACE
                              << *restrictor << " for '=' predicate");
                     } else {
-                        LOGS(_log, LOG_LVL_TRACE, "No SECONDARY_INDEX_BETWEEN restrictor found");
+                        LOGS(_log, LOG_LVL_DEBUG, "No SECONDARY_INDEX_BETWEEN restrictor found"); // &&& back to TRACE
                     }
                 }
             }
@@ -343,6 +348,7 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
     return fe;
 }
 
+/* &&&
 struct RestrictorEntry {
     RestrictorEntry(std::string const& alias_,
                  StringPair const& chunkColumns_,
@@ -355,7 +361,10 @@ struct RestrictorEntry {
     StringPair chunkColumns;
     std::string secIndexColumn;
 };
+
+*/ // &&&
 typedef std::deque<RestrictorEntry> RestrictorEntries;
+
 class getTable : public query::TableRef::Func {
 public:
 
@@ -408,6 +417,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// QservRestrictorPlugin replaces a qserv restrictor spec with directives
 /// that can be executed on a qserv mysqld. This plugin should be
 /// execute after aliases for tables have been generates, so that the
@@ -430,6 +440,7 @@ private:
         _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin::Restriction

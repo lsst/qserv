@@ -30,9 +30,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no PostPlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/PostPlugin.h"
 
 // System headers
 #include <cstddef>
@@ -62,6 +61,7 @@ namespace qana {
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// PostPlugin is a plugin handling query result post-processing.
 class PostPlugin : public QueryPlugin {
 public:
@@ -82,6 +82,7 @@ public:
     int _limit;
     std::shared_ptr<query::OrderByClause> _orderBy;
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // PostPluginFactory declaration+implementation

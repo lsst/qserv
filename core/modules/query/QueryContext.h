@@ -35,6 +35,7 @@
 
 // Local headers
 #include "css/CssAccess.h"
+#include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
@@ -60,15 +61,19 @@ class QueryContext {
 public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
-    QueryContext() : chunkCount(0), needsMerge(false) {}
+    QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
+                 mysql::MySqlConfig const& mysqlSchemaCfg)
+        : css(cssPtr), defaultDb(defDb), mysqlSchemaConfig(mysqlSchemaCfg) {}
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
-    std::string username; ///< unused, but reserved.
+    std::string userName{"default"}; ///< unused, but reserved.
     std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
+    mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
+
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
@@ -80,9 +85,11 @@ public:
     std::shared_ptr<qana::QueryMapping> queryMapping;
     std::shared_ptr<RestrList> restrictors;
 
-    int chunkCount; //< -1: all, 0: none, N: #chunks
+    void getTableSchema(std::string const& dbName, std::string const& tableName);
 
-    bool needsMerge; ///< Does this query require a merge/post-processing step?
+    int chunkCount{0}; //< -1: all, 0: none, N: #chunks
+
+    bool needsMerge{false}; ///< Does this query require a merge/post-processing step?
 
     css::StripingParams getDbStriping() {
         return css->getDbStriping(dominantDb); }

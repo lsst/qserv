@@ -28,9 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no ScanTablePlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/ScanTablePlugin.h"
 
 // System headers
 #include <algorithm>
@@ -62,6 +61,7 @@ namespace qana {
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// ScanTablePlugin is a query plugin that detects the "scan tables"
 /// of a query. A scan table is a partitioned table that must be
 /// scanned in order to answer the query. If the number of chunks
@@ -87,6 +87,7 @@ private:
                                     query::QueryContext& context);
     proto::ScanInfo _scanInfo;
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePluginFactory declaration+implementation

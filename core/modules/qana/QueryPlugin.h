@@ -84,7 +84,7 @@ public:
     static Ptr newInstance(std::string const& name);
 
     /// Register a QueryPlugin factory
-    static void registerClass(FactoryPtr f);
+    static void registerClass(FactoryPtr f); // &&& delete
 };
 
 /// Factory is a base class for specific QueryPlugin Factories

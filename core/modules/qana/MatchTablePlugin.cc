@@ -25,7 +25,9 @@
   * @brief A plugin for removing duplicate rows introduced by the match-
   *        table partitioner.
   */
-// No public interface (no MatchTablePlugin.h)
+
+// Class header
+#include "TablePlugin.h"
 
 // System headers
 #include <string>
@@ -61,7 +63,7 @@ using lsst::qserv::query::WhereClause;
 namespace lsst {
 namespace qserv {
 namespace qana {
-
+/* &&&
 /// MatchTablePlugin fixes up queries on match tables which are not joins
 /// so that they do not return duplicate rows potentially introduced by
 /// the partitioning process.
@@ -102,7 +104,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext& ctx) {}
 };
-
+*/ // &&&
 /// MatchTablePluginFactory creates MatchTablePlugin instances.
 class MatchTablePluginFactory : public QueryPlugin::Factory {
 public:

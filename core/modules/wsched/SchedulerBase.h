@@ -103,11 +103,10 @@ public:
     std::string chunkStatusStr(); //< @return a string
 
     /// Remove task from this scheduler.
-    /// @return - If task was still in the queue, return a pointer to the
-    ///           removed Task, otherwise return nullptr.
+    /// @return - If task was still in the queue, return true.
     /// Most schedulers do not support this operation. Currently only supports
     /// moving from/to ScanSchedulers.
-    bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override {return nullptr;}
+    bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override {return false;}
 
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.

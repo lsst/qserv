@@ -40,9 +40,8 @@
 ///
 /// \author Daniel L. Wang, SLAC
 
-// No public interface (no TablePlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/TablePlugin.h"
 
 // System headers
 #include <string>
@@ -234,6 +233,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/* &&&
 /// TablePlugin is a query plugin that inserts placeholders for table
 /// name substitution.
 class TablePlugin : public QueryPlugin {
@@ -257,6 +257,7 @@ private:
 
     std::string _dominantDb;
 };
+*/ // &&&
 
 ////////////////////////////////////////////////////////////////////////
 // TablePluginFactory declaration+implementation
