@@ -61,7 +61,8 @@ then
         '{gsub(/<DOCKER_ENV_QSERV_MASTER>/, MASTER);
           print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
     bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && \
-        qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' --etc"
+             qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' \
+                                --qserv-custom-dir '$QSERV_CUSTOM_DIR' --etc"
 else
     echo "ERROR: \$QSERV_MASTER is unset"
     exit 1

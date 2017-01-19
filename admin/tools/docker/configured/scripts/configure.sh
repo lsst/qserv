@@ -77,3 +77,4 @@ awk \
 
 qserv-configure.py --qserv-run-dir "$QSERV_RUN_DIR" --force
 
+mkdir "$QSERV_CUSTOM_DIR"

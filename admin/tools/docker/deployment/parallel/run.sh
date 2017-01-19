@@ -11,11 +11,14 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 . "${DIR}/env.sh"
 
-if [ -n "$HOST_LOG_DIR" ]; then
-    LOG_VOLUME_OPT="--volume $HOST_LOG_DIR:/qserv/run/var/log"
+if [ -n "$HOST_CUSTOM_DIR" ]; then
+    CUSTOM_VOLUME_OPT="--volume $HOST_CUSTOM_DIR:/qserv/custom"
 fi
 if [ -n "$HOST_DATA_DIR" ]; then
     DATA_VOLUME_OPT="--volume $HOST_DATA_DIR:/qserv/data"
+fi
+if [ -n "$HOST_LOG_DIR" ]; then
+    LOG_VOLUME_OPT="--volume $HOST_LOG_DIR:/qserv/run/var/log"
 fi
 if [ -n "$HOST_TMP_DIR" ]; then
     TMP_VOLUME_OPT="--volume $HOST_TMP_DIR:/qserv/run/tmp/"
@@ -67,6 +70,7 @@ echo
 shmux -Bm -c "
 docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
+    $CUSTOM_VOLUME_OPT \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
     $TMP_VOLUME_OPT \
@@ -82,6 +86,7 @@ echo "================================="
 echo
 shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
+    $CUSTOM_VOLUME_OPT \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
     $TMP_VOLUME_OPT \

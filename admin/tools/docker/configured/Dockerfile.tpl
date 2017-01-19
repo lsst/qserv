@@ -9,7 +9,6 @@ USER root
 
 RUN chown qserv:qserv /etc/localtime && chown qserv:qserv /etc/timezone
 
-
 WORKDIR /qserv
 
 USER qserv
