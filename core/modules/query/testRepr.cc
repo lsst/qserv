@@ -57,6 +57,9 @@ namespace test = boost::test_tools;
 struct TestFixture {
     TestFixture(void) {}
     ~TestFixture(void) {}
+
+    mysql::MySqlConfig schemaCfg;
+    std::shared_ptr<lsst::qserv::css::CssAccess> css;
 };
 
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
@@ -64,7 +67,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 BOOST_AUTO_TEST_CASE(Factory) {
     TestFactory tf;
     SelectStmt::Ptr stmt = tf.newSimpleStmt();
-    QueryContext::Ptr context = tf.newContext();
+    QueryContext::Ptr context = tf.newContext(css, schemaCfg);
 }
 
 // Helper function to construct a BoolTerm tree from a specification

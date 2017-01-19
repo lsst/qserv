@@ -42,6 +42,7 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
+#include "mysql/MySqlConfig.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
@@ -74,7 +75,8 @@ public:
     friend class Iter;
     typedef std::shared_ptr<QuerySession> Ptr;
 
-    explicit QuerySession(std::shared_ptr<css::CssAccess>);
+    explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& mysqlSchemaConfig)
+        : _css(css), _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
@@ -166,6 +168,7 @@ private:
     std::string _original; ///< Original user query
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context
     std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
+    mysql::MySqlConfig const _mysqlSchemaConfig; ///< Configuration for getting schema information.
 
     /// Group of parallel statements (not a sequence)
     /**
@@ -196,12 +199,12 @@ private:
     *
     */
     query::SelectStmtPtr _stmtMerge;
-    bool _hasMerge;
-    bool _isDummy; ///< Use dummy chunk, disabling subchunks or any real chunks
+    bool _hasMerge{false};
+    bool _isDummy{false}; ///< Use dummy chunk, disabling subchunks or any real chunks
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
-    int _isFinal; ///< Has query analysis/optimization completed?
+    int _isFinal{0}; ///< Has query analysis/optimization completed?
 
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain

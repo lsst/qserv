@@ -24,6 +24,7 @@
 #define LSST_QSERV_QUERY_DBTABLEPAIR_H
 
 // System headers
+#include <set>
 #include <vector>
 
 
@@ -41,11 +42,15 @@ struct DbTablePair {
         else if(db == rhs.db) { return table < rhs.table; }
         else return false;
     }
+    bool operator==(DbTablePair const& rhs) const {
+        return (db == rhs.db && table == rhs.table);
+    }
     std::string db;
     std::string table;
 };
 
 typedef std::vector<DbTablePair> DbTableVector;
+using DbTableSet=std::set<DbTablePair>;
 
 }}} // namespace lsst::qserv::query
 

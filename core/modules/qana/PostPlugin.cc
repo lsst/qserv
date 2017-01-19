@@ -30,9 +30,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no PostPlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/PostPlugin.h"
 
 // System headers
 #include <cstddef>
@@ -58,62 +57,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
 namespace lsst {
 namespace qserv {
 namespace qana {
-
-////////////////////////////////////////////////////////////////////////
-// PostPlugin declaration
-////////////////////////////////////////////////////////////////////////
-/// PostPlugin is a plugin handling query result post-processing.
-class PostPlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<PostPlugin> Ptr;
-
-    virtual ~PostPlugin() {}
-
-    /// Prepare the plugin for a query
-    virtual void prepare() {}
-
-    /// Apply the plugin's actions to the parsed, but not planned query
-    virtual void applyLogical(query::SelectStmt&, query::QueryContext&);
-
-    /// Apply the plugins's actions to the concrete query plan.
-    virtual void applyPhysical(QueryPlugin::Plan& plan, query::QueryContext&);
-
-    int _limit;
-    std::shared_ptr<query::OrderByClause> _orderBy;
-};
-
-////////////////////////////////////////////////////////////////////////
-// PostPluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class PostPluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<PostPluginFactory> Ptr;
-    PostPluginFactory() {}
-    virtual ~PostPluginFactory() {}
-
-    virtual std::string getName() const { return "Post"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        QueryPlugin::Ptr p = std::make_shared<PostPlugin>();
-        return p;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerPostPlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-    PostPluginFactory::Ptr f(new PostPluginFactory());
-    QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerPostPlugin;
-
-} // annonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin implementation

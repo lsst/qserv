@@ -42,19 +42,10 @@ namespace qserv {
 namespace query {
 
 std::shared_ptr<QueryContext>
-TestFactory::newContext() {
-    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
+TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg) {
+    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, schemaCfg);
     context->defaultDb = "Somedb";
-    context->username = "alice";
-    return context;
-}
-
-std::shared_ptr<QueryContext>
-TestFactory::newContext(std::shared_ptr<css::CssAccess> css) {
-    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>();
-    context->css = css;
-    context->defaultDb = "Somedb";
-    context->username = "alice";
+    context->userName = "alice";
     return context;
 }
 

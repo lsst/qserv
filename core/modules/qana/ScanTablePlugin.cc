@@ -28,9 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no ScanTablePlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/ScanTablePlugin.h"
 
 // System headers
 #include <algorithm>
@@ -58,65 +57,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ScanTablePlugin");
 namespace lsst {
 namespace qserv {
 namespace qana {
-
-////////////////////////////////////////////////////////////////////////
-// ScanTablePlugin declaration
-////////////////////////////////////////////////////////////////////////
-/// ScanTablePlugin is a query plugin that detects the "scan tables"
-/// of a query. A scan table is a partitioned table that must be
-/// scanned in order to answer the query. If the number of chunks
-/// involved is less than a threshold number (2, currently), then the
-/// scan table annotation is removed--the query is no longer
-/// considered a "scanning" query because it involves a small piece of
-/// the data set.
-class ScanTablePlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<ScanTablePlugin> Ptr;
-
-    virtual ~ScanTablePlugin() {}
-
-    virtual void prepare() {}
-
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext&);
-    virtual void applyFinal(query::QueryContext& context);
-
-private:
-    proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
-                                    query::QueryContext& context);
-    proto::ScanInfo _scanInfo;
-};
-
-////////////////////////////////////////////////////////////////////////
-// ScanTablePluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class ScanTablePluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<ScanTablePluginFactory> Ptr;
-    ScanTablePluginFactory() {}
-    virtual ~ScanTablePluginFactory() {}
-
-    virtual std::string getName() const { return "ScanTable"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        return std::make_shared<ScanTablePlugin>();
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerScanTablePlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        ScanTablePluginFactory::Ptr f = std::make_shared<ScanTablePluginFactory>();
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerScanTablePlugin;
-} // annonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin implementation

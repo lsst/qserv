@@ -57,9 +57,17 @@
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
+#include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
+#include "qana/DuplSelectExprPlugin.h"
+#include "qana/MatchTablePlugin.h"
+#include "qana/PostPlugin.h"
+#include "qana/QservRestrictorPlugin.h"
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
+#include "qana/ScanTablePlugin.h"
+#include "qana/TablePlugin.h"
+#include "qana/WherePlugin.h"
 #include "qproc/QueryProcessingBug.h"
 #include "query/Constraint.h"
 #include "query/QsRestrictor.h"
@@ -80,10 +88,6 @@ namespace qproc {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(std::shared_ptr<css::CssAccess> css) :
-    _css(css), _hasMerge(false), _isDummy(false), _isFinal(0) {
-}
-
 void QuerySession::setDefaultDb(std::string const& defaultDb) {
     _defaultDb = defaultDb;
 }
@@ -260,27 +264,24 @@ QuerySession::QuerySession(Test& t)
     _initContext();
 }
 
+
 void QuerySession::_initContext() {
-    _context = std::make_shared<query::QueryContext>();
-    _context->defaultDb = _defaultDb;
-    _context->username = "default";
-    _context->needsMerge = false;
-    _context->chunkCount = 0;
-    _context->css = _css;
+    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _mysqlSchemaConfig);
 }
 
+
 void QuerySession::_preparePlugins() {
-    // TODO: use C++11 syntax to refactor this code
     _plugins = std::make_shared<QueryPluginPtrVector>();
 
-    _plugins->push_back(qana::QueryPlugin::newInstance("DuplicateSelectExpr"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("MatchTable"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("Post"));
-    _plugins->push_back(qana::QueryPlugin::newInstance("ScanTable"));
+    _plugins->push_back(std::make_shared<qana::DuplSelectExprPlugin>());
+    _plugins->push_back(std::make_shared<qana::WherePlugin>());
+    _plugins->push_back(std::make_shared<qana::AggregatePlugin>());
+    _plugins->push_back(std::make_shared<qana::TablePlugin>());
+    _plugins->push_back(std::make_shared<qana::MatchTablePlugin>());
+    _plugins->push_back(std::make_shared<qana::QservRestrictorPlugin>());
+    _plugins->push_back(std::make_shared<qana::PostPlugin>());
+    _plugins->push_back(std::make_shared<qana::ScanTablePlugin>());
+
     QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).prepare();
@@ -367,8 +368,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     QueryTplVector queryTemplates;
 
     typedef query::SelectStmtPtrVector::const_iterator Iter;
-    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
-        i != e; ++i) {
+    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end(); i != e; ++i) {
         queryTemplates.push_back((**i).getQueryTemplate());
     }
     if (!queryMapping.hasSubChunks()) { // Non-subchunked?

@@ -27,9 +27,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no AggregatePlugin.h)
-// Parent class
-#include "qana/QueryPlugin.h"
+// Class header
+#include "qana/AggregatePlugin.h"
 
 // System headers
 #include <string>
@@ -149,59 +148,6 @@ private:
     query::AggOp::Mgr& aMgr;
 };
 
-////////////////////////////////////////////////////////////////////////
-// AggregatePlugin declaration
-////////////////////////////////////////////////////////////////////////
-/// AggregatePlugin primarily operates in
-/// the second phase of query manipulation. It rewrites the
-/// select-list of a query in their parallel and merging instances so
-/// that a SUM() becomes a SUM() followed by another SUM(), AVG()
-/// becomes SUM() and COUNT() followed by SUM()/SUM(), etc.
-class AggregatePlugin : public QueryPlugin {
-public:
-    // Types
-    typedef std::shared_ptr<AggregatePlugin> Ptr;
-
-    virtual ~AggregatePlugin() {}
-
-    virtual void prepare() {}
-
-    virtual void applyPhysical(QueryPlugin::Plan& plan,
-                               query::QueryContext&);
-private:
-    query::AggOp::Mgr _aMgr;
-};
-
-////////////////////////////////////////////////////////////////////////
-// AggregatePluginFactory declaration+implementation
-////////////////////////////////////////////////////////////////////////
-class AggregatePluginFactory : public QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<AggregatePluginFactory> Ptr;
-    AggregatePluginFactory() {}
-    virtual ~AggregatePluginFactory() {}
-
-    virtual std::string getName() const { return "Aggregate"; }
-    virtual QueryPlugin::Ptr newInstance() {
-        QueryPlugin::Ptr p =std::make_shared<AggregatePlugin>();
-        return p;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////
-// registerAggregatePlugin implementation
-////////////////////////////////////////////////////////////////////////
-namespace {
-struct registerPlugin {
-    registerPlugin() {
-        AggregatePluginFactory::Ptr f(new AggregatePluginFactory());
-        QueryPlugin::registerClass(f);
-    }
-};
-// Static registration
-registerPlugin registerAggregatePlugin;
-} // annonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // AggregatePlugin implementation

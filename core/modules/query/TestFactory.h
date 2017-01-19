@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
+#include "mysql/MySqlConfig.h"
 
 // Forward declarations
 namespace lsst {
@@ -49,9 +50,8 @@ namespace query {
 class TestFactory {
 public:
     TestFactory() {}
-    std::shared_ptr<QueryContext> newContext();
     std::shared_ptr<QueryContext> newContext(
-                         std::shared_ptr<css::CssAccess> css);
+            std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg);
     std::shared_ptr<SelectStmt> newSimpleStmt();
     std::shared_ptr<SelectStmt> newDuplSelectExprStmt();
 private:

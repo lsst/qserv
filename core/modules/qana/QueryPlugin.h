@@ -79,25 +79,8 @@ public:
 
     /// Apply the plugins's actions when coverage is known
     virtual void applyFinal(query::QueryContext& context) {}
-
-    /// Lookup a factory for the named type of plugin and construct an instance
-    static Ptr newInstance(std::string const& name);
-
-    /// Register a QueryPlugin factory
-    static void registerClass(FactoryPtr f);
 };
 
-/// Factory is a base class for specific QueryPlugin Factories
-class QueryPlugin::Factory {
-public:
-    // Types
-    typedef std::shared_ptr<Factory> Ptr;
-
-    virtual ~Factory() {}
-
-    virtual std::string getName() const { return std::string(); }
-    virtual QueryPlugin::Ptr newInstance() { return QueryPlugin::Ptr(); }
-};
 
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan {
