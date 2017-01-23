@@ -291,7 +291,7 @@ class Templater(object):
                 'MYSQLD_PASSWORD_MONITOR': config['mysqld']['password_monitor'],
                 'MYSQLD_PASSWORD_ROOT': config['mysqld']['password_root'],
                 'MYSQLD_PORT': config['mysqld']['port'],
-                'MYSQLD_SOCK': config['mysqld']['sock'],
+                'MYSQLD_SOCK': config['mysqld']['socket'],
                 'MYSQLD_USER_MONITOR': config['mysqld']['user_monitor'],
                 'MYSQLD_USER_QSERV': config['mysqld']['user_qserv'],
                 'MYSQL_DIR': config['mysqld']['base_dir'],
