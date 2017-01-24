@@ -38,6 +38,7 @@ import tempfile
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv import css
+from sqlalchemy.pool import NullPool
 
 #----------------------------------
 # Local non-exported definitions --
@@ -96,41 +97,60 @@ class Config(object):
 
         self._db = None
         self._dbPriv = None
+        self._dbProxy = None
 
     def dbEngine(self):
-        """ Return database engine """
-        kwargs = {}
-        kwargs['query'] = dict(local_infile=1)
+        """ Return database engine.
+
+        Standard Pool class causes delays in releasing connections, so we
+        disable connection pooling by using NullPool class. Another reason to
+        disable pool is that MySQL connections cannot be shared across many
+        threads.
+        """
+        if self._db is not None:
+            return self._db
+
+        kwargs = dict(poolclass=NullPool, query={})
+        # To use LOCA DATA LOCAL INFILE we need to enable it explicitely
+        kwargs['query']['local_infile'] = 1
         if self.dbHost: kwargs['host'] = self.dbHost
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['query']['unix_socket'] = self.dbSocket
         if self.dbUser: kwargs['username'] = self.dbUser
-        _log.debug('creating new connection (password not shown) %s', kwargs)
+        _log.debug('creating new engine (password not shown) %s', kwargs)
         if self.dbPasswd: kwargs['password'] = self.dbPasswd
-        return getEngineFromArgs(**kwargs)
+        self._db = getEngineFromArgs(**kwargs)
+        return self._db
 
     def privDbEngine(self):
         """ Return database engine for priviledged account """
-        kwargs = {}
-        kwargs['query'] = dict(local_infile=1)
+
+        if self._dbPriv is not None:
+            return self._dbPriv
+
+        kwargs = dict(poolclass=NullPool, query={})
         if self.dbHost: kwargs['host'] = self.dbHost
         if self.dbPort: kwargs['port'] = self.dbPort
         if self.dbSocket: kwargs['query']['unix_socket'] = self.dbSocket
         if self.dbUserPriv: kwargs['username'] = self.dbUserPriv
-        _log.debug('creating new connection (password not shown) %s', kwargs)
+        _log.debug('creating new engine (password not shown) %s', kwargs)
         if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
-        return getEngineFromArgs(**kwargs)
+        self._dbPriv = getEngineFromArgs(**kwargs)
+        return self._dbPriv
 
     def proxyDbEngine(self):
         """ Return database engine for proxy """
-        kwargs = {}
-        kwargs['query'] = dict(local_infile=1)
+        if self._dbProxy is not None:
+            return self._dbProxy
+
+        kwargs = dict(poolclass=NullPool, query={})
         if self.proxyHost: kwargs['host'] = self.proxyHost
         if self.proxyPort: kwargs['port'] = self.proxyPort
         if self.proxyUser: kwargs['username'] = self.proxyUser
-        _log.debug('creating new connection (password not shown) %s', kwargs)
+        _log.debug('creating new engine (password not shown) %s', kwargs)
         if self.proxyPasswd: kwargs['password'] = self.proxyPasswd
-        return getEngineFromArgs(**kwargs)
+        self._dbProxy = getEngineFromArgs(**kwargs)
+        return self._dbProxy
 
     def cssAccess(self):
         """
