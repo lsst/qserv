@@ -74,12 +74,11 @@ start_service() {
     pidfile=$(pid_file_name $prog)
     lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
     BINARY=${XROOTD_DIR}/bin/${prog}
-#   logfile=${LOG_DIR}/${prog}.log
     logfile=@libXrdSsiLog.so
     [ -x ${BINARY} ] || exit 5
     [ -f ${XROOTD_CONFIG} ] || exit 6
 
-    console_logfile="${LOG_DIR}/xrootd-console.log"
+    console_logfile="${LOG_DIR}/xrootd.log"
     cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  -+xrdssi ${XRDSSI_CONFIG} >>${console_logfile} 2>&1 &"
     start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
     ret=$?
