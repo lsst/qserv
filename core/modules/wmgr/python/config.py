@@ -26,29 +26,29 @@ Module defining Config class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import tempfile
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv import css
 from sqlalchemy.pool import NullPool
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('config')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 class Config(object):
     """

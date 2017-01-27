@@ -4,17 +4,17 @@ Module defining methods and classes used by watcher.
 @author Andy Salnikov
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 from abc import ABCMeta, abstractmethod
 import logging
 import time
 import warnings
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv import css
 from lsst.qserv import qmeta
 from lsst.qserv.admin  import nodeMgmt
@@ -22,15 +22,15 @@ from lsst.qserv.admin  import nodeAdmin
 from lsst.qserv.css import cssConfig
 from lsst.qserv.wmgr.client import ServerError
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _LOG = logging.getLogger(__name__)
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 class WatcherCss(object):
     """

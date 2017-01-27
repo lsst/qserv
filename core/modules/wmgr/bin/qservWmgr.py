@@ -26,26 +26,26 @@ Application which provides worker management service (HTTP-based).
 @author  Andy Salnikov, SLAC
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import argparse
 import logging
 import sys
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from flask import Flask
 from lsst.qserv.wmgr import auth, config, dbMgr, procMgr, xrdMgr
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 def main():
 

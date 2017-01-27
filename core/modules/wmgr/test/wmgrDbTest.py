@@ -30,33 +30,33 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#------------------------------
+# ------------------------------
 #  Module's version from CVS --
-#------------------------------
+# ------------------------------
 __version__ = "$Revision: 8 $"
 # $Source$
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import sys
 import unittest
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from flask import Flask, json
 from lsst.qserv.wmgr.config import Config
 from lsst.qserv.wmgr import dbMgr
 
-#---------------------
+# ---------------------
 # Local definitions --
-#---------------------
+# ---------------------
 
-#-------------------------------
+# -------------------------------
 #  Unit test class definition --
-#-------------------------------
+# -------------------------------
 
 logging.basicConfig(level=logging.WARNING)
 

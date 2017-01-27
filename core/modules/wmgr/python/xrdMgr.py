@@ -26,25 +26,25 @@ Module defining Flask blueprint for xrootd management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import os
 import re
 import subprocess
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
 from sqlalchemy.exc import SQLAlchemyError
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('xrdMgr')
 
@@ -111,9 +111,9 @@ def _restartService(sName):
 def _restartXrootd():
     _restartService('xrootd')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 

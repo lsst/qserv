@@ -29,34 +29,34 @@ qserv nodes, for example creating/deleting databases or tables.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import types
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.wmgr.client import ServerError
 from .nodeAdmin import NodeAdmin
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _Exception = produceExceptionClass('WorkerMgmtException', [
     (100, "TABLE_SCHEMA_ERR", "Invalid table schema specification"),
     ])
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
-#---------------------
+# ---------------------
 #  Class definition --
-#---------------------
+# ---------------------
 
 class NodeMgmt(object):
     """
@@ -73,9 +73,10 @@ class NodeMgmt(object):
             node.wmgrClient().dropTable(tableName)
     """
 
-    #----------------
+    # ----------------
     #  Constructor --
     #----------------
+
     def __init__(self, css, wmgrSecretFile=None):
         """
         Constructor needs an instance of CssAccess type which provides access to
@@ -91,9 +92,9 @@ class NodeMgmt(object):
         self.wmgrSecretFile = wmgrSecretFile
         self._log = logging.getLogger(__name__)
 
-    #-------------------
+    # -------------------
     #  Public methods --
-    #-------------------
+    # -------------------
 
     def select(self, state=None, nodeType=None):
         """

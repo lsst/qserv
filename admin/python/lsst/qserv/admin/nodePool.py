@@ -30,22 +30,22 @@ It can be used to install Qserv on a cluster.
 @author  Fabrice Jammes, IN2P3
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import multiprocessing
 import os
 from subprocess import Popen
 import time
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 _LOG = logging.getLogger(__name__)
 
 def cpu_count():

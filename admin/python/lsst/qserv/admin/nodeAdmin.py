@@ -34,20 +34,20 @@ a set of parameters to constructor.
 @author  Andy Salnikov, SLAC
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.wmgr.client import WmgrClient
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _LOG = logging.getLogger(__name__)
 
@@ -56,9 +56,9 @@ _Exception = produceExceptionClass('WorkerAdminException', [
     (110, "CSS_HOST_NAME_MISS", "Missing host name is in CSS"),
     ])
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 class NodeAdmin(object):
     """

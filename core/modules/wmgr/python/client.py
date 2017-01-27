@@ -26,22 +26,22 @@ Module defining WmgrClient class and related methods.
 @author Andy Salnikov <salnikov@slac.stanford.edu>
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import io
 import logging
 import types
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 import requests
 from requests.compat import urlencode
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 # used as default value to distingush from None
 _None = object()
@@ -176,9 +176,9 @@ class _MPEncoder(object):
             del self._data[0]
         return ""
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 class ClientException(Exception):
     """ Base class for all exceptions in this module"""
@@ -207,9 +207,9 @@ class ServerResponseError(ClientException):
     def __init__(self, msg, *args):
         ClientException.__init__(self, 'Server response error: ' + msg, *args)
 
-#---------------------
+# ---------------------
 #  Class definition --
-#---------------------
+# ---------------------
 
 class WmgrClient(object):
     """
@@ -221,7 +221,7 @@ class WmgrClient(object):
     communication with single instance of worker management service.
     """
 
-    #----------------
+    # ----------------
     #  Constructor --
     #----------------
     def __init__(self, host, port, secretFile=None, user=None, passwd=None, auth="digest"):

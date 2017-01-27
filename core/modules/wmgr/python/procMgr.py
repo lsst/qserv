@@ -26,23 +26,23 @@ Module defining Flask blueprint for process management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import os
 import subprocess
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .config import Config
 from .errors import ExceptionResponse
 from flask import Blueprint, json, request, url_for
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('procMgr')
 
@@ -70,9 +70,9 @@ def _runCmd(cmd, noexcept=True):
         else:
             raise
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 procService = Blueprint('procService', __name__, template_folder='procService')
 

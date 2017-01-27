@@ -117,7 +117,7 @@ def _exists_and_is_writable(dir):
         try:
             os.makedirs(dir)
         except OSError:
-            logger.error("Unable to create dir: %r", dir)
+            _LOG.error("Unable to create dir: %r", dir)
             return False
     elif not path.is_writable(dir):
         return False
@@ -169,7 +169,8 @@ def update_root_symlinks():
                 if os.path.islink(default_dir):
                     os.unlink(default_dir)
                 else:
-                    log.fatal("Please remove {0} and restart the configuration procedure".format(default_dir))
+                    _LOG.fatal(
+                        "Please remove {0} and restart the configuration procedure".format(default_dir))
                     sys.exit(1)
             _symlink(symlink_target, default_dir)
 

@@ -27,9 +27,9 @@ DataLoader class is used to simplify data loading procedure.
 """
 from __future__ import print_function
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 from cStringIO import StringIO
 import logging
 import os
@@ -38,17 +38,19 @@ import shutil
 import subprocess
 import tempfile
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv import css
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
 from lsst.qserv.wmgr.client import ServerError
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
+
+
 def _mysql_identifier_validator(db_or_table_name):
     """
     Check database and table name to prevent SQL-injection
@@ -64,9 +66,9 @@ def _mysql_identifier_validator(db_or_table_name):
     is_correct = name_validator.match(db_or_table_name) is not None
     return is_correct
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 class DataLoader(object):
     """

@@ -1,4 +1,3 @@
-
 # LSST Data Management System
 # Copyright 2015 AURA/LSST.
 #
@@ -34,7 +33,6 @@ These are all initialized when the module is imported, but may be modified by ot
 #  Imports of standard modules --
 # -------------------------------
 import os
-import subprocess
 
 # ----------------------------
 # Imports for other modules --
@@ -65,7 +63,7 @@ def _findPrefixFromName(product):
     return prefix
 
 def _getBinPath(binName, msg=None):
-    if msg == None:
+    if msg is None:
         msg = "Looking for %s" % binName
     log.info(msg)
     binFullPath = SCons.Util.WhereIs(binName)
@@ -86,7 +84,7 @@ def _getBinPathFromBinList(binList, msg=None):
         binFullPath = SCons.Util.WhereIs(binName)
         i=i+1
     if not binFullPath:
-            raise SCons.Errors.StopError('Could not locate at least one binary in : %s' % binList)
+        raise SCons.Errors.StopError('Could not locate at least one binary in : %s' % binList)
     else:
         return binFullPath
 
@@ -123,7 +121,6 @@ def _initLog():
                     SCons.Script.GetOption('traceback'))
 
 def _setEnvWithDependencies():
-
     log.info("Adding build dependencies information in scons environment")
     opts.AddVariables(
         (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
@@ -238,6 +235,7 @@ def _setBuildEnv():
     env.Tool('unittest')
     env.Tool('dirclean')
 
+
 # TODO : where to save this file ?
 def _saveState():
     """Save state such as optimization level used.  The scons mailing lists were unable to tell
@@ -263,11 +261,11 @@ def _saveState():
         log.warn("Unexpected exception in _saveState: %s" % e)
 
 def init(src_dir):
-
     global env, opts
     env = Environment(tools=['default', 'textfile', 'pymod'])
 
     _initOptions()
+
     _initLog()
 
     log.info("Adding general build information to scons environment")
@@ -291,8 +289,6 @@ def init(src_dir):
         env['PROTOC_COMSTR'] = "Running protoc on $SOURCE"
         env['ANTLR_COMSTR'] = "Running antlr on $SOURCE"
 
-#    _saveState()
-## @endcond
 
 def initBuild():
     _setEnvWithDependencies()

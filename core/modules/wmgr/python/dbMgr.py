@@ -26,9 +26,9 @@ Module defining Flask blueprint for database management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 from contextlib import closing, contextmanager
 import gzip
 import logging
@@ -38,9 +38,9 @@ import shutil
 import tempfile
 from threading import Thread
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
@@ -51,9 +51,9 @@ from lsst.db import utils
 import lsst.qserv.css
 
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('dbMgr')
 
@@ -117,9 +117,9 @@ def _getArgFlag(mdict, option, default=True):
                                 "Unexpected value of '%s' option: \"%s\"" % (option, value))
     return value in ('1', 'yes', 'true')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 dbService = Blueprint('dbService', __name__, template_folder='dbService')
 
