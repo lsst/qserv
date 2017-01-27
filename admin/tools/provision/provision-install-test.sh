@@ -23,6 +23,7 @@ Usage: `basename $0` [options]
   Available options:
     -h          this message
     -c          update CentOS7/Docker snapshot
+    -L          Run S15 queries
     -p          provision Qserv cluster on Openstack
     -s          launch Qserv integration test using shmux
     -S          launch Qserv integration test using swarm, disable previous option
