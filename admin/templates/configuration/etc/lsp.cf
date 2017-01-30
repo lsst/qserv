@@ -1,7 +1,6 @@
 # Unified configuration for xrootd/cmsd for both manager and server instances
 # "if"-block separates manager-only and server-only configuration.
 
-
 ###################################################################################
 # NOTE : mono-node support requires to comment out some configuration directives
 #        and do not start cmsd. Mono-node uses server mode.
@@ -9,17 +8,12 @@
 
 ############################
 # if: manager node
-# test xrootd instance name
 ############################
+# test xrootd instance name
 if named master
 
     # Use manager mode
     all.role manager
-
-    # Specify that no significant free space is required on servers
-    # Indeed current configuration doesn't expect to be dynamically
-    # written to, but export the space in R/W mode
-    cms.space 1k 2k
 
 ############################
 # else: server nodes
@@ -42,8 +36,6 @@ else
 
 fi
 
-ssi.loglib libxrdlog.so
-
 ########################################
 # Shared directives (manager and server)
 ########################################
@@ -63,11 +55,18 @@ all.adminpath {{XROOTD_ADMIN_DIR}}
 # qserv is hardcoded for these paths.
 all.export / nolock
 
-xrd.port {{XROOTD_PORT}}
+# Specify that no significant free space is required on servers
+# Indeed current configuration doesn't expect to be dynamically
+# written to, but export the space in R/W mode
+cms.space 1k 2k
+
+ssi.loglib libxrdlog.so
 
 # Optional: Prevent dns resolution in logs.
 # This may speed up request processing.
 xrd.network nodnr
+
+xrd.port {{XROOTD_PORT}}
 
 # Uncomment the following line for detailed xrootd debugging
 # xrootd.trace all debug
