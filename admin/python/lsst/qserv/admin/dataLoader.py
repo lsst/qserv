@@ -503,6 +503,7 @@ class DataLoader(object):
                     self._log.info('Table %r exists in %r', table, name)
                 else:
                     self._log.critical('Failed to create table %r in %r', table, name)
+                    raise
 
     def _loadData(self, database, table, files):
         """
@@ -590,6 +591,7 @@ class DataLoader(object):
                             self._log.info('Chunk %r exists for table %r', chunkId, table)
                         else:
                             self._log.critical('Failed to create chunk %r for table %r', chunkId, table)
+                            raise
 
                 # load data into chunk table
                 self._loadOneFile(wmgr, database, table, path, csvPrefix, chunkId=chunkId, overlap=overlap)
@@ -634,6 +636,7 @@ class DataLoader(object):
                     self._log.info('Dummy chunk 1234567890 exists for table %r', name)
                 else:
                     self._log.critical('Failed to create dummy chunk 1234567890 for table %r', name)
+                    raise
 
     def _loadNonChunkedData(self, database, table, files):
         """
