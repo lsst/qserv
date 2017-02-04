@@ -503,6 +503,7 @@ class DataLoader(object):
                     self._log.info('Table %r exists in %r', table, name)
                 else:
                     self._log.critical('Failed to create table %r in %r', table, name)
+                    raise
 
     def _loadData(self, database, table, files):
         """
@@ -582,8 +583,15 @@ class DataLoader(object):
 
                 # make tables if needed
                 if chunkId not in self.createdChunks:
-                    wmgr.createChunk(database, table, chunkId, overlap=self.partOptions.isSubChunked)
-                    self.createdChunks.add(chunkId)
+                    try:
+                        wmgr.createChunk(database, table, chunkId, overlap=self.partOptions.isSubChunked)
+                        self.createdChunks.add(chunkId)
+                    except ServerError as exc:
+                        if exc.code == 409:
+                            self._log.info('Chunk %r exists for table %r', chunkId, table)
+                        else:
+                            self._log.critical('Failed to create chunk %r for table %r', chunkId, table)
+                            raise
 
                 # load data into chunk table
                 self._loadOneFile(wmgr, database, table, path, csvPrefix, chunkId=chunkId, overlap=overlap)
@@ -618,11 +626,17 @@ class DataLoader(object):
 
         for name, wmgr in connections:
 
-            self._log.info('Make dummy chunk table for %r', name)
+            self._log.info('Make dummy chunk table for %r', table)
 
             # just make regular chunk with special ID, do not load any data
-            wmgr.createChunk(database, table, 1234567890, overlap=self.partOptions.isSubChunked)
-
+            try:
+                wmgr.createChunk(database, table, 1234567890, overlap=self.partOptions.isSubChunked)
+            except ServerError as exc:
+                if exc.code == 409:
+                    self._log.info('Dummy chunk 1234567890 exists for table %r', table)
+                else:
+                    self._log.critical('Failed to create dummy chunk 1234567890 for table %r', table)
+                    raise
 
     def _loadNonChunkedData(self, database, table, files):
         """
