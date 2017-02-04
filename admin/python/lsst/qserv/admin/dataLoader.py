@@ -626,16 +626,16 @@ class DataLoader(object):
 
         for name, wmgr in connections:
 
-            self._log.info('Make dummy chunk table for %r', name)
+            self._log.info('Make dummy chunk table for %r', table)
 
             # just make regular chunk with special ID, do not load any data
             try:
                 wmgr.createChunk(database, table, 1234567890, overlap=self.partOptions.isSubChunked)
             except ServerError as exc:
                 if exc.code == 409:
-                    self._log.info('Dummy chunk 1234567890 exists for table %r', name)
+                    self._log.info('Dummy chunk 1234567890 exists for table %r', table)
                 else:
-                    self._log.critical('Failed to create dummy chunk 1234567890 for table %r', name)
+                    self._log.critical('Failed to create dummy chunk 1234567890 for table %r', table)
                     raise
 
     def _loadNonChunkedData(self, database, table, files):
