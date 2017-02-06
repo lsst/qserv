@@ -14,19 +14,19 @@ SSH_CFG="$DIR/ssh_config"
 # Find leader
 for node in $SWARM_NODES
 do
-    SWARM_LEADER=$(ssh -F "$SSH_CFG" "$node" \
+    ORCHESTRATOR=$(ssh -F "$SSH_CFG" "$node" \
         "docker node ls | grep 'Leader' | sed 's/*//' | awk '{print \$2}'")
-    if [ -n "${SWARM_LEADER}" ]; then
+    if [ -n "${ORCHESTRATOR}" ]; then
         break
     fi
 done
 
 # Remove services on leader
-if [ -n "${SWARM_LEADER}" ]; then
-    echo "Remove all swarm services on leader: $SWARM_LEADER"
-    SERVICES=$(ssh -F "$SSH_CFG" "$SWARM_LEADER" "docker service ls -q")
+if [ -n "${ORCHESTRATOR}" ]; then
+    echo "Remove all swarm services on leader: $ORCHESTRATOR"
+    SERVICES=$(ssh -F "$SSH_CFG" "$ORCHESTRATOR" "docker service ls -q")
     if [ -n "${SERVICES}" ]; then
-        ssh -F "$SSH_CFG" "$SWARM_LEADER" \
+        ssh -F "$SSH_CFG" "$ORCHESTRATOR" \
             "docker service rm \$(docker service ls -q)"
     fi
 else

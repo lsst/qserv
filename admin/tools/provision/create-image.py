@@ -48,6 +48,18 @@ write_files:
     enabled=1
     gpgcheck=1
     gpgkey=https://yum.dockerproject.org/gpg
+- path: "/etc/yum.repos.d/kubernetes.repo"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    [kubernetes]
+    name=Kubernetes
+    baseurl=http://yum.kubernetes.io/repos/kubernetes-el7-x86_64
+    enabled=1
+    gpgcheck=1
+    repo_gpgcheck=1
+    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+           https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 - path: "/tmp/detect_end_cloud_config.sh"
   permissions: "0544"
   owner: "root"
@@ -67,10 +79,16 @@ groups:
 
 packages:
 - docker-engine
+- ebtables
+- kubeadm
+- kubectl
+- kubelet
+- kubernetes-cni
 - util-linux
 
 runcmd:
 - ['systemctl', 'enable', 'docker']
+- ['systemctl', 'enable', 'kubelet']
 - ['/tmp/detect_end_cloud_config.sh']
 
 package_upgrade: true

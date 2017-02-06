@@ -141,9 +141,7 @@ class CloudManager(object):
              'ssh_security_group': None,
              'nb_worker': 3,
              'nb_orchestrator': 2,
-             'format': None,
-             'first_id': None,
-             'last_id': None})
+             'format': None})
 
         self._session = self._create_keystone_session()
         self.nova = client.Client(_OPENSTACK_API_VERSION,
@@ -209,10 +207,10 @@ class CloudManager(object):
 
         # Read Openstack volumes related parameters
         volume_format = config.get('volume', 'format')
-        volume_first_id = config.getint('volume', 'first_id')
-        volume_last_id = config.getint('volume', 'last_id')
 
         if volume_format:
+            volume_first_id = config.getint('volume', 'first_id')
+            volume_last_id = config.getint('volume', 'last_id')
             volume_ids = range(volume_first_id, volume_last_id+1)
             self.volume_names = [volume_format.format(i) for i in volume_ids]
         else:

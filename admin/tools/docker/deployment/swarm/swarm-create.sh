@@ -13,22 +13,22 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 SSH_CFG="$DIR/ssh_config"
 
 echo "Create Swarm cluster and Docker overlay network"
-scp -F "$SSH_CFG" -r "$DIR/manager" "$SWARM_LEADER":/home/qserv
-scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${SWARM_LEADER}:/home/qserv/manager"
-ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/1_create.sh"
+scp -F "$SSH_CFG" -r "$DIR/manager" "$ORCHESTRATOR":/home/qserv
+scp -F "$SSH_CFG" "$DIR/env-infrastructure.sh" "${ORCHESTRATOR}:/home/qserv/manager"
+ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/manager/1_create.sh"
 
-JOIN_CMD_MANAGER="$(ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/2.1_print-join-cmd-manager.sh")"
+JOIN_CMD_MANAGER="$(ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/manager/2.1_print-join-cmd-manager.sh")"
 
 # Join swarm manager nodes:
 for node in $SWARM_NODES
 do
-    if [ "$node" != "$SWARM_LEADER" ]; then
+    if [ "$node" != "$ORCHESTRATOR" ]; then
         echo "Join manager $node to swarm cluster"
         ssh -F "$SSH_CFG" "$node" "$JOIN_CMD_MANAGER"
     fi
 done
 
-JOIN_CMD="$(ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/2_print-join-cmd.sh")"
+JOIN_CMD="$(ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/manager/2_print-join-cmd.sh")"
 
 # Join swarm worker nodes:
 for node in $MASTER $WORKERS

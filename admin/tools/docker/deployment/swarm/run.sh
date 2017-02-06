@@ -11,7 +11,7 @@ SSH_CFG="$DIR/ssh_config"
 
 echo "Start Qserv on Swarm cluster"
 
-ssh -F "$SSH_CFG" "$SWARM_LEADER" "/home/qserv/manager/3_start-qserv.sh"
+ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/manager/3_start-qserv.sh"
 
 for node in $MASTER $WORKERS
 do
