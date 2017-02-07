@@ -8,10 +8,7 @@ set -e
 set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-
-PARENT_DIR="$DIR/.."
-. "$PARENT_DIR/env-infrastructure.sh"
-SSH_CFG="$PARENT_DIR/ssh_config"
+. "$DIR/../env-cluster.sh"
 
 for qserv_node in $MASTER $WORKERS 
 do

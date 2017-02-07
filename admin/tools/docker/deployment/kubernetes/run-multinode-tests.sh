@@ -8,8 +8,7 @@ set -x
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env-infrastructure.sh"
-SSH_CFG="$DIR/ssh_config"
+. "$DIR/env-cluster.sh"
 
 # Build CSS input data
 i=1

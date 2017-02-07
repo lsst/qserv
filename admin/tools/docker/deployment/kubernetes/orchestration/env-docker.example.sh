@@ -9,12 +9,20 @@ VERSION=dev
 # `docker run` settings
 # =====================
 
+# Customized configuration templates directory location
+# on docker host, optional
+# See <qserv-src-dir>/doc/source/HOW-TO/docker-custom-configuration.rst
+# for additional information
+HOST_CUSTOM_DIR=/qserv/custom
+
 # Data directory location on docker host, optional
-# NOT SUPPORTED: mysql data created at configuration time is removed
 # HOST_DATA_DIR=/qserv/data
 
 # Log directory location on docker host, optional
 HOST_LOG_DIR=/qserv/log
+
+# Qserv temporary directory location on docker host, optional
+HOST_TMP_DIR=/qserv/tmp
 
 # Use for debugging purpose
 # Alternate command to execute at container startup

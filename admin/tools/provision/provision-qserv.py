@@ -162,8 +162,7 @@ if __name__ == "__main__":
         cloudmanager.add_parser_args(parser)
         args = parser.parse_args()
 
-        loggerName = "Provisioner"
-        cloudmanager.config_logger(loggerName, args.verbose, args.verboseAll)
+        cloudmanager.config_logger(args.verbose, args.verboseAll)
 
         cloudManager = cloudmanager.CloudManager(
             config_file_name=args.configFile,

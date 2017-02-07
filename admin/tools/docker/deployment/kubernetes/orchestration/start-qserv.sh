@@ -18,7 +18,7 @@ usage() {
   Available options:
     -h          this message
 
-  Launch Qserv service and pods on Kubernetes 
+  Launch Qserv service and pods on Kubernetes
 
 EOD
 }
@@ -37,37 +37,42 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-# TODO: move to k8s
-if [ -n "$HOST_LOG_DIR" ]; then
-    LOG_VOLUME_OPT="--mount type=bind,src=$HOST_LOG_DIR,dst=/qserv/run/var/log"
-fi
-if [ -n "$HOST_DATA_DIR" ]; then
-    DATA_VOLUME_OPT="--mount type=bind,src=$HOST_DATA_DIR,dst=/qserv/data"
-fi
-
 kubectl create -f "${DIR}/qserv-service.yaml"
 
+YAML_TPL="${DIR}/pod.yaml.tpl"
 YAML_FILE="${DIR}/master.yaml"
-awk \
--v HOST="$MASTER" \
--v MASTER_IMAGE="$MASTER_IMAGE" \
-'{gsub(/<HOST>/, HOST);
- gsub(/<MASTER_IMAGE>/, MASTER_IMAGE);
- print}' "$DIR/master.yaml.tpl" > "$YAML_FILE"
+INI_FILE="$DIR/pod.ini"
+
+cat << EOF > "$INI_FILE"
+[spec]
+host_custom_dir: $HOST_CUSTOM_DIR
+host_data_dir: $HOST_DATA_DIR
+host_log_dir: $HOST_LOG_DIR
+host_tmp_dir: $HOST_TMP_DIR
+host: $MASTER
+image: $MASTER_IMAGE
+pod_name: master
+EOF
+
+"$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
+
 kubectl create -f "$YAML_FILE"
 
 j=1
 for host in $WORKERS;
 do
     YAML_FILE="${DIR}/worker-${j}.yaml"
-    awk \
-    -v HOST="$host" \
-    -v NODE_ID="$j" \
-    -v WORKER_IMAGE="$WORKER_IMAGE" \
-    '{gsub(/<NODE_ID>/, NODE_ID);
-     gsub(/<HOST>/, HOST);
-     gsub(/<WORKER_IMAGE>/, WORKER_IMAGE);
-     print}' "$DIR/worker.yaml.tpl" > "$YAML_FILE"
+    cat << EOF > "$DIR"/pod.ini
+[spec]
+host_custom_dir: $HOST_CUSTOM_DIR
+host_data_dir: $HOST_DATA_DIR
+host_log_dir: $HOST_LOG_DIR
+host_tmp_dir: $HOST_TMP_DIR
+host: $host
+image: $WORKER_IMAGE
+pod_name: worker-$j
+EOF
+    "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
     kubectl create -f "$YAML_FILE"
     j=$((j+1));
 done

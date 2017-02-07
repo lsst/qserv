@@ -91,6 +91,8 @@ packages:
 runcmd:
 - ['systemctl', 'enable', 'docker']
 - ['systemctl', 'enable', 'kubelet']
+- ['curl', '-O', 'http://linuxsoft.cern.ch/cern/centos/7/cern/x86_64/Packages/parallel-20150522-1.el7.cern.noarch.rpm']
+- ['yum', '--assumeyes', '--nogpgcheck', 'localinstall', 'parallel-20150522-1.el7.cern.noarch.rpm' ]
 - ['/tmp/detect_end_cloud_config.sh']
 
 package_upgrade: true
@@ -110,10 +112,11 @@ if __name__ == "__main__":
         cloudmanager.add_parser_args(parser)
         args = parser.parse_args()
 
-        loggerName = "Provisioner"
-        cloudmanager.config_logger(loggerName, args.verbose, args.verboseAll)
+        cloudmanager.config_logger(args.verbose, args.verboseAll)
 
-        cloudManager = cloudmanager.CloudManager(config_file_name=args.configFile)
+        cloudManager = cloudmanager.CloudManager(
+            config_file_name=args.configFile,
+            create_snapshot=True)
 
         userdata_snapshot = get_cloudconfig()
 

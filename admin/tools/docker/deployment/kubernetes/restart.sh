@@ -9,7 +9,6 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 echo "Setup Kubernetes cluster and launch Qserv integration tests"
 
-"$DIR"/kube-destroy.sh
-"$DIR"/kube-create.sh
-"$DIR"/create-qserv.sh
-"$DIR"/run-multinode-tests.sh
+"$DIR"/delete-qserv-pods.sh
+"$DIR"/create-qserv-pods.sh
+"$DIR"/run-large-scale-tests.sh
