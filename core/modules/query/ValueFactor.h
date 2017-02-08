@@ -54,6 +54,17 @@ typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
 class ValueFactor {
 public:
     enum Type { COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
+    static std::string getTypeString(Type t) {
+        switch(t) {
+        case COLUMNREF: return "COLUMNREF";
+        case FUNCTION:  return "FUNCTION";
+        case AGGFUNC:   return "AGGFUNC";
+        case STAR:      return "STAR";
+        case CONST:     return "CONST";
+        case EXPR:      return "EXPR";
+        }
+        return "unknown";
+    }
 
     // May need non-const, otherwise, need new construction
     std::shared_ptr<ColumnRef const> getColumnRef() const { return _columnRef; }
