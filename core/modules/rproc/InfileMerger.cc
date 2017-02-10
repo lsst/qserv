@@ -54,9 +54,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "czar/Czar.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "qdisp/LargeResultMgr.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
@@ -95,8 +97,8 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-util::ThreadPool::Ptr InfileMerger::_largeResultPool;
-std::mutex largeResultPoolMutex;
+// util::ThreadPool::Ptr InfileMerger::_largeResultPool; &&& delete
+// std::mutex largeResultPoolMutex; &&& delete
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
@@ -112,15 +114,17 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
         throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
 
+    /* &&& delete
     if (_largeResultPool == nullptr) {
         throw InfileMergerError(util::ErrorCode::INTERNAL, "InfileMerger largeResultPool uninitialized");
     }
+    */
 }
 
 InfileMerger::~InfileMerger() {
 }
 
-
+/* &&&
 int InfileMerger::setLargeResultPoolSize(int size) {
     std::lock_guard<std::mutex> lock(largeResultPoolMutex);
     size = std::max(1, size); // size must be at least 1
@@ -132,6 +136,7 @@ int InfileMerger::setLargeResultPoolSize(int size) {
     LOGS(_log, LOG_LVL_DEBUG, "InfileMerger::setLargeResultPoolSize sz=" << size);
     return size;
 }
+*/
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     static std::atomic<int> cmdCount{0}; // Count of large results in process.
@@ -171,7 +176,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
 
     bool ret = false;
-    auto runSql = [this, &response, &queryIdStr, &ret](util::CmdData*){
+    auto runSql = [this, &response, &queryIdStr, &ret](util::CmdData*){ // &&& remove this lambda
         std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
         std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
         auto start = std::chrono::system_clock::now();
@@ -180,6 +185,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDur=" << mergeDur.count());
     };
+    /* &&& delete
     if (largeResult) {
         // Queuing on the limited size thread pool should keep the czar from getting
         // crushed trying to write hundreds of large result transmits at the same time
@@ -198,6 +204,20 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         // First transmit, run asap to avoid slowing down the worker.
         runSql(nullptr);
     }
+    */
+    /* &&& instead of the above block, always do
+     * runSql(nullptr);
+     * if (largeResult) {
+     *    --LargeResultRunning
+     *    call RestartDataResponse however many times needed.
+     * }
+     */
+    runSql(nullptr);
+    if (largeResult) {
+        auto lrm = czar::Czar::getCzar()->getLargeResultMgr();
+        if (lrm != nullptr) lrm->finishBlock();
+    }
+
     return ret;
 }
 

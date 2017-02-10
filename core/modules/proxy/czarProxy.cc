@@ -47,18 +47,18 @@ void initMDC() {
     LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
 }
 
-std::shared_ptr<lsst::qserv::czar::Czar> _czar;
+std::shared_ptr<lsst::qserv::czar::Czar> _czar; // &&& delete ?
 
 // mutex is used for czar initialization only which could potentially
 // happen simultaneously from several threads.
-std::mutex _czarMutex;
+std::mutex _czarMutex; // &&& delete ?
 
 }
 
 namespace lsst {
 namespace qserv {
 namespace proxy {
-
+/* &&&
 void
 initCzar(std::string const& czarName) {
 
@@ -93,6 +93,43 @@ initCzar(std::string const& czarName) {
 
     ::_czar = std::make_shared<lsst::qserv::czar::Czar>(qConfig, name);
 }
+*/
+void
+initCzar(std::string const& czarName) {
+
+    std::lock_guard<std::mutex> lock(_czarMutex);
+
+    // ignore repeated calls (they are hard to filter on mysql-proxy side)
+    if (lsst::qserv::czar::Czar::getCzar() != nullptr) {
+        return;
+    }
+
+    // add some MDC data in every thread
+    LOG_MDC_INIT(initMDC);
+
+    // Find QSERV_CONFIG envvar value
+    auto qConfig = std::getenv("QSERV_CONFIG");
+    if (not qConfig or *qConfig == '\0') {
+        throw std::runtime_error("QSERV_CONFIG is not defined");
+    }
+
+    // get czar name from parameter, QSERV_CZAR_NAME can override
+    std::string name;
+    auto qName = std::getenv("QSERV_CZAR_NAME");
+    if (qName and *qName != '\0') {
+        name = qName;
+    } else {
+        name = czarName;
+        if (name.empty()) {
+            // if still unknown generate something ~unique
+            name = "czar." + std::to_string(getpid());
+        }
+    }
+
+    //::_czar = std::make_shared<lsst::qserv::czar::Czar>(qConfig, name); &&& delete
+    _czar = lsst::qserv::czar::Czar::createCzar(qConfig, name);
+}
+
 
 czar::SubmitResult
 submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {

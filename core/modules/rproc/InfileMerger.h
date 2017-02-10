@@ -161,8 +161,8 @@ private:
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 
-    // The limited size pool will keep large queries from using up all the czar's time.
-    static util::ThreadPool::Ptr _largeResultPool;
+    // The limited size pool will keep large queries from using up all the czar's time. &&&
+    // static util::ThreadPool::Ptr _largeResultPool; // &&& delete
 };
 
 }}} // namespace lsst::qserv::rproc

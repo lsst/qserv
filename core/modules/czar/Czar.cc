@@ -52,6 +52,13 @@ namespace lsst {
 namespace qserv {
 namespace czar {
 
+Czar::Ptr Czar::_czarPtr;
+
+Czar::Ptr Czar::createCzar(std::string const& configPath, std::string const& czarName) {
+    _czarPtr.reset(new Czar(configPath, czarName));
+    return _czarPtr;
+}
+
 // Constructors
 Czar::Czar(std::string const& configPath, std::string const& czarName)
     : _czarName(czarName), _czarConfig(configPath),
@@ -68,8 +75,10 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
+    // &&& rename largeResultPoolSize in configuration
     int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
-    rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);
+    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultPoolSize) ;
+    // rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);   &&& delete
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);

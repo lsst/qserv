@@ -36,7 +36,9 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
+#include "czar/Czar.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/LargeResultMgr.h"
 
 namespace lsst {
 namespace qserv {
@@ -124,6 +126,9 @@ private:
     void _errorFinish(bool shouldCancel=false);
     void _finish();
 
+    qdisp::LargeResultMgr::Ptr _largeResultMgr;
+    std::atomic<int> _responseBlockCount{0};
+    int _responseBlockThreshold{1};
     XrdSsiSession* _session;
 
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
