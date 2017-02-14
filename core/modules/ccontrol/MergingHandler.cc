@@ -85,7 +85,7 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
     return "unknown";
 }
 
-bool MergingHandler::flush(int bLen, bool& last) {
+bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     if ((bLen < 0) || (bLen != (int)_buffer.size())) {
@@ -107,6 +107,7 @@ bool MergingHandler::flush(int bLen, bool& last) {
         if (_wName == "~") {
             _wName = _response->protoHeader.wname();
         }
+        largeResult = _response->result.largeresult();
         LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
              << "Resizing buffer to " <<  _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());

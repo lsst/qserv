@@ -127,7 +127,7 @@ public:
     virtual std::vector<char>& nextBuffer() {
         return _vect;
     }
-    virtual bool flush(int bLen, bool& last) {
+    virtual bool flush(int bLen, bool& last, bool& largeResult) {
         return bLen == magic();
     }
     virtual void errorFlush(std::string const& msg, int code) {

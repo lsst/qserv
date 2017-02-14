@@ -147,7 +147,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     std::string queryIdStr = QueryIdHelper::makeIdStr(
             response->result.queryid(), response->result.jobid());
-    bool largeResult = response->result.largeresult();
+    bool largeResult = response->result.largeresult(); // &&& can probably be deleted
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
          << queryIdStr
@@ -213,7 +213,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
      * }
      */
     runSql(nullptr);
-    if (largeResult) {
+    if (largeResult) { // &&& delete, large result count should be handled in QueryRequest.cc
         auto lrm = czar::Czar::getCzar()->getLargeResultMgr();
         if (lrm != nullptr) lrm->finishBlock();
     }

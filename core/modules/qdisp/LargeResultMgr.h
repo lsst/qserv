@@ -41,46 +41,25 @@ namespace qdisp {
 ///
 /// This uses xrootd's XrdSsiRequest::RestartDataResponse function and
 /// the ProcessResponseData callback return value (see QueryRequest::ProcessResponseData).
-///
-/// - For any job, any data block beyond _blockCountThreshold is 'held' by
-///   xrootd by having the QueryRequest::ProcessResponseData function return PRD_HOLD.
-///   xrootd will not spend any communication resources on that block until
-///   it is restarted by a call to XrdSsiRequest::RestartDataResponse.
-///
-/// - XrdSsiRequest::RestartDataResponse with RDR_Post increases the number of
-///   'held' blocks that can be restarted by xrootd by 1, and the function
-///   returns the number of blocks it restarted, which is added to _runningCount.
-///
-/// - Since the signal to 'hold' a block is the return value of a xrootd callback,
-///   xrootd checks if any 'held' blocks can be started when ProcessResponseData
-///   returns. So, XrdSsiRequest::RestartDataResponse(RDR_Post) needs to be called
-///   inside ProcessResponseData function whenever it is going to return PRD_HOLD.
-///
-/// - The value of _runningCount needs to be handled PERFECTLY. Any problems
-///   eventually either bog down the system as it tries to handle too many
-///   large result blocks at once, or not allow any large responses to run,
-///   never allowing a large response to finish.
-///   Good conditions for a reset of _runningCount would be extremely useful.
-///
+/// XrdSsiRequest keeps a semaphore of how many blocks can be started.
+/// Every time it starts a held block, it decrements the semaphore. When
+/// this program finishes a block it increases the semaphore with
+/// RDR_Post.
 class LargeResultMgr {
 public:
     using Ptr = std::shared_ptr<LargeResultMgr>;
 
-    LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} {};
+    LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} { _setup(); };
+    LargeResultMgr() { _setup(); };
 
-    int getBlockCountThreshold() {return _blockCountThreshold;}
     void startBlock();
     void finishBlock();
 
 private:
-    void _restartSome();
+    void _setup();
 
-    std::mutex _mx;
-    int _runningCount{0}; ///< Number of large result blocks being run.
-    int _runningCountMax{1}; ///< Max number of large result blocks that should be running at one time.
-
-    std::atomic<int> _blockCountThreshold{1}; ///< Number of blocks that can be read before a query is a large result. &&& make this a constant
-
+    std::atomic<int> _blockCount{0}; ///< Number of large result blocks in the system.
+    std::atomic<int> _runningCountMax{1}; ///< Max number of large result blocks to run concurrently.
 };
 
 

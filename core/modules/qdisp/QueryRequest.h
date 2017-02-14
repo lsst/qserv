@@ -127,8 +127,8 @@ private:
     void _finish();
 
     qdisp::LargeResultMgr::Ptr _largeResultMgr;
-    std::atomic<int> _responseBlockCount{0};
-    int _responseBlockThreshold{1};
+    bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
+    bool _heldData{false}; ///< True if xrootd is holding data at our request.
     XrdSsiSession* _session;
 
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.

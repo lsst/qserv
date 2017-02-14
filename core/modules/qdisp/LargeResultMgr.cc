@@ -43,44 +43,33 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+/// Set the value of the xrootd semaphore for tracking large response blocks to start.
+void LargeResultMgr::_setup() {
+    for (int j = 0; j < _runningCountMax; ++j) {
+        auto rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Post);
+        LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::_setup runningCountMax" << _runningCountMax
+                << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
+                << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
+    }
+}
+
+
 /// Check if any large result blocks can be run.
 void LargeResultMgr::startBlock() {
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::start");
-    std::lock_guard<std::mutex> lg(_mx);
-    _restartSome();
+    int count = ++_blockCount;
+    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::start blocks=" << count);
 }
 
 
 /// Decrement the number of running blocks and see if any can be started
 void LargeResultMgr::finishBlock() {
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::finishBlock runningCount=" << _runningCount);
-    std::lock_guard<std::mutex> lg(_mx);
-    --_runningCount;
-    _restartSome();
-}
-
-
-/// Start large request blocks until the queue is empty or maximum number are running.
-/// Precondition: _mx must be held before calling this procedure.
-void LargeResultMgr::_restartSome() {
-    XrdSsiRequest::RDR_Info rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Query);
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::_restartSome begin runningCount=" << _runningCount
-            << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
-            << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
-    bool nothingToDo = false;
-    while (!nothingToDo && _runningCount < _runningCountMax
-           && (rdrInfo.qCount > 0 || (rdrInfo.qCount == 0 && rdrInfo.iAllow == 0))) {
-        rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Post);
-        LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::_restartSome Post runningCount=" << _runningCount
-                    << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
-                    << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
-        int restarted = rdrInfo.rCount;
-        nothingToDo = (restarted == 0); // nothing more to do if nothing was restarted.
-        _runningCount += restarted;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::_restartSome end runningCount=" << _runningCount
+    int count = --_blockCount;
+    auto rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Post);
+    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::finish blocks=" << count
             << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
             << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
 }
+
 
 }}} // namespace lsst::qserv::qdisp

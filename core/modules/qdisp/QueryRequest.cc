@@ -66,9 +66,6 @@ QueryRequest::QueryRequest( XrdSsiSession* session, std::shared_ptr<JobQuery> co
     if (czar != nullptr) {
         _largeResultMgr = czar->getLargeResultMgr();
     }
-    if (_largeResultMgr != nullptr) {
-        _responseBlockThreshold = _largeResultMgr->getBlockCountThreshold();
-    }
 }
 
 QueryRequest::~QueryRequest() {
@@ -199,28 +196,8 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    /* &&& call for RestartDataResponse  RDR_Query
-     * while < maxLargeRunnning, release until maxLargeRunning
-     *
-     *  if (last and nothing released), release one
-    RDR_Info rdrInfo = RestartDataResponse(XrdSsiRequest::RDR_Query);
-    int queued = rdrInfo.qCount;
-    //int running = rdrInfo.rCount; /// WRONG, must keep track of running, How do I figure out when one of these is done?
-    // While responses queued > 0 and not running the max
-    bool nothingToDo = false;
-    while (!nothingToDo && rdrInfo.qCount > 0 &&  _runningLargeResults < _runningLargeResultsMax) {
-        rdrInfo = RestartDataResponse(XrdSsiRequest::RDR_Post);
-        int restarted = rdrInfo.rCount;
-        nothingToDo = (restarted == 0); // nothing more to do if nothing was restarted.
-        _runnningLargeResults += restarted;
-    }
-    */
-
-
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
-
-
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
@@ -229,9 +206,28 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         if (_finishStatus != ACTIVE || jq == nullptr) {
             // Something must have killed this user query, let this continue
             // so that the mess can be cleaned up soon.
+            if (_heldData) {
+                _heldData = false;
+                _largeResultMgr->finishBlock();
+            }
             return XrdSsiRequest::PRD_Normal;
         }
     }
+
+    // Handle data held for a large response.
+    if (_heldData) {
+        _heldData = false;
+        std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
+        const void* pbuf = (void*)(&buffer[0]);
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " heldData _importStream->GetResponseData size="
+                << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
+        if (!GetResponseData(&buffer[0], buffer.size())) {
+            _errorFinish();
+        }
+        _largeResultMgr->finishBlock();
+        return XrdSsiRequest::PRD_Normal;
+    }
+
     if (blen < 0) { // error, check errinfo object.
         int eCode;
         auto reason = getXrootdErr(&eCode);
@@ -244,7 +240,10 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         return XrdSsiRequest::PRD_Normal;
     }
     jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
-    bool flushOk = jq->getDescription().respHandler()->flush(blen, last);
+    bool largeResult = false;
+    bool flushOk = jq->getDescription().respHandler()->flush(blen, last, largeResult);
+    if (largeResult) _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+
     if (flushOk) {
         if (last) {
             auto sz = jq->getDescription().respHandler()->nextBuffer().size();
@@ -258,14 +257,18 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
             // having XrdSsi wait for anything.
             return XrdSsiRequest::PRD_Normal;
         } else {
-            std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
-            const void* pbuf = (void*)(&buffer[0]);
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "_importStream->GetResponseData size=" << buffer.size()
-                 << " " << pbuf << " " << util::prettyCharList(buffer, 5));
-            if (!GetResponseData(&buffer[0], buffer.size())) {
-                _errorFinish();
-                // An error occurred, let processing continue so it can be cleaned up soon.
-                return XrdSsiRequest::PRD_Normal;
+            if (_largeResult) {
+                _largeResultMgr->startBlock();
+                return XrdSsiRequest::PRD_Hold;
+            } else {
+                std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
+                const void* pbuf = (void*)(&buffer[0]);
+                LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "_importStream->GetResponseData size=" << buffer.size()
+                        << " " << pbuf << " " << util::prettyCharList(buffer, 5));
+                if (!GetResponseData(&buffer[0], buffer.size())) {
+                    _errorFinish();
+                    return XrdSsiRequest::PRD_Normal;
+                }
             }
         }
     } else {
@@ -276,23 +279,10 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         // appropriate action. There could be cases where this is recoverable.
         _retried.store(true); // Do not retry
         _errorFinish();
-        // An error occurred, let processing continue so it can be cleaned up soon.
         return XrdSsiRequest::PRD_Normal;
     }
-    // If this was a normal large result block, have XrdSsi hold processing (see LargeResultMgr.h)
-    // Otherwise, process immediately.
-    auto retValue = XrdSsiRequest::PRD_Normal;
-    // If the number of blocks is greater than the threshold, this result is a large response
-    // and needs to be managed.
-    // &&& it looks like this should only be called on data blocks, not header blocks, so this should be moved,  (probably should go at the end)
-    // &&& _responseBlockThreshold can be removed replaced with if the worker thinks it is a large response.
-    int rbCount = _responseBlockCount++; // atomic increment.
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "&&& LargeResult rbCount=" << rbCount << " responseBlockCount=" << _responseBlockCount); // &&& _responseBlockCount must be removed from this log statment.
-    if (rbCount > _responseBlockThreshold && _largeResultMgr != nullptr) {
-        _largeResultMgr->startBlock();
-        retValue = XrdSsiRequest::PRD_Hold;
-    }
-    return retValue;
+
+    return XrdSsiRequest::PRD_Normal;
 }
 
 void QueryRequest::cancel() {
