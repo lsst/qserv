@@ -213,11 +213,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
      * }
      */
     runSql(nullptr);
-    if (largeResult) { // &&& delete, large result count should be handled in QueryRequest.cc
-        auto lrm = czar::Czar::getCzar()->getLargeResultMgr();
-        if (lrm != nullptr) lrm->finishBlock();
-    }
-
     return ret;
 }
 

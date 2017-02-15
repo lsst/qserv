@@ -204,9 +204,10 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE || jq == nullptr) {
-            // Something must have killed this user query, let this continue
-            // so that the mess can be cleaned up soon.
+            LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
+            // Something must have killed this job.
             if (_heldData) {
+                LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData clearing heldData");
                 _heldData = false;
                 _largeResultMgr->finishBlock();
             }
@@ -258,7 +259,9 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
             return XrdSsiRequest::PRD_Normal;
         } else {
             if (_largeResult) {
+                LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " being held");
                 _largeResultMgr->startBlock();
+                _heldData = true;
                 return XrdSsiRequest::PRD_Hold;
             } else {
                 std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();

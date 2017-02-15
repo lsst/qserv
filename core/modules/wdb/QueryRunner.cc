@@ -233,8 +233,15 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         tSize += rawRow->ByteSize();
         ++rowCount;
 
+        int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
+
+        // Use small blocks until it considered a large result.
+        if (!_largeResult) {
+            szLimit = szLimit/10; // &&& should not really be hard coded like this
+        }
+
         // Each element needs to be mysql-sanitized
-        if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
+        if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;

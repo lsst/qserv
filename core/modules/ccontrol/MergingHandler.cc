@@ -107,7 +107,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         if (_wName == "~") {
             _wName = _response->protoHeader.wname();
         }
-        largeResult = _response->result.largeresult();
+
         LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
              << "Resizing buffer to " <<  _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
@@ -117,6 +117,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
     case MsgState::RESULT_WAIT:
         if (!_verifyResult()) { return false; }
         if (!_setResult()) { return false; }
+        largeResult = _response->result.largeresult();
         LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _buffer "
              << util::prettyCharList(_buffer, 5));
         {
@@ -141,6 +142,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             return success;
         }
     case MsgState::RESULT_EXTRA:
+        largeResult = _response->result.largeresult();
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
             _setError(ccontrol::MSG_RESULT_DECODE,
                       std::string("Error decoding proto header for ") + getStateStr(_state));
