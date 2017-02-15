@@ -122,8 +122,7 @@ private:
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
-
-    void _reapRequesters(std::unique_lock<std::mutex> const& requestersLock);
+    std::string _getIncompleteJobsString(int maxToList);
 
     void _updateProxyMessages();
 

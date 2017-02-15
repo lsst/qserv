@@ -220,13 +220,15 @@ void Executive::markCompleted(int jobId, bool success) {
             if (iter != _incompleteJobs.end()) {
                 err = iter->second->getDescription().respHandler()->getError();
             } else {
-                std::string msg = "Executive::markCompleted failed to find tracked " + idStr +
+                std::string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                         " size=" + std::to_string(_incompleteJobs.size());
-                LOGS(_log, LOG_LVL_DEBUG, msg);
                 // If the user query has been cancelled, this is expected for jobs that have not yet
-                // been tracked. In all other cases, it indicates a serious problem.
+                // been tracked. Otherwise, this indicates a serious problem.
                 if (!getCancelled()) {
+                    LOGS(_log, LOG_LVL_WARN, msg << " " << _getIncompleteJobsString(-1));
                     throw Bug(msg);
+                } else {
+                    LOGS(_log, LOG_LVL_DEBUG, msg);
                 }
                 return;
             }
@@ -328,23 +330,25 @@ void Executive::_setup() {
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
     assert(r);
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
+    int size = -1;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
-            LOGS(_log, LOG_LVL_WARN, "Attempt to TRACK " << idStr
-                 << " failed as jobId already found in incomplete jobs.");
+            LOGS(_log, LOG_LVL_WARN, "Attempt for TRACKING " << idStr
+                 << " failed as jobId already found in incomplete jobs. "
+                 << _getIncompleteJobsString(-1));
             return false;
         }
         _incompleteJobs[jobId] = r;
+        size = _incompleteJobs.size();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING " << idStr);
+    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING " << idStr << " size=" << size);
     return true;
 }
 
 void Executive::_unTrack(int jobId) {
     bool untracked = false;
-    int size = -1;
-    std::ostringstream s;
+    std::string s;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
@@ -353,34 +357,31 @@ void Executive::_unTrack(int jobId) {
             untracked = true;
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
-        size = _incompleteJobs.size();
-        // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
-        int c = 0;
-        for(auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < 5; ++j) {
-            s << j->first << " ";
-            ++c;
+        if (!untracked || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+            // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
+            s = _getIncompleteJobsString(5);
         }
     }
     LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
          "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
-         << " size=" << size << " " << (untracked ? "success":"failed") << "::" << s.str());
+             << " " << (untracked ? "success":"failed") << "::" << s);
 }
 
-/// Remove all jobs from the _incompleteJobs map that have errors.
-// This function only acts when there are errors. In there are no errors,
-// markCompleted() does the cleanup, while we are waiting (in _waitAllUntilEmpty()).
-void Executive::_reapRequesters(std::unique_lock<std::mutex> const&) {
-    for(auto iter=_incompleteJobs.begin(), e=_incompleteJobs.end(); iter != e;) {
-        if (!iter->second->getDescription().respHandler()->getError().isNone()) {
-            // Requester should have logged the error to the messageStore
-            LOGS(_log, LOG_LVL_DEBUG, "Executive reaped requester for "
-                 << QueryIdHelper::makeIdStr(_id, iter->first));
-            iter = _incompleteJobs.erase(iter);
-        } else {
-            ++iter;
-        }
+
+/// _incompleteJobsMutex must be held before calling this function.
+/// @return: a string containing a list of incomplete jobs containing up to 'maxToList' jobs.
+///          If maxToList is less than 0, all jobs are printed
+std::string Executive::_getIncompleteJobsString(int maxToList) {
+    std::ostringstream os;
+    int c = 0;
+    if (maxToList < 0) maxToList = _incompleteJobs.size();
+    os << "_incompleteJobs listing first" << maxToList << " of size=" << _incompleteJobs.size() << " ";
+    for(auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < maxToList; ++j, ++c) {
+        os << j->first << " ";
     }
+    return os.str();
 }
+
 
 /** Store job status and execution errors in the current user query message store
  *
@@ -426,7 +427,6 @@ void Executive::_waitAllUntilEmpty() {
     const std::chrono::seconds statePrintDelay(5);
     while(!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
-        _reapRequesters(lock);
         if (count != lastCount) {
             lastCount = count;
             ++complainCount;
