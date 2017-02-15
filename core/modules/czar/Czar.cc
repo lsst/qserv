@@ -38,6 +38,11 @@
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
 #include "util/IterableFormatter.h"
+#include "XrdSsi/XrdSsiProvider.hh"
+
+
+extern XrdSsiProvider *XrdSsiProviderClient;
+
 
 namespace {
 
@@ -79,6 +84,8 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
     _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultPoolSize) ;
     // rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);   &&& delete
+
+    XrdSsiProviderClient->SetCBThreads(1000, 100);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
