@@ -78,6 +78,7 @@ message ProtoHeader {
     required sfixed32 size = 2; // protobufs discourages messages > megabytes
     optional bytes md5 = 3;
     optional string wname = 4; 
+    required bool largeresult = 5;
 }
 
 message ColumnSchema {

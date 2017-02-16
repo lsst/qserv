@@ -185,7 +185,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDur=" << mergeDur.count());
     };
-    /* &&& delete
+
+    /* &&&
     if (largeResult) {
         // Queuing on the limited size thread pool should keep the czar from getting
         // crushed trying to write hundreds of large result transmits at the same time
@@ -205,13 +206,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         runSql(nullptr);
     }
     */
-    /* &&& instead of the above block, always do
-     * runSql(nullptr);
-     * if (largeResult) {
-     *    --LargeResultRunning
-     *    call RestartDataResponse however many times needed.
-     * }
-     */
     runSql(nullptr);
     return ret;
 }

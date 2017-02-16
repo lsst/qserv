@@ -111,6 +111,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
              << "Resizing buffer to " <<  _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
+        largeResult = _response->protoHeader.largeresult();
         _state = MsgState::RESULT_WAIT;
         return true;
 

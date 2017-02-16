@@ -56,17 +56,17 @@ void LargeResultMgr::_setup() {
 
 
 /// Check if any large result blocks can be run.
-void LargeResultMgr::startBlock() {
+void LargeResultMgr::startBlock(std::string const& jobId) {
     int count = ++_blockCount;
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::start blocks=" << count);
+    LOGS(_log, LOG_LVL_DEBUG, jobId << " LargeResultMgr::start blocks=" << count);
 }
 
 
 /// Decrement the number of running blocks and see if any can be started
-void LargeResultMgr::finishBlock() {
+void LargeResultMgr::finishBlock(std::string const& jobId) {
     int count = --_blockCount;
     auto rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Post);
-    LOGS(_log, LOG_LVL_DEBUG, "LargeResultMgr::finish blocks=" << count
+    LOGS(_log, LOG_LVL_DEBUG, jobId << " LargeResultMgr::finish blocks=" << count
             << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
             << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
 }

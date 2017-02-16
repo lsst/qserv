@@ -233,7 +233,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         tSize += rawRow->ByteSize();
         ++rowCount;
 
-        int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
+        unsigned int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
 
         // Use small blocks until it considered a large result.
         if (!_largeResult) {
@@ -311,6 +311,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     _protoHeader->set_size(msg.size());
     _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
     _protoHeader->set_wname(getHostname());
+    _protoHeader->set_largeresult(_largeResult);
     std::string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 

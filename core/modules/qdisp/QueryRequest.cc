@@ -209,15 +209,13 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
             if (_heldData) {
                 LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData clearing heldData");
                 _heldData = false;
-                _largeResultMgr->finishBlock();
+                _largeResultMgr->finishBlock(_jobIdStr);
             }
             return XrdSsiRequest::PRD_Normal;
         }
     }
 
-    // Handle data held for a large response.
-    if (_heldData) {
-        _heldData = false;
+    auto getResponseDataFunc = [this, &jq]() {
         std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
         const void* pbuf = (void*)(&buffer[0]);
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " heldData _importStream->GetResponseData size="
@@ -225,7 +223,22 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         if (!GetResponseData(&buffer[0], buffer.size())) {
             _errorFinish();
         }
-        _largeResultMgr->finishBlock();
+    };
+
+    // Handle data held for a large response.
+    if (_heldData) {
+        _heldData = false;
+        /*
+        std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
+        const void* pbuf = (void*)(&buffer[0]);
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " heldData _importStream->GetResponseData size="
+                << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
+        if (!GetResponseData(&buffer[0], buffer.size())) {
+            _errorFinish();
+        }
+        */
+        getResponseDataFunc();
+        _largeResultMgr->finishBlock(_jobIdStr);
         return XrdSsiRequest::PRD_Normal;
     }
 
@@ -260,10 +273,11 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         } else {
             if (_largeResult) {
                 LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " being held");
-                _largeResultMgr->startBlock();
+                _largeResultMgr->startBlock(_jobIdStr);
                 _heldData = true;
                 return XrdSsiRequest::PRD_Hold;
             } else {
+                /*
                 std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
                 const void* pbuf = (void*)(&buffer[0]);
                 LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "_importStream->GetResponseData size=" << buffer.size()
@@ -272,6 +286,8 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
                     _errorFinish();
                     return XrdSsiRequest::PRD_Normal;
                 }
+                */
+                getResponseDataFunc();
             }
         }
     } else {

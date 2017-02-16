@@ -52,8 +52,8 @@ public:
     LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} { _setup(); };
     LargeResultMgr() { _setup(); };
 
-    void startBlock();
-    void finishBlock();
+    void startBlock(std::string const& jobId);
+    void finishBlock(std::string const& jobId);
 
 private:
     void _setup();
