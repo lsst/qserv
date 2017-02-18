@@ -143,13 +143,14 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             return success;
         }
     case MsgState::RESULT_EXTRA:
-        largeResult = _response->result.largeresult();
         if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
             _setError(ccontrol::MSG_RESULT_DECODE,
                       std::string("Error decoding proto header for ") + getStateStr(_state));
             _state = MsgState::HEADER_ERR;
             return false;
         }
+        largeResult = _response->protoHeader.largeresult();
+        LOGS(_log, LOG_LVL_DEBUG, "&&&holdState&&& RESULT_EXTRA largeResult=" << largeResult);
         LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
              << _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());

@@ -195,9 +195,43 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
     return true;
 }
 
+
+void QueryRequest::_setHoldState(HoldState state) {
+    if (state != _holdState) {
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState changed from " << _holdState << " to " << state);
+    }
+    _holdState = state;
+}
+
+
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
+
+    // Class to make certain that the LargeResultMgr semaphore gets decremented.
+    class CallOnFuncExit {
+    public:
+        CallOnFuncExit(bool callLargeResult, std::function<void()> resetHState)
+          : _callLargeResult(callLargeResult), _resetHState(resetHState) {}
+
+        ~CallOnFuncExit() { callNow(); }
+        void callNow() {
+            if (_callLargeResult) _resetHState();
+            _callLargeResult = false; // only reset _holdState once
+        }
+        void setCallLargeResult() { _callLargeResult = true; }
+    private:
+        bool _callLargeResult{false};
+        std::function<void()> _resetHState;
+
+    };
+
+    // If the _holdState is MERGE2, _largeResultMgr->finishBlock must be called at the end of this function.
+    std::function<void()> resetHoldState = [this]() {
+        _largeResultMgr->finishBlock(_jobIdStr);
+        _setHoldState(NO_HOLD0);
+    };
+    CallOnFuncExit callOnExit(_holdState == MERGE2, resetHoldState);
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
@@ -206,10 +240,15 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         if (_finishStatus != ACTIVE || jq == nullptr) {
             LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
             // Something must have killed this job.
-            if (_heldData) {
+            if (_holdState != NO_HOLD0) {
                 LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData clearing heldData");
-                _heldData = false;
+                // Must call largeResultMgr->finishBlock to free the semaphore.
+                callOnExit.setCallLargeResult();
+                /* &&&
+                _holdState = false;
                 _largeResultMgr->finishBlock(_jobIdStr);
+                */
+
             }
             return XrdSsiRequest::PRD_Normal;
         }
@@ -218,17 +257,18 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     auto getResponseDataFunc = [this, &jq]() {
         std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
         const void* pbuf = (void*)(&buffer[0]);
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " heldData _importStream->GetResponseData size="
-                << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState
+                << " _importStream->GetResponseData size=" << buffer.size() << " "
+                << pbuf << " " << util::prettyCharList(buffer, 5));
         if (!GetResponseData(&buffer[0], buffer.size())) {
             _errorFinish();
         }
     };
 
-    // Handle data held for a large response.
-    if (_heldData) {
-        _heldData = false;
-        /*
+    // Get data for large response and prepare for merge on next ProcessResponseData call.
+    if (_holdState == GET_DATA1) {
+        _setHoldState(MERGE2);
+        /* &&&
         std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
         const void* pbuf = (void*)(&buffer[0]);
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " heldData _importStream->GetResponseData size="
@@ -237,8 +277,9 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
             _errorFinish();
         }
         */
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& holdState=" << _holdState << " held getResponseDataFunc()");
         getResponseDataFunc();
-        _largeResultMgr->finishBlock(_jobIdStr);
+        // _largeResultMgr->finishBlock(_jobIdStr); &&& delete
         return XrdSsiRequest::PRD_Normal;
     }
 
@@ -256,7 +297,14 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
     bool largeResult = false;
     bool flushOk = jq->getDescription().respHandler()->flush(blen, last, largeResult);
-    if (largeResult) _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+    if (largeResult) {
+        if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& holdState largeResult set to true");
+        _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+    }
+
+    // If _holdState was MERGE2 when callOnExit was created, the data should have been merged with the result
+    // table in the above flush() call. Need to free the LargeResultMgr semaphore now.
+    callOnExit.callNow();
 
     if (flushOk) {
         if (last) {
@@ -273,9 +321,12 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         } else {
             if (_largeResult) {
                 LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " being held");
-                _largeResultMgr->startBlock(_jobIdStr);
-                _heldData = true;
-                return XrdSsiRequest::PRD_Hold;
+                if (_holdState == NO_HOLD0) {
+                    _largeResultMgr->startBlock(_jobIdStr);
+                    _setHoldState(GET_DATA1);
+                    return XrdSsiRequest::PRD_Hold; // semaphore locked.
+                }
+                return XrdSsiRequest::PRD_Normal;
             } else {
                 /*
                 std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
@@ -287,6 +338,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
                     return XrdSsiRequest::PRD_Normal;
                 }
                 */
+                LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& holdState=" << _holdState << " not held getResponseDataFunc()");
                 getResponseDataFunc();
             }
         }
@@ -298,6 +350,10 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         // appropriate action. There could be cases where this is recoverable.
         _retried.store(true); // Do not retry
         _errorFinish();
+        if (_holdState != NO_HOLD0) {
+            // Must call largeResultMgr->finishBlock to free the semaphore if it was locked.
+            callOnExit.setCallLargeResult();
+        }
         return XrdSsiRequest::PRD_Normal;
     }
 
