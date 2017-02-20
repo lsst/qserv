@@ -29,7 +29,8 @@ from glob import glob
 from itertools import cycle, groupby, izip
 import MySQLdb as sql
 import optparse
-import os, os.path
+import os
+import os.path
 import pdb
 import re
 from textwrap import dedent
@@ -46,13 +47,18 @@ except ImportError:
     # process in serial fashion
     _have_mp = False
 
+
 class SerialPool(object):
+
     """Simple drop-in replacement for a subset of the multiprocessing.Pool
     class; all tasks are run in the same process as the caller."""
+
     def __init__(self, numWorkers):
         self._pool = [None]
+
     def map(self, fun, seq, chunkSize=None):
         return map(fun, seq)
+
     def close(self):
         pass
 
@@ -60,8 +66,7 @@ class SerialPool(object):
 # -- Chunk to worker server assignment --------
 
 def roundRobin(servers, chunks):
-    a = zip(cycle(servers), chunks)
-    a.sort()
+    a = sorted(zip(cycle(servers), chunks))
     return [(s, [e[1] for e in g]) for s, g in groupby(a, lambda x: x[0])]
 
 # A map from strategy names to chunk assignment functions.
@@ -69,12 +74,13 @@ def roundRobin(servers, chunks):
 # A chunk assignment function takes a list of servers and a list of chunk
 # files and returns a list of tuples [(S, C)] where S is a server and C
 # is the list of all chunk files assigned to S.
-strategies = { 'round-robin': roundRobin }
+strategies = {'round-robin': roundRobin}
 
 
 # -- Database interaction --------
 
 class SqlActions(object):
+
     """Higher level interface for database loading/cleanup tasks.
     """
 
@@ -117,7 +123,7 @@ class SqlActions(object):
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.TABLES
             WHERE table_schema = '%s' AND table_name = '%s'""" %
-            (components[0], components[1]))
+                            (components[0], components[1]))
         return self.cursor.fetchone()[0] != 0
 
     def dropTables(self, database, prefix):
@@ -125,7 +131,7 @@ class SqlActions(object):
             SELECT table_name
             FROM INFORMATION_SCHEMA.TABLES
             WHERE table_schema = '%s' AND table_name LIKE '%s'""" %
-            (database, prefix + '%'))
+                            (database, prefix + '%'))
         for table in self.cursor.fetchall():
             self.cursor.execute("DROP TABLE IF EXISTS %s.%s" %
                                 (database, table[0]))
@@ -155,7 +161,7 @@ class SqlActions(object):
             LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ','""" %
-            (os.path.abspath(partFile), table))
+                   (os.path.abspath(partFile), table))
         if index:
             self._exec(
                 "ALTER TABLE %s ADD INDEX (chunkId, subChunkId)" % table)
@@ -189,10 +195,10 @@ class SqlActions(object):
             SELECT avg_row_length
             FROM INFORMATION_SCHEMA.TABLES
             WHERE table_schema = '%s' AND table_name = '%s'""" %
-            (components[0], components[1]))
+                            (components[0], components[1]))
         return self.cursor.fetchone()[0]
 
-    def loadChunk(self, table, prototype, path, npad = None, index = False, dropPrimaryKey = False ):
+    def loadChunk(self, table, prototype, path, npad = None, index = False, dropPrimaryKey = False):
         if table == prototype:
             raise RuntimeError(
                 "Chunk and prototype tables have identical names: %s" % table)
@@ -204,7 +210,7 @@ class SqlActions(object):
             LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ','""" %
-            (os.path.abspath(path), table))
+                   (os.path.abspath(path), table))
         if npad != None and npad > 0:
             tmpTable = table + "Tmp"
             self._exec("RENAME TABLE %s TO %s" % (table, tmpTable))
@@ -257,13 +263,13 @@ class SqlActions(object):
         self.cursor.execute("""
             SELECT COUNT(*) FROM %s
             WHERE ra < 0.0 OR ra >= 360.0 OR decl < -90.0 OR decl > 90.0""" %
-            chunkTable)
+                            chunkTable)
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
             print(dedent("""\
                 ERROR: found %d records assigned to chunk %d (%s) with
                        invalid coordinates.""" %
-                (nfailed, chunkId, chunkTable)))
+                         (nfailed, chunkId, chunkTable)))
 
         # Test 3: make sure all entries are inside their sub-chunks
         self.cursor.execute("""
@@ -271,13 +277,13 @@ class SqlActions(object):
             ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
             WHERE c.ra < p.raMin OR c.ra >= p.raMax OR
                   c.decl < p.declMin OR c.decl >= p.declMax""" %
-            (chunkTable, partTable))
+                            (chunkTable, partTable))
         nfailed = self.cursor.fetchone()[0]
         if nfailed > 0:
             print(dedent("""\
                 ERROR: found %d records assigned to chunk %d (%s)
                        falling outside the bounds of their sub-chunks.""" %
-                (nfailed, chunkId, chunkTable)))
+                         (nfailed, chunkId, chunkTable)))
 
         # Test 4: make sure all self-overlap entries are outside but
         # "close" to their sub-chunks
@@ -287,13 +293,13 @@ class SqlActions(object):
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
                       c.decl >= p.declMin AND c.decl < p.declMax""" %
-                (selfTable, partTable))
+                                (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print(dedent("""\
                     ERROR: found %d self-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
-                    (nfailed, chunkId, selfTable)))
+                             (nfailed, chunkId, selfTable)))
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
@@ -326,7 +332,7 @@ class SqlActions(object):
                     WARNING: found %d self-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk self-overlap regions.""" %
-                    (nfailed, chunkId, selfTable)))
+                             (nfailed, chunkId, selfTable)))
 
         # Test 5: make sure all full-overlap entries are outside but
         # "close" to their sub-chunks
@@ -336,13 +342,13 @@ class SqlActions(object):
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
                       c.decl >= p.declMin AND c.decl < p.declMax""" %
-                (fullTable, partTable))
+                                (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print(dedent("""\
                     ERROR: found %d full-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
-                    (nfailed, chunkId, fullTable)))
+                             (nfailed, chunkId, fullTable)))
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
@@ -366,7 +372,7 @@ class SqlActions(object):
                     WARNING: found %d full-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk full-overlap regions.""" %
-                    (nfailed, chunkId, fullTable)))
+                             (nfailed, chunkId, fullTable)))
 
         # Test 6: make sure the partition map sub-chunk row counts agree
         # with the loaded table
@@ -377,7 +383,7 @@ class SqlActions(object):
             INNER JOIN %s AS p
             ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
             WHERE c.numRows != p.numRows""" %
-            (chunkTable, partTable))
+                            (chunkTable, partTable))
         nfailed = self.cursor.fetchone()[0]
 
     def close(self):
@@ -397,19 +403,24 @@ def hostPort(sv):
     else:
         return (hp[0], None)
 
+
 def chunkIdFromPath(path):
     m = re.match(r'.*_(\d+).csv$', path)
     if m == None:
         raise RuntimeError("Unable to extract chunk id from path %s" % path)
     return int(m.group(1))
 
+
 def tableFromPath(path, opts, prefix=''):
     table = os.path.splitext(os.path.basename(path))[0]
     return opts.database + '.' + prefix + table
 
+
 class Params(object):
+
     """Parameter holder class for a specific database server
     """
+
     def __init__(self, sv, opts):
         self.host, self.port = hostPort(sv)
         self.database = opts.database
@@ -432,6 +443,7 @@ class Params(object):
 
     def __cmp__(self, other):
         return cmp((self.host, self.port), (other.host, other.port))
+
 
 def getWorkers(patternsOrPaths, master):
     """Given a list of server name patterns or a files containing a list of
@@ -471,6 +483,7 @@ def getWorkers(patternsOrPaths, master):
                         workers[hostPort % i] = 1
     return workers.keys()
 
+
 def findPartitionFile(inputDir):
     """Search inputDir for a single file name ending with 'Partitions.csv'.
     """
@@ -481,6 +494,7 @@ def findPartitionFile(inputDir):
     elif len(matches) == 0 or len(matches[0]) == len('Partitions.csv'):
         raise RuntimeError("No partition map CSV file found in %s" % inputDir)
     return matches[0]
+
 
 def findChunkFiles(inputDir, prefix):
     """Find all chunk files with the given prefix in inputDir
@@ -518,6 +532,7 @@ def dropDatabase(params):
     finally:
         act.close()
 
+
 def cleanDatabase(params):
     act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     try:
@@ -525,6 +540,7 @@ def cleanDatabase(params):
             act.dropTables(params.database, params.clean)
     finally:
         act.close()
+
 
 def masterInit(master, sampleFile, opts):
     """Initialize the master server. Loads the partition map, determines
@@ -563,6 +579,7 @@ def masterInit(master, sampleFile, opts):
     finally:
         act.close()
     return schema, npad
+
 
 def loadWorker(args):
     """Loads chunk files on a worker server.
@@ -700,10 +717,9 @@ def main():
 
     (opts, args) = parser.parse_args()
 
-
     # Input validation and parsing
     print("DEBUG : %i" % len(args))
-    if len(args) not in (1,3):
+    if len(args) not in (1, 3):
         parser.error(dedent("""\
             A master server or a master server, input directory and
             prototype table must be specified."""))

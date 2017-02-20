@@ -62,6 +62,7 @@ _LOG = logging.getLogger(__name__)
 # Exported definitions  --
 # ------------------------
 class ParallelCmd(object):
+
     """
     Application class for parallel command application
     """

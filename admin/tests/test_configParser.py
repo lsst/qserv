@@ -114,7 +114,7 @@ class TestConfigParser(unittest.TestCase):
         self.assertRaises(ValueError, parser.parse)
 
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     unittest.main()

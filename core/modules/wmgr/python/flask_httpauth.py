@@ -19,6 +19,7 @@ from flask import request, make_response, session
 
 
 class HTTPAuth(object):
+
     def __init__(self):
         def default_get_password(username):
             return None
@@ -38,7 +39,7 @@ class HTTPAuth(object):
         @wraps(f)
         def decorated(*args, **kwargs):
             res = f(*args, **kwargs)
-            if type(res) == str:
+            if isinstance(res, str):
                 res = make_response(res)
                 res.status_code = 401
             if 'WWW-Authenticate' not in res.headers.keys():
@@ -72,6 +73,7 @@ class HTTPAuth(object):
 
 
 class HTTPBasicAuth(HTTPAuth):
+
     def __init__(self):
         super(HTTPBasicAuth, self).__init__()
         self.hash_password(None)
@@ -109,6 +111,7 @@ class HTTPBasicAuth(HTTPAuth):
 
 
 class HTTPDigestAuth(HTTPAuth):
+
     def __init__(self):
         super(HTTPDigestAuth, self).__init__()
         self.random = SystemRandom()

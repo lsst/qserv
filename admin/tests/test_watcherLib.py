@@ -26,8 +26,11 @@ def _makeWcss(initData):
     config = dict(technology='mem', data=initData)
     return watcherLib.WatcherCss(config)
 
+
 class TestExecutor(watcherLib.IExecutor):
+
     ''' Implementation IExecutor used for testing '''
+
     def __init__(self, returnVal=True):
         self.lastCall = None
         self.lastOptions = None
@@ -36,25 +39,29 @@ class TestExecutor(watcherLib.IExecutor):
     def createDb(self, dbName, options):
         self.lastCall = "CREATE DATABASE " + dbName
         self.lastOptions = options
-        if self.returnVal is None: raise Exception(self.lastCall)
+        if self.returnVal is None:
+            raise Exception(self.lastCall)
         return self.returnVal
 
     def dropDb(self, dbName, options):
         self.lastCall = "DROP DATABASE " + dbName
         self.lastOptions = options
-        if self.returnVal is None: raise Exception(self.lastCall)
+        if self.returnVal is None:
+            raise Exception(self.lastCall)
         return self.returnVal
 
     def createTable(self, dbName, tableName, options):
         self.lastCall = "CREATE TABLE " + dbName + "." + tableName
         self.lastOptions = options
-        if self.returnVal is None: raise Exception(self.lastCall)
+        if self.returnVal is None:
+            raise Exception(self.lastCall)
         return self.returnVal
 
     def dropTable(self, dbName, tableName, options):
         self.lastCall = "DROP TABLE " + dbName + "." + tableName
         self.lastOptions = options
-        if self.returnVal is None: raise Exception(self.lastCall)
+        if self.returnVal is None:
+            raise Exception(self.lastCall)
         return self.returnVal
 
 
@@ -122,7 +129,6 @@ class TestWatcherLib(unittest.TestCase):
         self.assertEqual(tables[("DB1", "TABLE2")], "FAILED:Not again")
         self.assertEqual(tables[("DB2", "TABLE1")], "PENDING_DELETE:")
         self.assertEqual(tables[("DB2", "TABLE2")], "DO_NOT_USE")
-
 
     def test_10_createDb(self):
         """ Test for creating database """
@@ -292,7 +298,6 @@ class TestWatcherLib(unittest.TestCase):
         self.assertEqual(executor.lastOptions, "12345")
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "FAILED:DROP TABLE DB1.TABLE1")
 
-
     def test_30_createDbSkip(self):
         """ Test for creating database """
 
@@ -378,7 +383,7 @@ class TestWatcherLib(unittest.TestCase):
         self.assertEqual(wCss.getTables()[('DB1', 'TABLE1')], "PENDING_DROP:12345:qid=24")
 
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestWatcherLib)

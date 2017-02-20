@@ -47,7 +47,7 @@ def download(file_name, url_str):
 
         f.close()
 
-    #handle errors
+    # handle errors
     except HTTPError as e:
         logger.fatal("HTTP Error: %r %r" % (e, url_str))
         success = False

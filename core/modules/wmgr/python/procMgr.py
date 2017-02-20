@@ -49,12 +49,14 @@ _log = logging.getLogger('procMgr')
 # static list of service names for now
 _svcNames = ['xrootd', 'mysqld']
 
+
 def _svcDict(svc, running=None):
     """ Make service instance dict out of service name """
     svcDict = dict(name=svc, uri=url_for('.getServiceState', service=svc))
     if running is not None:
         svcDict['state'] = 'active' if running else 'stopped'
     return svcDict
+
 
 def _runCmd(cmd, noexcept=True):
     """ Run command in a shell """

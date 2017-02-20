@@ -64,7 +64,7 @@ CSS_WATCHER = 'css-watcher'
 CZAR = 'qserv-czar'
 WORKER = 'qserv-worker'
 QSERV = 'qserv'
-SCISQL =  'scisql'
+SCISQL = 'scisql'
 
 DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
 NODB_COMPONENTS = [CSS_WATCHER]
@@ -100,12 +100,14 @@ for step in ALL_STEPS:
 # list of files that should only be readable by this account
 SECRET_FILES = ['qserv-wmgr.cnf', 'wmgr.secret']
 
+
 def random_string(charset, size):
     """
     Generates a random string consisting of size charaters picked randomly
     from a given character set.
     """
     return ''.join(random.choice(charset) for _ in range(size))
+
 
 def _exists_and_is_writable(dir):
     """
@@ -130,7 +132,7 @@ def update_root_dirs():
     config = commons.getConfig()
 
     for (section, option) in (('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
-                             ('qserv', 'qserv_data_dir')):
+                              ('qserv', 'qserv_data_dir')):
         dir = config[section][option]
         if not _exists_and_is_writable(dir):
             _LOG.fatal("%r is not writable check/update permissions or"
@@ -150,6 +152,7 @@ def update_root_dirs():
         _LOG.fatal("%r is not writable check/update permissions", dir)
         sys.exit(1)
     _LOG.info("Qserv directory structure creation succeeded")
+
 
 def update_root_symlinks():
     """ symlinks creation for directories externalised from qserv run dir
@@ -176,9 +179,11 @@ def update_root_symlinks():
 
     _LOG.info("Qserv symlinks creation for externalized directories succeeded")
 
+
 def _symlink(target, link_name):
     _LOG.debug("Creating symlink, target: %r, link name: %r", target, link_name)
     os.symlink(target, link_name)
+
 
 def keep_data(components, qserv_data_dir):
     """
@@ -324,7 +329,6 @@ class Templater(object):
 
             _LOG.debug("Template input parameters:\n {0}".format(self._templateParams))
 
-
     def applyOnce(self, src_file, target_file, template_params=None):
         """ Creating one configuration file from one template
         """
@@ -373,8 +377,8 @@ class Templater(object):
 
         return True
 
-class _QservConfigTemplate(string.Template):
 
+class _QservConfigTemplate(string.Template):
 
     delimiter = '{{'
     pattern = r'''

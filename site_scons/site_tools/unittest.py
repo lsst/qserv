@@ -50,6 +50,7 @@ from SCons.Platform import platform_default
 
 
 class _unitTest(object):
+
     """
     Class which implements builder action for UnitTest.
     """
@@ -82,7 +83,7 @@ class _unitTest(object):
             # are located because rpaths aren't (yet?) handled properly
             # when the libraries and binaries are built on OS X.
             libpathstr = "{}='{}:{}'".format("DYLD_LIBRARY_PATH",
-                env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
+                                             env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
 
         try:
             cmd = "{} {} > {} 2>&1".format(libpathstr, exe, out)
@@ -107,6 +108,7 @@ class _unitTest(object):
 
 
 class _unitTestCheck(object):
+
     """
     Class which implements builder action for UnitTestCheck.
     """
@@ -143,6 +145,7 @@ def generate(env):
         env['BUILDERS']['UnitTest'] = Builder(action=_unitTest(), suffix='.utest')
         env['BUILDERS']['UnitTestCheck'] = Builder(action=_unitTestCheck())
         env['UNIT_TESTS_FAILED'] = []
+
 
 def exists(env):
     return True

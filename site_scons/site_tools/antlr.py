@@ -1,6 +1,8 @@
-import os, os.path
+import os
+import os.path
 import SCons.Util
 from SCons.Script import Builder, Action, Dir, File, Entry
+
 
 def _detect(env):
     """Try to find the Antlr parser generator"""
@@ -8,7 +10,7 @@ def _detect(env):
         return env['ANTLR']
     except KeyError:
         raise SCons.Errors.StopError(
-        'Could not find antlr parser generator')
+            'Could not find antlr parser generator')
 
 
 def _antlr_emitter(target, source, env):
@@ -31,7 +33,7 @@ def _antlr_emitter(target, source, env):
     if env['ANTLR_GLIB']:
         env['ANTLR_GLIB'] = File(env['ANTLR_GLIB'])
         flags.append('-glib ${ANTLR_GLIB}')
-        #TODO: ImpTokenTypes!?
+        # TODO: ImpTokenTypes!?
 
     # update antlr flags
     env['ANTLR_FLAGS'] = str(flags)
@@ -40,7 +42,7 @@ def _antlr_emitter(target, source, env):
     deps = []
     for src in source:
         src = File(src)
-        stem = src.abspath;
+        stem = src.abspath
         if stem.endswith(antlr_suffix):
             stem = stem[:-len(antlr_suffix)]
         deps.append(File(stem + 'ImpTokenTypes' + antlr_txt_suffix))
@@ -60,11 +62,11 @@ def _antlr_emitter(target, source, env):
 
 
 _antlr_builder = Builder(
-        action = Action('$ANTLR_COM', '$ANTLR_COMSTR'),
+    action = Action('$ANTLR_COM', '$ANTLR_COMSTR'),
         suffix = '$ANTLR_CCSUFFIX',
         src_suffix = '$ANTLR_SUFFIX',
         emitter = _antlr_emitter,
-        )
+)
 
 
 def generate(env):
@@ -83,11 +85,10 @@ def generate(env):
         # Antlr command
         ANTLR_COM="$ANTLR $ANTLR_FLAGS $SOURCES",
         ANTLR_COMSTR = '',
-        )
+    )
     env['BUILDERS']['Antlr'] = _antlr_builder
 
 
 def exists(env):
     _detect(env)
     return True
-

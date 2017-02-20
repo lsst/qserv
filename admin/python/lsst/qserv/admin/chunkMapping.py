@@ -45,12 +45,13 @@ from lsst.qserv import css
 # Exported definitions --
 # ------------------------
 
+
 class ChunkMapping(object):
+
     """
     Instances of ChunkMapping class represent updatable mapping between
     chunk numbers and worker names (host names).
     """
-
 
     def __init__(self, workers, database, table, css=None):
         """

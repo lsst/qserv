@@ -4,6 +4,7 @@ import state
 import subprocess
 from SCons.Script import Action
 
+
 def compile_python_module(env, sources, dst_dir=None):
     """
     Makes *.pyc files from *.py files.
@@ -29,6 +30,7 @@ def compile_python_module(env, sources, dst_dir=None):
 
     return targets
 
+
 def install_python_module(env, target, source):
     """ Define targets which will install all python file contained in
         source_dir_path and sub-directories in python_path_prefix.
@@ -39,7 +41,7 @@ def install_python_module(env, target, source):
 
     source_lst = fileutils.recursive_glob(source_dir_path, '*.py', env)
 
-    for f in source_lst :
+    for f in source_lst:
         target = fileutils.replace_base_path(source_dir_path, python_path_prefix, f, env)
         state.log.debug("install_python_module() : source %s, target %s" % (f, target))
         env.InstallAs(target, f)
@@ -48,6 +50,7 @@ def install_python_module(env, target, source):
     target_lst += compile_python_module(env, target_lst)
 
     return target_lst
+
 
 def generate(env):
     env.AddMethod(install_python_module, 'InstallPythonModule')

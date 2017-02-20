@@ -53,6 +53,7 @@ from lsst.qserv.wmgr import client
 # Local definitions --
 # ---------------------
 
+
 def _readAll(input):
     """
     Rad all data from an input file.
@@ -74,7 +75,6 @@ logging.basicConfig(level=logging.WARNING)
 
 
 class wmgrClientTest(unittest.TestCase):
-
 
     def test00MPEncoder(self):
         """ Test for _MPEncoder class, single part. """

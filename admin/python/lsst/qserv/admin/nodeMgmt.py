@@ -48,7 +48,7 @@ from .nodeAdmin import NodeAdmin
 
 _Exception = produceExceptionClass('WorkerMgmtException', [
     (100, "TABLE_SCHEMA_ERR", "Invalid table schema specification"),
-    ])
+])
 
 # ------------------------
 # Exported definitions --
@@ -58,7 +58,9 @@ _Exception = produceExceptionClass('WorkerMgmtException', [
 #  Class definition --
 # ---------------------
 
+
 class NodeMgmt(object):
+
     """
     NodeMgmt class main purpose is to facilitate management operations on
     a set of nodes. It's two main responsibities are:
@@ -115,7 +117,6 @@ class NodeMgmt(object):
         return [NodeAdmin(name=key, css=self.css, wmgrSecretFile=self.wmgrSecretFile)
                 for key, _ in nodes.items()]
 
-
     def selectDict(self, state=None, nodeType=None):
         """
         Returns set of nodes based on supplied selection criteria. Nodes are returned
@@ -124,11 +125,11 @@ class NodeMgmt(object):
         """
 
         # if state is a string make a list out of it
-        if isinstance(state, types.StringTypes):
+        if isinstance(state, str):
             state = [state]
 
         # if nodeType is a string make a list out of it
-        if isinstance(nodeType, types.StringTypes):
+        if isinstance(nodeType, str):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)
@@ -142,7 +143,6 @@ class NodeMgmt(object):
 
         # make dict
         return dict(nodes)
-
 
     def createDb(self, dbName, state=None, nodeType=None):
         """
@@ -187,7 +187,6 @@ class NodeMgmt(object):
 
         self._log.debug('Created databases on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated
-
 
     def createTable(self, dbName, tableName, state=None, nodeType=None):
         """

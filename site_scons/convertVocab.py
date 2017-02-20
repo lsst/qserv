@@ -75,6 +75,7 @@ int main(int argc, char** argv) {{
 }}
 """
 
+
 def splitEq(line):
     # Consider writing with a regex.
     clean = line.strip()
@@ -85,23 +86,27 @@ def splitEq(line):
     # split by equals sign
     lefteq = clean.find("=")
     righteq = clean.rfind("=")
-    if "(" in clean[:lefteq]: # If there is a paren ( FOO("foo")=3423 format)
+    if "(" in clean[:lefteq]:  # If there is a paren ( FOO("foo")=3423 format)
         # Make sure the closing paren is also in there.
         if ")" not in clean[:lefteq]:
             # if not, advance to closing paren and look for equals from there.
             lefteq = clean.find("=", clean.find(")"))
-    if lefteq == -1: return ()
+    if lefteq == -1:
+        return ()
     if lefteq == righteq:
         return (clean[:lefteq], clean[lefteq+1:])
     else:
         return (clean[:lefteq], clean[lefteq+1:righteq], clean[righteq+1:])
+
 
 def stripQuotes(s):
     if s[0] == s[-1] and s[0] in ['"', "'"]:
         return s[1:-1]
     return s
 
+
 class NoValueError(ValueError):
+
     def __init__(self, descr):
         super(NoValueError, self).__init__(descr)
         pass
@@ -136,11 +141,13 @@ caseTemplate = "case {0}: return \"{1}\";"
 
 
 class Vocabulary:
+
     """Vocabulary is an object that bundles a ANTLRv2 token vocabulary.
 It consists of an identifier, some textual description or representation,
 and an integer tokenid.
 See: http://www.antlr2.org/doc/vocab.html
 """
+
     def __init__(self):
         self.tokens = []
         self.legalIdent = set(chain(string.letters, string.digits, ["_"]))
@@ -150,7 +157,8 @@ See: http://www.antlr2.org/doc/vocab.html
     def importBuffer(self, text):
         """Import a text buffer into the vocabulary"""
         for line in text.split("\n"):
-            if not line: continue
+            if not line:
+                continue
             try:
                 self.tokens.append(Token(line))
             except NoValueError as e:
@@ -173,7 +181,7 @@ source file name"""
         # {3} struct name
         # {4} 8-space indented definitions
         # {5} 8-space indented descriptions
-        filename =  "tokens_h"
+        filename = "tokens_h"
         sourceFilename = self.sourceFile
         structName = "tokens"
         if targetFile:
@@ -202,7 +210,9 @@ and prefixing with 'x' if the first character is still not legal."""
 
 
 class Token:
+
     """A Token object represents an entry in an ANTLR vocabulary"""
+
     def __init__(self, line):
         t = splitEq(line)
         if not t:
@@ -210,7 +220,7 @@ class Token:
         ident = t[0]
         tokenid = t[-1]
         descr = None
-        if len(t) == 2: # like: MINUS_SIGN("-")=286 // Imaginary token based on
+        if len(t) == 2:  # like: MINUS_SIGN("-")=286 // Imaginary token based on
             # look for parens
             lparen = t[0].find("(")
             rparen = t[0].rfind(")")
@@ -220,7 +230,7 @@ class Token:
             descr = stripQuotes(t[0][lparen+1:rparen])
             ident = t[0][:lparen]
             pass
-        elif len(t) == 3: # like: SQL2RW_zone="zone"=281
+        elif len(t) == 3:  # like: SQL2RW_zone="zone"=281
             # strip quotes from descr
             descr = stripQuotes(t[1])
         else:
@@ -228,7 +238,7 @@ class Token:
         self.ident = ident
         self.descr = descr
         self.tokenid = int(tokenid)
-        #print "ident",ident,"descr",descr,"tokenid",tokenid
+        # print "ident",ident,"descr",descr,"tokenid",tokenid
         pass
 
     def toEnum(self, indent="        "):
@@ -238,14 +248,17 @@ class Token:
         return indent + caseTemplate.format(self.ident, self.descr)
 
 
-def debugTest() :
+def debugTest():
     v = Vocabulary()
     v.importBuffer(sample)
     print(v.exportCppHeader("SomeTokens.h"))
 
+
 class UnitTest:
+
     """Unit test this module by exercising the conversion over sample token data
     and ensuring that the result can be compiled in g++"""
+
     def __init__(self):
         # Make a probably-unique digest from: userid + __file__ + pid
         m = hashlib.md5()
@@ -274,6 +287,7 @@ class UnitTest:
 
         open(self.ccFile, "w").write(sampleCC.format(self.outputHeaderFile,
                                                      self.digest+"gen"))
+
     def compile(self):
         # Try compiling
         progFile = os.path.splitext(self.ccFile)[0]
@@ -297,12 +311,14 @@ class UnitTest:
         except OSError as e:
             print("Execution failed:", e, file=sys.stderr)
         pass
+
     def run(self):
         self.writeFiles()
         self.compile()
 
 
 class Main:
+
     def __init__(self):
         usage = "usage: %prog [options] <tokens.txt> <output.h>"
         op = OptionParser(usage=usage)
@@ -313,6 +329,7 @@ class Main:
 
         self.oParser = op
         pass
+
     def convertFile(self, tokenFile, headerFile):
         v = Vocabulary()
         v.importFile(tokenFile)
@@ -334,6 +351,6 @@ class Main:
             self.convertFile(args[0], args[1])
 
 if __name__ == "__main__":
-    #debugTest()
+    # debugTest()
     m = Main()
     m.run()

@@ -55,12 +55,14 @@ env = None
 log = None
 opts = None
 
+
 def _findPrefixFromName(product):
     product_envvar = "%s_DIR" % product.upper()
     prefix = os.getenv(product_envvar)
     if not prefix:
         log.fail("Could not locate %s install prefix using %s" % (product, product_envvar))
     return prefix
+
 
 def _getBinPath(binName, msg=None):
     if msg is None:
@@ -73,30 +75,33 @@ def _getBinPath(binName, msg=None):
         log.debug("Found %s here %s" % (binName, binFullPath))
         return binFullPath
 
+
 def _getBinPathFromBinList(binList, msg=None):
     binFullPath = None
-    i=0
+    i = 0
     if msg == None:
         msg = "Looking for %s" % binList
     log.info(msg)
     while i < len(binList) and not binFullPath:
         binName = binList[i]
         binFullPath = SCons.Util.WhereIs(binName)
-        i=i+1
+        i = i+1
     if not binFullPath:
         raise SCons.Errors.StopError('Could not locate at least one binary in : %s' % binList)
     else:
         return binFullPath
 
+
 def _findPrefixFromBin(key, binName):
     """ returns install prefix for  a dependency named 'product'
     - if the dependency binary is PREFIX/bin/binName then PREFIX is used
     """
-    prefix = _findPrefixFromPath(key,  _getBinPath(binName))
+    prefix = _findPrefixFromPath(key, _getBinPath(binName))
     return prefix
 
+
 def _findPrefixFromPath(key, binFullPath):
-    if not binFullPath :
+    if not binFullPath:
         log.fail("_findPrefixFromPath : empty path specified for key %s" % key)
     (binpath, binname) = os.path.split(binFullPath)
     (basepath, bin) = os.path.split(binpath)
@@ -104,8 +109,9 @@ def _findPrefixFromPath(key, binFullPath):
         prefix = basepath
 
     if not prefix:
-        log.fail("Could not locate install prefix for product containing next binary : " % binFullPath )
+        log.fail("Could not locate install prefix for product containing next binary : " % binFullPath)
     return prefix
+
 
 def _initOptions():
     SCons.Script.AddOption('--verbose', dest='verbose', action='store_true', default=False,
@@ -113,12 +119,14 @@ def _initOptions():
     SCons.Script.AddOption('--traceback', dest='traceback', action='store_true', default=False,
                            help="Print full exception tracebacks when errors occur.")
 
+
 def _initLog():
     import utils
     global log
     log = utils.Log(SCons.Script.GetOption('verbose'),
                     SCons.Script.GetOption('silent'),
                     SCons.Script.GetOption('traceback'))
+
 
 def _setEnvWithDependencies():
     log.info("Adding build dependencies information in scons environment")
@@ -154,46 +162,65 @@ def _setEnvWithDependencies():
     opts.Update(env)
 
     opts.AddVariables(
-            (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefixFromPath('PROTOBUF_DIR',env['PROTOC']), PathVariable.PathIsDir)),
-            (PathVariable('ANTLR_DIR', 'antlr install dir', _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_DIR', 'protobuf install dir',
+                      _findPrefixFromPath('PROTOBUF_DIR', env['PROTOC']), PathVariable.PathIsDir)),
+            (PathVariable('ANTLR_DIR', 'antlr install dir',
+             _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
     opts.AddVariables(
-            (PathVariable('ANTLR_INC', 'antlr include path', os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('ANTLR_LIB', 'antlr libraries path', os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
-            (PathVariable('XROOTD_LIB', 'xrootd libraries path', os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_LIB', 'mysql libraries path', os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LOG4CXX_INC', 'log4cxx include path', os.path.join(env['LOG4CXX_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('LOG4CXX_LIB', 'log4cxx libraries path', os.path.join(env['LOG4CXX_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LOG_INC', 'log include path', os.path.join(env['LOG_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('LOG_LIB', 'log libraries path', os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LUA_INC', 'lua include path', os.path.join(env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('SPHGEOM_INC', 'sphgeom include path', os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path', os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
-            )
+        (PathVariable('ANTLR_INC', 'antlr include path',
+                      os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('ANTLR_LIB', 'antlr libraries path',
+             os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
+                env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
+            (PathVariable('XROOTD_LIB', 'xrootd libraries path',
+             os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('MYSQL_INC', 'mysql include path',
+             os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('MYSQL_LIB', 'mysql libraries path',
+             os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LOG4CXX_INC', 'log4cxx include path',
+             os.path.join(env['LOG4CXX_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('LOG4CXX_LIB', 'log4cxx libraries path',
+             os.path.join(env['LOG4CXX_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LOG_INC', 'log include path', os.path.join(
+                env['LOG_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('LOG_LIB', 'log libraries path',
+             os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('PROTOBUF_INC', 'protobuf include path',
+             os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('PROTOBUF_LIB', 'protobuf libraries path',
+             os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LUA_INC', 'lua include path', os.path.join(
+                env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('SPHGEOM_INC', 'sphgeom include path',
+             os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path',
+             os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
+    )
     opts.Update(env)
 
     opts.AddVariables(
-            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathAccept))
-            )
+        (PathVariable('python_prefix', 'qserv install directory for python modules',
+                      os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathAccept))
+    )
     opts.Update(env)
 
     # Allow one to specify where boost is
     boost_dir = os.getenv("BOOST_DIR")
     if boost_dir:
         opts.AddVariables(
-            (PathVariable('BOOST_DIR', 'boost install dir', _findPrefixFromName("BOOST"), PathVariable.PathIsDir)),
-            (PathVariable('BOOST_INC', 'boost include path', os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
-            (PathVariable('BOOST_LIB', 'boost libraries path', os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
-            )
+            (PathVariable('BOOST_DIR', 'boost install dir',
+             _findPrefixFromName("BOOST"), PathVariable.PathIsDir)),
+            (PathVariable('BOOST_INC', 'boost include path',
+             os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
+            (PathVariable('BOOST_LIB', 'boost libraries path',
+             os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
+        )
         opts.Update(env)
-
-
 
     # SWIG_LIB_ENV specification: Useful when swig can't find its own *.i files
     # This is a SWIG_LIB envvar, read by swig, not the same as the location of
@@ -205,7 +232,7 @@ def _setEnvWithDependencies():
                       'swig SWIG_LIB envvar for broken swig setups',
                       None,
                       PathVariable.PathIsDir))
-        )
+    )
     opts.Update(env)
     if 'SWIG_LIB_ENV' in env:  # PathIsDir tests os.path.isdir
         env['ENV']['SWIG_LIB'] = env['SWIG_LIB_ENV']
@@ -250,15 +277,16 @@ def _saveState():
     config = ConfigParser.ConfigParser()
     config.add_section('Build')
     config.set('Build', 'cc', SCons.Util.WhereIs('gcc'))
-    #if env['opt']:
+    # if env['opt']:
     #    config.set('Build', 'opt', env['opt'])
 
     try:
-        confFile = os.path.join(os.path.join(env['prefix'],"admin"),"configuration.in.cfg")
+        confFile = os.path.join(os.path.join(env['prefix'], "admin"), "configuration.in.cfg")
         with open(confFile, 'wb') as configfile:
             config.write(configfile)
     except Exception as e:
         log.warn("Unexpected exception in _saveState: %s" % e)
+
 
 def init(src_dir):
     global env, opts
@@ -271,7 +299,8 @@ def init(src_dir):
     log.info("Adding general build information to scons environment")
     opts = SCons.Script.Variables("custom.py")
     opts.AddVariables(
-            PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir, 'build'), PathVariable.PathIsDirCreate),
+        PathVariable('build_dir', 'Qserv build dir', os.path.join(
+                     src_dir, 'build'), PathVariable.PathIsDirCreate),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH")),
             # Default to in-place install
             PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate),
@@ -293,5 +322,3 @@ def init(src_dir):
 def initBuild():
     _setEnvWithDependencies()
     _setBuildEnv()
-
-

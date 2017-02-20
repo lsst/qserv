@@ -60,6 +60,7 @@ _log = logging.getLogger('dbMgr')
 # pattern for valid db/table/column names
 _idNameRe = re.compile(r'^[a-zA-Z_][0-9a-zA-Z_]*$')
 
+
 def _validateId(idType, identifier):
     """
     Validate identifier, throws exception if identifier contains illegal characters
@@ -68,13 +69,16 @@ def _validateId(idType, identifier):
         raise ExceptionResponse(400, "InvalidArgument",
                                 "{0} name is invalid: '{1}'".format(idType, identifier))
 
+
 def _validateDbName(dbName):
     """ Validate database name """
     return _validateId("Database", dbName)
 
+
 def _validateTableName(tblName):
     """ Validate table name """
     return _validateId("Table", tblName)
+
 
 def _validateColumnName(columnName):
     """ Validate column name """
@@ -86,22 +90,27 @@ _specialDbs = set(['mysql', 'information_schema'])
 # pattern for CREATE TABLE
 _createTableRe = re.compile(r'^\s*CREATE\s+TABLE\s+(\w\.)?(\w+)', re.I)
 
+
 def _dbDict(dbName):
     """ Make database instance dict out of db name """
     return dict(name=dbName, uri=url_for('.dropDb', dbName=dbName))
+
 
 def _tblDict(dbName, tblName):
     """ Make table instance dict out of table name """
     return dict(name=tblName, uri=url_for('.deleteTable', dbName=dbName, tblName=tblName))
 
+
 def _columnDict(row):
     """ Make column dict out of column row """
     return dict(name=row[0], type=row[1], null=row[2], key=row[3], default=row[4])
+
 
 def _chunkDict(dbName, tblName, chunkId):
     """ Make table instance dict out of table name """
     uri = url_for('.deleteChunk', dbName=dbName, tblName=tblName, chunkId=chunkId)
     return dict(chunkId=chunkId, uri=uri, chunkTable=False, overlapTable=False)
+
 
 def _getArgFlag(mdict, option, default=True):
     """
@@ -128,6 +137,7 @@ dbService = Blueprint('dbService', __name__, template_folder='dbService')
 def dbExceptionHandler(error):
     """ All leaked database-related exceptions generate 500 error """
     return errorResponse(500, error.__class__.__name__, str(error))
+
 
 @dbService.route('', methods=['GET'])
 def listDbs():
@@ -605,6 +615,7 @@ def createChunk(dbName, tblName):
     response.status_code = 201
     return response
 
+
 def _fixOverlapIndices(dbConn, database, ctable):
     """
     Replaces unique indices on overlap table with non-unique
@@ -641,6 +652,7 @@ def _fixOverlapIndices(dbConn, database, ctable):
         query = 'CREATE INDEX `{0}` ON `{1}`.`{2}` ({3})'.format(idx, database, ctable, colNames)
         _log.debug('query: %s', query)
         dbConn.execute(query)
+
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>', methods=['DELETE'])
 def deleteChunk(dbName, tblName, chunkId):
@@ -931,6 +943,7 @@ def getIndex(dbName, tblName, chunkId=None):
 # Currently we support only one operation on chunk set - resetting the cache
 # which is implemented via PUT method on /<dbName>/chunks/cache resource
 #
+
 
 @dbService.route('/<dbName>/chunks/cache', methods=['PUT'])
 def resetChunksCache(dbName):

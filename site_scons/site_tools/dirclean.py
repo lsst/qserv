@@ -4,6 +4,7 @@ import os
 import state
 from SCons.Script import Dir, Entry, Split
 
+
 def _all_children(nodes, children):
     for node in nodes:
         for child in node.children(scan=0):
@@ -11,6 +12,7 @@ def _all_children(nodes, children):
                 state.log.debug("_all_children() : add child: %s" % child)
                 children.add(child)
                 _all_children([child], children)
+
 
 def all_children(nodes):
     """
@@ -61,8 +63,10 @@ def CleanEmptyDirs(env, targets, dir_list):
 
     env.Clean(targets, list(empty_dirs))
 
+
 def generate(env):
     env.AddMethod(CleanEmptyDirs)
+
 
 def exists(env):
     return True

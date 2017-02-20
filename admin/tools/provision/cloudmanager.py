@@ -54,6 +54,7 @@ def _get_nova_creds():
 # Exported definitions --
 # -----------------------
 
+
 def add_parser_args(parser):
     """
     Configure the parser
@@ -107,6 +108,7 @@ def config_logger(loggerName, verbose, verboseAll):
 
 
 class CloudManager(object):
+
     """
     Application class for common definitions for creation of snapshot
     and provision qserv
@@ -155,7 +157,6 @@ class CloudManager(object):
         # Read Docker related parameters
         self._registry_host = config.get('docker', 'registry_host')
         self._registry_port = config.getint('docker', 'registry_port')
-
 
         # Read Openstack servers related parameters
         if use_snapshot_image:

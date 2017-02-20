@@ -80,7 +80,6 @@ class TestCssNodes(unittest.TestCase):
         with self.assertRaises(css.NoSuchNode):
             css_inst.getNodeParams('worker-3')
 
-
     def testGetNodeUnpacked(self):
         """ Test for getting nodes, data in CSS is not packed """
 
@@ -117,7 +116,6 @@ class TestCssNodes(unittest.TestCase):
 
         with self.assertRaises(css.NoSuchNode):
             css_inst.getNodeParams('worker-3')
-
 
     def testGetNodes(self):
         """ Test for getting all nodes """
@@ -347,7 +345,7 @@ class TestCssNodes(unittest.TestCase):
         nodes = mgr.selectDict(state="INACTIVE", nodeType='worker')
         self.assertEqual(len(nodes), 0)
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCssNodes)

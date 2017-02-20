@@ -30,6 +30,8 @@ import cloudmanager
 # -----------------------
 # Exported definitions --
 # -----------------------
+
+
 def get_cloudconfig():
     """
     Return cloud init configuration in a string
@@ -126,7 +128,8 @@ if __name__ == "__main__":
             sys.exit(1)
 
         instance_id = "source"
-        instance_for_snapshot = cloudManager.nova_servers_create(instance_id, userdata_snapshot, cloudManager.snapshot_flavor)
+        instance_for_snapshot = cloudManager.nova_servers_create(
+            instance_id, userdata_snapshot, cloudManager.snapshot_flavor)
 
         # Wait for cloud config completion
         cloudManager.detect_end_cloud_config(instance_for_snapshot)

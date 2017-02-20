@@ -25,6 +25,7 @@ from sqlalchemy.engine.url import make_url
 # Exported definitions --
 # ------------------------
 
+
 def configFromUrl(url):
     """
     This method builds configuration object (dict) from URL string.
@@ -42,7 +43,6 @@ def configFromUrl(url):
     except Exception as exc:
         logging.error('Failed to parse connection URL: %s %s)', url, exc)
         raise ValueError('Failed to parse connection URL: ' + url)
-
 
     cssConfig = {'technology': url.drivername}
     if url.drivername == 'mysql':

@@ -51,6 +51,7 @@ def get_default_log_conf():
     default_log_conf = "{0}/.lsst/logging.ini".format(os.path.expanduser('~'))
     return default_log_conf
 
+
 def add_logfile_opt(parser):
     """
     Add option to command line interface in order to set path to standard

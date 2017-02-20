@@ -65,7 +65,10 @@ _LOG = logging.getLogger()
 # -----------------------
 # Exported definitions --
 # -----------------------
+
+
 class Configurator(object):
+
     """
     Application class for configuration application
     """
@@ -300,7 +303,7 @@ class Configurator(object):
             if os.path.exists(self.args.qserv_run_dir):
 
                 if self.args.force or configure.user_yes_no_query(
-                                "WARNING : Do you want to erase all configuration data "
+                    "WARNING : Do you want to erase all configuration data "
                                 "in {0}?".format(self.args.qserv_run_dir)
                 ):
                     shutil.rmtree(self.args.qserv_run_dir)
@@ -318,11 +321,11 @@ class Configurator(object):
             _LOG.info("Store data in: %s" % self._qserv_data_dir)
             self._templater.applyOnce(in_meta_config_file, self._meta_config_file, params_dict)
 
-        ###################################
+        #
         #
         # Running configuration procedure
         #
-        ###################################
+        #
         if configure.has_configuration_step(self.args.step_list):
 
             try:
@@ -341,12 +344,12 @@ class Configurator(object):
                 configure.update_root_dirs()
                 configure.update_root_symlinks()
 
-            ##########################################
+            #
             #
             # Creating Qserv services configuration
             # using templates and meta_config_file
             #
-            ##########################################
+            #
             qserv_run_dir = config['qserv']['qserv_run_dir']
             qserv_data_dir = config['qserv']['qserv_data_dir']
 

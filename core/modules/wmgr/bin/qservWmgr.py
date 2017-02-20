@@ -47,6 +47,7 @@ from lsst.qserv.wmgr import auth, config, dbMgr, procMgr, xrdMgr
 # Exported definitions --
 # ------------------------
 
+
 def main():
 
     parser = argparse.ArgumentParser(description='Single-node data loading script for Qserv.')

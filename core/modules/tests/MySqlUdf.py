@@ -16,6 +16,7 @@ def dbparam(x):
     else:
         return repr(x)
 
+
 def angSep(ra1, dec1, ra2, dec2):
     sdt = math.sin(math.radians(ra1 - ra2) * 0.5)
     sdp = math.sin(math.radians(dec1 - dec2) * 0.5)
@@ -25,6 +26,7 @@ def angSep(ra1, dec1, ra2, dec2):
         return 180.0
     else:
         return 2.0 * math.degrees(math.asin(s))
+
 
 def ptInSphEllipse(ra, dec, ra_cen, dec_cen, smaa, smia, ang):
     ra = math.radians(ra)
@@ -58,6 +60,7 @@ def ptInSphEllipse(ra, dec, ra_cen, dec_cen, smaa, smia, ang):
         return False
     return None
 
+
 def flatten(l, ltypes=(list, tuple)):
     ltype = type(l)
     l = list(l)
@@ -75,8 +78,10 @@ def flatten(l, ltypes=(list, tuple)):
 
 
 class MySqlUdfTestCase(unittest.TestCase):
+
     """Tests MySQL UDFs.
     """
+
     def setUp(self):
         global _options
         engine = getEngineFromArgs(username=_options.user,
@@ -106,7 +111,8 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def testAngSep(self):
         for i in xrange(4):
-            a = [0.0]*4; a[i] = None
+            a = [0.0]*4
+            a[i] = None
             self._angSep(None, *a)
         for d in (-91.0, 91.0):
             self._angSep(None, 0.0, d, 0.0, 0.0)
@@ -114,10 +120,10 @@ class MySqlUdfTestCase(unittest.TestCase):
         for d in (0.0, 90.0, -90.0):
             self._angSep(0.0, 0.0, d, 0.0, d)
         for i in xrange(100):
-            args = [ random.uniform(0.0, 360.0),
-                     random.uniform(-90.0, 90.0),
-                     random.uniform(0.0, 360.0),
-                     random.uniform(-90.0, 90.0) ]
+            args = [random.uniform(0.0, 360.0),
+                    random.uniform(-90.0, 90.0),
+                    random.uniform(0.0, 360.0),
+                    random.uniform(-90.0, 90.0)]
             self._angSep(angSep(*args), *args)
 
     def _ptInSphBox(self, result, *args):
@@ -127,11 +133,13 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def testPtInSphBox(self):
         for i in xrange(6):
-            a = [0.0]*6; a[i] = None
+            a = [0.0]*6
+            a[i] = None
             self._ptInSphBox(0, *a)
         for d in (-91.0, 91.0):
             for i in (1, 3, 5):
-                a = [0.0]*6; a[i] = d
+                a = [0.0]*6
+                a[i] = d
                 self._ptInSphBox(None, *a)
         for ra_min, ra_max in ((370.0, 10.0), (50.0, -90.0), (400.0, -400.0)):
             self._ptInSphBox(None, 0.0, 0.0, ra_min, 0.0, ra_max, 0.0)
@@ -147,7 +155,8 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def testPtInSphCircle(self):
         for i in xrange(5):
-            a = [0.0]*5; a[i] = None
+            a = [0.0]*5
+            a[i] = None
             self._ptInSphCircle(0, *a)
         for d in (-91.0, 91.0):
             self._ptInSphCircle(None, 0.0, d, 0.0, 0.0, 0.0)
@@ -176,7 +185,8 @@ class MySqlUdfTestCase(unittest.TestCase):
 
     def testPtInSphEllipse(self):
         for i in xrange(7):
-            a = [0.0]*7; a[i] = None
+            a = [0.0]*7
+            a[i] = None
             self._ptInSphEllipse(0, *a)
         for d in (-91.0, 91.0):
             self._ptInSphEllipse(None, 0.0, d, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -210,7 +220,8 @@ class MySqlUdfTestCase(unittest.TestCase):
     def testPtInSphPoly(self):
         # Test for NULL in any argument, returns 0
         for i in xrange(8):
-            a = [0.0, 0.0, 0, 0, 90, 0, 0, 90]; a[i] = None
+            a = [0.0, 0.0, 0, 0, 90, 0, 0, 90]
+            a[i] = None
             self._ptInSphPoly(0, *a)
 
         # test for decl outside allowed range, makes NULL
@@ -227,21 +238,25 @@ class MySqlUdfTestCase(unittest.TestCase):
                           None, 0.0, 0.0, 0, 0, 90, 0)
 
         # Test for non-exceptional cases
-        x = (0, 0);  nx = (180, 0)
-        y = (90, 0); ny = (270, 0)
-        z = (0, 90); nz = (0, -90)
-        tris = [ (x, y, z), (y, nx, z), (nx, ny, z), (ny, (360, 0), z),
-                 ((360, 0), ny, nz), (ny, nx, nz), (nx, y, nz), (y, x, nz) ]
+        x = (0, 0)
+        nx = (180, 0)
+        y = (90, 0)
+        ny = (270, 0)
+        z = (0, 90)
+        nz = (0, -90)
+        tris = [(x, y, z), (y, nx, z), (nx, ny, z), (ny, (360, 0), z),
+                ((360, 0), ny, nz), (ny, nx, nz), (nx, y, nz), (y, x, nz)]
         for t in tris:
             spec = flatten(t)
             for i in xrange(100):
                 ra = random.uniform(0.0, 360.0)
                 dec = random.uniform(-90.0, 90.0)
                 if ((t[2][1] > 0 and (dec < 0.0 or ra < t[0][0] or ra > t[1][0])) or
-                    (t[2][1] < 0 and (dec > 0.0 or ra < t[1][0] or ra > t[0][0]))):
+                        (t[2][1] < 0 and (dec > 0.0 or ra < t[1][0] or ra > t[0][0]))):
                     self._ptInSphPoly(0, ra, dec, *spec)
                 else:
                     self._ptInSphPoly(1, ra, dec, *spec)
+
 
 def main():
     global _options
@@ -265,4 +280,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

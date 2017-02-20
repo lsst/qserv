@@ -46,6 +46,7 @@ from lsst.qserv.admin import commons
 # Exported definitions --
 # ------------------------
 
+
 class DataDuplicator(object):
 
     def __init__(self, data_reader, cfg_dir, out_dir):
@@ -68,16 +69,16 @@ class DataDuplicator(object):
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg'))==False:
+            if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg')) == False:
                 self.logger.error("Path to indexing config file not found")
 
             self.logger.info("Running indexer with output for %r to %r" % (table, self._outDirname))
             run_index = commons.run_command(["sph-htm-index",
-                                             "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
+                                             "--config-file=" +
+                                             os.path.join(self._cfgDirname, table + ".cfg"),
                                              "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
                                              "--in=" + os.path.join(self._cfgDirname, table + ".txt"),
                                              "--out.dir=" + os.path.join(self._outDirname, "index/", table)])
-
 
     def _runDuplicate(self):
         """
@@ -85,13 +86,17 @@ class DataDuplicator(object):
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg'))==False:
+            if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg')) == False:
                 self.logger.error("Path to duplicator config file not found")
 
             self.logger.info("Running duplicator for table %r" % table)
             run_dupl = commons.run_command(["sph-duplicate",
                                             "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
                                             "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
-                                            "--index=" + os.path.join(self._outDirname, "index/", table, "htm_index.bin"),
-                                            "--part.index=" + os.path.join(self._outDirname, "index", self._directorTable, "htm_index.bin"),
+                                            "--index=" +
+                                            os.path.join(
+                                            self._outDirname, "index/", table, "htm_index.bin"),
+                                            "--part.index=" +
+                                            os.path.join(
+                                            self._outDirname, "index", self._directorTable, "htm_index.bin"),
                                             "--out.dir=" + os.path.join(self._outDirname, "chunks/", table)])

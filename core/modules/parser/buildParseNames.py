@@ -30,9 +30,11 @@
 # Note, this tool is no longer needed for qserv, but may be useful in
 #  the future if ANTLR parse symbols are needed in other languages in
 #  qserv.
-import os,sys
+import os
+import sys
 import re
 from itertools import chain, imap, tee
+
 
 def openReadAndWrite(read, write):
     fpRead = open(read)
@@ -41,6 +43,7 @@ def openReadAndWrite(read, write):
 
 quotedStrMatch = '"([^"]+)"'
 defRegex = re.compile('^(\w+)\(' + quotedStrMatch + '\)\s*=\s*(\d+)')
+
 
 def parseDef(line):
     """Parses a line formatted as:
@@ -52,8 +55,10 @@ def parseDef(line):
     1001 is the (integer) identification.
     """
     match = defRegex.match(line)
-    if not match: return # return empty if no match
+    if not match:
+        return  # return empty if no match
     return (match.group(1), match.group(2), int(match.group(3)))
+
 
 def tokenSource(defs):
     magicBegin = "// IMPORT"
@@ -67,14 +72,18 @@ def tokenSource(defs):
         elif isReading:
             yield parseDef(line)
 
+
 def formatIntLine(defn):
     return 'const int ANTLR_%s = %i;' % (defn[0], defn[2])
+
+
 def formatStrLine(defn):
     return 'const char ANTLR_%s_STR[] = "%s";' % (defn[0], defn[1])
 
+
 def mangleTargetName(filename):
     # Convert . to _, then filter out everything non alphanumeric/underscore
-    return re.sub("[^A-Za-z_]","", re.sub("[./]","_", filename)).upper()
+    return re.sub("[^A-Za-z_]", "", re.sub("[./]", "_", filename)).upper()
 
 
 headerPreamble = """ // Auto-generated header. DO NOT EDIT.
@@ -89,8 +98,8 @@ def main():
     assert len(sys.argv) == 3
     (fpTokens, fpHeader) = openReadAndWrite(sys.argv[1], sys.argv[2])
     src = tokenSource(fpTokens)
-    subs = {"mangledtarget" : mangleTargetName(sys.argv[2]),
-            "src" : sys.argv[1]}
+    subs = {"mangledtarget": mangleTargetName(sys.argv[2]),
+            "src": sys.argv[1]}
     srcList = list(src)
     fpHeader.write(headerPreamble % subs)
     fpHeader.write("\n".join(imap(formatIntLine, srcList)))
