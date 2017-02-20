@@ -72,7 +72,6 @@ def _mysql_identifier_validator(db_or_table_name):
 
 
 class DataLoader(object):
-
     """
     DataLoader class defines all logic for loading data, including data
     partitioning, CSS updating, etc. It is driven by a set of configuration

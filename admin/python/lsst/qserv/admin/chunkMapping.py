@@ -47,7 +47,6 @@ from lsst.qserv import css
 
 
 class ChunkMapping(object):
-
     """
     Instances of ChunkMapping class represent updatable mapping between
     chunk numbers and worker names (host names).

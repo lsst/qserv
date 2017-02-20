@@ -76,7 +76,6 @@ from lsst.qserv.wmgr.client import WmgrClient
 
 
 class _LogFilter(object):
-
     """Filter for logging which passes all records from specified logger only"""
 
     def __init__(self, loggerName):
@@ -98,7 +97,6 @@ class _LogFilter(object):
 
 
 class Loader(object):
-
     """
     Application class for loader application
     """

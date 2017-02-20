@@ -91,9 +91,7 @@ class _UnreadableConfigError(_ToolError):
         _ToolError.__init__(self, "Can't access the config file: " + str(config))
 
 
-#
 class CommandParser(object):
-
     """
     Parse commands and calls appropriate function from qservAdmin.
     """
@@ -664,11 +662,8 @@ class CommandParser(object):
     def _initLogging(self):
         self._logger = logging.getLogger("QADM")
 
-#
-
 
 class WordCompleter(object):
-
     """
     Set auto-completion for commonly used words.
     """

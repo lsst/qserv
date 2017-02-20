@@ -58,7 +58,6 @@ def errorResponse(code, errorType, message, cause=None):
 
 
 class ExceptionResponse(HTTPException):
-
     """
     Exception class that will be converted to error response.
     """

@@ -60,7 +60,6 @@ _Exception = produceExceptionClass('WorkerMgmtException', [
 
 
 class NodeMgmt(object):
-
     """
     NodeMgmt class main purpose is to facilitate management operations on
     a set of nodes. It's two main responsibities are:

@@ -59,7 +59,6 @@ def cpu_count():
 
 
 class NodePool(object):
-
     """
     Class providing tools to send ssh command to a set of machines.
     Use system ssh.

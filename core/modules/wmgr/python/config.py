@@ -52,7 +52,6 @@ _log = logging.getLogger('config')
 
 
 class Config(object):
-
     """
     Special config class used to store config parameters for the whole service.
     """

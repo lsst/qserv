@@ -26,12 +26,11 @@
 from __future__ import print_function
 import getpass
 from glob import glob
-from itertools import cycle, groupby, izip
+from itertools import cycle, groupby
 import MySQLdb as sql
 import optparse
 import os
 import os.path
-import pdb
 import re
 from textwrap import dedent
 import time
@@ -49,7 +48,6 @@ except ImportError:
 
 
 class SerialPool(object):
-
     """Simple drop-in replacement for a subset of the multiprocessing.Pool
     class; all tasks are run in the same process as the caller."""
 
@@ -80,7 +78,6 @@ strategies = {'round-robin': roundRobin}
 # -- Database interaction --------
 
 class SqlActions(object):
-
     """Higher level interface for database loading/cleanup tasks.
     """
 
@@ -417,7 +414,6 @@ def tableFromPath(path, opts, prefix=''):
 
 
 class Params(object):
-
     """Parameter holder class for a specific database server
     """
 

@@ -108,7 +108,6 @@ def config_logger(loggerName, verbose, verboseAll):
 
 
 class CloudManager(object):
-
     """
     Application class for common definitions for creation of snapshot
     and provision qserv

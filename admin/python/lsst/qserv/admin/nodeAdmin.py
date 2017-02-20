@@ -62,7 +62,6 @@ _Exception = produceExceptionClass('WorkerAdminException', [
 
 
 class NodeAdmin(object):
-
     """
     Class representing administration/communication endpoint for qserv worker.
     """

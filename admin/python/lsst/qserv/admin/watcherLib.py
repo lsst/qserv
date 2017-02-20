@@ -34,7 +34,6 @@ _LOG = logging.getLogger(__name__)
 
 
 class WatcherCss(object):
-
     """
     Class which implements high-level CSS operations for watcher.
     """
@@ -159,7 +158,6 @@ class WatcherCss(object):
 
 
 class IExecutor(object):
-
     """
     Class defining interface for executor.
     """
@@ -225,7 +223,6 @@ class IExecutor(object):
 
 
 class Watcher(object):
-
     """
     This class encapsulates main logic of watcher.
     """
@@ -404,7 +401,6 @@ class Watcher(object):
 
 
 class QservExecutor(IExecutor):
-
     """
     Standard implementation of IExecutor to work with qserv cluster.
     """

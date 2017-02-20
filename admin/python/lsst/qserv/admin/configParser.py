@@ -46,7 +46,6 @@ Most of the code is stolen from partitioner C++ code and adopted for Python.
 
 
 class ConfigParser(object):
-
     """
     Instances of ConfigParser class are used to parse configuration from
     a single file.

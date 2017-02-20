@@ -5,7 +5,6 @@ import unittest
 
 
 class ProtocolSanityTest(unittest.TestCase):
-
     """Tests sanity in wire protocol utils..
     """
 

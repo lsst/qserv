@@ -48,7 +48,6 @@ _LOG = logging.getLogger(__name__)
 
 
 class SSHCommand(object):
-
     """
     Class implementing execution of the command on remote host.
     """
@@ -111,7 +110,6 @@ class SSHCommand(object):
 
 
 class SSHTunnel(object):
-
     """
     Class implementing SSH tunneling of TCP port(s).
 

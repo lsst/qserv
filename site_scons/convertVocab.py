@@ -21,7 +21,7 @@
 #
 # convertVocab.py converts ANTLRv2 token vocabularies to c++ header files
 from __future__ import print_function
-from itertools import chain, imap
+from itertools import chain
 from optparse import OptionParser
 import hashlib
 import os
@@ -141,7 +141,6 @@ caseTemplate = "case {0}: return \"{1}\";"
 
 
 class Vocabulary:
-
     """Vocabulary is an object that bundles a ANTLRv2 token vocabulary.
 It consists of an identifier, some textual description or representation,
 and an integer tokenid.
@@ -210,7 +209,6 @@ and prefixing with 'x' if the first character is still not legal."""
 
 
 class Token:
-
     """A Token object represents an entry in an ANTLR vocabulary"""
 
     def __init__(self, line):
@@ -255,7 +253,6 @@ def debugTest():
 
 
 class UnitTest:
-
     """Unit test this module by exercising the conversion over sample token data
     and ensuring that the result can be compiled in g++"""
 

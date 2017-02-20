@@ -40,7 +40,6 @@ _LOG = logging.getLogger('TEST')
 
 
 class _EchoServer(Thread):
-
     """ simple echo server class """
 
     def __init__(self):
@@ -66,7 +65,6 @@ class _EchoServer(Thread):
 
 
 class _EchoClient(object):
-
     """ simple echo client class """
 
     def __init__(self, port, host='127.0.0.1'):
@@ -83,7 +81,6 @@ class _EchoClient(object):
 
 
 class TestSSHTunnel(unittest.TestCase):
-
     def test_SSHTunnel(self):
         """ Test for SSH tunneling class """
 

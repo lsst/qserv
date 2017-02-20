@@ -50,7 +50,6 @@ from SCons.Platform import platform_default
 
 
 class _unitTest(object):
-
     """
     Class which implements builder action for UnitTest.
     """
@@ -108,7 +107,6 @@ class _unitTest(object):
 
 
 class _unitTestCheck(object):
-
     """
     Class which implements builder action for UnitTestCheck.
     """

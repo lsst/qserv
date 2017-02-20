@@ -49,7 +49,6 @@ _log = logging.getLogger('auth')
 
 
 class Auth(object):
-
     """
     Main responsibility of this class is to verify that user is authenticated
     with wmgr. We support two different authentication mechanisms, basic or

@@ -78,7 +78,6 @@ def flatten(l, ltypes=(list, tuple)):
 
 
 class MySqlUdfTestCase(unittest.TestCase):
-
     """Tests MySQL UDFs.
     """
 

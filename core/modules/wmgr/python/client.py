@@ -50,7 +50,6 @@ _log = logging.getLogger(__name__)
 
 
 class _MPEncoder(object):
-
     """
     Special class for streamable multi-part encoded body.
 
@@ -184,13 +183,11 @@ class _MPEncoder(object):
 
 
 class ClientException(Exception):
-
     """ Base class for all exceptions in this module"""
     pass
 
 
 class CommunicationError(ClientException):
-
     """
     Exception raised if server communication failed.
     """
@@ -200,7 +197,6 @@ class CommunicationError(ClientException):
 
 
 class ServerError(ClientException):
-
     """
     Exception raised if server sent us HTTP error code.
     """
@@ -211,7 +207,6 @@ class ServerError(ClientException):
 
 
 class ServerResponseError(ClientException):
-
     """
     Exception raised if server response is incomprehensible
     (e.g. missing expected keys in JSON)
@@ -226,7 +221,6 @@ class ServerResponseError(ClientException):
 
 
 class WmgrClient(object):
-
     """
     This class provides Python API for worker management service.
 
@@ -237,8 +231,8 @@ class WmgrClient(object):
     """
 
     # ----------------
-    #  Constructor --
-    #----------------
+    #  Constructor  --
+    # ----------------
 
     def __init__(self, host, port, secretFile=None, user=None, passwd=None, auth="digest"):
         """

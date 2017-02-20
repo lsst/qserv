@@ -23,12 +23,10 @@ This is an out-of-date test harness for the app.py functions in qserv/master.
 """
 from __future__ import print_function
 import lsst.qserv.master as qMaster
-import lsst.qserv.master.config as config
 import unittest
 
 
 class AppTest(unittest.TestCase):
-
     """Tests... This is a catch-all for driving the query
     parse/generate/manipulate code.
     """

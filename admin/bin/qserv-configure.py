@@ -68,7 +68,6 @@ _LOG = logging.getLogger()
 
 
 class Configurator(object):
-
     """
     Application class for configuration application
     """
