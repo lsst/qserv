@@ -31,7 +31,6 @@ Module defining WmgrClient class and related methods.
 # --------------------------------
 import io
 import logging
-import types
 
 # -----------------------------
 # Imports for other modules --
@@ -101,7 +100,7 @@ class _MPEncoder(object):
             currentBuf.write(self._makeHeader(name, filename, content, headers))
 
             if name is not None:
-                if isinstance(data, str):
+                if isinstance(data, basestring):
                     currentBuf.write(data.encode(self._encoding))
                     currentBuf.write('\r\n'.encode(self._encoding))
                 else:

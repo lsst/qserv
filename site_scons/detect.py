@@ -194,20 +194,12 @@ def checkLibs(context, libList):
 def findXrootdInclude(env):
     hdrName = os.path.join("XrdSsi", "XrdSsiErrInfo.hh")
     conf = env.Configure()
-    foundPath = None
 
     if conf.CheckCXXHeader(hdrName):  # Try std location
         conf.Finish()
         return (True, None)
 
-    # Extract CPPPATHs and look for xrootd/ within them.
-    pList = env.Dump("CPPPATH")  # Dump returns a stringified list
-
-    # Convert to list if necessary
-    if pList and isinstance(pList, type("")) and str(pList)[0] == "[":
-        pList = eval(pList)
-    elif not isinstance(pList, type(list)):
-        pList = [pList]  # Listify
+    pList = env.get("CPPPATH", [])
     pList.append("/usr/include")
     # pList.append("/usr/local/include")
     for p in pList:

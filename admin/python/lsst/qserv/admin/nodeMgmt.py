@@ -33,7 +33,6 @@ qserv nodes, for example creating/deleting databases or tables.
 #  Imports of standard modules --
 # --------------------------------
 import logging
-import types
 
 # -----------------------------
 # Imports for other modules --
@@ -124,11 +123,11 @@ class NodeMgmt(object):
         """
 
         # if state is a string make a list out of it
-        if isinstance(state, str):
+        if isinstance(state, basestring):
             state = [state]
 
         # if nodeType is a string make a list out of it
-        if isinstance(nodeType, str):
+        if isinstance(nodeType, basestring):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)
