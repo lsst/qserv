@@ -79,7 +79,7 @@ def _getBinPath(binName, msg=None):
 def _getBinPathFromBinList(binList, msg=None):
     binFullPath = None
     i = 0
-    if msg == None:
+    if msg is None:
         msg = "Looking for %s" % binList
     log.info(msg)
     while i < len(binList) and not binFullPath:
@@ -109,7 +109,7 @@ def _findPrefixFromPath(key, binFullPath):
         prefix = basepath
 
     if not prefix:
-        log.fail("Could not locate install prefix for product containing next binary : " % binFullPath)
+        log.fail("Could not locate install prefix for product containing next binary : %s", binFullPath)
     return prefix
 
 

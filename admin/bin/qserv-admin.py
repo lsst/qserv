@@ -100,8 +100,7 @@ class CommandParser(object):
         "createDb": [  # Db opts
             "storageClass",
             "partitioning",
-            "partitioningStrategy"
-        ],
+            "partitioningStrategy"],
         "createDbSphBox": [
             "nStripes",
             "nSubStripes",
@@ -115,16 +114,14 @@ class CommandParser(object):
             "isView"],
         "createTableSphBox": [
             "dirTable",
-            # "overlap" # overlap should inherit from db if unspecified.
+            # "overlap" # overlap should inherit from db if unspecified
         ],
         "createTableDir": [
             "dirColName",
             "latColName",
-            "lonColName"
-        ],
+            "lonColName"],
         "createChildTable": [
-            "dirColName",
-        ],
+            "dirColName"],
         "createChildTableExtra": [
             "latColName",
             "lonColName"],

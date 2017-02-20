@@ -203,10 +203,9 @@ class SqlActions(object):
         self._exec("CREATE TABLE %s LIKE %s" % (table, prototype))
         if (dropPrimaryKey):
             self._exec("ALTER TABLE %s DROP PRIMARY KEY" % (table))
-        self._exec("""
-            LOAD DATA LOCAL INFILE '%s'
-            INTO TABLE %s
-            FIELDS TERMINATED BY ','""" %
+        self._exec("LOAD DATA LOCAL INFILE '%s' "
+                   "INTO TABLE %s "
+                   "FIELDS TERMINATED BY ','" %
                    (os.path.abspath(path), table))
         if npad != None and npad > 0:
             tmpTable = table + "Tmp"

@@ -426,18 +426,20 @@ class CloudManager(object):
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
         PasswordAuthentication no
-        ProxyCommand ssh -i {key_filename} -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p qserv@{floating_ip}
+        ProxyCommand ssh -i {key_filename} {ssh_opts} qserv@{floating_ip}
         IdentityFile {key_filename}
         IdentitiesOnly yes
         LogLevel FATAL
         '''
+        ssh_opts = "-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p"
         ssh_config_extract = ""
         for instance in instances:
             fixed_ip = instance.networks[self.network_name][0]
             ssh_config_extract += ssh_config_tpl.format(host=instance.name,
                                                         fixed_ip=fixed_ip,
                                                         floating_ip=floating_ip.ip,
-                                                        key_filename=self.key_filename)
+                                                        key_filename=self.key_filename,
+                                                        ssh_opts=ssh_opts)
         logging.debug("Create SSH client config ")
 
         f = open("ssh_config", "w")
@@ -568,10 +570,11 @@ runcmd:
 
         docker_opts = "--storage-driver=overlay"
         if self._registry_host:
-            docker_opts = "{docker_opts} --insecure-registry {registry_host}  " \
-                          "--registry-mirror=http://{registry_host}:{registry_port}".format(docker_opts=docker_opts,
-                                                                                            registry_host=self._registry_host,
-                                                                                            registry_port=self._registry_port)
+            docker_opts_fmt = ("{docker_opts} --insecure-registry {registry_host} ",
+                               "--registry-mirror=http://{registry_host}:{registry_port}")
+            docker_opts = docker_opts_fmt.format(docker_opts=docker_opts,
+                                                 registry_host=self._registry_host,
+                                                 registry_port=self._registry_port)
 
         userdata = cloud_config.format(hostname_tpl=self._hostname_tpl
                                        + "{node_id}",

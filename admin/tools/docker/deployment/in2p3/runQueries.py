@@ -121,6 +121,12 @@ QUERY_POOLS["joinObjFSrc"] = [
     "SELECT o.deepSourceId, f.psfFlux FROM Object o, ForcedSource f WHERE o.deepSourceId=f.deepSourceId AND f.psfFlux BETWEEN 0.13 AND 0.14"
 ]
 
+SQL_SELECT = ("select o1.ra as ra1, o2.ra as ra2, o1.decl as decl1, o2.decl as decl2, "
+              "scisql_angSep(o1.ra, o1.decl,o2.ra, o2.decl) AS theDistance ")
+SQL_WHERE = ("from Object o1, Object o2 where qserv_areaspec_box(%f, %f, %f, %f) "
+             "and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" %
+             (raMin, declMin, raMin+raDist, declMin+declDist))
+
 # Near neighbor
 QUERY_POOLS["nearN"] = []
 for i in range(0, 10):
@@ -128,13 +134,8 @@ for i in range(0, 10):
     declMin = random.uniform(-87, 40)
     raDist = random.uniform(8, 12)
     declDist = random.uniform(8, 12)
-# QUERY_POOLS["nearN"].append("select o1.ra as ra1, o2.ra as ra2, o1.decl
-# as decl1, o2.decl as decl2, scisql_angSep(o1.ra, o1.decl,o2.ra, o2.decl)
-# AS theDistance from Object o1, Object o2 where qserv_areaspec_box(%f,
-# %f, %f, %f) and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" %
-# (raMin, declMin, raMin+raDist, declMin+declDist))
-    QUERY_POOLS["nearN"].append("select count(*) from Object o1, Object o2 where qserv_areaspec_box(%f, %f, %f, %f) and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" %
-                                (raMin, declMin, raMin+raDist, declMin+declDist))
+    # QUERY_POOLS["nearN"].append(SQL_SELECT+SQL_WHERE)
+    QUERY_POOLS["nearN"].append("select count(*) " + SQL_WHERE)
 
 #
 # Definition of how many queries from each pool we want to run simultaneously

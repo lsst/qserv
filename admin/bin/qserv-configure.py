@@ -303,7 +303,7 @@ class Configurator(object):
 
                 if self.args.force or configure.user_yes_no_query(
                     "WARNING : Do you want to erase all configuration data "
-                                "in {0}?".format(self.args.qserv_run_dir)
+                    "in {0}?".format(self.args.qserv_run_dir)
                 ):
                     shutil.rmtree(self.args.qserv_run_dir)
                 else:

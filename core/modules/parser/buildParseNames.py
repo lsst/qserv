@@ -30,10 +30,9 @@
 # Note, this tool is no longer needed for qserv, but may be useful in
 #  the future if ANTLR parse symbols are needed in other languages in
 #  qserv.
-import os
-import sys
+from itertools import imap
 import re
-from itertools import chain, imap, tee
+import sys
 
 
 def openReadAndWrite(read, write):

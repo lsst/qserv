@@ -22,10 +22,7 @@ from __future__ import print_function
 #
 # detect_deps.py handles dependency detection for Qserv software
 
-import SCons
 import os
-import subprocess
-import sys
 import state
 
 

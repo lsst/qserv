@@ -62,10 +62,10 @@ def _antlr_emitter(target, source, env):
 
 
 _antlr_builder = Builder(
-    action = Action('$ANTLR_COM', '$ANTLR_COMSTR'),
-        suffix = '$ANTLR_CCSUFFIX',
-        src_suffix = '$ANTLR_SUFFIX',
-        emitter = _antlr_emitter,
+    action=Action('$ANTLR_COM', '$ANTLR_COMSTR'),
+    suffix='$ANTLR_CCSUFFIX',
+    src_suffix='$ANTLR_SUFFIX',
+    emitter=_antlr_emitter,
 )
 
 
@@ -74,17 +74,17 @@ def generate(env):
     _detect(env)
     env.SetDefault(
         # Additional command-line flags
-        ANTLR_FLAGS = SCons.Util.CLVar(''),
+        ANTLR_FLAGS=SCons.Util.CLVar(''),
         # Output path
-        ANTLR_OUT = '',
+        ANTLR_OUT='',
         # Suffixies / prefixes
-        ANTLR_SUFFIX = '.g',
-        ANTLR_HSUFFIX = '.hpp',
-        ANTLR_CCSUFFIX = '.cpp',
-        ANTLR_TXTSUFFIX = '.txt',
+        ANTLR_SUFFIX='.g',
+        ANTLR_HSUFFIX='.hpp',
+        ANTLR_CCSUFFIX='.cpp',
+        ANTLR_TXTSUFFIX='.txt',
         # Antlr command
         ANTLR_COM="$ANTLR $ANTLR_FLAGS $SOURCES",
-        ANTLR_COMSTR = '',
+        ANTLR_COMSTR='',
     )
     env['BUILDERS']['Antlr'] = _antlr_builder
 
