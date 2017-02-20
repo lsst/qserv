@@ -82,7 +82,7 @@ class _unitTest(object):
             # are located because rpaths aren't (yet?) handled properly
             # when the libraries and binaries are built on OS X.
             libpathstr = "{}='{}:{}'".format("DYLD_LIBRARY_PATH",
-                env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
+                                             env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
 
         try:
             cmd = "{} {} > {} 2>&1".format(libpathstr, exe, out)
@@ -143,6 +143,7 @@ def generate(env):
         env['BUILDERS']['UnitTest'] = Builder(action=_unitTest(), suffix='.utest')
         env['BUILDERS']['UnitTestCheck'] = Builder(action=_unitTestCheck())
         env['UNIT_TESTS_FAILED'] = []
+
 
 def exists(env):
     return True

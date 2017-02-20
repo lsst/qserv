@@ -24,9 +24,11 @@
 import shlex
 from subprocess import Popen, PIPE
 
-## For Builder actions, Scons wants args=(target, source, env)
-## target: headerFile
-## source: Nothing.
+# For Builder actions, Scons wants args=(target, source, env)
+# target: headerFile
+# source: Nothing.
+
+
 def buildVersionHeader(target, source, env):
     """Construct a version header from git-describe output and store
     it in the first file target named by str(target[0]) or
@@ -56,12 +58,12 @@ def buildVersionHeader(target, source, env):
     targetFile = str(target[0])
     if str(target).endswith(".h"):
         targetFile = str(target)
-    targetFile = open(str(targetFile), "w") # coerce SCons.File to string
+    targetFile = open(str(targetFile), "w")  # coerce SCons.File to string
     targetFile.write(headerTemplate % (versionStr.strip(), commitStr.strip()))
     targetFile.close()
     return None
 
-########################################################################
+#
 # How to use
-########################################################################
-#headerFile = env.Command(['versionheader.h'], None, buildVersionHeader)
+#
+# headerFile = env.Command(['versionheader.h'], None, buildVersionHeader)

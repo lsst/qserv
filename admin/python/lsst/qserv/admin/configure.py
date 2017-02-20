@@ -64,7 +64,7 @@ CSS_WATCHER = 'css-watcher'
 CZAR = 'qserv-czar'
 WORKER = 'qserv-worker'
 QSERV = 'qserv'
-SCISQL =  'scisql'
+SCISQL = 'scisql'
 
 DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
 NODB_COMPONENTS = [CSS_WATCHER]
@@ -100,12 +100,14 @@ for step in ALL_STEPS:
 # list of files that should only be readable by this account
 SECRET_FILES = ['qserv-wmgr.cnf', 'wmgr.secret']
 
+
 def random_string(charset, size):
     """
     Generates a random string consisting of size charaters picked randomly
     from a given character set.
     """
     return ''.join(random.choice(charset) for _ in range(size))
+
 
 def _exists_and_is_writable(dir):
     """
@@ -117,7 +119,7 @@ def _exists_and_is_writable(dir):
         try:
             os.makedirs(dir)
         except OSError:
-            logger.error("Unable to create dir: %r", dir)
+            _LOG.error("Unable to create dir: %r", dir)
             return False
     elif not path.is_writable(dir):
         return False
@@ -130,7 +132,7 @@ def update_root_dirs():
     config = commons.getConfig()
 
     for (section, option) in (('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
-                             ('qserv', 'qserv_data_dir')):
+                              ('qserv', 'qserv_data_dir')):
         dir = config[section][option]
         if not _exists_and_is_writable(dir):
             _LOG.fatal("%r is not writable check/update permissions or"
@@ -151,6 +153,7 @@ def update_root_dirs():
         sys.exit(1)
     _LOG.info("Qserv directory structure creation succeeded")
 
+
 def update_root_symlinks():
     """ symlinks creation for directories externalised from qserv run dir
         i.e. QSERV_RUN_DIR/var/log will be symlinked to  config['qserv']['log_dir'] if needed
@@ -169,15 +172,18 @@ def update_root_symlinks():
                 if os.path.islink(default_dir):
                     os.unlink(default_dir)
                 else:
-                    log.fatal("Please remove {0} and restart the configuration procedure".format(default_dir))
+                    _LOG.fatal(
+                        "Please remove {0} and restart the configuration procedure".format(default_dir))
                     sys.exit(1)
             _symlink(symlink_target, default_dir)
 
     _LOG.info("Qserv symlinks creation for externalized directories succeeded")
 
+
 def _symlink(target, link_name):
     _LOG.debug("Creating symlink, target: %r, link name: %r", target, link_name)
     os.symlink(target, link_name)
+
 
 def keep_data(components, qserv_data_dir):
     """
@@ -323,7 +329,6 @@ class Templater(object):
 
             _LOG.debug("Template input parameters:\n {0}".format(self._templateParams))
 
-
     def applyOnce(self, src_file, target_file, template_params=None):
         """ Creating one configuration file from one template
         """
@@ -372,8 +377,8 @@ class Templater(object):
 
         return True
 
-class _QservConfigTemplate(string.Template):
 
+class _QservConfigTemplate(string.Template):
 
     delimiter = '{{'
     pattern = r'''

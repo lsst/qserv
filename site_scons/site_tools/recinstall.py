@@ -30,25 +30,19 @@
 import os
 import state
 
-def recursive_install(env, path ):
-    nodes = env.Glob \
-        ( os.path.join(path, '*')
-        , strings=False
-        )
-    nodes.extend \
-            ( env.Glob \
-                ( os.path.join(path, '*.*')
-                , strings=False
-                )
-            )
+
+def recursive_install(env, path):
+    nodes = env.Glob(os.path.join(path, '*'), strings=False)
+    nodes.extend(env.Glob(os.path.join(path, '*.*'), strings=False))
     out = []
     for n in nodes:
         if n.isdir():
-            out.extend( recursive_install(env, n.abspath ))
+            out.extend(recursive_install(env, n.abspath))
         else:
             out.append(n)
 
     return out
+
 
 def RecursiveInstall(env, target, dir):
     nodes = recursive_install(env, dir)
@@ -58,21 +52,22 @@ def RecursiveInstall(env, target, dir):
 
     l = len(dir) + 1
 
-    relnodes = [ n.abspath[l:] for n in nodes ]
+    relnodes = [n.abspath[l:] for n in nodes]
 
     state.log.debug('RecursiveInstall()')
     targets = []
     for n in relnodes:
         t = os.path.join(target, n)
         s = os.path.join(dir, n)
-        state.log.debug("RecursiveInstall() : source %s, target %s" % (s,t))
+        state.log.debug("RecursiveInstall() : source %s, target %s" % (s, t))
         targets += env.InstallAs(env.File(t), env.File(s))
 
     return targets
 
+
 def generate(env):
     env.AddMethod(RecursiveInstall)
 
+
 def exists(env):
     return True
-

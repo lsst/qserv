@@ -22,9 +22,9 @@ from __future__ import print_function
 #
 # detect_deps.py handles dependency detection for Qserv software
 
-import SCons
-import os, subprocess, sys
+import os
 import state
+
 
 def checkMySql(env):
     """Checks for MySQL includes and libraries in the following directories:
@@ -40,20 +40,21 @@ def checkMySql(env):
         state.log.fail("Could not locate MySQL headers (mysql/mysql.h)")
 
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
-                                   language="C++", autoadd=0):
+                               language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
-                                 "#include <mysql/mysql.h>","c++" ):
+                                 "#include <mysql/mysql.h>", "c++"):
             conf.Finish()
             return True
         else:
             state.log.fail("mysqlclient too old")
     else:
         # MySQL support not found or inadequate.
-        state.log.fail("Could not locate MySQL headers (mysql/mysql.h)"\
-            + " or find multithreaded mysql lib (mysqlclient_r)")
+        state.log.fail("Could not locate MySQL headers (mysql/mysql.h)"
+                       + " or find multithreaded mysql lib (mysqlclient_r)")
 
     conf.Finish()
     return None
+
 
 class BoostChecker:
 
@@ -74,7 +75,8 @@ class BoostChecker:
 
         # check cached name first
         lib = self.cache.get(libName)
-        if lib is None: lib = self._getLibName(libName)
+        if lib is None:
+            lib = self._getLibName(libName)
         self.cache[libName] = lib
         return lib
 
@@ -91,7 +93,8 @@ class BoostChecker:
             for pfx in env['LIBPREFIXES']:
                 for sfx in env['LIBSUFFIXES']:
                     path = os.path.join(env.subst(dirname), env.subst(pfx) + libname + env.subst(sfx))
-                    if os.path.exists(path): return True
+                    if os.path.exists(path):
+                        return True
             return False
 
         if self.suffix is None:
@@ -106,7 +109,8 @@ class BoostChecker:
                         break
 
                 if self.suffix is None:
-                    state.log.fail("Failed to find boost library `"+libName+"' in BOOST_LIB="+self.env.subst("$BOOST_LIB"))
+                    state.log.fail(
+                        "Failed to find boost library `"+libName+"' in BOOST_LIB="+self.env.subst("$BOOST_LIB"))
 
             else:
 
@@ -128,9 +132,11 @@ class BoostChecker:
 
         return libName + self.suffix
 
-    pass # BoostChecker
+    pass  # BoostChecker
+
 
 class AntlrChecker:
+
     def __init__(self, env):
         self.env = env
         self.suffix = None
@@ -161,13 +167,14 @@ class AntlrChecker:
             conf.Finish()
             pass
         return libName + self.suffix
-    pass # AntlrChecker
+    pass  # AntlrChecker
 
 null_source_file = """
 int main(int argc, char **argv) {
         return 0;
 }
 """
+
 
 def checkLibs(context, libList):
     lastLIBS = context.env['LIBS']
@@ -180,25 +187,18 @@ def checkLibs(context, libList):
     return result
 
 
-## Look for xrootd headers
+# Look for xrootd headers
 def findXrootdInclude(env):
-    hdrName = os.path.join("XrdSsi","XrdSsiErrInfo.hh")
+    hdrName = os.path.join("XrdSsi", "XrdSsiErrInfo.hh")
     conf = env.Configure()
-    foundPath = None
 
-    if conf.CheckCXXHeader(hdrName): # Try std location
+    if conf.CheckCXXHeader(hdrName):  # Try std location
         conf.Finish()
         return (True, None)
 
-    # Extract CPPPATHs and look for xrootd/ within them.
-    pList = env.Dump("CPPPATH") # Dump returns a stringified list
-
-    # Convert to list if necessary
-    if pList and type(pList) == type("") and str(pList)[0] == "[":
-        pList = eval(pList)
-    elif type(pList) != type(list): pList = [pList] # Listify
+    pList = env.get("CPPPATH", [])
     pList.append("/usr/include")
-    #pList.append("/usr/local/include")
+    # pList.append("/usr/local/include")
     for p in pList:
         path = p
         if not path.endswith("xrootd"):
@@ -207,7 +207,8 @@ def findXrootdInclude(env):
             conf.Finish()
             return (True, path)
     conf.Finish()
-    return (False,None)
+    return (False, None)
+
 
 def findXrootdLibPath(libName, pathList):
     fName = "lib%s.so" % (libName)
@@ -218,17 +219,18 @@ def findXrootdLibPath(libName, pathList):
     print("Couldn't find " + libName)
     return None
 
+
 def checkXrootdLink(env, autoadd=0):
     libList = "XrdUtils XrdClient XrdPosix XrdPosixPreload".split()
  #   libList = "XrdPosix".split()
     header = "XrdSsi/XrdSsiErrInfo.hh"
 
-    #print "ldpath", env.Dump("LIBPATH")
+    # print "ldpath", env.Dump("LIBPATH")
     xrdLibPath = findXrootdLibPath("XrdCl", env["LIBPATH"])
     if xrdLibPath:
         env.Append(RPATH=[xrdLibPath])
     conf = env.Configure(custom_tests={
-            'CheckLibs' : lambda c: checkLibs(c,libList)})
+        'CheckLibs': lambda c: checkLibs(c, libList)})
 
     found = conf.CheckLibs() and conf.CheckCXXHeader(header)
     conf.Finish()
@@ -239,7 +241,7 @@ def checkXrootdLink(env, autoadd=0):
 
 def setXrootd(env):
     (found, path) = findXrootdInclude(env)
-    if not found :
+    if not found:
         state.log.fail("Missing Xrootd include path")
     elif found and path:
         env.Append(CPPPATH=[path])
@@ -249,11 +251,14 @@ def setXrootd(env):
 # --extern root handling
 def _addInst(env, root):
     iPath = os.path.join(root, "include")
-    if os.path.isdir(iPath): env.Append(CPPPATH=[iPath])
+    if os.path.isdir(iPath):
+        env.Append(CPPPATH=[iPath])
     for e in ["lib", "lib64"]:
         ep = os.path.join(root, e)
-        if os.path.isdir(ep): env.Append(LIBPATH=[ep])
+        if os.path.isdir(ep):
+            env.Append(LIBPATH=[ep])
         pass
+
 
 def addExtern(env, externPaths):
     if externPaths:
@@ -262,9 +267,9 @@ def addExtern(env, externPaths):
     pass
 
 
-########################################################################
+#
 # custom.py mechanism
-########################################################################
+#
 def importCustom(env, extraTgts):
 
     def getExt(ext):
@@ -273,8 +278,8 @@ def importCustom(env, extraTgts):
         state.log.debug("varNames : %s, vals %s" % (varNames, vals))
         return vals
 
-    env.Append(LIBPATH=getExt("_LIB")) ## *LIB --> LIBPATH
-    env.Append(CPPPATH=getExt("_INC")) ## *INC --> CPPPATH
+    env.Append(LIBPATH=getExt("_LIB"))  # *LIB --> LIBPATH
+    env.Append(CPPPATH=getExt("_INC"))  # *INC --> CPPPATH
 
     state.log.debug("importCustom():\n" +
                     "\tCPPPATH : %s\n" % env['CPPPATH'] +

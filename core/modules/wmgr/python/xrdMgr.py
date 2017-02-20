@@ -26,30 +26,31 @@ Module defining Flask blueprint for xrootd management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import os
 import re
 import subprocess
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
 from sqlalchemy.exc import SQLAlchemyError
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('xrdMgr')
 
 # pattern for valid db/table/column names
 _idNameRe = re.compile(r'^[a-zA-Z_][0-9a-zA-Z_]*$')
+
 
 def _validateId(idType, identifier):
     """
@@ -59,9 +60,11 @@ def _validateId(idType, identifier):
         raise ExceptionResponse(400, "InvalidArgument",
                                 "{0} name is invalid: '{1}'".format(idType, identifier))
 
+
 def _validateDbName(dbName):
     """ Validate database name """
     return _validateId("Database", dbName)
+
 
 def _getArgFlag(mdict, option, default=True):
     """
@@ -77,9 +80,11 @@ def _getArgFlag(mdict, option, default=True):
                                 "Unexpected value of '%s' option: \"%s\"" % (option, value))
     return value in ('1', 'yes', 'true')
 
+
 def _dbDict(dbName):
     """ Make database instance dict out of db name """
     return dict(name=dbName, uri=url_for('.listChunks', dbName=dbName))
+
 
 def _runCmd(cmd, noexcept=True):
     """ Run command in a subprocess """
@@ -94,10 +99,11 @@ def _runCmd(cmd, noexcept=True):
         else:
             raise
 
+
 def _restartService(sName):
     """ Restart a service, only if it is running already """
     _log.info('restarting %s', sName)
-    initScript = os.path.join(Config.instance().runDir, 'etc/init.d/'+ sName)
+    initScript = os.path.join(Config.instance().runDir, 'etc/init.d/' + sName)
 
     cmd = [initScript, 'status']
     if _runCmd(cmd) == 0:
@@ -108,12 +114,13 @@ def _restartService(sName):
             raise ExceptionResponse(409, "CommandFailure",
                                     "Failed to restart %s, please restart it manually" % sName, str(exc))
 
+
 def _restartXrootd():
     _restartService('xrootd')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 
@@ -122,6 +129,7 @@ xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 def dbExceptionHandler(error):
     """ All leaked database-related exceptions generate 500 error """
     return errorResponse(500, "DbException", str(error))
+
 
 @xrdService.route('/dbs', methods=['GET'])
 def dbs():

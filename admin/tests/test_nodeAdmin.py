@@ -52,7 +52,6 @@ def _makeCss(data=None):
 
 class TestWorkerAdmin(unittest.TestCase):
 
-
     def test_WorkerAdminExceptions(self):
         """ Check that some instantiations of NodeAdmin cause exceptions """
 
@@ -81,7 +80,7 @@ class TestWorkerAdmin(unittest.TestCase):
         # setup with CSS, this should not throw
         nodeAdmin.NodeAdmin(name="worker", css=css_inst)
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestWorkerAdmin)

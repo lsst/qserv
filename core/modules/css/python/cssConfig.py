@@ -3,27 +3,28 @@ Module containing Python-specific methods for CSS configuration.
 
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 
-#---------------------------------
+# ---------------------------------
 #  Imports of base class module --
-#---------------------------------
+# ---------------------------------
 import logging
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from sqlalchemy.engine.url import make_url
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 def configFromUrl(url):
     """
@@ -42,7 +43,6 @@ def configFromUrl(url):
     except Exception as exc:
         logging.error('Failed to parse connection URL: %s %s)', url, exc)
         raise ValueError('Failed to parse connection URL: ' + url)
-
 
     cssConfig = {'technology': url.drivername}
     if url.drivername == 'mysql':

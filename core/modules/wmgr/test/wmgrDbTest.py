@@ -30,40 +30,40 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#------------------------------
+# ------------------------------
 #  Module's version from CVS --
-#------------------------------
+# ------------------------------
 __version__ = "$Revision: 8 $"
 # $Source$
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import sys
 import unittest
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from flask import Flask, json
 from lsst.qserv.wmgr.config import Config
 from lsst.qserv.wmgr import dbMgr
 
-#---------------------
+# ---------------------
 # Local definitions --
-#---------------------
+# ---------------------
 
-#-------------------------------
+# -------------------------------
 #  Unit test class definition --
-#-------------------------------
+# -------------------------------
 
 logging.basicConfig(level=logging.WARNING)
 
 
 class wmgrDbTest(unittest.TestCase):
 
-    def setUp(self) :
+    def setUp(self):
         """
         Method called to prepare the test fixture.
         """
@@ -81,7 +81,7 @@ class wmgrDbTest(unittest.TestCase):
         if self.dbName in [db['name'] for db in response['results']]:
             self.app.delete('/dbs/' + self.dbName)
 
-    def tearDown(self) :
+    def tearDown(self):
         """
         Method called immediately after the test method has been called and
         the result recorded.
@@ -131,7 +131,6 @@ class wmgrDbTest(unittest.TestCase):
         response = self._getJson(self.app.get('/dbs'))
         dbs = [db['name'] for db in response['results']]
         self.assertNotIn(dbName, dbs)
-
 
     def test10TableCreateDelete(self):
         """ Test for database creation/listing/deletion. """
@@ -208,7 +207,8 @@ class wmgrDbTest(unittest.TestCase):
         # Get table list
         response = self._getJson(self.app.get(tablesURI))
         tables = set(obj['name'] for obj in response['results'])
-        expected = set(['ObjectX_10', 'ObjectX_20', 'ObjectX_30', 'ObjectXFullOverlap_10', 'ObjectXFullOverlap_30'])
+        expected = set(
+            ['ObjectX_10', 'ObjectX_20', 'ObjectX_30', 'ObjectXFullOverlap_10', 'ObjectXFullOverlap_30'])
         self.assertEqual(tables, expected)
 
         # re-create table

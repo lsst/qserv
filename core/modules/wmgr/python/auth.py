@@ -26,26 +26,27 @@ Module defining Auth class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from flask import request
 from .flask_httpauth import HTTPBasicAuth, HTTPDigestAuth
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('auth')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class Auth(object):
     """

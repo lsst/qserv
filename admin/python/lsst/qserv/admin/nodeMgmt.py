@@ -29,34 +29,34 @@ qserv nodes, for example creating/deleting databases or tables.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
-import types
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.wmgr.client import ServerError
 from .nodeAdmin import NodeAdmin
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _Exception = produceExceptionClass('WorkerMgmtException', [
     (100, "TABLE_SCHEMA_ERR", "Invalid table schema specification"),
-    ])
+])
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
-#---------------------
+# ---------------------
 #  Class definition --
-#---------------------
+# ---------------------
+
 
 class NodeMgmt(object):
     """
@@ -73,9 +73,10 @@ class NodeMgmt(object):
             node.wmgrClient().dropTable(tableName)
     """
 
-    #----------------
+    # ----------------
     #  Constructor --
     #----------------
+
     def __init__(self, css, wmgrSecretFile=None):
         """
         Constructor needs an instance of CssAccess type which provides access to
@@ -91,9 +92,9 @@ class NodeMgmt(object):
         self.wmgrSecretFile = wmgrSecretFile
         self._log = logging.getLogger(__name__)
 
-    #-------------------
+    # -------------------
     #  Public methods --
-    #-------------------
+    # -------------------
 
     def select(self, state=None, nodeType=None):
         """
@@ -114,7 +115,6 @@ class NodeMgmt(object):
         return [NodeAdmin(name=key, css=self.css, wmgrSecretFile=self.wmgrSecretFile)
                 for key, _ in nodes.items()]
 
-
     def selectDict(self, state=None, nodeType=None):
         """
         Returns set of nodes based on supplied selection criteria. Nodes are returned
@@ -123,11 +123,11 @@ class NodeMgmt(object):
         """
 
         # if state is a string make a list out of it
-        if isinstance(state, types.StringTypes):
+        if isinstance(state, basestring):
             state = [state]
 
         # if nodeType is a string make a list out of it
-        if isinstance(nodeType, types.StringTypes):
+        if isinstance(nodeType, basestring):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)
@@ -141,7 +141,6 @@ class NodeMgmt(object):
 
         # make dict
         return dict(nodes)
-
 
     def createDb(self, dbName, state=None, nodeType=None):
         """
@@ -186,7 +185,6 @@ class NodeMgmt(object):
 
         self._log.debug('Created databases on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated
-
 
     def createTable(self, dbName, tableName, state=None, nodeType=None):
         """

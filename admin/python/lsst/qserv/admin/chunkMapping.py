@@ -28,29 +28,29 @@ in CSS.
 @author  Andy Salnikov, SLAC
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv import css
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class ChunkMapping(object):
     """
     Instances of ChunkMapping class represent updatable mapping between
     chunk numbers and worker names (host names).
     """
-
 
     def __init__(self, workers, database, table, css=None):
         """

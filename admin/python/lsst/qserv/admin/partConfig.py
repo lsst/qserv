@@ -27,25 +27,26 @@ all parameters related to table partitioning.
 @author  Andy Salnikov, SLAC
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import itertools
 import UserDict
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv.admin.configParser import ConfigParser
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class PartConfig(UserDict.UserDict):
     """

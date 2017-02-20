@@ -26,29 +26,30 @@ Module defining Config class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import tempfile
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .errors import ExceptionResponse
 from lsst.db.engineFactory import getEngineFromArgs
 from lsst.qserv import css
 from sqlalchemy.pool import NullPool
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('config')
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class Config(object):
     """
@@ -113,12 +114,17 @@ class Config(object):
         kwargs = dict(poolclass=NullPool, query={})
         # To use LOCA DATA LOCAL INFILE we need to enable it explicitely
         kwargs['query']['local_infile'] = 1
-        if self.dbHost: kwargs['host'] = self.dbHost
-        if self.dbPort: kwargs['port'] = self.dbPort
-        if self.dbSocket: kwargs['query']['unix_socket'] = self.dbSocket
-        if self.dbUser: kwargs['username'] = self.dbUser
+        if self.dbHost:
+            kwargs['host'] = self.dbHost
+        if self.dbPort:
+            kwargs['port'] = self.dbPort
+        if self.dbSocket:
+            kwargs['query']['unix_socket'] = self.dbSocket
+        if self.dbUser:
+            kwargs['username'] = self.dbUser
         _log.debug('creating new engine (password not shown) %s', kwargs)
-        if self.dbPasswd: kwargs['password'] = self.dbPasswd
+        if self.dbPasswd:
+            kwargs['password'] = self.dbPasswd
         self._db = getEngineFromArgs(**kwargs)
         return self._db
 
@@ -129,12 +135,17 @@ class Config(object):
             return self._dbPriv
 
         kwargs = dict(poolclass=NullPool, query={})
-        if self.dbHost: kwargs['host'] = self.dbHost
-        if self.dbPort: kwargs['port'] = self.dbPort
-        if self.dbSocket: kwargs['query']['unix_socket'] = self.dbSocket
-        if self.dbUserPriv: kwargs['username'] = self.dbUserPriv
+        if self.dbHost:
+            kwargs['host'] = self.dbHost
+        if self.dbPort:
+            kwargs['port'] = self.dbPort
+        if self.dbSocket:
+            kwargs['query']['unix_socket'] = self.dbSocket
+        if self.dbUserPriv:
+            kwargs['username'] = self.dbUserPriv
         _log.debug('creating new engine (password not shown) %s', kwargs)
-        if self.dbPasswdPriv: kwargs['password'] = self.dbPasswdPriv
+        if self.dbPasswdPriv:
+            kwargs['password'] = self.dbPasswdPriv
         self._dbPriv = getEngineFromArgs(**kwargs)
         return self._dbPriv
 
@@ -144,11 +155,15 @@ class Config(object):
             return self._dbProxy
 
         kwargs = dict(poolclass=NullPool, query={})
-        if self.proxyHost: kwargs['host'] = self.proxyHost
-        if self.proxyPort: kwargs['port'] = self.proxyPort
-        if self.proxyUser: kwargs['username'] = self.proxyUser
+        if self.proxyHost:
+            kwargs['host'] = self.proxyHost
+        if self.proxyPort:
+            kwargs['port'] = self.proxyPort
+        if self.proxyUser:
+            kwargs['username'] = self.proxyUser
         _log.debug('creating new engine (password not shown) %s', kwargs)
-        if self.proxyPasswd: kwargs['password'] = self.proxyPasswd
+        if self.proxyPasswd:
+            kwargs['password'] = self.proxyPasswd
         self._dbProxy = getEngineFromArgs(**kwargs)
         return self._dbProxy
 

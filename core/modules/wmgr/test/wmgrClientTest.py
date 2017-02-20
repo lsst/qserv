@@ -30,28 +30,29 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#------------------------------
+# ------------------------------
 #  Module's version from CVS --
-#------------------------------
+# ------------------------------
 __version__ = "$Revision: 8 $"
 # $Source$
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import io
 import logging
 import sys
 import unittest
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv.wmgr import client
 
-#---------------------
+# ---------------------
 # Local definitions --
-#---------------------
+# ---------------------
+
 
 def _readAll(input):
     """
@@ -66,15 +67,14 @@ def _readAll(input):
             break
     return body
 
-#-------------------------------
+# -------------------------------
 #  Unit test class definition --
-#-------------------------------
+# -------------------------------
 
 logging.basicConfig(level=logging.WARNING)
 
 
 class wmgrClientTest(unittest.TestCase):
-
 
     def test00MPEncoder(self):
         """ Test for _MPEncoder class, single part. """

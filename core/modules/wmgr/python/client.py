@@ -26,27 +26,27 @@ Module defining WmgrClient class and related methods.
 @author Andy Salnikov <salnikov@slac.stanford.edu>
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import io
 import logging
-import types
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 import requests
 from requests.compat import urlencode
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 # used as default value to distingush from None
 _None = object()
 
 _log = logging.getLogger(__name__)
+
 
 class _MPEncoder(object):
     """
@@ -100,7 +100,7 @@ class _MPEncoder(object):
             currentBuf.write(self._makeHeader(name, filename, content, headers))
 
             if name is not None:
-                if isinstance(data, types.StringTypes):
+                if isinstance(data, basestring):
                     currentBuf.write(data.encode(self._encoding))
                     currentBuf.write('\r\n'.encode(self._encoding))
                 else:
@@ -176,40 +176,48 @@ class _MPEncoder(object):
             del self._data[0]
         return ""
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class ClientException(Exception):
     """ Base class for all exceptions in this module"""
     pass
 
+
 class CommunicationError(ClientException):
     """
     Exception raised if server communication failed.
     """
+
     def __init__(self, msg):
         ClientException.__init__(self, 'Server communication failure: ' + msg)
+
 
 class ServerError(ClientException):
     """
     Exception raised if server sent us HTTP error code.
     """
+
     def __init__(self, code, body):
         ClientException.__init__(self, 'Server returned error: %s (body: "%s")' % (code, body))
         self.code = code
+
 
 class ServerResponseError(ClientException):
     """
     Exception raised if server response is incomprehensible
     (e.g. missing expected keys in JSON)
     """
+
     def __init__(self, msg, *args):
         ClientException.__init__(self, 'Server response error: ' + msg, *args)
 
-#---------------------
+# ---------------------
 #  Class definition --
-#---------------------
+# ---------------------
+
 
 class WmgrClient(object):
     """
@@ -221,9 +229,10 @@ class WmgrClient(object):
     communication with single instance of worker management service.
     """
 
-    #----------------
-    #  Constructor --
-    #----------------
+    # ----------------
+    #  Constructor  --
+    # ----------------
+
     def __init__(self, host, port, secretFile=None, user=None, passwd=None, auth="digest"):
         """
         Make new client instance.
@@ -264,7 +273,6 @@ class WmgrClient(object):
             elif auth == 'digest':
                 self.auth = requests.auth.HTTPDigestAuth(user, passwd)
 
-
     @staticmethod
     def readSecret(fileName):
         """
@@ -282,7 +290,6 @@ class WmgrClient(object):
         except Exception as exc:
             raise RuntimeError("failed to read secret file: " + str(exc))
 
-
     def databases(self):
         """
         Returns the list of database names.
@@ -293,7 +300,6 @@ class WmgrClient(object):
         result = self._requestJSON('dbs', '')
         return self._getKey(result, 'name')
 
-
     def createDb(self, dbName):
         """
         Create new database.
@@ -302,7 +308,6 @@ class WmgrClient(object):
         """
         _log.debug('create database: %s', dbName)
         self._requestJSON('dbs', '', method='POST', data=dict(db=dbName))
-
 
     def dropDb(self, dbName, mustExist=True):
         """
@@ -319,7 +324,6 @@ class WmgrClient(object):
             if exc.code != 404 or mustExist:
                 raise
 
-
     def tables(self, dbName):
         """
         Returns the list of table names in given database.
@@ -329,7 +333,6 @@ class WmgrClient(object):
         _log.debug('get tables, database: %s', dbName)
         result = self._requestJSON('dbs', dbName + '/tables')
         return self._getKey(result, 'name')
-
 
     def createTable(self, dbName, tableName, schema=None, chunkColumns=False):
         """
@@ -351,7 +354,6 @@ class WmgrClient(object):
             data['schemaSource'] = 'CSS'
         self._requestJSON('dbs', dbName + '/tables', method='POST', data=data)
 
-
     def dropTable(self, dbName, tableName, dropChunks=True, mustExist=True):
         """
         Delete existing table. If dropChunks is True then delete all chunks tables as well.
@@ -368,7 +370,6 @@ class WmgrClient(object):
             if exc.code != 404 or mustExist:
                 raise
 
-
     def tableSchema(self, dbName, tableName):
         """
         Return result of SHOW CREATE TABLE statement for given table.
@@ -380,7 +381,6 @@ class WmgrClient(object):
         resource = dbName + '/tables/' + tableName + '/schema'
         result = self._requestJSON('dbs', resource)
         return result
-
 
     def tableColumns(self, dbName, tableName):
         """
@@ -394,7 +394,6 @@ class WmgrClient(object):
         result = self._requestJSON('dbs', resource)
         return result
 
-
     def chunks(self, dbName, tableName):
         """
         Returns the list of chunks in given table.
@@ -406,7 +405,6 @@ class WmgrClient(object):
         resource = dbName + '/tables/' + tableName + '/chunks'
         result = self._requestJSON('dbs', resource)
         return self._getKey(result, 'chunkId')
-
 
     def createChunk(self, dbName, tableName, chunkId, overlap):
         """
@@ -422,7 +420,6 @@ class WmgrClient(object):
         data = dict(chunkId=chunkId, overlapFlag=overlapFlag)
         resource = dbName + '/tables/' + tableName + '/chunks'
         self._requestJSON('dbs', resource, method='POST', data=data)
-
 
     def deleteChunk(self, dbName, tableName, chunkId):
         """
@@ -461,7 +458,6 @@ class WmgrClient(object):
 
         result = self._requestJSON('dbs', resource, params=dict(columns=columns))
         return self._getKey(result, 'rows')
-
 
     def loadData(self, dbName, tableName, dataFile, fileName='table.data', chunkId=None, overlap=False,
                  compressed=None, delimiter=None, enclose=None, escape=None, terminate=None):
@@ -530,7 +526,6 @@ class WmgrClient(object):
                                    headers={'Content-Type': stream.content_type})
         return self._getKey(result, 'count')
 
-
     def resetChunksCache(self, dbName):
         """
         Reset chunk cache (a.k.a. empty chunks list) for specified database name.
@@ -546,7 +541,6 @@ class WmgrClient(object):
 
         result = self._requestJSON('dbs', resource, method='PUT')
 
-
     def services(self):
         """
         Return the list of service names.
@@ -556,7 +550,6 @@ class WmgrClient(object):
         _log.debug('get service list')
         result = self._requestJSON('services', '')
         return self._getKey(result, 'name')
-
 
     def serviceState(self, service):
         """
@@ -574,7 +567,6 @@ class WmgrClient(object):
         result = self._requestJSON('services', service)
         return self._getKey(result, 'state')
 
-
     def serviceAction(self, service, action):
         """
         Execute action on a service.
@@ -590,7 +582,6 @@ class WmgrClient(object):
         result = self._requestJSON('services', service, method='PUT', data=data)
         return self._getKey(result, 'state')
 
-
     def xrootdDbs(self):
         """
         Return the list of database names known to xrootd.
@@ -600,7 +591,6 @@ class WmgrClient(object):
         _log.debug('get xrd db list')
         result = self._requestJSON('xrootd', 'dbs')
         return self._getKey(result, 'name')
-
 
     def xrootdRegisterDb(self, dbName, restart=True, allowDuplicate=False):
         """
@@ -620,7 +610,6 @@ class WmgrClient(object):
             if exc.code != 409 or not allowDuplicate:
                 raise
 
-
     def xrootdUnregisterDb(self, dbName, restart=True):
         """
         Remove database from xrootd registration.
@@ -633,7 +622,6 @@ class WmgrClient(object):
         _log.debug('unregister database from xrootd: %s', dbName)
         params = dict(xrootdRestart=str(int(restart)))
         self._requestJSON('xrootd', 'dbs/' + dbName, method='DELETE', params=params)
-
 
     def xrootdChunks(self, dbName):
         """
@@ -652,7 +640,6 @@ class WmgrClient(object):
         Returns initial part of service URL.
         """
         return 'http://{0}:{1}'.format(self.host, self.port)
-
 
     def _request(self, svc, resource, method='GET', params=None, data=None, headers=None):
         """
@@ -685,7 +672,6 @@ class WmgrClient(object):
             # RequestException is a base class for all exceptions generated
             # by requests including HTTPError
             raise CommunicationError(str(exc))
-
 
     def _requestJSON(self, svc, resource, method='GET', params=None, data=None, headers=None):
         """
@@ -720,7 +706,7 @@ class WmgrClient(object):
             raise ServerResponseError("Missing 'result' or 'results' key", jdata)
 
         # check type
-        if type(result) is not list:
+        if not isinstance(result, list):
             raise ServerResponseError("Unexpected type of 'results' key", type(result))
 
         return result
@@ -733,7 +719,7 @@ class WmgrClient(object):
         the list of values.
         """
         try:
-            if type(result) is list:
+            if isinstance(result, list):
                 return [obj[key] for obj in result]
             else:
                 return result[key]

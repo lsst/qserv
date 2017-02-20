@@ -2,7 +2,7 @@
 
 # LSST Data Management System
 # Copyright 2015 AURA/LSST.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -10,14 +10,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
@@ -53,14 +53,16 @@ class _EchoServer(Thread):
         stop = False
         while not stop:
             conn, addr = self.sock.accept()
-            while 1:
+            while True:
                 # echo received data until client disconnects
                 data = conn.recv(1024)
-                if not data: break
+                if not data:
+                    break
                 conn.send("@" + data)
                 # EXIT means stop after client disconnects
                 stop = data == 'EXIT'
             conn.close()
+
 
 class _EchoClient(object):
     """ simple echo client class """
@@ -68,16 +70,17 @@ class _EchoClient(object):
     def __init__(self, port, host='127.0.0.1'):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
+
     def echo(self, data):
         self.sock.send(data)
         data = self.sock.recv(1024)
         return data
+
     def close(self):
         self.sock.close()
 
 
 class TestSSHTunnel(unittest.TestCase):
-
     def test_SSHTunnel(self):
         """ Test for SSH tunneling class """
 
@@ -103,7 +106,7 @@ class TestSSHTunnel(unittest.TestCase):
         del fwd
 
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSSHTunnel)

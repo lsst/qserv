@@ -49,9 +49,9 @@ import MySQLdb
 # Local non-exported definitions --
 # ---------------------------------
 
-###############################################################################
+#
 # Queries to run, grouped into different pools of queries
-###############################################################################
+#
 
 QUERY_POOLS = {}
 
@@ -59,21 +59,24 @@ QUERY_POOLS = {}
 QUERY_POOLS["LV"] = []
 for i in range(0, 10):
     # single object
-    QUERY_POOLS["LV"].append("SELECT ra, decl, raVar, declVar, radeclCov, u_psfFlux, u_psfFluxSigma, u_apFlux FROM Object WHERE deepSourceId = %d" % random.randint(2251799813685248, 4503595332407303))
+    QUERY_POOLS["LV"].append("SELECT ra, decl, raVar, declVar, radeclCov, u_psfFlux, u_psfFluxSigma, u_apFlux FROM Object WHERE deepSourceId = %d" %
+                             random.randint(2251799813685248, 4503595332407303))
 
     # small area selection
     raMin = random.uniform(0, 350)
     declMin = random.uniform(-87, 45)
     raDist = random.uniform(0.01, 0.2)
     declDist = random.uniform(0.01, 0.2)
-    QUERY_POOLS["LV"].append("SELECT ra, decl, raVar, declVar, radeclCov, u_psfFlux, u_psfFluxSigma, u_apFlux FROM Object WHERE qserv_areaspec_box(%f, %f, %f, %f)" % (raMin, declMin, raMin+raDist, declMin+declDist))
+    QUERY_POOLS["LV"].append("SELECT ra, decl, raVar, declVar, radeclCov, u_psfFlux, u_psfFluxSigma, u_apFlux FROM Object WHERE qserv_areaspec_box(%f, %f, %f, %f)" %
+                             (raMin, declMin, raMin+raDist, declMin+declDist))
 
     # small area join
     raMin = random.uniform(0, 350)
     declMin = random.uniform(-87, 45)
     raDist = random.uniform(0.01, 0.1)
     declDist = random.uniform(0.01, 0.1)
-    QUERY_POOLS["LV"].append("SELECT o.deepSourceId, o.ra, o.decl, s.coord_ra, s.coord_decl, s.parent FROM Object o, Source s WHERE qserv_areaspec_box(%f, %f, %f, %f) and o.deepSourceId = s.objectId" % (raMin, declMin, raMin+raDist, declMin+declDist))
+    QUERY_POOLS["LV"].append("SELECT o.deepSourceId, o.ra, o.decl, s.coord_ra, s.coord_decl, s.parent FROM Object o, Source s WHERE qserv_areaspec_box(%f, %f, %f, %f) and o.deepSourceId = s.objectId" %
+                             (raMin, declMin, raMin+raDist, declMin+declDist))
 
 
 # Full-table-scans on Object
@@ -86,13 +89,14 @@ QUERY_POOLS["FTSObj"] = [
     "SELECT MIN(ra), MAX(ra), MIN(decl), MAX(decl) FROM Object",
     "SELECT MIN(ra), MAX(ra), MIN(decl), MAX(decl) FROM Object WHERE z_instFlux < 3",
     "SELECT COUNT(*) AS n, AVG(ra), AVG(decl), chunkId FROM Object GROUP BY chunkId",
-###  "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 0.02",     # 1,889,695,615 rows / ~28 GB
-###  "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2.27e-30", #   475,244,843 rows / ~ 7 GB
-#    "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2e-30",     #    42,021,567 rows / ~ 0.5 GB
-    "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.75e-30",   #     1,932,988 rows / ~ 29 MB
+    # "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 0.02",     # 1,889,695,615 rows / ~28 GB
+    # "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2.27e-30", #   475,244,843 rows / ~ 7 GB
+    # "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2e-30",     #    42,021,567 rows / ~ 0.5 GB
+    "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.75e-30",
+        #     1,932,988 rows / ~ 29 MB
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.8e-30",
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.81e-30",
-    "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.5e-30"     #       119,423 rows / ~ 2 MB
+    "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.5e-30"  # 119,423 rows / ~ 2 MB
 ]
 
 # Full-table-scans on Source
@@ -117,6 +121,12 @@ QUERY_POOLS["joinObjFSrc"] = [
     "SELECT o.deepSourceId, f.psfFlux FROM Object o, ForcedSource f WHERE o.deepSourceId=f.deepSourceId AND f.psfFlux BETWEEN 0.13 AND 0.14"
 ]
 
+SQL_SELECT = ("select o1.ra as ra1, o2.ra as ra2, o1.decl as decl1, o2.decl as decl2, "
+              "scisql_angSep(o1.ra, o1.decl,o2.ra, o2.decl) AS theDistance ")
+SQL_WHERE = ("from Object o1, Object o2 where qserv_areaspec_box(%f, %f, %f, %f) "
+             "and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" %
+             (raMin, declMin, raMin+raDist, declMin+declDist))
+
 # Near neighbor
 QUERY_POOLS["nearN"] = []
 for i in range(0, 10):
@@ -124,12 +134,12 @@ for i in range(0, 10):
     declMin = random.uniform(-87, 40)
     raDist = random.uniform(8, 12)
     declDist = random.uniform(8, 12)
-#    QUERY_POOLS["nearN"].append("select o1.ra as ra1, o2.ra as ra2, o1.decl as decl1, o2.decl as decl2, scisql_angSep(o1.ra, o1.decl,o2.ra, o2.decl) AS theDistance from Object o1, Object o2 where qserv_areaspec_box(%f, %f, %f, %f) and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" % (raMin, declMin, raMin+raDist, declMin+declDist))
-    QUERY_POOLS["nearN"].append("select count(*) from Object o1, Object o2 where qserv_areaspec_box(%f, %f, %f, %f) and scisql_angSep(o1.ra, o1.decl, o2.ra, o2.decl) < 0.015" % (raMin, declMin, raMin+raDist, declMin+declDist))
+    # QUERY_POOLS["nearN"].append(SQL_SELECT+SQL_WHERE)
+    QUERY_POOLS["nearN"].append("select count(*) " + SQL_WHERE)
 
-###############################################################################
+#
 # Definition of how many queries from each pool we want to run simultaneously
-###############################################################################
+#
 
 CONCURRENCY = {
     "LV": 75,
@@ -167,16 +177,16 @@ timeBehind = {
 
 timeBehindMutex = threading.Lock()
 
-###############################################################################
+#
 # Function that is executed inside a thread. It runs one query at a time.
 # The query is picked randomly from the provided pool of queries. If the query
 # finishes faster than our expected baseline time, the thread will sleep.
-###############################################################################
+#
 
 
 def runQueries(qPoolId, master, output_dir):
     logging.debug("My query pool: %s", qPoolId)
-    initialSleep = random.randint(0, TARGET_RATES[qPoolId]/2) # staggering
+    initialSleep = random.randint(0, TARGET_RATES[qPoolId]/2)  # staggering
     logging.debug("initial sleep: %i", initialSleep)
     qPool = QUERY_POOLS[qPoolId]
     conn = MySQLdb.connect(host=master,
@@ -189,10 +199,10 @@ def runQueries(qPoolId, master, output_dir):
         q = random.choice(qPool)
         logging.debug("QTYPE_%s START: Running: %s", qPoolId, q)
         startTime = time.time()
-        #time.sleep(sleepTime[qPoolId])
+        # time.sleep(sleepTime[qPoolId])
         cursor.execute(q)
         rows = cursor.fetchall()
-        outfile=os.path.join(output_dir, "%s_%s" % (qPoolId,threading.current_thread().ident))
+        outfile = os.path.join(output_dir, "%s_%s" % (qPoolId, threading.current_thread().ident))
         f = open(outfile, 'a')
         f.write("\n*************************************************\n")
         f.write("%s\n---\n" % q)
@@ -203,9 +213,9 @@ def runQueries(qPoolId, master, output_dir):
         f.close()
         elT = time.time() - startTime            # elapsed
         # trying to run ~10% faster than the target rate
-        loT = 0.9 * TARGET_RATES[qPoolId] - elT # left over
+        loT = 0.9 * TARGET_RATES[qPoolId] - elT  # left over
         logging.info('QTYPE_%s FINISHED: %s left %s %s', qPoolId, elT, loT, q)
-        if loT < 0: # the query was slower than it should
+        if loT < 0:  # the query was slower than it should
             timeBehindMutex.acquire()
             timeBehind[qPoolId] -= loT
             logging.info("QTYPE_%s registering timeBehind %s, total is %s", qPoolId, loT, timeBehind[qPoolId])
@@ -219,11 +229,11 @@ def runQueries(qPoolId, master, output_dir):
             logging.debug('QTYPE_%s sleeping %s', qPoolId, loT)
             time.sleep(loT)
 
-###############################################################################
+#
 # Main. Starts all the threads. The threads will keep running for up to 24 h,
 # or until the program gets interrupted (e.g. with Ctrl-C). Logging goes to a
 # file in /tmp
-###############################################################################
+#
 
 
 def main():
@@ -233,7 +243,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Qserv Summer 15 Large Scale Test benchmark tool"
-        )
+    )
 
     parser.add_argument('-v', '--verbose', dest='verbose', default=[],
                         action='append_const',

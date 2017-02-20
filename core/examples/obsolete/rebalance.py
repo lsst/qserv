@@ -37,7 +37,8 @@ import optparse
 import os
 from textwrap import dedent
 
-import loader # Assume loader.py is co-located. :)
+import loader  # Assume loader.py is co-located. :)
+
 
 class RebalanceProgram:
     usage = dedent("""\
@@ -97,12 +98,12 @@ class RebalanceProgram:
         start = 0
 
         for i in range(self._opts.dirs):
-            length =  nominal
+            length = nominal
             if extra:
                 length += 1
                 extra -= 1
             stop = start + length
-            #print i, "with", stop-start,"files"
+            # print i, "with", stop-start,"files"
             if stop > chunkCount:
                 stop = chunkCount
             targetdir = self._opts.target + str(i)

@@ -1,0 +1,13 @@
+ignore-paths:
+  - doc
+
+pep8:
+  disable:
+    - E133
+    - E226
+    - E228
+    - N802
+    - N803
+  options:
+    max-line-length: 110
+

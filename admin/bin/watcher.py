@@ -8,26 +8,26 @@ database makes sure that state of the local mysql server correctly reflects
 the state of CSS by creating/deleting databases and tables.
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 from argparse import ArgumentParser
 import ConfigParser
 import logging
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 import lsst.log
 from lsst.qserv.admin import watcherLib
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 
 def main():

@@ -1,21 +1,23 @@
 from __future__ import print_function
-##
+#
 #  @file
 #
 #  Internal utilities for sconsUtils.
-##
+#
 
 import sys
 import warnings
 import SCons.Script
 
-##
+#
 #  @brief A dead-simple logger for all messages.
 #
 #  This simply centralizes decisions about whether to throw exceptions or print user-friendly messages
 #  (the traceback variable) and whether to print extra debug info (the verbose variable).
 #  These are set from command-line options in state.py.
-##
+#
+
+
 class Log(object):
 
     def __init__(self, verbose, silent, traceback):

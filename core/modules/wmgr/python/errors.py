@@ -26,23 +26,24 @@ Module defining dbMgr class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from flask import json
 from werkzeug.exceptions import HTTPException
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 def errorResponse(code, errorType, message, cause=None):
     """
@@ -54,6 +55,7 @@ def errorResponse(code, errorType, message, cause=None):
     response = json.jsonify(excData)
     response.status_code = code
     return response
+
 
 class ExceptionResponse(HTTPException):
     """

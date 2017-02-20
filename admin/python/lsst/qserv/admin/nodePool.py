@@ -30,23 +30,24 @@ It can be used to install Qserv on a cluster.
 @author  Fabrice Jammes, IN2P3
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import multiprocessing
 import os
 from subprocess import Popen
 import time
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 _LOG = logging.getLogger(__name__)
+
 
 def cpu_count():
     ''' Returns the number of CPUs in the system
@@ -55,6 +56,7 @@ def cpu_count():
         return multiprocessing.cpu_count()
     except NotImplementedError:
         return 1
+
 
 class NodePool(object):
     """
@@ -133,7 +135,8 @@ class NodePool(object):
                     _LOG.debug("Run: %r", ' '.join(task))
 
                 with open(stdin) as _in, open(logfile('stdout'), "wb") as _out, open(logfile('stderr'), "wb") as _err:
-                    running_processes.append([Popen(task, stdin=_in, stdout=_out, stderr=_err), node.host, process_id])
+                    running_processes.append(
+                        [Popen(task, stdin=_in, stdout=_out, stderr=_err), node.host, process_id])
 
             time.sleep(0.05)
 
@@ -147,7 +150,6 @@ class NodePool(object):
                     else:
                         _LOG.error("Failure on %r (#%r)", host, p_id)
                         nodes_failed.append((host, p_id))
-
 
         if nodes_failed:
             nb_failed = len(nodes_failed)

@@ -45,8 +45,10 @@ def _makeCss(data=None):
 
 
 class TestCssVersion(unittest.TestCase):
+
     def setUp(self):
         self.dbStriping = css.StripingParams(10, 10, 0, 0.0)
+
     def test1(self):
         """
         Check that if version is missing then it is created on
@@ -111,7 +113,7 @@ class TestCssVersion(unittest.TestCase):
         with self.assertRaises(css.VersionMismatchError):
             css_inst = _makeCss(initData)
 
-####################################################################################
+#
 
 if __name__ == "__main__":
     unittest.main()

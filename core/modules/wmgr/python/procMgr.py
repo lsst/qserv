@@ -26,28 +26,29 @@ Module defining Flask blueprint for process management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import os
 import subprocess
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from .config import Config
 from .errors import ExceptionResponse
 from flask import Blueprint, json, request, url_for
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _log = logging.getLogger('procMgr')
 
 # static list of service names for now
 _svcNames = ['xrootd', 'mysqld']
+
 
 def _svcDict(svc, running=None):
     """ Make service instance dict out of service name """
@@ -55,6 +56,7 @@ def _svcDict(svc, running=None):
     if running is not None:
         svcDict['state'] = 'active' if running else 'stopped'
     return svcDict
+
 
 def _runCmd(cmd, noexcept=True):
     """ Run command in a shell """
@@ -70,9 +72,9 @@ def _runCmd(cmd, noexcept=True):
         else:
             raise
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
 
 procService = Blueprint('procService', __name__, template_folder='procService')
 

@@ -27,24 +27,25 @@ https://github.com/LSST/partition/blob/master/docs/duplication.md
 @author  Vaikunth Thukral, TAMU/SLAC
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 import logging
 import os
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv.admin import commons
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class DataDuplicator(object):
 
@@ -68,16 +69,16 @@ class DataDuplicator(object):
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg'))==False:
+            if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg')) is False:
                 self.logger.error("Path to indexing config file not found")
 
             self.logger.info("Running indexer with output for %r to %r" % (table, self._outDirname))
-            run_index = commons.run_command(["sph-htm-index",
-                                             "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
-                                             "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
-                                             "--in=" + os.path.join(self._cfgDirname, table + ".txt"),
-                                             "--out.dir=" + os.path.join(self._outDirname, "index/", table)])
-
+            commons.run_command(["sph-htm-index",
+                                 "--config-file=" +
+                                 os.path.join(self._cfgDirname, table + ".cfg"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
+                                 "--in=" + os.path.join(self._cfgDirname, table + ".txt"),
+                                 "--out.dir=" + os.path.join(self._outDirname, "index/", table)])
 
     def _runDuplicate(self):
         """
@@ -85,13 +86,15 @@ class DataDuplicator(object):
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg'))==False:
+            if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg')) is False:
                 self.logger.error("Path to duplicator config file not found")
 
             self.logger.info("Running duplicator for table %r" % table)
-            run_dupl = commons.run_command(["sph-duplicate",
-                                            "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
-                                            "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
-                                            "--index=" + os.path.join(self._outDirname, "index/", table, "htm_index.bin"),
-                                            "--part.index=" + os.path.join(self._outDirname, "index", self._directorTable, "htm_index.bin"),
-                                            "--out.dir=" + os.path.join(self._outDirname, "chunks/", table)])
+            index_param = os.path.join(self._outDirname, "index", table, "htm_index.bin")
+            part_index_param = os.path.join(self._outDirname, "index", self._directorTable, "htm_index.bin")
+            commons.run_command(["sph-duplicate",
+                                 "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
+                                 "--index=" + index_param,
+                                 "--part.index=" + part_index_param,
+                                 "--out.dir=" + os.path.join(self._outDirname, "chunks/", table)])

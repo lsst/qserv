@@ -19,13 +19,15 @@ import os
 import SCons.Util
 from SCons.Script import Builder, Action, Dir, File, Entry
 
+
 def _detect(env):
     """Try to find the Protoc compiler"""
     try:
         return env['PROTOC']
     except KeyError:
         raise SCons.Errors.StopError(
-        "Could not detect protoc compiler")
+            "Could not detect protoc compiler")
+
 
 def _protoc_emitter(target, source, env):
     """Process target, sources, and flags"""
@@ -43,7 +45,7 @@ def _protoc_emitter(target, source, env):
     # fetch all protoc flags
     if env['PROTOC_FLAGS']:
         protocflags = env.subst("$PROTOC_FLAGS",
-            target=target, source=source)
+                                target=target, source=source)
         flags = SCons.Util.CLVar(protocflags)
     else:
         flags = SCons.Util.CLVar('')
@@ -140,11 +142,12 @@ def _protoc_emitter(target, source, env):
     return target, source
 
 _protoc_builder = Builder(
-        action = Action('$PROTOC_COM', '$PROTOC_COMSTR'),
+    action = Action('$PROTOC_COM', '$PROTOC_COMSTR'),
         suffix = '$PROTOC_CCSUFFIX',
         src_suffix = '$PROTOC_SUFFIX',
         emitter = _protoc_emitter,
-        )
+)
+
 
 def generate(env):
     """Add Builders and construction variables."""
@@ -175,11 +178,11 @@ def generate(env):
         PROTOC_COM="$PROTOC $PROTOC_FLAGS $SOURCES",
         PROTOC_COMSTR = '',
 
-        )
+    )
 
     env['BUILDERS']['Protoc'] = _protoc_builder
+
 
 def exists(env):
     _detect(env)
     return True
-

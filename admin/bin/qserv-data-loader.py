@@ -74,8 +74,10 @@ from lsst.qserv.wmgr.client import WmgrClient
 # Local non-exported definitions --
 # ---------------------------------
 
+
 class _LogFilter(object):
     """Filter for logging which passes all records from specified logger only"""
+
     def __init__(self, loggerName):
         self.loggerName = loggerName
         self.loggerNameDot = loggerName + '.'
@@ -92,11 +94,12 @@ class _LogFilter(object):
 # -----------------------
 # Exported definitions --
 # -----------------------
+
+
 class Loader(object):
     """
     Application class for loader application
     """
-
 
     def __init__(self):
         """
@@ -254,7 +257,6 @@ class Loader(object):
         if self.loader.chunks:
             logging.getLogger('Loader').info('loaded chunks: %s', ' '.join(map(str, self.loader.chunks)))
         return 0
-
 
     def _wmgrConnect(self, nodeName, css):
         """

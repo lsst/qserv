@@ -4,33 +4,34 @@ Module defining methods and classes used by watcher.
 @author Andy Salnikov
 """
 
-#--------------------------------
+# --------------------------------
 #  Imports of standard modules --
-#--------------------------------
+# --------------------------------
 from abc import ABCMeta, abstractmethod
 import logging
 import time
 import warnings
 
-#-----------------------------
+# -----------------------------
 # Imports for other modules --
-#-----------------------------
+# -----------------------------
 from lsst.qserv import css
 from lsst.qserv import qmeta
-from lsst.qserv.admin  import nodeMgmt
-from lsst.qserv.admin  import nodeAdmin
+from lsst.qserv.admin import nodeMgmt
+from lsst.qserv.admin import nodeAdmin
 from lsst.qserv.css import cssConfig
 from lsst.qserv.wmgr.client import ServerError
 
-#----------------------------------
+# ----------------------------------
 # Local non-exported definitions --
-#----------------------------------
+# ----------------------------------
 
 _LOG = logging.getLogger(__name__)
 
-#------------------------
+# ------------------------
 # Exported definitions --
-#------------------------
+# ------------------------
+
 
 class WatcherCss(object):
     """
@@ -74,7 +75,6 @@ class WatcherCss(object):
             return {}
         res = dict((k, v) for k, v in res.items() if v not in self._skipStatus)
         return res
-
 
     def getTables(self):
         """
@@ -155,6 +155,7 @@ class WatcherCss(object):
             czars.append(nodeAdmin.NodeAdmin(host=host, port=port, wmgrSecretFile=self.wmgrSecretFile))
 
         return czars, workers
+
 
 class IExecutor(object):
     """
@@ -587,8 +588,8 @@ class QservExecutor(IExecutor):
                 if qid:
                     try:
                         _LOG.debug('Updating QMeta status for qid=%s', qid)
-                        self.qmeta.completeQuery(qid, qmeta.QInfo.COMPLETED);
-                        self.qmeta.finishQuery(qid);
+                        self.qmeta.completeQuery(qid, qmeta.QInfo.COMPLETED)
+                        self.qmeta.finishQuery(qid)
                     except qmeta.Exception as ex:
                         # should go on
                         _LOG.warning('Failed to update QMeta status for DROP TABLE: %s', ex)
