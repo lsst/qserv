@@ -1,5 +1,6 @@
-# Configuration file sourced by Swarm scripts
-# Allow to customize Docker container execution
+# Configuration file copied to orchestration node, in /home/qserv/orchestration
+# and then sourced by Kubernetes ochestration node scripts
+# Allow to customize pods execution
 
 # VERSION can be a git ticket branch but with _ instead of /
 # example: tickets_DM-7139, or dev
@@ -29,7 +30,8 @@ HOST_TMP_DIR=/qserv/tmp
 # in order no to launch Qserv at container startup
 #ALT_CMD="tail -f /dev/null"
 
+# Advanced configuration
+# ======================
 
-# Set images names
-printf -v MASTER_IMAGE "qserv/qserv:%s_master" "$VERSION"
-printf -v WORKER_IMAGE "qserv/qserv:%s_worker" "$VERSION"
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "${DIR}/common.sh"

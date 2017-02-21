@@ -11,4 +11,4 @@ echo "Setup Kubernetes cluster and launch Qserv"
 
 "$DIR"/kube-destroy.sh
 "$DIR"/kube-create.sh
-"$DIR"/create-qserv-pods.sh
+"$DIR"/start.sh

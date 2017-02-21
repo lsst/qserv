@@ -101,12 +101,12 @@ if [ -n "$SWARM" ]; then
 
 elif [ -n "$KUBERNETES" ]; then
 	WORK_DIR="$DIR/../docker/deployment/kubernetes"
-    DOCKER_ENV_FILE="$WORK_DIR/orchestration/env-docker.sh"
-    cp "$WORK_DIR/orchestration/env-docker.example.sh" "$DOCKER_ENV_FILE"
+    ENV_FILE="$WORK_DIR/env.sh"
+    cp "$WORK_DIR/env.example.sh" "$ENV_FILE"
 
     if [ -n "$LARGE" ]; then
         sed -i "s,# HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," \
-            "$DOCKER_ENV_FILE"
+            "$ENV_FILE"
     fi
 
 	"$WORK_DIR/full-start.sh"

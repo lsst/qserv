@@ -2,13 +2,13 @@
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
-set -x
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-. "${DIR}/env-infrastructure.sh"
-. "${DIR}/env-docker.sh"
+. "${DIR}/env.sh"
+
+CFG_DIR="${DIR}/yaml"
 
 usage() {
   cat << EOD
@@ -37,11 +37,12 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-kubectl create -f "${DIR}/qserv-service.yaml"
+echo "Create kubernetes headless service for Qserv"
+kubectl create -f "${CFG_DIR}/qserv-service.yaml"
 
-YAML_TPL="${DIR}/pod.yaml.tpl"
-YAML_FILE="${DIR}/master.yaml"
-INI_FILE="$DIR/pod.ini"
+YAML_TPL="${CFG_DIR}/pod.yaml.tpl"
+YAML_FILE="${CFG_DIR}/master.yaml"
+INI_FILE="${CFG_DIR}/pod.master.ini"
 
 cat << EOF > "$INI_FILE"
 [spec]
@@ -56,13 +57,15 @@ EOF
 
 "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
 
+echo "Create kubernetes pod for Qserv master"
 kubectl create -f "$YAML_FILE"
 
 j=1
 for host in $WORKERS;
 do
-    YAML_FILE="${DIR}/worker-${j}.yaml"
-    cat << EOF > "$DIR"/pod.ini
+    YAML_FILE="${CFG_DIR}/worker-${j}.yaml"
+    INI_FILE="${CFG_DIR}/pod.worker-${j}.ini"
+    cat << EOF > "$INI_FILE"
 [spec]
 host_custom_dir: $HOST_CUSTOM_DIR
 host_data_dir: $HOST_DATA_DIR
@@ -73,6 +76,7 @@ image: $WORKER_IMAGE
 pod_name: worker-$j
 EOF
     "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
+    echo "Create kubernetes pod for Qserv worker-${j}"
     kubectl create -f "$YAML_FILE"
     j=$((j+1));
 done

@@ -1,3 +1,2 @@
-/env-docker.sh
 /master.yaml
 /worker-*.yaml

@@ -104,22 +104,19 @@ SWARM_LAST_ID="{swarm_last_id}"
 
 # Used by shmux
 HOSTNAME_TPL="{hostname_tpl}"
+FIRST_ID=1
 WORKER_LAST_ID="{worker_last_id}"
 
-printf -v MASTER "%smaster-1" "$HOSTNAME_TPL"
+MASTER="${{HOSTNAME_TPL}}master-1"
 
-for i in $(seq 1 "$SWARM_LAST_ID");
-do
-    printf -v SWARM_NODES "%s %s{orch_node_suffix}-%s" "$SWARM_NODES" "$HOSTNAME_TPL" "$i"
-done
+SWARM_NODES=$(seq --format "${{HOSTNAME_TPL}}{orch_node_suffix}-%g" \
+    --separator=' ' "$FIRST_ID" "$SWARM_LAST_ID")
 
 # Swarm leader at initialization has id=0
-printf -v ORCHESTRATOR "%s{orch_node_suffix}-1" "$HOSTNAME_TPL"
+ORCHESTRATOR="${{HOSTNAME_TPL}}{orch_node_suffix}-1"
 
-for i in $(seq 1 "$WORKER_LAST_ID");
-do
-    printf -v WORKERS "%s %sworker-%s" "$WORKERS" "$HOSTNAME_TPL" "$i"
-done
+WORKERS=$(seq --format "${{HOSTNAME_TPL}}worker-%g" \
+    --separator=' ' "$FIRST_ID" "$WORKER_LAST_ID")
 '''
 
     envfile = envfile_tpl.format(swarm_last_id=cloudManager.nbOrchestrator,
