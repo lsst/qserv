@@ -82,7 +82,8 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
 
     // &&& rename largeResultPoolSize in configuration
     int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
-    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultPoolSize) ;
+    // _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultPoolSize); &&& reinstate
+    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(1); // &&& delete
     // rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);   &&& delete
 
     XrdSsiProviderClient->SetCBThreads(1000, 100);

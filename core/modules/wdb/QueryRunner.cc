@@ -235,10 +235,12 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
         unsigned int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
 
+        /* &&& delete
         // Use small blocks until it considered a large result.
         if (!_largeResult) {
             szLimit = szLimit/10; // &&& should not really be hard coded like this
         }
+        */
 
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
