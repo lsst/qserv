@@ -80,7 +80,13 @@ public:
     ~Executive();
 
     /// Add an item with a reference number
-    void add(JobDescription const& s);
+    std::shared_ptr<JobQuery> add(JobDescription const& s);
+
+    /// Start all jobs added with add().
+    void startAllJobs();
+
+    /// Start a specific job, jobQuery must have been created with add();
+    void startJob(std::shared_ptr<JobQuery> const& jobQuery);
 
     /// Block until execution is completed
     /// @return true if execution was successful

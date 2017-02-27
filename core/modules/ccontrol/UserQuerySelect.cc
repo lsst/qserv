@@ -74,6 +74,7 @@
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
+#include "czar/Czar.h"
 #include "global/constants.h"
 #include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
@@ -203,6 +204,7 @@ void UserQuerySelect::submit() {
     std::vector<int> chunks;
     int msgCount = 0;
     int sequence = 0;
+
     // Writing query for each chunk, stop if query is cancelled.
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
@@ -229,6 +231,11 @@ void UserQuerySelect::submit() {
     }
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
+    czar::Czar::Ptr czar = czar::Czar::getCzar();
+    qdisp::LargeResultMgr::Ptr largeResultMgr = czar->getLargeResultMgr();
+    largeResultMgr->incrOutGoingQueries();
+    _executive->startAllJobs();
+    largeResultMgr->decrOutGoingQueries();
 
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.

@@ -55,11 +55,23 @@ public:
     void startBlock(std::string const& jobId);
     void finishBlock(std::string const& jobId);
 
+    void incrOutGoingQueries();
+    void decrOutGoingQueries();
+
 private:
     void _setup();
+    void _setDelayAllPosts(bool delayAll);
+    void _post(std::string const& jobId);
+    void _delayPost(std::string const& jobId);
+    void _freeDelayedPosts();
 
-    std::atomic<int> _blockCount{0}; ///< Number of large result blocks in the system.
-    std::atomic<int> _runningCountMax{1}; ///< Max number of large result blocks to run concurrently.
+    std::mutex _mtx; ///< Mutex to protect all private variables.
+    int _outGoingQueries{0}; ///< number of user queries being sent out to workers.
+    int _blockCount{0}; ///< Number of large result blocks in the system.
+    int _runningCountMax{1}; ///< Max number of large result blocks to run concurrently.
+    bool _delayAllPosts{false};
+    int _delayedPosts{0}; ///< Number of posts that have been delayed.
+
 };
 
 

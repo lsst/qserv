@@ -170,7 +170,8 @@ void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, s
                 ru,        // dummy
                 millisecs, // Request = stringified milliseconds
                 rv[j]);
-        ex->add(job); // ex->add() is not thread safe.
+        auto jobQuery = ex->add(job); // ex->add() is not thread safe.
+        ex->startJob(jobQuery);
     }
 }
 
@@ -422,7 +423,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(false); // Can't let jobs run or they are untracked before squash
     for (int jobId=first; jobId<=last; ++jobId) {
         qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
-        ex->add(jobDesc);
+        auto jQuery = ex->add(jobDesc);
+        ex->startJob(jQuery);
         jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
         BOOST_CHECK(jq->isQueryCancelled() == false);

@@ -64,6 +64,7 @@
 #include "qdisp/QueryResource.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "util/EventThread.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
 
@@ -113,7 +114,7 @@ void Executive::setQueryId(QueryId id) {
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
-void Executive::add(JobDescription const& jobDesc) {
+JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
     JobQuery::Ptr jobQuery;
     {
@@ -121,7 +122,7 @@ void Executive::add(JobDescription const& jobDesc) {
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
                     << jobDesc.id() << ")");
-            return;
+            return jobQuery;
         }
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
@@ -131,12 +132,12 @@ void Executive::add(JobDescription const& jobDesc) {
 
         if (!_addJobToMap(jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
-            return;
+            return jobQuery;
         }
 
         if (!_track(jobQuery->getIdInt(), jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
-            return;
+            return jobQuery;
         }
 
         if (_empty.exchange(false)) {
@@ -148,8 +149,33 @@ void Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
 
+    // jobQuery->runJob(); &&& delete
+    return jobQuery;
+}
+
+
+/// Start all jobs that have been added.
+void Executive::startAllJobs() {
+    auto queue = std::make_shared<util::CommandQueue>();
+    auto pool = util::ThreadPool::newThreadPool(100, queue);
+    for (auto const& elem : _jobMap) {
+        JobQuery::Ptr const& jq = elem.second;
+        std::function<void(util::CmdData*)> func = [jq](util::CmdData*) {
+            jq->runJob();
+        };
+        auto cmd = std::make_shared<util::Command>(func);
+        queue->queCmd(cmd);
+    }
+    pool->endAll(); // Only runs after after all jobs have been run.
+    pool->waitForResize(0); // No time limit.
+}
+
+
+/// Start a specific job.
+void Executive::startJob(std::shared_ptr<JobQuery> const& jobQuery) {
     jobQuery->runJob();
 }
+
 
 
 /// If the executive has not been cancelled, this calls xrootd's Provision and
