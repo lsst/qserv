@@ -53,6 +53,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription const& jobDes
   _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
   _qid{qid},
   _idStr{QueryIdHelper::makeIdStr(qid, getIdInt())} {
+      _largeResultMgr = executive->getLargeResultMgr();
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << getIdStr() << " desc=" << _jobDescription);
 }
 

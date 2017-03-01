@@ -44,7 +44,7 @@ namespace qserv {
 namespace qdisp {
 
 
-/// Set the value of the xrootd semaphore for tracking large response blocks to start.
+/// Set the value of the SSI semaphore for tracking large response blocks to start.
 void LargeResultMgr::_setup() {
     std::lock_guard<std::mutex> lck(_mtx);
     for (int j = 0; j < _runningCountMax; ++j) {
@@ -56,7 +56,7 @@ void LargeResultMgr::_setup() {
 /// Check if any large result blocks can be run.
 void LargeResultMgr::startBlock(std::string const& jobId) {
     std::lock_guard<std::mutex> lck(_mtx);
-    ++_blockCount;
+    ++_blockCount; // Useful for debugging and an indicator of the load on the czar.
     LOGS(_log, LOG_LVL_DEBUG, jobId << " LargeResultMgr::start blockCount=" << _blockCount);
 }
 
@@ -95,8 +95,8 @@ void LargeResultMgr::decrOutGoingQueries() {
 
 
 /// If delayAll is true, all incoming large results will be delayed
+/// Must hold _mtx when calling this function.
 void LargeResultMgr::_setDelayAllPosts(bool delayAll) {
-    /// Must hold _mtx when calling this function.
     if (delayAll == _delayAllPosts) return;
     _delayAllPosts = delayAll;
     LOGS(_log, LOG_LVL_INFO, " change delayAll=" << _delayAllPosts);
@@ -106,11 +106,11 @@ void LargeResultMgr::_setDelayAllPosts(bool delayAll) {
 }
 
 
-/// Increment xrootd's large result semaphore to allow another large result to run.
+/// Increment SSI's large result semaphore to allow another large result to run.
 /// Must hold _mtx when calling this function.
 void LargeResultMgr::_post(std::string const& jobId) {
     auto rdrInfo = XrdSsiRequest::RestartDataResponse(XrdSsiRequest::RDR_Post);
-    LOGS(_log, LOG_LVL_DEBUG, jobId << " LargeResultMgr::finish blocks=" << _blockCount
+    LOGS(_log, LOG_LVL_DEBUG, jobId << " LargeResultMgr::_post blocks=" << _blockCount
             << " rdrInfo[qCount=" << rdrInfo.qCount << " rCount=" << rdrInfo.rCount
             << " iAllow=" << rdrInfo.iAllow << " fAllow=" << rdrInfo.fAllow << "]");
 }
@@ -127,10 +127,14 @@ void LargeResultMgr::_delayPost(std::string const& jobid) {
 /// Free some number of delayed posts
 /// Must hold _mtx when calling this function.
 void LargeResultMgr::_freeDelayedPosts() {
-    LOGS(_log, LOG_LVL_DEBUG, "freeDelayedPosts delayedPosts=" << _delayedPosts);
+    int delayedPosts = _delayedPosts;
     while (_delayedPosts > 0) {
         _post("freeDelayedPosts");
         --_delayedPosts;
+    }
+    if (delayedPosts != _delayedPosts) {
+        LOGS(_log, LOG_LVL_DEBUG, "freeDelayedPosts delayedPosts changed from " << delayedPosts
+                << " to " << _delayedPosts);
     }
 }
 

@@ -41,6 +41,7 @@
 #include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/LargeResultMgr.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "util/threadSafe.h"
@@ -217,7 +218,8 @@ BOOST_AUTO_TEST_CASE(Executive) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     SequentialInt sequence(0);
     SequentialInt chunkId(1234);
     int jobs = 0;
@@ -279,7 +281,8 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -314,7 +317,8 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // Setup Executive and RetryTest (JobQuery child)
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -410,7 +414,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     // Setup Executive and JobQueryTest child
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int chunkId = 14;
     int first = 1;
     int last = 20;

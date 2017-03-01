@@ -130,7 +130,7 @@ private:
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
 
     /// _holdState indicates the data is being held by xrootd for a large response using LargeResultMgr.
-    /// If the state is not NO_HOLD0, then this instance has decremented the shared semaphore and it
+    /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.
     enum HoldState {NO_HOLD0 = 0, GET_DATA1 = 1, MERGE2 = 2};
     void _setHoldState(HoldState state);

@@ -97,7 +97,7 @@ public:
      * @return a pointer to the czar.
      *
      */
-    static Ptr getCzar() { return _czarPtr; }
+    static Ptr getCzar() { return _czar; }
 
     /**
      * @return a pointer to the LargeResultMgr.
@@ -110,7 +110,7 @@ private:
     /// Private constructor for singleton.
     Czar(std::string const& configPath, std::string const& czarName);
 
-    static Ptr _czarPtr; ///< Pointer to single instance of the Czar.
+    static Ptr _czar; ///< Pointer to single instance of the Czar.
 
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;

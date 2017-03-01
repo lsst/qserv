@@ -89,8 +89,9 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms)
-    : _config{*c}, _messageStore{ms} {
+Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
+        std::shared_ptr<LargeResultMgr> const& largeResultMgr)
+    : _config(*c), _messageStore(ms), _largeResultMgr(largeResultMgr) {
     _setup();
 }
 
@@ -100,8 +101,9 @@ Executive::~Executive() {
 }
 
 
-Executive::Ptr Executive::newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms) {
-    Executive::Ptr exec{new Executive(c, ms)}; // make_shared dislikes private constructor.
+Executive::Ptr Executive::newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
+                                       std::shared_ptr<LargeResultMgr> const& largeResultMgr) {
+    Executive::Ptr exec{new Executive(c, ms, largeResultMgr)}; // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -149,7 +151,6 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
     LOGS(_log, LOG_LVL_DEBUG, msg);
     _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
 
-    // jobQuery->runJob(); &&& delete
     return jobQuery;
 }
 
@@ -157,7 +158,7 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
 /// Start all jobs that have been added.
 void Executive::startAllJobs() {
     auto queue = std::make_shared<util::CommandQueue>();
-    auto pool = util::ThreadPool::newThreadPool(100, queue);
+    auto pool = util::ThreadPool::newThreadPool(10, queue);
     for (auto const& elem : _jobMap) {
         JobQuery::Ptr const& jq = elem.second;
         std::function<void(util::CmdData*)> func = [jq](util::CmdData*) {

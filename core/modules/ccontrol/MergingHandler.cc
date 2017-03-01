@@ -150,9 +150,8 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             return false;
         }
         largeResult = _response->protoHeader.largeresult();
-        LOGS(_log, LOG_LVL_DEBUG, "&&&holdState&&& RESULT_EXTRA largeResult=" << largeResult);
         LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
-             << _response->protoHeader.size());
+             << _response->protoHeader.size() << " largeResult=" << largeResult);
         _buffer.resize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;

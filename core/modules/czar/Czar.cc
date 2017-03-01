@@ -57,11 +57,11 @@ namespace lsst {
 namespace qserv {
 namespace czar {
 
-Czar::Ptr Czar::_czarPtr;
+Czar::Ptr Czar::_czar;
 
 Czar::Ptr Czar::createCzar(std::string const& configPath, std::string const& czarName) {
-    _czarPtr.reset(new Czar(configPath, czarName));
-    return _czarPtr;
+    _czar.reset(new Czar(configPath, czarName));
+    return _czar;
 }
 
 // Constructors
@@ -80,13 +80,15 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
-    // &&& rename largeResultPoolSize in configuration
-    int largeResultPoolSize = _czarConfig.getLargeResultPoolSize();
-    // _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultPoolSize); &&& reinstate
-    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(1); // &&& delete
-    // rproc::InfileMerger::setLargeResultPoolSize(largeResultPoolSize);   &&& delete
+    int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
+    LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
+    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultConcurrent);
 
-    XrdSsiProviderClient->SetCBThreads(1000, 100);
+    int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
+    int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
+    LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
+    LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsInit=" << xrootdCBThreadsInit);
+    XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
@@ -139,7 +141,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb);
+        uq = _uqFactory->newUserQuery(query, defaultDb, _czar);
     }
     auto queryIdStr = uq->getQueryIdString();
 

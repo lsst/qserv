@@ -67,6 +67,11 @@ class InfileMergerConfig;
 
 namespace lsst {
 namespace qserv {
+
+namespace qdisp {
+class LargeResultMgr;
+}
+
 namespace ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
@@ -80,6 +85,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
+                    std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
                     std::string const& errorExtra);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
@@ -139,10 +145,11 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
-    QueryId _qMetaQueryId;      ///< Query ID in QMeta database
+    QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database
+    std::shared_ptr<qdisp::LargeResultMgr> _largeResultMgr;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
-    bool _killed;
+    bool _killed{false};
     std::mutex _killMutex;
     std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name

@@ -41,6 +41,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+class LargeResultMgr;
 class QueryRequest;
 
 /** This class is used to describe, monitor, and control a single query to a worker.
@@ -82,6 +83,10 @@ public:
     bool isQueryCancelled();
 
     void freeQueryResource(QueryResource* qr);
+
+    Executive::Ptr getExecutive() { return _executive.lock(); }
+
+    std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
 
     void provisioningFailed(std::string const& msg, int code);
     std::shared_ptr<QueryResource> getQueryResource() {
@@ -133,6 +138,8 @@ protected:
     // Cancellation
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
     util::InstanceCount _instC{"JobQuery"};
+
+    std::shared_ptr<LargeResultMgr> _largeResultMgr;
 };
 
 }}} // end namespace

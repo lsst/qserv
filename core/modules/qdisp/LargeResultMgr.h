@@ -25,9 +25,9 @@
 #define LSST_QSERV_QDISP_LARGERESULTMGR_H
 
 // System headers
-#include <atomic>
 #include <memory>
 #include <mutex>
+#include <string>
 
 // Qserv headers
 
@@ -39,7 +39,7 @@ namespace qdisp {
 /// at any given time on a czar. This should keep large results from
 /// bogging down the czar and allow new queries to be sent out.
 ///
-/// This uses xrootd's XrdSsiRequest::RestartDataResponse function and
+/// This uses SSI's XrdSsiRequest::RestartDataResponse function and
 /// the ProcessResponseData callback return value (see QueryRequest::ProcessResponseData).
 /// XrdSsiRequest keeps a semaphore of how many blocks can be started.
 /// Every time it starts a held block, it decrements the semaphore. When
@@ -49,8 +49,8 @@ class LargeResultMgr {
 public:
     using Ptr = std::shared_ptr<LargeResultMgr>;
 
-    LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} { _setup(); };
-    LargeResultMgr() { _setup(); };
+    LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} { _setup(); }
+    LargeResultMgr() { _setup(); }
 
     void startBlock(std::string const& jobId);
     void finishBlock(std::string const& jobId);

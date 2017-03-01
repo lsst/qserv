@@ -97,8 +97,6 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-// util::ThreadPool::Ptr InfileMerger::_largeResultPool; &&& delete
-// std::mutex largeResultPoolMutex; &&& delete
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
@@ -113,30 +111,12 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     if (!_setupConnection()) {
         throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
-
-    /* &&& delete
-    if (_largeResultPool == nullptr) {
-        throw InfileMergerError(util::ErrorCode::INTERNAL, "InfileMerger largeResultPool uninitialized");
-    }
-    */
 }
+
 
 InfileMerger::~InfileMerger() {
 }
 
-/* &&&
-int InfileMerger::setLargeResultPoolSize(int size) {
-    std::lock_guard<std::mutex> lock(largeResultPoolMutex);
-    size = std::max(1, size); // size must be at least 1
-    if (_largeResultPool == nullptr) {
-        _largeResultPool = util::ThreadPool::newThreadPool(size, nullptr);
-    } else {
-        _largeResultPool->resize(size);
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger::setLargeResultPoolSize sz=" << size);
-    return size;
-}
-*/
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     static std::atomic<int> cmdCount{0}; // Count of large results in process.
@@ -147,11 +127,10 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     std::string queryIdStr = QueryIdHelper::makeIdStr(
             response->result.queryid(), response->result.jobid());
-    bool largeResult = response->result.largeresult(); // &&& can probably be deleted
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
          << queryIdStr
-         << " largeResult=" << largeResult
+         << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
          << ", rowCount=" << response->result.rowcount()
@@ -176,37 +155,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
 
     bool ret = false;
-    auto runSql = [this, &response, &queryIdStr, &ret](util::CmdData*){ // &&& remove this lambda
-        std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
-        std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
-        auto start = std::chrono::system_clock::now();
-        ret = _applyMysql(infileStatement);
-        auto end = std::chrono::system_clock::now();
-        auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDur=" << mergeDur.count());
-    };
-
-    /* &&&
-    if (largeResult) {
-        // Queuing on the limited size thread pool should keep the czar from getting
-        // crushed trying to write hundreds of large result transmits at the same time
-        // as well as ensure they are handled in a fifo manner.
-        auto start = std::chrono::system_clock::now();
-        auto ct = std::make_shared<util::CommandTracked>(runSql);
-        _largeResultPool->getQueue()->queCmd(ct);
-        auto cc = ++cmdCount;
-        LOGS(_log, LOG_LVL_DEBUG, "largeResult cmdCount=" << cc);
-        ct->waitComplete();
-        --cmdCount;
-        auto end = std::chrono::system_clock::now();
-        auto mergeDurWait = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDurWait=" << mergeDurWait.count());
-    } else {
-        // First transmit, run asap to avoid slowing down the worker.
-        runSql(nullptr);
-    }
-    */
-    runSql(nullptr);
+    std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+    std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
+    auto start = std::chrono::system_clock::now();
+    ret = _applyMysql(infileStatement);
+    auto end = std::chrono::system_clock::now();
+    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " mergeDur=" << mergeDur.count());
     return ret;
 }
 
