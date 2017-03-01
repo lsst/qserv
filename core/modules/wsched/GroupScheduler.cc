@@ -97,12 +97,15 @@ wbase::Task::Ptr GroupQueue::peekTask() {
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 1");
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 2");
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 3");
     // Start at the front of the queue looking for a group to accept the task.
     bool queued = false;
     for(auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
@@ -111,15 +114,19 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
             queued = true;
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 4");
     if (!queued) {
         // Wasn't inserted into an existing group, need to make a new group.
         auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 4");
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 6");
     LOGS(_log, LOG_LVL_WARN, getName() << " queCmd " << t->getIdStr()
          << " uqCount=" << uqCount);
     util::CommandQueue::_cv.notify_all();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& group::queCmd 7");
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.

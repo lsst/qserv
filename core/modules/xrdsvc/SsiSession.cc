@@ -100,8 +100,9 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     // more data.
     LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
     auto taskMsg = std::make_shared<proto::TaskMsg>();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 1");
     bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
-
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 2");
     if (!ok) {
         std::ostringstream os;
         os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
@@ -119,22 +120,30 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         return;
     }
 
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 3");
     // Once BindRequest has been called, we don't want to send errors back to xrootd
     // if the task has been cancelled. Also, task needs to exist before binding
     // to avoid any chance of missing the cancel call.
     auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 4");
     _addTask(task);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 5");
     t.start();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 6");
     BindRequest(req, this); // Step 5
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 7");
     t.stop();
     // Now that the request is decoded (successfully or not), release the
     // xrootd request buffer. To avoid data races, this must happen before
     // the task is handed off to another thread for processing, as there is a
     // reference to this SsiSession inside the reply channel for the task,
     // and after the call to BindRequest.
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 8");
     ReleaseRequestBuffer();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 9");
     t.start();
     _processor->processTask(task); // Queues task to be run later.
+    LOGS(_log, LOG_LVL_DEBUG, "&&& ProcessRequest 10");
     t.stop();
     LOGS(_log, LOG_LVL_DEBUG, "BindRequest took " << t.getElapsed() << " seconds");
     LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");

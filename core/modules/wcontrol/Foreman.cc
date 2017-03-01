@@ -93,9 +93,13 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
         }
     };
 
+    LOGS(_log, LOG_LVL_DEBUG, "&&& processTask 1");
     task->setFunc(func);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& processTask 2");
     _queries->addTask(task);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& processTask 3");
     _scheduler->queCmd(task);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& processTask 4");
 }
 
 }}} // namespace

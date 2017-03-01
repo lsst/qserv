@@ -123,8 +123,11 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     for(int j=0; j < size; ++j) {
         _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& Task 1");
     _scanInfo.scanRating = msg->scanpriority();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& Task 2");
     _scanInfo.sortTablesSlowestFirst();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& Task 3");
 }
 
 Task::~Task() {
