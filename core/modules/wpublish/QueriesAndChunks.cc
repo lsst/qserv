@@ -93,19 +93,13 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) {
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 1");
     std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 2");
     QueryStatistics::Ptr& stats = _queryStats[qid];
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 3");
     if (stats == nullptr) {
         stats = std::make_shared<QueryStatistics>(qid);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 4");
     guardStats.unlock();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 5");
     stats->addTask(task);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& addTask 6");
 }
 
 
@@ -116,11 +110,9 @@ void QueriesAndChunks::queuedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::queuedTask lock");
         std::lock_guard<std::mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_size += 1;
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::queuedTask free");
     }
 }
 
@@ -132,11 +124,9 @@ void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::startedTask lock");
         std::lock_guard<std::mutex>(stats->_qStatsMtx);
         stats->_touched = now;
         stats->_tasksRunning += 1;
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::startedTask free");
     }
 }
 
@@ -147,21 +137,22 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     double taskDuration = (double)(task->finished(now).count());
     taskDuration /= 60000.0; // convert to minutes.
 
-    QueryStatistics::Ptr stats = getStats(task->getQueryId());
+    QueryId qId = task->getQueryId();
+    QueryStatistics::Ptr stats = getStats(qId);
     if (stats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::finishedTask lock");
-        std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
-        stats->_touched = now;
-        stats->_tasksRunning -= 1;
-        stats->_tasksCompleted += 1;
-        stats->_totalTimeMinutes += taskDuration;
-        if (stats->_isMostlyDead()) {
-            LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx _deadMtx QueriesAndChunks::finishedTask lock b");
-            std::lock_guard<std::mutex> gd(_deadMtx);
-            _deadList.push_back(stats);
-            LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx _deadMtx QueriesAndChunks::finishedTask free b");
+        bool mostlyDead = false;
+        {
+            std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
+            stats->_touched = now;
+            stats->_tasksRunning -= 1;
+            stats->_tasksCompleted += 1;
+            stats->_totalTimeMinutes += taskDuration;
+            mostlyDead = stats->_isMostlyDead();
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::finishedTask free");
+        if (mostlyDead) {
+            std::lock_guard<std::mutex> gd(_newlyDeadMtx);
+            (*_newlyDeadQueries)[qId] = stats;
+        }
     }
 
     _finishedTaskForChunk(task, taskDuration);
@@ -193,21 +184,31 @@ void QueriesAndChunks::removeDead() {
     std::vector<QueryStatistics::Ptr> dList;
     auto now = std::chrono::system_clock::now();
     {
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx _deadMtx QueriesAndChunks::removeDead lock");
-        std::lock_guard<std::mutex> g(_deadMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadList size=" << _deadList.size());
-        auto iter = _deadList.begin();
-        while (iter != _deadList.end()) {
-            if ((*iter)->isDead(_deadAfter, now)) {
-                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr((*iter)->_queryId)
+        std::shared_ptr<DeadQueriesType> newlyDead;
+        {
+            std::lock_guard<std::mutex> gnd(_newlyDeadMtx);
+            newlyDead = _newlyDeadQueries;
+            _newlyDeadQueries.reset(new DeadQueriesType);
+        }
+
+        std::lock_guard<std::mutex> gd(_deadMtx);
+        // Copy newlyDead into dead.
+        for(auto const& elem : *newlyDead) {
+            _deadQueries[elem.first] = elem.second;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadQueries size=" << _deadQueries.size());
+        auto iter = _deadQueries.begin();
+        while (iter != _deadQueries.end()) {
+            auto const& statPtr = iter->second;
+            if (statPtr->isDead(_deadAfter, now)) {
+                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(statPtr->_queryId)
                      << " QueriesAndChunks::removeDead added to list");
-                dList.push_back(*iter);
-                iter = _deadList.erase(iter);
+                dList.push_back(statPtr);
+                iter = _deadQueries.erase(iter);
             } else {
                 ++iter;
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx _deadMtx QueriesAndChunks::removeDead free");
     }
 
     for (auto const& dead : dList) {
@@ -217,18 +218,16 @@ void QueriesAndChunks::removeDead() {
 
 
 /// Remove a statistics for a user query.
+/// Query Ids should be unique for the life of the system, so erasing
+/// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::removeDead lock_a");
     std::unique_lock<std::mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::removeDead free_a");
     LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " Queries::removeDead");
 
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::removeDead lock_b");
     std::lock_guard<std::mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::removeDead free_b");
 }
 
 /// @return the statistics for a user query.
@@ -269,7 +268,6 @@ void QueriesAndChunks::examineAll() {
         // Copy all the running tasks that are on ScanSchedulers.
         std::vector<wbase::Task::Ptr> runningTasks;
         {
-            LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::examineAll lock");
             std::lock_guard<std::mutex> lock(uq->_qStatsMtx);
             for (auto const& ele : uq->_taskMap) {
                 auto const& task = ele.second;
@@ -280,7 +278,6 @@ void QueriesAndChunks::examineAll() {
                     }
                 }
             }
-            LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::examineAll free");
         }
 
         // For each running task, check if it is taking too long, or if the query is taking too long.
@@ -409,33 +406,26 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
 
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::addTask lock");
     std::lock_guard<std::mutex> guard(_qStatsMtx);
     _taskMap.insert(std::make_pair(task->getJobId(), task));
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::addTask free");
 }
 
 
 /// @return the number of Tasks that have been booted for this user query.
 int QueryStatistics::getTasksBooted() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::getTasksBooted lock");
     std::lock_guard<std::mutex> guard(_qStatsMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::getTasksBooted free");
     return _tasksBooted;
 }
 
 
 /// @return true if this query is done and has not been touched for deadTime.
 bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::isDead lock");
     std::lock_guard<std::mutex> guard(_qStatsMtx);
     if (_isMostlyDead()) {
         if (now - _touched > deadTime) {
-            LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::isDead free1");
             return true;
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx QueriesAndChunks::isDead free2");
     return false;
 }
 
@@ -447,7 +437,6 @@ bool QueryStatistics::_isMostlyDead() const {
 }
 
 std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx operator<< lock");
     std::lock_guard<std::mutex> gd(q._qStatsMtx);
     os << QueryIdHelper::makeIdStr(q._queryId)
        << " time="           << q._totalTimeMinutes
@@ -455,7 +444,6 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
        << " tasksCompleted=" << q._tasksCompleted
        << " tasksRunning="   << q._tasksRunning
        << " tasksBooted="    << q._tasksBooted;
-    LOGS(_log, LOG_LVL_DEBUG, "&&&_qStatsMtx operator<< free");
     return os;
 }
 
@@ -468,7 +456,6 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
 /// probably not very helpful.
 std::vector<wbase::Task::Ptr>
 QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr const& sched) {
-
     std::vector<wbase::Task::Ptr> removedList; // Return value;
 
     // Find the user query.
