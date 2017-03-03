@@ -205,8 +205,13 @@ private:
     std::atomic<bool> _loopRemoval{true}; ///< While true, check to see if any Queries can be removed.
     /// A user query must be complete and inactive this long before it can be considered dead.
     std::chrono::seconds _deadAfter{std::chrono::minutes(5)};
-    std::mutex _deadMtx; ///< Protects _deadList.
-    std::vector<QueryStatistics::Ptr> _deadList; ///< List of user queries that might be dead.
+
+    std::mutex _deadMtx; ///< Protects _deadQueries.
+    std::mutex _newlyDeadMtx; ///< Protects _newlyDeadQueries.
+    using DeadQueriesType = std::map<QueryId, QueryStatistics::Ptr>;
+    DeadQueriesType _deadQueries; ///< Map of user queries that might be dead.
+    std::shared_ptr<DeadQueriesType> _newlyDeadQueries{new DeadQueriesType()};
+
 
     // Members for running a separate thread to examine all the running Tasks on the scan schedulers
     // and remove those that are taking too long (boot them). If too many Tasks in a single user query

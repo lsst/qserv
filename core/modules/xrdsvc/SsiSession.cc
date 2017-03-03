@@ -101,7 +101,6 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
-
     if (!ok) {
         std::ostringstream os;
         os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();

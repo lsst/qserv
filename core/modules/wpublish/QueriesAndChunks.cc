@@ -93,13 +93,11 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) {
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
-
     std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
     QueryStatistics::Ptr& stats = _queryStats[qid];
     if (stats == nullptr) {
         stats = std::make_shared<QueryStatistics>(qid);
     }
-
     guardStats.unlock();
     stats->addTask(task);
 }
@@ -139,16 +137,21 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     double taskDuration = (double)(task->finished(now).count());
     taskDuration /= 60000.0; // convert to minutes.
 
-    QueryStatistics::Ptr stats = getStats(task->getQueryId());
+    QueryId qId = task->getQueryId();
+    QueryStatistics::Ptr stats = getStats(qId);
     if (stats != nullptr) {
-        std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
-        stats->_touched = now;
-        stats->_tasksRunning -= 1;
-        stats->_tasksCompleted += 1;
-        stats->_totalTimeMinutes += taskDuration;
-        if (stats->_isMostlyDead()) {
-            std::lock_guard<std::mutex> gd(_deadMtx);
-            _deadList.push_back(stats);
+        bool mostlyDead = false;
+        {
+            std::lock_guard<std::mutex> gs(stats->_qStatsMtx);
+            stats->_touched = now;
+            stats->_tasksRunning -= 1;
+            stats->_tasksCompleted += 1;
+            stats->_totalTimeMinutes += taskDuration;
+            mostlyDead = stats->_isMostlyDead();
+        }
+        if (mostlyDead) {
+            std::lock_guard<std::mutex> gd(_newlyDeadMtx);
+            (*_newlyDeadQueries)[qId] = stats;
         }
     }
 
@@ -181,15 +184,27 @@ void QueriesAndChunks::removeDead() {
     std::vector<QueryStatistics::Ptr> dList;
     auto now = std::chrono::system_clock::now();
     {
-        std::lock_guard<std::mutex> g(_deadMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadList size=" << _deadList.size());
-        auto iter = _deadList.begin();
-        while (iter != _deadList.end()) {
-            if ((*iter)->isDead(_deadAfter, now)) {
-                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr((*iter)->_queryId)
+        std::shared_ptr<DeadQueriesType> newlyDead;
+        {
+            std::lock_guard<std::mutex> gnd(_newlyDeadMtx);
+            newlyDead = _newlyDeadQueries;
+            _newlyDeadQueries.reset(new DeadQueriesType);
+        }
+
+        std::lock_guard<std::mutex> gd(_deadMtx);
+        // Copy newlyDead into dead.
+        for(auto const& elem : *newlyDead) {
+            _deadQueries[elem.first] = elem.second;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadQueries size=" << _deadQueries.size());
+        auto iter = _deadQueries.begin();
+        while (iter != _deadQueries.end()) {
+            auto const& statPtr = iter->second;
+            if (statPtr->isDead(_deadAfter, now)) {
+                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(statPtr->_queryId)
                      << " QueriesAndChunks::removeDead added to list");
-                dList.push_back(*iter);
-                iter = _deadList.erase(iter);
+                dList.push_back(statPtr);
+                iter = _deadQueries.erase(iter);
             } else {
                 ++iter;
             }
@@ -203,6 +218,8 @@ void QueriesAndChunks::removeDead() {
 
 
 /// Remove a statistics for a user query.
+/// Query Ids should be unique for the life of the system, so erasing
+/// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     std::unique_lock<std::mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
@@ -414,7 +431,7 @@ bool QueryStatistics::isDead(std::chrono::seconds deadTime, std::chrono::system_
 
 
 /// @return true if all Tasks for this query are complete.
-/// Precondition, _mx must be locked.
+/// Precondition, _qStatsMtx must be locked.
 bool QueryStatistics::_isMostlyDead() const {
     return _tasksCompleted >= _size;
 }
@@ -439,7 +456,6 @@ std::ostream& operator<<(std::ostream& os, QueryStatistics const& q) {
 /// probably not very helpful.
 std::vector<wbase::Task::Ptr>
 QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr const& sched) {
-
     std::vector<wbase::Task::Ptr> removedList; // Return value;
 
     // Find the user query.
