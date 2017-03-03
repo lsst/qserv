@@ -81,7 +81,6 @@ BOOST_AUTO_TEST_CASE(Vector) {
  * Print a list of string with custom formatting
  */
 BOOST_AUTO_TEST_CASE(Array) {
-
     test::output_test_stream output;
     std::array<std::string, 6> iterable { {"1", "2", "3", "4", "5", "6"} };
     auto start = std::next(iterable.begin(), 2);

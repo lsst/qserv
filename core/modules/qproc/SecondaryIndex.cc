@@ -129,38 +129,44 @@ private:
         std::vector<std::string> const& params,
         QueryType const& query_type) {
 
-
         LOGS(_log, LOG_LVL_TRACE, "params: " << util::printable(params));
 
-        std::string const& db = params[0];
-        std::string const& table = params[1];
-        std::string const& key_column = params[2];
+        auto iter = params.begin();
+        std::string const& db = *(iter++); // params[0]
+        std::string const& table = *(iter++); // params[1]
+        std::string const& key_column = *(iter++); // params[2]
 
-        std::string sql;
         std::string index_table = _buildIndexTableName(db, table);
+        std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
+                          " FROM " + index_table +
+                          " WHERE " + key_column;
         if (query_type == QueryType::IN) {
-            char const IN_LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s IN (%s)";
-            char const *const empty_bracket = "";
-            auto id_start = std::next(params.begin(), 3);
-            auto ids_formatter = util::printable( id_start, params.end(), empty_bracket, empty_bracket);
-            sql = (boost::format(IN_LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
-                                                         % SUB_CHUNK_COLUMN
-                                                         % index_table
-                                                         % key_column
-                                                         % ids_formatter).str();
+            std::string secondaryVals; // params[3] to end
+            bool first = true;
+            // Do not use util::printable here. It adds unwanted characters.
+            for (; iter != params.end(); ++iter) {
+                if (first) {
+                    first = false;
+                } else {
+                    secondaryVals += ", ";
+                }
+                secondaryVals += *iter;
+            }
+            sql += " IN (" + secondaryVals + ")";
+
         } else if (query_type == QueryType::BETWEEN) {
             if (params.size() != 5) {
                 throw Bug("Incorrect parameters for bounded secondary index lookup ");
             }
-            char const BETWEEN_LOOKUP_SQL_TEMPLATE[] = "SELECT %s, %s FROM %s WHERE %s BETWEEN %s AND %s";
-            sql = (boost::format(BETWEEN_LOOKUP_SQL_TEMPLATE) % CHUNK_COLUMN
-                                                              % SUB_CHUNK_COLUMN % index_table % key_column % params[3]
-                                                              % params[4]).str();
+            std::string const& par3 = *(iter++);
+            std::string const& par4 = *iter;
+            sql += " BETWEEN " + par3 + " AND " + par4;
         }
 
-        LOGS(_log, LOG_LVL_TRACE, "sql: " << sql);
+        LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
         return sql;
     }
+
 
     /**
      *  Add results from secondary index sql query to existing ChunkSpec vector
