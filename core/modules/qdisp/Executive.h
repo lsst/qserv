@@ -51,6 +51,7 @@ namespace qserv {
 namespace qdisp {
 
 class JobQuery;
+class LargeResultMgr;
 class MessageStore;
 class QueryResource;
 
@@ -75,12 +76,19 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms);
+    static Executive::Ptr newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
+            std::shared_ptr<LargeResultMgr> const& largeResultMgr);
 
     ~Executive();
 
     /// Add an item with a reference number
-    void add(JobDescription const& s);
+    std::shared_ptr<JobQuery> add(JobDescription const& s);
+
+    /// Start all jobs added with add().
+    void startAllJobs();
+
+    /// Start a specific job, jobQuery must have been created with add();
+    void startJob(std::shared_ptr<JobQuery> const& jobQuery);
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -111,11 +119,14 @@ public:
 
     XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
 
+    std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
+
     bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
                          std::shared_ptr<QueryResource> const& sourceQr);
 
 private:
-    Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms);
+    Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
+              std::shared_ptr<LargeResultMgr> const& largeResultMgr);
 
     void _setup();
 
@@ -137,6 +148,7 @@ private:
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
+    std::shared_ptr<LargeResultMgr> _largeResultMgr;
 
     /** Execution errors */
     util::MultiError _multiError;

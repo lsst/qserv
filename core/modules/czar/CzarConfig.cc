@@ -79,7 +79,9 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
                         configStore.get("qmeta.db", "qservMeta")),
        _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
        _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
-       _largeResultPoolSize(configStore.getInt("tuning.largeResultPoolSize", 3)) {
+       _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
+       _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
+       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {

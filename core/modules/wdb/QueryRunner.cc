@@ -233,8 +233,15 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         tSize += rawRow->ByteSize();
         ++rowCount;
 
+        unsigned int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
+
+        // Use small blocks until it is considered a large result.
+        if (!_largeResult) {
+            szLimit = std::min(szLimit, _initialBlockSize);
+        }
+
         // Each element needs to be mysql-sanitized
-        if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
+        if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
@@ -304,6 +311,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     _protoHeader->set_size(msg.size());
     _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
     _protoHeader->set_wname(getHostname());
+    _protoHeader->set_largeresult(_largeResult);
     std::string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 

@@ -43,7 +43,10 @@ emptyChunkListFile = {{QSERV_DATA_DIR}}/qserv/emptyChunks.txt
 
 [tuning]
 #memoryEngine = yes
-largeResultPoolSize = 3
+largeResultConcurrentMerges = 3
+# xrootdCBThreadsInit must be less than xrootdCBThreadsMax
+xrootdCBThreadsMax = 500
+xrootdCBThreadsInit = 50
 
 #[debug]
 #chunkLimit = -1

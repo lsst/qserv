@@ -114,10 +114,26 @@ public:
 
     /* Get number of threads to use for collecting large result data.
      *
-     * @return the size of the thread pool for large results.
+     * @return the number of blocks that can be merged concurrently.
      */
-    int getLargeResultPoolSize() const {
-         return _largeResultPoolSize;
+    int getLargeResultConcurrentMerges() const {
+         return _largeResultConcurrentMerges;
+    }
+
+    /* Get the maximum number of threads for xrootd to use.
+     *
+     * @return the maximum number of threads for xrootd to use.
+     */
+    int getXrootdCBThreadsMax() const {
+        return _xrootdCBThreadsMax;
+    }
+
+    /* Get the initial number of threads for xrootd to create and maintain.
+     *
+     * @return the initial number of threads for xrootd to use.
+     */
+    int getXrootdCBThreadsInit() const {
+        return _xrootdCBThreadsInit;
     }
 
 private:
@@ -133,7 +149,9 @@ private:
     mysql::MySqlConfig const _mySqlQmetaConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
-    int _largeResultPoolSize;
+    int const _largeResultConcurrentMerges;
+    int const _xrootdCBThreadsMax;
+    int const _xrootdCBThreadsInit;
 };
 
 }}} // namespace lsst::qserv::czar

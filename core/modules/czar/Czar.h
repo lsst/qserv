@@ -40,6 +40,7 @@
 #include "czar/SubmitResult.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "qdisp/LargeResultMgr.h"
 #include "util/ConfigStore.h"
 
 namespace lsst {
@@ -57,15 +58,7 @@ namespace czar {
 
 class Czar {
 public:
-
-    /**
-     * Make new instance.
-     *
-     * @param configPath:   Path to the configuration file.
-     * @param czarName:     Name if this instance, must be unique. If empty name
-     *                      is given then random name will be constructed.
-     */
-    Czar(std::string const& configPath, std::string const& czarName);
+    using Ptr = std::shared_ptr<Czar>;
 
     Czar(Czar const&) = delete;
     Czar& operator=(Czar const&) = delete;
@@ -89,9 +82,35 @@ public:
      */
     std::string killQuery(std::string const& query, std::string const& clientId);
 
+    /**
+     * Make new instance.
+     *
+     * @param configPath:   Path to the configuration file.
+     * @param czarName:     Name if this instance, must be unique. If empty name
+     *                      is given then random name will be constructed.
+     */
+    static Ptr createCzar(std::string const& configPath, std::string const& czarName);
+
+    /**
+     * During startup, this may return nullptr.
+     *
+     * @return a pointer to the czar.
+     *
+     */
+    static Ptr getCzar() { return _czar; }
+
+    /**
+     * @return a pointer to the LargeResultMgr.
+     */
+    qdisp::LargeResultMgr::Ptr getLargeResultMgr() { return _largeResultMgr; }
+
 protected:
 
 private:
+    /// Private constructor for singleton.
+    Czar(std::string const& configPath, std::string const& czarName);
+
+    static Ptr _czar; ///< Pointer to single instance of the Czar.
 
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;
@@ -104,6 +123,8 @@ private:
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
     ClientToQuery _clientToQuery;       ///< maps client ID to query
     std::mutex _mutex;                  ///< protects both _uqFactory and _clientToQuery
+
+    qdisp::LargeResultMgr::Ptr _largeResultMgr; ///< Large result manager for all user queries.
 };
 
 }}} // namespace lsst::qserv::czar

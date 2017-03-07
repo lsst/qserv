@@ -74,6 +74,7 @@
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
+#include "czar/Czar.h"
 #include "global/constants.h"
 #include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
@@ -142,11 +143,12 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  qmeta::CzarId czarId,
+                                 std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
                                  std::string const& errorExtra)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
-       _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _qMetaQueryId(0),
-       _killed(false), _errorExtra(errorExtra) {
+       _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _largeResultMgr(largeResultMgr),
+       _errorExtra(errorExtra) {
 }
 
 std::string UserQuerySelect::getError() const {
@@ -203,6 +205,7 @@ void UserQuerySelect::submit() {
     std::vector<int> chunks;
     int msgCount = 0;
     int sequence = 0;
+
     // Writing query for each chunk, stop if query is cancelled.
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
@@ -229,6 +232,9 @@ void UserQuerySelect::submit() {
     }
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
+    _largeResultMgr->incrOutGoingQueries();
+    _executive->startAllJobs();
+    _largeResultMgr->decrOutGoingQueries();
 
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.

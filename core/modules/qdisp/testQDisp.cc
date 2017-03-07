@@ -41,6 +41,7 @@
 #include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/LargeResultMgr.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "util/threadSafe.h"
@@ -127,7 +128,7 @@ public:
     virtual std::vector<char>& nextBuffer() {
         return _vect;
     }
-    virtual bool flush(int bLen, bool& last) {
+    virtual bool flush(int bLen, bool& last, bool& largeResult) {
         return bLen == magic();
     }
     virtual void errorFlush(std::string const& msg, int code) {
@@ -170,7 +171,8 @@ void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, s
                 ru,        // dummy
                 millisecs, // Request = stringified milliseconds
                 rv[j]);
-        ex->add(job); // ex->add() is not thread safe.
+        auto jobQuery = ex->add(job); // ex->add() is not thread safe.
+        ex->startJob(jobQuery);
     }
 }
 
@@ -216,7 +218,8 @@ BOOST_AUTO_TEST_CASE(Executive) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     SequentialInt sequence(0);
     SequentialInt chunkId(1234);
     int jobs = 0;
@@ -278,7 +281,8 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     std::string str = qdisp::Executive::Config::getMockStr();
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -313,7 +317,8 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // Setup Executive and RetryTest (JobQuery child)
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int jobId = 93;
     int chunkId = 14;
     std::string chunkResultName = "mock"; //ttn.make(cs.chunkId);
@@ -409,7 +414,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     // Setup Executive and JobQueryTest child
     qdisp::Executive::Config::Ptr conf = std::make_shared<qdisp::Executive::Config>(str);
     std::shared_ptr<qdisp::MessageStore> ms = std::make_shared<qdisp::MessageStore>();
-    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms);
+    qdisp::LargeResultMgr::Ptr lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
+    qdisp::Executive::Ptr ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
     int chunkId = 14;
     int first = 1;
     int last = 20;
@@ -422,7 +428,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(false); // Can't let jobs run or they are untracked before squash
     for (int jobId=first; jobId<=last; ++jobId) {
         qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
-        ex->add(jobDesc);
+        auto jQuery = ex->add(jobDesc);
+        ex->startJob(jQuery);
         jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
         BOOST_CHECK(jq->isQueryCancelled() == false);

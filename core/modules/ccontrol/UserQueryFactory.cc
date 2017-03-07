@@ -44,6 +44,7 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/Czar.h"
 #include "czar/CzarConfig.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
@@ -93,7 +94,8 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& query,
-                               std::string const& defaultDb) {
+                               std::string const& defaultDb,
+                               std::shared_ptr<czar::Czar> const& czar) {
     std::string dbName, tableName;
 
     if (UserQueryType::isSelect(query)) {
@@ -119,12 +121,14 @@ UserQueryFactory::newUserQuery(std::string const& query,
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::newExecutive(_impl->executiveConfig, messageStore);
+            executive = qdisp::Executive::newExecutive(_impl->executiveConfig, messageStore,
+                                                       czar->getLargeResultMgr());
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->qMetaCzarId, errorExtra);
+                                                    _impl->qMetaCzarId, czar->getLargeResultMgr(),
+                                                    errorExtra);
         if (sessionValid) {
             uq->qMetaRegister();
             uq->setupChunking();

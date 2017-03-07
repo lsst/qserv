@@ -61,11 +61,10 @@ namespace proxy {
 
 void
 initCzar(std::string const& czarName) {
-
     std::lock_guard<std::mutex> lock(_czarMutex);
 
     // ignore repeated calls (they are hard to filter on mysql-proxy side)
-    if (::_czar) {
+    if (czar::Czar::getCzar() != nullptr) {
         return;
     }
 
@@ -91,8 +90,9 @@ initCzar(std::string const& czarName) {
         }
     }
 
-    ::_czar = std::make_shared<lsst::qserv::czar::Czar>(qConfig, name);
+    _czar = czar::Czar::createCzar(qConfig, name);
 }
+
 
 czar::SubmitResult
 submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {

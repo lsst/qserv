@@ -45,6 +45,11 @@
 
 namespace lsst {
 namespace qserv {
+
+namespace czar {
+class Czar;
+}
+
 namespace ccontrol {
 
 ///  UserQueryFactory breaks construction of user queries into two phases:
@@ -61,7 +66,8 @@ public:
     /// @param defaultDb:   Default database name, may be empty
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
-                                std::string const& defaultDb);
+                                std::string const& defaultDb,
+                                std::shared_ptr<czar::Czar> const& czar);
 
 private:
     class Impl;

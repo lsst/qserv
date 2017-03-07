@@ -98,6 +98,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) {
     }
     _xrdSsiSession = s;
 
+
     QueryRequest::Ptr qr = std::make_shared<QueryRequest>(s, _jobQuery);
     _jobQuery->setQueryRequest(qr);
 

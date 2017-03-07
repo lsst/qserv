@@ -89,6 +89,7 @@ public:
         p->set_protocol(2);
         p->set_size(500);
         p->set_md5(std::string("1234567890abcdef0"));
+        p->set_largeresult(false);
         return p;
     }
 private:
