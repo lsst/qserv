@@ -1,5 +1,6 @@
 [spec]
 data_volume_host_path:/mnt/data/qserv
 host:myhost.in2p3.fr
-image=qserv/qserv:dev_master
+image:qserv/qserv:dev_master
+master_hostname:qservmaster.lsst.org
 pod_name:master

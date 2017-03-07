@@ -5,14 +5,14 @@ metadata:
   labels:
     app: qserv
 spec:
-  hostname: <POD_NAME>
+  hostNetwork: true
   subdomain: qserv
   containers:
     - name: master
       image: "<MASTER_IMAGE>"
       env:
         - name: QSERV_MASTER
-          value: "master.qserv"
+          value: "<MASTER_HOSTNAME>"
     # command: ["tail","-f", "/dev/null"]
       securityContext:
         capabilities:

@@ -113,6 +113,7 @@ if __name__ == "__main__":
 
         yaml_data['spec']['containers'][0]['name'] = config.get('spec', 'pod_name')
         yaml_data['spec']['containers'][0]['image'] = config.get('spec', 'image')
+        yaml_data['spec']['containers'][0]['env'][0]['value'] = config.get('spec', 'master_hostname')
         yaml_data['spec']['nodeSelector']['kubernetes.io/hostname'] = config.get('spec', 'host')
 
         _add_volume(config.get('spec', 'host_data_dir'), '/qserv/data', 'data-volume')

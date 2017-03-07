@@ -22,5 +22,3 @@ do
     echo "Join $qserv_node to Kubernetes cluster"
     ssh -t -F "$SSH_CFG" "$qserv_node" "sudo $JOIN_CMD"
 done
-
-ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl apply -f https://git.io/weave-kube"

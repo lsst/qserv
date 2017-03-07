@@ -52,6 +52,7 @@ host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR
 host: $MASTER
 image: $MASTER_IMAGE
+master_hostname: $MASTER
 pod_name: master
 EOF
 
@@ -73,6 +74,7 @@ host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR
 host: $host
 image: $WORKER_IMAGE
+master_hostname: $MASTER
 pod_name: worker-$j
 EOF
     "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
