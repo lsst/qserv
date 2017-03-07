@@ -44,30 +44,34 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
    git clone git@github.com:lsst/qserv.git
    cd ${SRC_DIR}/qserv/admin/tools/docker/deployment/kubernetes
    # admin/ contains script which require ssh access to node
-   # orchestration/ is copied to k8s orchestration node
+   # orchestration/ is copied to k8s orchestration node and contains scripts
+   # which manage pods
 
-create and adapt next example scripts to prepare multinode test execution:
-TODO (cf ~/.lsst/qserv-cluster)
-In :file:`env.sh`, prepare your host list and set the name of your images:
+Create and adapt next example scripts to prepare multinode test execution:
+In :file:`env.sh`, set your volume and the tag of your qserv images:
 
-.. literalinclude:: ../../../admin/tools/docker/deployment/parallel/env.example.sh
+.. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/env.example.sh
    :language: bash
    :linenos:
 
-Then, install Qserv and launch multinodes integration tests.
+You also need an environment file with all node hostnames and a ssh
+client configuration file. Run Openstack provisioning script and check
+`~/.lsst/qserv-cluster` directory to see examples.
+
+Then, install Kubernetes, Qserv and launch multinodes integration tests.
 
 .. code-block:: bash
 
-   # download latest docker image on each node:
-   ./pull.sh
-   # Start Qserv and run multinode test:
-   ./run-multinode-tests.sh
+   # Create kubernetes cluster
+   ./kube-create.sh
+   # Start Qserv (pods and unix services)
+   ./start.sh
    # Check Qserv status
    ./status.sh
+   # Run multinode tests
+   ./run-multinode-tests.sh
    # Stop Qserv
    ./stop.sh
-
-END TODO
 
 ***********
 Useful tips
@@ -77,6 +81,8 @@ Do not start Qserv services in pod, for debugging purpose:
 
 .. code-block:: bash
 
+   # on host machine
+   mkdir -p /qserv/custom/bin
    touch /qserv/custom/bin/qserv-start.sh
    chmod u+x /qserv/custom/bin/qserv-start.sh
 
