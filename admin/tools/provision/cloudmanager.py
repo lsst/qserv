@@ -425,23 +425,27 @@ class CloudManager(object):
         """
         # ssh config
         ssh_config_tpl = '''
-        Host {host}
-        HostName {fixed_ip}
-        User qserv
-        Port 22
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
-        PasswordAuthentication no
-        ProxyCommand ssh -i {key_filename} {ssh_opts} qserv@{floating_ip}
-        IdentityFile {key_filename}
-        IdentitiesOnly yes
-        LogLevel FATAL
-        '''
+Host {host}
+HostName {fixed_ip}
+User qserv
+Port 22
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+PasswordAuthentication no
+ProxyCommand ssh -i {key_filename} {ssh_opts} qserv@{floating_ip}
+IdentityFile {key_filename}
+IdentitiesOnly yes
+LogLevel FATAL
+'''
         ssh_opts = "-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p"
-        ssh_config_extract = ""
+        ssh_config = '''
+Host *
+    ServerAliveInterval 300
+    ServerAliveCountMax 2
+'''
         for instance in instances:
             fixed_ip = instance.networks[self.network_name][0]
-            ssh_config_extract += ssh_config_tpl.format(host=instance.name,
+            ssh_config += ssh_config_tpl.format(host=instance.name,
                                                         fixed_ip=fixed_ip,
                                                         floating_ip=floating_ip.ip,
                                                         key_filename=self.key_filename,
@@ -449,7 +453,7 @@ class CloudManager(object):
         logging.debug("Create SSH client config ")
 
         f = open("ssh_config", "w")
-        f.write(ssh_config_extract)
+        f.write(ssh_config)
         f.close()
 
     def check_ssh_up(self, instances):

@@ -21,13 +21,15 @@ function mysql_query {
     port=4040
 
     echo "Query: $sql"
+    echo "Date: $(date)"
     ssh -F "$SSH_CFG" "$MASTER" "kubectl exec 'master' -- bash -c '. /qserv/stack/loadLSST.bash && \
         setup mariadb && \
         start=\$(date +%s.%N) && \
-        mysql -N -B --host \"master\" --port $port \
+        mysql -N -B --host \"127.0.0.1\" --port $port \
         --user=$user $db -e \"$sql\" && \
         end=\$(date +%s.%N) &&
         echo \"Execution time: \$(python -c \"print(\${end} - \${start})\")\"'"
+	echo "Date: $(date)"
 
     runtime=$((end-start))
 
