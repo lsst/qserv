@@ -71,7 +71,7 @@ sanitizeName(std::string const& name) {
 }
 
 
-//// @return: string version of the contents of 'a'.
+/// @return: string version of the contents of 'a'.
 template <typename A>
 std::string toString(A&& a) {
     //  boost::lexical_cast<std::string> is another option.
