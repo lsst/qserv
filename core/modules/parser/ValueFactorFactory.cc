@@ -51,6 +51,7 @@
 #include "query/ValueExpr.h"   // For ValueExpr
 #include "query/ValueFactor.h" // For ValueFactor
 
+
 // namespace modifiers
 using antlr::RefAST;
 
@@ -147,22 +148,31 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     assert(_columnRefNodeMap);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& _newColumnFactor " << walkSiblingString(t));
     ColumnRefNodeMap& cMap = *_columnRefNodeMap;
     RefAST child = t->getFirstChild();
     if (t->getType() == SqlSQL2TokenTypes::FACTOR) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& SqlSQL2TokenTypes::FACTOR");
         t = child;
         child = t->getFirstChild();
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& t=" << walkSiblingString(t) << " child=" << walkSiblingString(child));
     std::shared_ptr<query::ValueFactor> vt = std::make_shared<query::ValueFactor>();
     std::shared_ptr<query::FuncExpr> fe;
     RefAST last;
     int tType = t->getType();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& type=" << tType);
     switch(tType) {
     case SqlSQL2TokenTypes::COLUMN_REF:
+        LOGS(_log, LOG_LVL_DEBUG, "&&& SqlSQL2TokenTypes::COLUMN_REF");
         t = child;
         child = t->getFirstChild();
         // Fall-through to REGULAR_ID handler
+    case SqlSQL2TokenTypes::DELIMITED_ID:
+        LOGS(_log, LOG_LVL_DEBUG, "&&& SqlSQL2TokenTypes::DELIMITED_ID");
+        // Fall-through to REGULAR_ID handler
     case SqlSQL2TokenTypes::REGULAR_ID:
+        LOGS(_log, LOG_LVL_DEBUG, "&&& SqlSQL2TokenTypes::REGULAR_ID");
         // make column ref. (no further children)
         {
             ColumnRefNodeMap::Map::const_iterator it = cMap.map.find(t);
@@ -180,6 +190,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         }
         return vt;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
+        LOGS(_log, LOG_LVL_DEBUG, "&&& SqlSQL2TokenTypes::FUNCTION_SPEC");
         fe = std::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
@@ -212,6 +223,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
 
         break;
     default:
+        LOGS(_log, LOG_LVL_DEBUG, "&&& default");
         throw ParseException("ValueFactorFactory::newColumnFactor with ", t);
         break;
     }
