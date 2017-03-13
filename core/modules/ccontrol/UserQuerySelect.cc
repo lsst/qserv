@@ -65,6 +65,7 @@
 
 // System headers
 #include <cassert>
+#include <chrono>
 #include <memory>
 
 // LSST headers
@@ -206,13 +207,25 @@ void UserQuerySelect::submit() {
     int msgCount = 0;
     int sequence = 0;
 
+    auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // &&& duplicate in Executive::add()
+            std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
+        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+        return diff.count();
+    };
+
+    int endQSpecQSJSum=0, pushTimeSum=0, serializeTimeSum=0, resourceTimeSum=0, jobTimeSum=0, addTimeSum=0; // &&&
+
     // Writing query for each chunk, stop if query is cancelled.
+    auto startAllQSJ = std::chrono::system_clock::now(); // &&&
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
+        auto startChunkQSJ = std::chrono::system_clock::now(); // &&&
         qproc::ChunkQuerySpec& cs = *i;
+        auto endQSpecQSJ = std::chrono::system_clock::now(); // &&&
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);
         ++msgCount;
+        auto endChunkPushQSJ = std::chrono::system_clock::now(); // &&&
         std::ostringstream ss;
         taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
         std::string msg = ss.str();
@@ -221,20 +234,50 @@ void UserQuerySelect::submit() {
         if (pi.getNumAccepted() != msgCount) {
             throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
         }
+        auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // &&&
 
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
+        auto endChunkResourceQSJ = std::chrono::system_clock::now(); // &&&
         qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
                 std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+        auto endChunkJobQSJ = std::chrono::system_clock::now(); // &&&
         _executive->add(jobDesc);
+        auto endChunkAddQSJ = std::chrono::system_clock::now(); // &&&
         ++sequence;
+        { // &&&
+            endQSpecQSJSum += timeDiff(startChunkQSJ, endQSpecQSJ);
+            pushTimeSum += timeDiff(endQSpecQSJ, endChunkPushQSJ);
+            serializeTimeSum += timeDiff(endChunkPushQSJ, endChunkSerializeQSJ);
+            resourceTimeSum += timeDiff(endChunkSerializeQSJ, endChunkResourceQSJ);
+            jobTimeSum += timeDiff(endChunkResourceQSJ, endChunkJobQSJ);
+            addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
+        }
     }
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();
     _executive->startAllJobs();
     _largeResultMgr->decrOutGoingQueries();
+    auto endAllQSJ = std::chrono::system_clock::now(); // &&&
+    {
+        std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
+        LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << "&&& QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
+                << "\nQSJ **sequenc=" << sequence
+                << "\nQSJ   endQSpecQSJSum  =" << endQSpecQSJSum
+                << "\nQSJ   pushTimeSum     =" << pushTimeSum
+                << "\nQSJ   serializeTimeSum=" << serializeTimeSum
+                << "\nQSJ   resourceTimeSum =" << resourceTimeSum
+                << "\nQSJ   jobTimeSum      =" << jobTimeSum
+                << "\nQSJ   addTimeSum      =" << addTimeSum
+                << "\nQSJ     cancelLockQSEASum =" << _executive->cancelLockQSEASum
+                << "\nQSJ     jobQueryQSEASum   =" << _executive->jobQueryQSEASum
+                << "\nQSJ     addJobQSEASum     =" << _executive->addJobQSEASum
+                << "\nQSJ     trackQSEASum      =" << _executive->trackQSEASum
+                << "\nQSJ     endQSEASum        =" << _executive->endQSEASum );
+
+    }
 
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.
