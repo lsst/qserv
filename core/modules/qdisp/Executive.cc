@@ -164,16 +164,33 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
     auto endQSEA = std::chrono::system_clock::now(); // &&&
     { // &&&
         std::lock_guard<std::mutex> sumLock(sumMtx);
-        cancelLockQSEASum = timeDiff(startQSEA, cancelLockQSEA);
-        jobQueryQSEASum = timeDiff(cancelLockQSEA, jobQueryQSEA);
-        addJobQSEASum = timeDiff(jobQueryQSEA, addJobQSEA);
-        trackQSEASum = timeDiff(addJobQSEA, trackQSEA);
-        endQSEASum = timeDiff(trackQSEA, endQSEA);
+        cancelLockQSEASum += timeDiff(startQSEA, cancelLockQSEA);
+        jobQueryQSEASum += timeDiff(cancelLockQSEA, jobQueryQSEA);
+        addJobQSEASum += timeDiff(jobQueryQSEA, addJobQSEA);
+        trackQSEASum += timeDiff(addJobQSEA, trackQSEA);
+        endQSEASum += timeDiff(trackQSEA, endQSEA);
     }
+    _queueJobStart(jobQuery);
     return jobQuery;
 }
 
 
+void Executive::_queueJobStart(JobQuery::Ptr const& job) {
+    std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
+        job->runJob();
+    };
+    auto cmd = std::make_shared<util::Command>(func);
+    _startJobsQueue->queCmd(cmd);
+}
+
+
+
+void Executive::waitForAllJobsToStart() {
+    _startJobsPool->endAll();
+    _startJobsPool->waitForResize(0); // No time limit.
+}
+
+/* &&&
 /// Start all jobs that have been added.
 void Executive::startAllJobs() {
     auto queue = std::make_shared<util::CommandQueue>();
@@ -189,12 +206,14 @@ void Executive::startAllJobs() {
     pool->endAll(); // Only runs after after all jobs have been run.
     pool->waitForResize(0); // No time limit.
 }
+*/
 
-
-/// Start a specific job.
+/* &&&
+/// Start a specific job now.
 void Executive::startJob(std::shared_ptr<JobQuery> const& jobQuery) {
     jobQuery->runJob();
 }
+*/
 
 
 

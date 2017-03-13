@@ -174,6 +174,7 @@ void UserQuerySelect::kill() {
     }
 }
 
+/* &&& unused
 /// Add a chunk to be executed
 void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
     // If this is not a chunked query, only accept the dummy chunk.
@@ -182,6 +183,7 @@ void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
         _qSession->addChunk(cs);
     }
 }
+*/
 
 std::string
 UserQuerySelect::getProxyOrderBy() {
@@ -220,7 +222,10 @@ void UserQuerySelect::submit() {
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // &&&
-        qproc::ChunkQuerySpec& cs = *i;
+        // qproc::ChunkQuerySpec& cs = *i; &&&
+        // Dereferencing i causes a ChunkQuerySpec object to be created,
+        // see qproc::QuerySession::Iter::dereference()
+        auto& cs = *i;
         auto endQSpecQSJ = std::chrono::system_clock::now(); // &&&
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);
@@ -258,7 +263,8 @@ void UserQuerySelect::submit() {
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();
-    _executive->startAllJobs();
+    // _executive->startAllJobs(); &&&
+    _executive->waitForAllJobsToStart();
     _largeResultMgr->decrOutGoingQueries();
     auto endAllQSJ = std::chrono::system_clock::now(); // &&&
     {
