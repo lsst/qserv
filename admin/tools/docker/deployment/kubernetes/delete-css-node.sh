@@ -14,13 +14,14 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 i=1
 for node in $WORKERS;
 do
-    CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=5012 \
-host=${node}; "
+# TODO report bug in Jira for A. Salnikov?
+# FIXME: update qserv-admin.py: AttributeError: 'CssAccess' object has no attribute 'setNodeStatus'
+#    CSS_INFO="${CSS_INFO}UPDATE NODE worker${i} state=INACTIVE;"
+    CSS_INFO="${CSS_INFO}DELETE NODE worker${i};"
     i=$((i+1))
 done
 
 ssh -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl exec master -- bash -c '. /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
-    echo \"$CSS_INFO\" | qserv-admin.py && \
-    qserv-test-integration.py -V DEBUG'"
+    echo \"$CSS_INFO\" | qserv-admin.py'"
 

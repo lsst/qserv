@@ -80,7 +80,7 @@ def add_parser_args(parser):
     return parser
 
 
-def config_logger(loggerName, verbose, verboseAll):
+def config_logger(verbose, verboseAll):
     """
     Configure the logger
     """
@@ -94,17 +94,17 @@ def config_logger(loggerName, verbose, verboseAll):
             logging.getLogger(logger_name).setLevel(logging.ERROR)
         warnings.filterwarnings("ignore")
 
-        logger = logging.getLogger()
+    logger = logging.getLogger()
 
-        # create console handler and set level to debug
-        console = logging.StreamHandler()
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(name)-15s %(message)s')
-        # add formatter to ch
-        console.setFormatter(formatter)
+    # create console handler and set level to debug
+    console = logging.StreamHandler()
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(name)-15s %(message)s')
+    # add formatter to ch
+    console.setFormatter(formatter)
 
-        logger.handlers = [console]
-        logger.setLevel(levels.get(verbosity, logging.DEBUG))
+    logger.handlers = [console]
+    logger.setLevel(levels.get(verbosity, logging.DEBUG))
 
 
 class CloudManager(object):
@@ -113,14 +113,19 @@ class CloudManager(object):
     and provision qserv
     """
 
-    def __init__(self, config_file_name, add_ssh_key=False, use_snapshot_image=True):
+    def __init__(self, config_file_name, add_ssh_key=False,
+                 create_snapshot=False):
         """
         Constructor parse all arguments
 
         @param config_file_name: define the configuration file containing
                                  cloud parameters
-        @param used_image_key:   add a key to choose the appropriate image
-                                 (base image or snapshot)
+        @param create_snapshot:  if True, create instance from existing
+                                 snapshot
+                                 see 'snapshot' parameter in configuration file
+                                 else, create instance from base image
+                                 see 'base_image' parameter in configuration
+                                 file
         @param add_ssh_key:      add ssh key only while launching instances
                                  in provision qserv.
         """
@@ -141,7 +146,7 @@ class CloudManager(object):
              'ssh-private-key': '~/.ssh/id_rsa',
              'ssh_security_group': None,
              'nb_worker': 3,
-             'nb_orchestrator': 2,
+             'nb_orchestrator': 1,
              'format': None})
 
         self._session = self._create_keystone_session()
@@ -158,10 +163,11 @@ class CloudManager(object):
         self._registry_port = config.getint('docker', 'registry_port')
 
         # Read Openstack servers related parameters
-        if use_snapshot_image:
-            image_name = config.get('server', 'snapshot')
-        else:
+        if create_snapshot:
             image_name = config.get('server', 'base_image')
+            self.snapshot_name = config.get('server', 'snapshot')
+        else:
+            image_name = config.get('server', 'snapshot')
 
         try:
             self.image = self.nova.images.find(name=image_name)
@@ -419,23 +425,27 @@ class CloudManager(object):
         """
         # ssh config
         ssh_config_tpl = '''
-        Host {host}
-        HostName {fixed_ip}
-        User qserv
-        Port 22
-        StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
-        PasswordAuthentication no
-        ProxyCommand ssh -i {key_filename} {ssh_opts} qserv@{floating_ip}
-        IdentityFile {key_filename}
-        IdentitiesOnly yes
-        LogLevel FATAL
-        '''
+Host {host}
+HostName {fixed_ip}
+User qserv
+Port 22
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+PasswordAuthentication no
+ProxyCommand ssh -i {key_filename} {ssh_opts} qserv@{floating_ip}
+IdentityFile {key_filename}
+IdentitiesOnly yes
+LogLevel FATAL
+'''
         ssh_opts = "-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p"
-        ssh_config_extract = ""
+        ssh_config = '''
+Host *
+    ServerAliveInterval 300
+    ServerAliveCountMax 2
+'''
         for instance in instances:
             fixed_ip = instance.networks[self.network_name][0]
-            ssh_config_extract += ssh_config_tpl.format(host=instance.name,
+            ssh_config += ssh_config_tpl.format(host=instance.name,
                                                         fixed_ip=fixed_ip,
                                                         floating_ip=floating_ip.ip,
                                                         key_filename=self.key_filename,
@@ -443,7 +453,7 @@ class CloudManager(object):
         logging.debug("Create SSH client config ")
 
         f = open("ssh_config", "w")
-        f.write(ssh_config_extract)
+        f.write(ssh_config)
         f.close()
 
     def check_ssh_up(self, instances):
@@ -570,7 +580,7 @@ runcmd:
 
         docker_opts = "--storage-driver=overlay"
         if self._registry_host:
-            docker_opts_fmt = ("{docker_opts} --insecure-registry {registry_host} ",
+            docker_opts_fmt = ("{docker_opts} --insecure-registry {registry_host} "
                                "--registry-mirror=http://{registry_host}:{registry_port}")
             docker_opts = docker_opts_fmt.format(docker_opts=docker_opts,
                                                  registry_host=self._registry_host,

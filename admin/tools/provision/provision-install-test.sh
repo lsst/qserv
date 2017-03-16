@@ -84,25 +84,40 @@ if [ -n "$PROVISION" ]; then
     "$DIR/provision-qserv.py" --cleanup \
         --config "$CONF_FILE" \
         -vv
+    CONFIG_DIR="$HOME/.lsst/qserv-cluster"
+    mkdir -p "$CONFIG_DIR" 
+	ln -f "$DIR/ssh_config" "$CONFIG_DIR"
+	ln -f "$DIR/env-infrastructure.sh" "$CONFIG_DIR"
+    "$DIR/create-slf.sh"
 fi
 
-. "$DIR/env-infrastructure.sh"
 
 if [ -n "$SWARM" ]; then
     SWARM_DIR="$DIR/../docker/deployment/swarm"
     ln -sf "$DIR/ssh_config" "$SWARM_DIR"
     ln -sf "$DIR/env-infrastructure.sh" "$SWARM_DIR"
-    SSH_CFG="$SWARM_DIR/ssh_config"
 
     "$SWARM_DIR"/setup-and-test.sh
 
 elif [ -n "$KUBERNETES" ]; then
 	WORK_DIR="$DIR/../docker/deployment/kubernetes"
-	ln -f "$DIR/ssh_config" "$WORK_DIR"
-	ln -f "$DIR/env-infrastructure.sh" "$WORK_DIR"
-	SSH_CFG="$WORK_DIR/ssh_config"
+    ENV_FILE="$WORK_DIR/env.sh"
+    cp "$WORK_DIR/env.example.sh" "$ENV_FILE"
 
-	"$WORK_DIR"/setup-and-test.sh
+    if [ -n "$LARGE" ]; then
+        sed -i "s,# HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," \
+            "$ENV_FILE"
+    fi
+
+	"$WORK_DIR/full-start.sh"
+
+    if [ -n "$LARGE" ]; then
+        echo "Launch large scale tests"
+        "$WORK_DIR/run-large-scale-tests.sh"
+    else
+        echo "Launch multinode tests"
+        "$WORK_DIR/run-multinode-tests.sh"
+    fi
 
 elif [ -n "$SHMUX" ]; then
 
@@ -123,6 +138,7 @@ elif [ -n "$SHMUX" ]; then
 
     # Update env.sh
     cp env.example.sh env.sh
+    . "$DIR/env-infrastructure.sh"
     sed -i "s/# MASTER_FORMAT=\"lsst-qserv-master%02g\"/MASTER_FORMAT=\"${HOSTNAME_TPL}master-%g\"/" env.sh
     sed -i "s/HOSTNAME_FORMAT=\"qserv%g.domain.org\"/HOSTNAME_FORMAT=\"${HOSTNAME_TPL}worker-%g\"/" env.sh
     sed -i "s/MASTER_ID=0/MASTER_ID=1/" env.sh
@@ -133,7 +149,6 @@ elif [ -n "$SHMUX" ]; then
         ./run.sh
         ./run-large-scale-tests.sh
     else
-        # Run multinode tests
         echo "Launch multinode tests"
         ./run-multinode-tests.sh
     fi
