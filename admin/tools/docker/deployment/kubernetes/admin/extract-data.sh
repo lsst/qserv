@@ -10,7 +10,7 @@ set -x
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/../env-cluster.sh"
 
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/extract-data.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/extract-data.sh"
 
 DATA_DIR="/qserv/data"
 TMP_DIR="/qserv/tmp/data"
@@ -18,7 +18,7 @@ TMP_DIR="/qserv/tmp/data"
 for node in $MASTER $WORKERS
 do
     echo "Move data on $node"
-	ssh -F "$SSH_CFG" "$node" "sudo -u centos -- \
+	ssh $SSH_CFG_OPT "$node" "sudo -u centos -- \
         sh -c 'cp -r ${TMP_DIR}/* $DATA_DIR && \
         rm -r $TMP_DIR'"
 done

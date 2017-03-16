@@ -13,10 +13,10 @@ echo
 echo "Check that Qserv master and workers pods are running on all nodes"
 echo "================================================================="
 echo
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl get pods -l app=qserv"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl get pods -l app=qserv"
 
 echo
 echo "Check that Qserv services are running on all these pods"
 echo "======================================================="
 echo
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/qserv-status.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/qserv-status.sh"

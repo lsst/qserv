@@ -10,6 +10,9 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 CFG_DIR="${DIR}/yaml"
 
+TMP_DIR=$(mktemp -d --suffix=-kube-$USER)
+SCHEMA_CACHE_OPT="--schema-cache-dir=$TMP_DIR/schema"
+
 usage() {
   cat << EOD
 
@@ -38,7 +41,7 @@ if [ $# -ne 0 ] ; then
 fi
 
 echo "Create kubernetes headless service for Qserv"
-kubectl create -f "${CFG_DIR}/qserv-service.yaml"
+kubectl create $SCHEMA_CACHE_OPT -f "${CFG_DIR}/qserv-service.yaml"
 
 YAML_TPL="${CFG_DIR}/pod.yaml.tpl"
 YAML_FILE="${CFG_DIR}/master.yaml"
@@ -59,7 +62,7 @@ EOF
 "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
 
 echo "Create kubernetes pod for Qserv master"
-kubectl create -f "$YAML_FILE"
+kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
 
 j=1
 for host in $WORKERS;
@@ -79,6 +82,6 @@ pod_name: worker-$j
 EOF
     "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
     echo "Create kubernetes pod for Qserv worker-${j}"
-    kubectl create -f "$YAML_FILE"
+    kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
     j=$((j+1));
 done

@@ -37,7 +37,7 @@ Pre-requisites
 Run multinode test
 ******************
 
-On the workstation *myhost.domain.org*, clone Qserv code and go to directory containing example for deployment scripts.
+On the workstation *myhost.domain.org*, get and prepare deployment scripts.
 
 .. code-block:: bash
 
@@ -46,17 +46,24 @@ On the workstation *myhost.domain.org*, clone Qserv code and go to directory con
    # admin/ contains script which require ssh access to node
    # orchestration/ is copied to k8s orchestration node and contains scripts
    # which manage pods
+   # Create configuration file
+   cp env.example.sh env.sh
 
-Create and adapt next example scripts to prepare multinode test execution:
-In :file:`env.sh`, set your volume and the tag of your qserv images:
+In :file:`env.sh`, set your container configuration (qserv images, attached volumes, ...):
 
 .. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/env.example.sh
    :language: bash
    :linenos:
 
-You also need an environment file with all node hostnames and a ssh
-client configuration file. Run Openstack provisioning script and check
-`~/.lsst/qserv-cluster` directory to see examples.
+You also need to create file below in `~/.lsst/qserv-cluster`:
+  - an environment file named `env-infrastructure.sh` with all node hostnames (see example below)
+  - optionally, an ssh client configuration file
+
+.. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/env.example.sh
+   :language: bash
+   :linenos:
+
+Run Openstack provisioning script and check `~/.lsst/qserv-cluster` directory to see examples.
 
 Then, install Kubernetes, Qserv and launch multinodes integration tests.
 
@@ -77,7 +84,7 @@ Then, install Kubernetes, Qserv and launch multinodes integration tests.
 Useful tips
 ***********
 
-Do not start Qserv services in pod, for debugging purpose:
+For debugging purpose, it might be useful not to start Qserv services in pods:
 
 .. code-block:: bash
 

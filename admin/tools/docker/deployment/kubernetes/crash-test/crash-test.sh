@@ -14,9 +14,9 @@ while (true)
 do
 for node in $MASTER $WORKERS
 do
-    ssh -t -F "$SSH_CFG" "$node" 'sudo service docker restart'
-    ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/wait-pods-start.sh"
-    ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/wait-qserv-start.sh"
+    ssh -t $SSH_CFG_OPT "$node" 'sudo service docker restart'
+    ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/wait-pods-start.sh"
+    ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/wait-qserv-start.sh"
     "$DIR/run-query.sh"
 done
 done

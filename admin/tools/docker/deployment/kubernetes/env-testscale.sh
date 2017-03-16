@@ -22,7 +22,7 @@ function mysql_query {
 
     echo "Query: $sql"
     echo "Date: $(date)"
-    ssh -F "$SSH_CFG" "$MASTER" "kubectl exec 'master' -- bash -c '. /qserv/stack/loadLSST.bash && \
+    ssh $SSH_CFG_OPT "$MASTER" "kubectl exec 'master' -- bash -c '. /qserv/stack/loadLSST.bash && \
         setup mariadb && \
         start=\$(date +%s.%N) && \
         mysql -N -B --host \"127.0.0.1\" --port $port \

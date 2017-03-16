@@ -15,7 +15,9 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 MAX_RETRY=10
 TIME_WAIT=3
 retry=0
-for qserv_pod in 'master' $WORKER_PODS
+GO_TPL='{{range .items}}{{.metadata.name}} {{end}}'
+PODS=$(kubectl get pods -l app=qserv -o go-template --template "$GO_TPL")
+for qserv_pod in $PODS
 do
     retry=0
     started=false

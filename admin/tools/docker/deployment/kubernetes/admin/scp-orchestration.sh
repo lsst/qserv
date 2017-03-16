@@ -6,6 +6,7 @@
 # @author Fabrice Jammes SLAC/IN2P3
 
 set -e
+set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/../env-cluster.sh"
@@ -17,7 +18,7 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "FATAL: non-existent configuration file $ENV_FILE"
     exit 1
 fi
-scp -F "$SSH_CFG" -r "$DIR/../orchestration" "$ORCHESTRATOR":/home/qserv
-scp -F "$SSH_CFG" -r "$ENV_FILE" "${ORCHESTRATOR}:/home/qserv/orchestration"
-scp -F "$SSH_CFG" "$ENV_INFRASTRUCTURE_FILE" "${ORCHESTRATOR}:/home/qserv/orchestration"
+scp $SSH_CFG_OPT -r "$DIR/../orchestration" "$ORCHESTRATOR":"$ORCHESTRATION_HOME"
+scp $SSH_CFG_OPT -r "$ENV_FILE" "${ORCHESTRATOR}:$ORCHESTRATION_DIR"
+scp $SSH_CFG_OPT "$ENV_INFRASTRUCTURE_FILE" "${ORCHESTRATOR}:$ORCHESTRATION_DIR"
 

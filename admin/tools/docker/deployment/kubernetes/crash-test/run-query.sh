@@ -10,7 +10,7 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/../env-cluster.sh"
 
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "kubectl exec master -- bash -c \
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl exec master -- bash -c \
     '. /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     qserv-check-integration.py -V DEBUG --case-id=01'"
