@@ -101,16 +101,14 @@ public:
     }
     virtual ~Mapping() {}
 
-    virtual std::shared_ptr<query::QueryTemplate::Entry>
-    mapEntry(query::QueryTemplate::Entry const& e) const {
-        typedef query::QueryTemplate::StringEntry StringEntry;
-        std::shared_ptr<StringEntry> newE = std::make_shared<StringEntry>(e.getValue());
-        Map::const_iterator i;
+    std::shared_ptr<query::QueryTemplate::Entry>
+    mapEntry(query::QueryTemplate::Entry const& e) const override {
+        auto newE = std::make_shared<query::QueryTemplate::StringEntry>(e.getValue());
 
         // FIXME see if this works
         //if (!e.isDynamic()) {return newE; }
 
-        for(i=_map.begin(); i != _map.end(); ++i) {
+        for(auto i=_map.begin(); i != _map.end(); ++i) {
             newE->s = replace(newE->s, i->pat, i->tgt);
             if (i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,

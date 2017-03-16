@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,7 +41,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/worker.pb.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
@@ -55,64 +54,22 @@ namespace qserv {
 namespace qproc {
 
 
-////////////////////////////////////////////////////////////////////////
-// class TaskMsgFactory::Impl
-////////////////////////////////////////////////////////////////////////
-class TaskMsgFactory::Impl {
-public:
-    Impl(uint64_t session, std::string const& resultTable)
-        : _session(session), _resultTable(resultTable) {
-    }
-    std::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
-                                            std::string const& chunkResultName,
-                                            uint64_t queryId, int jobId);
-private:
-    template <class C1, class C2, class C3>
-    void addFragment(proto::TaskMsg& m, std::string const& resultName,
-                     C1 const& subChunkTables,
-                     C2 const& subChunkIds,
-                     C3 const& queries) {
-        proto::TaskMsg::Fragment* frag = m.add_fragment();
-        frag->set_resulttable(resultName);
-        // For each query, apply: frag->add_query(q)
-        for(typename C3::const_iterator i=queries.begin();
-            i != queries.end(); ++i) {
-            frag->add_query(*i);
-        }
-        proto::TaskMsg_Subchunk sc;
-        for(typename C1::const_iterator i=subChunkTables.begin();
-            i != subChunkTables.end(); ++i) {
-            sc.add_table(*i);
-        }
-        // For each int in subChunks, apply: sc.add_subchunk(1000000);
-        std::for_each(
-            subChunkIds.begin(), subChunkIds.end(),
-            std::bind1st(std::mem_fun(&proto::TaskMsg_Subchunk::add_id), &sc));
-        frag->mutable_subchunks()->CopyFrom(sc);
-    }
-
-    uint64_t _session;
-    std::string _resultTable;
-    std::shared_ptr<proto::TaskMsg> _taskMsg;
-};
-
-std::shared_ptr<proto::TaskMsg>
-TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
-                              std::string const& chunkResultName,
-                              uint64_t queryId, int jobId) {
-    std::string resultTable = _resultTable;
+std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
+                                                        std::string const& chunkResultName,
+                                                        uint64_t queryId, int jobId) {
+    std::string resultTable("Asdfasfd"); // &&& is that string really necessary?
     if (!chunkResultName.empty()) { resultTable = chunkResultName; }
-    _taskMsg = std::make_shared<proto::TaskMsg>();
+    auto taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
-    _taskMsg->set_session(_session);
-    _taskMsg->set_db(s.db);
-    _taskMsg->set_protocol(2);
-    _taskMsg->set_queryid(queryId);
-    _taskMsg->set_jobid(jobId);
+    taskMsg->set_session(_session);
+    taskMsg->set_db(chunkQuerySpec.db);
+    taskMsg->set_protocol(2);
+    taskMsg->set_queryid(queryId);
+    taskMsg->set_jobid(jobId);
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
     std::string db;
-    for(auto const& sTbl : s.scanInfo.infoTables) {
+    for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
         if (db.empty()) {
             db = sTbl.db;
         } else if (db != sTbl.db) {
@@ -120,19 +77,19 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
         }
     }
 
-    for(auto const& sTbl : s.scanInfo.infoTables) {
-        lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = _taskMsg->add_scantable();
+    for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = taskMsg->add_scantable();
         sTbl.copyToScanTable(msgScanTbl);
     }
 
-    _taskMsg->set_scanpriority(s.scanInfo.scanRating);
+    taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
 
     // per-chunk
-    _taskMsg->set_chunkid(s.chunkId);
+    taskMsg->set_chunkid(chunkQuerySpec.chunkId);
     // per-fragment
     // TODO refactor to simplify
-    if (s.nextFragment.get()) {
-        ChunkQuerySpec const* sPtr = &s;
+    if (chunkQuerySpec.nextFragment.get()) {
+        ChunkQuerySpec const* sPtr = &chunkQuerySpec;
         while(sPtr) {
             LOGS(_log, LOG_LVL_DEBUG, "nextFragment");
             for(unsigned int t=0;t<(sPtr->queries).size();t++){
@@ -140,36 +97,50 @@ TaskMsgFactory::Impl::makeMsg(ChunkQuerySpec const& s,
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
-            addFragment(*_taskMsg, resultTable,
-                        s.subChunkTables,
-                        sPtr->subChunkIds,
-                        sPtr->queries);
+            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds, sPtr->queries);
             sPtr = sPtr->nextFragment.get();
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "no nextFragment");
-        for(unsigned int t=0;t<(s.queries).size();t++){
-            LOGS(_log, LOG_LVL_DEBUG, (s.queries).at(t));
+        for(unsigned int t=0;t<(chunkQuerySpec.queries).size();t++){
+            LOGS(_log, LOG_LVL_DEBUG, (chunkQuerySpec.queries).at(t));
         }
-        addFragment(*_taskMsg, resultTable,
-                    s.subChunkTables, s.subChunkIds, s.queries);
+        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
     }
-    return _taskMsg;
+    return taskMsg;
 }
 
 
-////////////////////////////////////////////////////////////////////////
-// class TaskMsgFactory
-////////////////////////////////////////////////////////////////////////
-TaskMsgFactory::TaskMsgFactory(uint64_t session)
-    : _impl(std::make_shared<Impl>(session, "Asdfasfd" )) {
+void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
+                                  std::vector<std::string> const& subChunkTables,
+                                  std::vector<int> const& subChunkIds,
+                                  std::vector<std::string> const& queries) {
+     proto::TaskMsg::Fragment* frag = taskMsg.add_fragment();
+     frag->set_resulttable(resultName);
+
+     for(auto i=queries.begin(); i != queries.end(); ++i) {
+         frag->add_query(*i);
+     }
+
+     proto::TaskMsg_Subchunk sc;
+     for(auto i=subChunkTables.begin(); i != subChunkTables.end(); ++i) {
+         sc.add_table(*i);
+     }
+
+     for(auto& subChunkId : subChunkIds) {
+         sc.add_id(subChunkId);
+     }
+
+     frag->mutable_subchunks()->CopyFrom(sc);
 }
+
 
 void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
                                   std::string const& chunkResultName,
                                   uint64_t queryId, int jobId,
                                   std::ostream& os) {
-    std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName, queryId, jobId);
+    // std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName, queryId, jobId); &&&
+    std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId);
     m->SerializeToOstream(&os);
 }
 

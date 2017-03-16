@@ -62,7 +62,7 @@ public:
     std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.
-    std::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)
+    std::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)   // &&& make vector if not too much effort
 };
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);

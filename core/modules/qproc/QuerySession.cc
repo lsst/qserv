@@ -408,35 +408,33 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 
 
 ChunkQuerySpec QuerySession::buildChunkQuerySpec(ChunkSpec const& chunkSpec) const {
-    ChunkQuerySpec _cache;
-    _cache.db = _context->dominantDb;
-    _cache.scanInfo = _context->scanInfo;
-    _cache.chunkId = chunkSpec.chunkId;
-    _cache.nextFragment.reset();
+    ChunkQuerySpec cQSpec;
+    cQSpec.db = _context->dominantDb; // &&&mt dominantDb should be passed in or _context be immutable
+    cQSpec.scanInfo = _context->scanInfo; // &&&mt scanInfo should be passed in or _context be immutable
+    cQSpec.chunkId = chunkSpec.chunkId;
     // Reset subChunkTables
-    _cache.subChunkTables.clear();
-    qana::QueryMapping const& queryMapping = *(_context->queryMapping);
-    qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
-    _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
+    qana::QueryMapping const& queryMapping = *(_context->queryMapping); // &&&mt queryMapping should be passed in or _context be immutable
+    qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables(); // &&&mt should be passed in or _context be immutable
+    cQSpec.subChunkTables.insert(cQSpec.subChunkTables.begin(),
                                  sTables.begin(), sTables.end());
     // Build queries.
-    if (!_context->hasSubChunks()) {
-        _cache.queries = _buildChunkQueries(chunkSpec);
+    if (!_context->hasSubChunks()) { // &&&mt should be passed in or _context be immutable
+        cQSpec.queries = _buildChunkQueries(chunkSpec); // &&&mt verify thread safe
     } else {
         if (chunkSpec.shouldSplit()) {
             ChunkSpecFragmenter frag(chunkSpec);
             ChunkSpec s = frag.get();
-            _cache.queries = _buildChunkQueries(s);
-            _cache.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
+            cQSpec.queries = _buildChunkQueries(s); // &&&mt verify thread safe
+            cQSpec.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
             frag.next();
-            _cache.nextFragment = _buildFragment(frag);
+            cQSpec.nextFragment = _buildFragment(frag); // &&&mt verify thread safe
         } else {
-            _cache.queries = _buildChunkQueries(chunkSpec);
-            _cache.subChunkIds.assign(chunkSpec.subChunks.begin(),
+            cQSpec.queries = _buildChunkQueries(chunkSpec); // &&&mt verify thread safe (same as above func)
+            cQSpec.subChunkIds.assign(chunkSpec.subChunks.begin(),
                                       chunkSpec.subChunks.end());
         }
     }
-    return _cache;
+    return cQSpec;
 }
 
 

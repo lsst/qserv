@@ -202,9 +202,10 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
-    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
-    proto::ProtoImporter<proto::TaskMsg> pi;
+    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);  // Thread safe
+    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal()); // Thread safe
+    // proto::ProtoImporter<proto::TaskMsg> pi; &&&
+    std::mutex mtx;
     std::vector<int> chunks;
     int msgCount = 0;
     int sequence = 0;
@@ -219,6 +220,7 @@ void UserQuerySelect::submit() {
 
     // Writing query for each chunk, stop if query is cancelled.
     auto startAllQSJ = std::chrono::system_clock::now(); // &&&
+
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // &&&
@@ -236,8 +238,14 @@ void UserQuerySelect::submit() {
         taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
         std::string msg = ss.str();
 
+        /* &&&
         pi(msg.data(), msg.size());
         if (pi.getNumAccepted() != msgCount) {
+            throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
+        }
+        */
+        proto::ProtoImporter<proto::TaskMsg> pi;
+        if (!pi.messageAcceptable(msg)) {
             throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
         }
         auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // &&&
@@ -261,6 +269,13 @@ void UserQuerySelect::submit() {
             addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
         }
     }
+
+    /* &&& aiming for something like this
+    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
+            i != e && !_executive->getCancelled(); ++i) {
+        _sendToWorker(*i, mtx, chunks, pi, msgCount, sequence++);
+    }
+    */
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();
@@ -293,6 +308,53 @@ void UserQuerySelect::submit() {
         _qMetaAddChunks(chunks);
     }
 }
+
+/* &&&
+void UserQuerySelect::_sendToWorker(qproc::ChunkSpec const& chunkSpec, std::mutex& mtx, std::vector<int>& chunks,
+        proto::ProtoImporter<proto::TaskMsg>& pi,
+        int& msgCount, int sequence) {
+    auto startChunkQSJ = std::chrono::system_clock::now(); // &&&
+
+    auto cs = _qSession->buildChunkQuerySpec(chunkSpec);
+    auto endQSpecQSJ = std::chrono::system_clock::now(); // &&&
+    {
+        std::lock_guard<std::mutex> lg(mtx);
+        chunks.push_back(cs.chunkId);
+        std::string chunkResultName = ttn.make(cs.chunkId);
+        ++msgCount;
+
+    auto endChunkPushQSJ = std::chrono::system_clock::now(); // &&&
+    std::ostringstream ss;
+    taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
+    std::string msg = ss.str();
+
+    ;
+    pi(msg.data(), msg.size());
+    if (pi.getNumAccepted() != msgCount) {
+        throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
+    }
+    }
+    auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // &&&
+
+    std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
+    ResourceUnit ru;
+    ru.setAsDbChunk(cs.db, cs.chunkId);
+    auto endChunkResourceQSJ = std::chrono::system_clock::now(); // &&&
+    qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
+            std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+    auto endChunkJobQSJ = std::chrono::system_clock::now(); // &&&
+    _executive->add(jobDesc);
+    auto endChunkAddQSJ = std::chrono::system_clock::now(); // &&&
+    { // &&&
+        endQSpecQSJSum += timeDiff(startChunkQSJ, endQSpecQSJ);
+        pushTimeSum += timeDiff(endQSpecQSJ, endChunkPushQSJ);
+        serializeTimeSum += timeDiff(endChunkPushQSJ, endChunkSerializeQSJ);
+        resourceTimeSum += timeDiff(endChunkSerializeQSJ, endChunkResourceQSJ);
+        jobTimeSum += timeDiff(endChunkResourceQSJ, endChunkJobQSJ);
+        addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
+    }
+}
+*/
 
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure

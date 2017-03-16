@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,8 +28,6 @@
 #include <memory>
 #include <string>
 
-// Qserv headers
-#include "util/Callable.h"
 
 namespace lsst {
 namespace qserv {
@@ -46,24 +44,12 @@ namespace proto {
 template <typename Msg>
 class ProtoImporter {
 public:
-    typedef util::UnaryCallable<void, std::shared_ptr<Msg> > Acceptor;
-    typedef std::shared_ptr<Acceptor> AcceptorPtr;
+    ProtoImporter() {};
 
-    ProtoImporter(AcceptorPtr a) : _numAccepted(0), _acceptor(a) {}
-    ProtoImporter() : _numAccepted(0) {}
-
-    bool operator()(char const* data, int size) {
-        std::shared_ptr<Msg> m = std::make_shared<Msg>();
-        bool isClean = setMsgFrom(*m, data, size);
-        if(isClean) {
-            if(_acceptor) {
-                (*_acceptor)(m);
-            }
-            ++_numAccepted;
-        }
-        return isClean;
+    bool messageAcceptable(std::string const& msg) {
+        Msg m;
+        return setMsgFrom(m, msg.data(), msg.size());
     }
-    inline int getNumAccepted() const { return _numAccepted; }
 
     static bool setMsgFrom(Msg& m, char const* buf, int bufLen) {
         // For dev/debugging: accepts a partially-formed message
@@ -73,11 +59,8 @@ public:
         bool ok = m.ParseFromArray(buf, bufLen);
         return ok && m.IsInitialized();
     }
-
-private:
-    int _numAccepted;
-    AcceptorPtr _acceptor;
 };
+
 }}} // lsst::qserv::proto
 
 #endif // #define LSST_QSERV_PROTO_PROTOIMPORTER_H
