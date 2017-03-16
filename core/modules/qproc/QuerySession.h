@@ -71,8 +71,8 @@ namespace qproc {
 ///  of the original query, a parsed query  tree, and other user state/context.
 class QuerySession {
 public:
-    class Iter;
-    friend class Iter;
+    // class Iter; &&&
+    // friend class Iter; &&&
     typedef std::shared_ptr<QuerySession> Ptr;
 
     explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& mysqlSchemaConfig)
@@ -125,11 +125,13 @@ public:
 
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
+    ChunkQuerySpec buildChunkQuerySpec(ChunkSpec const& chunkSpec) const;
+
     /// Finalize a query after chunk coverage has been updated
     void finalize();
     // Iteration
-    Iter cQueryBegin();
-    Iter cQueryEnd();
+    ChunkSpecVector::iterator cQueryBegin();
+    ChunkSpecVector::iterator cQueryEnd();
 
     // For test harnesses.
     struct Test {
@@ -159,8 +161,8 @@ private:
     void _generateConcrete();
     void _applyConcretePlugins();
 
-    // Iterator help
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
+    std::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
 
     // Fields
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access
@@ -220,6 +222,7 @@ private:
  */
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 
+/* &&&
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
 class QuerySession::Iter : public boost::iterator_facade <
     QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
@@ -255,7 +258,7 @@ private:
     mutable ChunkQuerySpec _cache; ///< Query generation cache
     mutable bool _dirty; ///< Does cache need updating/refreshing?
 };
-
+*/
 }}} // namespace lsst::qserv::qproc
 
 #endif // LSST_QSERV_QPROC_QUERYSESSION_H

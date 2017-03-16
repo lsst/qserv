@@ -251,12 +251,22 @@ void QuerySession::finalize() {
     }
 }
 
+/* &&&
 QuerySession::Iter QuerySession::cQueryBegin() {
     return Iter(*this, _chunks.begin());
 }
 
 QuerySession::Iter QuerySession::cQueryEnd() {
     return Iter(*this, _chunks.end());
+}
+*/
+
+ChunkSpecVector::iterator QuerySession::cQueryBegin() {
+    return _chunks.begin();
+}
+
+ChunkSpecVector::iterator QuerySession::cQueryEnd() {
+    return _chunks.end();
 }
 
 QuerySession::QuerySession(Test& t)
@@ -390,11 +400,68 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     return q;
 }
 
+
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
     querySession.print(out);
     return out;
 }
 
+
+ChunkQuerySpec QuerySession::buildChunkQuerySpec(ChunkSpec const& chunkSpec) const {
+    ChunkQuerySpec _cache;
+    _cache.db = _context->dominantDb;
+    _cache.scanInfo = _context->scanInfo;
+    _cache.chunkId = chunkSpec.chunkId;
+    _cache.nextFragment.reset();
+    // Reset subChunkTables
+    _cache.subChunkTables.clear();
+    qana::QueryMapping const& queryMapping = *(_context->queryMapping);
+    qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
+    _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
+                                 sTables.begin(), sTables.end());
+    // Build queries.
+    if (!_context->hasSubChunks()) {
+        _cache.queries = _buildChunkQueries(chunkSpec);
+    } else {
+        if (chunkSpec.shouldSplit()) {
+            ChunkSpecFragmenter frag(chunkSpec);
+            ChunkSpec s = frag.get();
+            _cache.queries = _buildChunkQueries(s);
+            _cache.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
+            frag.next();
+            _cache.nextFragment = _buildFragment(frag);
+        } else {
+            _cache.queries = _buildChunkQueries(chunkSpec);
+            _cache.subChunkIds.assign(chunkSpec.subChunks.begin(),
+                                      chunkSpec.subChunks.end());
+        }
+    }
+    return _cache;
+}
+
+
+
+std::shared_ptr<ChunkQuerySpec> QuerySession::_buildFragment(ChunkSpecFragmenter& f) const {
+    std::shared_ptr<ChunkQuerySpec> first;
+    std::shared_ptr<ChunkQuerySpec> last;
+    while(!f.isDone()) {
+        if (last.get()) {
+            last->nextFragment = std::make_shared<ChunkQuerySpec>();
+            last = last->nextFragment;
+        } else {
+            last = std::make_shared<ChunkQuerySpec>();
+            first = last;
+        }
+        ChunkSpec s = f.get();
+        last->subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
+        last->queries = _buildChunkQueries(s);
+        f.next();
+    }
+    return first;
+}
+
+
+/* &&&
 ////////////////////////////////////////////////////////////////////////
 // QuerySession::Iter
 ////////////////////////////////////////////////////////////////////////
@@ -462,5 +529,5 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     }
     return first;
 }
-
+*/
 }}} // namespace lsst::qserv::qproc

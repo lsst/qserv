@@ -124,8 +124,10 @@ public:
 
     virtual std::string getQueryIdString() const override;
 
+    /* &&& unused
     /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
+    */
 
     void setupChunking();
 

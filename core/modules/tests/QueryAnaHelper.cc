@@ -84,6 +84,7 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     return querySession;
 }
 
+/* &&&
 std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));
     QuerySession::Iter i = querySession->cQueryBegin();
@@ -92,6 +93,21 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     }
 
     ChunkQuerySpec& first = *i;
+    std::string const & firstParallelQuery = first.queries[0];
+    LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
+    return firstParallelQuery;
+}
+*/
+
+std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
+    querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));
+    auto i = querySession->cQueryBegin();
+    if (i == querySession->cQueryEnd()) {
+        throw new std::string("Empty query session");
+    }
+
+    auto& chunkSpec = *i;
+    auto first = querySession->buildChunkQuerySpec(chunkSpec);
     std::string const & firstParallelQuery = first.queries[0];
     LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
     return firstParallelQuery;

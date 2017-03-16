@@ -225,7 +225,8 @@ void UserQuerySelect::submit() {
         // qproc::ChunkQuerySpec& cs = *i; &&&
         // Dereferencing i causes a ChunkQuerySpec object to be created,
         // see qproc::QuerySession::Iter::dereference()
-        auto& cs = *i;
+        auto& chunkSpec = *i;
+        auto cs = _qSession->buildChunkQuerySpec(chunkSpec);
         auto endQSpecQSJ = std::chrono::system_clock::now(); // &&&
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);

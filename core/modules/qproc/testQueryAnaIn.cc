@@ -86,9 +86,9 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
-    for(QuerySession::Iter i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
+    for(auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
         i != e; ++i) {
-        ChunkQuerySpec& cs = *i;
+        ChunkQuerySpec cs = queryAnaHelper.querySession->buildChunkQuerySpec(*i);
         LOGS_DEBUG("Chunk spec: " << cs);
     }
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
