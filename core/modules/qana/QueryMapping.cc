@@ -42,9 +42,20 @@
 // Third-party headers
 #include "boost/lexical_cast.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
+
+
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryMapping");
+
+}
 
 namespace lsst {
 namespace qserv {
@@ -83,7 +94,7 @@ std::string const replace(std::string const & s,
 class Mapping : public query::QueryTemplate::EntryMapping {
 public:
     typedef std::deque<int> IntDeque;
-    typedef std::deque<MapTuple> Map;
+    typedef std::deque<MapTuple> TupleDeque;
 
     Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
         : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
@@ -108,7 +119,7 @@ public:
         // FIXME see if this works
         //if (!e.isDynamic()) {return newE; }
 
-        for(auto i=_map.begin(); i != _map.end(); ++i) {
+        for(auto i=_tupleDeque.begin(); i != _tupleDeque.end(); ++i) {
             newE->s = replace(newE->s, i->pat, i->tgt);
             if (i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,
@@ -127,7 +138,7 @@ private:
     inline void _initMap(QueryMapping::ParameterMap const& m) {
         QueryMapping::ParameterMap::const_iterator i;
         for(i = m.begin(); i != m.end(); ++i) {
-            _map.push_back(MapTuple(i->first, lookup(i->second), i->second));
+            _tupleDeque.push_back(MapTuple(i->first, lookup(i->second), i->second));
         }
     }
 
@@ -154,7 +165,7 @@ private:
     std::string _chunkString;
     std::string _subChunkString;
     IntDeque _subChunks;
-    Map _map;
+    TupleDeque _tupleDeque;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -166,13 +177,19 @@ std::string
 QueryMapping::apply(qproc::ChunkSpec const& s,
                     query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
-    return t.generate(m);
+    // return t.generate(m); &&&
+    std::string str = t.generate(m);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& apply1 " << str);
+    return str;
 }
 std::string
 QueryMapping::apply(qproc::ChunkSpecSingle const& s,
                     query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
-    return t.generate(m);
+    // return t.generate(m);
+    std::string str = t.generate(m);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& apply2 " << str);
+    return str;
 }
 
 void

@@ -106,14 +106,17 @@ private:
     std::string _tableStar; // Reused as const val (no tablestar)
 };
 
-class ValueFactor::render : public std::unary_function<ValueFactor, void> {
+
+class ValueFactor::render {
 public:
     render(QueryTemplate& qt) : _qt(qt) {}
-    void operator()(ValueFactor const& ve);
-    void operator()(ValueFactor const* vep) {
-        if(vep) (*this)(*vep); }
-    void operator()(std::shared_ptr<ValueFactor> const& vep) {
-        (*this)(vep.get()); }
+    void apply(ValueFactor const& ve);
+    void apply(ValueFactor const* vep) {
+        if(vep) apply(*vep);
+    }
+    void apply(std::shared_ptr<ValueFactor> const& vep) {
+        apply(vep.get());
+    }
     QueryTemplate& _qt;
 };
 

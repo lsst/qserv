@@ -155,7 +155,8 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
     return os << *ve;
 }
 
-void ValueFactor::render::operator()(ValueFactor const& ve) {
+
+void ValueFactor::render::apply(ValueFactor const& ve) {
     switch(ve._type) {
     case ValueFactor::COLUMNREF: ve._columnRef->renderTo(_qt); break;
     case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
@@ -170,7 +171,7 @@ void ValueFactor::render::operator()(ValueFactor const& ve) {
     case ValueFactor::CONST: _qt.append(ve._tableStar); break;
     case ValueFactor::EXPR:
         { ValueExpr::render r(_qt, false);
-            r(ve._valueExpr);
+            r.applyToQT(ve._valueExpr);
         }
         break;
     default: break;

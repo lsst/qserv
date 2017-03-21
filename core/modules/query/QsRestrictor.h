@@ -69,7 +69,7 @@ public:
     class render {
     public:
         render(QueryTemplate& qt_) : qt(qt_) {}
-        void operator()(std::shared_ptr<QsRestrictor> const& p);
+        void applyToQT(std::shared_ptr<QsRestrictor> const& p);
         QueryTemplate& qt;
     };
 

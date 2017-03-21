@@ -124,11 +124,6 @@ public:
 
     virtual std::string getQueryIdString() const override;
 
-    /* &&& unused
-    /// Add a chunk for later execution
-    void addChunk(qproc::ChunkSpec const& cs);
-    */
-
     void setupChunking();
 
 private:
@@ -136,6 +131,7 @@ private:
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
+
     /* &&&
     void _sendToWorker(qproc::ChunkSpec const& chunkSpec, std::mutex& mtx, std::vector<int>& chunks,
             proto::ProtoImporter<proto::TaskMsg>& pi,

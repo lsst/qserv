@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     return ref->putStream(os);
 }
 
-void TableRef::render::operator()(TableRef const& ref) {
+void TableRef::render::apply(TableRef const& ref) {
     if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
 }

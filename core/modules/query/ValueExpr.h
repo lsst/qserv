@@ -133,19 +133,18 @@ private:
     FactorOpVector _factorOps;
 };
 /// A helper functor for rendering to QueryTemplates
-class ValueExpr::render : public std::unary_function<ValueExpr, void> {
+class ValueExpr::render {
 public:
     render(QueryTemplate& qt, bool needsComma, bool isProtected=false)
         : _qt(qt),
           _needsComma(needsComma),
           _isProtected(isProtected),
-          _count(0)
-        {}
-    void operator()(ValueExpr const& ve);
-    void operator()(ValueExpr const* vep) {
-        if(vep) (*this)(*vep); }
-    void operator()(std::shared_ptr<ValueExpr> const& vep) {
-        (*this)(vep.get()); }
+          _count(0) {}
+    void apply(ValueExpr const& ve);
+    void apply(ValueExpr const* vep) {
+        if(vep) apply(*vep); }
+    void applyToQT(std::shared_ptr<ValueExpr> const& vep) {
+        apply(vep.get()); }
     QueryTemplate& _qt;
     bool _needsComma;
     bool _isProtected;

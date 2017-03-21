@@ -111,9 +111,9 @@ private:
 class TableRef::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
-    void operator()(TableRef const& trn);
-    inline void operator()(TableRef::Ptr const trn) {
-        if(trn.get()) (*this)(*trn);
+    void apply(TableRef const& trn);
+    inline void applyToQT(TableRef::Ptr const trn) {
+        if(trn.get()) apply(*trn);
     }
     QueryTemplate& _qt;
     int _count;

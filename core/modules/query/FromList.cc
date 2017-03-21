@@ -100,9 +100,11 @@ FromList::getGenerated() {
 
 void
 FromList::renderTo(QueryTemplate& qt) const {
-    if (_tableRefs.get() && _tableRefs->size() > 0) {
-        TableRefList const& refList = *_tableRefs;
-        std::for_each(refList.begin(), refList.end(), TableRef::render(qt));
+    if (_tableRefs != nullptr && _tableRefs->size() > 0) {
+        TableRef::render rend(qt);
+        for (auto& tRef : *_tableRefs) {
+            rend.applyToQT(tRef);
+        }
     }
 }
 

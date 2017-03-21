@@ -132,9 +132,11 @@ WhereClause::getGenerated() const {
     return qt.sqlFragment();
 }
 void WhereClause::renderTo(QueryTemplate& qt) const {
-    if (_restrs.get()) {
-        std::for_each(_restrs->begin(), _restrs->end(),
-                      QsRestrictor::render(qt));
+    if (_restrs != nullptr) {
+        QsRestrictor::render rend(qt);
+        for (auto& res : *_restrs) {
+            rend.applyToQT(res);
+        }
     }
     if (_tree.get()) {
         _tree->renderTo(qt);

@@ -378,22 +378,31 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     QueryTplVector queryTemplates;
 
     typedef query::SelectStmtPtrVector::const_iterator Iter;
+    int j=0; // &&& temporary
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end(); i != e; ++i) {
-        queryTemplates.push_back((**i).getQueryTemplate());
+        // queryTemplates.push_back((**i).getQueryTemplate()); &&& restore
+        auto qt = (**i).getQueryTemplate(); // &&& temporary
+        LOGS(_log, LOG_LVL_DEBUG, "&&& j=" << j++ << "qt=" << qt); // &&& temporary
+        queryTemplates.push_back(qt);  // &&& temporary
     }
     if (!queryMapping.hasSubChunks()) { // Non-subchunked?
         LOGS(_log, LOG_LVL_DEBUG, "Non-subchunked");
 
         for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
-            q.push_back(_context->queryMapping->apply(s, *i));
+            // q.push_back(_context->queryMapping->apply(s, *i)); &&& restore
+            std::string str = _context->queryMapping->apply(s, *i);
+            LOGS(_log, LOG_LVL_DEBUG, "&&& Non-subchunked:" << str);
+            q.push_back(str);
         }
     } else { // subchunked:
         ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
         typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
         for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
             for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
-                LOGS(_log, LOG_LVL_DEBUG, "adding query " << _context->queryMapping->apply(*i, *j));
-                q.push_back(_context->queryMapping->apply(*i, *j));
+                std::string str = _context->queryMapping->apply(*i, *j);
+                LOGS(_log, LOG_LVL_DEBUG, "adding query " << str);
+                LOGS(_log, LOG_LVL_DEBUG, "&&& subchunked:" << str);
+                q.push_back(str);
             }
         }
     }

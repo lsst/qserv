@@ -52,51 +52,12 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryTemplate");
 
-struct SpacedOutput {
-
-    SpacedOutput(std::ostream& os_, std::string sep_=" ")
-        : os(os_), sep(sep_) {}
-
-    void operator()(std::shared_ptr<lsst::qserv::query::QueryTemplate::Entry> entry) {
-        if (!entry) {
-            throw std::invalid_argument("NULL QueryTemplate::Entry");
-        }
-        std::string const& entryStr = entry->getValue();
-        LOGS(_log, LOG_LVL_TRACE, "entry: " << entryStr);
-        if (entryStr.empty()) {
-            return;
-        }
-        if (!lastEntry.empty() &&
-           lsst::qserv::sql::sqlShouldSeparate(lastEntry,
-                                               *lastEntry.rbegin(),
-                                               entryStr.at(0))) {
-            os << sep;
-        }
-        os << entryStr;
-        lastEntry = entryStr;
-    }
-
-    std::ostream& os;
-    std::string lastEntry;
-    std::string sep;
-};
-
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
-struct MappingWrapper {
-    MappingWrapper(QueryTemplate::EntryMapping const& em_,
-                   QueryTemplate& qt_)
-        : em(em_), qt(qt_) {}
-    void operator()(std::shared_ptr<QueryTemplate::Entry> e) {
-        qt.append(em.mapEntry(*e));
-    }
-    QueryTemplate::EntryMapping const& em;
-    QueryTemplate& qt;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
@@ -139,12 +100,25 @@ std::string QueryTemplate::sqlFragment() const {
     return oss.str();
 }
 
-// Output operator for QueryTemplate
+
 std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
-    SpacedOutput so(os);
-    std::for_each(queryTemplate._entries.begin(), queryTemplate._entries.end(), so);
+    std::string lastEntry;
+    std::string sep(" ");
+    for (auto const& entry : queryTemplate._entries ) {
+        std::string const& entryStr = entry->getValue();
+        if (entryStr.empty()) {
+            return os;
+        }
+        if (!lastEntry.empty()
+          && lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
+            os << sep;
+        }
+        os << entryStr;
+        lastEntry = entryStr;
+    }
     return os;
 }
+
 
 void
 QueryTemplate::append(std::string const& s) {
@@ -169,12 +143,15 @@ QueryTemplate::append(std::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
 
-std::string
-QueryTemplate::generate(EntryMapping const& em) const {
+
+std::string QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
-    std::for_each(_entries.begin(), _entries.end(), MappingWrapper(em, newQt));
+    for (auto const& entry : _entries) {
+        newQt.append(em.mapEntry(*entry));
+    }
     return newQt.sqlFragment();
 }
+
 
 void
 QueryTemplate::clear() {
