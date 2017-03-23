@@ -194,7 +194,8 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(*i);
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first.queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);
@@ -505,7 +506,8 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(*i);
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     BOOST_CHECK_EQUAL(first.queries.size(), 1U);
     BOOST_CHECK_EQUAL(first.queries[0], expected_100);
 }
@@ -805,7 +807,8 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(*i);
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     BOOST_CHECK_EQUAL(first.queries.size(), 1U);
     BOOST_CHECK_EQUAL(first.queries[0], expected);
     BOOST_CHECK_EQUAL(first.subChunkTables.size(), 0U);
@@ -984,7 +987,8 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(*i);
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first.queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);

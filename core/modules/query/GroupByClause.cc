@@ -97,7 +97,7 @@ void GroupByClause::renderTo(QueryTemplate& qt) const {
         int count = 0;
         for (auto& term : *_terms) {
             if (count++ > 0) {
-                qt.append(",");  // same as vr._qt.append(","); &&&
+                qt.append(",");
             }
             vr.applyToQT(term.getExpr());
         }

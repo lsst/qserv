@@ -107,7 +107,8 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     }
 
     auto& chunkSpec = *i;
-    auto first = querySession->buildChunkQuerySpec(chunkSpec);
+    auto queryTemplates = querySession->makeQueryTemplates();
+    auto first = querySession->buildChunkQuerySpec(queryTemplates, chunkSpec);
     std::string const & firstParallelQuery = first.queries[0];
     LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
     return firstParallelQuery;

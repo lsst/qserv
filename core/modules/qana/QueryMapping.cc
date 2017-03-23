@@ -72,10 +72,8 @@ public:
     QueryMapping::Parameter param;
 };
 
-std::string const replace(std::string const & s,
-                          std::string const & pat,
-                          std::string const & value)
-{
+std::string const replace(std::string const& s, std::string const& pat, std::string const& value) {
+    // LOGS(_log, LOG_LVL_DEBUG, "&&& replace s=" << s << " pat=" << pat << " val=" << value);
     std::string result;
     size_t i = 0;
     result.reserve(s.size() + value.size());
@@ -112,8 +110,7 @@ public:
     }
     virtual ~Mapping() {}
 
-    std::shared_ptr<query::QueryTemplate::Entry>
-    mapEntry(query::QueryTemplate::Entry const& e) const override {
+    query::QueryTemplate::Entry::Ptr mapEntry(query::QueryTemplate::Entry const& e) const override {
         auto newE = std::make_shared<query::QueryTemplate::StringEntry>(e.getValue());
 
         // FIXME see if this works
@@ -173,44 +170,19 @@ private:
 ////////////////////////////////////////////////////////////////////////
 QueryMapping::QueryMapping() {}
 
-std::string
-QueryMapping::apply(qproc::ChunkSpec const& s,
-                    query::QueryTemplate const& t) const {
+std::string QueryMapping::apply(qproc::ChunkSpec const& s, query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
-    // return t.generate(m); &&&
     std::string str = t.generate(m);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& apply1 " << str);
-    return str;
-}
-std::string
-QueryMapping::apply(qproc::ChunkSpecSingle const& s,
-                    query::QueryTemplate const& t) const {
-    Mapping m(_subs, s);
-    // return t.generate(m);
-    std::string str = t.generate(m);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& apply2 " << str);
     return str;
 }
 
-void
-QueryMapping::update(QueryMapping const& m) {
-    // Update this mapping to reflect the union of the two mappings.
-    // We manually merge so that we have a chance to detect conflicts.
-    ParameterMap::const_iterator i;
-    for(i=m._subs.begin(); i != m._subs.end(); ++i) {
-        ParameterMap::const_iterator f = _subs.find(i->first);
-        if (f != _subs.end()) {
-            if (f->second != i->second) {
-                throw std::logic_error("Conflict during update in QueryMapping");
-                // Not sure what to do.
-                // This is a big parse error, or a flaw in parsing logic.
-            }
-        } else {
-            _subs.insert(*i);
-        }
-    }
-    _subChunkTables.insert(m._subChunkTables.begin(), m._subChunkTables.end());
+
+std::string QueryMapping::apply(qproc::ChunkSpecSingle const& s, query::QueryTemplate const& t) const {
+    Mapping m(_subs, s);
+    std::string str = t.generate(m);
+    return str;
 }
+
 
 bool
 QueryMapping::hasParameter(Parameter p) const {

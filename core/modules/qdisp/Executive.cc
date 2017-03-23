@@ -124,7 +124,6 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
     };
     auto startQSEA = std::chrono::system_clock::now(); // &&&
     std::chrono::time_point<std::chrono::system_clock> cancelLockQSEA, jobQueryQSEA, addJobQSEA, trackQSEA; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::add(" << jobDesc << ")");
     JobQuery::Ptr jobQuery;
     {
         std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
@@ -158,9 +157,9 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
         }
         ++_requestCount;
     }
-    std::string msg = "Executive: Add job with path=" + jobDesc.resource().path();
+    std::string msg = "Executive::add " + getIdStr() + " with path=" + jobDesc.resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
-    _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg);
+    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); &&& restore, see why it takes so long
     auto endQSEA = std::chrono::system_clock::now(); // &&&
     { // &&&
         std::lock_guard<std::mutex> sumLock(sumMtx);

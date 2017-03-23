@@ -57,6 +57,7 @@
 ////////////////////////////////////////////////////////////////////////
 // anonymous
 ////////////////////////////////////////////////////////////////////////
+// &&& should this really be a template? Base class for Select, OrderBy, etc makes more sense for all three of these.
 namespace {
 template <typename T>
 inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,

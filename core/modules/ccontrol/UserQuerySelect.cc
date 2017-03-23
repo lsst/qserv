@@ -221,6 +221,7 @@ void UserQuerySelect::submit() {
     // Writing query for each chunk, stop if query is cancelled.
     auto startAllQSJ = std::chrono::system_clock::now(); // &&&
 
+    auto queryTemplates = _qSession->makeQueryTemplates();
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // &&&
@@ -228,7 +229,7 @@ void UserQuerySelect::submit() {
         // Dereferencing i causes a ChunkQuerySpec object to be created,
         // see qproc::QuerySession::Iter::dereference()
         auto& chunkSpec = *i;
-        auto cs = _qSession->buildChunkQuerySpec(chunkSpec);
+        auto cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
         auto endQSpecQSJ = std::chrono::system_clock::now(); // &&&
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);

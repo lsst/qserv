@@ -120,26 +120,19 @@ std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
 }
 
 
-void
-QueryTemplate::append(std::string const& s) {
+void QueryTemplate::append(std::string const& s) {
     std::shared_ptr<Entry> e = std::make_shared<StringEntry>(s);
     _entries.push_back(e);
 }
 
-void
-QueryTemplate::append(ColumnRef const& cr) {
+
+void QueryTemplate::append(ColumnRef const& cr) {
     std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr);
     _entries.push_back(e);
 }
 
-void
-QueryTemplate::append(TableEntry const& te) {
-    std::shared_ptr<Entry> e = std::make_shared<TableEntry>(te);
-    _entries.push_back(e);
-}
 
-void
-QueryTemplate::append(std::shared_ptr<QueryTemplate::Entry> const& e) {
+void QueryTemplate::append(QueryTemplate::Entry::Ptr const& e) {
     _entries.push_back(e);
 }
 
