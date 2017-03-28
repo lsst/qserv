@@ -117,17 +117,18 @@ void Executive::setQueryId(QueryId id) {
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
-    auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // &&& duplicate in UserQuerySelect
+    auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
             std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
         return diff.count();
     };
-    auto startQSEA = std::chrono::system_clock::now(); // &&&
-    std::chrono::time_point<std::chrono::system_clock> cancelLockQSEA, jobQueryQSEA, addJobQSEA, trackQSEA; // &&&
+    auto startQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+    std::chrono::time_point<std::chrono::system_clock> cancelLockQSEA, jobQueryQSEA,
+                                                       addJobQSEA, trackQSEA; // TEMPORARY-timing
     JobQuery::Ptr jobQuery;
     {
         std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
-        cancelLockQSEA = std::chrono::system_clock::now(); // &&&
+        cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
                     << jobDesc.id() << ")");
@@ -138,30 +139,30 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
         Ptr thisPtr = shared_from_this();
         MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc.id());
         jobQuery = JobQuery::newJobQuery(thisPtr, jobDesc, jobStatus, mcf, _id);
-        jobQueryQSEA = std::chrono::system_clock::now(); // &&&
+        jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (!_addJobToMap(jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
             return jobQuery;
         }
-        addJobQSEA = std::chrono::system_clock::now(); // &&&
+        addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (!_track(jobQuery->getIdInt(), jobQuery)) {
             LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
             return jobQuery;
         }
-        trackQSEA = std::chrono::system_clock::now(); // &&&
+        trackQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (_empty.exchange(false)) {
             LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
         }
         ++_requestCount;
     }
-    std::string msg = "Executive::add " + getIdStr() + " with path=" + jobDesc.resource().path();
+    std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc.resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
-    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); &&& restore, see why it takes so long
-    auto endQSEA = std::chrono::system_clock::now(); // &&&
-    { // &&&
+    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: remove completely or relocate.
+    auto endQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+    { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(sumMtx);
         cancelLockQSEASum += timeDiff(startQSEA, cancelLockQSEA);
         jobQueryQSEASum += timeDiff(cancelLockQSEA, jobQueryQSEA);
@@ -183,37 +184,10 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
 }
 
 
-
 void Executive::waitForAllJobsToStart() {
     _startJobsPool->endAll();
     _startJobsPool->waitForResize(0); // No time limit.
 }
-
-/* &&&
-/// Start all jobs that have been added.
-void Executive::startAllJobs() {
-    auto queue = std::make_shared<util::CommandQueue>();
-    auto pool = util::ThreadPool::newThreadPool(10, queue);
-    for (auto const& elem : _jobMap) {
-        JobQuery::Ptr const& jq = elem.second;
-        std::function<void(util::CmdData*)> func = [jq](util::CmdData*) {
-            jq->runJob();
-        };
-        auto cmd = std::make_shared<util::Command>(func);
-        queue->queCmd(cmd);
-    }
-    pool->endAll(); // Only runs after after all jobs have been run.
-    pool->waitForResize(0); // No time limit.
-}
-*/
-
-/* &&&
-/// Start a specific job now.
-void Executive::startJob(std::shared_ptr<JobQuery> const& jobQuery) {
-    jobQuery->runJob();
-}
-*/
-
 
 
 /// If the executive has not been cancelled, this calls xrootd's Provision and
@@ -392,7 +366,6 @@ void Executive::_setup() {
   *          false if this entry was previously in the map
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
-    assert(r);
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     int size = -1;
     {

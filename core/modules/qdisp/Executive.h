@@ -135,12 +135,12 @@ public:
     bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
                          std::shared_ptr<QueryResource> const& sourceQr);
 
-    std::mutex sumMtx; // &&&
-    int cancelLockQSEASum{0}; // &&&
-    int jobQueryQSEASum{0}; // &&&
-    int addJobQSEASum{0}; // &&&
-    int trackQSEASum{0}; // &&&
-    int endQSEASum{0}; // &&&
+    std::mutex sumMtx; // TEMPORARY-timing
+    int cancelLockQSEASum{0}; // TEMPORARY-timing
+    int jobQueryQSEASum{0}; // TEMPORARY-timing
+    int addJobQSEASum{0}; // TEMPORARY-timing
+    int trackQSEASum{0}; // TEMPORARY-timing
+    int endQSEASum{0}; // TEMPORARY-timing
 
 private:
     Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
