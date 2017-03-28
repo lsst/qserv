@@ -55,7 +55,6 @@ public:
     static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
             QueryId qid) {
-        //Ptr jq{new JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, qid}};
         Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
         jq->_setup();
         return jq;

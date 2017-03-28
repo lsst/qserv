@@ -48,7 +48,7 @@ class ChunkQuerySpec;
 /// All member variables must be thread safe.
 class TaskMsgFactory {
 public:
-    TaskMsgFactory(uint64_t session) : _session(session) {};
+    TaskMsgFactory(uint64_t session) : _session(session) {}
 
     /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s,

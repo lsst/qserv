@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2009-2016 AURA/LSST.
+ * Copyright 2009-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -84,20 +84,6 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     return querySession;
 }
 
-/* &&&
-std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
-    querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));
-    QuerySession::Iter i = querySession->cQueryBegin();
-    if (i == querySession->cQueryEnd()) {
-        throw new std::string("Empty query session");
-    }
-
-    ChunkQuerySpec& first = *i;
-    std::string const & firstParallelQuery = first.queries[0];
-    LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
-    return firstParallelQuery;
-}
-*/
 
 std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));

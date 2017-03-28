@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     return ref->putStream(os);
 }
 
-void TableRef::render::apply(TableRef const& ref) {
+void TableRef::render::applyToQT(TableRef const& ref) {
     if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
 }

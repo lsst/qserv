@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 LSST Corporation.
+ * Copyright 2012-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -130,8 +130,8 @@ public:
     /// Finalize a query after chunk coverage has been updated
     void finalize();
     // Iteration
-    ChunkSpecVector::iterator cQueryBegin();
-    ChunkSpecVector::iterator cQueryEnd();
+    ChunkSpecVector::iterator cQueryBegin() { return _chunks.begin(); }
+    ChunkSpecVector::iterator cQueryEnd() { return _chunks.end(); }
 
     // For test harnesses.
     struct Test {
@@ -163,8 +163,10 @@ private:
     void _generateConcrete();
     void _applyConcretePlugins();
 
-    std::vector<std::string> _buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates, ChunkSpec const& chunkSpec) const;
-    std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates, ChunkSpecFragmenter& f) const;
+    std::vector<std::string> _buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
+                                                ChunkSpec const& chunkSpec) const;
+    std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates,
+                                                   ChunkSpecFragmenter& f) const;
 
     // Fields
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access

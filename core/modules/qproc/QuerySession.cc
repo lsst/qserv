@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -252,14 +252,6 @@ void QuerySession::finalize() {
 }
 
 
-ChunkSpecVector::iterator QuerySession::cQueryBegin() {
-    return _chunks.begin();
-}
-
-ChunkSpecVector::iterator QuerySession::cQueryEnd() {
-    return _chunks.end();
-}
-
 QuerySession::QuerySession(Test& t)
     : _css(t.css), _defaultDb(t.defaultDb) {
     _initContext();
@@ -355,18 +347,15 @@ void QuerySession::print(std::ostream& os) const {
 
 std::vector<query::QueryTemplate> QuerySession::makeQueryTemplates() {
     std::vector<query::QueryTemplate> queryTemplates;
-    int j=0; // &&& temporary
     for(auto stmtIter=_stmtParallel.begin(), e=_stmtParallel.end(); stmtIter != e; ++stmtIter) {
-        // queryTemplates.push_back((*stmtIter)->getQueryTemplate()); &&& restore
-        auto qt = (*stmtIter)->getQueryTemplate(); // &&& temporary
-        LOGS(_log, LOG_LVL_DEBUG, "&&& j=" << j++ << "qt=" << qt); // &&& temporary - _stmtParallel is it
-        queryTemplates.push_back(qt);  // &&& temporary
+        queryTemplates.push_back((*stmtIter)->getQueryTemplate());
     }
     return queryTemplates;
 }
 
 
-std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates, ChunkSpec const& chunkSpec) const {
+std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
+                                                          ChunkSpec const& chunkSpec) const {
     std::vector<std::string> chunkQueries;
     // This logic may be pushed over to the qserv worker in the future.
     if (_stmtParallel.empty() || !_stmtParallel.front()) {
@@ -385,9 +374,9 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
         }
     } else { // subchunked:
         ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(chunkSpec);
-        for(auto chunkIter=sVector.begin(), e=sVector.end(); chunkIter != e; ++chunkIter) {
-            for(auto tupleIter=queryTemplates.begin(), je=queryTemplates.end(); tupleIter != je; ++tupleIter) {
-                std::string str = _context->queryMapping->apply(*chunkIter, *tupleIter);
+        for(auto& chunkStr : sVector) {
+            for(auto& qTemplate : queryTemplates) {
+                std::string str = _context->queryMapping->apply(chunkStr, qTemplate);
                 LOGS(_log, LOG_LVL_DEBUG, "adding query " << str);
                 chunkQueries.push_back(str);
             }
@@ -403,7 +392,8 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 }
 
 
-ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates, ChunkSpec const& chunkSpec) const {
+ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
+                                                 ChunkSpec const& chunkSpec) const {
     ChunkQuerySpec cQSpec;
     cQSpec.db = _context->dominantDb;
     cQSpec.scanInfo = _context->scanInfo;
@@ -434,7 +424,9 @@ ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect cons
 }
 
 
-std::shared_ptr<ChunkQuerySpec> QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates, ChunkSpecFragmenter& f) const {
+std::shared_ptr<ChunkQuerySpec>
+QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates,
+                             ChunkSpecFragmenter& f) const {
     std::shared_ptr<ChunkQuerySpec> first;
     std::shared_ptr<ChunkQuerySpec> last;
     while(!f.isDone()) {

@@ -57,7 +57,7 @@ namespace qproc {
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
                                                         std::string const& chunkResultName,
                                                         uint64_t queryId, int jobId) {
-    std::string resultTable("Asdfasfd"); // &&& is that string really necessary?
+    std::string resultTable("Asdfasfd");
     if (!chunkResultName.empty()) { resultTable = chunkResultName; }
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
@@ -97,7 +97,8 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
-            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds, sPtr->queries);
+            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
+                         sPtr->subChunkIds, sPtr->queries);
             sPtr = sPtr->nextFragment.get();
         }
     } else {
@@ -105,7 +106,8 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
         for(unsigned int t=0;t<(chunkQuerySpec.queries).size();t++){
             LOGS(_log, LOG_LVL_DEBUG, (chunkQuerySpec.queries).at(t));
         }
-        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
+        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
+                     chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
     }
     return taskMsg;
 }
@@ -118,13 +120,18 @@ void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& re
      proto::TaskMsg::Fragment* frag = taskMsg.add_fragment();
      frag->set_resulttable(resultName);
 
-     for(auto i=queries.begin(); i != queries.end(); ++i) {
-         frag->add_query(*i);
+     for(auto& qry : queries)  {
+         frag->add_query(qry);
      }
 
      proto::TaskMsg_Subchunk sc;
+     /* &&&
      for(auto i=subChunkTables.begin(); i != subChunkTables.end(); ++i) {
          sc.add_table(*i);
+     }
+     */
+     for(auto& tbl : subChunkTables) {
+         sc.add_table(tbl);
      }
 
      for(auto& subChunkId : subChunkIds) {
@@ -139,7 +146,6 @@ void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
                                   std::string const& chunkResultName,
                                   uint64_t queryId, int jobId,
                                   std::ostream& os) {
-    // std::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName, queryId, jobId); &&&
     std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId);
     m->SerializeToOstream(&os);
 }

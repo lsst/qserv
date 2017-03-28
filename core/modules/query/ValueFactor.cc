@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -156,7 +156,7 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
 }
 
 
-void ValueFactor::render::apply(ValueFactor const& ve) {
+void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     switch(ve._type) {
     case ValueFactor::COLUMNREF: ve._columnRef->renderTo(_qt); break;
     case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;

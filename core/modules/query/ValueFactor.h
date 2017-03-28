@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -110,12 +110,12 @@ private:
 class ValueFactor::render {
 public:
     render(QueryTemplate& qt) : _qt(qt) {}
-    void apply(ValueFactor const& ve);
-    void apply(ValueFactor const* vep) {
-        if(vep) apply(*vep);
+    void applyToQT(ValueFactor const& ve);
+    void applyToQT(ValueFactor const* vep) {
+        if(vep) applyToQT(*vep);
     }
-    void apply(std::shared_ptr<ValueFactor> const& vep) {
-        apply(vep.get());
+    void applyToQT(std::shared_ptr<ValueFactor> const& vep) {
+        applyToQT(vep.get());
     }
     QueryTemplate& _qt;
 };

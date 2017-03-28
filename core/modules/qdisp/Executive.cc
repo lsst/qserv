@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2014-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -160,7 +160,7 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
     }
     std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc.resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
-    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: remove completely or relocate.
+    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.
     auto endQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
     { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(sumMtx);

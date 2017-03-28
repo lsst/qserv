@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2014-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -174,16 +174,6 @@ void UserQuerySelect::kill() {
     }
 }
 
-/* &&& unused
-/// Add a chunk to be executed
-void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
-    // If this is not a chunked query, only accept the dummy chunk.
-    // This should collapse out when chunk geometry coverage is moved from Python to C++.
-    if (_qSession->hasChunks() || cs.chunkId == DUMMY_CHUNK) {
-        _qSession->addChunk(cs);
-    }
-}
-*/
 
 std::string
 UserQuerySelect::getProxyOrderBy() {
@@ -202,9 +192,8 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);  // Thread safe
-    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal()); // Thread safe
-    std::mutex mtx;
+    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
+    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     int msgCount = 0;
     int sequence = 0;
@@ -215,78 +204,13 @@ void UserQuerySelect::submit() {
         return diff.count();
     };
 
-    std::mutex timingMtx;
     int endQSpecQSJSum=0, pushTimeSum=0, serializeTimeSum=0,
         resourceTimeSum=0, jobTimeSum=0, addTimeSum=0; // TEMPORARY-timing
 
     // Writing query for each chunk, stop if query is cancelled.
     auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
 
-    std::mutex localMtx;
-    util::CommandQueue::Ptr createJobsQueue{std::make_shared<util::CommandQueue>()};
-    util::ThreadPool::Ptr createJobsPool{util::ThreadPool::newThreadPool(10, createJobsQueue)};
-
     auto queryTemplates = _qSession->makeQueryTemplates();
-
-    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
-                i != e && !_executive->getCancelled(); ++i) {
-        qproc::ChunkSpec chunkSpec = *i;
-        std::function<void(util::CmdData*)> createJobFunc =
-                [this, chunkSpec, sequence,
-                 &queryTemplates, &chunks, &ttn, &msgCount, &localMtx,
-                 &taskMsgFactory, &createJobsQueue,
-                 &timeDiff, &timingMtx, &endQSpecQSJSum, &pushTimeSum, &serializeTimeSum,
-                 &resourceTimeSum, &jobTimeSum, &addTimeSum]
-                 (util::CmdData*) {
-            auto startChunkQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-
-            auto cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
-            auto endQSpecQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            std::unique_lock<std::mutex> uLock(localMtx);
-            chunks.push_back(cs.chunkId);
-            ++msgCount;
-            uLock.unlock();
-            std::string chunkResultName = ttn.make(cs.chunkId);
-            auto endChunkPushQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            std::ostringstream ss;
-            taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
-            std::string msg = ss.str();
-
-            proto::ProtoImporter<proto::TaskMsg> pi;
-            if (!pi.messageAcceptable(msg)) {
-                throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
-            }
-            auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-
-            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-            ResourceUnit ru;
-            ru.setAsDbChunk(cs.db, cs.chunkId);
-            auto endChunkResourceQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
-                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
-            auto endChunkJobQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            _executive->add(jobDesc);
-            auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            { // TEMPORARY-timing
-                std::lock_guard<std::mutex> lk(timingMtx);
-                endQSpecQSJSum += timeDiff(startChunkQSJ, endQSpecQSJ);
-                pushTimeSum += timeDiff(endQSpecQSJ, endChunkPushQSJ);
-                serializeTimeSum += timeDiff(endChunkPushQSJ, endChunkSerializeQSJ);
-                resourceTimeSum += timeDiff(endChunkSerializeQSJ, endChunkResourceQSJ);
-                jobTimeSum += timeDiff(endChunkResourceQSJ, endChunkJobQSJ);
-                addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
-            }
-        };
-        // startJobFunc(nullptr);
-        auto cmd = std::make_shared<util::Command>(createJobFunc);
-        createJobsQueue->queCmd(cmd);
-        ++sequence;
-    }
-
-    createJobsPool->endAll();
-    createJobsPool->waitForResize(0); // No time limit.
-
-    /* &&&
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
@@ -326,7 +250,6 @@ void UserQuerySelect::submit() {
             addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
         }
     }
-    */
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();

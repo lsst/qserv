@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -131,12 +131,6 @@ private:
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
-
-    /* &&&
-    void _sendToWorker(qproc::ChunkSpec const& chunkSpec, std::mutex& mtx, std::vector<int>& chunks,
-            proto::ProtoImporter<proto::TaskMsg>& pi,
-            int& msgCount, int sequence); // &&& cleanup
-    */
 
     // Delegate classes
     std::shared_ptr<qproc::QuerySession> _qSession;

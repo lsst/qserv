@@ -44,7 +44,7 @@ namespace proto {
 template <typename Msg>
 class ProtoImporter {
 public:
-    ProtoImporter() {};
+    ProtoImporter() {}
 
     bool messageAcceptable(std::string const& msg) {
         Msg m;

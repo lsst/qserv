@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -63,7 +63,6 @@ class QueryResource;
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    // typedef std::map<int, std::shared_ptr<JobQuery>> JobMap; &&&
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
 
     struct Config {
@@ -87,19 +86,11 @@ public:
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription const& s);
 
-    /* &&&
-    /// Start all jobs added with add().
-    void startAllJobs();
-    */
 
     /// Waits for all jobs on _startJobsPool to start. This should not be called
     /// before ALL jobs have been added to the pool.
     void waitForAllJobsToStart();
 
-    /* &&& delete
-    /// Start a specific job, jobQuery must have been created with add();
-    void startJob(std::shared_ptr<JobQuery> const& jobQuery);
-    */
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -149,7 +140,6 @@ private:
     void _setup();
 
     void _queueJobStart(std::shared_ptr<JobQuery> const& job);
-
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);

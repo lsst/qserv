@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -51,7 +51,7 @@ private:
         ss << "r_" << qId << "_" << util::StringHash::getMd5Hex(query.data(), query.size()) << "_";
         return ss.str();
     }
-    std::string const _prefix; ///< Immutable for thread safety.
+    std::string const _prefix;
 };
 
 }}} // namespace lsst::qserv:ccontrol

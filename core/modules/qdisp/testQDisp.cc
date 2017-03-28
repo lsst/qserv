@@ -172,7 +172,6 @@ void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, s
                 millisecs, // Request = stringified milliseconds
                 rv[j]);
         auto jobQuery = ex->add(job); // ex->add() is not thread safe.
-        //ex->startJob(jobQuery); &&&
     }
 }
 
@@ -429,7 +428,6 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     for (int jobId=first; jobId<=last; ++jobId) {
         qdisp::JobDescription jobDesc(jobId, ru, "a message", respReq);
         auto jQuery = ex->add(jobDesc);
-        // ex->startJob(jQuery); &&&
         jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
         BOOST_CHECK(jq->isQueryCancelled() == false);

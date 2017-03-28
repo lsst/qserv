@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -140,11 +140,11 @@ public:
           _needsComma(needsComma),
           _isProtected(isProtected),
           _count(0) {}
-    void apply(ValueExpr const& ve);
-    void apply(ValueExpr const* vep) {
-        if(vep) apply(*vep); }
+    void applyToQT(ValueExpr const& ve);
+    void applyToQT(ValueExpr const* vep) {
+        if(vep) applyToQT(*vep); }
     void applyToQT(std::shared_ptr<ValueExpr> const& vep) {
-        apply(vep.get()); }
+        applyToQT(vep.get()); }
     QueryTemplate& _qt;
     bool _needsComma;
     bool _isProtected;
