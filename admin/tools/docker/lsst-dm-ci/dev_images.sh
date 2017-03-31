@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Launched by LSST CI at development build 
+# Launched by LSST CI at development build
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
