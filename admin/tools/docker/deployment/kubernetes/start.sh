@@ -12,6 +12,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/env-cluster.sh"
 
 "$DIR/admin/scp-orchestration.sh"
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/start.sh"
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/wait-pods-start.sh"
-ssh -F "$SSH_CFG" "$ORCHESTRATOR" "/home/qserv/orchestration/wait-qserv-start.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/start.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/wait-pods-start.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/wait-qserv-start.sh"

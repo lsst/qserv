@@ -88,7 +88,7 @@ if [ -n "$PROVISION" ]; then
     mkdir -p "$CONFIG_DIR" 
 	ln -f "$DIR/ssh_config" "$CONFIG_DIR"
 	ln -f "$DIR/env-infrastructure.sh" "$CONFIG_DIR"
-    "$DIR/create-slf.sh"
+    "$DIR/../docker/deployment/parallel/create-gnuparallel-slf.sh"
 fi
 
 

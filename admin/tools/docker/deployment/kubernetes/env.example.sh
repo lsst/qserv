@@ -1,11 +1,10 @@
-# Configuration file copied to orchestration node, in /home/qserv/orchestration
+# Configuration file copied to orchestration node, in $ORCHESTRATION_DIR
 # and then sourced by Kubernetes ochestration node scripts
 # Allow to customize pods execution
 
 # VERSION can be a git ticket branch but with _ instead of /
 # example: tickets_DM-7139, or dev
 VERSION=dev
-
 
 # `docker run` settings
 # =====================

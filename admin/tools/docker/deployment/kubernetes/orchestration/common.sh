@@ -11,7 +11,12 @@ WORKER_IMAGE="qserv/qserv:${VERSION}_worker"
 
 MASTER_POD='master'
 WORKER_POD_FORMAT='worker-%g'
-# List of worker pods (and containers) names
-WORKER_PODS=$(seq --format "$WORKER_POD_FORMAT" \
-    --separator=' ' 1 "$WORKER_LAST_ID")
 
+# List of worker pods (and containers) names
+j=1
+WORKER_PODS=''
+for host in $WORKERS;
+do
+    WORKER_PODS="$WORKER_PODS worker-$j"
+    j=$((j+1));
+done

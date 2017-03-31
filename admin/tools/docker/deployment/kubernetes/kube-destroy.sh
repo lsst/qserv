@@ -10,7 +10,7 @@ set -x
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/env-cluster.sh"
 
-ssh -t -F "$SSH_CFG" "$ORCHESTRATOR" "sudo kubeadm reset || true"
+ssh -t $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm reset || true"
 
 for qserv_node in $MASTER $WORKERS
 do
@@ -18,10 +18,11 @@ do
     # FIXME: cleanup below is a workaround, fixed here
     # https://github.com/kubernetes/kubernetes/issues/10571
     # but not released yet.
-    ssh -t -F "$SSH_CFG" "$qserv_node" "sudo systemctl stop kubelet"
-    ssh -t -F "$SSH_CFG" "$qserv_node" "sudo umount \$(cat /proc/mounts \
-        | grep kubelet | cut -d ' ' -f2) || true && \
-        sudo rm -rf /etc/kubernetes/* /var/lib/kubelet/pods \
-        /var/lib/kubelet/plugins"
-    ssh -t -F "$SSH_CFG" "$qserv_node" "sudo systemctl start kubelet"
+    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- systemctl stop kubelet"
+    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- umount \$(cat /proc/mounts \
+        | grep kubelet | cut -d ' ' -f2) || true"
+    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- \
+        sh -c 'whoami && rm -rf /etc/kubernetes/* /var/lib/kubelet/pods \
+        /var/lib/kubelet/plugins'"
+    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- systemctl start kubelet"
 done
