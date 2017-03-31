@@ -23,6 +23,7 @@ qserv_client_info.log
 .metadata/
 .project
 .settings/
+.pydevproject
 RemoteSystemTempFiles/
 \#*\#
 _build.log
