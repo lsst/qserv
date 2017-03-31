@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2014-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -65,6 +65,7 @@
 
 // System headers
 #include <cassert>
+#include <chrono>
 #include <memory>
 
 // LSST headers
@@ -173,14 +174,6 @@ void UserQuerySelect::kill() {
     }
 }
 
-/// Add a chunk to be executed
-void UserQuerySelect::addChunk(qproc::ChunkSpec const& cs) {
-    // If this is not a chunked query, only accept the dummy chunk.
-    // This should collapse out when chunk geometry coverage is moved from Python to C++.
-    if (_qSession->hasChunks() || cs.chunkId == DUMMY_CHUNK) {
-        _qSession->addChunk(cs);
-    }
-}
 
 std::string
 UserQuerySelect::getProxyOrderBy() {
@@ -201,40 +194,85 @@ void UserQuerySelect::submit() {
 
     qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
-    proto::ProtoImporter<proto::TaskMsg> pi;
     std::vector<int> chunks;
     int msgCount = 0;
     int sequence = 0;
 
+    auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
+            std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
+        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+        return diff.count();
+    };
+
+    int endQSpecQSJSum=0, pushTimeSum=0, serializeTimeSum=0,
+        resourceTimeSum=0, jobTimeSum=0, addTimeSum=0; // TEMPORARY-timing
+
     // Writing query for each chunk, stop if query is cancelled.
+    auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+
+    auto queryTemplates = _qSession->makeQueryTemplates();
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
-        qproc::ChunkQuerySpec& cs = *i;
+        auto startChunkQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+        auto& chunkSpec = *i;
+        auto cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+        auto endQSpecQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         chunks.push_back(cs.chunkId);
         std::string chunkResultName = ttn.make(cs.chunkId);
         ++msgCount;
+        auto endChunkPushQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         std::ostringstream ss;
         taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
         std::string msg = ss.str();
 
-        pi(msg.data(), msg.size());
-        if (pi.getNumAccepted() != msgCount) {
+        proto::ProtoImporter<proto::TaskMsg> pi;
+        if (!pi.messageAcceptable(msg)) {
             throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
         }
+        auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
+        auto endChunkResourceQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
                 std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+        auto endChunkJobQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         _executive->add(jobDesc);
+        auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         ++sequence;
+        { // TEMPORARY-timing
+            endQSpecQSJSum += timeDiff(startChunkQSJ, endQSpecQSJ);
+            pushTimeSum += timeDiff(endQSpecQSJ, endChunkPushQSJ);
+            serializeTimeSum += timeDiff(endChunkPushQSJ, endChunkSerializeQSJ);
+            resourceTimeSum += timeDiff(endChunkSerializeQSJ, endChunkResourceQSJ);
+            jobTimeSum += timeDiff(endChunkResourceQSJ, endChunkJobQSJ);
+            addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
+        }
     }
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();
-    _executive->startAllJobs();
+    _executive->waitForAllJobsToStart();
     _largeResultMgr->decrOutGoingQueries();
+    auto endAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+    { // TEMPORARY-timing
+        std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
+        LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << "QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
+                << "\nQSJ **sequenc=" << sequence
+                << "\nQSJ   endQSpecQSJSum  =" << endQSpecQSJSum
+                << "\nQSJ   pushTimeSum     =" << pushTimeSum
+                << "\nQSJ   serializeTimeSum=" << serializeTimeSum
+                << "\nQSJ   resourceTimeSum =" << resourceTimeSum
+                << "\nQSJ   jobTimeSum      =" << jobTimeSum
+                << "\nQSJ   addTimeSum      =" << addTimeSum
+                << "\nQSJ     cancelLockQSEASum =" << _executive->cancelLockQSEASum
+                << "\nQSJ     jobQueryQSEASum   =" << _executive->jobQueryQSEASum
+                << "\nQSJ     addJobQSEASum     =" << _executive->addJobQSEASum
+                << "\nQSJ     trackQSEASum      =" << _executive->trackQSEASum
+                << "\nQSJ     endQSEASum        =" << _executive->endQSEASum );
+
+    }
 
     // we only care about per-chunk info for ASYNC queries, and
     // currently all queries are SYNC, so we skip this.
@@ -243,6 +281,7 @@ void UserQuerySelect::submit() {
         _qMetaAddChunks(chunks);
     }
 }
+
 
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure

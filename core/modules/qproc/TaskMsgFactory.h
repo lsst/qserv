@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,6 +35,9 @@
 #include <iostream>
 #include <memory>
 
+// Qserv headers
+#include "proto/worker.pb.h"
+
 namespace lsst {
 namespace qserv {
 namespace qproc {
@@ -42,9 +45,10 @@ namespace qproc {
 class ChunkQuerySpec;
 
 /// TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
+/// All member variables must be thread safe.
 class TaskMsgFactory {
 public:
-    TaskMsgFactory(uint64_t session);
+    TaskMsgFactory(uint64_t session) : _session(session) {}
 
     /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s,
@@ -52,9 +56,17 @@ public:
                       uint64_t queryId, int jobId,
                       std::ostream& os);
 private:
-    class Impl;
+    std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s,
+                                                std::string const& chunkResultName,
+                                                uint64_t queryId, int jobId);
 
-    std::shared_ptr<Impl> _impl;
+    void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
+                    std::vector<std::string> const& subChunkTables,
+                    std::vector<int> const& subChunkIds,
+                    std::vector<std::string> const& queries);
+
+    /// All member variable need to be thread safe.
+    uint64_t const _session;
 };
 
 }}} // namespace lsst::qserv::qproc

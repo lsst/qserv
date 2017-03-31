@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -92,7 +92,7 @@ std::ostream& NullPredicate::putStream(std::ostream& os) const {
 void CompPredicate::renderTo(QueryTemplate& qt) const {
 
     ValueExpr::render r(qt, false);
-    r(left);
+    r.applyToQT(left);
     switch(op) {
     case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
     case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
@@ -102,38 +102,40 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     case SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
     case SqlSQL2Tokens::NOT_EQUALS_OP_ALT: qt.append("!="); break;
     }
-    r(right);
+    r.applyToQT(right);
 }
 
 void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
-    r(value);
+    r.applyToQT(value);
     qt.append("IN");
     ValueExpr::render rComma(qt, true);
     qt.append("(");
-    std::for_each(cands.begin(), cands.end(), rComma);
+    for (auto& cand : cands) {
+        rComma.applyToQT(cand);
+    }
     qt.append(")");
 }
 
 void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
-    r(value);
+    r.applyToQT(value);
     qt.append("BETWEEN");
-    r(minValue);
+    r.applyToQT(minValue);
     qt.append("AND");
-    r(maxValue);
+    r.applyToQT(maxValue);
 }
 
 void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
-    r(value);
+    r.applyToQT(value);
     qt.append("LIKE");
-    r(charValue);
+    r.applyToQT(charValue);
 }
 
 void NullPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
-    r(value);
+    r.applyToQT(value);
     qt.append("IS");
     if (hasNot) { qt.append("NOT"); }
     qt.append("NULL");

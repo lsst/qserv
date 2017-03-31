@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2016 AURA/LSST.
+ * Copyright 2015-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -86,9 +86,10 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
-    for(QuerySession::Iter i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
+    for(auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
         i != e; ++i) {
-        ChunkQuerySpec& cs = *i;
+        auto queryTemplates = queryAnaHelper.querySession->makeQueryTemplates();
+        ChunkQuerySpec cs = queryAnaHelper.querySession->buildChunkQuerySpec(queryTemplates, *i);
         LOGS_DEBUG("Chunk spec: " << cs);
     }
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();

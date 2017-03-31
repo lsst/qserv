@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,16 +47,6 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-class GroupByTerm::render {
-public:
-    render(QueryTemplate& qt) : _vr(qt, true), _count(0) {}
-    void operator()(GroupByTerm const& t) {
-        if (_count++ > 0) { _vr._qt.append(","); }
-        _vr(t._expr);
-    }
-    ValueExpr::render _vr;
-    int _count;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // GroupByTerm
@@ -100,10 +90,17 @@ std::string GroupByClause::getGenerated() {
     return qt.sqlFragment();
 }
 
+
 void GroupByClause::renderTo(QueryTemplate& qt) const {
-   if (_terms.get() && _terms->size() > 0) {
-        List const& terms = *_terms;
-        std::for_each(terms.begin(), terms.end(), GroupByTerm::render(qt));
+    if (_terms.get() && _terms->size() > 0) {
+        ValueExpr::render vr(qt, true);
+        int count = 0;
+        for (auto& term : *_terms) {
+            if (count++ > 0) {
+                qt.append(",");
+            }
+            vr.applyToQT(term.getExpr());
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,9 +42,20 @@
 // Third-party headers
 #include "boost/lexical_cast.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
+
+
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryMapping");
+
+}
 
 namespace lsst {
 namespace qserv {
@@ -61,10 +72,7 @@ public:
     QueryMapping::Parameter param;
 };
 
-std::string const replace(std::string const & s,
-                          std::string const & pat,
-                          std::string const & value)
-{
+std::string const replace(std::string const& s, std::string const& pat, std::string const& value) {
     std::string result;
     size_t i = 0;
     result.reserve(s.size() + value.size());
@@ -83,7 +91,7 @@ std::string const replace(std::string const & s,
 class Mapping : public query::QueryTemplate::EntryMapping {
 public:
     typedef std::deque<int> IntDeque;
-    typedef std::deque<MapTuple> Map;
+    typedef std::deque<MapTuple> TupleDeque;
 
     Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
         : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
@@ -101,16 +109,13 @@ public:
     }
     virtual ~Mapping() {}
 
-    virtual std::shared_ptr<query::QueryTemplate::Entry>
-    mapEntry(query::QueryTemplate::Entry const& e) const {
-        typedef query::QueryTemplate::StringEntry StringEntry;
-        std::shared_ptr<StringEntry> newE = std::make_shared<StringEntry>(e.getValue());
-        Map::const_iterator i;
+    query::QueryTemplate::Entry::Ptr mapEntry(query::QueryTemplate::Entry const& e) const override {
+        auto newE = std::make_shared<query::QueryTemplate::StringEntry>(e.getValue());
 
         // FIXME see if this works
         //if (!e.isDynamic()) {return newE; }
 
-        for(i=_map.begin(); i != _map.end(); ++i) {
+        for(auto i=_tupleDeque.begin(); i != _tupleDeque.end(); ++i) {
             newE->s = replace(newE->s, i->pat, i->tgt);
             if (i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,
@@ -129,7 +134,7 @@ private:
     inline void _initMap(QueryMapping::ParameterMap const& m) {
         QueryMapping::ParameterMap::const_iterator i;
         for(i = m.begin(); i != m.end(); ++i) {
-            _map.push_back(MapTuple(i->first, lookup(i->second), i->second));
+            _tupleDeque.push_back(MapTuple(i->first, lookup(i->second), i->second));
         }
     }
 
@@ -156,7 +161,7 @@ private:
     std::string _chunkString;
     std::string _subChunkString;
     IntDeque _subChunks;
-    Map _map;
+    TupleDeque _tupleDeque;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -164,38 +169,19 @@ private:
 ////////////////////////////////////////////////////////////////////////
 QueryMapping::QueryMapping() {}
 
-std::string
-QueryMapping::apply(qproc::ChunkSpec const& s,
-                    query::QueryTemplate const& t) const {
+std::string QueryMapping::apply(qproc::ChunkSpec const& s, query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
-    return t.generate(m);
-}
-std::string
-QueryMapping::apply(qproc::ChunkSpecSingle const& s,
-                    query::QueryTemplate const& t) const {
-    Mapping m(_subs, s);
-    return t.generate(m);
+    std::string str = t.generate(m);
+    return str;
 }
 
-void
-QueryMapping::update(QueryMapping const& m) {
-    // Update this mapping to reflect the union of the two mappings.
-    // We manually merge so that we have a chance to detect conflicts.
-    ParameterMap::const_iterator i;
-    for(i=m._subs.begin(); i != m._subs.end(); ++i) {
-        ParameterMap::const_iterator f = _subs.find(i->first);
-        if (f != _subs.end()) {
-            if (f->second != i->second) {
-                throw std::logic_error("Conflict during update in QueryMapping");
-                // Not sure what to do.
-                // This is a big parse error, or a flaw in parsing logic.
-            }
-        } else {
-            _subs.insert(*i);
-        }
-    }
-    _subChunkTables.insert(m._subChunkTables.begin(), m._subChunkTables.end());
+
+std::string QueryMapping::apply(qproc::ChunkSpecSingle const& s, query::QueryTemplate const& t) const {
+    Mapping m(_subs, s);
+    std::string str = t.generate(m);
+    return str;
 }
+
 
 bool
 QueryMapping::hasParameter(Parameter p) const {

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 LSST Corporation.
+ * Copyright 2012-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,6 +47,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
+#include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 
 
@@ -71,8 +72,6 @@ namespace qproc {
 ///  of the original query, a parsed query  tree, and other user state/context.
 class QuerySession {
 public:
-    class Iter;
-    friend class Iter;
     typedef std::shared_ptr<QuerySession> Ptr;
 
     explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& mysqlSchemaConfig)
@@ -125,11 +124,14 @@ public:
 
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
+    ChunkQuerySpec buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
+                                       ChunkSpec const& chunkSpec) const;
+
     /// Finalize a query after chunk coverage has been updated
     void finalize();
     // Iteration
-    Iter cQueryBegin();
-    Iter cQueryEnd();
+    ChunkSpecVector::iterator cQueryBegin() { return _chunks.begin(); }
+    ChunkSpecVector::iterator cQueryEnd() { return _chunks.end(); }
 
     // For test harnesses.
     struct Test {
@@ -139,6 +141,8 @@ public:
     };
     explicit QuerySession(Test& t); ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
+
+    query::QueryTemplate::Vect makeQueryTemplates();
 
     /**
      *  Print query session to stream.
@@ -159,8 +163,10 @@ private:
     void _generateConcrete();
     void _applyConcretePlugins();
 
-    // Iterator help
-    std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
+    std::vector<std::string> _buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
+                                                ChunkSpec const& chunkSpec) const;
+    std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates,
+                                                   ChunkSpecFragmenter& f) const;
 
     // Fields
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access
@@ -219,42 +225,6 @@ private:
  *  @return an output stream, with no newline at the end
  */
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
-
-/// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
-class QuerySession::Iter : public boost::iterator_facade <
-    QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
-public:
-    Iter() : _qs(nullptr), _hasChunks(false), _hasSubChunks(false), _dirty(false) {}
-
-private:
-    Iter(QuerySession& qs, ChunkSpecVector::iterator i);
-    friend class QuerySession;
-    friend class boost::iterator_core_access;
-
-    void increment() { ++_chunkSpecsIter; _dirty = true; }
-
-    bool equal(Iter const& other) const {
-        return (this->_qs == other._qs) && (this->_chunkSpecsIter == other._chunkSpecsIter);
-    }
-
-    ChunkQuerySpec& dereference() const;
-
-    void _buildCache() const;
-    void _updateCache() const {
-        if(_dirty) {
-            _buildCache();
-            _dirty = false;
-        }
-    }
-    std::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
-
-    QuerySession* _qs;
-    ChunkSpecVector::const_iterator _chunkSpecsIter;
-    bool _hasChunks;
-    bool _hasSubChunks;
-    mutable ChunkQuerySpec _cache; ///< Query generation cache
-    mutable bool _dirty; ///< Does cache need updating/refreshing?
-};
 
 }}} // namespace lsst::qserv::qproc
 

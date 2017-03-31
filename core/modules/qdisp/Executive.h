@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,6 +30,7 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 // Qserv headers
@@ -39,6 +40,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
+#include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
@@ -61,7 +63,7 @@ class QueryResource;
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
-    typedef std::map<int, std::shared_ptr<JobQuery>> JobMap;
+    typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
 
     struct Config {
         typedef std::shared_ptr<Config> Ptr;
@@ -84,11 +86,11 @@ public:
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription const& s);
 
-    /// Start all jobs added with add().
-    void startAllJobs();
 
-    /// Start a specific job, jobQuery must have been created with add();
-    void startJob(std::shared_ptr<JobQuery> const& jobQuery);
+    /// Waits for all jobs on _startJobsPool to start. This should not be called
+    /// before ALL jobs have been added to the pool.
+    void waitForAllJobsToStart();
+
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -124,12 +126,20 @@ public:
     bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
                          std::shared_ptr<QueryResource> const& sourceQr);
 
+    std::mutex sumMtx; // TEMPORARY-timing
+    int cancelLockQSEASum{0}; // TEMPORARY-timing
+    int jobQueryQSEASum{0}; // TEMPORARY-timing
+    int addJobQSEASum{0}; // TEMPORARY-timing
+    int trackQSEASum{0}; // TEMPORARY-timing
+    int endQSEASum{0}; // TEMPORARY-timing
+
 private:
     Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<LargeResultMgr> const& largeResultMgr);
 
     void _setup();
 
+    void _queueJobStart(std::shared_ptr<JobQuery> const& job);
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
@@ -168,6 +178,9 @@ private:
     QueryId _id{0}; ///< Unique identifier for this query.
     std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
+
+    util::CommandQueue::Ptr _startJobsQueue{std::make_shared<util::CommandQueue>()};
+    util::ThreadPool::Ptr _startJobsPool{util::ThreadPool::newThreadPool(10, _startJobsQueue)};
 };
 
 class MarkCompleteFunc {

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -90,7 +90,6 @@ public:
     void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
     void insertChunkEntry(std::string const& tag) { _subs[tag] = CHUNK; }
     void insertSubChunkEntry(std::string const& tag) { _subs[tag] = SUBCHUNK; }
-    void update(QueryMapping const& qm);
 
     // Accessors
     bool hasChunks() const { return hasParameter(CHUNK); }

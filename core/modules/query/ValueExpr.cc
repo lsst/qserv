@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,7 +62,10 @@ output(std::ostream& os, ValueExprPtrVector const& vel) {
 }
 void
 renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
-    std::for_each(vel.begin(), vel.end(), ValueExpr::render(qt, true, true));
+    ValueExpr::render rend(qt, true, true);
+    for (auto& v : vel) {
+        rend.applyToQT(v);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -265,7 +268,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt;
     ValueExpr::render render(qt, false);
-    render(ve);
+    render.applyToQT(ve);
     os << qt;
     return os;
 }
@@ -277,7 +280,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
-void ValueExpr::render::operator()(ValueExpr const& ve) {
+void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (_needsComma && _count++ > 0) { _qt.append(","); }
     ValueFactor::render render(_qt);
     bool needsClose = false;
@@ -287,7 +290,7 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
     }
     for(FactorOpVector::const_iterator i=ve._factorOps.begin();
         i != ve._factorOps.end(); ++i) {
-        render(i->factor);
+        render.applyToQT(i->factor);
         switch(i->op) {
         case ValueExpr::NONE: break;
         case ValueExpr::UNKNOWN: _qt.append("<UNKNOWN_OP>"); break;

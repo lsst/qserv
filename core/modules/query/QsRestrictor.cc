@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +40,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
     os << "Restrictor " << q._name << "(";
     std::copy(q._params.begin(), q._params.end(),
@@ -47,12 +48,10 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
     os << ")";
     return os;
 }
-////////////////////////////////////////////////////////////////////////
-// QsRestrictor::render
-////////////////////////////////////////////////////////////////////////
-void
-QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
-    if (p.get()) {
+
+
+void QsRestrictor::render::applyToQT(QsRestrictor::Ptr const& p) {
+    if (p != nullptr) {
         qt.append(p->_name);
         qt.append("(");
         StringVector::const_iterator i;
@@ -64,5 +63,6 @@ QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
         qt.append(")");
     }
 }
+
 
 }}} // namespace lsst::qserv::query

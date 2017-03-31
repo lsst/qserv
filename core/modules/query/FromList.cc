@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 AURA/LSST.
+ * Copyright 2013-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -100,9 +100,11 @@ FromList::getGenerated() {
 
 void
 FromList::renderTo(QueryTemplate& qt) const {
-    if (_tableRefs.get() && _tableRefs->size() > 0) {
-        TableRefList const& refList = *_tableRefs;
-        std::for_each(refList.begin(), refList.end(), TableRef::render(qt));
+    if (_tableRefs != nullptr && _tableRefs->size() > 0) {
+        TableRef::render rend(qt);
+        for (auto& tRef : *_tableRefs) {
+            rend.applyToQT(tRef);
+        }
     }
 }
 

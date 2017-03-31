@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -123,9 +123,6 @@ public:
     virtual std::string getProxyOrderBy() override;
 
     virtual std::string getQueryIdString() const override;
-
-    /// Add a chunk for later execution
-    void addChunk(qproc::ChunkSpec const& cs);
 
     void setupChunking();
 

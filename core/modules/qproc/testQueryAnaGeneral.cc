@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2015 AURA/LSST.
+ * Copyright 2009-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -191,10 +191,11 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
                                   params, params+4);
 
     qs->addChunk(ChunkSpec::makeFake(100,true));
-    QuerySession::Iter i = qs->cQueryBegin();
-    QuerySession::Iter e = qs->cQueryEnd();
+    auto i = qs->cQueryBegin();
+    auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec& first = *i;
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first.queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);
@@ -502,10 +503,11 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK(!context->restrictors);
 
     qs->addChunk(ChunkSpec::makeFake(100,true));
-    QuerySession::Iter i = qs->cQueryBegin();
-    QuerySession::Iter e = qs->cQueryEnd();
+    auto i = qs->cQueryBegin();
+    auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec& first = *i;
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     BOOST_CHECK_EQUAL(first.queries.size(), 1U);
     BOOST_CHECK_EQUAL(first.queries[0], expected_100);
 }
@@ -802,10 +804,11 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
         "WHERE s1.bar=s2.bar";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     qs->addChunk(ChunkSpec::makeFake(100,true));
-    QuerySession::Iter i = qs->cQueryBegin();
-    QuerySession::Iter e = qs->cQueryEnd();
+    auto i = qs->cQueryBegin();
+    auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec& first = *i;
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     BOOST_CHECK_EQUAL(first.queries.size(), 1U);
     BOOST_CHECK_EQUAL(first.queries[0], expected);
     BOOST_CHECK_EQUAL(first.subChunkTables.size(), 0U);
@@ -981,10 +984,11 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(!context->restrictors);
     qs->addChunk(ChunkSpec::makeFake(100,true));
-    QuerySession::Iter i = qs->cQueryBegin();
-    QuerySession::Iter e = qs->cQueryEnd();
+    auto i = qs->cQueryBegin();
+    auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
-    ChunkQuerySpec& first = *i;
+    auto queryTemplates = qs->makeQueryTemplates();
+    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first.queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);

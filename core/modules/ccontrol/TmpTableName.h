@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,20 +38,20 @@ namespace ccontrol {
 /// TmpTableName : a generator for temporary table names for chunk results.
 class TmpTableName {
 public:
-    TmpTableName(uint64_t sessionId, std::string const& query) {
-        std::stringstream ss;
-        ss << "r_" << sessionId
-           << util::StringHash::getMd5Hex(query.data(), query.size())
-           << "_";
-        _prefix = ss.str();
-    }
+    TmpTableName(QueryId qId, std::string const& query) : _prefix(_makePrefix(qId, query)) {}
+
     std::string make(int chunkId, int seq=0) {
         std::stringstream ss;
         ss << _prefix << chunkId << "_" << seq;
         return ss.str();
     }
 private:
-    std::string _prefix;
+    std::string _makePrefix(QueryId qId, std::string const& query) {
+        std::stringstream ss;
+        ss << "r_" << qId << "_" << util::StringHash::getMd5Hex(query.data(), query.size()) << "_";
+        return ss.str();
+    }
+    std::string const _prefix;
 };
 
 }}} // namespace lsst::qserv:ccontrol

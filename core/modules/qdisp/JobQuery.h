@@ -55,7 +55,7 @@ public:
     static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
             QueryId qid) {
-        Ptr jq{new JobQuery{executive, jobDescription, jobStatus, markCompleteFunc, qid}};
+        Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
         jq->_setup();
         return jq;
     }
@@ -96,12 +96,13 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
-protected:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
+    /// Do not call this directly, use newJobQuery.
     JobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
+protected:
     void _setup() {
         _jobDescription.respHandler()->setJobQuery(shared_from_this());
     }

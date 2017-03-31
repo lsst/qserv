@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -251,13 +251,6 @@ void QuerySession::finalize() {
     }
 }
 
-QuerySession::Iter QuerySession::cQueryBegin() {
-    return Iter(*this, _chunks.begin());
-}
-
-QuerySession::Iter QuerySession::cQueryEnd() {
-    return Iter(*this, _chunks.end());
-}
 
 QuerySession::QuerySession(Test& t)
     : _css(t.css), _defaultDb(t.defaultDb) {
@@ -351,8 +344,19 @@ void QuerySession::print(std::ostream& os) const {
     }
 }
 
-std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
-    std::vector<std::string> q;
+
+std::vector<query::QueryTemplate> QuerySession::makeQueryTemplates() {
+    std::vector<query::QueryTemplate> queryTemplates;
+    for(auto stmtIter=_stmtParallel.begin(), e=_stmtParallel.end(); stmtIter != e; ++stmtIter) {
+        queryTemplates.push_back((*stmtIter)->getQueryTemplate());
+    }
+    return queryTemplates;
+}
+
+
+std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
+                                                          ChunkSpec const& chunkSpec) const {
+    std::vector<std::string> chunkQueries;
     // This logic may be pushed over to the qserv worker in the future.
     if (_stmtParallel.empty() || !_stmtParallel.front()) {
         throw QueryProcessingBug("Attempted buildChunkQueries without _stmtParallel");
@@ -363,88 +367,66 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     }
     qana::QueryMapping const& queryMapping = *_context->queryMapping;
 
-    typedef std::vector<query::QueryTemplate> QueryTplVector;
-    typedef QueryTplVector::const_iterator QueryTplVectorIter;
-    QueryTplVector queryTemplates;
-
-    typedef query::SelectStmtPtrVector::const_iterator Iter;
-    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end(); i != e; ++i) {
-        queryTemplates.push_back((**i).getQueryTemplate());
-    }
-    if (!queryMapping.hasSubChunks()) { // Non-subchunked?
-        LOGS(_log, LOG_LVL_DEBUG, "Non-subchunked");
-
-        for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
-            q.push_back(_context->queryMapping->apply(s, *i));
+    if (!queryMapping.hasSubChunks()) { // Non-subchunked
+        for(auto tupleIter=queryTemplates.begin(), e=queryTemplates.end(); tupleIter != e; ++tupleIter) {
+            std::string str = _context->queryMapping->apply(chunkSpec, *tupleIter);
+            chunkQueries.push_back(str);
         }
     } else { // subchunked:
-        ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
-        typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
-        for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
-            for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
-                LOGS(_log, LOG_LVL_DEBUG, "adding query " << _context->queryMapping->apply(*i, *j));
-                q.push_back(_context->queryMapping->apply(*i, *j));
+        ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(chunkSpec);
+        for(auto& chunkStr : sVector) {
+            for(auto& qTemplate : queryTemplates) {
+                std::string str = _context->queryMapping->apply(chunkStr, qTemplate);
+                LOGS(_log, LOG_LVL_DEBUG, "adding query " << str);
+                chunkQueries.push_back(str);
             }
         }
     }
-    return q;
+    return chunkQueries;
 }
+
 
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
     querySession.print(out);
     return out;
 }
 
-////////////////////////////////////////////////////////////////////////
-// QuerySession::Iter
-////////////////////////////////////////////////////////////////////////
-QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecVector::iterator i)
-    : _qs(&qs), _chunkSpecsIter(i), _dirty(true) {
-    if (!qs._context) {
-        throw QueryProcessingBug("NULL QuerySession");
-    }
-    _hasChunks = qs._context->hasChunks();
-    _hasSubChunks = qs._context->hasSubChunks();
-}
 
-ChunkQuerySpec& QuerySession::Iter::dereference() const {
-    if (_dirty) { _updateCache(); }
-    return _cache;
-}
-
-void QuerySession::Iter::_buildCache() const {
-    assert(_qs != nullptr);
-    _cache.db = _qs->_context->dominantDb;
-    _cache.scanInfo = _qs->_context->scanInfo;
-    _cache.chunkId = _chunkSpecsIter->chunkId;
-    _cache.nextFragment.reset();
+ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
+                                                 ChunkSpec const& chunkSpec) const {
+    ChunkQuerySpec cQSpec;
+    cQSpec.db = _context->dominantDb;
+    cQSpec.scanInfo = _context->scanInfo;
+    cQSpec.chunkId = chunkSpec.chunkId;
     // Reset subChunkTables
-    _cache.subChunkTables.clear();
-    qana::QueryMapping const& queryMapping = *(_qs->_context->queryMapping);
+    qana::QueryMapping const& queryMapping = *(_context->queryMapping);
     qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
-    _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
+    cQSpec.subChunkTables.insert(cQSpec.subChunkTables.begin(),
                                  sTables.begin(), sTables.end());
     // Build queries.
-    if (!_hasSubChunks) {
-        _cache.queries = _qs->_buildChunkQueries(*_chunkSpecsIter);
+    if (!_context->hasSubChunks()) {
+        cQSpec.queries = _buildChunkQueries(queryTemplates, chunkSpec);
     } else {
-        if (_chunkSpecsIter->shouldSplit()) {
-            ChunkSpecFragmenter frag(*_chunkSpecsIter);
+        if (chunkSpec.shouldSplit()) {
+            ChunkSpecFragmenter frag(chunkSpec);
             ChunkSpec s = frag.get();
-            _cache.queries = _qs->_buildChunkQueries(s);
-            _cache.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
+            cQSpec.queries = _buildChunkQueries(queryTemplates, s);
+            cQSpec.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
             frag.next();
-            _cache.nextFragment = _buildFragment(frag);
+            cQSpec.nextFragment = _buildFragment(queryTemplates, frag);
         } else {
-            _cache.queries = _qs->_buildChunkQueries(*_chunkSpecsIter);
-            _cache.subChunkIds.assign(_chunkSpecsIter->subChunks.begin(),
-                                      _chunkSpecsIter->subChunks.end());
+            cQSpec.queries = _buildChunkQueries(queryTemplates, chunkSpec);
+            cQSpec.subChunkIds.assign(chunkSpec.subChunks.begin(),
+                                      chunkSpec.subChunks.end());
         }
     }
+    return cQSpec;
 }
 
+
 std::shared_ptr<ChunkQuerySpec>
-QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
+QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates,
+                             ChunkSpecFragmenter& f) const {
     std::shared_ptr<ChunkQuerySpec> first;
     std::shared_ptr<ChunkQuerySpec> last;
     while(!f.isDone()) {
@@ -457,7 +439,7 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
         }
         ChunkSpec s = f.get();
         last->subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
-        last->queries = _qs->_buildChunkQueries(s);
+        last->queries = _buildChunkQueries(queryTemplates, s);
         f.next();
     }
     return first;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 LSST Corporation.
+ * Copyright 2012-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -111,9 +111,9 @@ private:
 class TableRef::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
-    void operator()(TableRef const& trn);
-    inline void operator()(TableRef::Ptr const trn) {
-        if(trn.get()) (*this)(*trn);
+    void applyToQT(TableRef const& trn);
+    inline void applyToQT(TableRef::Ptr const trn) {
+        if(trn != nullptr) applyToQT(*trn);
     }
     QueryTemplate& _qt;
     int _count;

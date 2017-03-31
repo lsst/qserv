@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -69,7 +69,7 @@ public:
     class render {
     public:
         render(QueryTemplate& qt_) : qt(qt_) {}
-        void operator()(std::shared_ptr<QsRestrictor> const& p);
+        void applyToQT(std::shared_ptr<QsRestrictor> const& p);
         QueryTemplate& qt;
     };
 

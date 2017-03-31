@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 LSST Corporation.
+ * Copyright 2012-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -71,17 +71,19 @@ class TableRefAux;
 ///
 class QueryTemplate {
 public:
+    using Vect = std::vector<QueryTemplate>;
 
     /// An abstract entry in a query template
     class Entry {
     public:
+        using Ptr = std::shared_ptr<Entry>;
         virtual ~Entry() {}
         virtual std::string getValue() const = 0;
         /// isDynamic signals whether the entry is concrete or substitutable.
         virtual bool isDynamic() const { return false; }
     };
 
-    typedef std::vector<std::shared_ptr<Entry> > EntryPtrVector;
+    typedef std::vector<Entry::Ptr> EntryPtrVector;
 
     class StringEntry : public Entry {
     public:
@@ -102,15 +104,14 @@ public:
     class EntryMapping {
     public:
         virtual ~EntryMapping() {}
-        virtual std::shared_ptr<Entry> mapEntry(Entry const& e) const = 0;
+        virtual Entry::Ptr mapEntry(Entry const& e) const = 0;
     };
 
     QueryTemplate() {}
 
     void append(std::string const& s);
     void append(ColumnRef const& cr);
-    void append(TableEntry const& t);
-    void append(std::shared_ptr<Entry> const& e);
+    void append(Entry::Ptr const& e);
 
     /** Return a string representation of the object
      *

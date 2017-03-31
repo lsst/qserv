@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -69,7 +69,7 @@ namespace query {
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
-    void operator()(OrderByTerm const& term) {
+    void applyToQT(OrderByTerm const& term) {
         if (_count++ > 0) {
             _qt.append(", ");
         }
@@ -86,7 +86,7 @@ public:
 void
 OrderByTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, true);
-    r(_expr);
+    r.applyToQT(_expr);
     if (!_collate.empty()) {
         qt.append("COLLATE");
         qt.append(_collate);
@@ -143,9 +143,9 @@ void
 OrderByClause::renderTo(QueryTemplate& qt) const {
     if (_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
-        for(OrderByTermVector::const_iterator term = _terms->begin(), e = _terms->end(); term != e; ++term) {
-            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << *term);
-            r(*term);
+        for(auto& term : *_terms) {
+            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term);
+            r.applyToQT(term);
         }
     }
 }

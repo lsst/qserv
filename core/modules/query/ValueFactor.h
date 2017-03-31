@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -106,14 +106,17 @@ private:
     std::string _tableStar; // Reused as const val (no tablestar)
 };
 
-class ValueFactor::render : public std::unary_function<ValueFactor, void> {
+
+class ValueFactor::render {
 public:
     render(QueryTemplate& qt) : _qt(qt) {}
-    void operator()(ValueFactor const& ve);
-    void operator()(ValueFactor const* vep) {
-        if(vep) (*this)(*vep); }
-    void operator()(std::shared_ptr<ValueFactor> const& vep) {
-        (*this)(vep.get()); }
+    void applyToQT(ValueFactor const& ve);
+    void applyToQT(ValueFactor const* vep) {
+        if(vep) applyToQT(*vep);
+    }
+    void applyToQT(std::shared_ptr<ValueFactor> const& vep) {
+        applyToQT(vep.get());
+    }
     QueryTemplate& _qt;
 };
 

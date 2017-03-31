@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2016 AURA/LSST.
+ * Copyright 2012-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -115,12 +115,15 @@ SelectList::getGenerated() {
     return qt.sqlFragment();
 }
 
-void
-SelectList::renderTo(QueryTemplate& qt) const {
-    std::for_each(_valueExprList->begin(), _valueExprList->end(),
-                  ValueExpr::render(qt, true));
 
+void SelectList::renderTo(QueryTemplate& qt) const {
+    ValueExpr::render rend(qt, true);
+    for (auto& valExpr : *_valueExprList) {
+        rend.applyToQT(valExpr);
+    }
 }
+
+
 std::shared_ptr<SelectList> SelectList::clone() const {
     std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
     newS->_valueExprList = std::make_shared<ValueExprPtrVector>();
