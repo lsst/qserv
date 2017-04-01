@@ -192,7 +192,7 @@ shlibs = {}
 
 # library used by other shared libs
 shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
-                              libs="""log protobuf mysqlclient_r boost_thread crypto""")
+                              libs="""log protobuf mysqlclient_r crypto""")
 
 # library implementing xrootd logging intercept (worker side)
 shlibs["xrdlog"] = dict(mods="""xrdlog""",
@@ -200,7 +200,7 @@ shlibs["xrdlog"] = dict(mods="""xrdlog""",
 
 # library implementing xrootd services (worker side)
 shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wpublish wsched xrdsvc""",
-                        libs="""qserv_common boost_regex boost_signals boost_thread
+                        libs="""qserv_common boost_regex boost_signals
                              mysqlclient_r protobuf log ssl crypto XrdSsiLib""")
 
 # library with CSS code (regular C++ bindings)
