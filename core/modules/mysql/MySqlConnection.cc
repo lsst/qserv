@@ -32,9 +32,6 @@
 #include <cstddef>
 
 // Third-party headers
-#include "boost/format.hpp"
-#include "boost/lexical_cast.hpp"
-#include "boost/thread/tss.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -57,7 +54,7 @@ namespace {
 
     // A functor that initializes the MySQL client library.
     struct InitializeMysqlLibrary {
-        typedef boost::thread_specific_ptr<MySqlThreadJanitor> JanitorTsp;
+        typedef std::unique_ptr<MySqlThreadJanitor> JanitorTsp;
         JanitorTsp & janitor;
 
         InitializeMysqlLibrary(JanitorTsp & j) : janitor(j) {}
@@ -205,18 +202,8 @@ MYSQL* MySqlConnection::_connectHelper() {
     // call mysql_thread_init, and so we must arrange to call mysql_thread_end
     // when the calling thread exists. We do this by allocating a thread
     // local object that calls mysql_thread_end from its destructor.
-    //
-    // C++11 thread_local storage cannot be used until the baseline compiler is
-    // GCC 4.8, so we must fall back to boost. A significant caveat from the
-    // boost documentation is that "on some platforms, cleanup of thread-
-    // specific data is not performed for threads created with the platform's
-    // native API". Fortunately, even though we are creating threads via
-    // the STL and not boost, cleanup seems to be performed on POSIX systems.
-    // However, this likely does not work on Windows.
-    //
-    // TODO: Once full usage of C++11 is allowed, rewrite using thread_local.
     static std::once_flag initialized;
-    static boost::thread_specific_ptr<MySqlThreadJanitor> janitor;
+    static thread_local std::unique_ptr<MySqlThreadJanitor> janitor;
 
     std::call_once(initialized, InitializeMysqlLibrary(janitor));
     MYSQL* m = mysql_init(nullptr);
