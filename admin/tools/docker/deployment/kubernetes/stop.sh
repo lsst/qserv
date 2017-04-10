@@ -11,7 +11,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 echo "Delete Qserv pods on Kubernetes cluster"
 
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl delete pods -l app=qserv && \
-    kubectl delete services qserv"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl delete pods -l app=qserv"
 
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/wait-pods-terminate.sh"
