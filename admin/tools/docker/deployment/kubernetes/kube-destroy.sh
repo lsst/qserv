@@ -18,11 +18,10 @@ do
     # FIXME: cleanup below is a workaround, fixed here
     # https://github.com/kubernetes/kubernetes/issues/10571
     # but not released yet.
-    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- systemctl stop kubelet"
-    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- umount \$(cat /proc/mounts \
+    ssh $SSH_CFG_OPT "$qserv_node" "sudo -- systemctl stop kubelet"
+    ssh $SSH_CFG_OPT "$qserv_node" "sudo -- umount \$(cat /proc/mounts \
         | grep kubelet | cut -d ' ' -f2) || true"
     ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- \
         sh -c 'whoami && rm -rf /etc/kubernetes/* /var/lib/kubelet/pods \
         /var/lib/kubelet/plugins'"
-    ssh -t $SSH_CFG_OPT "$qserv_node" "sudo -- systemctl start kubelet"
 done
