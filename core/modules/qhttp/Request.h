@@ -73,6 +73,8 @@ private:
     void _parseUri();
     void _parseBody();
 
+    std::string _percentDecode(std::string const& encoded, bool exceptPathDelimeters=false);
+
     std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
     boost::asio::streambuf _requestbuf;
 

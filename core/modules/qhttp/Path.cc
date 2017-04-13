@@ -24,6 +24,7 @@
 #include "qhttp/Path.h"
 
 // System headers
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -102,9 +103,23 @@ void Path::parse(std::string const& pattern)
         // Grab stuff between last match and this
         path.append(i->prefix());
 
-        // Ignore already escaped sequences
+        // Handle explicitly escaped characters
         if (escaped.matched) {
-            path += escaped.str()[1];
+
+            // If we let intra-element literal slashes into the path matcher, they would be ambiguous with
+            // path element delimiters, which are also represented as literal slashes in the matcher.
+            // Instead, we force intra-element literal slashes to be lower-case percent-encoded in the
+            // matcher, and explicitly make them lower-case percent-encoded in the incoming to-be-matched
+            // strings as well.
+            if (escaped.str()[1] == '/') {
+                path += "%2f";
+            }
+
+            // Leave other literals backslash-escaped in the matcher
+            else {
+                path += escaped.str();
+            }
+
             continue;
         }
 

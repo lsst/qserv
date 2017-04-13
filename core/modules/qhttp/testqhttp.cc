@@ -405,8 +405,34 @@ BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture)
 
     curl.setup("GET", urlPrefix, "", {"foobar: baz"}).perform().validate(200, "text/html");
     curl.setup("GET", urlPrefix, "", {"FOOBAR: baz"}).perform().validate(200, "text/html");
+}
 
 
+BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture)
+{
+    //----- server with handlers to catch potential encoded "/" dispatch error
+    //      and param echoing to check param decode
+
+    server->addHandler("GET", R"(/path-with-/-and-\?)",
+        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+            resp->send("percent-encoded '/' dispatch error", "text/plain");
+        }
+    );
+
+    server->addHandler("GET", R"(/path-with-\/-and-\?)",
+        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+            resp->send(printParams(req), "text/plain");
+        }
+    );
+
+    start();
+    CurlEasy curl;
+
+    //----- send in request with percent encodes and check echoed params
+
+    curl.setup("GET", urlPrefix + "path%2Dwith%2d%2F-and-%3F?key-with-%3D=value-with-%26&key2=value2", "");
+    curl.perform().validate(200, "text/plain");
+    BOOST_TEST(curl.recdContent == "params[] query[key-with-==value-with-&,key2=value2]");
 }
 
 

@@ -23,6 +23,9 @@
 // Class header
 #include "qhttp/Request.h"
 
+// System headers
+#include <cstdlib>
+
 // Third-party headers
 #include "boost/regex.hpp"
 
@@ -64,12 +67,12 @@ void Request::_parseUri()
     static boost::regex targetRe{R"(([^\?#]*)(?:\?([^#]*))?)"}; // e.g. "path[?query]"
     boost::smatch targetMatch;
     if (boost::regex_match(target, targetMatch, targetRe)) {
-        path = targetMatch[1];
+        path = _percentDecode(targetMatch[1], true);
         std::string squery = targetMatch[2];
         static boost::regex queryRe{R"(([^=&]+)(?:=([^&]*))?)"}; // e.g. "key[=value]"
         auto end = boost::sregex_iterator{};
         for(auto i=boost::make_regex_iterator(squery, queryRe); i!=end; ++i) {
-            query[(*i)[1]] = (*i)[2];
+            query[_percentDecode((*i)[1])] = _percentDecode((*i)[2]);
         }
     }
 }
@@ -78,6 +81,41 @@ void Request::_parseUri()
 void Request::_parseBody()
 {
     // TODO: implement application/x-www-form-urlencoded body -> body
+}
+
+
+std::string Request::_percentDecode(std::string const& encoded, bool exceptPathDelimeters)
+{
+    std::string decoded;
+
+    static boost::regex codepointRe(R"(%[0-7][0-7a-fA-F])");
+    auto pbegin = boost::sregex_iterator(encoded.begin(), encoded.end(), codepointRe);
+    auto pend = boost::sregex_iterator();
+
+    std::string::const_iterator tail = encoded.cbegin();
+
+    for(boost::sregex_iterator i=pbegin; i!=pend; ++i) {
+        decoded.append(i->prefix().first, i->prefix().second);
+        tail = i->suffix().first;
+        char codepoint = strtol(i->str().c_str()+1, NULL, 16);
+
+        // If decoding a path, leave any encoded slashes encoded (but ensure lower case), so they don't
+        // become confused with path-element-delimiting slashes. We elsewhere make sure that intra-element
+        // slashes within the matchers are lower-case percent-encoded as well (see Path.cc).
+        if (exceptPathDelimeters && (codepoint == '/')) {
+            decoded.append("%2f");
+        }
+
+        // Otherwise, decode.
+        else {
+            decoded.push_back(codepoint);
+        }
+
+    }
+
+    decoded.append(tail, encoded.cend());
+
+    return decoded;
 }
 
 }}}  // namespace lsst::qserv::qhttp
