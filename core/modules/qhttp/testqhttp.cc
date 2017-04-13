@@ -273,10 +273,9 @@ struct QhttpFixture
     }
 
     //
-    //----- The only tests below for which we can't use libcurl are the relative link tests, because libcurl
-    //      snaps out dot pathname components on the client side.  This alternative sends a GET request and
-    //      checks the reply using synchronous asio and regexps directly.  Prefer using libcurl in all other
-    //      tests, though, as libcurl is more capable and is externally tested/validated.
+    //----- Use for the relative link tests below, which can't use libcurl, because libcurl snaps out dot
+    //      pathname components on the client side.  This alternative sends a GET request and checks the
+    //      reply using synchronous asio and regexps directly.
     //
 
     std::string asioHttpGet(
@@ -331,6 +330,45 @@ struct QhttpFixture
     qhttp::Server::Ptr server;
     std::string urlPrefix;
 };
+
+
+BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
+{
+    //----- set up server with a handler on "/" and a request timeout of 200ms
+
+    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+        resp->sendStatus(200);
+    });
+
+    server->setRequestTimeout(std::chrono::milliseconds(20));
+
+    start();
+
+    //----- verify able to connect to the server
+
+    boost::system::error_code ec;
+
+    ip::tcp::endpoint endpoint(ip::address::from_string("127.0.0.1"), server->getPort());
+    ip::tcp::socket socket(service);
+    socket.connect(endpoint, ec);
+    BOOST_TEST(!ec);
+
+    //----- sleep long enough for request timeout to expire
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    //----- write the request (should still succeed after timeout)
+
+    std::string req = std::string("GET / HTTP/1.1\r\n\r\n");
+    asio::write(socket, asio::buffer(req), ec);
+    BOOST_TEST(!ec);
+
+    //----- attempt to read response (should fail with EOF after timeout)
+
+    asio::streambuf respbuf;
+    asio::read_until(socket, respbuf, "\r\n\r\n", ec);
+    BOOST_TEST(ec == boost::asio::error::eof);
+}
 
 
 BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)

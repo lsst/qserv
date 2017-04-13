@@ -24,6 +24,7 @@
 #define LSST_QSERV_QHTTP_SERVER_H
 
 // System headers
+#include <chrono>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -66,6 +67,7 @@ public:
     void addStaticContent(std::string const& path, std::string const& rootDirectory);
     AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& path);
 
+    void setRequestTimeout(std::chrono::milliseconds const& timeout);
     void accept(); // install head of asio handler chain for this server
 
 private:
@@ -87,6 +89,8 @@ private:
 
     boost::asio::io_service& _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
+
+    std::chrono::milliseconds _requestTimeout;
 
 };
 

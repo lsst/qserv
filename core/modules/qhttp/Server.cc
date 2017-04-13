@@ -43,6 +43,8 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
+#define DEFAULT_REQUEST_TIMEOUT_MSECS 300000 // 5 minutes
+
 
 Server::Ptr Server::create(asio::io_service& io_service, unsigned short port)
 {
@@ -59,7 +61,8 @@ unsigned short Server::getPort()
 Server::Server(asio::io_service& io_service, unsigned short port)
 :
     _io_service(io_service),
-    _acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), port))
+    _acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), port)),
+    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS))
 {
 }
 
@@ -94,6 +97,12 @@ AjaxEndpoint::Ptr Server::addAjaxEndpoint(const std::string& pattern)
 }
 
 
+void Server::setRequestTimeout(std::chrono::milliseconds const& timeout)
+{
+    _requestTimeout = timeout;
+}
+
+
 void Server::accept()
 {
     auto socket = std::make_shared<ip::tcp::socket>(_io_service);
@@ -114,7 +123,7 @@ void Server::accept()
 void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 {
     auto timer = std::make_shared<asio::steady_timer>(_io_service);
-    timer->expires_from_now(std::chrono::seconds(300));
+    timer->expires_from_now(_requestTimeout);
     timer->async_wait(
         [socket](boost::system::error_code const& ec) {
             if (!ec) {
