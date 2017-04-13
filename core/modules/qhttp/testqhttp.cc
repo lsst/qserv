@@ -93,7 +93,8 @@ public:
     CurlEasy& setup(
         std::string const& method,
         std::string const& url,
-        std::string const& data
+        std::string const& data,
+        std::initializer_list<std::string> headers = {}
     );
 
     CurlEasy& perform();
@@ -104,6 +105,7 @@ public:
     );
 
     CURL* hcurl;
+    curl_slist *hlist;
     std::string recdContent;
 };
 
@@ -112,11 +114,13 @@ CurlEasy::CurlEasy()
 {
     hcurl = curl_easy_init();
     BOOST_TEST(hcurl != static_cast<CURL *>(nullptr));
+    hlist = nullptr;
 }
 
 
 CurlEasy::~CurlEasy()
 {
+    curl_slist_free_all(hlist);
     curl_easy_cleanup(hcurl);
 }
 
@@ -124,7 +128,8 @@ CurlEasy::~CurlEasy()
 CurlEasy& CurlEasy::setup(
     std::string const& method,
     std::string const& url,
-    std::string const& data)
+    std::string const& data,
+    std::initializer_list<std::string> headers)
 {
     BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_URL, url.c_str()) == CURLE_OK);
 
@@ -138,6 +143,13 @@ CurlEasy& CurlEasy::setup(
     } else {
         BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_CUSTOMREQUEST, method.c_str()) == CURLE_OK);
     }
+
+    curl_slist_free_all(hlist);
+    hlist = nullptr;
+    for(auto& header: headers) {
+        hlist = curl_slist_append(hlist, header.c_str());
+    }
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_HTTPHEADER, hlist) == CURLE_OK);
 
     recdContent.erase();
     BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_WRITEFUNCTION, writeToString) == CURLE_OK);
@@ -368,6 +380,33 @@ BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
     asio::streambuf respbuf;
     asio::read_until(socket, respbuf, "\r\n\r\n", ec);
     BOOST_TEST(ec == boost::asio::error::eof);
+}
+
+
+BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture)
+{
+    //----- server with handler that checks for same header in multiple cases
+
+    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+        if ((req->header["foobar"] == "baz")
+            && (req->header["FOOBAR"] == "baz")
+            && (req->header["FooBar"] == "baz"))
+        {
+            resp->sendStatus(200);
+        } else {
+            resp->sendStatus(500);
+        }
+    });
+
+    start();
+    CurlEasy curl;
+
+    //----- tests provide same header in multiple cases
+
+    curl.setup("GET", urlPrefix, "", {"foobar: baz"}).perform().validate(200, "text/html");
+    curl.setup("GET", urlPrefix, "", {"FOOBAR: baz"}).perform().validate(200, "text/html");
+
+
 }
 
 

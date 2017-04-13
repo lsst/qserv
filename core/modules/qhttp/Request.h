@@ -33,6 +33,9 @@
 // Third-party headers
 #include "boost/asio.hpp"
 
+// Local headers
+#include "qhttp/CIUtils.h"
+
 namespace lsst {
 namespace qserv {
 namespace qhttp {
@@ -49,10 +52,10 @@ public:
     std::string target;   // HTTP header target
     std::string version;  // HTTP header version
 
-    std::string path;                                      // path portion of URL
-    std::unordered_map<std::string, std::string> query;    // parsed URL query parameters
-    std::unordered_map<std::string, std::string> header;   // parsed HTTP headers
-    std::unordered_map<std::string, std::string> params;   // captured URL path elements
+    std::string path;                                                      // path portion of URL
+    std::unordered_map<std::string, std::string> query;                    // parsed URL query parameters
+    std::unordered_map<std::string, std::string, ci_hash, ci_pred> header; // parsed HTTP headers
+    std::unordered_map<std::string, std::string> params;                   // captured URL path elements
 
     std::istream content;                                  // unparsed body
     std::unordered_map<std::string, std::string> body;     // parsed body, if x-www-form-urlencoded
