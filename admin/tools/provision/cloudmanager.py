@@ -5,6 +5,7 @@ Tools to ease OpenStack infrastructure configuration
 and provisioning
 
 @author  Oualid Achbal, IN2P3
+@author  Fabrice Jammes, IN2P3
 
 """
 
@@ -139,7 +140,8 @@ class CloudManager(object):
         default_instance_prefix = "{0}-qserv-".format(self._safe_username)
 
         config = ConfigParser.RawConfigParser(
-            {'registry_host': None,
+            {'limit_memlock': 'infinity',
+             'registry_host': None,
              'registry_port': 5000,
              'instance-prefix': default_instance_prefix,
              'net-id': None,
@@ -159,6 +161,7 @@ class CloudManager(object):
             config.readfp(config_file)
 
         # Read Docker related parameters
+        self._limit_memlock = config.get('docker', 'limit_memlock')
         self._registry_host = config.get('docker', 'registry_host')
         self._registry_port = config.getint('docker', 'registry_port')
 
@@ -309,6 +312,7 @@ class CloudManager(object):
         logging.info("Launch an instance %s", instance_name)
 
         userdata = userdata.format(node_id=instance_id)
+        logging.debug("userdata %s", userdata)
 
         if not flavor:
             flavor = self.flavor
@@ -549,6 +553,14 @@ write_files:
     done
     mount /dev/vdb1 /mnt/qserv
     chown -R 1000:1000 /mnt/qserv
+- path: "/etc/docker/daemon.json"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    {{{{
+      "storage-driver": "overlay",
+      {registry_json}
+    }}}}
 
 - path: "/etc/sysctl.d/90-kubernetes.conf"
   permissions: "0544"
@@ -570,9 +582,9 @@ users:
 
 runcmd:
   - [/tmp/detect_end_cloud_config.sh]
-  # Use overlay storage and docker registry
-  - [sed, -i, 's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd {docker_opts}|', /usr/lib/systemd/system/docker.service]
+  # Required for Kubernetes v1.6.1 to work
   - [sed, -i, 's|Environment="KUBELET_NETWORK_ARGS=|#Environment="KUBELET_NETWORK_ARGS=|', /etc/systemd/system/kubelet.service.d/10-kubeadm.conf]
+  - [sed, -i, 's|LimitNOFILE=infinity|{systemd_memlock}\\nLimitNOFILE=infinity|', /usr/lib/systemd/system/docker.service]
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/custom]
   - [mkdir, /qserv/data]
@@ -588,19 +600,20 @@ runcmd:
         fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
         public_key = fpubkey.read()
 
-        docker_opts = "--storage-driver=overlay"
         if self._registry_host:
-            docker_opts_fmt = ("{docker_opts} --insecure-registry {registry_host} "
-                               "--registry-mirror=http://{registry_host}:{registry_port}")
-            docker_opts = docker_opts_fmt.format(docker_opts=docker_opts,
-                                                 registry_host=self._registry_host,
-                                                 registry_port=self._registry_port)
+            registry_json_fmt = ("\"insecure-registries\": [\"{registry_host}\"],\n"
+                                 "      \"registry-mirrors\":[\"http://{registry_host}:{registry_port}\"]")
+            registry_json = registry_json_fmt.format(registry_host=self._registry_host,
+                                                     registry_port=self._registry_port)
 
-        userdata = cloud_config.format(hostname_tpl=self._hostname_tpl +
-                                       "{node_id}",
+        # daemon.json default-ulimits parameter is overridden by LimitMEMLOCK
+        # parameter, from systemd, for unknown reason
+        systemd_memlock = "LimitMEMLOCK={}".format(self._limit_memlock)
+
+        userdata = cloud_config.format(hostname_tpl=self._hostname_tpl + "{node_id}",
                                        key=public_key,
-                                       docker_opts=docker_opts
-                                       )
+                                       registry_json=registry_json,
+                                       systemd_memlock=systemd_memlock)
 
         logging.debug("cloud-config userdata: \n%s", userdata)
         return userdata
