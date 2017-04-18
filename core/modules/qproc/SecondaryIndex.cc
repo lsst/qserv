@@ -76,7 +76,7 @@ public:
         : _sqlConnection(c, true) {
     }
 
-    virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) {
+    ChunkSpecVector lookup(query::ConstraintVector const& cv) override {
         ChunkSpecVector output;
         bool hasIndex = false;
         for(query::ConstraintVector::const_iterator i=cv.begin(), e=cv.end();

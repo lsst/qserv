@@ -145,6 +145,7 @@ public:
     int getChunkId();
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
+    bool getScanInteractive() {return _scanInteractive; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
     memman::MemMan::Handle getMemHandle() { return _memHandle; }
@@ -177,6 +178,7 @@ private:
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
+    bool _scanInteractive;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 

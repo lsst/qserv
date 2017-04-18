@@ -125,6 +125,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     }
     _scanInfo.scanRating = msg->scanpriority();
     _scanInfo.sortTablesSlowestFirst();
+    _scanInteractive = msg->scaninteractive();
 }
 
 Task::~Task() {
