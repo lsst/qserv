@@ -189,6 +189,14 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
+
+void QuerySession::setScanInteractive() {
+    // Default is for interactive scan.
+    if (_context->chunkCount > _interactiveChunkLimit) {
+        _scanInteractive = false;
+    }
+}
+
 void QuerySession::setDummy() {
     _isDummy = true;
     // Clear out chunk counts and _chunks, and replace with dummy chunk.
@@ -397,6 +405,7 @@ ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect cons
     ChunkQuerySpec cQSpec;
     cQSpec.db = _context->dominantDb;
     cQSpec.scanInfo = _context->scanInfo;
+    cQSpec.scanInteractive = _scanInteractive;
     cQSpec.chunkId = chunkSpec.chunkId;
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);

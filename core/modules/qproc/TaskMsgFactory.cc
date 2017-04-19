@@ -83,6 +83,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     }
 
     taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
+    taskMsg->set_scaninteractive(chunkQuerySpec.scanInteractive);
 
     // per-chunk
     taskMsg->set_chunkid(chunkQuerySpec.chunkId);

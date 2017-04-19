@@ -144,6 +144,8 @@ public:
 
     query::QueryTemplate::Vect makeQueryTemplates();
 
+    void setScanInteractive();
+
     /**
      *  Print query session to stream.
      *
@@ -214,6 +216,10 @@ private:
 
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
+
+    /// Maximum number of chunks in an interactive query. TODO: Maybe put in config file.
+    int const _interactiveChunkLimit{10};
+    bool _scanInteractive{true}; ///< True if the query can be considered interactive. &&& should this be part of _context???
 
 };
 
