@@ -1,6 +1,7 @@
 FROM debian:jessie
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
+RUN echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
 COPY scripts/install-deps.sh /root/install-deps.sh
 
 # Start with this long step not to re-run it on
