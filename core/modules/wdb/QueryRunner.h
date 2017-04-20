@@ -103,7 +103,7 @@ private:
     std::shared_ptr<proto::ProtoHeader> _protoHeader;
     std::shared_ptr<proto::Result> _result;
     bool _largeResult{false}; //< True for all transmits after the first transmit.
-    unsigned int _initialBlockSize{100000}; //< Maximum size of initial transmit block.
+    unsigned int _initialBlockSize{5000}; //< Maximum size of initial transmit block.
 };
 
 }}} // namespace
