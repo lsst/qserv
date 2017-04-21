@@ -141,51 +141,15 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     // Check for scan tables
     SchedulerBase::Ptr s{nullptr};
     auto const& scanTables = task->getScanInfo().infoTables;
-    /* &&&
-    if (scanTables.size() > 0) {
-        int scanPriority = task->getScanInfo().scanRating;
-        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-            std::ostringstream ss;
-            ss << "Blend chose scan for priority=" << scanPriority << " : ";
-            for (auto scanTbl : scanTables) {
-                ss << scanTbl.db + "." + scanTbl.table + " ";
-            }
-            LOGS(_log, LOG_LVL_DEBUG, ss.str());
-        }
-
-        for (auto const& sched : _schedulers) {
-            ScanScheduler::Ptr scan = std::dynamic_pointer_cast<ScanScheduler>(sched);
-            if (scan != nullptr) {
-                if (scan->isRatingInRange(scanPriority)) {
-                    s = scan;
-                    break;
-                }
-            }
-        }
-        // If the user query for this task has been booted, put this task on the snail scheduler.
-        auto queryStats = _queries->getStats(task->getQueryId());
-        if (queryStats && queryStats->getQueryBooted()) {
-            s = _scanSnail;
-        }
-        if (s == nullptr) {
-            // Task wasn't assigned with a scheduler, assuming it is terribly slow.
-            // Assign it to the slowest scheduler so it does the least damage to other queries.
-            LOGS_WARN(task->getIdStr() << " Task had unexpected scanRating="
-                      << scanPriority << " adding to scanSnail");
-            s = _scanSnail;
-        }
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Blend chose group");
-        s = _group;
-    }
-    */
     bool interactive = task->getScanInteractive();
     if (scanTables.size() <= 0 || interactive) {
         // If there are no scan tables, no point in putting on a shared scan.
         LOGS(_log, LOG_LVL_DEBUG, "Blend chose group scanTables.size=" << scanTables.size()
              << " interactive=" << interactive);
+        task->setOnInteractive(true);
         s = _group;
     } else {
+        task->setOnInteractive(false);
         int scanPriority = task->getScanInfo().scanRating;
         if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             std::ostringstream ss;

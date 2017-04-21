@@ -217,9 +217,9 @@ private:
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
 
-    /// Maximum number of chunks in an interactive query. TODO: Maybe put in config file.
+    /// Maximum number of chunks in an interactive query. TODO: DM-10273 put in config file.
     int const _interactiveChunkLimit{10};
-    bool _scanInteractive{true}; ///< True if the query can be considered interactive. &&& should this be part of _context???
+    bool _scanInteractive{true}; ///< True if the query can be considered interactive.
 
 };
 

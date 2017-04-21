@@ -235,8 +235,8 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
         unsigned int szLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
 
-        // Use small blocks until it is considered a large result.
-        if (!_largeResult) {
+        // Use small blocks until it is considered a large result and it is not an interactive query.
+        if (!_largeResult && !_task->getOnInteractive()) {
             szLimit = std::min(szLimit, _initialBlockSize);
         }
 
