@@ -24,7 +24,7 @@ Create Qserv latest release image, with 3 names:
 
    . /path/to/lsst/stack/loadLSST.bash
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   1_build-latest-image.sh
+   1_build-image.sh -C
 
 Create Qserv cutting-edge dependencies image, named qserv:dev:
 
@@ -33,7 +33,7 @@ Create Qserv cutting-edge dependencies image, named qserv:dev:
    # cutting-edge dependencies needs to be tagged eups-dev
    # on distribution server.
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   2_build-dev-image.sh
+   1_build-image.sh -CD
 
 Create Qserv image for a given git tag/branch:
 
@@ -44,7 +44,7 @@ In order to push produced Docker images to Docker Hub, prefix
 
    # Code need to be pushed on github
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   3_build-git-image.sh -B <git-tag/branch> -T <docker-image-name>
+   3_build-git-image.sh -R <git-tag/branch> -T <docker-image-name>
    # Current Qserv version will have eups tag named qserv-dev
 
 Create Qserv master and worker images from a given Qserv version:

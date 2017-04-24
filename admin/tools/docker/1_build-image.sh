@@ -103,9 +103,10 @@ if [ "$EUPS_TAG" = 'qserv_latest' ]; then
     VERSION_TAG="$DOCKER_REPO:$VERSION"
 
     docker tag "$TAG" "$VERSION_TAG"
-    docker push "$TAG"
     docker push "$VERSION_TAG"
 
 fi
+
+docker push "$TAG"
 
 printf "Image %s built successfully\n" "$TAG"
