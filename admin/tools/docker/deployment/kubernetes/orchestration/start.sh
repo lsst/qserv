@@ -40,9 +40,6 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-echo "Create kubernetes headless service for Qserv"
-kubectl create $SCHEMA_CACHE_OPT -f "${CFG_DIR}/qserv-service.yaml"
-
 YAML_TPL="${CFG_DIR}/pod.yaml.tpl"
 YAML_FILE="${CFG_DIR}/master.yaml"
 INI_FILE="${CFG_DIR}/pod.master.ini"

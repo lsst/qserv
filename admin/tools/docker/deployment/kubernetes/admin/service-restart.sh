@@ -10,6 +10,9 @@ set -x
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/../env-cluster.sh"
 
-echo "Restart Docker service on $MASTER $WORKERS"
-parallel --nonall --slf "$PARALLEL_SSH_CFG" "sudo /bin/systemctl restart docker.service"
+SERVICE=kubelet
+
+echo "Restart $SERVICE service on $MASTER $WORKERS"
+parallel --nonall --slf "$PARALLEL_SSH_CFG" \
+    "sudo /bin/systemctl restart ${SERVICE}.service"
 

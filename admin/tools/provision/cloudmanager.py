@@ -446,10 +446,10 @@ Host *
         for instance in instances:
             fixed_ip = instance.networks[self.network_name][0]
             ssh_config += ssh_config_tpl.format(host=instance.name,
-                                                        fixed_ip=fixed_ip,
-                                                        floating_ip=floating_ip.ip,
-                                                        key_filename=self.key_filename,
-                                                        ssh_opts=ssh_opts)
+                                                fixed_ip=fixed_ip,
+                                                floating_ip=floating_ip.ip,
+                                                key_filename=self.key_filename,
+                                                ssh_opts=ssh_opts)
         logging.debug("Create SSH client config ")
 
         f = open("ssh_config", "w")
@@ -550,6 +550,14 @@ write_files:
     mount /dev/vdb1 /mnt/qserv
     chown -R 1000:1000 /mnt/qserv
 
+- path: "/etc/sysctl.d/90-kubernetes.conf"
+  permissions: "0544"
+  owner: "root"
+  content: |
+    # Enable netfilter on bridges
+    # Required for kubelet (v1.6.1) to start
+    net.bridge.bridge-nf-call-iptables = 1
+
 users:
 - name: qserv
   gecos: Qserv daemon
@@ -564,6 +572,7 @@ runcmd:
   - [/tmp/detect_end_cloud_config.sh]
   # Use overlay storage and docker registry
   - [sed, -i, 's|ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd {docker_opts}|', /usr/lib/systemd/system/docker.service]
+  - [sed, -i, 's|Environment="KUBELET_NETWORK_ARGS=|#Environment="KUBELET_NETWORK_ARGS=|', /etc/systemd/system/kubelet.service.d/10-kubeadm.conf]
   # Data and log are stored on Openstack host
   - [mkdir, -p, /qserv/custom]
   - [mkdir, /qserv/data]
@@ -572,7 +581,8 @@ runcmd:
   - [mkdir, /mnt/qserv]
   - [chown, -R, '1000:1000', /qserv]
   - [/bin/systemctl, daemon-reload]
-  - [/bin/systemctl, restart,  docker.service]
+  - [/bin/systemctl, restart,  docker]
+  - [/bin/systemctl, restart,  systemd-sysctl]
   '''
 
         fpubkey = open(os.path.expanduser(self.key_filename + ".pub"))
@@ -586,8 +596,8 @@ runcmd:
                                                  registry_host=self._registry_host,
                                                  registry_port=self._registry_port)
 
-        userdata = cloud_config.format(hostname_tpl=self._hostname_tpl
-                                       + "{node_id}",
+        userdata = cloud_config.format(hostname_tpl=self._hostname_tpl +
+                                       "{node_id}",
                                        key=public_key,
                                        docker_opts=docker_opts
                                        )

@@ -8,7 +8,11 @@ set -x
 
 # @author  Fabrice Jammes, IN2P3
 
+# Directory which contain configuration information for Qserv cluster
 CLUSTER_CONFIG_DIR="$HOME/.lsst/qserv-cluster"
+
+# ssh configuration file, optional
+SSH_CONFIG="$CLUSTER_CONFIG_DIR/ssh_config"
 
 # Machine names
 ENV_INFRASTRUCTURE_FILE="$CLUSTER_CONFIG_DIR/env-infrastructure.sh"
