@@ -90,7 +90,7 @@ if [ -n "$DOCKERDIR/src/qserv" ]; then
 fi
 
 # Put source code inside Docker build directory
-git clone -b "$GIT_REF" --single-branch "$GIT_REPO" "$DOCKERDIR/src/qserv"
+git clone -b "$GIT_REF" --single-branch --depth=1 "$GIT_REPO" "$DOCKERDIR/src/qserv"
 
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
