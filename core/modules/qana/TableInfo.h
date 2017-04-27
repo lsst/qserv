@@ -171,6 +171,11 @@ struct TableInfo {
     std::string const getOverlapTemplate() const {
         return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
     }
+
+    /// C++ doesn't do the redirection on  os << *(a->info); to use the child classes' operator<< functions. &&&
+    /// Overloading the pointer might work, but then it is more difficult to print the raw pointer. Meh. &&&
+    virtual std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, TableInfo const& ti);
 };
 
 /// `TableInfoLt` is a less-than comparison functor for non-null `TableInfo`
@@ -215,6 +220,8 @@ struct DirTableInfo : TableInfo {
                                     std::string const& a,
                                     std::string const& b,
                                     bool outer) const;
+    std::string dump() const override;
+    friend std::ostream& operator<<(std::ostream& os, DirTableInfo const& dti);
 };
 
 
@@ -254,6 +261,9 @@ struct ChildTableInfo : TableInfo {
                                     std::string const& a,
                                     std::string const& b,
                                     bool outer) const;
+
+    std::string dump() const override;
+    friend std::ostream& operator<<(std::ostream& os, ChildTableInfo const& cti);
 };
 
 
@@ -294,6 +304,9 @@ struct MatchTableInfo : TableInfo {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
+
+    std::string dump() const override;
+    friend std::ostream& operator<<(std::ostream& os, MatchTableInfo const& mti);
 };
 
 }}} // namespace lsst::qserv::qana
