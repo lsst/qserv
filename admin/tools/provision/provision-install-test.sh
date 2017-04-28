@@ -35,7 +35,7 @@ Usage: `basename $0` [options]
   If no option provided, use '-p -S' by default.
 
 
-  Pre-requisites: Openstack RC file need to be sourced and $DIR/env-openstack.sh available.
+  Pre-requisites: Openstack RC file need to be sourced.
 
 EOD
 }
