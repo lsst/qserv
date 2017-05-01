@@ -159,7 +159,7 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
 }
 
 
-/// Update statistics for the Task that finished an the chunk it was querying on.
+/// Update statistics for the Task that finished and the chunk it was querying.
 void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes) {
     std::unique_lock<std::mutex> ul(_chunkMtx);
     std::pair<int, ChunkStatistics::Ptr> ele(task->getChunkId(), nullptr);

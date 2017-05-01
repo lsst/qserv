@@ -47,6 +47,9 @@ public:
         t->set_session(123456);
         t->set_chunkid(20 + _counter);
         t->set_db("elephant");
+        t->set_jobid(0);
+        t->set_queryid(49);
+        t->set_scaninteractive(true);
 
         auto sTbl = t->add_scantable();
         sTbl->set_db("orange");

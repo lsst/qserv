@@ -114,7 +114,7 @@ Czar::submitQuery(std::string const& query,
     int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
     std::string defaultDb = hintsConfigStore.get("db");
-    LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
+    LOGS(_log, LOG_LVL_INFO, "Default database is \"" << defaultDb <<"\"");
 
 
 

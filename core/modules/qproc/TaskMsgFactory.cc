@@ -126,11 +126,7 @@ void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& re
      }
 
      proto::TaskMsg_Subchunk sc;
-     /* &&&
-     for(auto i=subChunkTables.begin(); i != subChunkTables.end(); ++i) {
-         sc.add_table(*i);
-     }
-     */
+
      for(auto& tbl : subChunkTables) {
          sc.add_table(tbl);
      }

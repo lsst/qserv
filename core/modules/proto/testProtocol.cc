@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "1988c1c355e9602142fe9b759739883d";
+    std::string expected = "f3890e99c399ab196c164eccf2e99369";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 
