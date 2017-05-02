@@ -80,12 +80,12 @@ groups:
 - docker
 
 packages:
-- docker-engine
+- [docker-engine, 1.12.3-1.el7.centos]
 - ebtables
-- kubeadm
-- kubectl
-- kubelet
-- kubernetes-cni
+- [kubeadm, 1.6.2-0]
+- [kubectl, 1.6.2-0]
+- [kubelet, 1.6.2-0]
+- [kubernetes-cni, 0.5.1-0]
 - util-linux
 
 runcmd:
