@@ -46,6 +46,7 @@
 #include "global/Bug.h"
 #include "global/constants.h"
 #include "sql/SqlResults.h"
+#include "util/IterableFormatter.h"
 #include "wbase/Base.h"
 #include "wdb/QuerySql.h"
 
@@ -117,6 +118,7 @@ ChunkResource::ChunkResource(ChunkResourceMgr *mgr)
 ChunkResource::ChunkResource(ChunkResourceMgr *mgr,
                              ChunkResource::Info* info)
     : _mgr{mgr}, _info{info} {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResource::ChunkResource info=" << *info);
     _mgr->acquireUnit(*_info);
 }
 ChunkResource::ChunkResource(ChunkResource const& cr)
@@ -201,6 +203,10 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
         ++_refCount; // Increase usage count
+        LOGS(_log, LOG_LVL_DEBUG, "&&&SubChunk acquire refC=" << _refCount
+             << " db=" << db
+             << " tables[" << util::printable(tables) << "]"
+             << " sc[" << util::printable(sc) << "]");
         StringVector::const_iterator ti, te;
         for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
             SubChunkMap& scm = _tableMap[*ti]; // implicit creation OK.
@@ -237,6 +243,10 @@ public:
             std::lock_guard<std::mutex> lock(_mutex);
             backend->memLockRequireOwnership();
             StringVector::const_iterator ti, te;
+            LOGS(_log, LOG_LVL_DEBUG, "&&&SubChunk release refC=" << _refCount
+                    << " db=" << db
+                    << " tables[" << util::printable(tables) << "]"
+                    << " sc[" << util::printable(sc) << "]");
             for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
                 SubChunkMap& scm = _tableMap[*ti]; // Should be in there.
                 IntVector::const_iterator i, e;
@@ -318,6 +328,7 @@ public:
     virtual ChunkResource acquire(std::string const& db, int chunkId,
                                   StringVector const& tables) {
         // Make sure that the chunk is ready. (NOP right now.)
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResourceMgr::Impl acquire db=" << db << " chunkId=" << chunkId << " tables=" << util::printable(tables));
         ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables));
         return cr;
     }
@@ -340,6 +351,7 @@ public:
         Map& map = _getMap(i.db); // Select db
         ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
         // Actually acquire
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResourceMgr::Impl acquireUnit info=" << i);
         ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
     }
 

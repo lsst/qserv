@@ -73,7 +73,8 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
         if (db.empty()) {
             db = sTbl.db;
         } else if (db != sTbl.db) {
-            throw QueryProcessingBug("Multiple dbs prohibited");
+            // throw QueryProcessingBug("Multiple dbs prohibited"); &&& delete
+            LOGS(_log, LOG_LVL_INFO, "&&& Multiple dbs sTbl.db=" << sTbl.db << " db=" << db);
         }
     }
 
