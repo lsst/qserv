@@ -16,7 +16,6 @@ TOKEN=$(ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm token generate")
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm init --token '$TOKEN'"
 
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'sudo cp /etc/kubernetes/admin.conf $HOME/'
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'sudo chown $(id -u):$(id -g) $HOME/admin.conf'
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'echo "export KUBECONFIG=$HOME/admin.conf" \
     >> $HOME/.bashrc'
 
