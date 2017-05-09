@@ -55,7 +55,6 @@
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
-#include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
@@ -124,8 +123,6 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
-    } catch(parser::UnknownAntlrError& e) {
-        _error = e.what();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     } catch(std::exception const& e) {
