@@ -47,4 +47,5 @@ if ! echo "start stop status" | grep -w "$ACTION" > /dev/null; then
     exit 2
 fi
 
-parallel "kubectl exec {} -- /qserv/run/bin/qserv-${ACTION}.sh" ::: $MASTER_POD $WORKER_PODS
+parallel "kubectl exec {} -- sh -c \"hostname && \
+    /qserv/run/bin/qserv-${ACTION}.sh\"" ::: $MASTER_POD $WORKER_PODS
