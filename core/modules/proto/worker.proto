@@ -37,8 +37,12 @@ message TaskMsg {
     optional int32 scanpriority = 8;
     message Subchunk {
         optional string database = 1; // database (unused)
-        repeated string table = 2; // subchunked tables
+        repeated DbTbl dbtbl = 2; // subchunked tables
         repeated int32 id = 3; // subchunk ids
+        message DbTbl {
+            required string db = 1;
+            required string tbl = 2;
+       }
     }
     message Fragment {
         // A query fragment without "CREATE or INSERT".

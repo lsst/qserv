@@ -172,8 +172,8 @@ struct TableInfo {
         return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
     }
 
-    /// C++ doesn't do the redirection on  os << *(a->info); to use the child classes' operator<< functions. &&&
-    /// Overloading the pointer might work, but then it is more difficult to print the raw pointer. Meh. &&&
+    /// C++ isn't doing the redirection on  os << *(a->info); to use the child classes' operator<< functions.
+    /// Overloading the pointer could work, but then it is more difficult to print the raw pointer. Meh.
     virtual std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, TableInfo const& ti);
 };

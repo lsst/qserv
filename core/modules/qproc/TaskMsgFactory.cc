@@ -72,9 +72,6 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
         if (db.empty()) {
             db = sTbl.db;
-        } else if (db != sTbl.db) {
-            // throw QueryProcessingBug("Multiple dbs prohibited"); &&& delete
-            LOGS(_log, LOG_LVL_INFO, "&&& Multiple dbs sTbl.db=" << sTbl.db << " db=" << db);
         }
     }
 
@@ -116,7 +113,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
 
 
 void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
-                                  std::vector<std::string> const& subChunkTables,
+                                  DbTableSet const& subChunkTables,
                                   std::vector<int> const& subChunkIds,
                                   std::vector<std::string> const& queries) {
      proto::TaskMsg::Fragment* frag = taskMsg.add_fragment();
@@ -128,8 +125,12 @@ void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& re
 
      proto::TaskMsg_Subchunk sc;
 
+     // Add the db+table pairs to the subchunk.
      for(auto& tbl : subChunkTables) {
-         sc.add_table(tbl);
+         proto::TaskMsg_Subchunk_DbTbl* dbTbl = sc.add_dbtbl();
+         dbTbl->set_db(tbl.db);
+         dbTbl->set_tbl(tbl.table);
+         LOGS(_log, LOG_LVL_DEBUG, "added dbtbl=" << tbl.db << "." << tbl.table);
      }
 
      for(auto& subChunkId : subChunkIds) {

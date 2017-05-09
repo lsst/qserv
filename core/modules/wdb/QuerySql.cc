@@ -38,12 +38,19 @@
 // System headers
 #include <iostream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/constants.h"
+#include "global/DbTable.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QuerySql");
+
 template <typename T>
 class ScScriptBuilder {
 public:
@@ -119,14 +126,12 @@ QuerySql::QuerySql(std::string const& db,
         ss.str("");
     }
 
-    std::string table("unknown");
     if (f.has_subchunks()) {
         proto::TaskMsg_Subchunk const& sc = f.subchunks();
-        for(int i=0; i < sc.table_size(); ++i) {
-//            std::cout << "Building subchunks for table=" << sc.table(i) << std::endl;
-            table = sc.table(i);
-            ScScriptBuilder<int> scb(*this, db, table,
-                                     SUB_CHUNK_COLUMN, chunkId);
+        for(int i=0; i < sc.dbtbl_size(); ++i) {
+            DbTable dbTable(sc.dbtbl(i).db(), sc.dbtbl(i).tbl());
+            LOGS(_log, LOG_LVL_DEBUG, "Building subchunks for table=" << dbTable << " chunkId=" << chunkId);
+            ScScriptBuilder<int> scb(*this, dbTable.db, dbTable.table, SUB_CHUNK_COLUMN, chunkId);
             for(int i=0; i < sc.id_size(); ++i) {
                 scb(sc.id(i));
             }

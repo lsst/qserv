@@ -186,13 +186,13 @@ bool DirTableInfo::isEqPredAdmissible(DirTableInfo const& t,
 {
     // An equality predicate between two directors is only
     // admissible for self joins on the director primary key.
-    bool r1 = *this == t; // &&&
-    bool r2 = a == pk; // &&&
-    bool r3 = b == t.pk; // &&&
-    bool res = r1 && r2 && r3; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& DirTableInfo::isEqPredAdmissible a res=" << res
-            << " r1=" << r1 << " r2=" << r2 << " r3=" << r3);
-    return *this == t && a == pk && b == t.pk;
+    bool selfJoin = (*this == t);
+    bool aPK = (a == pk);
+    bool bPK = (b == t.pk);
+    bool admissible = (selfJoin && aPK && bPK);
+    LOGS(_log, LOG_LVL_DEBUG, "a admissible=" << admissible
+            << " selfJoin=" << selfJoin << " aPK=" << aPK << " bPK=" << bPK);
+    return admissible;
 }
 
 bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
@@ -203,13 +203,13 @@ bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     // An equality predicate between a director D and a child is only
     // admissible if the child's director is D, and the column names
     // correspond to the director primary key and child foreign key.
-    bool r1 = *this == *t.director; // &&&
-    bool r2 = a == pk;  // &&&
-    bool r3 = b == t.fk;  // &&&
-    bool res = r1 && r2 && r3; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& DirTableInfo::isEqPredAdmissible b res=" << res
-                << " r1=" << r1 << " r2=" << r2 << " r3=" << r3);
-    return *this == *t.director && a == pk && b == t.fk;
+    bool childsDirector = (*this == *t.director);
+    bool aPK = (a == pk);
+    bool bFK = (b == t.fk);
+    bool admissible = (childsDirector && aPK && bFK);
+    LOGS(_log, LOG_LVL_DEBUG, "b admissible=" << admissible << " childsDirector=" << childsDirector
+                           << " aPK=" << aPK << " bFK=" << bFK);
+    return admissible;
 }
 
 bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
@@ -220,30 +220,26 @@ bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and match tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& DirTableInfo::isEqPredAdmissible outer false");
+        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the primary key for the
     // predicate to be admissible.
     if (a != pk) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& DirTableInfo::isEqPredAdmissible false a=" << a << " pk=" << pk);
+        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " pk=" << pk);
         return false;
     }
     // For the predicate to be admissible, this table must be one of the
     // match table directors and b must refer to the corresponding foreign key.
-    bool r1a = *this == *t.director.first;  // &&&
-    bool r1b = b == t.fk.first; // &&&
-    bool r1 = r1a && r1b; // &&&
-    bool r2a = *this == *t.director.second; // &&&
-    bool r2b = b == t.fk.second; // &&&
-    bool r2 = r2a && r2b; // &&&
-    bool res = r1 || r2; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& DirTableInfo::isEqPredAdmissible b res=" << res
-                    << " r1a=" << r1a << " r1b=" << r1b
-                    << " r2a=" << r2a << " r2b=" << r2b
-                    << " r1=" << r1 << " r2=" << r2);
-    return (*this == *t.director.first && b == t.fk.first) ||
-           (*this == *t.director.second && b == t.fk.second);
+    bool directorA = (*this == *t.director.first);
+    bool aFK = (b == t.fk.first);
+    bool directorB = (*this == *t.director.second);
+    bool bFK = (b == t.fk.second);
+    bool admissible = (directorA && aFK) || (directorB && bFK);
+    LOGS(_log, LOG_LVL_DEBUG, "c admissible=" << admissible
+                    << " directorA=" << directorA << " aFK=" << aFK
+                    << " directorB=" << directorB << " bFK=" << bFK);
+    return admissible;
 }
 
 bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
@@ -254,13 +250,13 @@ bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     // An equality predicate between two child tables is only admissible
     // if both tables have the same director, and the column names refer
     // to their foreign keys.
-    bool r1 = *director == *t.director; // &&&
-    bool r2 = a == fk; // &&&
-    bool r3 = b == t.fk; // &&&
-    bool res = r1 && r2 && r3; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChildTableInfo::isEqPredAdmissible a res=" << res
-                << " r1=" << r1 << " r2=" << r2 << " r3=" << r3);
-    return *director == *t.director && a == fk && b == t.fk;
+    bool sameDirector = (*director == *t.director);
+    bool aFK = (a == fk);
+    bool bFK = (b == t.fk);
+    bool admissible = sameDirector && aFK && bFK;
+    LOGS(_log, LOG_LVL_DEBUG, "d admissible=" << admissible
+                << " sameDirector=" << sameDirector << " aFK=" << aFK << " bFK=" << bFK);
+    return admissible;
 }
 
 bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
@@ -271,31 +267,27 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and child tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChildTableInfo::isEqPredAdmissible outer false");
+        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the foreign key for the
     // predicate to be admissible.
     if (a != fk) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChildTableInfo::isEqPredAdmissible false a=" << a << " fk=" << fk);
+        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " fk=" << fk);
         return false;
     }
     // For the predicate to be admissible, the director for this table must be
     // one of the match table directors and b must refer to the corresponding
     // foreign key.
-    bool r1a = *director == *t.director.first;  // &&&
-    bool r1b = b == t.fk.first; // &&&
-    bool r1 = r1a && r1b; // &&&
-    bool r2a = *director == *t.director.second; // &&&
-    bool r2b = b == t.fk.second; // &&&
-    bool r2 = r2a && r2b; // &&&
-    bool res = r1 || r2; // &&&
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ChildTableInfo::isEqPredAdmissible b res=" << res
-            << " r1a=" << r1a << " r1b=" << r1b
-            << " r2a=" << r2a << " r2b=" << r2b
-            << " r1=" << r1 << " r2=" << r2);
-    return (*director == *t.director.first && b == t.fk.first) ||
-           (*director == *t.director.second && b == t.fk.second);
+    bool matchDirFirst = (*director == *t.director.first);
+    bool bFKFirst = (b == t.fk.first);
+    bool matchDirSecond = (*director == *t.director.second);
+    bool fKSecond = (b == t.fk.second);
+    bool admissible = (matchDirFirst && bFKFirst) || (matchDirSecond && fKSecond);
+    LOGS(_log, LOG_LVL_DEBUG, "e admissible=" << admissible
+            << " matchDirFirst=" << matchDirFirst << " bFKFirst=" << bFKFirst
+            << " matchDirSecond=" << matchDirSecond << " fKSecond=" << fKSecond);
+    return admissible;
 }
 
 }}} // namespace lsst::qserv::qana

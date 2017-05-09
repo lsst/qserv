@@ -87,18 +87,15 @@ namespace wdb {
 ////////////////////////////////////////////////////////////////////////
 class ChunkResource::Info {
 public:
-    Info(std::string const& db_, int chunkId_,
-         StringVector const& tables_, IntVector const& subChunkIds_)
-        : db{db_}, chunkId{chunkId_},
-          tables{tables_}, subChunkIds{subChunkIds_} {}
+    Info(std::string const& db_, int chunkId_, DbTableSet const& tables_, IntVector const& subChunkIds_)
+        : db{db_}, chunkId{chunkId_}, tables{tables_}, subChunkIds{subChunkIds_} {}
 
-    Info(std::string const& db_, int chunkId_,
-         StringVector const& tables_)
+    Info(std::string const& db_, int chunkId_, DbTableSet const& tables_)
         : db{db_}, chunkId{chunkId_}, tables{tables_} {}
 
     std::string db;
     int chunkId;
-    StringVector tables;
+    DbTableSet tables;
     IntVector subChunkIds;
 };
 std::ostream& operator<<(std::ostream& os, ChunkResource::Info const& i) {
@@ -118,7 +115,7 @@ ChunkResource::ChunkResource(ChunkResourceMgr *mgr)
 ChunkResource::ChunkResource(ChunkResourceMgr *mgr,
                              ChunkResource::Info* info)
     : _mgr{mgr}, _info{info} {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResource::ChunkResource info=" << *info);
+        LOGS(_log, LOG_LVL_DEBUG, "ChunkResource info=" << *info);
     _mgr->acquireUnit(*_info);
 }
 ChunkResource::ChunkResource(ChunkResource const& cr)
@@ -147,7 +144,7 @@ int ChunkResource::getChunkId() const {
     return _info->chunkId;
 }
 
-StringVector const& ChunkResource::getTables() const {
+DbTableSet const& ChunkResource::getTables() const {
     return _info->tables;
 }
 
@@ -177,7 +174,8 @@ std::ostream& operator<<(std::ostream& os, const SQLBackend::LockStatus& ls) {
 class ChunkEntry {
 public:
     typedef std::map<int, int> SubChunkMap; // subchunkid -> count
-    typedef std::map<std::string, SubChunkMap> TableMap; // tablename -> subchunk map
+    //typedef std::map<std::string, SubChunkMap> TableMap; // tablename -> subchunk map
+    typedef std::map<DbTable, SubChunkMap> TableMap; // tablename -> subchunk map
 
     typedef std::shared_ptr<ChunkEntry> Ptr;
 
@@ -196,26 +194,24 @@ public:
 
 
     /// Acquire a resource, loading if needed
-    void acquire(std::string const& db,
-                 StringVector const& tables,
+    void acquire(std::string const& db, DbTableSet const& dbTableSet,
                  IntVector const& sc, SQLBackend::Ptr backend) {
         ScTableVector needed;
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
         ++_refCount; // Increase usage count
-        LOGS(_log, LOG_LVL_DEBUG, "&&&SubChunk acquire refC=" << _refCount
+        LOGS(_log, LOG_LVL_DEBUG, "SubChunk acquire refC=" << _refCount
              << " db=" << db
-             << " tables[" << util::printable(tables) << "]"
+             << " tables[" << util::printable(dbTableSet) << "]"
              << " sc[" << util::printable(sc) << "]");
-        StringVector::const_iterator ti, te;
-        for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
-            SubChunkMap& scm = _tableMap[*ti]; // implicit creation OK.
+        for (auto const& dbTbl : dbTableSet) {
+            SubChunkMap& scm = _tableMap[dbTbl]; // implicit creation OK.
             IntVector::const_iterator i, e;
             for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                 SubChunkMap::iterator it = scm.find(*i);
                 int last = 0;
                 if (it == scm.end()) {
-                    needed.push_back(ScTable(db, _chunkId, *ti, *i));
+                    needed.push_back(ScTable(_chunkId, dbTbl, *i));
                 } else {
                     last = it->second;
                 }
@@ -235,20 +231,20 @@ public:
         }
     }
 
+
     /// Release a resource, flushing if no more users need it.
-    void release(std::string const& db,
-                 StringVector const& tables,
+    void release(std::string const& db, DbTableSet const& dbTableSet,
                  IntVector const& sc, SQLBackend::Ptr backend) {
         {
             std::lock_guard<std::mutex> lock(_mutex);
             backend->memLockRequireOwnership();
             StringVector::const_iterator ti, te;
-            LOGS(_log, LOG_LVL_DEBUG, "&&&SubChunk release refC=" << _refCount
+            LOGS(_log, LOG_LVL_DEBUG, "SubChunk release refC=" << _refCount
                     << " db=" << db
-                    << " tables[" << util::printable(tables) << "]"
+                    << " dbTableSet[" << util::printable(dbTableSet) << "]"
                     << " sc[" << util::printable(sc) << "]");
-            for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
-                SubChunkMap& scm = _tableMap[*ti]; // Should be in there.
+            for(auto const& dbTbl : dbTableSet) {
+                SubChunkMap& scm = _tableMap[dbTbl]; // Should be in there.
                 IntVector::const_iterator i, e;
                 for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                     SubChunkMap::iterator it = scm.find(*i); // Should be there
@@ -267,46 +263,44 @@ public:
 
     /// Flush resources no longer needed by anybody
     void flush(std::string const& db, SQLBackend::Ptr backend) {
-        ScTableVector discardable;
-        std::lock_guard<std::mutex> lock(_mutex);
-        backend->memLockRequireOwnership();
-        TableMap::iterator ti, te;
-        for(ti=_tableMap.begin(), te=_tableMap.end(); ti != te; ++ti) {
-            IntVector mapDiscardable;
-            SubChunkMap& scm = ti->second;
-            SubChunkMap::iterator si, se;
-            for(si=scm.begin(), se=scm.end(); si != se; ++si) {
-                if (si->second == 0) {
-                    discardable.push_back(ScTable(db, _chunkId,
-                                                  ti->first,
-                                                  si->first));
-                    mapDiscardable.push_back(si->first);
-                } else if (si->second < 0) {
-                    throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
-                }
-            } // All subchunks
-            // Prune zero elements for this db+table+chunk
-            // (invalidates iterators)
-            IntVector::iterator di, de;
-            for(di=mapDiscardable.begin(), de=mapDiscardable.end();
-                di != de; ++di) {
-                scm.erase(*di);
-            }
-        } // All tables
-        // Delegate actual table dropping to the backend.
-        if (discardable.size() > 0) {
-            backend->discard(discardable);
-        }
-    }
+         ScTableVector discardable;
+         std::lock_guard<std::mutex> lock(_mutex);
+         backend->memLockRequireOwnership();
+         for(auto& elem : _tableMap) {
+             IntVector mapDiscardable;
+             SubChunkMap& scm = elem.second;
+             SubChunkMap::iterator si, se;
+             for(si=scm.begin(), se=scm.end(); si != se; ++si) {
+                 if (si->second == 0) {
+                     discardable.push_back(ScTable(_chunkId, elem.first, si->first));
+                     mapDiscardable.push_back(si->first);
+                 } else if (si->second < 0) {
+                     throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
+                 }
+             } // All subchunks
+             // Prune zero elements for this db+table+chunk
+             // (invalidates iterators)
+             IntVector::iterator di, de;
+             for(di=mapDiscardable.begin(), de=mapDiscardable.end();
+                 di != de; ++di) {
+                 scm.erase(*di);
+             }
+         } // All tables
+         // Delegate actual table dropping to the backend.
+         if (discardable.size() > 0) {
+             backend->discard(discardable);
+         }
+     }
+
+
 private:
     void _release(ScTableVector const& needed) {
         // _mutex should be held.
         // Release subChunkId for the right table
-        for(ScTableVector::const_iterator i=needed.begin(), e=needed.end();
-            i != e; ++i) {
-            SubChunkMap& scm = _tableMap[i->table];
-            int last = scm[i->subChunkId];
-            scm[i->subChunkId] = last - 1;
+        for(auto const& elem : needed) {
+            SubChunkMap& scm = _tableMap[elem.dbTable];
+            int last = scm[elem.subChunkId];
+            scm[elem.subChunkId] = last - 1;
         }
     }
 
@@ -317,98 +311,81 @@ private:
     mutable std::mutex _mutex;
 };
 
-////////////////////////////////////////////////////////////////////////
-// ChunkResourceMgr::Impl
-////////////////////////////////////////////////////////////////////////
-class ChunkResourceMgr::Impl : public ChunkResourceMgr {
-public:
-    typedef std::map<int, ChunkEntry::Ptr> Map;
-    typedef std::map<std::string, Map> DbMap;
-
-    virtual ChunkResource acquire(std::string const& db, int chunkId,
-                                  StringVector const& tables) {
-        // Make sure that the chunk is ready. (NOP right now.)
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResourceMgr::Impl acquire db=" << db << " chunkId=" << chunkId << " tables=" << util::printable(tables));
-        ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables));
-        return cr;
-    }
-    virtual ChunkResource acquire(std::string const& db, int chunkId,
-                                  StringVector const& tables,
-                                  IntVector const& subChunks) {
-        ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables, subChunks));
-        return cr;
-    }
-
-    void release(ChunkResource::Info const& i) override {
-        std::lock_guard<std::mutex> lock(_mapMutex);
-        Map& map = _getMap(i.db);
-        ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
-        ce.release(i.db, i.tables, i.subChunkIds, _backend);
-    }
-
-    void acquireUnit(ChunkResource::Info const& i) override {
-        std::lock_guard<std::mutex> lock(_mapMutex);
-        Map& map = _getMap(i.db); // Select db
-        ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
-        // Actually acquire
-        LOGS(_log, LOG_LVL_DEBUG, "&&& ChunkResourceMgr::Impl acquireUnit info=" << i);
-        ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
-    }
-
-    int getRefCount(std::string const& db, int chunkId) {
-        std::lock_guard<std::mutex> lock(_mapMutex);
-        Map& map = _getMap(db); // Select db
-        Map::iterator it = map.find(chunkId); // Select chunkId
-        if (it == map.end()) {
-            return 0;
-        }
-        ChunkEntry& ce =  *(it->second.get());
-        return ce.getRefCount();
-    }
-
-private:
-    Impl(std::shared_ptr<SQLBackend> const& backend) : _backend(backend) {}
-
-    /// precondition: _mapMutex is held (locked by the caller)
-    /// Get the ChunkEntry map for a db, creating if necessary
-    Map& _getMap(std::string const& db) {
-        DbMap::iterator it = _dbMap.find(db);
-        if (it == _dbMap.end()) {
-            DbMap::value_type v(db, Map());
-            _dbMap.insert(v);
-            it = _dbMap.find(db);
-        }
-        return it->second;
-    }
-    /// precondition: _mapMutex is held (locked by the caller)
-    /// Get the ChunkEntry for a chunkId, creating if necessary
-    ChunkEntry& _getChunkEntry(Map& m, int chunkId) {
-        Map::iterator it = m.find(chunkId); // Select chunkId
-        if (it == m.end()) { // Insert if not exist
-            Map::value_type v(
-                              chunkId,
-                              std::make_shared<ChunkEntry>(chunkId)
-                             );
-            m.insert(v);
-            return *(v.second.get());
-        }
-        return *(it->second.get());
-    }
-
-    friend class ChunkResourceMgr;
-    DbMap _dbMap;
-    // Consider having separate mutexes for each db's map if contention becomes
-    // a problem.
-    std::shared_ptr<SQLBackend> _backend;
-    std::mutex _mapMutex; // Do not alter map without this mutex
-};
 
 ////////////////////////////////////////////////////////////////////////
 // ChunkResourceMgr
 ////////////////////////////////////////////////////////////////////////
 
 ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(SQLBackend::Ptr const& backend) {
-    return std::shared_ptr<ChunkResourceMgr>(new Impl(backend));
+    //return std::shared_ptr<ChunkResourceMgr>(new Impl(backend));
+    return std::make_shared<ChunkResourceMgr>(backend);
+}
+
+
+ChunkResource ChunkResourceMgr::acquire(std::string const& db, int chunkId, DbTableSet const& tables) {
+    // Make sure that the chunk is ready. (NOP right now.)
+    LOGS(_log, LOG_LVL_DEBUG, "acquire db=" << db << " chunkId=" << chunkId << " tables=" << util::printable(tables));
+    ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables));
+    return cr;
+}
+
+
+ChunkResource ChunkResourceMgr::acquire(std::string const& db, int chunkId,
+                                        DbTableSet const& dbTableSet, IntVector const& subChunks) {
+    ChunkResource cr(this, new ChunkResource::Info(db, chunkId, dbTableSet, subChunks));
+    return cr;
+}
+
+
+void ChunkResourceMgr::release(ChunkResource::Info const& i) {
+     std::lock_guard<std::mutex> lock(_mapMutex);
+     Map& map = _getMap(i.db);
+     ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+     ce.release(i.db, i.tables, i.subChunkIds, _backend);
+}
+
+
+void ChunkResourceMgr::acquireUnit(ChunkResource::Info const& i) {
+    std::lock_guard<std::mutex> lock(_mapMutex);
+    Map& map = _getMap(i.db); // Select db
+    ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+    // Actually acquire
+    LOGS(_log, LOG_LVL_DEBUG, "acquireUnit info=" << i);
+    ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
+}
+
+
+int ChunkResourceMgr::getRefCount(std::string const& db, int chunkId) {
+    std::lock_guard<std::mutex> lock(_mapMutex);
+    Map& map = _getMap(db); // Select db
+    Map::iterator it = map.find(chunkId); // Select chunkId
+    if (it == map.end()) {
+        return 0;
+    }
+    ChunkEntry& ce =  *(it->second.get());
+    return ce.getRefCount();
+}
+
+
+ChunkResourceMgr::Map& ChunkResourceMgr::_getMap(std::string const& db) {
+    DbMap::iterator it = _dbMap.find(db);
+    if (it == _dbMap.end()) {
+        DbMap::value_type v(db, Map());
+        _dbMap.insert(v);
+        it = _dbMap.find(db);
+    }
+    return it->second;
+}
+
+
+ChunkEntry& ChunkResourceMgr::_getChunkEntry(Map& m, int chunkId) {
+     Map::iterator it = m.find(chunkId); // Select chunkId
+     if (it == m.end()) { // Insert if not exist
+         Map::value_type v(chunkId, std::make_shared<ChunkEntry>(chunkId));
+         m.insert(v);
+         return *(v.second.get());
+     }
+     return *(it->second.get());
 }
 
 }}} // namespace lsst::qserv::wdb
