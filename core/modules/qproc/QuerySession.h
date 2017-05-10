@@ -74,11 +74,13 @@ class QuerySession {
 public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
-    explicit QuerySession(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& mysqlSchemaConfig)
-        : _css(css), _mysqlSchemaConfig(mysqlSchemaConfig) {}
+    QuerySession(std::shared_ptr<css::CssAccess> css,
+                 mysql::MySqlConfig const& mysqlSchemaConfig,
+                 std::string const& defaultDb)
+        : _css(css), _defaultDb(defaultDb),
+          _mysqlSchemaConfig(mysqlSchemaConfig) {}
 
     std::string const& getOriginal() const { return _original; }
-    void setDefaultDb(std::string const& db);
 
     /**
      * @brief Analyze SQL query issued by user
@@ -90,6 +92,13 @@ public:
      * @param sql: the sql query
      */
     void analyzeQuery(std::string const& sql);
+    /**
+     * @brief Analyze SQL query using parsed query
+     *
+     * @param sql: the sql query text
+     * @param stmt: parsed select statement
+     */
+    void analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt);
     bool needsMerge() const;
     bool hasChunks() const;
 

@@ -47,6 +47,8 @@
 #include "czar/Czar.h"
 #include "czar/CzarConfig.h"
 #include "mysql/MySqlConfig.h"
+#include "parser/ParseException.h"
+#include "parser/SelectParser.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
@@ -102,11 +104,22 @@ UserQueryFactory::newUserQuery(std::string const& query,
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
-        // Currently using the database for results to get schema information.
-        qproc::QuerySession::Ptr qs = std::make_shared<qproc::QuerySession>(_impl->css,_impl->mysqlResultConfig);
+
+        std::shared_ptr<query::SelectStmt> stmt;
         try {
-            qs->setDefaultDb(defaultDb);
-            qs->analyzeQuery(query);
+            auto parser = parser::SelectParser::newInstance(query);
+            parser->setup();
+            stmt = parser->getSelectStmt();
+        } catch(parser::ParseException& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        }
+
+        // Currently using the database for results to get schema information.
+        auto qs = std::make_shared<qproc::QuerySession>(_impl->css,
+                                                        _impl->mysqlResultConfig,
+                                                        defaultDb);
+        try {
+            qs->analyzeQuery(query, stmt);
         } catch (...) {
             errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
             LOGS(_log, LOG_LVL_ERROR, errorExtra);

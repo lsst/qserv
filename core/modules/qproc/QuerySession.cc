@@ -87,22 +87,31 @@ namespace qproc {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-void QuerySession::setDefaultDb(std::string const& defaultDb) {
-    _defaultDb = defaultDb;
-}
 
 // Analyze SQL query issued by user
 void QuerySession::analyzeQuery(std::string const& sql) {
+    std::shared_ptr<query::SelectStmt> stmt;
+    try {
+        auto parser = parser::SelectParser::newInstance(sql);
+        parser->setup();
+        stmt = parser->getSelectStmt();
+        analyzeQuery(sql, stmt);
+    } catch(parser::ParseException& e) {
+        // parser failed, we only need to set error here, nothing else should matter
+        _original = sql;
+        _error = std::string("ParseException:") + e.what();
+    }
+}
+
+// Analyze SQL query issued by user
+void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt) {
     _original = sql;
+    _stmt = stmt;
     _isFinal = false;
     _initContext();
     assert(_context.get());
 
-    parser::SelectParser::Ptr p;
     try {
-        p = parser::SelectParser::newInstance(sql);
-        p->setup();
-        _stmt = p->getSelectStmt();
         _preparePlugins();
         _applyLogicPlugins();
         _generateConcrete();
@@ -119,8 +128,6 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         _error = std::string("NoSuchDb:") + e.what();
     } catch(css::NoSuchTable& e) {
         _error = std::string("NoSuchTable:") + e.what();
-    } catch(parser::ParseException& e) {
-        _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
     } catch(Bug& b) {
