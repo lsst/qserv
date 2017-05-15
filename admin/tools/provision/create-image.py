@@ -82,10 +82,12 @@ groups:
 packages:
 - [docker-engine, 1.12.3-1.el7.centos]
 - ebtables
+- epel-release
 - [kubeadm, 1.6.2-0]
 - [kubectl, 1.6.2-0]
 - [kubelet, 1.6.2-0]
 - [kubernetes-cni, 0.5.1-0]
+- parallel
 - util-linux
 
 runcmd:
