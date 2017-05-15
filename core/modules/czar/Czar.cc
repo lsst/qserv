@@ -141,7 +141,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, _czar, userQueryId);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getLargeResultMgr(), userQueryId);
     }
     auto queryIdStr = uq->getQueryIdString();
 
