@@ -93,6 +93,54 @@ CREATE TABLE IF NOT EXISTS `QWorker` (
 ENGINE = InnoDB
 COMMENT = 'Mapping of queries to workers';
 
+-- -----------------------------------------------------
+-- View `ShowProcessList`
+-- This shows abbreaviated Qmeta info suitable for "SHOW PROCESSLIST"
+-- -----------------------------------------------------
+CREATE OR REPLACE
+  SQL SECURITY INVOKER
+  VIEW `ShowProcessList` AS
+  SELECT DISTINCT
+    `QInfo`.`queryId` `Id`,
+    `QInfo`.`user` `User`,
+    NULL `Host`,
+    GROUP_CONCAT(DISTINCT `QTable`.`dbName`) `db`,
+    `QInfo`.`qType` `Command`,
+    NULL `Time`,
+    `QInfo`.`status` `State`,
+    `QInfo`.`query` `Info`,
+    NULL `Progress`,
+    `QInfo`.`submitted` `Submitted`,
+    `QInfo`.`completed` `Completed`,
+    `QInfo`.`returned` `Returned`,
+    `QInfo`.`czarId` `CzarId`
+  FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
+  GROUP BY `QInfo`.`queryId`;
+
+-- -----------------------------------------------------
+-- View `InfoSchemaProcessList`
+-- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.PROCESSLIST"
+-- -----------------------------------------------------
+CREATE OR REPLACE
+  SQL SECURITY INVOKER
+  VIEW `InfoSchemaProcessList` AS
+  SELECT DISTINCT
+    `QInfo`.`queryId` `ID`,
+    `QInfo`.`user` `USER`,
+    NULL `HOST`,
+    GROUP_CONCAT(DISTINCT `QTable`.`dbName`) `DB`,
+    `QInfo`.`qType` `COMMAND`,
+    NULL `TIME`,
+    `QInfo`.`status` `STATE`,
+    `QInfo`.`query` `INFO`,
+    `QInfo`.`submitted` `SUBMITTED`,
+    `QInfo`.`completed` `COMPLETED`,
+    `QInfo`.`returned` `RETURNED`,
+    `QInfo`.`czarId` `CZARID`,
+    NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`
+  FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
+        LEFT OUTER JOIN `QWorker` USING (`queryId`)
+  GROUP BY `QInfo`.`queryId`;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

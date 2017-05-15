@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2016 AURA/LSST.
+ * Copyright 2015-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -64,10 +64,13 @@ public:
 
     /// @param query:       Query text
     /// @param defaultDb:   Default database name, may be empty
+    /// @param czar:        Czar instance
+    /// @param userQueryId: Unique string identifying query
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
                                 std::string const& defaultDb,
-                                std::shared_ptr<czar::Czar> const& czar);
+                                std::shared_ptr<czar::Czar> const& czar,
+                                std::string const& userQueryId);
 
 private:
     class Impl;

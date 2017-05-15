@@ -154,6 +154,63 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         std::string db;
         BOOST_CHECK(not UserQueryType::isFlushChunksCache(test, db));
     }
+
+    const char* show_proclist_ok[] = {
+        "SHOW PROCESSLIST",
+        "show processlist",
+        "show    PROCESSLIST",
+    };
+    for (auto test: show_proclist_ok) {
+        bool full;
+        BOOST_CHECK(UserQueryType::isShowProcessList(test, full));
+        BOOST_CHECK(not full);
+    }
+
+    const char* show_full_proclist_ok[] = {
+        "SHOW FULL PROCESSLIST",
+        "show full   processlist",
+        "show FULL PROCESSLIST",
+    };
+    for (auto test: show_full_proclist_ok) {
+        bool full;
+        BOOST_CHECK(UserQueryType::isShowProcessList(test, full));
+        BOOST_CHECK(full);
+    }
+
+    const char* show_proclist_fail[] = {
+        "show PROCESS",
+        "SHOW PROCESS LIST",
+        "show fullprocesslist",
+        "show full process list",
+    };
+    for (auto test: show_proclist_fail) {
+        bool full;
+        BOOST_CHECK(not UserQueryType::isShowProcessList(test, full));
+    }
+
+    struct {
+        const char* db;
+        const char* table;
+    } proclist_table_ok[] = {
+        {"INFORMATION_SCHEMA", "PROCESSLIST"},
+        {"information_schema", "processlist"},
+        {"Information_Schema", "ProcessList"},
+    };
+    for (auto test: proclist_table_ok) {
+        BOOST_CHECK(UserQueryType::isProcessListTable(test.db, test.table));
+    }
+
+    struct {
+        const char* db;
+        const char* table;
+    } proclist_table_fail[] = {
+        {"INFORMATIONSCHEMA", "PROCESSLIST"},
+        {"information_schema", "process_list"},
+        {"Information Schema", "Process List"},
+    };
+    for (auto test: proclist_table_fail) {
+        BOOST_CHECK(not UserQueryType::isProcessListTable(test.db, test.table));
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

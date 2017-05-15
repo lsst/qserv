@@ -40,6 +40,7 @@
 
 // Local headers
 #include "sql/SqlErrorObject.h"
+#include "sql/Schema.h"
 
 
 namespace lsst {
@@ -117,6 +118,10 @@ public:
     /// Return row iterator
     iterator begin() { return iterator(_results); }
     iterator end() { return iterator(); }
+
+    /// Return result schema, this makes sense
+    /// only if there is a single result.
+    sql::Schema makeSchema(SqlErrorObject& errObj);
 
 private:
     std::vector<MYSQL_RES*> _results;

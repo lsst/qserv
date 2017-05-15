@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2014-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,6 +40,7 @@
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
+#include "ccontrol/UserQueryProcessList.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
@@ -52,8 +53,11 @@
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
+#include "qmeta/QMetaSelect.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
+#include "query/FromList.h"
+#include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 
@@ -78,6 +82,7 @@ public:
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
+    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::unique_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
@@ -97,22 +102,43 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
-                               std::shared_ptr<czar::Czar> const& czar) {
+                               std::shared_ptr<czar::Czar> const& czar,
+                               std::string const& userQueryId) {
     std::string dbName, tableName;
+    bool full = false;
 
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
         bool sessionValid = true;
         std::string errorExtra;
 
+        // Parse SELECT
         std::shared_ptr<query::SelectStmt> stmt;
         try {
             auto parser = parser::SelectParser::newInstance(query);
             parser->setup();
             stmt = parser->getSelectStmt();
-        } catch(parser::ParseException& e) {
+        } catch(parser::ParseException const& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
+
+        // handle special database/table names
+        auto&& tblRefList = stmt->getFromList().getTableRefList();
+        if (tblRefList.size() == 1) {
+            auto&& tblRef = tblRefList[0];
+            std::string const db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
+            if (UserQueryType::isProcessListTable(db, tblRef->getTable())) {
+                LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
+                try {
+                    return std::make_shared<UserQueryProcessList>(stmt, _impl->resultDbConn.get(),
+                            _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId);
+                } catch(std::exception const& exc) {
+                    return std::make_shared<UserQueryInvalid>(exc.what());
+                }
+            }
+        }
+
+        // This is a regular SELECT for qserv
 
         // Currently using the database for results to get schema information.
         auto qs = std::make_shared<qproc::QuerySession>(_impl->css,
@@ -169,6 +195,14 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                                               _impl->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: " << dbName);
         return uq;
+    } else if (UserQueryType::isShowProcessList(query, full)) {
+        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
+        try {
+            return std::make_shared<UserQueryProcessList>(full, _impl->resultDbConn.get(),
+                    _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId);
+        } catch(std::exception const& exc) {
+            return std::make_shared<UserQueryInvalid>(exc.what());
+        }
     } else {
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
@@ -186,6 +220,7 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     resultDbConn.reset(new sql::SqlConnection(mysqlResultConfig));
 
     queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
+    qMetaSelect = std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig());
 
     // create CssAccess instance
     css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());

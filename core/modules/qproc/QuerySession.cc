@@ -96,7 +96,7 @@ void QuerySession::analyzeQuery(std::string const& sql) {
         parser->setup();
         stmt = parser->getSelectStmt();
         analyzeQuery(sql, stmt);
-    } catch(parser::ParseException& e) {
+    } catch(parser::ParseException const& e) {
         // parser failed, we only need to set error here, nothing else should matter
         _original = sql;
         _error = std::string("ParseException:") + e.what();
