@@ -33,8 +33,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "Exceptions.h"
-#include "QMetaTransaction.h"
+#include "qmeta/Exceptions.h"
+#include "qmeta/QMetaTransaction.h"
 #include "sql/SqlResults.h"
 
 

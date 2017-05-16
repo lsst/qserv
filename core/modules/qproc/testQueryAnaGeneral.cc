@@ -49,7 +49,6 @@
 
 // Qserv headers
 #include "parser/ParseException.h"
-#include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"

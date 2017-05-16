@@ -96,7 +96,7 @@ public:
     virtual std::string typeName() const override { return "ChunkIdError"; }
 };
 
-/// Exception thrown when chunk ID is not known.
+/// Exception thrown for SQL errors.
 class SqlError : public Exception {
 public:
     SqlError(util::Issue::Context const& ctx, sql::SqlErrorObject const& sqlErr)

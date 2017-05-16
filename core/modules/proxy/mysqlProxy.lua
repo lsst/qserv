@@ -196,7 +196,7 @@ function queryType()
 
     -- Detects if query can be handled locally without sending it to qserv
     local isLocal = function(qU)
-        if string.find(qU, "^SHOW ") or
+        if (string.find(qU, "^SHOW ") and not string.find(qU, "^SHOW .*PROCESSLIST")) or
            string.find(qU, "^SET ") or
            string.find(qU, "^DESCRIBE ") or
            string.find(qU, "^DESC ") or

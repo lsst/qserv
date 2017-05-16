@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2016 AURA/LSST.
+ * Copyright 2015-2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -40,14 +40,14 @@
 
 // Local headers
 #include "ccontrol/UserQuery.h"
-#include "czar/CzarConfig.h"
 #include "global/stringTypes.h"
+#include "qdisp/LargeResultMgr.h"
 
 namespace lsst {
 namespace qserv {
 
 namespace czar {
-class Czar;
+class CzarConfig;
 }
 
 namespace ccontrol {
@@ -64,10 +64,13 @@ public:
 
     /// @param query:       Query text
     /// @param defaultDb:   Default database name, may be empty
+    /// @param largeResultMgr: Manager instance for large results
+    /// @param userQueryId: Unique string identifying query
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
                                 std::string const& defaultDb,
-                                std::shared_ptr<czar::Czar> const& czar);
+                                qdisp::LargeResultMgr::Ptr const& largeResultMgr,
+                                std::string const& userQueryId);
 
 private:
     class Impl;

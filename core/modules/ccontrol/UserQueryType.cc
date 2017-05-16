@@ -27,6 +27,7 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
+#include "boost/algorithm/string/case_conv.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -59,6 +60,12 @@ boost::regex _selectRe(R"(^select\s+.+$)",
 // db name will be in group 3.
 boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
                            boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for SHOW [FULL] PROCESSLIST
+// if FULL is present then group 1 is non-empty
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
+                                boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 }
 
 namespace lsst {
@@ -115,6 +122,26 @@ UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName)
         LOGS(_log, LOG_LVL_DEBUG, "isFlushChunksCache: match: " << dbName);
     }
     return match;
+}
+
+/// Returns true if query is SHOW [FULL] PROCESSLIST
+bool
+UserQueryType::isShowProcessList(std::string const& query, bool& full) {
+    LOGS(_log, LOG_LVL_DEBUG, "isShowProcessList: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _showProcessListRe);
+    if (match) {
+        full = sm.length(1) != 0;
+        LOGS(_log, LOG_LVL_DEBUG, "isShowProcessList: full: " << (full ? 'y' : 'n'));
+    }
+    return match;
+}
+
+/// Returns true if table name refers to PROCESSLIST table
+bool
+UserQueryType::isProcessListTable(std::string const& dbName, std::string const& tblName) {
+    return boost::to_upper_copy(dbName) == "INFORMATION_SCHEMA" &&
+            boost::to_upper_copy(tblName) == "PROCESSLIST";
 }
 
 }}} // namespace lsst::qserv::ccontrol

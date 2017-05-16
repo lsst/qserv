@@ -29,6 +29,9 @@
 #include <cstddef>
 #include <sstream>
 
+// Qserv headers
+#include "mysql/SchemaFactory.h"
+
 namespace lsst {
 namespace qserv {
 namespace sql {
@@ -207,6 +210,18 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     ret = (row[0]);
     freeResults();
     return true;
+}
+
+sql::Schema
+SqlResults::makeSchema(SqlErrorObject& errObj) {
+    sql::Schema schema;
+    if (_results.size() != 1) {
+        errObj.addErrMsg("Expecting single result, found " + std::to_string(_results.size()) + " results");
+        return schema;
+    }
+
+    schema = mysql::SchemaFactory::newFromResult(_results[0]);
+    return schema;
 }
 
 }}} // namespace lsst::qserv::sql

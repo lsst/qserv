@@ -57,6 +57,21 @@ public:
     /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
     static bool isFlushChunksCache(std::string const& query, std::string& dbName);
 
+    /**
+     *  Returns true if query is SHOW [FULL] PROCESSLIST
+     *
+     *  @param[in] query:  SQL query string
+     *  @param[out] full:  Set to true if FULL is in query
+     *  @returns True if query is indeed a SHOW PROCESSLIST
+     */
+    static bool isShowProcessList(std::string const& query, bool& full);
+
+    /**
+     *  Returns true if database/table name refers to PROCESSLIST table in
+     *  INFORMATION_SCHEMA pseudo-database.
+     */
+    static bool isProcessListTable(std::string const& dbName, std::string const& tblName);
+
 };
 
 }}} // namespace lsst::qserv::ccontrol

@@ -49,7 +49,6 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "parser/ParseException.h"
-#include "parser/parseExceptions.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/SelectFactory.h"
 #include "parser/SqlSQL2Parser.hpp"   //!!! Order is important, SqlSQL2Parser must be first
