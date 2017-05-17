@@ -33,7 +33,6 @@
 #include <unistd.h>
 
 // Qserv headers
-#include "global/DbTable.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 
@@ -51,12 +50,14 @@ namespace wdb {
 
 
 struct ScTable {
-    ScTable(int chunkId_, DbTable const& dbTable_, int subChunkId_)
-        : chunkId(chunkId_), dbTable(dbTable_), subChunkId(subChunkId_) {
+    ScTable(std::string const& db_, int chunkId_,
+            std::string const& table_, int subChunkId_)
+        : db(db_), chunkId(chunkId_), table(table_), subChunkId(subChunkId_) {
     }
 
+    std::string db;
     int chunkId;
-    DbTable dbTable;
+    std::string table;
     int subChunkId;
 };
 
@@ -143,8 +144,8 @@ public:
 
     /// For unit tests only.
     static std::string makeFakeKey(ScTable const& sctbl) {
-        std::string str = sctbl.dbTable.db + ":" + std::to_string(sctbl.chunkId) + ":"
-                + sctbl.dbTable.table + ":" + std::to_string(sctbl.subChunkId);
+        std::string str = sctbl.db + ":" + std::to_string(sctbl.chunkId) + ":"
+                + sctbl.table + ":" + std::to_string(sctbl.subChunkId);
         return str;
     }
     std::set<std::string> fakeSet; // set of strings for tracking unique tables.

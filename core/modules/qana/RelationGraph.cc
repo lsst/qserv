@@ -245,15 +245,12 @@ size_t addEqEdge(std::string const& ca,
     }
     TableInfo const& ta = *(a->info);
     TableInfo const& tb = *(b->info);
-    LOGS(_log, LOG_LVL_DEBUG, "addEqEdge a=" << a->info->dump() << " b=" << b->info->dump());
     if (ta.isEqPredAdmissible(tb, ca, cb, outer)) {
         // Add a pair of Edge objects, a → b and b → a.
-        LOGS(_log, LOG_LVL_DEBUG, "addEqEdge true for (" << ca << "," << cb << ")");
         a->insert(Edge(b, std::numeric_limits<double>::quiet_NaN()));
         b->insert(Edge(a, std::numeric_limits<double>::quiet_NaN()));
         return 1;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "addEqEdge false for (" << ca << "," << cb << ")");
     return 0;
 }
 
@@ -480,7 +477,6 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
         // where is not an equality predicate between two column references
         return 0;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "_addWhereEqEdges first=" << *(c.first) << " second=" << *(c.second));
     // Lookup the vertices for each column reference,
     // and add edges for each possible vertex pair.
     std::vector<Vertex*> const& v1 = _map.find(*c.first);
@@ -1010,9 +1006,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
             if (i->overlap == 0.0) {
                 i->rewriteAsSubChunkTemplate();
             }
-            DbTable dbTable(i->info->database, i->info->table);
-            LOGS(_log, LOG_LVL_DEBUG, "rewrite db=" << dbTable.db << " table=" << dbTable.table);
-            mapping.insertSubChunkTable(dbTable);
+            mapping.insertSubChunkTable(i->info->table);
         }
     }
     unsigned n = static_cast<unsigned>(overlapRefs.size());

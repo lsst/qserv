@@ -84,10 +84,9 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
     bool compareSubchunk(lsst::qserv::proto::TaskMsg_Subchunk const& s1,
                          lsst::qserv::proto::TaskMsg_Subchunk const& s2) {
         if (s1.database() != s2.database()) { return false; }
-        if (s1.dbtbl_size() != s2.dbtbl_size()) { return false; }
-        for(int i=0; i < s1.dbtbl_size(); ++i) {
-            if (s1.dbtbl(i).db() != s2.dbtbl(i).db()
-                && s1.dbtbl(i).tbl() != s2.dbtbl(i).tbl()) return false;
+        if (s1.table_size() != s2.table_size()) { return false; }
+        for(int i=0; i < s1.table_size(); ++i) {
+            if (s1.table(i) != s2.table(i)) return false;
         }
         if (s1.id_size() != s2.id_size()) { return false; }
         for(int i=0; i < s1.id_size(); ++i) {
@@ -173,7 +172,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "b3ecc6a56205c90642e61943e44c7f14";
+    std::string expected = "f3890e99c399ab196c164eccf2e99369";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 

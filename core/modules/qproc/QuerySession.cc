@@ -188,7 +188,7 @@ std::string QuerySession::getProxyOrderBy() const {
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
-    LOGS(_log, LOG_LVL_DEBUG, "Add chunk: " << cs);
+    LOGS(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }
@@ -413,8 +413,9 @@ ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect cons
     cQSpec.chunkId = chunkSpec.chunkId;
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);
-    DbTableSet const& sTables = queryMapping.getSubChunkTables();
-    cQSpec.subChunkTables = sTables;
+    qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
+    cQSpec.subChunkTables.insert(cQSpec.subChunkTables.begin(),
+                                 sTables.begin(), sTables.end());
     // Build queries.
     if (!_context->hasSubChunks()) {
         cQSpec.queries = _buildChunkQueries(queryTemplates, chunkSpec);

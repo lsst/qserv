@@ -38,6 +38,5 @@ typedef std::map<std::string, StringMap> StringMapMap;
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::vector<StringPair> StringPairVector;
 typedef std::vector<std::string> StringVector;
-
 }}
 #endif // LSST_QSERV_STRINGTYPES_H

@@ -36,8 +36,7 @@
 // Third-party headers
 #include <memory>
 
-// Qserv headers
-#include "global/DbTable.h"
+// Local headers
 #include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 
@@ -59,7 +58,7 @@ public:
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     bool scanInteractive;
-    DbTableSet subChunkTables;
+    std::vector<std::string> subChunkTables;
     std::vector<int> subChunkIds;
     std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec

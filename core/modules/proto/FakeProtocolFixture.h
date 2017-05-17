@@ -78,10 +78,8 @@ public:
         if(!f.has_subchunks()) {
             TaskMsg_Subchunk subc;
             // f.add_scgroup(); // How do I add optional objects?
-            subc.set_database("subdatabase_default");
-            proto::TaskMsg_Subchunk_DbTbl* dbTbl = subc.add_dbtbl();
-            dbTbl->set_db("subdatabase");
-            dbTbl->set_tbl("subtable");
+            subc.set_database("subdatabase");
+            subc.add_table("subtable");
             f.mutable_subchunks()->CopyFrom(subc);
             s = f.mutable_subchunks();
         }

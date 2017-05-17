@@ -35,6 +35,7 @@ namespace lsst {
 namespace qserv {
 namespace proto {
 
+
 /// Structure to store shared scan information for a single table.
 ///
 struct ScanTableInfo {

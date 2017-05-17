@@ -84,11 +84,7 @@ MessageTable::lock() {
 // Release lock on message table so that proxy can proceed
 void
 MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
-    try {
-        _saveQueryMessages(userQuery);
-    } catch  (SqlError const& e) {
-        LOGS(_log, LOG_LVL_ERROR, _tableName << " failed to write messages " << e.message());
-    }
+    _saveQueryMessages(userQuery);
 
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);

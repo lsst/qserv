@@ -29,26 +29,13 @@
 
 // Third-party headers
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "query/ColumnRef.h"
-
-
-namespace { // File-scope helpers
-
-
-
-} // anonymous namespace
-
 
 namespace {
 
 using lsst::qserv::qana::ColumnRefConstPtr;
 using lsst::qserv::query::ColumnRef;
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TableInfo");
 
 /// `appendColumnRefs` appends all possible references to the given
 /// column to `columnRefs`. At most 3 references are appended.
@@ -83,71 +70,6 @@ namespace qana {
 
 std::string const TableInfo::CHUNK_TAG("%CC%");
 std::string const TableInfo::SUBCHUNK_TAG("%SS%");
-
-
-std::ostream& operator<<(std::ostream& os, TableInfo const& ti) {
-    return os << "TI(" << ti.database << "." << ti.table << " kind=" << ti.kind << ")";
-}
-
-
-std::ostream& operator<<(std::ostream& os, ChildTableInfo const& cti) {
-    os << "CTI(" << static_cast<TableInfo const&>(cti)
-       << " fk=" << cti.fk
-       << " director=(" << *cti.director
-       << "))";
-    return os;
-}
-
-
-std::ostream& operator<<(std::ostream& os, DirTableInfo const& dti) {
-    os << "DTI(" << static_cast<TableInfo const&>(dti)
-       << " pk=" << dti.pk
-       << " lon=" << dti.lon
-       << " lat=" << dti.lat
-       << " partId=" << dti.partitioningId
-       << ")";
-    return os;
-}
-
-
-std::ostream& operator<<(std::ostream& os, MatchTableInfo const& mti) {
-    os << "MTI(" << static_cast<TableInfo const&>( mti )
-       << " director_1[" << *mti.director.first << "]"
-       << " director_2[" << *mti.director.second << "]"
-       << " fk_1=" << mti.fk.first
-       << " fk_2=" << mti.fk.second
-       << ")";
-    return os;
-}
-
-
-std::string TableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string DirTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string ChildTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string MatchTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
 
 std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(
     std::string const& tableAlias) const
@@ -186,13 +108,7 @@ bool DirTableInfo::isEqPredAdmissible(DirTableInfo const& t,
 {
     // An equality predicate between two directors is only
     // admissible for self joins on the director primary key.
-    bool selfJoin = (*this == t);
-    bool aPK = (a == pk);
-    bool bPK = (b == t.pk);
-    bool admissible = (selfJoin && aPK && bPK);
-    LOGS(_log, LOG_LVL_DEBUG, "a admissible=" << admissible
-            << " selfJoin=" << selfJoin << " aPK=" << aPK << " bPK=" << bPK);
-    return admissible;
+    return *this == t && a == pk && b == t.pk;
 }
 
 bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
@@ -203,13 +119,7 @@ bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     // An equality predicate between a director D and a child is only
     // admissible if the child's director is D, and the column names
     // correspond to the director primary key and child foreign key.
-    bool childsDirector = (*this == *t.director);
-    bool aPK = (a == pk);
-    bool bFK = (b == t.fk);
-    bool admissible = (childsDirector && aPK && bFK);
-    LOGS(_log, LOG_LVL_DEBUG, "b admissible=" << admissible << " childsDirector=" << childsDirector
-                           << " aPK=" << aPK << " bFK=" << bFK);
-    return admissible;
+    return *this == *t.director && a == pk && b == t.fk;
 }
 
 bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
@@ -220,26 +130,17 @@ bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and match tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the primary key for the
     // predicate to be admissible.
     if (a != pk) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " pk=" << pk);
         return false;
     }
     // For the predicate to be admissible, this table must be one of the
     // match table directors and b must refer to the corresponding foreign key.
-    bool directorA = (*this == *t.director.first);
-    bool aFK = (b == t.fk.first);
-    bool directorB = (*this == *t.director.second);
-    bool bFK = (b == t.fk.second);
-    bool admissible = (directorA && aFK) || (directorB && bFK);
-    LOGS(_log, LOG_LVL_DEBUG, "c admissible=" << admissible
-                    << " directorA=" << directorA << " aFK=" << aFK
-                    << " directorB=" << directorB << " bFK=" << bFK);
-    return admissible;
+    return (*this == *t.director.first && b == t.fk.first) ||
+           (*this == *t.director.second && b == t.fk.second);
 }
 
 bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
@@ -250,13 +151,7 @@ bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     // An equality predicate between two child tables is only admissible
     // if both tables have the same director, and the column names refer
     // to their foreign keys.
-    bool sameDirector = (*director == *t.director);
-    bool aFK = (a == fk);
-    bool bFK = (b == t.fk);
-    bool admissible = sameDirector && aFK && bFK;
-    LOGS(_log, LOG_LVL_DEBUG, "d admissible=" << admissible
-                << " sameDirector=" << sameDirector << " aFK=" << aFK << " bFK=" << bFK);
-    return admissible;
+    return *director == *t.director && a == fk && b == t.fk;
 }
 
 bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
@@ -267,27 +162,18 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and child tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the foreign key for the
     // predicate to be admissible.
     if (a != fk) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " fk=" << fk);
         return false;
     }
     // For the predicate to be admissible, the director for this table must be
     // one of the match table directors and b must refer to the corresponding
     // foreign key.
-    bool matchDirFirst = (*director == *t.director.first);
-    bool bFKFirst = (b == t.fk.first);
-    bool matchDirSecond = (*director == *t.director.second);
-    bool fKSecond = (b == t.fk.second);
-    bool admissible = (matchDirFirst && bFKFirst) || (matchDirSecond && fKSecond);
-    LOGS(_log, LOG_LVL_DEBUG, "e admissible=" << admissible
-            << " matchDirFirst=" << matchDirFirst << " bFKFirst=" << bFKFirst
-            << " matchDirSecond=" << matchDirSecond << " fKSecond=" << fKSecond);
-    return admissible;
+    return (*director == *t.director.first && b == t.fk.first) ||
+           (*director == *t.director.second && b == t.fk.second);
 }
 
 }}} // namespace lsst::qserv::qana

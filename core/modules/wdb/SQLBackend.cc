@@ -51,8 +51,8 @@ namespace wdb {
 
 
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
-    return os << SUBCHUNKDB_PREFIX << st.dbTable.db << "_" << st.chunkId << "."
-              << st.dbTable.table << "_" << st.subChunkId;
+    return os << SUBCHUNKDB_PREFIX << st.db << "_" << st.chunkId << "."
+              << st.table << "_" << st.subChunkId;
 }
 
 
@@ -67,10 +67,10 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
         } else {
             createScript = &CREATE_SUBCHUNK_SCRIPT;
         }
-        std::string create = (boost::format(*createScript)
-            % i->dbTable.db % i->dbTable.table % SUB_CHUNK_COLUMN
-                % i->chunkId % i->subChunkId).str();
-
+        std::string create =
+                (boost::format(*createScript)
+        % i->db % i->table % SUB_CHUNK_COLUMN
+        % i->chunkId % i->subChunkId).str();
         if (!_sqlConn.runQuery(create, err)) {
             _discard(v.begin(), i);
             return false;
@@ -97,7 +97,7 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin,
     memLockRequireOwnership();
     for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
         std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
-                % i->dbTable.db % i->dbTable.table % i->chunkId % i->subChunkId).str();
+        % i->db % i->table  % i->chunkId % i->subChunkId).str();
         sql::SqlErrorObject err;
         if (!_sqlConn.runQuery(discard, err)) {
             throw err;
