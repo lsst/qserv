@@ -145,7 +145,9 @@ public:
     int getChunkId();
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
-    bool getScanInteractive() {return _scanInteractive; }
+    bool getScanInteractive() { return _scanInteractive; }
+    void setOnInteractive(bool val) { _onInteractive = val; }
+    bool getOnInteractive() { return _onInteractive; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
