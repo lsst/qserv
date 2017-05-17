@@ -58,8 +58,10 @@ struct Fixture {
         f.add_query("SELECT o1.*, o2.* FROM Object_1001 o1, Object_1001 o2;");
         f.set_resulttable("fragResult");
         TaskMsg_Subchunk sc;
-        sc.set_database(defaultDb);
-        sc.add_table("Object");
+        sc.set_database("obsolete");
+        lsst::qserv::proto::TaskMsg_Subchunk_DbTbl* dbTbl = sc.add_dbtbl();
+        dbTbl->set_db(defaultDb);
+        dbTbl->set_tbl("Object");
         sc.add_id(1111);
         sc.add_id(1222);
         f.mutable_subchunks()->CopyFrom(sc);
