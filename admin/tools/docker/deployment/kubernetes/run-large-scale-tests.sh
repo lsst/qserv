@@ -27,4 +27,4 @@ git clone --depth 1 -b "$GIT_REF" --single-branch \
 	https://github.com/lsst/qserv_testscale.git \
         "$TEST_DIR"
 
-"$TEST_DIR"/S15/tests/run-all.sh -K -M "$ORCHESTRATOR"
+"$TEST_DIR"/S15/tests/run-all.sh -M "$MASTER"

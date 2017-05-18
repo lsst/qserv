@@ -14,5 +14,6 @@ SERVICE=kubelet
 
 echo "Restart $SERVICE service on $MASTER $WORKERS"
 parallel --nonall --slf "$PARALLEL_SSH_CFG" \
-    "sudo /bin/systemctl restart ${SERVICE}.service"
+    "sudo /bin/systemctl  daemon-reload && \
+     sudo /bin/systemctl restart ${SERVICE}.service"
 
