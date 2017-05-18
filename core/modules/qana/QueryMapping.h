@@ -34,6 +34,9 @@
 #include <set>
 #include <string>
 
+// Qserv headers
+#include "global/DbTable.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -75,7 +78,7 @@ public:
     typedef std::shared_ptr<QueryMapping> Ptr;
     enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
     typedef std::map<std::string,Parameter> ParameterMap;
-    typedef std::set<std::string> StringSet;
+
 
     QueryMapping();
 
@@ -85,8 +88,7 @@ public:
                       query::QueryTemplate const& t) const;
 
     // Modifiers
-    void insertSubChunkTable(std::string const& table) {
-        _subChunkTables.insert(table); }
+    void insertSubChunkTable(DbTable const& dbTable) { _subChunkTables.insert(dbTable); }
     void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
     void insertChunkEntry(std::string const& tag) { _subs[tag] = CHUNK; }
     void insertSubChunkEntry(std::string const& tag) { _subs[tag] = SUBCHUNK; }
@@ -95,11 +97,11 @@ public:
     bool hasChunks() const { return hasParameter(CHUNK); }
     bool hasSubChunks() const { return hasParameter(SUBCHUNK); }
     bool hasParameter(Parameter p) const;
-    StringSet const& getSubChunkTables() const { return _subChunkTables; }
+    DbTableSet const& getSubChunkTables() const { return _subChunkTables; }
 
 private:
     ParameterMap _subs;
-    StringSet _subChunkTables;
+    DbTableSet _subChunkTables;
 };
 
 }}} // namespace lsst::qserv::qana

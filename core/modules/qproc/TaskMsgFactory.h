@@ -36,6 +36,7 @@
 #include <memory>
 
 // Qserv headers
+#include "global/DbTable.h"
 #include "proto/worker.pb.h"
 
 namespace lsst {
@@ -61,9 +62,8 @@ private:
                                                 uint64_t queryId, int jobId);
 
     void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
-                    std::vector<std::string> const& subChunkTables,
-                    std::vector<int> const& subChunkIds,
-                    std::vector<std::string> const& queries);
+                      DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
+                      std::vector<std::string> const& queries);
 
     /// All member variable need to be thread safe.
     uint64_t const _session;

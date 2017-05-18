@@ -35,6 +35,7 @@
 // System headers
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -43,6 +44,7 @@
 #include "boost/utility.hpp"
 
 // Qserv headers
+#include "global/DbTable.h"
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "wdb/SQLBackend.h"
@@ -62,6 +64,7 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
+class ChunkEntry;
 class ChunkResourceMgr;
 
 /// ChunkResources are reservations on data resources. Releases its resource
@@ -74,7 +77,7 @@ public:
 
     std::string const& getDb() const;
     int getChunkId() const;
-    StringVector const& getTables() const;
+    DbTableSet const& getTables() const;
     IntVector const& getSubChunkIds() const;
 
     friend class ChunkResourceMgr;
@@ -93,41 +96,56 @@ private:
 class ChunkResourceMgr {
 public:
     using Ptr = std::shared_ptr<ChunkResourceMgr>;
+    typedef std::map<int, std::shared_ptr<ChunkEntry>> Map;
+    typedef std::map<std::string, Map> DbMap;
 
     /// Factory
     static Ptr newMgr(SQLBackend::Ptr const& backend);
+    ChunkResourceMgr(SQLBackend::Ptr const& backend) : _backend(backend) {}
     virtual ~ChunkResourceMgr() {}
 
     /// Reserve a chunk. Currently, this does not result in any explicit chunk
     /// loading.
     /// @return a ChunkResource which should be used for releasing the
     /// reservation.
-    virtual ChunkResource acquire(std::string const& db, int chunkId,
-                                  StringVector const& tables) = 0;
+    ChunkResource acquire(std::string const& db, int chunkId, DbTableSet const& tables);
+
     /// Reserve a list of subchunks for a chunk. If they are not yet available,
     /// block until they are.
     /// @return a ChunkResource which should be used for releasing the
     /// reservation.
-    virtual ChunkResource acquire(std::string const& db, int chunkId,
-                                  StringVector const& tables,
-                                  IntVector const& subChunks) = 0;
+    ChunkResource acquire(std::string const& db, int chunkId,
+                          DbTableSet const& DbTableSet, IntVector const& subChunks);
+
 
     /// Release a reservation. Currently, block until the resource has been
     /// released if the resource is no longer needed by anyone.
     /// Clients should not need to call this explicitly-- ChunkResource
     /// instances are implicit references and will release upon their
     /// destruction.
-    virtual void release(ChunkResource::Info const& i) = 0;
+    void release(ChunkResource::Info const& i);
 
     /// Acquire a reservation. Block until it is available if it is not
     /// already. Clients should not need to call this explicitly.
-    virtual void acquireUnit(ChunkResource::Info const& i) = 0;
+    void acquireUnit(ChunkResource::Info const& i);
 
     /// @return the reference count for the database and chunkId.
-    virtual int getRefCount(std::string const& db, int chunkId) = 0;
+    int getRefCount(std::string const& db, int chunkId);
 
 private:
-    class Impl; // Nested to share friend access to ChunkResource
+    /// precondition: _mapMutex is held (locked by the caller)
+    /// Get the ChunkEntry map for a db, creating if necessary
+    Map& _getMap(std::string const& db);
+
+    /// precondition: _mapMutex is held (locked by the caller)
+    /// Get the ChunkEntry for a chunkId, creating if necessary
+    ChunkEntry& _getChunkEntry(Map& m, int chunkId);
+
+    DbMap _dbMap;
+    // Consider having separate mutexes for each db's map if contention becomes
+    // a problem.
+    std::shared_ptr<SQLBackend> _backend;
+    std::mutex _mapMutex; // Do not alter map without this mutex
 };
 
 }}} // namespace lsst::qserv::wdb

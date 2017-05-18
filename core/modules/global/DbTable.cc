@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2017 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,24 +20,22 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_STRINGTYPES_H
-#define LSST_QSERV_STRINGTYPES_H
- /**
-  * @brief  Global string types
-  *
-  */
 
-#include <map>
-#include <string>
-#include <vector>
+
+// Class header
+#include "global/DbTable.h"
+
+// System headers
+
+// LSST headers
 
 namespace lsst {
 namespace qserv {
-typedef std::map<std::string, std::string> StringMap;
-typedef std::map<std::string, StringMap> StringMapMap;
-typedef std::pair<std::string, std::string> StringPair;
-typedef std::vector<StringPair> StringPairVector;
-typedef std::vector<std::string> StringVector;
 
-}}
-#endif // LSST_QSERV_STRINGTYPES_H
+std::ostream& operator<<(std::ostream& os, DbTable const& dbTable) {
+    os << dbTable.db << "." << dbTable.table;
+    return os;
+}
+
+
+}} // namespace lsst::qserv

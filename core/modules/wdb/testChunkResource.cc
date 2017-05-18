@@ -49,14 +49,14 @@ struct Fixture {
             subchunks.push_back(i);
         }
         thedb = "Snowden";
-        tables.push_back("hello");
-        tables.push_back("goodbye");
+        tables.emplace(lsst::qserv::DbTable(thedb, "hello"));
+        tables.emplace(lsst::qserv::DbTable(thedb, "goodbye"));
     }
     ~Fixture() {}
 
     std::vector<int> subchunks;
     std::string thedb;
-    std::vector<std::string> tables;
+    lsst::qserv::DbTableSet tables;
 };
 
 
@@ -108,8 +108,9 @@ BOOST_AUTO_TEST_CASE(TwoChunk) {
     int scarray[] = {11, 12, 13, 14, 15};
     std::vector<int> subchunks(scarray, scarray+5);
     std::string thedb("Snowden");
-    std::string tarray[] = {"hello","goodbye"};
-    std::vector<std::string> tables(tarray, tarray+2);
+    lsst::qserv::DbTableSet tables;
+    tables.emplace(lsst::qserv::DbTable(thedb, "hello"));
+    tables.emplace(lsst::qserv::DbTable(thedb, "goodbye"));
     {
         BOOST_CHECK(backend->fakeSet.size() == 0);
         BOOST_CHECK(crm->getRefCount(thedb, 1) == 0);

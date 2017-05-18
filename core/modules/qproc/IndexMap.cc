@@ -253,6 +253,8 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
     ChunkSpecVector regionSpecs;
     std::transform(scv.begin(), scv.end(),
                    std::back_inserter(regionSpecs), convertSgSubChunks);
+    LOGS(_log, LOG_LVL_DEBUG, "indexSpecs subChunks " << util::printable(indexSpecs));
+    LOGS(_log, LOG_LVL_DEBUG, "regionSpecs subChunks " << util::printable(regionSpecs));
 
     // FIXME: Index and spatial lookup are supported in AND format only right now.
     if (hasIndex && hasRegion) {
@@ -260,6 +262,7 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
         normalize(indexSpecs);
         normalize(regionSpecs);
         intersectSorted(indexSpecs, regionSpecs);
+        LOGS(_log, LOG_LVL_DEBUG, "merged subChunks=" << util::printable(regionSpecs));
         return indexSpecs;
     } else if (hasIndex) {
         return indexSpecs;
