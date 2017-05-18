@@ -48,6 +48,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/DbTable.h"
 #include "global/debugUtil.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
@@ -58,6 +59,7 @@
 #include "sql/Schema.h"
 #include "sql/SqlErrorObject.h"
 #include "util/common.h"
+#include "util/IterableFormatter.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
 #include "util/threadSafe.h"
@@ -340,23 +342,34 @@ public:
 
     ChunkResource getResourceFragment(int i) {
         proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
+        LOGS(_log, LOG_LVL_DEBUG, "fragment i=" << i);
         if (!fragment.has_subchunks()) {
-            StringVector tables;
+            DbTableSet dbTbls;
             for (auto const& scanTbl : _msg.scantable()) {
-                tables.push_back(scanTbl.db() + "." + scanTbl.table());
+                dbTbls.emplace(scanTbl.db(), scanTbl.table());
             }
             assert(_msg.has_db());
-            return _mgr->acquire(_msg.db(), _msg.chunkid(), tables);
+            LOGS(_log, LOG_LVL_DEBUG, "fragment a db=" << _msg.db() << ":" << _msg.chunkid()
+                    << " dbTbls=" << util::printable(dbTbls));
+            return _mgr->acquire(_msg.db(), _msg.chunkid(), dbTbls);
         }
 
         std::string db;
         proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
-        StringVector tables(sc.table().begin(),
-                            sc.table().end());
+        DbTableSet dbTableSet;
+        for (int j=0; j < sc.dbtbl_size(); j++) {
+            dbTableSet.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
+        }
         IntVector subchunks(sc.id().begin(), sc.id().end());
-        if (sc.has_database()) { db = sc.database(); }
-        else { db = _msg.db(); }
-        return _mgr->acquire(db, _msg.chunkid(), tables, subchunks);
+        if (sc.has_database()) {
+            db = sc.database();
+        } else {
+            db = _msg.db();
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "fragment b db=" << db << ":" << _msg.chunkid()
+                               << " dbTableSet" << util::printable(dbTableSet)
+                               << " subChunks=" << util::printable(subchunks));
+        return _mgr->acquire(db, _msg.chunkid(), dbTableSet, subchunks);
 
     }
 private:

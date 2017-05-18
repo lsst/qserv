@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,24 +20,42 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_STRINGTYPES_H
-#define LSST_QSERV_STRINGTYPES_H
- /**
-  * @brief  Global string types
-  *
-  */
 
-#include <map>
+
+#ifndef LSST_QSERV_GLOBAL_DBTABLE_H
+#define LSST_QSERV_GLOBAL_DBTABLE_H
+
+// System headers
+#include <ostream>
+#include <set>
 #include <string>
-#include <vector>
+
 
 namespace lsst {
 namespace qserv {
-typedef std::map<std::string, std::string> StringMap;
-typedef std::map<std::string, StringMap> StringMapMap;
-typedef std::pair<std::string, std::string> StringPair;
-typedef std::vector<StringPair> StringPairVector;
-typedef std::vector<std::string> StringVector;
 
-}}
-#endif // LSST_QSERV_STRINGTYPES_H
+
+struct DbTable {
+    DbTable(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
+    DbTable(DbTable const& dbtbl) = default;
+
+    DbTable& operator=(DbTable const& dbtbl) = default;
+    bool operator<(DbTable const& rhs) const {
+        if (db < rhs.db) return true;
+        if (db == rhs.db && table < rhs.table) return true;
+        return false;
+    }
+
+    std::string db;
+    std::string table;
+
+    friend std::ostream& operator<<(std::ostream& os, DbTable const& dbTable);
+};
+
+typedef std::set<DbTable> DbTableSet;
+
+}} // namespace lsst::qserv
+
+
+
+#endif // LSST_QSERV_GLOBAL_DBTABLE_H
