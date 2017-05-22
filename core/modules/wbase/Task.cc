@@ -286,10 +286,11 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
 
 std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
     // Limiting output as number of entries can be very large.
-    os << "showing " << idSet.maxDisp << " of count=" << idSet._ids.size() << " ";
+    int maxDisp = idSet.maxDisp; // only affects the amount of data printed.
+    std::lock_guard<std::mutex> lock(idSet.mx);
+    os << "showing " << maxDisp << " of count=" << idSet._ids.size() << " ";
     bool first = true;
     int i = 0;
-    int maxDisp = idSet.maxDisp; // idSet.maxDisp is atomic
     for(auto id: idSet._ids) {
         if (!first) {
             os << ", ";
