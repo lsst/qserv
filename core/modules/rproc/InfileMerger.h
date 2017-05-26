@@ -38,6 +38,7 @@
 #include "mysql/LocalInfile.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
+#include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
 
@@ -138,6 +139,7 @@ private:
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
+    bool _sqlConnect(sql::SqlErrorObject& errObj);
     void _fixupTargetName();
 
     bool _setupConnection() {
@@ -156,10 +158,18 @@ private:
     std::mutex _createTableMutex; ///< protection from creating tables
     std::mutex _sqlMutex; ///< Protection for SQL connection
     bool _needCreateTable{true}; ///< Does the target table need creating?
+    size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
 
     mysql::MySqlConnection _mysqlConn;
+
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
+
+    std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
+
+    int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
+    int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.
+    size_t _maxResultTableSizeMB{5000}; ///< Max result table size.
 };
 
 }}} // namespace lsst::qserv::rproc

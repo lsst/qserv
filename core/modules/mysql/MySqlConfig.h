@@ -46,13 +46,13 @@ public:
     /**
      *  Create MySqlConfig instance
      *
-     *  @param username:    MySQL username
-     *  @param password:    MySQL password
-     *  @param hostname:    MySQL hostname
-     *  @param port:        MySQL port
-     *  @param socket:      MySQL socket
-     *  @param db:          MySQL database
-     *  @param checkValid:  if true, throws exception if parameters below are invalid
+     *  @param username:     MySQL username
+     *  @param password:     MySQL password
+     *  @param hostname:     MySQL hostname
+     *  @param port:         MySQL port
+     *  @param socket:       MySQL socket
+     *  @param db:           MySQL database
+     *  @param maxtablesize: maximum table size.
      *
      * @throws std::runtime_error: if checkValid is true and some parameters are invalid
      */
@@ -60,20 +60,23 @@ public:
                 std::string const& hostname,
                 unsigned int const port,
                 std::string const& socket,
-                std::string const& db = "");
+                std::string const& db = "",
+                size_t maxresultsize = 0);
 
     /**
      *  Create MySqlConfig instance
      *
-     *  @param username:    MySQL username
-     *  @param password:    MySQL password
-     *  @param socket:      MySQL socket
-     *  @param db:          MySQL database
+     *  @param username:     MySQL username
+     *  @param password:     MySQL password
+     *  @param socket:       MySQL socket
+     *  @param db:           MySQL database
+     *  @param maxtablesize: maximum table size.
      *
      * @throws std::runtime_error: if some parameters are invalid
      */
     MySqlConfig(std::string const& username, std::string const& password,
-                std::string const& socket, std::string const& db = "");
+                std::string const& socket, std::string const& db = "",
+                size_t maxtablesize = 0);
 
 
     /** Overload output operator for current class
@@ -96,6 +99,7 @@ public:
     unsigned int port;
     std::string socket;
     std::string dbName;
+    size_t maxTableSizeMB;
 
 };
 

@@ -51,21 +51,25 @@ MySqlConfig::MySqlConfig(std::string const& username,
                          std::string const& hostname,
                          unsigned int const port,
                          std::string const& socket,
-                         std::string const& dbName)
+                         std::string const& dbName,
+                         size_t maxtablesize)
     : username(username), password(password), hostname(hostname), port(port),
-      socket(socket), dbName(dbName) {
+      socket(socket), dbName(dbName), maxTableSizeMB(maxtablesize) {
 
 }
 
 MySqlConfig::MySqlConfig(std::string const& username, std::string const& password,
-                         std::string const& socket, std::string const& dbName)
-    : username(username), password(password), port(0), socket(socket), dbName(dbName) {
+                         std::string const& socket, std::string const& dbName,
+                         size_t maxtablesize)
+    : username(username), password(password), port(0), socket(socket), dbName(dbName),
+      maxTableSizeMB(maxtablesize) {
 }
 
 std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig) {
     out << "[host=" << mysqlConfig.hostname << ", port=" << mysqlConfig.port
         << ", user=" << mysqlConfig.username << ", password=XXXXXX"
-        << ", db=" << mysqlConfig.dbName << ", socket=" << mysqlConfig.socket << "]";
+        << ", db=" << mysqlConfig.dbName << ", socket=" << mysqlConfig.socket
+        << ", maxTableSize=" << mysqlConfig.maxTableSizeMB << "]";
     return out;
 }
 

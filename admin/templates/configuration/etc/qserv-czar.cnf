@@ -23,6 +23,8 @@ unix_socket = {{MYSQLD_SOCK}}
 host =
 user= {{MYSQLD_USER_QSERV}}
 port = 0
+# maximum user query result size in MB
+maxtablesize_mb = 5100
 
 # database connection for QMeta database
 [qmeta]
