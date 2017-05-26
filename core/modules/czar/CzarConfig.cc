@@ -70,7 +70,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
             configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
             configStore.getRequired("resultdb.unix_socket"),
             configStore.get("resultdb.db","qservResult"),
-            configStore.getInt("resultdb.maxtablesize", 5001)),
+            configStore.getInt("resultdb.maxtablesize_mb", 5001)),
       _logConfig(configStore.get("log.logConfig")),
       _cssConfigMap(configStore.getSectionConfigMap("css")),
       _mySqlQmetaConfig(configStore.get( "qmeta.user", "qsmaster"),

@@ -106,6 +106,17 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _mysqlConn(_config.mySqlConfig) {
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
+
+    // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
+    // Subtract that from the count so the first check doesn't happen for a while.
+    // Subsequent checks should happen at reasonable intervals.
+    // At 5000MB max size, the first check is made at 550,000 rows, with subsequent checks
+    // about every 50,000 rows.
+    _sizeCheckRowCount = -100*(_maxResultTableSizeMB);  //  100 = 1,000,000/10,000
+    _checkSizeEveryXRows = 10*_maxResultTableSizeMB;
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
+                              << " sizeCheckRowCount=" << _sizeCheckRowCount
+                              << " checkSizeEveryXRows=" << _checkSizeEveryXRows);
     if (_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
@@ -246,16 +257,9 @@ bool InfileMerger::isFinished() const {
 bool InfileMerger::_applySqlLocal(std::string const& sql) {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
-    if (not _sqlConn.get()) {
-        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
-        if (not _sqlConn->connectToDb(errObj)) {
-            _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
-                           util::ErrorCode::MYSQLCONNECT);
-            _sqlConn.reset();
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
-            return false;
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger " << (void*) this << " connected to db");
+
+    if (not _sqlConnect(errObj)) {
+        return false;
     }
     if (not _sqlConn->runQuery(sql, errObj)) {
         _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
@@ -268,8 +272,23 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
 }
 
 
+bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
+    if (_sqlConn == nullptr) {
+        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
+        if (not _sqlConn->connectToDb(errObj)) {
+            _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
+                           util::ErrorCode::MYSQLCONNECT);
+            _sqlConn.reset();
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
+            return false;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger " << (void*) this << " connected to db");
+    }
+    return true;
+}
+
+
 size_t InfileMerger::_getResultTableSizeMB() {
-    std::string resultDb = _config.mySqlConfig.dbName;
     std::string tableSizeSql = std::string("SELECT table_name, ")
                              + "round(((data_length + index_length) / 1048576), 2) as 'MB' "
                              + "FROM information_schema.TABLES "
@@ -279,23 +298,14 @@ size_t InfileMerger::_getResultTableSizeMB() {
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    if (not _sqlConn.get()) {
-        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
-        if (not _sqlConn->connectToDb(errObj)) {
-            _error = util::Error(errObj.errNo(),
-                     _queryIdStr + "Error connecting to db: " + errObj.printErrMsg(),
-                     util::ErrorCode::MYSQLCONNECT);
-            _sqlConn.reset();
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
-            return 0;
-        }
-        LOGS(_log, LOG_LVL_DEBUG, _queryIdStr <<"InfileMerger " << (void*) this << " connected to db");
+    if (not _sqlConnect(errObj)) {
+        return 0;
     }
     if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, _queryIdStr << "result table size error: " << _error.getMsg());
-        return false;
+        return 0;
     }
 
     // There should only be 1 row
@@ -307,12 +317,8 @@ size_t InfileMerger::_getResultTableSizeMB() {
     auto& row = *iter;
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
-    size_t sz;
-    std::stringstream ss;
-    ss << tbSize;
-    ss >> sz;
-    LOGS(_log, LOG_LVL_DEBUG,
-         _queryIdStr << "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize << " sz=" << sz);
+    size_t sz = std::stoul(tbSize);
+    LOGS(_log, LOG_LVL_DEBUG, _queryIdStr << "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
     return sz;
 }
 

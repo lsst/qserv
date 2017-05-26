@@ -139,6 +139,7 @@ private:
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
+    bool _sqlConnect(sql::SqlErrorObject& errObj);
     void _fixupTargetName();
 
     bool _setupConnection() {
