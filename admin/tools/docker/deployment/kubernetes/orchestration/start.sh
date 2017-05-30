@@ -40,7 +40,7 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-YAML_TPL="${CFG_DIR}/pod.yaml.tpl"
+YAML_MASTER_TPL="${CFG_DIR}/pod.master.yaml.tpl"
 YAML_FILE="${CFG_DIR}/master.yaml"
 INI_FILE="${CFG_DIR}/pod.master.ini"
 
@@ -56,11 +56,12 @@ master_hostname: $MASTER
 pod_name: master
 EOF
 
-"$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
+"$DIR"/templater.py -i "$INI_FILE" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
 
 echo "Create kubernetes pod for Qserv master"
 kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
 
+YAML_WORKER_TPL="${CFG_DIR}/pod.worker.yaml.tpl"
 j=1
 for host in $WORKERS;
 do
@@ -77,7 +78,7 @@ image: $WORKER_IMAGE
 master_hostname: $MASTER
 pod_name: worker-$j
 EOF
-    "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_TPL" -o "$YAML_FILE"
+    "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_WORKER_TPL" -o "$YAML_FILE"
     echo "Create kubernetes pod for Qserv worker-${j}"
     kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
     j=$((j+1));

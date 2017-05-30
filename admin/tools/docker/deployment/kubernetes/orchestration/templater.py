@@ -110,6 +110,7 @@ if __name__ == "__main__":
 
         yaml_data['metadata']['name'] = config.get('spec', 'pod_name')
         yaml_data['spec']['hostname'] = config.get('spec', 'pod_name')
+        yaml_data['spec']['initContainers'][0]['image'] = config.get('spec', 'image')
 
         yaml_data['spec']['containers'][0]['name'] = config.get('spec', 'pod_name')
         yaml_data['spec']['containers'][0]['image'] = config.get('spec', 'image')
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         _add_volume(config.get('spec', 'host_tmp_dir'), '/qserv/run/tmp', 'tmp-volume')
 
         with open(args.yamlFile, 'w') as f:
-            f.write( yaml.dump(yaml_data, default_flow_style=False))
+            f.write(yaml.dump(yaml_data, default_flow_style=False))
 
     except Exception as exc:
         logging.critical('Exception occurred: %s', exc, exc_info=True)
