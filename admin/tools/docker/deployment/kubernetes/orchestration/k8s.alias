@@ -1,0 +1,6 @@
+# Kubernetes aliases
+# TODO: improve
+alias kgp="kubectl get pods"
+alias kdp="kubectl describe pod"
+alias ke="kubectl exec -it"
+alias kl="kubectl logs"

@@ -299,7 +299,7 @@ class Configurator(object):
 
         if configure.INIT in self.args.step_list:
 
-            if os.path.exists(self.args.qserv_run_dir):
+            if os.path.exists(self.args.qserv_run_dir) and os.listdir(self.args.qserv_run_dir):
 
                 if self.args.force or configure.user_yes_no_query(
                     "WARNING : Do you want to erase all configuration data "

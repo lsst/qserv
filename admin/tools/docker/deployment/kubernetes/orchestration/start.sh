@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Launch Qserv pods on Kubernetes cluster
+
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
@@ -9,9 +11,9 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "${DIR}/env.sh"
 
 CFG_DIR="${DIR}/yaml"
+RESOURCE_DIR="${DIR}/resource"
 
 TMP_DIR=$(mktemp -d --suffix=-kube-$USER)
-SCHEMA_CACHE_OPT="--schema-cache-dir=$TMP_DIR/schema"
 
 usage() {
   cat << EOD
@@ -56,10 +58,10 @@ master_hostname: $MASTER
 pod_name: master
 EOF
 
-"$DIR"/templater.py -i "$INI_FILE" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
+"$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
 
 echo "Create kubernetes pod for Qserv master"
-kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
+kubectl create -f "$YAML_FILE"
 
 YAML_WORKER_TPL="${CFG_DIR}/pod.worker.yaml.tpl"
 j=1
@@ -74,12 +76,12 @@ host_data_dir: $HOST_DATA_DIR
 host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR
 host: $host
-image: $WORKER_IMAGE
+image: $CONTAINER_IMAGE
 master_hostname: $MASTER
 pod_name: worker-$j
 EOF
-    "$DIR"/templater.py -i "$INI_FILE" -t "$YAML_WORKER_TPL" -o "$YAML_FILE"
+    "$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_WORKER_TPL" -o "$YAML_FILE"
     echo "Create kubernetes pod for Qserv worker-${j}"
-    kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
+    kubectl create -f "$YAML_FILE"
     j=$((j+1));
 done
