@@ -15,9 +15,10 @@ ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- systemctl start kubelet"
 TOKEN=$(ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm token generate")
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm init --token '$TOKEN'"
 
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'sudo cp /etc/kubernetes/admin.conf $HOME/'
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'echo "export KUBECONFIG=$HOME/admin.conf" \
-    >> $HOME/.bashrc'
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" 'sudo cp /etc/kubernetes/admin.conf $HOME/ && \
+                                  sudo chown qserv $HOME/admin.conf && \
+                                  echo "export KUBECONFIG=$HOME/admin.conf" \
+                                  >> $HOME/.bashrc'
 
 JOIN_CMD="kubeadm join --token '$TOKEN' $ORCHESTRATOR:6443"
 
