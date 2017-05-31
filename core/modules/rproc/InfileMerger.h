@@ -140,6 +140,8 @@ private:
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
+    std::string _getQueryIdStr();
+    void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();
 
     bool _setupConnection() {
@@ -165,6 +167,8 @@ private:
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 
+    std::mutex _queryIdStrMtx; ///< protects _queryIdStr
+    std::atomic<bool> _queryIdStrSet{false};
     std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.

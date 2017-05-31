@@ -130,16 +130,32 @@ InfileMerger::~InfileMerger() {
 }
 
 
+std::string InfileMerger::_getQueryIdStr() {
+    std::lock_guard<std::mutex> lk(_queryIdStrMtx);
+    return _queryIdStr;
+}
+
+
+void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
+    std::lock_guard<std::mutex> lk(_queryIdStrMtx);
+    _queryIdStr = qIdStr;
+    _queryIdStrSet = true;
+}
+
+
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
-    static std::atomic<int> cmdCount{0}; // Count of large results in process.
     if (!response) {
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
-    _queryIdStr = QueryIdHelper::makeIdStr(response->result.queryid(), response->result.jobid());
+    std::string queryIdJobStr =
+        QueryIdHelper::makeIdStr(response->result.queryid(), response->result.jobid());
+    if (!_queryIdStrSet) {
+        _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
+    }
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
-         << _queryIdStr
+         << queryIdJobStr
          << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
@@ -172,17 +188,17 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     ret = _applyMysql(infileStatement);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, _queryIdStr << " mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << " mergeDur=" << mergeDur.count());
     /// Check the size of the result table.
     if (_sizeCheckRowCount >= _checkSizeEveryXRows) {
-        LOGS(_log, LOG_LVL_DEBUG, _queryIdStr << "checking ResultTableSize " << _mergeTable
+        LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << "checking ResultTableSize " << _mergeTable
                                   << " " << _sizeCheckRowCount
                                   << " max=" << _maxResultTableSizeMB);
         _sizeCheckRowCount = 0;
         auto tSize = _getResultTableSizeMB();
         if (tSize > _maxResultTableSizeMB) {
             std::ostringstream os;
-            os << _queryIdStr << " cancelling queryResult table " << _mergeTable
+            os << queryIdJobStr << " cancelling queryResult table " << _mergeTable
                << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;
             LOGS(_log, LOG_LVL_WARN, os.str());
             _error = util::Error(-1, os.str(), -1);
@@ -304,21 +320,22 @@ size_t InfileMerger::_getResultTableSizeMB() {
     if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, _queryIdStr << "result table size error: " << _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "result table size error: " << _error.getMsg());
         return 0;
     }
 
     // There should only be 1 row
     auto iter = results.begin();
     if (iter == results.end()) {
-        LOGS(_log, LOG_LVL_ERROR, _queryIdStr << "result table size no rows returned " << _mergeTable);
+        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << " result table size no rows returned " << _mergeTable);
         return 0;
     }
     auto& row = *iter;
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
     size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_DEBUG, _queryIdStr << "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
+    LOGS(_log, LOG_LVL_DEBUG,
+         _getQueryIdStr() << " ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
     return sz;
 }
 
@@ -328,7 +345,8 @@ size_t InfileMerger::_getResultTableSizeMB() {
 int InfileMerger::_readHeader(proto::ProtoHeader& header, char const* buffer, int length) {
     if (not proto::ProtoImporter<proto::ProtoHeader>::setMsgFrom(header, buffer, length)) {
         // This is only a real error if there are no more bytes.
-        _error = InfileMergerError(util::ErrorCode::HEADER_IMPORT, "Error decoding protobuf header");
+        _error = InfileMergerError(util::ErrorCode::HEADER_IMPORT,
+                                   _getQueryIdStr() + " Error decoding protobuf header");
         return 0;
     }
     return length;
@@ -337,7 +355,8 @@ int InfileMerger::_readHeader(proto::ProtoHeader& header, char const* buffer, in
 /// Read a Result message and return the number of bytes consumed.
 int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
     if (not proto::ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
-        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Error decoding result message");
+        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT,
+                                   _getQueryIdStr() + "Error decoding result message");
         throw _error;
     }
     // result.PrintDebugString();
@@ -386,19 +405,20 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
         // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
         // choice when multiple threads are writing to the result table.
         createStmt += " ENGINE=MyISAM";
-        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query prepared: " << createStmt);
+        LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
 
         if (not _applySqlLocal(createStmt)) {
-            _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table (" + _mergeTable + ")");
+            _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
+                                       "Error creating table (" + _mergeTable + ")");
             _isFinished = true; // Cannot continue.
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
+            LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
             return false;
         }
         _needCreateTable = false;
     } else {
         // Do nothing, table already created.
     }
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger table " << _mergeTable << " ready");
+    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger table " << _mergeTable << " ready");
     return true;
 }
 
