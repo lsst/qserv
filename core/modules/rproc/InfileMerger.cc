@@ -144,7 +144,6 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
-    static std::atomic<int> cmdCount{0}; // Count of large results in process.
     if (!response) {
         return false;
     }
