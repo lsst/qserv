@@ -1,0 +1,5 @@
+# -*- python -*-
+Import('env')
+Import('standardModule')
+
+standardModule(env, test_libs="curl")

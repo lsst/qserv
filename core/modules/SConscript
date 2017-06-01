@@ -222,6 +222,10 @@ shlibs["czarProxy"] = dict(mods="""proxy""",
                            SHLIBPREFIX='',
                            instDir='lib/lua/qserv')
 
+# library with qhttp C++ code
+shlibs["qhttp"] = dict(mods="""qhttp""",
+                       libs="""boost_filesystem boost_regex boost_system""")
+
 # Python extension module wrapping qserv_css
 shlibs["_cssLib"] = dict(mods="css:python",
                          libs="qserv_css log boost_thread",
