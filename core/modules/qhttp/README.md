@@ -17,6 +17,11 @@ will likely not scale to hundreds or thousands of simultaneous connections.
 at a later time if desired.  For now, perceived-to-be-commonly-used functionalities are wired directly into 
 the server.
 
+* Parsed HTTP request headers and URL parameters are stored in simple std::maps, rather than std::multimaps,
+which means repeated headers and repeated URL parameters are not supported (only the last parsed instance of
+any given header or URL parameter will be recorded).  This choice was made consciously to keep client code
+simpler, and becuase the repeated header or URL parameter use case was perceived to be uncommon.
+
 #### Features currently supported
 
 * Static content serving out of file system directories, with file-extension-based automatic Content-Type

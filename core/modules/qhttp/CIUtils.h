@@ -35,10 +35,8 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
-//
 //----- Case-insensitive hash and comparison functionals for std::string,
 //      can be used for instantiation of case-insensitive standard containers.
-//
 
 struct ci_hash {
     size_t operator()(std::string const& key) const {

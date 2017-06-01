@@ -45,7 +45,9 @@ public:
     using Ptr = std::shared_ptr<Response>;
 
     //----- These methods are used to send a response back to the HTTP client.  When using sendStatus,
-    //      an appropriate HTML body will be automatically generated.
+    //      an appropriate HTML body will be automatically generated.  When using sendFile, contentType
+    //      will be inferred based on file extension for a handful of known file types (see map defined
+    //      near the top of Response.cc for specific extensions supported.)
 
     void send(std::string const& content, std::string const& contentType="text/html");
     void sendStatus(unsigned int status);
@@ -53,7 +55,7 @@ public:
 
     //----- Response status code and additional headers may also be set with these members, and will be
     //      included/observed by the send methods above (sendStatus and sendFile will override status set
-    //      here, though.)
+    //      here, though; sendFile will override any Content0Type header set here.)
 
     unsigned int status = { 200 };
     std::unordered_map<std::string, std::string> headers;

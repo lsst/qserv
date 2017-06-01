@@ -37,13 +37,12 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
-//
-// ----- This is an internal utility class, used by the Server class, that encapsulates compiling a path
-//       specifier into a matching regexp, and then updating any captured params in a Request after matching
-//       against the compiled regexp.  The internals of this are a fairly straight port of path-to-regexp
-//       (https://github.com/pillarjs/path-to-regexp), as used by express.js; see that link for
-//       examples of supported path syntax.
-//
+
+//----- This is an internal utility class, used by the Server class, that encapsulates compiling a path
+//      specifier into a matching regexp, and then updating any captured params in a Request after matching
+//      against the compiled regexp.  The internals of this are a fairly straight port of path-to-regexp
+//      (https://github.com/pillarjs/path-to-regexp), as used by express.js; see that link for
+//      examples of supported path syntax.
 
 class Path
 {

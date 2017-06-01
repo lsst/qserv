@@ -37,6 +37,15 @@ class StaticContent
 {
 public:
 
+    //----- StaticContent is a specialized Handler to handle the common case of serving a tree of static
+    //      content rooted beneath a single file system directory.  add() will add an instance to the
+    //      specified Server which will responding to GET requests on URL's that prefix match the pattern
+    //      specified in the "path" argument and postfix match paths to existing files under rootDirectory
+    //      in the local filesystem.  Content-Type of responses is inferred from the file extension for
+    //      several common file extensions (see the file type map near the top of Response.cc for a complete
+    //      list of these.)  Note that the Server::addStaticContent() convenience method would typically be
+    //      called in preference to calling the add() method here directly.
+
     static void add(Server& server, std::string const& path, std::string const& rootDirectory);
 
 };

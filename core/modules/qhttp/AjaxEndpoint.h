@@ -44,6 +44,15 @@ public:
 
     using Ptr = std::shared_ptr<AjaxEndpoint>;
 
+    //----- AjaxEndpoint is a specialized Handler to handle the common AJAX programming technique.
+    //      add() installs an instance on the specified Server which will accumulate incoming GET requests
+    //      to URL's which match a specified pattern, but leave their responses pending.  When update()
+    //      is subsequently called and provided with a JSON payload, that payload is returned as the body
+    //      response body of all currently pending requests, with Content-Type set automatically to
+    //      application/json, and the pending request list is cleared.  Note that the update() method is
+    //      thread-safe.  Note also that the Server::addAjaxEndpoint() convenience method would typically be
+    //      called in preference to calling the add() method here directly.
+
     static Ptr add(Server& server, std::string const& path);
     void update(std::string const& json); // thread-safe
 

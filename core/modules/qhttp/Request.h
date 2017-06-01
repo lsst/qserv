@@ -46,16 +46,27 @@ public:
 
     using Ptr = std::shared_ptr<Request>;
 
+    //----- The local address on which this request was accepted
+
     boost::asio::ip::tcp::endpoint localAddr;
+
+    //----- Elements of the HTTP header for this request
 
     std::string method;   // HTTP header method
     std::string target;   // HTTP header target
     std::string version;  // HTTP header version
 
+    //----- Parsed query elements and headers for this request.  Note that parsed HTTP headers and
+    //      URL parameters are stored in simple std::maps, so repeated headers or parameters are not
+    //      supported (last parsed for any given header or parameter wins).  Headers are stored in a
+    //      case-insensitive map, in accordance with HTTP standards.
+
     std::string path;                                                      // path portion of URL
     std::unordered_map<std::string, std::string> query;                    // parsed URL query parameters
     std::unordered_map<std::string, std::string, ci_hash, ci_pred> header; // parsed HTTP headers
     std::unordered_map<std::string, std::string> params;                   // captured URL path elements
+
+    //----- Body content for this request
 
     std::istream content;                                  // unparsed body
     std::unordered_map<std::string, std::string> body;     // parsed body, if x-www-form-urlencoded
