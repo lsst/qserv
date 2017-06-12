@@ -79,6 +79,9 @@ public:
 
     /// Construct a RowBuffer tied to a MySQL query result
     static Ptr newResRowBuffer(MYSQL_RES* result);
+
+    /// Return a descriptive string.
+    virtual std::string dump() = 0;
 };
 
 }}} // lsst::qserv::mysql

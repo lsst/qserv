@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2017 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,7 +24,6 @@
 
 // System headers
 #include <cassert>
-#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string.h>
@@ -32,14 +31,37 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "proto/worker.pb.h"
-#include "sql/Schema.h"
 
 ////////////////////////////////////////////////////////////////////////
 // Helpful constants
 ////////////////////////////////////////////////////////////////////////
 std::string const mysqlNull("\\N");
+
+
+namespace { // &&& keep printCharVect and LOG ???
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.ProtoRowBuffer");
+
+// Print the contents of a char vector, using ascii values for non-printing characters.
+std::string printCharVect(std::vector<char> const& cVect) {
+    std::string str;
+    for (char c : cVect) {
+        if (std::isprint(c)) {
+            str += c;
+        } else {
+            str += std::string("~") + std::to_string(c) + "~";
+        }
+    }
+    return str;
+}
+
+} // namespace
+
 
 namespace lsst {
 namespace qserv {
@@ -48,6 +70,7 @@ namespace rproc {
 // Helpers
 ////////////////////////////////////////////////////////////////////////
 
+/* &&&
 /// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
 /// https://dev.mysql.com/doc/refman/5.1/en/load-data.html
 /// This is limited to:
@@ -84,6 +107,7 @@ inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
     return destI - destBegin;
 }
 
+
 /// Copy a rawColumn to an STL container
 template <typename T>
 inline int copyColumn(T& dest, std::string const& rawColumn) {
@@ -96,16 +120,21 @@ inline int copyColumn(T& dest, std::string const& rawColumn) {
     dest.resize(existingSize + 2 + valSize);
     return 2 + valSize;
 }
+*/
+
+
 ////////////////////////////////////////////////////////////////////////
 // ProtoRowBuffer
 ////////////////////////////////////////////////////////////////////////
 
+/* &&&
 /// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
 /// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
     ProtoRowBuffer(proto::Result& res);
     virtual unsigned fetch(char* buffer, unsigned bufLen);
+    std::string dump() override;
 
 private:
     void _initCurrentRow();
@@ -139,6 +168,8 @@ private:
     int _rowTotal; ///< Total row count
     std::vector<char> _currentRow; ///< char buffer representing current row.
 };
+*/
+
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
     : _colSep("\t"),
@@ -153,6 +184,7 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
         _initCurrentRow();
     }
 }
+
 
 /// Fetch a up to a single row from from the Result message
 unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
@@ -195,6 +227,23 @@ void ProtoRowBuffer::_initSchema() {
         _schema.columns.push_back(cs);
     }
 }
+
+
+std::string ProtoRowBuffer::dump() {
+    std::string str("&&& ProtoRowBuffer schema(");
+    for (auto sCol : _schema.columns) {
+        str += "(Name=" + sCol.name;
+        str += ",defaultValue=" + sCol.defaultValue;
+        str += ",colType=" + sCol.colType.sqlType + ":" + std::to_string(sCol.colType.mysqlType) + ")";
+    }
+    str += ") ";
+    str += "Row " + std::to_string(_rowIdx) + "(";
+    str += printCharVect(_currentRow);
+    str += ")";
+    return str;
+}
+
+
 /// Import the next row into the buffer
 void ProtoRowBuffer::_readNextRow() {
     ++_rowIdx;
@@ -202,9 +251,11 @@ void ProtoRowBuffer::_readNextRow() {
         return;
     }
     _currentRow.clear();
-    // Row separator
+    // Start the new row with a row separator.
     _currentRow.insert(_currentRow.end(), _rowSep.begin(), _rowSep.end());
+    LOGS(_log, LOG_LVL_DEBUG, "&&& 1 _currentrow=" << printCharVect(_currentRow));
     _copyRowBundle(_currentRow, _result.row(_rowIdx));
+    LOGS(_log, LOG_LVL_DEBUG, "&&& 2 _currentrow=" << printCharVect(_currentRow));
 }
 
 /// Setup the row byte buffer
@@ -214,6 +265,7 @@ void ProtoRowBuffer::_initCurrentRow() {
     _currentRow.reserve(rowSize*2); // for future usage
 }
 
+/* &&&
 ////////////////////////////////////////////////////////////////////////
 // Factory function for ProtoRowBuffer
 ////////////////////////////////////////////////////////////////////////
@@ -221,4 +273,5 @@ void ProtoRowBuffer::_initCurrentRow() {
 mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& res) {
     return mysql::RowBuffer::Ptr(new ProtoRowBuffer(res));
 }
+*/
 }}} // lsst::qserv::mysql

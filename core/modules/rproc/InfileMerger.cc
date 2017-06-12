@@ -182,7 +182,10 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     _sizeCheckRowCount += response->result.row_size();
 
     bool ret = false;
-    std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+    // &&& Add columns to rows in virtFile, looks like it needs to be in newProtoRowBuffer.
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result);
+    //std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result), queryIdJobStr); &&&
+    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
     ret = _applyMysql(infileStatement);
@@ -401,6 +404,7 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
 
             s.columns.push_back(scs);
         }
+        // &&& Add jobId and retryNum columns that do not conflict with existing columns
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
         // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
         // choice when multiple threads are writing to the result table.

@@ -21,6 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
+// Class header
+#include "ProtoRowBuffer.h"
+
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "proto/FakeProtocolFixture.h"
@@ -32,14 +36,13 @@
 namespace test = boost::test_tools;
 namespace gio = google::protobuf::io;
 
-#include "ProtoRowBuffer.cc"
+using lsst::qserv::rproc::ProtoRowBuffer;
 
 struct Fixture {
     Fixture(void) {}
     ~Fixture(void) { }
 };
-using lsst::qserv::rproc::copyColumn;
-using lsst::qserv::rproc::escapeString;
+
 
 BOOST_FIXTURE_TEST_SUITE(suite, Fixture)
 
@@ -53,7 +56,7 @@ BOOST_AUTO_TEST_CASE(TestEscape) {
     std::string eTest1 = "abcdef \\0 \\b \\n \\r \\t \\Z \\N";
     std::string target(test1.size() * 2, 'X');
 
-    int count = escapeString(target.begin(), test1.begin(), test1.end());
+    int count = ProtoRowBuffer::escapeString(target.begin(), test1.begin(), test1.end());
     BOOST_CHECK_EQUAL(count, static_cast<int>(eTest1.size()));
     BOOST_CHECK_EQUAL(target.substr(0, count), eTest1);
 }
@@ -63,7 +66,7 @@ BOOST_AUTO_TEST_CASE(TestEscapeEmptyString) {
 
     std::string target("XXX");
 
-    int count = escapeString(target.begin(), test1.begin(), test1.end());
+    int count = ProtoRowBuffer::escapeString(target.begin(), test1.begin(), test1.end());
     BOOST_CHECK_EQUAL(count, 0);
     BOOST_CHECK_EQUAL(target.substr(0, count), "");
 }
@@ -72,7 +75,7 @@ BOOST_AUTO_TEST_CASE(TestCopyColumn) {
     std::string simple = "Hello my name is bob";
     std::string eSimple = "'" + simple + "'";
     std::string target;
-    int copied = copyColumn(target, simple);
+    int copied = ProtoRowBuffer::copyColumn(target, simple);
     BOOST_CHECK_EQUAL(copied, static_cast<int>(eSimple.size()));
     BOOST_CHECK_EQUAL(target, eSimple);
 }
