@@ -462,7 +462,7 @@ void QueryRequest::_finish() {
 void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
         auto jq = _jobQuery;
-        if (jq != nullptr) jq->getMarkCompleteFunc()->operator ()(success);
+        if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
     }
 }
 

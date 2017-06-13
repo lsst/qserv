@@ -58,7 +58,7 @@ std::string formCreateTable(std::string const& table, sql::Schema const& s) {
     ColumnsIter b, i, e;
     for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         if (i != b) {
-            os << ",\n";
+            os << ",";
         }
         os << *i;
     }

@@ -171,14 +171,18 @@ private:
 */
 
 
-ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
+ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, std::string const& jobIdColName,
+                               std::string const& jobIdSqlType, int jobIdMysqlType)
     : _colSep("\t"),
       _rowSep("\n"),
       _nullToken("\\N"),
       _result(res),
       _rowIdx(0),
       _rowTotal(res.row_size()),
-      _currentRow(0) {
+      _currentRow(0),
+      _jobIdColName(jobIdColName),
+      _jobIdSqlType(jobIdSqlType),
+      _jobIdMysqlType(jobIdMysqlType) {
     _initSchema();
     if (_result.row_size() > 0) {
         _initCurrentRow();
@@ -209,6 +213,26 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
 /// Import schema from the proto message into a Schema object
 void ProtoRowBuffer::_initSchema() {
     _schema.columns.clear();
+
+    // Set jobId and retryCount &&&
+    sql::ColSchema jobIdCol;
+    jobIdCol.name = _jobIdColName;
+    jobIdCol.hasDefault = false;
+    //jobIdCol.colType.sqlType = "INT(9)"; // The 9 only affects '0' padding with ZEROFILL. &&&
+    // jobIdCol.colType.mysqlType = MYSQL_TYPE_LONG; &&&
+    jobIdCol.colType.sqlType = _jobIdSqlType;
+    jobIdCol.colType.mysqlType = _jobIdMysqlType;
+    _schema.columns.push_back(jobIdCol);
+
+    /* &&& enable this block
+    sql::ColSchema retryCountCol;
+    retryCountCol.name = _retryCountColName;
+    retryCountCol.hasDefault = false;
+    retryCountCol.colType.sqlType = "SMALL_INT(10)";
+    retryCountCol.colType.mysqlType = MYSQL_TYPE_SHORT;
+    _schema.columns.push_back(jobIdCol);
+    */
+
     proto::RowSchema const& prs = _result.rowschema();
     for(int i=0, e=prs.columnschema_size(); i != e; ++i) {
         proto::ColumnSchema const& pcs = prs.columnschema(i);
@@ -262,6 +286,7 @@ void ProtoRowBuffer::_readNextRow() {
 void ProtoRowBuffer::_initCurrentRow() {
     // Copy row and reserve 2x size.
     int rowSize = _copyRowBundle(_currentRow, _result.row(_rowIdx));
+    LOGS(_log, LOG_LVL_DEBUG, "&&& init _rowIdx=" <<_rowIdx << " _currentrow=" << printCharVect(_currentRow));
     _currentRow.reserve(rowSize*2); // for future usage
 }
 

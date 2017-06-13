@@ -48,7 +48,8 @@ mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& r);
 /// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
-    ProtoRowBuffer(proto::Result& res);
+    ProtoRowBuffer(proto::Result& res, std::string const& jobIdColName,
+                   std::string const& jobIdSqlType, int jobIdMysqlType);
     virtual unsigned fetch(char* buffer, unsigned bufLen);
     std::string dump() override;
 
@@ -110,11 +111,11 @@ private:
     int _copyRowBundle(T& dest, proto::RowBundle const& rb) {
         int sizeBefore = dest.size();
         // Add jobId
-        // dest.insert(dest.end(), _jobIdColName.begin(), _jobIdColName.end()) &&&
+        dest.insert(dest.end(), _jobIdStr.begin(), _jobIdStr.end()); // &&& keep
         for(int ci=0, ce=rb.column_size(); ci != ce; ++ci) {
-            if (ci != 0) {
-                dest.insert(dest.end(), _colSep.begin(), _colSep.end());
-            }
+            //if (ci != 0) { // &&& delete
+            dest.insert(dest.end(), _colSep.begin(), _colSep.end());
+            //} // &&& delete
 
             if (!rb.isnull(ci)) {
                 copyColumn(dest, rb.column(ci));
@@ -131,12 +132,17 @@ private:
     std::string _nullToken; ///< Null indicator (e.g. \N)
     proto::Result& _result; ///< Ref to Resultmessage
 
-    std::string _jobIdColName{"queryJobId"};
+    std::string _jobIdStr{"'-2341'"}; ///< String form of jobId, must have single quotes.
 
     sql::Schema _schema; ///< Schema object
     int _rowIdx; ///< Row index
     int _rowTotal; ///< Total row count
     std::vector<char> _currentRow; ///< char buffer representing current row.
+
+    /// Name and type for jobId column in result table. Passed from infile merger.
+    std::string _jobIdColName;
+    std::string _jobIdSqlType;
+    int _jobIdMysqlType;
 };
 
 
