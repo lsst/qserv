@@ -193,7 +193,7 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    qproc::TaskMsgFactory taskMsgFactory(_qMetaQueryId);
+    auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>(_qMetaQueryId);
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     int msgCount = 0;
@@ -216,28 +216,32 @@ void UserQuerySelect::submit() {
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         auto& chunkSpec = *i;
-        auto cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+        qproc::ChunkQuerySpec::Ptr cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec); // &&& use auto
         auto endQSpecQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-        chunks.push_back(cs.chunkId);
-        std::string chunkResultName = ttn.make(cs.chunkId);
+        chunks.push_back(cs->chunkId);
+        std::string chunkResultName = ttn.make(cs->chunkId);
         ++msgCount;
         auto endChunkPushQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+        /* &&&
         std::ostringstream ss;
-        taskMsgFactory.serializeMsg(cs, chunkResultName, _executive->getId(), sequence, ss);
+        int retryCount = 0; // This must be the first attempt.
+        taskMsgFactory->serializeMsg(*cs, chunkResultName, _executive->getId(), sequence, retryCount, ss); // &&& put in JobDescription
         std::string msg = ss.str();
 
         proto::ProtoImporter<proto::TaskMsg> pi;
-        if (!pi.messageAcceptable(msg)) {
+        if (!pi.messageAcceptable(msg)) { // &&& put in JobDescription
             throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
         }
-        auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+        */
+        auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing // &&& delete
 
-        std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
+        std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
         ResourceUnit ru;
-        ru.setAsDbChunk(cs.db, cs.chunkId);
+        ru.setAsDbChunk(cs->db, cs->chunkId);
         auto endChunkResourceQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-        qdisp::JobDescription jobDesc(sequence, ru, ss.str(),
-                std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName));
+        qdisp::JobDescription jobDesc(_executive->getId(), sequence, ru,
+                std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
+                taskMsgFactory, cs, chunkResultName);
         auto endChunkJobQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         _executive->add(jobDesc);
         auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing

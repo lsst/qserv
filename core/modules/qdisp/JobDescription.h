@@ -32,12 +32,22 @@
 #include <sstream>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 
 // Forward declarations
 
 namespace lsst {
 namespace qserv {
+
+namespace qproc {
+
+class ChunkQuerySpec;
+class TaskMsgFactory;
+
+} // namespace qproc
+
+
 namespace qdisp {
 
 class ResponseHandler;
@@ -46,20 +56,35 @@ class ResponseHandler;
  */
 class JobDescription {
 public:
-    JobDescription(int id, ResourceUnit const& resource, std::string const& payload,
-        std::shared_ptr<ResponseHandler> const& respHandler)
-        : _id{id}, _resource{resource}, _payload{payload}, _respHandler{respHandler} {};
+    JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
+        std::shared_ptr<ResponseHandler> const& respHandler,
+        std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
+        std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
+        std::string const& chunkResultName);
 
-    int id() const { return _id; }
+    /// &&& only used for testing.  Keep, or remove and change tests ???
+    JobDescription(QueryId qId,int jobId, ResourceUnit const& resource, std::string const& payload,
+        std::shared_ptr<ResponseHandler> const& respHandler)
+        : _queryId(qId), _jobId(jobId), _resource(resource), _payload(payload), _respHandler(respHandler) {}
+
+    int id() const { return _jobId; } // &&& change to jobId()
     ResourceUnit const& resource() const { return _resource; }
     std::string const& payload() const { return _payload; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 private:
-    int _id; // Job's Id number.
+    void _setPayload();
+
+    QueryId _queryId;
+    int _jobId; // Job's Id number.
+    std::string const _qIdStr;
+    int _retryCount{0};
     ResourceUnit _resource; // path, e.g. /q/LSST/23125
     std::string _payload; // encoded request
     std::shared_ptr<ResponseHandler> _respHandler; // probably MergingHandler
+    std::shared_ptr<qproc::TaskMsgFactory> _taskMsgFactory;
+    std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
+    std::string _chunkResultName;
 };
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

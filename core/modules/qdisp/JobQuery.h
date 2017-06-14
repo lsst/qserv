@@ -130,7 +130,7 @@ protected:
     // Values that need mutex protection
     mutable std::recursive_mutex _rmutex; ///< protects _runAttemtsCount, _queryResourcePtr,
                                           /// _queryRequestPtr
-    int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job.
+    int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job. &&& switch to _retryCount in JobDesc
 
     // xrootd items
     std::shared_ptr<QueryResource> _queryResourcePtr;

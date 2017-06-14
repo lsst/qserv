@@ -171,7 +171,7 @@ private:
 */
 
 
-ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, std::string const& jobIdColName,
+ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
                                std::string const& jobIdSqlType, int jobIdMysqlType)
     : _colSep("\t"),
       _rowSep("\n"),
@@ -183,6 +183,7 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, std::string const& jobIdColNa
       _jobIdColName(jobIdColName),
       _jobIdSqlType(jobIdSqlType),
       _jobIdMysqlType(jobIdMysqlType) {
+    _jobIdStr = std::string("'") + std::to_string(jobId) + "'";
     _initSchema();
     if (_result.row_size() > 0) {
         _initCurrentRow();

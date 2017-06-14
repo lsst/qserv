@@ -52,6 +52,7 @@ namespace qproc {
 /// dispatch in smaller pieces.
 class ChunkQuerySpec {
 public:
+    using Ptr = std::shared_ptr<ChunkQuerySpec>;
     // Contents could change
     std::string db; ///< dominant db
     int chunkId;

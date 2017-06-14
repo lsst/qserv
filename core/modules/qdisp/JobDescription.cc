@@ -24,7 +24,11 @@
  */
 
 // Class header
+#include "ccontrol/UserQueryError.h"
+#include "proto/ProtoImporter.h"
+#include "proto/worker.pb.h"
 #include "qdisp/JobDescription.h"
+#include "qproc/TaskMsgFactory.h"
 
 // System headers
 #include <sstream>
@@ -33,8 +37,33 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
+    std::shared_ptr<ResponseHandler> const& respHandler,
+    std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
+    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
+    std::string const& chunkResultName)
+    : _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
+      _resource(resource), _respHandler(respHandler),
+     _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName) {
+
+    _setPayload(); // not sure this should go here or be part of payload() &&&
+}
+
+
+void JobDescription::_setPayload() {
+    std::ostringstream os;
+    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _retryCount, os);
+    _payload = os.str();
+    proto::ProtoImporter<proto::TaskMsg> pi;
+    if (!pi.messageAcceptable(_payload)) {
+        throw ccontrol::UserQueryBug(_qIdStr + " Error serializing TaskMsg.");
+    }
+}
+
+
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._id << " payload.len=" << jd._payload.length()
+    os << "job(id=" << jd._jobId << " payload.len=" << jd._payload.length()
        << " ru=" << jd._resource.path() <<  ")";
     return os;
 }

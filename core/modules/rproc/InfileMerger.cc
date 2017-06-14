@@ -185,7 +185,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     bool ret = false;
     // &&& Add columns to rows in virtFile, looks like it needs to be in newProtoRowBuffer.
     //ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result); &&&
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+    int resultJobId = response->result.jobid(); // &&& change to add retry value to resultJobId.
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
+                                     resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     //std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result), queryIdJobStr); &&&
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
