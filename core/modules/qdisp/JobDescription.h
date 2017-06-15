@@ -62,10 +62,12 @@ public:
         std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
         std::string const& chunkResultName);
 
+    /* &&&
     /// &&& only used for testing.  Keep, or remove and change tests ???
     JobDescription(QueryId qId,int jobId, ResourceUnit const& resource, std::string const& payload,
         std::shared_ptr<ResponseHandler> const& respHandler)
         : _queryId(qId), _jobId(jobId), _resource(resource), _payload(payload), _respHandler(respHandler) {}
+        */
 
     int id() const { return _jobId; } // &&& change to jobId()
     ResourceUnit const& resource() const { return _resource; }

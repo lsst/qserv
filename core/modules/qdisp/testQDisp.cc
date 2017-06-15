@@ -44,6 +44,8 @@
 #include "qdisp/LargeResultMgr.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qproc/ChunkQuerySpec.h"
+#include "qproc/TaskMsgFactory.h"
 #include "util/threadSafe.h"
 
 namespace test = boost::test_tools;
@@ -159,18 +161,53 @@ public:
     bool _processCancelCalled;
 };
 
+
+namespace lsst {
+namespace qserv {
+namespace qproc {
+
+
+// Normally, there's one TaskMsgFactory that all jobs in a user query share.
+// In this case, there's one MockTaskMsgFactory per job with a payload specific for that job.
+class MockTaskMsgFactory : public TaskMsgFactory {
+public:
+    MockTaskMsgFactory(std::string const& mockPayload_)
+        : TaskMsgFactory(0), mockPayload(mockPayload_) {}
+    void serializeMsg(ChunkQuerySpec const& s,
+                      std::string const& chunkResultName,
+                      uint64_t queryId, int jobId, int retryCount,
+                      std::ostream& os) override {
+        os << mockPayload;
+    }
+    std::string mockPayload;
+};
+
+}}} // namespace lsst::qserv::qproc
+
+
+qdisp::JobDescription makeMockJob(qdisp::Executive::Ptr const& ex, int sequence, ResourceUnit const& ru,
+                                  std::string msg, std::shared_ptr<qdisp::ResponseHandler> const& mHandler) {
+    auto mockTaskMsgFactory = std::make_shared<qproc::MockTaskMsgFactory>(msg);
+    auto cqs = std::make_shared<qproc::ChunkQuerySpec>(); // dummy, unused in this case.
+    std::string chunkResultName = "dummyResultTableName";
+    qdisp::JobDescription job(ex->getId(), sequence, ru, mHandler,
+                              mockTaskMsgFactory, cqs, chunkResultName);
+    return job;
+}
+
 /** Add dummy requests to an executive corresponding to the requesters
  */
-void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, std::string const& millisecs, RequesterVector& rv) {
+void addFakeRequests(qdisp::Executive::Ptr const& ex, SequentialInt &sequence, std::string millisecs, RequesterVector& rv) {
     ResourceUnit ru;
     int copies = rv.size();
     std::vector<std::shared_ptr<qdisp::JobDescription>> s(copies);
     for(int j=0; j < copies; ++j) {
         // The job copies the JobDescription.
-        qdisp::JobDescription job(ex->getId(), sequence.incr(),
-                ru,        // dummy
-                millisecs, // Request = stringified milliseconds
-                rv[j]);
+        auto mockTaskMsgFactory = std::make_shared<qproc::MockTaskMsgFactory>(millisecs);
+        auto cqs = std::make_shared<qproc::ChunkQuerySpec>(); // dummy, unused in this case.
+        std::string chunkResultName = "dummyResultTableName";
+        qdisp::JobDescription job(ex->getId(), sequence.incr(), ru, rv[j],
+                              mockTaskMsgFactory, cqs, chunkResultName);
         auto jobQuery = ex->add(job); // ex->add() is not thread safe.
     }
 }
@@ -227,7 +264,9 @@ BOOST_AUTO_TEST_CASE(Executive) {
     std::thread timeoutT(&timeoutFunc, std::ref(done), millisInt*10);
     std::string millis(boost::lexical_cast<std::string>(millisInt));
     ++jobs;
+    BOOST_CHECK(jobs == 1); // &&&
     executiveTest(ex, sequence, chunkId, millis, 1);
+    BOOST_CHECK(jobs == 1); // &&&
     LOGS_DEBUG("jobs=" << jobs);
     ex->join();
     BOOST_CHECK(ex->getEmpty() == true);
@@ -288,7 +327,8 @@ BOOST_AUTO_TEST_CASE(QueryResource) {
     std::shared_ptr<rproc::InfileMerger> infileMerger;
     std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ResourceUnit ru;
-    qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message",
+    // qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", &&&
+    qdisp::JobDescription jobDesc = makeMockJob(ex, jobId, ru, "a message",
             std::make_shared<ccontrol::MergingHandler>(cmr, infileMerger, chunkResultName));
     qdisp::MarkCompleteFunc::Ptr mcf = std::make_shared<qdisp::MarkCompleteFunc>(ex, jobId);
 
@@ -325,7 +365,8 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ResourceUnit ru;
     std::shared_ptr<ResponseHandlerTest> respReq = std::make_shared<ResponseHandlerTest>();
-    qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq);
+    //qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq); &&&
+    qdisp::JobDescription jobDesc = makeMockJob(ex, jobId, ru, "a message", respReq);
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
 
     // Session is used by JobQuery/Resource destructors, needs to have longer lifetime than
@@ -426,7 +467,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     qdisp::JobQuery::Ptr jq;
     qdisp::XrdSsiServiceMock::_go.exchangeNotify(false); // Can't let jobs run or they are untracked before squash
     for (int jobId=first; jobId<=last; ++jobId) {
-        qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq);
+        //qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq); &&&
+        qdisp::JobDescription jobDesc = makeMockJob(ex, jobId, ru, "a message", respReq);
         auto jQuery = ex->add(jobDesc);
         jq = ex->getJobQuery(jobId);
         auto qRequest = jq->getQueryRequest();
@@ -445,7 +487,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     std::shared_ptr<FinishTest> finishTest = std::make_shared<FinishTest>();
     int jobId = 7;
     respReq = std::make_shared<ResponseHandlerTest>();
-    qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq);
+    //qdisp::JobDescription jobDesc(ex->getId(), jobId, ru, "a message", respReq); &&&
+    qdisp::JobDescription jobDesc = makeMockJob(ex, jobId, ru, "a message", respReq);
 
     // Session is used by JobQuery/Resource destructors, needs to have longer lifetime than
     // objects created below. To avoid lifetime issues we intentionally leak this instance.

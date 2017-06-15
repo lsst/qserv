@@ -162,6 +162,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
          << ", " << response->protoHeader.size()
          << ", rowCount=" << response->result.rowcount()
          << ", row_size=" << response->result.row_size()
+         << ", retryCount=" << response-> result.retrycount()
          << ", errCode=" << response->result.has_errorcode()
          << " hasErMsg=" << response->result.has_errormsg() << ")");
 
@@ -185,7 +186,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     bool ret = false;
     // &&& Add columns to rows in virtFile, looks like it needs to be in newProtoRowBuffer.
     //ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result); &&&
-    int resultJobId = response->result.jobid(); // &&& change to add retry value to resultJobId.
+    int resultJobId = response->result.jobid() * 1000; // &&& change to add retry value to resultJobId.
+    int retryCount = response->result.retrycount(); //
+    if (retryCount >= 1000) {
+        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " Canceling query retryCount too large at " << retryCount);
+        return false;
+    }
+    resultJobId += retryCount;
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     //std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result), queryIdJobStr); &&&
