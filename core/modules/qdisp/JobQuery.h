@@ -109,7 +109,7 @@ protected:
 
     int _getRunAttemptsCount() const {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _runAttemptsCount;
+        return _jobDescription.getRetryCount();
     }
     int _getMaxRetries() const { return 5; } // Arbitrary value until solid value with reason determined.
     int _getRetrySleepSeconds() const { return 30; } // As above or until added to config file.
@@ -128,9 +128,9 @@ protected:
     std::string const _idStr; ///< Identifier string for logging.
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex; ///< protects _runAttemtsCount, _queryResourcePtr,
+    mutable std::recursive_mutex _rmutex; ///< protects _jobDescription, _queryResourcePtr,
                                           /// _queryRequestPtr
-    int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job. &&& switch to _retryCount in JobDesc
+    //int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job. &&& switch to _retryCount in JobDesc
 
     // xrootd items
     std::shared_ptr<QueryResource> _queryResourcePtr;

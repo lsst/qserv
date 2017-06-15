@@ -76,11 +76,12 @@ bool JobQuery::runJob() {
     if (!cancelled && handlerReset) {
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        if ( _runAttemptsCount < _getMaxRetries() ) {
-            ++_runAttemptsCount;
+        if ( _jobDescription.getRetryCount() < _getMaxRetries() ) {
+            _jobDescription.incrRetryCount();
+            _jobDescription.buildPayload();
         } else {
             LOGS(_log, LOG_LVL_ERROR, getIdStr() << " hit maximum number of retries ("
-                 << _runAttemptsCount << ") Canceling user query!");
+                 << _jobDescription.getRetryCount() << ") Canceling user query!");
             executive->squash(); // This should kill all jobs in this user query.
             return false;
         }

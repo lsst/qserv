@@ -71,9 +71,13 @@ public:
     ResourceUnit const& resource() const { return _resource; }
     std::string const& payload() const { return _payload; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
+    int getRetryCount() const { return _retryCount; }
+    ///After incrementing _retryCount, _payload is invalid until rebuilt with buildPayload().
+    int incrRetryCount() { return ++_retryCount; }
+    void buildPayload();
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 private:
-    void _setPayload();
+
 
     QueryId _queryId;
     int _jobId; // Job's Id number.

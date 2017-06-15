@@ -47,11 +47,11 @@ JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resou
       _resource(resource), _respHandler(respHandler),
      _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName) {
 
-    _setPayload(); // not sure this should go here or be part of payload() &&&
+    buildPayload();
 }
 
 
-void JobDescription::_setPayload() {
+void JobDescription::buildPayload() {
     std::ostringstream os;
     _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _retryCount, os);
     _payload = os.str();
