@@ -62,6 +62,7 @@ from collections import defaultdict
 import os
 
 from SCons.Script import *
+from SCons.Platform import platform_default
 
 import detect
 import genversion
@@ -190,9 +191,16 @@ env.AlwaysBuild(versionFile)  # Always rebuild this.
 #         the library, default is "lib"
 shlibs = {}
 
+cryptoLib = "crypto"
+sslLib = "ssl"
+if platform_default() == "darwin":
+    cryptoLib = ""
+    sslLib = ""
+
 # library used by other shared libs
 shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
-                              libs="""log protobuf mysqlclient_r crypto""")
+                              libs="""log protobuf mysqlclient_r """ +
+                              cryptoLib)
 
 # library implementing xrootd logging intercept (worker side)
 shlibs["xrdlog"] = dict(mods="""xrdlog""",
@@ -201,7 +209,8 @@ shlibs["xrdlog"] = dict(mods="""xrdlog""",
 # library implementing xrootd services (worker side)
 shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wpublish wsched xrdsvc""",
                         libs="""qserv_common boost_regex boost_signals
-                             mysqlclient_r protobuf log ssl crypto XrdSsiLib""")
+                             mysqlclient_r protobuf log """ + sslLib + " " +
+                             cryptoLib + """ XrdSsiLib""")
 
 # library with CSS code (regular C++ bindings)
 shlibs["qserv_css"] = dict(mods="""css""",
