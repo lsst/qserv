@@ -23,9 +23,6 @@
 #ifndef LSST_QSERV_RPROC_PROTOROWBUFFER_H
 #define LSST_QSERV_RPROC_PROTOROWBUFFER_H
 
-// Class header
-#include "rproc/ProtoRowBuffer.h"
-
 // System headers
 #include <limits>
 
@@ -38,10 +35,6 @@
 namespace lsst {
 namespace qserv {
 namespace rproc {
-/* &&&
-/// Construct a RowBuffer with a Result message row source.
-mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& r);
-*/
 
 
 /// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
@@ -51,7 +44,7 @@ public:
     ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
                    std::string const& jobIdSqlType, int jobIdMysqlType);
     virtual unsigned fetch(char* buffer, unsigned bufLen);
-    std::string dump() override;
+    std::string dump() const override;
 
     /// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
     /// https://dev.mysql.com/doc/refman/5.1/en/load-data.html
@@ -111,12 +104,9 @@ private:
     int _copyRowBundle(T& dest, proto::RowBundle const& rb) {
         int sizeBefore = dest.size();
         // Add jobId
-        dest.insert(dest.end(), _jobIdStr.begin(), _jobIdStr.end()); // &&& keep
+        dest.insert(dest.end(), _jobIdStr.begin(), _jobIdStr.end());
         for(int ci=0, ce=rb.column_size(); ci != ce; ++ci) {
-            //if (ci != 0) { // &&& delete
             dest.insert(dest.end(), _colSep.begin(), _colSep.end());
-            //} // &&& delete
-
             if (!rb.isnull(ci)) {
                 copyColumn(dest, rb.column(ci));
             } else {
@@ -138,7 +128,7 @@ private:
     std::vector<char> _currentRow; ///< char buffer representing current row.
 
     /// Name and type for jobId column in result table. Passed from InfileMerger.
-    std::string _jobIdStr{"'-2341'"}; ///< String form of jobId, must have single quotes.
+    std::string _jobIdStr; ///< String form of jobId.
     std::string const _jobIdColName;
     std::string const _jobIdSqlType;
     int const _jobIdMysqlType;

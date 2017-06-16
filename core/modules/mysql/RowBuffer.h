@@ -81,7 +81,7 @@ public:
     static Ptr newResRowBuffer(MYSQL_RES* result);
 
     /// Return a descriptive string.
-    virtual std::string dump() = 0;
+    virtual std::string dump() const = 0;
 };
 
 }}} // lsst::qserv::mysql

@@ -205,7 +205,7 @@ void UserQuerySelect::submit() {
         return diff.count();
     };
 
-    int endQSpecQSJSum=0, pushTimeSum=0, serializeTimeSum=0,
+    int endQSpecQSJSum=0, pushTimeSum=0,
         resourceTimeSum=0, jobTimeSum=0, addTimeSum=0; // TEMPORARY-timing
 
     // Writing query for each chunk, stop if query is cancelled.
@@ -216,30 +216,19 @@ void UserQuerySelect::submit() {
             i != e && !_executive->getCancelled(); ++i) {
         auto startChunkQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         auto& chunkSpec = *i;
-        qproc::ChunkQuerySpec::Ptr cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec); // &&& use auto
+        auto cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
         auto endQSpecQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
         chunks.push_back(cs->chunkId);
         std::string chunkResultName = ttn.make(cs->chunkId);
         ++msgCount;
         auto endChunkPushQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-        /* &&&
-        std::ostringstream ss;
-        int retryCount = 0; // This must be the first attempt.
-        taskMsgFactory->serializeMsg(*cs, chunkResultName, _executive->getId(), sequence, retryCount, ss); // &&& put in JobDescription
-        std::string msg = ss.str();
-
-        proto::ProtoImporter<proto::TaskMsg> pi;
-        if (!pi.messageAcceptable(msg)) { // &&& put in JobDescription
-            throw UserQueryBug(getQueryIdString() + " Error serializing TaskMsg.");
-        }
-        */
-        auto endChunkSerializeQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing // &&& delete
 
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
         auto endChunkResourceQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-        qdisp::JobDescription jobDesc(_executive->getId(), sequence, ru,
+        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+                _executive->getId(), sequence, ru,
                 std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                 taskMsgFactory, cs, chunkResultName);
         auto endChunkJobQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
@@ -249,8 +238,7 @@ void UserQuerySelect::submit() {
         { // TEMPORARY-timing
             endQSpecQSJSum += timeDiff(startChunkQSJ, endQSpecQSJ);
             pushTimeSum += timeDiff(endQSpecQSJ, endChunkPushQSJ);
-            serializeTimeSum += timeDiff(endChunkPushQSJ, endChunkSerializeQSJ);
-            resourceTimeSum += timeDiff(endChunkSerializeQSJ, endChunkResourceQSJ);
+            resourceTimeSum += timeDiff(endChunkPushQSJ, endChunkResourceQSJ);
             jobTimeSum += timeDiff(endChunkResourceQSJ, endChunkJobQSJ);
             addTimeSum += timeDiff(endChunkJobQSJ, endChunkAddQSJ);
         }
@@ -267,7 +255,6 @@ void UserQuerySelect::submit() {
                 << "\nQSJ **sequenc=" << sequence
                 << "\nQSJ   endQSpecQSJSum  =" << endQSpecQSJSum
                 << "\nQSJ   pushTimeSum     =" << pushTimeSum
-                << "\nQSJ   serializeTimeSum=" << serializeTimeSum
                 << "\nQSJ   resourceTimeSum =" << resourceTimeSum
                 << "\nQSJ   jobTimeSum      =" << jobTimeSum
                 << "\nQSJ   addTimeSum      =" << addTimeSum

@@ -44,7 +44,7 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.LocalInfile");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.LocalInfile");
 
 }
 
@@ -166,7 +166,7 @@ std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
 
 
 std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer, std::string const& qId) {
-    LOGS(_log, LOG_LVL_DEBUG, qId << "&&& rowBuffer=" << rowBuffer->dump());
+    LOGS(_log, LOG_LVL_DEBUG, qId << "rowBuffer=" << rowBuffer->dump());
     return insertBuffer(rowBuffer);
 }
 
@@ -209,14 +209,14 @@ std::string LocalInfile::Mgr::insertBuffer(std::shared_ptr<RowBuffer> const& rb)
 
 
 void LocalInfile::Mgr::setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
-    bool newElem = _set(s, rb);//RowBuffer::newResRowBuffer(result));
+    bool newElem = _set(s, rb);
     if (!newElem) {
         throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
     }
 }
 
 
-std::shared_ptr<RowBuffer> LocalInfile::Mgr::get(std::string const& s) {
+RowBuffer::Ptr LocalInfile::Mgr::get(std::string const& s) {
     std::lock_guard<std::mutex> lock(_mapMutex);
     RowBufferMap::iterator i = _map.find(s);
     if (i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
@@ -235,7 +235,6 @@ std::string LocalInfile::Mgr::_nextFilename() {
 
 bool LocalInfile::Mgr::_set(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-    // _map[s] = rb; &&&
     auto res = _map.insert(std::pair<std::string, std::shared_ptr<RowBuffer>>(s, rb));
     return res.second;
 }

@@ -162,7 +162,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
          << ", " << response->protoHeader.size()
          << ", rowCount=" << response->result.rowcount()
          << ", row_size=" << response->result.row_size()
-         << ", retryCount=" << response-> result.retrycount()
+         << ", attemptCount=" << response-> result.attemptcount()
          << ", errCode=" << response->result.has_errorcode()
          << " hasErMsg=" << response->result.has_errormsg() << ")");
 
@@ -184,18 +184,16 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     _sizeCheckRowCount += response->result.row_size();
 
     bool ret = false;
-    // &&& Add columns to rows in virtFile, looks like it needs to be in newProtoRowBuffer.
-    //ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result); &&&
-    int resultJobId = response->result.jobid() * 1000; // &&& change to add retry value to resultJobId.
-    int retryCount = response->result.retrycount(); //
-    if (retryCount >= 1000) {
-        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " Canceling query retryCount too large at " << retryCount);
+    // Add columns to rows in virtFile.
+    int resultJobId = response->result.jobid() * MAX_JOB_ATTEMPTS;
+    int attemptCount = response->result.attemptcount(); //
+    if (attemptCount >= MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " Canceling query attemptCount too large at " << attemptCount);
         return false;
     }
-    resultJobId += retryCount;
+    resultJobId += attemptCount;
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
-    //std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result), queryIdJobStr); &&&
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
@@ -270,8 +268,8 @@ bool InfileMerger::finalize() {
             LOGS(_log, LOG_LVL_DEBUG, "Failure cleaning up table " << _mergeTable);
         }
     } else {
-        // Remove jobId and retryCount information from the result table.  &&& new code
-        // Returning a view could be faster, ut is more complicated.
+        // Remove jobId and attemptCount information from the result table.
+        // Returning a view could be faster, but is more complicated.
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
                                + " DROP COLUMN " +  _jobIdColName;
         LOGS(_log, LOG_LVL_DEBUG, "Removing w/" << sqlDropCol);
@@ -422,17 +420,16 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
 
             sch.columns.push_back(scs);
         }
-        // &&& Add jobId column that does not conflict with existing columns.
-        bool nameOk = false;
-        while (!nameOk) {
-            for (auto const& col : sch.columns) {
-                if (col.name == _jobIdColName) {
-                    _alterJobIdColName();
-                    break;
-                }
+        // Add jobId column that does not conflict with existing columns.
+        for (auto iter = sch.columns.begin(), end = sch.columns.end(); iter != end; ++iter) {
+            auto const& col = *iter;
+            if (col.name == _jobIdColName) {
+                _alterJobIdColName();
+                iter = sch.columns.begin(); // start over
             }
-            nameOk = true;
         }
+
+
         sql::Schema schema;
         {
             sql::ColSchema scs;

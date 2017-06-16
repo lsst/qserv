@@ -41,7 +41,16 @@ const char SCISQLDB_PREFIX[] = "scisql_";
 const char MEMLOCKDB[] = "q_memoryLockDb";
 const char MEMLOCKTBL[] = "memoryLockTbl";
 
-/// Used for undefined variable which should contains positive integer
+/**
+ * The absolute maximum number of job attempts. The number
+ * of attempts before cancelling a query can (and probably should)
+ * be smaller than this.
+ * This is value is used for encoding jobId and attemptCount.
+ * For readability values should be 10, 100, 1000, etc.
+ */
+const int MAX_JOB_ATTEMPTS = 100;
+
+/// Used for undefined variable which should contain positive integer
 const int NOTSET = -1;
 
 /** Allow to classify messages stored in qdisp::MessageStore

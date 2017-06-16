@@ -114,7 +114,7 @@ public:
     /// Prepare a local infile from a RowBuffer and link it to an
     /// auto-generated filename.
     /// @return generated filename
-    std::string prepareSrc(std::shared_ptr<RowBuffer> const& rowbuffer, std::string const& qId); // &&& remove qId
+    std::string prepareSrc(std::shared_ptr<RowBuffer> const& rowbuffer, std::string const& qId);
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler

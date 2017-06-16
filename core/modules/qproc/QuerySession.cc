@@ -406,11 +406,8 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                  ChunkSpec const& chunkSpec) const {
-    ChunkQuerySpec::Ptr cQSpec = std::make_shared<ChunkQuerySpec>();
-    cQSpec->db = _context->dominantDb;
-    cQSpec->scanInfo = _context->scanInfo;
-    cQSpec->scanInteractive = _scanInteractive;
-    cQSpec->chunkId = chunkSpec.chunkId;
+    auto cQSpec = std::make_shared<ChunkQuerySpec>(_context->dominantDb, chunkSpec.chunkId,
+                                                  _context->scanInfo, _scanInteractive);
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);
     DbTableSet const& sTables = queryMapping.getSubChunkTables();

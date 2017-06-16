@@ -84,7 +84,7 @@ public:
     ~Executive();
 
     /// Add an item with a reference number
-    std::shared_ptr<JobQuery> add(JobDescription const& s);
+    std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
 
     /// Waits for all jobs on _startJobsPool to start. This should not be called

@@ -23,7 +23,7 @@
 
 
 // Class header
-#include "ProtoRowBuffer.h"
+#include "rproc/ProtoRowBuffer.h"
 
 // Qserv headers
 #include "proto/worker.pb.h"

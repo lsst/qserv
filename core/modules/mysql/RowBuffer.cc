@@ -114,7 +114,7 @@ public:
     bool _fetchRow(Row& r);
     unsigned _fetchFromLargeRow(char* buffer, int bufLen);
     void _initializeLargeRow(Row const& largeRow);
-    std::string dump() override;
+    std::string dump() const override;
 private:
     MYSQL_RES* _result;
     bool _useLargeRow;
@@ -140,8 +140,8 @@ ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
 }
 
 
-std::string ResRowBuffer::dump() {
-    std::string str = std::string("&&& ResRowBuffer _numFields=") + std::to_string(_numFields);
+std::string ResRowBuffer::dump() const {
+    std::string str = std::string("ResRowBuffer _numFields=") + std::to_string(_numFields);
     return str;
 }
 

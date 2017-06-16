@@ -103,9 +103,9 @@ IdSet Task::allIds{};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
-    : msg{t}, sendChannel{sc},
-      _qId{t->queryid()}, _jId{t->jobid()},
-      _idStr{QueryIdHelper::makeIdStr(_qId, _jId)} {
+    : msg(t), sendChannel(sc),
+      _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
+      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)) {
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {

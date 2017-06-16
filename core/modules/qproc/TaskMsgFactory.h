@@ -57,13 +57,13 @@ public:
     /// Construct a TaskMsg and serialize it to a stream
     virtual void serializeMsg(ChunkQuerySpec const& s,
                       std::string const& chunkResultName,
-                      uint64_t queryId, int jobId, int retryCount,
+                      uint64_t queryId, int jobId, int attemptCount,
                       std::ostream& os);
 
 private:
     std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s,
                                              std::string const& chunkResultName,
-                                             uint64_t queryId, int jobId, int retryCount);
+                                             uint64_t queryId, int jobId, int attemptCount);
 
     void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
                       DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
