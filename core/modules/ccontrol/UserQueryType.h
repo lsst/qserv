@@ -72,6 +72,12 @@ public:
      */
     static bool isProcessListTable(std::string const& dbName, std::string const& tblName);
 
+    /**
+     *  Returns true if query is SUBMIT ..., returns query without "SUBMIT"
+     *  in `stripped` string.
+     */
+    static bool isSubmit(std::string const& query, std::string& stripped);
+
 };
 
 }}} // namespace lsst::qserv::ccontrol
