@@ -86,7 +86,8 @@ public:
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
                     std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
-                    std::string const& errorExtra);
+                    std::string const& errorExtra,
+                    bool async);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -150,6 +151,7 @@ private:
     std::mutex _killMutex;
     std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
+    bool _async;                ///< true for async query
 };
 
 }}} // namespace lsst::qserv:ccontrol

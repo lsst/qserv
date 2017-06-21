@@ -50,6 +50,18 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
     BOOST_CHECK(not UserQueryType::isSelect("unselect X"));
     BOOST_CHECK(not UserQueryType::isSelect("DROP SELECT;"));
 
+    std::string stripped;
+    BOOST_CHECK(UserQueryType::isSubmit("SUBMIT SELECT", stripped));
+    BOOST_CHECK_EQUAL("SELECT", stripped);
+    BOOST_CHECK(UserQueryType::isSubmit("submit\tselect  ", stripped));
+    BOOST_CHECK_EQUAL("select  ", stripped);
+    BOOST_CHECK(UserQueryType::isSubmit("SubMiT \n SelEcT", stripped));
+    BOOST_CHECK_EQUAL("SelEcT", stripped);
+    BOOST_CHECK(not UserQueryType::isSubmit("submit", stripped));
+    BOOST_CHECK(not UserQueryType::isSubmit("submit ", stripped));
+    BOOST_CHECK(not UserQueryType::isSubmit("unsubmit select", stripped));
+    BOOST_CHECK(not UserQueryType::isSubmit("submitting select", stripped));
+
     struct {
         const char* query;
         const char* db;

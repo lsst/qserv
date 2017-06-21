@@ -145,11 +145,12 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
-                                 std::string const& errorExtra)
+                                 std::string const& errorExtra,
+                                 bool async)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _qMetaCzarId(czarId), _largeResultMgr(largeResultMgr),
-       _errorExtra(errorExtra) {
+       _errorExtra(errorExtra), _async(async) {
 }
 
 std::string UserQuerySelect::getError() const {
@@ -274,10 +275,8 @@ void UserQuerySelect::submit() {
 
     }
 
-    // we only care about per-chunk info for ASYNC queries, and
-    // currently all queries are SYNC, so we skip this.
-    qmeta::QInfo::QType const qType = qmeta::QInfo::SYNC;
-    if (qType == qmeta::QInfo::ASYNC) {
+    // we only care about per-chunk info for ASYNC queries
+    if (_async) {
         _qMetaAddChunks(chunks);
     }
 }
@@ -391,7 +390,7 @@ void UserQuerySelect::setupChunking() {
 // register query in qmeta database
 void UserQuerySelect::qMetaRegister()
 {
-    qmeta::QInfo::QType qType = qmeta::QInfo::SYNC;  // now all queries are SYNC
+    qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";    // we do not have access to that info yet
 
     std::string qTemplate;

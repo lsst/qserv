@@ -99,10 +99,25 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 UserQuery::Ptr
-UserQueryFactory::newUserQuery(std::string const& query,
+UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
                                qdisp::LargeResultMgr::Ptr const& largeResultMgr,
                                std::string const& userQueryId) {
+
+    // First check for SUBMIT and strip it
+    std::string query = aQuery;
+    std::string stripped;
+    bool async = false;
+    if (UserQueryType::isSubmit(query, stripped)) {
+        // SUBMIT is only allowed with SELECT for now, complain if anything else is there
+        if (!UserQueryType::isSelect(stripped)) {
+            auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
+            return uq;
+        }
+        async = true;
+        query = stripped;
+    }
+
     std::string dbName, tableName;
     bool full = false;
 
@@ -127,6 +142,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
             auto&& tblRef = tblRefList[0];
             std::string const db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
             if (UserQueryType::isProcessListTable(db, tblRef->getTable())) {
+                if (async) {
+                    // no point supporting async for these
+                    auto uq = std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
+                    return uq;
+                }
                 LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
                 try {
                     return std::make_shared<UserQueryProcessList>(stmt, _impl->resultDbConn.get(),
@@ -166,7 +186,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->qMetaCzarId, largeResultMgr,
-                                                    errorExtra);
+                                                    errorExtra, async);
         if (sessionValid) {
             uq->qMetaRegister();
             uq->setupChunking();

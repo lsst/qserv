@@ -66,6 +66,12 @@ boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
                                 boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for SUBMIT ...
+// group 1 is the query without SUBMIT prefix
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _submitRe(R"(^submit\s+(.+)$)",
+                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 }
 
 namespace lsst {
@@ -143,5 +149,18 @@ UserQueryType::isProcessListTable(std::string const& dbName, std::string const& 
     return boost::to_upper_copy(dbName) == "INFORMATION_SCHEMA" &&
             boost::to_upper_copy(tblName) == "PROCESSLIST";
 }
+
+/// Returns true if query is SUBMIT ...
+bool
+UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
+     LOGS(_log, LOG_LVL_DEBUG, "isSubmit: " << query);
+     boost::smatch sm;
+     bool match = boost::regex_match(query, sm, _submitRe);
+     if (match) {
+         stripped = sm.str(1);
+         LOGS(_log, LOG_LVL_DEBUG, "isSubmit: match: " << stripped);
+     }
+     return match;
+ }
 
 }}} // namespace lsst::qserv::ccontrol
