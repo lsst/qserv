@@ -45,14 +45,14 @@ namespace qserv {
 namespace qdisp {
 
 
-JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
+JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
                    QueryId qid) :
   _executive(executive), _jobDescription(jobDescription),
   _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
-  _qid{qid},
-  _idStr{QueryIdHelper::makeIdStr(qid, getIdInt())} {
+  _qid(qid),
+  _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
       _largeResultMgr = executive->getLargeResultMgr();
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << getIdStr() << " desc=" << _jobDescription);
 }
@@ -62,7 +62,7 @@ JobQuery::~JobQuery() {
 }
 
 /** Attempt to run the job on a worker.
- * @return - false if it can not setup the job or the maximum number of retries has been reached.
+ * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
 bool JobQuery::runJob() {
     LOGS(_log, LOG_LVL_DEBUG, "runJob " << *this);
@@ -72,16 +72,28 @@ bool JobQuery::runJob() {
         return false;
     }
     bool cancelled = executive->getCancelled();
-    bool handlerReset = _jobDescription.respHandler()->reset();
+    bool handlerReset = _jobDescription->respHandler()->reset();
     if (!cancelled && handlerReset) {
+        auto criticalErr = [this, &executive](std::string const& msg) {
+            LOGS(_log, LOG_LVL_ERROR, getIdStr() << " " << msg << " "
+                 << _jobDescription << " Canceling user query!");
+            executive->squash(); // This should kill all jobs in this user query.
+        };
+
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        if ( _runAttemptsCount < _getMaxRetries() ) {
-            ++_runAttemptsCount;
+        if (_jobDescription->getAttemptCount() <= _getMaxAttempts()) {
+            bool okCount = _jobDescription->incrAttemptCount();
+            if (!okCount) {
+                criticalErr("hit structural max of retries");
+                return false;
+            }
+            if (!_jobDescription->verifyPayload()) {
+                criticalErr("bad payload");
+                return false;
+            }
         } else {
-            LOGS(_log, LOG_LVL_ERROR, getIdStr() << " hit maximum number of retries ("
-                 << _runAttemptsCount << ") Canceling user query!");
-            executive->squash(); // This should kill all jobs in this user query.
+            criticalErr("hit maximum number of retries");
             return false;
         }
         _jobStatus->updateInfo(JobStatus::PROVISION);
@@ -104,7 +116,7 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, getIdStr() << " provisioning failed, msg=" << msg
          << " code=" << code << "\n    desc=" << _jobDescription);
     _jobStatus->updateInfo(JobStatus::PROVISION_NACK, code, msg);
-    _jobDescription.respHandler()->errorFlush(msg, code);
+    _jobDescription->respHandler()->errorFlush(msg, code);
     LOGS(_log, LOG_LVL_INFO, getIdStr() << " will retry");
     // Running in a separate thread as xrootd is waiting for this one to return.
     auto retryFunc = [](std::weak_ptr<JobQuery> jqWeak, int sleepSeconds) {
@@ -115,7 +127,7 @@ void JobQuery::provisioningFailed(std::string const& msg, int code) {
         jobQuery->runJob();
     };
     std::weak_ptr<JobQuery> jqWeak = shared_from_this();
-    std::thread retryThrd(retryFunc, jqWeak, _getRetrySleepSeconds());
+    std::thread retryThrd(retryFunc, jqWeak, _getAttemptSleepSeconds());
     retryThrd.detach();
 }
 
@@ -133,7 +145,7 @@ bool JobQuery::cancel() {
             std::ostringstream os;
             os << getIdStr() <<" cancel before QueryRequest" ;
             LOGS_DEBUG(os.str());
-            getDescription().respHandler()->errorFlush(os.str(), -1);
+            getDescription()->respHandler()->errorFlush(os.str(), -1);
             auto executive = _executive.lock();
             if (executive == nullptr) {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
@@ -141,7 +153,7 @@ bool JobQuery::cancel() {
             }
             executive->markCompleted(getIdInt(), false);
         }
-        _jobDescription.respHandler()->processCancel();
+        _jobDescription->respHandler()->processCancel();
         return true;
     }
     LOGS_DEBUG(getIdStr() << " cancel, skipping, already cancelled.");

@@ -26,6 +26,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 
@@ -92,8 +93,8 @@ private:
 /// for more information on the required interface.
 class LocalInfile::Mgr : boost::noncopyable {
 public:
-    Mgr();
-    ~Mgr();
+    Mgr() {}
+    ~Mgr() {}
 
     // User interface //////////////////////////////////////////////////
     /// Attach the handler to a mysql client connection
@@ -113,22 +114,32 @@ public:
     /// Prepare a local infile from a RowBuffer and link it to an
     /// auto-generated filename.
     /// @return generated filename
-    std::string prepareSrc(std::shared_ptr<RowBuffer> rowbuffer);
+    std::string prepareSrc(std::shared_ptr<RowBuffer> const& rowbuffer, std::string const& qId);
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler
-    static int local_infile_init(void **ptr, const char *filename,
-                                 void *userdata);
+    static int local_infile_init(void **ptr, const char *filename, void *userdata);
     static int local_infile_read(void *ptr, char *buf, unsigned int buf_len);
     static void local_infile_end(void *ptr);
 
-    static int local_infile_error(void *ptr,
-                                  char *error_msg,
-                                  unsigned int error_msg_len);
+    static int local_infile_error(void *ptr, char *error_msg, unsigned int error_msg_len);
+
+    std::string insertBuffer(std::shared_ptr<RowBuffer> const& rb);
+    void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
+    std::shared_ptr<RowBuffer> get(std::string const& s);
+
+
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> _impl; // PIMPL implementation class.
+    /// @return next filename
+    std::string _nextFilename();
+
+    /// @return true if new element inserted
+    bool _set(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
+
+    typedef std::map<std::string, std::shared_ptr<RowBuffer>> RowBufferMap;
+    RowBufferMap _map;
+    std::mutex _mapMutex;
 };
 
 }}} // namespace lsst::qserv::mysql

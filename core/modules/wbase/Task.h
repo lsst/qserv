@@ -145,6 +145,7 @@ public:
     int getChunkId();
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
+    int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() {return _scanInteractive; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
@@ -173,6 +174,7 @@ public:
 private:
     QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
+    int      const    _attemptCount{0}; // attemptCount from czar
     std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 
     std::atomic<bool> _cancelled{false};

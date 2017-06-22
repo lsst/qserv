@@ -404,31 +404,28 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 }
 
 
-ChunkQuerySpec QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
+ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                  ChunkSpec const& chunkSpec) const {
-    ChunkQuerySpec cQSpec;
-    cQSpec.db = _context->dominantDb;
-    cQSpec.scanInfo = _context->scanInfo;
-    cQSpec.scanInteractive = _scanInteractive;
-    cQSpec.chunkId = chunkSpec.chunkId;
+    auto cQSpec = std::make_shared<ChunkQuerySpec>(_context->dominantDb, chunkSpec.chunkId,
+                                                  _context->scanInfo, _scanInteractive);
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);
     DbTableSet const& sTables = queryMapping.getSubChunkTables();
-    cQSpec.subChunkTables = sTables;
+    cQSpec->subChunkTables = sTables;
     // Build queries.
     if (!_context->hasSubChunks()) {
-        cQSpec.queries = _buildChunkQueries(queryTemplates, chunkSpec);
+        cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
     } else {
         if (chunkSpec.shouldSplit()) {
             ChunkSpecFragmenter frag(chunkSpec);
             ChunkSpec s = frag.get();
-            cQSpec.queries = _buildChunkQueries(queryTemplates, s);
-            cQSpec.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
+            cQSpec->queries = _buildChunkQueries(queryTemplates, s);
+            cQSpec->subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
             frag.next();
-            cQSpec.nextFragment = _buildFragment(queryTemplates, frag);
+            cQSpec->nextFragment = _buildFragment(queryTemplates, frag);
         } else {
-            cQSpec.queries = _buildChunkQueries(queryTemplates, chunkSpec);
-            cQSpec.subChunkIds.assign(chunkSpec.subChunks.begin(),
+            cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
+            cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(),
                                       chunkSpec.subChunks.end());
         }
     }

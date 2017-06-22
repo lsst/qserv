@@ -161,6 +161,10 @@ private:
     std::mutex _sqlMutex; ///< Protection for SQL connection
     bool _needCreateTable{true}; ///< Does the target table need creating?
     size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
+    /// Alter the jobId column name in hopes that it will be unique.
+    void _alterJobIdColName() {
+        _jobIdColName = "jobId" + std::to_string(_jobIdColNameAdj++);
+    }
 
     mysql::MySqlConnection _mysqlConn;
 
@@ -170,6 +174,12 @@ private:
     std::mutex _queryIdStrMtx; ///< protects _queryIdStr
     std::atomic<bool> _queryIdStrSet{false};
     std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
+
+    /// Name of the jobId column in the result table. Protected by _createTableMutex
+    std::string _jobIdColName;
+    int _jobIdColNameAdj{0}; ///< Adjustment to make if _jobIdColName is not unique.
+    int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
+    std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
     int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.

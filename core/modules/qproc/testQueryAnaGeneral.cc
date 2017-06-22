@@ -194,15 +194,15 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    int numQueries = first.queries.size();
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    int numQueries = first->queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);
     // DEBUG
     //std::copy(first.queries.begin(), first.queries.end(), std::ostream_iterator<std::string>(std::cout, "\n\n"));
-    BOOST_CHECK_EQUAL(first.queries[0], expected_100_100000_core);
+    BOOST_CHECK_EQUAL(first->queries[0], expected_100_100000_core);
     BOOST_REQUIRE(numQueries > 3);
-    BOOST_CHECK_EQUAL(first.queries[3], expected_100_100010_overlap);
+    BOOST_CHECK_EQUAL(first->queries[3], expected_100_100010_overlap);
 }
 
 BOOST_AUTO_TEST_CASE(Triple) {
@@ -506,9 +506,9 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    BOOST_CHECK_EQUAL(first.queries.size(), 1U);
-    BOOST_CHECK_EQUAL(first.queries[0], expected_100);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    BOOST_CHECK_EQUAL(first->queries.size(), 1U);
+    BOOST_CHECK_EQUAL(first->queries[0], expected_100);
 }
 
 BOOST_AUTO_TEST_CASE(SimpleScan) {
@@ -807,12 +807,12 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    BOOST_CHECK_EQUAL(first.queries.size(), 1U);
-    BOOST_CHECK_EQUAL(first.queries[0], expected);
-    BOOST_CHECK_EQUAL(first.subChunkTables.size(), 0U);
-    BOOST_CHECK_EQUAL(first.db, "LSST");
-    BOOST_CHECK_EQUAL(first.chunkId, 100);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    BOOST_CHECK_EQUAL(first->queries.size(), 1U);
+    BOOST_CHECK_EQUAL(first->queries[0], expected);
+    BOOST_CHECK_EQUAL(first->subChunkTables.size(), 0U);
+    BOOST_CHECK_EQUAL(first->db, "LSST");
+    BOOST_CHECK_EQUAL(first->chunkId, 100);
     ++i;
     BOOST_CHECK(i == e);
 }
@@ -987,13 +987,13 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    ChunkQuerySpec first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    int numQueries = first.queries.size();
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    int numQueries = first->queries.size();
     BOOST_CHECK_EQUAL(numQueries, 6);
     BOOST_REQUIRE(numQueries > 0);
-    BOOST_CHECK_EQUAL(first.queries[0], expected_100_100000_core);
+    BOOST_CHECK_EQUAL(first->queries[0], expected_100_100000_core);
     BOOST_REQUIRE(numQueries > 5);
-    BOOST_CHECK_EQUAL(first.queries[5], expected_100_100020_overlap);
+    BOOST_CHECK_EQUAL(first->queries[5], expected_100_100020_overlap);
     // JOIN syntax, "is NULL" syntax
 }
 

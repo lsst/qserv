@@ -61,7 +61,7 @@ QueryRequest::QueryRequest( XrdSsiSession* session, JobQuery::Ptr const& jobQuer
   _session(session), _jobQuery(jobQuery),
   _jobIdStr(jobQuery->getIdStr()) {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest with payload:"
-         << _jobQuery->getDescription().payload().size());
+         << _jobQuery->getDescription()->payload().size());
     _largeResultMgr = _jobQuery->getLargeResultMgr();
 }
 
@@ -85,10 +85,10 @@ char* QueryRequest::GetRequest(int& requestLength) {
         requestLength = 0;
         return const_cast<char*>("");
     }
-    requestLength = jq->getDescription().payload().size();
+    requestLength = jq->getDescription()->payload().size();
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " Requesting, payload size: " << requestLength);
     // Andy promises that his code won't corrupt it.
-    return const_cast<char*>(jq->getDescription().payload().data());
+    return const_cast<char*>(jq->getDescription()->payload().data());
 }
 
 // Deleting the buffer (payload) would cause us problems, as this class is not the owner.
@@ -121,7 +121,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     if (!isOk) {
         std::ostringstream os;
         os << _jobIdStr << "ProcessResponse request failed " << getXrootdErr(nullptr);
-        jq->getDescription().respHandler()->errorFlush(os.str(), -1);
+        jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
@@ -153,7 +153,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     bool success = false;
     // Pass ResponseHandler's buffer directly.
-    std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
+    std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream buffer.size=" << buffer.size());
     const void* pbuf = (void*)(&buffer[0]);
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream->GetResponseData size="
@@ -186,7 +186,7 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
                       << " msg=" << msg << " not passed");
             return false;
         }
-        jq->getDescription().respHandler()->errorFlush(msg, code);
+        jq->getDescription()->respHandler()->errorFlush(msg, code);
     }
     _errorFinish();
     return true;
@@ -246,7 +246,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     }
 
     auto getResponseDataFunc = [this, &jq]() {
-        std::vector<char>& buffer = jq->getDescription().respHandler()->nextBuffer();
+        std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
         const void* pbuf = (void*)(&buffer[0]);
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState
                 << " _importStream->GetResponseData size=" << buffer.size() << " "
@@ -270,7 +270,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
-        jq->getDescription().respHandler()->errorFlush(
+        jq->getDescription()->respHandler()->errorFlush(
             "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
         _errorFinish();
         // An error occurred, let processing continue so it can be cleaned up soon.
@@ -278,7 +278,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     }
     jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
     bool largeResult = false;
-    bool flushOk = jq->getDescription().respHandler()->flush(blen, last, largeResult);
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
@@ -291,7 +291,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
 
     if (flushOk) {
         if (last) {
-            auto sz = jq->getDescription().respHandler()->nextBuffer().size();
+            auto sz = jq->getDescription()->respHandler()->nextBuffer().size();
             if (last && sz != 0) {
                 LOGS(_log, LOG_LVL_WARN,
                      _jobIdStr << " Connection closed when more information expected sz=" << sz);
@@ -318,7 +318,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
-        ResponseHandler::Error err = jq->getDescription().respHandler()->getError();
+        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
         jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
@@ -462,7 +462,7 @@ void QueryRequest::_finish() {
 void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
         auto jq = _jobQuery;
-        if (jq != nullptr) jq->getMarkCompleteFunc()->operator ()(success);
+        if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
     }
 }
 

@@ -67,6 +67,7 @@ message TaskMsg {
     required uint64 queryid = 10;
     required int32 jobid = 11;
     required bool scaninteractive = 12;
+    required int32 attemptcount = 13;
 }
 
 // Result message received from worker
@@ -114,6 +115,7 @@ message Result {
     required bool largeresult = 9;
     required uint32 rowcount = 10;
     required uint64 transmitsize = 11;
+    required int32 attemptcount = 12;
 }
 
 // Result protocol 2:

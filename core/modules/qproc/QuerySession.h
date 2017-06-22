@@ -133,7 +133,7 @@ public:
 
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
-    ChunkQuerySpec buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
+    ChunkQuerySpec::Ptr buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                        ChunkSpec const& chunkSpec) const;
 
     /// Finalize a query after chunk coverage has been updated

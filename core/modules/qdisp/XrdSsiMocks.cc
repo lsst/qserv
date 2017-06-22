@@ -53,7 +53,7 @@ public:
         return qr._jobQuery->getStatus();
     }
     static std::string const& getPayload(QueryResource& qr) {
-        return qr.getJobQuery()->getDescription().payload();
+        return qr.getJobQuery()->getDescription()->payload();
     }
     static void finish(QueryResource& qr) {
         LOGS_DEBUG("QueryResourceDebug::finish");

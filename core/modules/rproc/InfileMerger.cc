@@ -104,6 +104,7 @@ namespace rproc {
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
     : _config(c),
       _mysqlConn(_config.mySqlConfig) {
+    _alterJobIdColName(); // initialize jobIdColName.
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
 
@@ -161,6 +162,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
          << ", " << response->protoHeader.size()
          << ", rowCount=" << response->result.rowcount()
          << ", row_size=" << response->result.row_size()
+         << ", attemptCount=" << response-> result.attemptcount()
          << ", errCode=" << response->result.has_errorcode()
          << " hasErMsg=" << response->result.has_errormsg() << ")");
 
@@ -182,7 +184,17 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     _sizeCheckRowCount += response->result.row_size();
 
     bool ret = false;
-    std::string const virtFile = _infileMgr.prepareSrc(newProtoRowBuffer(response->result));
+    // Add columns to rows in virtFile.
+    int resultJobId = response->result.jobid() * MAX_JOB_ATTEMPTS;
+    int attemptCount = response->result.attemptcount(); //
+    if (attemptCount >= MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " Canceling query attemptCount too large at " << attemptCount);
+        return false;
+    }
+    resultJobId += attemptCount;
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
+                                     resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
     ret = _applyMysql(infileStatement);
@@ -255,6 +267,13 @@ bool InfileMerger::finalize() {
         if (!cleanupOk) {
             LOGS(_log, LOG_LVL_DEBUG, "Failure cleaning up table " << _mergeTable);
         }
+    } else {
+        // Remove jobId and attemptCount information from the result table.
+        // Returning a view could be faster, but is more complicated.
+        std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
+                               + " DROP COLUMN " +  _jobIdColName;
+        LOGS(_log, LOG_LVL_DEBUG, "Removing w/" << sqlDropCol);
+        finalizeOk = _applySqlLocal(sqlDropCol);
     }
     LOGS(_log, LOG_LVL_DEBUG, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
@@ -383,7 +402,7 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     if (_needCreateTable) {
         // create schema
         proto::RowSchema const& rs = response.result.rowschema();
-        sql::Schema s;
+        sql::Schema sch;
         for(int i=0, e=rs.columnschema_size(); i != e; ++i) {
             proto::ColumnSchema const& cs = rs.columnschema(i);
             sql::ColSchema scs;
@@ -399,9 +418,29 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             }
             scs.colType.sqlType = cs.sqltype();
 
-            s.columns.push_back(scs);
+            sch.columns.push_back(scs);
         }
-        std::string createStmt = sql::formCreateTable(_mergeTable, s);
+        // Add jobId column that does not conflict with existing columns.
+        for (auto iter = sch.columns.begin(), end = sch.columns.end(); iter != end; ++iter) {
+            auto const& col = *iter;
+            if (col.name == _jobIdColName) {
+                _alterJobIdColName();
+                iter = sch.columns.begin(); // start over
+            }
+        }
+
+
+        sql::Schema schema;
+        {
+            sql::ColSchema scs;
+            scs.name              = _jobIdColName;
+            scs.hasDefault        = false;
+            scs.colType.mysqlType = _jobIdMysqlType;
+            scs.colType.sqlType   = _jobIdSqlType;
+            schema.columns.push_back(scs);
+            schema.columns.insert(schema.columns.end(), sch.columns.begin(), sch.columns.end());
+        }
+        std::string createStmt = sql::formCreateTable(_mergeTable, schema);
         // Specifying engine. There is some question about whether InnoDB or MyISAM is the better
         // choice when multiple threads are writing to the result table.
         createStmt += " ENGINE=MyISAM";
@@ -421,6 +460,7 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger table " << _mergeTable << " ready");
     return true;
 }
+
 
 /// Choose the appropriate target name, depending on whether post-processing is
 /// needed on the result rows.

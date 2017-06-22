@@ -29,13 +29,67 @@
 // System headers
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
+#include "proto/ProtoImporter.h"
+#include "proto/worker.pb.h"
+#include "qproc/TaskMsgFactory.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
+    std::shared_ptr<ResponseHandler> const& respHandler,
+    std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
+    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
+    std::string const& chunkResultName, bool mock)
+    : _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
+      _resource(resource), _respHandler(respHandler),
+     _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName),
+     _mock(mock) {
+}
+
+
+bool JobDescription::incrAttemptCount() {
+    ++_attemptCount;
+    if (_attemptCount > MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
+        return false;
+    }
+    buildPayload();
+    return true;
+}
+
+
+void JobDescription::buildPayload() {
+    std::ostringstream os;
+    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, os);
+    _payloads[_attemptCount] = os.str();
+}
+
+
+bool JobDescription::verifyPayload() const {
+    proto::ProtoImporter<proto::TaskMsg> pi;
+    if (!_mock && !pi.messageAcceptable(_payloads.at(_attemptCount))) {
+        LOGS(_log, LOG_LVL_DEBUG, _qIdStr << " Error serializing TaskMsg.");
+        return false;
+    }
+    return true;
+}
+
+
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._id << " payload.len=" << jd._payload.length()
-       << " ru=" << jd._resource.path() <<  ")";
+    os << "job(id=" << jd._jobId << " payloads.size=" << jd._payloads.size()
+       << " ru=" << jd._resource.path() << " attemptCount="  << jd._attemptCount << ")";
     return os;
 }
 

@@ -52,7 +52,7 @@ public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
-    static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
+    static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
             QueryId qid) {
         Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
@@ -63,9 +63,9 @@ public:
     virtual ~JobQuery();
     virtual bool runJob();
 
-    int getIdInt() const { return _jobDescription.id(); }
+    int getIdInt() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
-    JobDescription& getDescription() { return _jobDescription; }
+    JobDescription::Ptr getDescription() { return _jobDescription; }
     JobStatus::Ptr getStatus() { return _jobStatus; }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
@@ -98,27 +98,27 @@ public:
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use newJobQuery.
-    JobQuery(Executive::Ptr const& executive, JobDescription const& jobDescription,
+    JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
 protected:
     void _setup() {
-        _jobDescription.respHandler()->setJobQuery(shared_from_this());
+        _jobDescription->respHandler()->setJobQuery(shared_from_this());
     }
 
     int _getRunAttemptsCount() const {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _runAttemptsCount;
+        return _jobDescription->getAttemptCount();
     }
-    int _getMaxRetries() const { return 5; } // Arbitrary value until solid value with reason determined.
-    int _getRetrySleepSeconds() const { return 30; } // As above or until added to config file.
+    int _getMaxAttempts() const { return 5; } // Arbitrary value until solid value with reason determined.
+    int _getAttemptSleepSeconds() const { return 30; } // As above or until added to config file.
 
     // Values that don't change once set.
     std::weak_ptr<Executive>  _executive;
     /// The job description needs to survive until the task is complete. Some elements are passed to
     /// xrootd as raw pointers.
-    JobDescription _jobDescription;
+    JobDescription::Ptr _jobDescription;
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
     // JobStatus has its own mutex.
@@ -128,9 +128,8 @@ protected:
     std::string const _idStr; ///< Identifier string for logging.
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex; ///< protects _runAttemtsCount, _queryResourcePtr,
+    mutable std::recursive_mutex _rmutex; ///< protects _jobDescription, _queryResourcePtr,
                                           /// _queryRequestPtr
-    int _runAttemptsCount {0}; ///< Number of times someone has tried to run this job.
 
     // xrootd items
     std::shared_ptr<QueryResource> _queryResourcePtr;

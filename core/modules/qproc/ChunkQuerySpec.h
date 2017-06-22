@@ -52,13 +52,21 @@ namespace qproc {
 /// dispatch in smaller pieces.
 class ChunkQuerySpec {
 public:
+    using Ptr = std::shared_ptr<ChunkQuerySpec>;
+
+    ChunkQuerySpec() {}
+    ChunkQuerySpec(std::string const& db_, int chunkId_,
+                   proto::ScanInfo const& scanInfo_, bool scanInteractive_)
+        : db(db_), chunkId(chunkId_), scanInfo(scanInfo_),
+          scanInteractive(scanInteractive_) {}
+
     // Contents could change
-    std::string db; ///< dominant db
-    int chunkId;
+    std::string db{""}; ///< dominant db
+    int chunkId{0};
     proto::ScanInfo scanInfo; ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
-    bool scanInteractive;
+    bool scanInteractive{false};
     DbTableSet subChunkTables;
     std::vector<int> subChunkIds;
     std::vector<std::string> queries;

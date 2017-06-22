@@ -25,6 +25,7 @@
 #include "mysql/LocalInfile.h"
 
 // System headers
+#include <atomic>
 #include <cassert>
 #include <limits>
 #include <mutex>
@@ -33,9 +34,21 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/RowBuffer.h"
+
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.LocalInfile");
+
+}
+
+
 
 namespace lsst {
 namespace qserv {
@@ -126,64 +139,6 @@ int LocalInfile::getError(char* buf, unsigned int bufLen) {
     return 0;
 }
 
-////////////////////////////////////////////////////////////////////////
-// LocalInfile::Mgr::Impl
-////////////////////////////////////////////////////////////////////////
-class LocalInfile::Mgr::Impl {
-public:
-    Impl() {}
-
-    std::string insertBuffer(std::shared_ptr<RowBuffer> rb) {
-        std::string f = _nextFilename();
-        _set(f, rb);
-        return f;
-    }
-
-    void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> rb) {
-        if (get(s)) {
-            throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
-        }
-        _set(s, rb);//RowBuffer::newResRowBuffer(result));
-    }
-
-    std::shared_ptr<RowBuffer> get(std::string const& s) {
-        std::lock_guard<std::mutex> lock(_mapMutex);
-        RowBufferMap::iterator i = _map.find(s);
-        if (i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
-        return i->second;
-    }
-
-private:
-    /// @return next filename
-    std::string _nextFilename() {
-        std::ostringstream os;
-        // Switch to boost::atomic when boost 1.53 or c++11 (std::atomic)
-        static int sequence = 0;
-        static std::mutex m;
-        std::lock_guard<std::mutex> lock(m);
-
-        os << "virtualinfile_" << ++sequence;
-        return os.str();
-    }
-
-    void _set(std::string const& s, std::shared_ptr<RowBuffer> rb) {
-        std::lock_guard<std::mutex> lock(_mapMutex);
-        _map[s] = rb;
-    }
-
-    typedef std::map<std::string, std::shared_ptr<RowBuffer> > RowBufferMap;
-    RowBufferMap _map;
-    std::mutex _mapMutex;
-};
-
-////////////////////////////////////////////////////////////////////////
-// LocalInfile::Mgr
-////////////////////////////////////////////////////////////////////////
-LocalInfile::Mgr::Mgr()
-    : _impl(new Impl) {
-}
-
-LocalInfile::Mgr::~Mgr() = default;
 
 void LocalInfile::Mgr::attach(MYSQL* mysql) {
     mysql_set_local_infile_handler(mysql,
@@ -194,29 +149,34 @@ void LocalInfile::Mgr::attach(MYSQL* mysql) {
                                    this);
 }
 
+
 void LocalInfile::Mgr::detachReset(MYSQL* mysql) {
     mysql_set_local_infile_default(mysql);
 }
 
+
 void LocalInfile::Mgr::prepareSrc(std::string const& filename, MYSQL_RES* result) {
-        _impl->setBuffer(filename, RowBuffer::newResRowBuffer(result));
+    setBuffer(filename, RowBuffer::newResRowBuffer(result));
 }
+
 
 std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
-    return _impl->insertBuffer(RowBuffer::newResRowBuffer(result));
+    return insertBuffer(RowBuffer::newResRowBuffer(result));
 }
 
-std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> rowBuffer) {
-    return _impl->insertBuffer(rowBuffer);
+
+std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer, std::string const& qId) {
+    LOGS(_log, LOG_LVL_DEBUG, qId << "rowBuffer=" << rowBuffer->dump());
+    return insertBuffer(rowBuffer);
 }
+
 
 // mysql_local_infile_handler interface
-
 int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *userdata) {
     assert(userdata);
     //cout << "New infile:" << filename << "\n";
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    std::shared_ptr<RowBuffer> rb= m->_impl->get(std::string(filename));
+    RowBuffer::Ptr rb= m->get(std::string(filename));
     assert(rb);
     LocalInfile* lf = new LocalInfile(filename, rb);
     *ptr = lf;
@@ -236,11 +196,48 @@ void LocalInfile::Mgr::local_infile_end(void *ptr) {
     delete lf;
 }
 
-int LocalInfile::Mgr::local_infile_error(void *ptr,
-                                         char *error_msg,
-                                         unsigned int error_msg_len) {
-    return static_cast<LocalInfile*>(ptr)->getError(error_msg,
-                                                    error_msg_len);
+int LocalInfile::Mgr::local_infile_error(void *ptr, char *error_msg, unsigned int error_msg_len) {
+    return static_cast<LocalInfile*>(ptr)->getError(error_msg, error_msg_len);
 }
+
+
+std::string LocalInfile::Mgr::insertBuffer(std::shared_ptr<RowBuffer> const& rb) {
+    std::string f = _nextFilename();
+    _set(f, rb);
+    return f;
+}
+
+
+void LocalInfile::Mgr::setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
+    bool newElem = _set(s, rb);
+    if (!newElem) {
+        throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
+    }
+}
+
+
+RowBuffer::Ptr LocalInfile::Mgr::get(std::string const& s) {
+    std::lock_guard<std::mutex> lock(_mapMutex);
+    RowBufferMap::iterator i = _map.find(s);
+    if (i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
+    return i->second;
+}
+
+
+std::string LocalInfile::Mgr::_nextFilename() {
+    static std::atomic<std::uint64_t> sequence(0);
+
+    std::ostringstream os;
+    os << "virtualinfile_" << ++sequence;
+    return os.str();
+}
+
+
+bool LocalInfile::Mgr::_set(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
+    std::lock_guard<std::mutex> lock(_mapMutex);
+    auto res = _map.insert(std::pair<std::string, std::shared_ptr<RowBuffer>>(s, rb));
+    return res.second;
+}
+
 
 }}} // namespace lsst::qserv::mysql

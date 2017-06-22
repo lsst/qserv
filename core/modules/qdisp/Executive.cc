@@ -116,7 +116,7 @@ void Executive::setQueryId(QueryId id) {
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
-JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
+JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
             std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
@@ -131,13 +131,13 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
         cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
-                    << jobDesc.id() << ")");
+                    << jobDesc->id() << ")");
             return jobQuery;
         }
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
         Ptr thisPtr = shared_from_this();
-        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc.id());
+        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
         jobQuery = JobQuery::newJobQuery(thisPtr, jobDesc, jobStatus, mcf, _id);
         jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
@@ -158,7 +158,7 @@ JobQuery::Ptr Executive::add(JobDescription const& jobDesc) {
         }
         ++_requestCount;
     }
-    std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc.resource().path();
+    std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc->resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
     //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.
     auto endQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
@@ -256,7 +256,7 @@ void Executive::markCompleted(int jobId, bool success) {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
             if (iter != _incompleteJobs.end()) {
-                err = iter->second->getDescription().respHandler()->getError();
+                err = iter->second->getDescription()->respHandler()->getError();
             } else {
                 std::string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                         " size=" + std::to_string(_incompleteJobs.size());
@@ -439,7 +439,7 @@ void Executive::_updateProxyMessages() {
                 os << " (" << info.stateDesc << ")";
             }
             os << " " << info.stateTime;
-            _messageStore->addMessage(job->getDescription().resource().chunk(),
+            _messageStore->addMessage(job->getDescription()->resource().chunk(),
                     info.state, os.str());
 
         }
