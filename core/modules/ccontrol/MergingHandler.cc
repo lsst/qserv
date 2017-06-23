@@ -199,8 +199,8 @@ bool MergingHandler::reset() {
 }
 
 
-void MergingHandler::scrubResults(int jobId, int attempt) {
-    _infileMerger->scrubResults(jobId, attempt);
+bool MergingHandler::scrubResults(int jobId, int attempt) {
+    return _infileMerger->scrubResults(jobId, attempt);
 }
 
 std::ostream& MergingHandler::print(std::ostream& os) const {

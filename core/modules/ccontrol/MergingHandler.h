@@ -99,7 +99,7 @@ public:
     }
 
     /// Scrub the results from jobId-attempt from the result table.
-    void scrubResults(int jobId, int attempt) override;
+    bool scrubResults(int jobId, int attempt) override;
 
 private:
     void _initState();

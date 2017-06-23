@@ -130,7 +130,7 @@ public:
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
-    void scrubResults(int jobId, int attempt);
+    bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
 private:
@@ -188,8 +188,8 @@ private:
     /// For use in removing invalid rows from cancelled job attempts. &&& move to own class ???
     void _decrConcurrentMergeCount();
     void _incrConcurrentMergeCount();
-    void _holdMergingForRowDelete(int jobIdAttempt);
-    void _deleteInvalidRows(int jobIdAttempt);
+    bool _holdMergingForRowDelete(int jobIdAttempt);
+    bool _deleteInvalidRows(int jobIdAttempt);
     std::mutex _iJAMtx;
     std::set<int> _invalidJobAttempts;
     int _concurrentMergeCount{0};

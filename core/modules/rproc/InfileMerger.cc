@@ -314,6 +314,19 @@ void InfileMerger::_decrConcurrentMergeCount() {
 }
 
 
+bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
+    std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
+                             + " WHERE " +  _jobIdColName + "=" + std::to_string(jobIdAttempt);
+    LOGS(_log, LOG_LVL_DEBUG, "Deleting invalid rows w/" << sqlDelRows);
+    bool ok = _applySqlLocal(sqlDelRows);
+    if (!ok) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
+        return false;
+    }
+    return true;
+}
+
+
 int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
     int jobIdAttempt = jobId * MAX_JOB_ATTEMPTS;
     if (attemptCount >= MAX_JOB_ATTEMPTS) {
@@ -327,22 +340,36 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
-void InfileMerger::scrubResults(int jobId, int attemptCount) {
+bool InfileMerger::scrubResults(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
-    _holdMergingForRowDelete(jobIdAttempt);
+    return _holdMergingForRowDelete(jobIdAttempt);
 }
 
 
-void InfileMerger::_holdMergingForRowDelete(int jobIdAttempt) {
+bool InfileMerger::_holdMergingForRowDelete(int jobIdAttempt) {
+    auto cleanup = [this](){
+        _waitFlag = false;
+        _cv.notify_all();
+    };
+
     std::unique_lock<std::mutex> uLock(_iJAMtx);
     _waitFlag = true;
     _invalidJobAttempts.insert(jobIdAttempt);
+    /// &&& if the table hasn't been made yet, just return true, nothing to remove.
+    {
+    std::lock_guard<std::mutex> lock(_createTableMutex);
+        if (_needCreateTable) {
+            LOGS(_log, LOG_LVL_DEBUG, "Nothing to do as no table yet made for " << jobIdAttempt);
+            cleanup();
+            return true;
+        }
+    }
     if (_concurrentMergeCount > 0) {
         _cv.wait(uLock, [this](){ return _concurrentMergeCount == 0;});
     }
-    _deleteInvalidRows(jobIdAttempt);
-    _waitFlag = false;
-    _cv.notify_all();
+    bool res = _deleteInvalidRows(jobIdAttempt);
+    cleanup();
+    return res;
 }
 
 
