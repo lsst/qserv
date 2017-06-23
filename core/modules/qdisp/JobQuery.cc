@@ -83,7 +83,8 @@ bool JobQuery::runJob() {
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         if (_jobDescription->getAttemptCount() <= _getMaxAttempts()) {
-            bool okCount = _jobDescription->incrAttemptCount();
+            // &&& if the attemptcount >=0, invalidate the attempt, remove it from result table, add it to do not add set.
+            bool okCount = _jobDescription->incrAttemptCount(); // &&& more is happening in this than the name implies
             if (!okCount) {
                 criticalErr("hit structural max of retries");
                 return false;

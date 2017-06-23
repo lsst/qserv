@@ -32,6 +32,7 @@
 // System headers
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 
 // Qserv headers
@@ -129,6 +130,9 @@ public:
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
+    void scrubResults(int jobId, int attempt);
+    int makeJobIdAttempt(int jobId, int attemptCount);
+
 private:
     bool _applyMysql(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
@@ -180,6 +184,18 @@ private:
     int _jobIdColNameAdj{0}; ///< Adjustment to make if _jobIdColName is not unique.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
+
+    /// For use in removing invalid rows from cancelled job attempts. &&& move to own class ???
+    void _decrConcurrentMergeCount();
+    void _incrConcurrentMergeCount();
+    void _holdMergingForRowDelete(int jobIdAttempt);
+    void _deleteInvalidRows(int jobIdAttempt);
+    std::mutex _iJAMtx;
+    std::set<int> _invalidJobAttempts;
+    int _concurrentMergeCount{0};
+    bool _waitFlag;
+    std::condition_variable  _cv;
+
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
     int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.

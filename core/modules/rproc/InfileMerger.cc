@@ -55,6 +55,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "global/Bug.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -185,19 +186,24 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     bool ret = false;
     // Add columns to rows in virtFile.
-    int resultJobId = response->result.jobid() * MAX_JOB_ATTEMPTS;
-    int attemptCount = response->result.attemptcount(); //
-    if (attemptCount >= MAX_JOB_ATTEMPTS) {
-        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " Canceling query attemptCount too large at " << attemptCount);
-        return false;
+    int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
+
+    // &&& If resultJobId is in the invalid set, stop processing it here. What is a reasonable return value?
+    {
+        std::lock_guard<std::mutex> iJALock(_iJAMtx);
+        if (_invalidJobAttempts.find(resultJobId) != _invalidJobAttempts.end()) {
+            return true; /// &&& make sure this does NOT trigger another cancel. Return enum instead of bool?
+        }
     }
-    resultJobId += attemptCount;
+
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
+    _incrConcurrentMergeCount(); // Wait here if rows need to be deleted.
     ret = _applyMysql(infileStatement);
+    _decrConcurrentMergeCount();
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << " mergeDur=" << mergeDur.count());
@@ -284,9 +290,61 @@ bool InfileMerger::isFinished() const {
     return _isFinished;
 }
 
-////////////////////////////////////////////////////////////////////////
-// InfileMerger private
-////////////////////////////////////////////////////////////////////////
+
+void InfileMerger::_incrConcurrentMergeCount() {
+    std::unique_lock<std::mutex> uLock(_iJAMtx);
+    if (_waitFlag) {
+        /// wait for flag to clear
+        _cv.wait(uLock, [this](){ return !_waitFlag; });
+    }
+    ++_concurrentMergeCount;
+}
+
+
+void InfileMerger::_decrConcurrentMergeCount() {
+    std::unique_lock<std::mutex> uLock(_iJAMtx);
+    --_concurrentMergeCount;
+    if (_concurrentMergeCount < 0) {
+        throw Bug("_concurrentMergeCount went negative");
+    }
+    if (_concurrentMergeCount == 0) {
+        // notify any threads waiting that no merging is occurring
+        _cv.notify_all();
+    }
+}
+
+
+int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
+    int jobIdAttempt = jobId * MAX_JOB_ATTEMPTS;
+    if (attemptCount >= MAX_JOB_ATTEMPTS) {
+        std::string msg = _queryIdStr + " jobId=" + std::to_string(jobId)
+                + " Canceling query attemptCount too large at " + std::to_string(attemptCount);
+        LOGS(_log, LOG_LVL_ERROR, msg);
+        throw Bug(msg);
+    }
+    jobIdAttempt += attemptCount;
+    return jobIdAttempt;
+}
+
+
+void InfileMerger::scrubResults(int jobId, int attemptCount) {
+    int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
+    _holdMergingForRowDelete(jobIdAttempt);
+}
+
+
+void InfileMerger::_holdMergingForRowDelete(int jobIdAttempt) {
+    std::unique_lock<std::mutex> uLock(_iJAMtx);
+    _waitFlag = true;
+    _invalidJobAttempts.insert(jobIdAttempt);
+    if (_concurrentMergeCount > 0) {
+        _cv.wait(uLock, [this](){ return _concurrentMergeCount == 0;});
+    }
+    _deleteInvalidRows(jobIdAttempt);
+    _waitFlag = false;
+    _cv.notify_all();
+}
+
 
 /// Apply a SQL query, setting the appropriate error upon failure.
 bool InfileMerger::_applySqlLocal(std::string const& sql) {
