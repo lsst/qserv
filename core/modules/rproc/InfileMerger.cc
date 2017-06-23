@@ -295,6 +295,7 @@ bool InfileMerger::isFinished() const {
     return _isFinished;
 }
 
+<<<<<<< 71fac1fab984d1c20fbb0b85fd1c8cefed77ffd0
 
 bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
     std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
@@ -327,6 +328,8 @@ bool InfileMerger::scrubResults(int jobId, int attemptCount) {
     return _invalidJobAttemptMgr.holdMergingForRowDelete(jobIdAttempt);
 }
 
+=======
+>>>>>>> Changed to use jemalloc.
 
 /// Apply a SQL query, setting the appropriate error upon failure.
 bool InfileMerger::_applySqlLocal(std::string const& sql) {
