@@ -193,7 +193,7 @@ private:
     std::mutex _iJAMtx;
     std::set<int> _invalidJobAttempts;
     int _concurrentMergeCount{0};
-    bool _waitFlag;
+    bool _waitFlag{false};
     std::condition_variable  _cv;
 
 

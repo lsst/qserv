@@ -51,6 +51,8 @@
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.testQDisp");
+
 typedef util::Sequential<int> SequentialInt;
 typedef std::vector<qdisp::ResponseHandler::Ptr> RequesterVector;
 
@@ -251,6 +253,7 @@ void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(Executive) {
+    _log.setLevel(LOG_LVL_DEBUG);
     LOGS_DEBUG("Executive test 1");
     util::Flag<bool> done(false);
     // Modeled after ccontrol::UserQuery::submit()
