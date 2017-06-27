@@ -93,6 +93,29 @@ public:
     std::shared_ptr<query::SelectStmt> mergeStmt;
 };
 
+
+/// This class is used to remove invalid rows from cancelled job attempts.
+class InvalidJobAttemptMgr {
+public:
+    InvalidJobAttemptMgr() {};
+    void setDeleteFunc(std::function<bool(int)> func) {_deleteFunc = func; }
+    void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
+
+    void decrConcurrentMergeCount();
+    void incrConcurrentMergeCount();
+    bool holdMergingForRowDelete(int jobIdAttempt);
+
+    bool isJobAttemptInvalid(int jobIdAttempt);
+private:
+    std::mutex _iJAMtx;
+    std::set<int> _invalidJobAttempts;
+    int _concurrentMergeCount{0};
+    bool _waitFlag{false};
+    std::condition_variable  _cv;
+    std::function<bool(int)> _deleteFunc;
+    std::function<bool(void)> _tableExistsFunc;
+};
+
 /// InfileMerger is a row-based merger that imports rows from result messages
 /// and inserts them into a MySQL table, as specified during construction by
 /// InfileMergerConfig.
@@ -185,16 +208,8 @@ private:
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
-    /// For use in removing invalid rows from cancelled job attempts. &&& move to own class ???
-    void _decrConcurrentMergeCount();
-    void _incrConcurrentMergeCount();
-    bool _holdMergingForRowDelete(int jobIdAttempt);
+    InvalidJobAttemptMgr _invalidJobAttemptMgr;
     bool _deleteInvalidRows(int jobIdAttempt);
-    std::mutex _iJAMtx;
-    std::set<int> _invalidJobAttempts;
-    int _concurrentMergeCount{0};
-    bool _waitFlag{false};
-    std::condition_variable  _cv;
 
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
