@@ -32,6 +32,8 @@
 #include <sstream>
 #include <string>
 
+//#include <jemalloc/jemalloc.h> &&&
+
 // Third-party headers
 
 // LSST headers
@@ -124,6 +126,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
             poolQueue->queCmd(cmdSum);
         }
         LOGS_DEBUG("stopping all threads in pool");
+        //mallctl("prof.dump", NULL, NULL, NULL, 0); &&&
         pool->endAll(); // These are added to end of queue, everything on queue should complete.
         pool->waitForResize(0);
         BOOST_CHECK(total == poolSum.total);
