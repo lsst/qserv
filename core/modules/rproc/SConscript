@@ -2,4 +2,4 @@
 Import('env')
 Import('standardModule')
 
-standardModule(env, test_libs="protobuf")
+standardModule(env, test_libs="protobuf log4cxx")

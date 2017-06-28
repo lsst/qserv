@@ -440,7 +440,6 @@ bool InfileMerger::_verifySession(int sessionId) {
 /// supplied Protobufs message
 bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
     // Create table, using schema
-    LOGS(_log, LOG_LVL_DEBUG, "&&& locking _createTableMutex");
     std::lock_guard<std::mutex> lock(_createTableMutex);
     if (_needCreateTable) {
         // create schema
@@ -524,24 +523,18 @@ void InfileMerger::_fixupTargetName() {
 
 
 void InvalidJobAttemptMgr::incrConcurrentMergeCount() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& locking _iJAMtx _waitFlag=" << _waitFlag);
     std::unique_lock<std::mutex> uLock(_iJAMtx);
     if (_waitFlag) {
         /// wait for flag to clear
-        LOGS(_log, LOG_LVL_DEBUG, "&&& waiting _iJAMtx");
         _cv.wait(uLock, [this](){ return !_waitFlag; });
-        LOGS(_log, LOG_LVL_DEBUG, "&&& wait re-lock _iJAMtx");
     }
     ++_concurrentMergeCount;
-    LOGS(_log, LOG_LVL_DEBUG, "&&& unlocking _iJAMtx _concurrentMergeCount=" << _concurrentMergeCount);
 }
 
 
 void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
-    LOGS(_log, LOG_LVL_DEBUG, "&&& locking _iJAMtx");
     std::lock_guard<std::mutex> uLock(_iJAMtx);
     --_concurrentMergeCount;
-    LOGS(_log, LOG_LVL_DEBUG, "&&& unlocking _iJAMtx _concurrentMergeCount=" << _concurrentMergeCount);
     assert(_concurrentMergeCount >= 0);
     if (_concurrentMergeCount == 0) {
         // Notify any threads waiting that no merging is occurring
@@ -553,13 +546,10 @@ void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
 bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
     auto cleanup = [this](){
         _waitFlag = false;
-        LOGS(_log, LOG_LVL_DEBUG, "&&& waitFlag set false");
         _cv.notify_all();
     };
 
-    LOGS(_log, LOG_LVL_DEBUG, "&&& locking _iJAMtx");
     std::unique_lock<std::mutex> lockJA(_iJAMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "&&& waitFlag set true");
     _waitFlag = true;
     _invalidJobAttempts.insert(jobIdAttempt);
     lockJA.unlock();
@@ -570,13 +560,9 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
         cleanup();
         return true;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& locking _iJAMtx");
     lockJA.lock();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& _concurrentMergeCount=" << _concurrentMergeCount);
     if (_concurrentMergeCount > 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& wait _iJAMtx");
         _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
-        LOGS(_log, LOG_LVL_DEBUG, "&&& wait re-lock _iJAMtx");
     }
     bool res = _deleteFunc(jobIdAttempt);
     // Table scrubbed, continue merging results.
