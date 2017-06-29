@@ -60,8 +60,7 @@ namespace qdisp {
 QueryRequest::QueryRequest( XrdSsiSession* session, JobQuery::Ptr const& jobQuery) :
   _session(session), _jobQuery(jobQuery),
   _jobIdStr(jobQuery->getIdStr()) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest with payload:"
-         << _jobQuery->getDescription()->payload().size());
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
     _largeResultMgr = _jobQuery->getLargeResultMgr();
 }
 

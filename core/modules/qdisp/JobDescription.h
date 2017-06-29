@@ -75,7 +75,7 @@ public:
     void buildPayload(); ///< Must be run after construction to avoid problems with unit tests.
     int id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
-    std::string const& payload() const  { return _payloads.at(_attemptCount); }
+    std::string const& payload()  { return _payloads[_attemptCount]; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
 

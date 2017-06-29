@@ -197,18 +197,16 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     bool ret = false;
     // Add columns to rows in virtFile.
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
-
-    // If resultJobId is in the invalid set, stop processing it.
-    if (_invalidJobAttemptMgr.isJobAttemptInvalid(resultJobId)) {
-        return true; /// Make sure this does NOT trigger another cancel. Return enum instead of bool?
-    }
-
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
-    _invalidJobAttemptMgr.incrConcurrentMergeCount(); // It will wait here if rows need to be deleted.
+    // If the job attempt is invalid, exit without adding rows.
+    // It will wait here if rows need to be deleted.
+    if (_invalidJobAttemptMgr.incrConcurrentMergeCount(resultJobId)) {
+        return true;
+    }
     ret = _applyMysql(infileStatement);
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
     auto end = std::chrono::system_clock::now();
@@ -522,13 +520,27 @@ void InfileMerger::_fixupTargetName() {
 }
 
 
-void InvalidJobAttemptMgr::incrConcurrentMergeCount() {
+bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
     std::unique_lock<std::mutex> uLock(_iJAMtx);
+    if (_isJobAttemptInvalid(jobIdAttempt)) {
+        LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " invalid, not merging");
+        return true;
+    }
     if (_waitFlag) {
         /// wait for flag to clear
         _cv.wait(uLock, [this](){ return !_waitFlag; });
+        // Since wait lets the mutex go, this must be checked again.
+        if (_isJobAttemptInvalid(jobIdAttempt)) {
+            LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " invalid after wait, not merging");
+            return true;
+        }
     }
+    _jobIdAttemptsHaveRows.insert(jobIdAttempt);
     ++_concurrentMergeCount;
+    // No rows can be deleted until after decrConcurrentMergeCount() is called, which
+    // should ensure that all rows added for this job attempt can be deleted by
+    // calls to holdMergingForRowDelete() if needed.
+    return false;
 }
 
 
@@ -537,7 +549,7 @@ void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
     --_concurrentMergeCount;
     assert(_concurrentMergeCount >= 0);
     if (_concurrentMergeCount == 0) {
-        // Notify any threads waiting that no merging is occurring
+        // Notify any threads waiting that no merging is occurring.
         _cv.notify_all();
     }
 }
@@ -551,19 +563,30 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
 
     std::unique_lock<std::mutex> lockJA(_iJAMtx);
     _waitFlag = true;
+    // Prevent rows belonging to jobIdAttempt from being added to the table.
     _invalidJobAttempts.insert(jobIdAttempt);
+
+    // If this jobAttempt hasn't had any rows added, no need to delete rows.
+    if (_jobIdAttemptsHaveRows.find(jobIdAttempt) == _jobIdAttemptsHaveRows.end()) {
+        LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " should not have any rows, not deleting.");
+        cleanup();
+        return true;
+    }
     lockJA.unlock();
     /// If the table hasn't been made yet, just return true, nothing to remove.
     /// Rows with jobIdAttempt should be prevented from joining the result table.
     if (!_tableExistsFunc()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Nothing to do as no table yet made for " << jobIdAttempt);
+        LOGS(_log, LOG_LVL_INFO, "Nothing to do as no table yet made for " << jobIdAttempt);
         cleanup();
         return true;
     }
+
     lockJA.lock();
     if (_concurrentMergeCount > 0) {
         _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
     }
+
+    LOGS(_log, LOG_LVL_INFO, "Deleting rows for " << jobIdAttempt);
     bool res = _deleteFunc(jobIdAttempt);
     // Table scrubbed, continue merging results.
     cleanup();
@@ -572,9 +595,16 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
 
 
 bool InvalidJobAttemptMgr::isJobAttemptInvalid(int jobIdAttempt) {
-    // Return true if jobIdAttempt is in the set.
+    // Return true if jobIdAttempt is in the invalid set.
     std::lock_guard<std::mutex> iJALock(_iJAMtx);
+    return _isJobAttemptInvalid(jobIdAttempt);
+}
+
+
+/// Precondition, must hold _iJAMtx.
+bool InvalidJobAttemptMgr::_isJobAttemptInvalid(int jobIdAttempt) {
     return _invalidJobAttempts.find(jobIdAttempt) != _invalidJobAttempts.end();
 }
+
 
 }}} // namespace lsst::qserv::rproc

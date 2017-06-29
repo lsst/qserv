@@ -101,10 +101,8 @@ bool JobQuery::runJob() {
         // To avoid a cancellation race condition, _queryResourcePtr = qr if and
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
-        bool success = executive->xrdSsiProvision(_queryResourcePtr, qr);
-        if (success) { // The only way xrdSsiProvision can fail is if the user query is cancelled.
-            return true;
-        }
+        // The only way xrdSsiProvision can fail is if the user query is cancelled.
+        if (executive->xrdSsiProvision(_queryResourcePtr, qr)) return true;
     }
 
     LOGS_WARN(getIdStr() << " JobQuery Failed to RunJob failed. cancelled=" << cancelled
