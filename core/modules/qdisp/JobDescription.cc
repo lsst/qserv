@@ -35,7 +35,9 @@
 // Qserv headers
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
+#include "qdisp/ResponseHandler.h"
 #include "qproc/TaskMsgFactory.h"
+
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
@@ -59,7 +61,10 @@ JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resou
 }
 
 
-bool JobDescription::incrAttemptCount() {
+bool JobDescription::incrAttemptCountScrubResults() {
+    if (_attemptCount >= 0) {
+        _respHandler->scrubResults(_jobId, _attemptCount);
+    }
     ++_attemptCount;
     if (_attemptCount > MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);

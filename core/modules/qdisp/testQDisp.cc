@@ -51,6 +51,8 @@
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.testQDisp");
+
 typedef util::Sequential<int> SequentialInt;
 typedef std::vector<qdisp::ResponseHandler::Ptr> RequesterVector;
 
@@ -127,30 +129,34 @@ public:
 class ResponseHandlerTest : public qdisp::ResponseHandler {
 public:
     ResponseHandlerTest() : _code(0), _finished(false), _processCancelCalled(false) {}
-    virtual std::vector<char>& nextBuffer() {
+    std::vector<char>& nextBuffer() override {
         return _vect;
     }
-    virtual bool flush(int bLen, bool& last, bool& largeResult) {
+    bool flush(int bLen, bool& last, bool& largeResult) override {
         return bLen == magic();
     }
-    virtual void errorFlush(std::string const& msg, int code) {
+    void errorFlush(std::string const& msg, int code) override {
         _msg = msg;
         _code = code;
     }
-    virtual bool finished() const {
+    bool finished() const override {
         return _finished;
     }
-    virtual bool reset() {
+    bool reset() override {
         return true;
     }
-    virtual qdisp::ResponseHandler::Error getError() const {
+    qdisp::ResponseHandler::Error getError() const override {
         return qdisp::ResponseHandler::Error(-1, "testQDisp Error");
     }
-    virtual std::ostream& print(std::ostream& os) const {
+    std::ostream& print(std::ostream& os) const override {
         return os;
     }
-    virtual void processCancel() {
+    void processCancel() override {
         _processCancelCalled = true;
+    }
+
+    bool scrubResults(int jobId, int attempt) override {
+        return true;
     }
 
     static int magic() {return 8;}
@@ -247,6 +253,7 @@ void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(Executive) {
+    _log.setLevel(LOG_LVL_DEBUG);
     LOGS_DEBUG("Executive test 1");
     util::Flag<bool> done(false);
     // Modeled after ccontrol::UserQuery::submit()

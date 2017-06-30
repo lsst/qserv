@@ -32,6 +32,7 @@
 // System headers
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 
 // Qserv headers
@@ -92,6 +93,51 @@ public:
     std::shared_ptr<query::SelectStmt> mergeStmt;
 };
 
+
+/// This class is used to remove invalid rows from cancelled job attempts.
+/// Removing the invalid rows from the result table can be very expensive,
+/// so steps are taken to only do it when rows are known to exist in the
+/// result table.
+///
+/// The rows can only be safely deleted from the result table when
+/// nothing is writing to the table. To minimize the time locking the mutex
+/// and allow multiple entities to write to the table concurrently, the
+/// number of task writing to the table is tracked with _concurrentMergeCount.
+/// Deletes are only to be allowed when _concurrentMergeCount is 0.
+class InvalidJobAttemptMgr {
+public:
+    InvalidJobAttemptMgr() {}
+    void setDeleteFunc(std::function<bool(int)> func) {_deleteFunc = func; }
+    void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
+
+    /// @return true if jobIdAttempt is invalid.
+    /// Wait if rows need to be deleted.
+    /// Then, add job-attempt to _jobIdAttemptsHaveRows and increment
+    /// _concurrentMergeCount to keep rows from being deleted before
+    /// decrConcurrentMergeCount is called.
+    bool incrConcurrentMergeCount(int jobIdAttempt);
+    void decrConcurrentMergeCount();
+
+
+    bool holdMergingForRowDelete(int jobIdAttempt);
+
+    /// @return true if jobIdAttempt is in the invalid set.
+    bool isJobAttemptInvalid(int jobIdAttempt);
+private:
+    /// Precondition: must hold _iJAMtx before calling.
+    /// @return true if jobIdAttempt is in the invalid set.
+    bool _isJobAttemptInvalid(int jobIdAttempt);
+
+    std::mutex _iJAMtx;
+    std::set<int> _invalidJobAttempts;
+    std::set<int> _jobIdAttemptsHaveRows;
+    int _concurrentMergeCount{0};
+    bool _waitFlag{false};
+    std::condition_variable  _cv;
+    std::function<bool(int)> _deleteFunc;
+    std::function<bool(void)> _tableExistsFunc;
+};
+
 /// InfileMerger is a row-based merger that imports rows from result messages
 /// and inserts them into a MySQL table, as specified during construction by
 /// InfileMergerConfig.
@@ -128,6 +174,9 @@ public:
     bool finalize();
     /// Check if the object has completed all processing.
     bool isFinished() const;
+
+    bool scrubResults(int jobId, int attempt);
+    int makeJobIdAttempt(int jobId, int attemptCount);
 
 private:
     bool _applyMysql(std::string const& query);
@@ -180,6 +229,10 @@ private:
     int _jobIdColNameAdj{0}; ///< Adjustment to make if _jobIdColName is not unique.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
+
+    InvalidJobAttemptMgr _invalidJobAttemptMgr;
+    bool _deleteInvalidRows(int jobIdAttempt);
+
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
     int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.

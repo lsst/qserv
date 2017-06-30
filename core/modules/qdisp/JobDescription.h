@@ -75,11 +75,14 @@ public:
     void buildPayload(); ///< Must be run after construction to avoid problems with unit tests.
     int id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
-    std::string const& payload() const  { return _payloads.at(_attemptCount); }
+    std::string const& payload()  { return _payloads[_attemptCount]; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
+
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
-    bool incrAttemptCount();
+    /// If the starting value of _attemptCount was greater than or equal to zero, that
+    /// attempt is scrubbed from the result table.
+    bool incrAttemptCountScrubResults();
     bool verifyPayload() const; ///< @return true if the payload is acceptable to protobufs.
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);

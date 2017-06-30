@@ -74,29 +74,32 @@ public:
     /// should be sized to the request size. The buffer will be filled
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
-    virtual std::vector<char>& nextBuffer() { return _buffer; }
+    std::vector<char>& nextBuffer() override { return _buffer; }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    virtual bool flush(int bLen, bool& last, bool& largeResult);
+    bool flush(int bLen, bool& last, bool& largeResult) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
-    virtual void errorFlush(std::string const& msg, int code);
+    void errorFlush(std::string const& msg, int code) override;
 
     /// @return true if the receiver has completed its duties.
-    virtual bool finished() const;
+    bool finished() const override;
 
-    virtual bool reset(); ///< Reset the state that a request can be retried.
+    bool reset() override; ///< Reset the state that a request can be retried.
 
     /// Print a string representation of the receiver to an ostream
-    virtual std::ostream& print(std::ostream& os) const;
+    std::ostream& print(std::ostream& os) const override;
 
     /// @return an error code and description
-    virtual Error getError() const {
+    Error getError() const override {
         std::lock_guard<std::mutex> lock(_errorMutex);
         return _error;
     }
+
+    /// Scrub the results from jobId-attempt from the result table.
+    bool scrubResults(int jobId, int attempt) override;
 
 private:
     void _initState();

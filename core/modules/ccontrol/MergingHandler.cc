@@ -198,6 +198,11 @@ bool MergingHandler::reset() {
     return true;
 }
 
+
+bool MergingHandler::scrubResults(int jobId, int attempt) {
+    return _infileMerger->scrubResults(jobId, attempt);
+}
+
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed="
               << (_flushed ? "true)" : "false)") ;

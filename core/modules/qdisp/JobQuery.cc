@@ -82,8 +82,8 @@ bool JobQuery::runJob() {
 
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        if (_jobDescription->getAttemptCount() <= _getMaxAttempts()) {
-            bool okCount = _jobDescription->incrAttemptCount();
+        if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
+            bool okCount = _jobDescription->incrAttemptCountScrubResults();
             if (!okCount) {
                 criticalErr("hit structural max of retries");
                 return false;
@@ -101,10 +101,8 @@ bool JobQuery::runJob() {
         // To avoid a cancellation race condition, _queryResourcePtr = qr if and
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
-        bool success = executive->xrdSsiProvision(_queryResourcePtr, qr);
-        if (success) {
-            return true;
-        }
+        // The only way xrdSsiProvision can fail is if the user query is cancelled.
+        if (executive->xrdSsiProvision(_queryResourcePtr, qr)) return true;
     }
 
     LOGS_WARN(getIdStr() << " JobQuery Failed to RunJob failed. cancelled=" << cancelled
