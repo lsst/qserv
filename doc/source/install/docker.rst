@@ -6,7 +6,12 @@ Qserv is also available as a Docker image (see https://www.docker.com/).
 
 .. note::
 
-   This procedure was tested with Docker 1.8.
+   Our continuous integration service https://travis-ci.org/lsst/qserv produces automatically
+   docker containers for each commit pushed to Github. Containers names are displayed on top of travis console.
+
+.. note::
+
+   This procedure was tested with Docker 1.13.
 
 .. _docker-github:
 
