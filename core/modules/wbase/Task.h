@@ -97,7 +97,7 @@ struct IdSet {
     friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
 private:
     std::set<std::string> _ids;
-    std::mutex mx;
+    mutable std::mutex mx;
 };
 
 /// class Task defines a query task to be done, containing a TaskMsg

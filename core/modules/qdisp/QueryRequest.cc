@@ -324,7 +324,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         _retried.store(true); // Do not retry
         _errorFinish();
         if (_holdState != NO_HOLD0) {
-            // Must call largeResultMgr->finishBlock to free the semaphore if it was locked.
+            // Must call largeResultMgr->finishBlock to free the semaphore since it was locked.
             callOnExit.setCallLargeResult();
         }
         return XrdSsiRequest::PRD_Normal;
