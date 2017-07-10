@@ -5,7 +5,8 @@ MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 USER root
 # Development and debugging tools
 RUN apt-get -y update && apt-get -y install byobu dnsutils \
-    gcore gdb git lsof net-tools pstack vim
+    gcore gdb git graphviz lsof \
+    net-tools vim
 
 USER qserv
 WORKDIR /home/qserv

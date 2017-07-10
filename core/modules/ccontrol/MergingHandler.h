@@ -74,7 +74,7 @@ public:
     /// should be sized to the request size. The buffer will be filled
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
-    std::vector<char>& nextBuffer() override { return _buffer; }
+    std::vector<char>& nextBuffer() override { return *_buffer; }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
@@ -111,7 +111,7 @@ private:
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
     std::string _tableName; ///< Target table name
-    std::vector<char> _buffer; ///< Raw response buffer, resized for each msg
+    std::shared_ptr<std::vector<char>> _buffer; ///< Raw response buffer, resized for each msg
     Error _error; ///< Error description
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
