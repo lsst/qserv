@@ -116,8 +116,6 @@ Czar::submitQuery(std::string const& query,
     std::string defaultDb = hintsConfigStore.get("db");
     LOGS(_log, LOG_LVL_INFO, "Default database is \"" << defaultDb <<"\"");
 
-
-
     // make message table name
     std::string userQueryId = std::to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
@@ -172,26 +170,8 @@ Czar::submitQuery(std::string const& query,
     std::thread finalThread(finalizer);
     finalThread.detach();
 
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        // first cleanup client query map from completed queries
-        for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
-            if (iter->second.expired()) {
-                iter = _clientToQuery.erase(iter);
-            } else {
-                ++ iter;
-            }
-        }
-
-        // remember query (weak pointer) in case we want to kill query
-        if (not clientId.empty() and threadId >= 0) {
-            ClientThreadId ctId(clientId, threadId);
-            _clientToQuery.insert(std::make_pair(ctId, uq));
-            LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " Remembering query: (" << clientId << ", "
-                 << threadId << ") (new map size: " << _clientToQuery.size() << ")");
-        }
-    }
+    // update/cleanup query map
+    _updateQueryHistory(clientId, threadId, uq);
 
     // return all info to caller
     if (not uq->getResultTableName().empty()) {
@@ -244,6 +224,32 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     }
 
     return std::string();
+}
+
+void
+Czar::_updateQueryHistory(std::string const& clientId,
+                          int threadId,
+                          ccontrol::UserQuery::Ptr const& uq) {
+
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    // first cleanup client query map from completed queries
+    for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
+        if (iter->second.expired()) {
+            iter = _clientToQuery.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+
+    // remember query (weak pointer) in case we want to kill query
+    if (not clientId.empty() and threadId >= 0) {
+        ClientThreadId ctId(clientId, threadId);
+        _clientToQuery.insert(std::make_pair(ctId, uq));
+        LOGS(_log, LOG_LVL_DEBUG, uq->getQueryIdString() << " Remembering query: ("
+             << clientId << ", " << threadId << ") (new map size: "
+             << _clientToQuery.size() << ")");
+    }
 }
 
 }}} // namespace lsst::qserv::czar

@@ -110,6 +110,11 @@ private:
     /// Private constructor for singleton.
     Czar(std::string const& configPath, std::string const& czarName);
 
+    /// Clean client-to-query map from expired entries, add new query
+    void _updateQueryHistory(std::string const& clientId,
+                             int threadId,
+                             ccontrol::UserQuery::Ptr const& uq);
+
     static Ptr _czar; ///< Pointer to single instance of the Czar.
 
     // combines client name (ID) and its thread ID into one unique ID
