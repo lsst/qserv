@@ -56,6 +56,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+
+std::atomic<long long int> MergeBuffer::_totalBytes{0};
+
 ////////////////////////////////////////////////////////////////////////
 // MergingHandler public
 ////////////////////////////////////////////////////////////////////////
@@ -86,23 +89,21 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
 }
 
 bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
-    if (_buffer == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "MergingHandler::flush _buffer == nullptr!");
-        return false;
-    }
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    if ((bLen < 0) || (bLen != (int)_buffer->size())) {
+    if ((bLen < 0) || (bLen != (int)_mBuf.getSize())) {
         if (_state != MsgState::RESULT_EXTRA) {
             LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected "
-                 << _buffer->size() << " got " << bLen);
+                 << _mBuf.getSize() << " got " << bLen);
             // Worker sent corrupted data, or there is some other error.
         }
     }
     switch(_state) {
     case MsgState::HEADER_SIZE_WAIT:
-        _response->headerSize = static_cast<unsigned char>((*_buffer)[0]);
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *_buffer)) {
+        //_response->headerSize = static_cast<unsigned char>((*_buffer)[0]); &&& del
+        _response->headerSize = static_cast<unsigned char>((*_mBuf.getBuffer())[0]);
+        // if (!proto::ProtoHeaderWrap::unwrap(_response, *_buffer)) { &&& del
+        if (!proto::ProtoHeaderWrap::unwrap(_response, *_mBuf.getBuffer())) {
             std::string s = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
             _setError(ccontrol::MSG_RESULT_DECODE, s);
             _state = MsgState::HEADER_ERR;
@@ -114,28 +115,28 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
 
         LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
              << "Resizing buffer to " <<  _response->protoHeader.size());
-        //_buffer.resize(_response->protoHeader.size()); &&&
-        _buffer.reset(new std::vector<char>(_response->protoHeader.size()));
+        //_buffer.resize(_response->protoHeader.size()); &&& del
+        _mBuf.resize(_response->protoHeader.size());
         largeResult = _response->protoHeader.largeresult();
         _state = MsgState::RESULT_WAIT;
         return true;
 
     case MsgState::RESULT_WAIT:
         if (!_verifyResult()) { return false; }
-        if (!_setResult()) { return false; }
-        _buffer.reset(new std::vector<char>(0)); // not needed after _response->result set.
+        if (!_setResult()) { return false; } // set _response->result
         largeResult = _response->result.largeresult();
-        LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _buffer "
-             << util::prettyCharList(*_buffer, 5));
+        LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf "
+             << util::prettyCharList(*_mBuf.getBuffer(), 5));
+        //_buffer.reset(new std::vector<char>(0)); // not needed after _response->result set. &&& del
+        _mBuf.zero(); // not needed after _response->result set.
         {
             bool msgContinues = _response->result.continues();
             // _buffer.resize(0); // Nothing further needed &&&
-            _buffer.reset(new std::vector<char>(0));
             _state = MsgState::RESULT_RECV;
             if (msgContinues) {
                 LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
-                _buffer->resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+                _mBuf.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
                 LOGS(_log, LOG_LVL_DEBUG, "Message ends, setting last=true");
                 last = true;
@@ -150,7 +151,8 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             return success;
         }
     case MsgState::RESULT_EXTRA:
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *_buffer)) {
+        //if (!proto::ProtoHeaderWrap::unwrap(_response, *_buffer)) { &&& del
+        if (!proto::ProtoHeaderWrap::unwrap(_response, *_mBuf.getBuffer())) {
             _setError(ccontrol::MSG_RESULT_DECODE,
                       std::string("Error decoding proto header for ") + getStateStr(_state));
             _state = MsgState::HEADER_ERR;
@@ -159,8 +161,8 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         largeResult = _response->protoHeader.largeresult();
         LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
              << _response->protoHeader.size() << " largeResult=" << largeResult);
-        //_buffer.resize(_response->protoHeader.size());
-        _buffer.reset(new std::vector<char>(_response->protoHeader.size()));
+        //_buffer.resize(_response->protoHeader.size()); &&& del
+        _mBuf.resize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
     case MsgState::RESULT_RECV:
@@ -220,7 +222,8 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
 ////////////////////////////////////////////////////////////////////////
 
 void MergingHandler::_initState() {
-    _buffer.reset(new std::vector<char>(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE));
+    //_buffer.reset(new std::vector<char>(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE)); &&&
+    _mBuf.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
     _state = MsgState::HEADER_SIZE_WAIT;
     _setError(0, "");
 }
@@ -256,7 +259,9 @@ void MergingHandler::_setError(int code, std::string const& msg) {
 
 bool MergingHandler::_setResult() {
     auto start = std::chrono::system_clock::now();
-    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((*_buffer)[0]), _buffer->size())) {
+    //if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((*_buffer)[0]), _buffer->size())) { &&&
+    auto buff = _mBuf.getBuffer();
+    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((*buff)[0]), _mBuf.getSize())) {
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
@@ -267,12 +272,30 @@ bool MergingHandler::_setResult() {
     return true;
 }
 bool MergingHandler::_verifyResult() {
-    if (_response->protoHeader.md5() != util::StringHash::getMd5(_buffer->data(), _buffer->size())) {
+    auto buff = _mBuf.getBuffer();
+    //if (_response->protoHeader.md5() != util::StringHash::getMd5(_buffer->data(), _buffer->size())) { &&&
+    if (_response->protoHeader.md5() != util::StringHash::getMd5(buff->data(), _mBuf.getSize())) {
         _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;
         return false;
     }
     return true;
 }
+
+
+void MergeBuffer::zero() {
+     if (_buff != nullptr) {
+         _totalBytes -= _buff->size();
+         LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);
+     }
+     _buff.reset(new bufType(0));
+ }
+
+
+ void MergeBuffer::resize(int sz) {
+     _totalBytes += sz - _buff->size();
+     _buff->resize(sz);
+     LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);
+ }
 
 }}} // lsst::qserv::ccontrol

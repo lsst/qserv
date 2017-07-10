@@ -24,6 +24,7 @@
 #define LSST_QSERV_CCONTROL_MERGINGHANDLER_H
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -44,6 +45,30 @@ namespace rproc {
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+
+
+class MergeBuffer {
+public:
+    using bufType = std::vector<char>;
+    MergeBuffer() { zero(); }
+    virtual ~MergeBuffer() { if (_buff != nullptr) _totalBytes -= _buff->size(); }
+
+    std::shared_ptr<bufType> getBuffer() {
+        if (_buff == nullptr) zero();
+        return _buff;
+    }
+    size_t getSize() {
+        if (_buff == nullptr) return 0;
+        return _buff->size();
+    }
+    void zero();
+    void resize(int sz);
+
+private:
+    std::shared_ptr<bufType> _buff;
+    static std::atomic<long long int> _totalBytes;
+};
+
 
 /// MergingHandler is an implementation of a ResponseHandler that implements
 /// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
@@ -74,7 +99,8 @@ public:
     /// should be sized to the request size. The buffer will be filled
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
-    std::vector<char>& nextBuffer() override { return *_buffer; }
+    // std::vector<char>& nextBuffer() override { return *_buffer; } &&&
+    std::vector<char>& nextBuffer() override { return *_mBuf.getBuffer(); }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
@@ -101,6 +127,7 @@ public:
     /// Scrub the results from jobId-attempt from the result table.
     bool scrubResults(int jobId, int attempt) override;
 
+    //static std::atomic<int> bufferTotal{0}; &&& delete
 private:
     void _initState();
     bool _merge();
@@ -111,7 +138,8 @@ private:
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
     std::string _tableName; ///< Target table name
-    std::shared_ptr<std::vector<char>> _buffer; ///< Raw response buffer, resized for each msg
+    // std::shared_ptr<std::vector<char>> _buffer; ///< Raw response buffer, resized for each msg &&& delete
+    MergeBuffer _mBuf;
     Error _error; ///< Error description
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
