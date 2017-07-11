@@ -46,34 +46,35 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-
+/// A class to delay creating the buffer until it is requested
+/// by xrootd SSI. The size of the buffer that will be needed is
+/// set using setTargetSize(int sz), and the buffer of that size is
+/// created by calling resizeToTargetSize(). When a buffer is no longer
+/// needed, zero() should be called to free the memory.
 class MergeBuffer {
 public:
     using bufType = std::vector<char>;
-    MergeBuffer() { zero(); }
+    MergeBuffer() {
+        _id = "MBI=" + std::to_string(_sequence++);
+        zero();
+    }
     virtual ~MergeBuffer();
-    //virtual ~MergeBuffer() { if (_buff != nullptr) _totalBytes -= _buff->size(); } &&&
 
-    std::shared_ptr<bufType> getBuffer() {
-        if (_buff == nullptr) zero();
-        return _buff;
-    }
-    size_t getSize() {
-        if (_buff == nullptr) return 0;
-        return _buff->size();
-    }
-    void setTargetSize(int sz) { _targetSize = sz; }
-    void resizeToTargetSize() {
-        _resize(_targetSize);
-    }
-    void zero();
+    std::shared_ptr<bufType> getBuffer();
+    size_t getSize();
+    void setTargetSize(int sz);
+    void resizeToTargetSize();
+    void zero(); ///< Set buffer size and _targetSize to zero.
 
 
 private:
     void _resize(int sz);
+
+    std::string _id;
     std::shared_ptr<bufType> _buff;
     int _targetSize{0};
-    static std::atomic<long long int> _totalBytes;
+    static std::atomic<long long int> _totalBytes; ///< number of bytes held by all instances.
+    static std::atomic<int> _sequence;
 };
 
 

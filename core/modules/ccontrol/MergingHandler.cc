@@ -58,6 +58,7 @@ namespace qserv {
 namespace ccontrol {
 
 std::atomic<long long int> MergeBuffer::_totalBytes{0};
+std::atomic<int> MergeBuffer::_sequence{0};
 
 ////////////////////////////////////////////////////////////////////////
 // MergingHandler public
@@ -117,6 +118,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
              << "Resizing buffer to " <<  _response->protoHeader.size());
         //_buffer.resize(_response->protoHeader.size()); &&& del
         //_mBuf.resize(_response->protoHeader.size());
+        _mBuf.zero();
         _mBuf.setTargetSize(_response->protoHeader.size());
         largeResult = _response->protoHeader.largeresult();
         _state = MsgState::RESULT_WAIT;
@@ -163,6 +165,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
              << _response->protoHeader.size() << " largeResult=" << largeResult);
         //_buffer.resize(_response->protoHeader.size()); &&& del
+        _mBuf.zero();
         _mBuf.setTargetSize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
@@ -292,19 +295,52 @@ MergeBuffer::~MergeBuffer() {
 }
 
 
+std::shared_ptr<MergeBuffer::bufType> MergeBuffer::getBuffer() {
+    if (_buff == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, _id << " &&& getBuffer making buffer");
+        zero();
+    }
+    LOGS(_log, LOG_LVL_DEBUG, _id << " &&& getBuffer size=" << _buff->size());
+    return _buff;
+}
+
+
+size_t MergeBuffer::getSize() {
+    if (_buff == nullptr) return 0;
+    return _buff->size();
+}
+
+
+void MergeBuffer::setTargetSize(int sz) {
+    _targetSize = sz;
+    LOGS(_log, LOG_LVL_DEBUG, _id << "&&& targetSize=" << sz);
+}
+
+
+void MergeBuffer::resizeToTargetSize() {
+    LOGS(_log, LOG_LVL_DEBUG, _id << " &&& resizeToTargetSize targetSize=" << _targetSize << " _totalBytes=" << _totalBytes);
+    _resize(_targetSize);
+}
+
+
 void MergeBuffer::zero() {
-     if (_buff != nullptr) {
-         _totalBytes -= _buff->size();
-         LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);
-     }
-     _buff.reset(new bufType(0));
+    setTargetSize(0);
+    if (_buff != nullptr && _buff->size() != 0) {
+        _totalBytes -= _buff->size();
+        LOGS(_log, LOG_LVL_DEBUG, _id << " &&& _totalBytes=" << _totalBytes);
+    }
+    _buff.reset(new bufType(0));
  }
 
 
  void MergeBuffer::_resize(int sz) {
-     _totalBytes += sz - _buff->size();
-     _buff->resize(sz);
-     LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);
+     if (sz != (int)_buff->size()) {
+         _totalBytes += sz - _buff->size();
+         _buff->resize(sz);
+     } else if (sz != 0) {
+         LOGS(_log, LOG_LVL_ERROR, _id << " &&& ERROR _resize called twice _totalBytes=" << _totalBytes);
+     }
+     LOGS(_log, LOG_LVL_DEBUG, _id << " &&& _totalBytes=" << _totalBytes);
  }
 
 }}} // lsst::qserv::ccontrol
