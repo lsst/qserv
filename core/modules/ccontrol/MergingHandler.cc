@@ -116,7 +116,8 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
              << "Resizing buffer to " <<  _response->protoHeader.size());
         //_buffer.resize(_response->protoHeader.size()); &&& del
-        _mBuf.resize(_response->protoHeader.size());
+        //_mBuf.resize(_response->protoHeader.size());
+        _mBuf.setTargetSize(_response->protoHeader.size());
         largeResult = _response->protoHeader.largeresult();
         _state = MsgState::RESULT_WAIT;
         return true;
@@ -136,7 +137,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             if (msgContinues) {
                 LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
-                _mBuf.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+                _mBuf.setTargetSize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
                 LOGS(_log, LOG_LVL_DEBUG, "Message ends, setting last=true");
                 last = true;
@@ -162,7 +163,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
              << _response->protoHeader.size() << " largeResult=" << largeResult);
         //_buffer.resize(_response->protoHeader.size()); &&& del
-        _mBuf.resize(_response->protoHeader.size());
+        _mBuf.setTargetSize(_response->protoHeader.size());
         _state = MsgState::RESULT_WAIT;
         return true;
     case MsgState::RESULT_RECV:
@@ -223,7 +224,7 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
 
 void MergingHandler::_initState() {
     //_buffer.reset(new std::vector<char>(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE)); &&&
-    _mBuf.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+    _mBuf.setTargetSize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
     _state = MsgState::HEADER_SIZE_WAIT;
     _setError(0, "");
 }
@@ -283,6 +284,14 @@ bool MergingHandler::_verifyResult() {
 }
 
 
+MergeBuffer::~MergeBuffer() {
+    if (_buff != nullptr) {
+        _totalBytes -= _buff->size();
+        LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);
+    }
+}
+
+
 void MergeBuffer::zero() {
      if (_buff != nullptr) {
          _totalBytes -= _buff->size();
@@ -292,7 +301,7 @@ void MergeBuffer::zero() {
  }
 
 
- void MergeBuffer::resize(int sz) {
+ void MergeBuffer::_resize(int sz) {
      _totalBytes += sz - _buff->size();
      _buff->resize(sz);
      LOGS(_log, LOG_LVL_DEBUG, "&&& _totalBytes=" << _totalBytes);

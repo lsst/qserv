@@ -51,7 +51,8 @@ class MergeBuffer {
 public:
     using bufType = std::vector<char>;
     MergeBuffer() { zero(); }
-    virtual ~MergeBuffer() { if (_buff != nullptr) _totalBytes -= _buff->size(); }
+    virtual ~MergeBuffer();
+    //virtual ~MergeBuffer() { if (_buff != nullptr) _totalBytes -= _buff->size(); } &&&
 
     std::shared_ptr<bufType> getBuffer() {
         if (_buff == nullptr) zero();
@@ -61,11 +62,17 @@ public:
         if (_buff == nullptr) return 0;
         return _buff->size();
     }
+    void setTargetSize(int sz) { _targetSize = sz; }
+    void resizeToTargetSize() {
+        _resize(_targetSize);
+    }
     void zero();
-    void resize(int sz);
+
 
 private:
+    void _resize(int sz);
     std::shared_ptr<bufType> _buff;
+    int _targetSize{0};
     static std::atomic<long long int> _totalBytes;
 };
 
@@ -100,7 +107,10 @@ public:
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
     // std::vector<char>& nextBuffer() override { return *_buffer; } &&&
-    std::vector<char>& nextBuffer() override { return *_mBuf.getBuffer(); }
+    std::vector<char>& nextBuffer() override {
+        _mBuf.resizeToTargetSize();
+        return *_mBuf.getBuffer();
+    }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
