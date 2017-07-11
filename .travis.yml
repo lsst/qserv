@@ -17,16 +17,35 @@ before_install:
   # While running 3_build-git-image.sh [option] <local-path>, <local-path> has to contain a git repository
   # whose current commit is a branch HEAD
   - git checkout -b travis
+  - export IMAGE="qserv/qserv:$(git rev-parse --short HEAD)"
+  - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
+  - export BRANCH_IMAGE="qserv/qserv:$BRANCH"
 
 install:
   # Retrieve container with Qserv dependencies
   - docker pull qserv/qserv:dev
 
 script:
-  - ./admin/tools/docker/3_build-git-image.sh -L -T travis "$PWD"
-  - ./admin/tools/docker/4_build-configured-images.sh -L -i travis
+  - echo "Building and testing $IMAGE (alias $BRANCH_IMAGE) and related master and worker images"
+  - ./admin/tools/docker/3_build-git-image.sh -L -T "$IMAGE" "$PWD"
+  - ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE"
   - ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
 
 notifications:
   slack:
     secure: eRFF9b5XJbZcyfxMojWTOB4bwWUVJf0CRaOYnCsV7cMCW5BwrDRwC+8tpZyEbetyici7XdFN33kW4rRp9UFfOCIsLS5fMJEKgjvgD0ybucThPsBqLE2VDzDzA6dUji7CATCPUtvoJEymM41pnvDZbXmtalipYzZJMPNXHyE8Yy0=
+
+after_success:
+  - echo "Push $IMAGE and associated master, worker images to Docker Hub"
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+  - docker push "$IMAGE"
+  - docker push "${IMAGE}_master"
+  - docker push "${IMAGE}_worker"
+  - echo "Add tag $BRANCH to images above and push to Docker Hub"
+  - docker tag "$IMAGE" "$BRANCH_IMAGE"
+  - docker tag "${IMAGE}_master" "${BRANCH_IMAGE}_master"
+  - docker tag "${IMAGE}_worker" "${BRANCH_IMAGE}_worker"
+  - docker push "qserv/qserv:$BRANCH"
+  - docker push "${BRANCH_IMAGE}_master"
+  - docker push "${BRANCH_IMAGE}_worker"
+

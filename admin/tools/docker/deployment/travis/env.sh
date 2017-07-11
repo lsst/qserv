@@ -1,9 +1,7 @@
 # Rename this file to env.sh and edit variables
 # Configuration file sourced by other scripts from the directory
 
-# VERSION can be a git ticket branch but with _ instead of /
-# example: u_fjammes_DM-4295
-VERSION=travis
+IMAGE=$IMAGE
 
 NB_WORKERS=3
 
@@ -17,5 +15,5 @@ do
 done
 
 # Set images names
-MASTER_IMAGE="${VERSION}_master"
-WORKER_IMAGE="${VERSION}_worker"
+MASTER_IMAGE="${IMAGE}_master"
+WORKER_IMAGE="${IMAGE}_worker"
