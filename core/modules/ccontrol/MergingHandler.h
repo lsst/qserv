@@ -62,9 +62,10 @@ public:
 
     std::shared_ptr<bufType> getBuffer();
     size_t getSize();
+    size_t getTargetSize() { return _targetSize; }
     void setTargetSize(int sz);
     void resizeToTargetSize();
-    void zero(); ///< Set buffer size and _targetSize to zero.
+    void zero(); ///< Set buffer size and _targetSize to zero, ensure memory is freed.
 
 
 private:
@@ -107,10 +108,13 @@ public:
     /// should be sized to the request size. The buffer will be filled
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
-    // std::vector<char>& nextBuffer() override { return *_buffer; } &&&
     std::vector<char>& nextBuffer() override {
         _mBuf.resizeToTargetSize();
         return *_mBuf.getBuffer();
+    }
+
+    size_t nextBufferSize() override {
+        return _mBuf.getTargetSize();
     }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
@@ -138,7 +142,6 @@ public:
     /// Scrub the results from jobId-attempt from the result table.
     bool scrubResults(int jobId, int attempt) override;
 
-    //static std::atomic<int> bufferTotal{0}; &&& delete
 private:
     void _initState();
     bool _merge();
@@ -149,7 +152,6 @@ private:
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
     std::string _tableName; ///< Target table name
-    // std::shared_ptr<std::vector<char>> _buffer; ///< Raw response buffer, resized for each msg &&& delete
     MergeBuffer _mBuf;
     Error _error; ///< Error description
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates

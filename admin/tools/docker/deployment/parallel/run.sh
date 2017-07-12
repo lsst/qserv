@@ -63,6 +63,11 @@ else
     echo "No existing ${CONTAINER_NAME} container on any nodes"
 fi
 
+USE_JEMALLOC='/qserv/stack/stack/current/Linux64/jemalloc/master-g708711ce34/lib/libjemalloc.so'
+# JEMALLOC_DEBUG='prof:true,lg_prof_interval:30,lg_prof_sample:17,prof_prefix:/qserv/run/var/log/jeprof'
+JEMALLOC_DEBUG=
+
+
 echo
 echo "Launch Qserv containers on master"
 echo "================================="
@@ -70,6 +75,8 @@ echo
 shmux -Bm -c "
 docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
+    -e "LD_PRELOAD=$USE_JEMALLOC" \
+    -e "MALLOC_CONF=$JEMALLOC_DEBUG" \
     $CUSTOM_VOLUME_OPT \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \
@@ -86,6 +93,8 @@ echo "================================="
 echo
 shmux -Bm -S all -c "docker run --detach=true \
     -e "QSERV_MASTER=$MASTER" \
+    -e "LD_PRELOAD=$USE_JEMALLOC" \
+    -e "MALLOC_CONF=$JEMALLOC_DEBUG" \
     $CUSTOM_VOLUME_OPT \
     $DATA_VOLUME_OPT \
     $LOG_VOLUME_OPT \

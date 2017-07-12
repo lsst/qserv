@@ -59,6 +59,9 @@ public:
     /// bytes) or there is an error.
     virtual std::vector<char>& nextBuffer() = 0;
 
+    /// @return the size of the nextBuffer() without allocating the memory for it.
+    virtual size_t nextBufferSize() = 0;
+
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
