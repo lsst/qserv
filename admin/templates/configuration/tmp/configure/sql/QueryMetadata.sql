@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `submitted` TIMESTAMP NOT NULL DEFAULT  CURRENT_TIMESTAMP COMMENT 'Time when query was submitted (received from client)',
   `completed` TIMESTAMP NULL COMMENT 'Time when query processing is completed - either the results were collected into czar-side result table or failure is detected.',
   `returned` TIMESTAMP NULL COMMENT 'Time when result is sent back to user. NULL if not completed yet.',
+  `messageTable` CHAR(63) NULL COMMENT 'Name of the message table for the ASYNC query',
+  `resultLoc` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
   PRIMARY KEY (`queryId`),
   INDEX `QInfo_czarId_index` (`czarId` ASC),
   CONSTRAINT `QInfo_cid`
@@ -72,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `QTable` (
     ON DELETE CASCADE
     ON UPDATE CASCADE)
 ENGINE = InnoDB
-COMMENT = 'Table containg table names used by query.';
+COMMENT = 'Table containing table names used by query.';
 
 
 -- -----------------------------------------------------
@@ -95,7 +97,7 @@ COMMENT = 'Mapping of queries to workers';
 
 -- -----------------------------------------------------
 -- View `ShowProcessList`
--- This shows abbreaviated Qmeta info suitable for "SHOW PROCESSLIST"
+-- This shows abbreviated Qmeta info suitable for "SHOW PROCESSLIST"
 -- -----------------------------------------------------
 CREATE OR REPLACE
   SQL SECURITY INVOKER
@@ -113,7 +115,8 @@ CREATE OR REPLACE
     `QInfo`.`submitted` `Submitted`,
     `QInfo`.`completed` `Completed`,
     `QInfo`.`returned` `Returned`,
-    `QInfo`.`czarId` `CzarId`
+    `QInfo`.`czarId` `CzarId`,
+    `QInfo`.`resultLoc` `ResultLoc`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
 
@@ -137,10 +140,27 @@ CREATE OR REPLACE
     `QInfo`.`completed` `COMPLETED`,
     `QInfo`.`returned` `RETURNED`,
     `QInfo`.`czarId` `CZARID`,
+    `QInfo`.`resultLoc` `RESULTLOC`,
     NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
         LEFT OUTER JOIN `QWorker` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
+
+-- -----------------------------------------------------
+-- Table `QMetadata`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QMetadata` (
+  `metakey` CHAR(64) NOT NULL COMMENT 'Key string',
+  `value` TEXT NULL COMMENT 'Key string',
+  PRIMARY KEY (`metakey`))
+ENGINE = InnoDB
+COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
+
+-- Update version on every schema change.
+-- Version 0 corresponds to initial QMeta release and it had no
+-- QMetadata table at all.
+-- Version 1 introduced QMetadata table and altered schema for QInfo table
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '1');
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
