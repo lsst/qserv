@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `completed` TIMESTAMP NULL COMMENT 'Time when query processing is completed - either the results were collected into czar-side result table or failure is detected.',
   `returned` TIMESTAMP NULL COMMENT 'Time when result is sent back to user. NULL if not completed yet.',
   `messageTable` CHAR(63) NULL COMMENT 'Name of the message table for the ASYNC query',
-  `resultLoc` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
+  `resultLocation` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
   PRIMARY KEY (`queryId`),
   INDEX `QInfo_czarId_index` (`czarId` ASC),
   CONSTRAINT `QInfo_cid`
@@ -116,7 +116,7 @@ CREATE OR REPLACE
     `QInfo`.`completed` `Completed`,
     `QInfo`.`returned` `Returned`,
     `QInfo`.`czarId` `CzarId`,
-    `QInfo`.`resultLoc` `ResultLoc`
+    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `ResultLocation`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
 
@@ -140,7 +140,7 @@ CREATE OR REPLACE
     `QInfo`.`completed` `COMPLETED`,
     `QInfo`.`returned` `RETURNED`,
     `QInfo`.`czarId` `CZARID`,
-    `QInfo`.`resultLoc` `RESULTLOC`,
+    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `RESULTLOCATION`,
     NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
         LEFT OUTER JOIN `QWorker` USING (`queryId`)

@@ -102,7 +102,12 @@ UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
                                qdisp::LargeResultMgr::Ptr const& largeResultMgr,
-                               std::string const& userQueryId) {
+                               std::string const& userQueryId,
+                               std::string const& msgTableName) {
+
+    // result location could potentially be specified by SUBMIT command, for now
+    // we keep it empty which means that UserQuerySelect uses default result table.
+    std::string resultLocation;
 
     // First check for SUBMIT and strip it
     std::string query = aQuery;
@@ -188,7 +193,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                                                     _impl->qMetaCzarId, largeResultMgr,
                                                     errorExtra, async);
         if (sessionValid) {
-            uq->qMetaRegister();
+            uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();
         }
         return uq;

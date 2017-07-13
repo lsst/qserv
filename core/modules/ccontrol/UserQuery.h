@@ -80,17 +80,31 @@ public:
     // Delegate objects
     virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() = 0;
 
+    /// This method should disappear when we start supporting results
+    /// in locations other than MySQL tables. We'll switch to getResultLocation()
+    /// at that point.
     /// @return Name of the result table for this query, can be empty
-    virtual std::string getResultTableName() = 0;
+    virtual std::string getResultTableName() const { return std::string(); }
+
+    /// Result location could be something like "table:table_name" or
+    /// "file:/path/to/file.csv".
+    /// @return Result location for this query, can be empty
+    virtual std::string getResultLocation() const { return std::string(); }
 
     /// @return ORDER BY part of SELECT statement to be executed by proxy
-    virtual std::string getProxyOrderBy() = 0;
+    virtual std::string getProxyOrderBy() const { return std::string(); }
+
+    /// @return this query's QueryId.
+    virtual QueryId getQueryId() const { return QueryId(0); }
 
     /// @return this query's QueryId string. Many query types do not have valid Id numbers.
     virtual std::string getQueryIdString() const {
         // return a string indicating this query has no QueryId.
         return QueryIdHelper::makeIdStr(0, true);
     }
+
+    /// @return True if query is async query
+    virtual bool isAsync() const { return false; }
 };
 
 }}} // namespace lsst::qserv:ccontrol

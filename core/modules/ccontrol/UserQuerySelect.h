@@ -92,7 +92,12 @@ public:
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
 
-    void qMetaRegister();
+    /**
+     *  @param resultLocation:  Result location, if empty use result table with unique
+     *                          name generated from query ID.
+     *  @param msgTableName:  Message table name.
+     */
+    void qMetaRegister(std::string const& resultLocation, std::string const& msgTableName);
 
     // Accessors
 
@@ -118,12 +123,21 @@ public:
         return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
-    virtual std::string getResultTableName() override { return _resultTable; }
+    virtual std::string getResultTableName() const override { return _resultTable; }
+
+    /// @return Result location for this query, can be empty
+    virtual std::string getResultLocation() const override { return _resultLoc; }
 
     /// @return ORDER BY part of SELECT statement to be executed by proxy
-    virtual std::string getProxyOrderBy() override;
+    virtual std::string getProxyOrderBy() const override;
 
     virtual std::string getQueryIdString() const override;
+
+    /// @return this query's QueryId.
+    virtual QueryId getQueryId() const override { return _qMetaQueryId; }
+
+    /// @return True if query is async query
+    virtual bool isAsync() const override { return _async; }
 
     void setupChunking();
 
@@ -151,6 +165,7 @@ private:
     std::mutex _killMutex;
     std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
+    std::string _resultLoc;     ///< Result location
     bool _async;                ///< true for async query
 };
 

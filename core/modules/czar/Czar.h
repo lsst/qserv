@@ -115,6 +115,11 @@ private:
                              int threadId,
                              ccontrol::UserQuery::Ptr const& uq);
 
+    /// Create and fill async result table
+    void _makeAsyncResult(std::string const& asyncResultTable,
+                          QueryId queryId,
+                          std::string const& resultLoc);
+
     static Ptr _czar; ///< Pointer to single instance of the Czar.
 
     // combines client name (ID) and its thread ID into one unique ID

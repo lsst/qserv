@@ -43,10 +43,12 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.MessageTable");
 
 
-std::string const createAndLockTmpl("CREATE TABLE IF NOT EXISTS %1% "
+std::string const createTmpl("CREATE TABLE IF NOT EXISTS %1% "
     "(chunkId INT, code SMALLINT, message CHAR(255), "
     "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
-    "ENGINE=MEMORY; LOCK TABLES %1% WRITE;");
+    "ENGINE=MEMORY");
+
+std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
 
 std::string const writeTmpl("INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
     "VALUES (%2%, %3%, '%4%', '%5%', %6%)");
@@ -66,6 +68,19 @@ MessageTable::MessageTable(std::string const& tableName,
                            mysql::MySqlConfig const& resultConfig)
     : _tableName(tableName),
       _sqlConn(std::make_shared<sql::SqlConnection>(resultConfig)) {
+}
+
+// Create the table, do not lock
+void
+MessageTable::create() {
+    std::string query = (boost::format(::createTmpl) % _tableName).str();
+    sql::SqlErrorObject sqlErr;
+    LOGS(_log, LOG_LVL_DEBUG, "creating message table " << _tableName);
+    if (not _sqlConn->runQuery(query, sqlErr)) {
+        SqlError exc(ERR_LOC, "Failure creating message table", sqlErr);
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
+    }
 }
 
 // Create and lock the table

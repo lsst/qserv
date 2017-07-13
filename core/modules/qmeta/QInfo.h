@@ -80,13 +80,15 @@ public:
     QInfo(QType qType, int czarId, std::string const& user,
           std::string const& qText, std::string const& qTemplate,
           std::string const& qMerge, std::string const& qProxyOrderBy,
+          std::string const& resultLoc, std::string const& msgTableName,
           QStatus qStatus = EXECUTING,
           std::time_t submitted = std::time_t(0),
           std::time_t completed = std::time_t(0),
           std::time_t returned = std::time_t(0))
         : _qType(qType), _qStatus(qStatus), _czarId(czarId), _user(user),
           _qText(qText), _qTemplate(qTemplate), _qMerge(qMerge),
-          _qProxyOrderBy(qProxyOrderBy), _submitted(submitted),
+          _qProxyOrderBy(qProxyOrderBy), _resultLoc(resultLoc),
+          _msgTableName(msgTableName), _submitted(submitted),
           _completed(completed), _returned(returned)
     {}
 
@@ -114,6 +116,12 @@ public:
     /// Returns query executed by proxy (which may be empty)
     std::string const& proxyOrderBy() const { return _qProxyOrderBy; }
 
+    /// Returns location of query result
+    std::string const& resultLocation() const { return _resultLoc; }
+
+    /// Returns message table name
+    std::string const& msgTableName() const { return _msgTableName; }
+
     /// Return time when query was submitted
     std::time_t submitted() const { return _submitted; }
 
@@ -138,6 +146,8 @@ private:
     std::string _qTemplate; // Query template used to build per-chunk queries.
     std::string _qMerge;    // Aggregate query to be executed on results table, possibly empty.
     std::string _qProxyOrderBy; // ORDER BY clause for proxy-side SELECT statement, possibly empty.
+    std::string _resultLoc; // Location of query result, e.g. table:result_12345
+    std::string _msgTableName; // Name of the message table for this query
     std::time_t _submitted; // Time when query was submitted (seconds since epoch).
     std::time_t _completed; // Time when query finished execution, 0 if not finished.
     std::time_t _returned;  // Time when query result was sent to client, 0 if not sent yet.

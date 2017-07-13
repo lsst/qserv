@@ -59,6 +59,9 @@ public:
     // Constructor takes table name including database name
     explicit MessageTable(std::string const& tableName, mysql::MySqlConfig const& resultConfig);
 
+    /// Create the table, do not lock
+    void create();
+
     /// Create and lock the table
     void lock();
 

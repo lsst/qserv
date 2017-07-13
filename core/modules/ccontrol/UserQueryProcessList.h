@@ -114,10 +114,13 @@ public:
         return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
-    std::string getResultTableName() override { return _resultTableName; }
+    std::string getResultTableName() const override { return _resultTableName; }
+
+    /// @return Result location for this query, can be empty
+    std::string getResultLocation() const override { return "table:" + _resultTableName; }
 
     /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() override { return _orderBy; }
+    std::string getProxyOrderBy() const override { return _orderBy; }
 
 private:
 

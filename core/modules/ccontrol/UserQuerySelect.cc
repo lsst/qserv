@@ -68,6 +68,9 @@
 #include <chrono>
 #include <memory>
 
+// Third-party headers
+#include <boost/algorithm/string/replace.hpp>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -177,7 +180,7 @@ void UserQuerySelect::kill() {
 
 
 std::string
-UserQuerySelect::getProxyOrderBy() {
+UserQuerySelect::getProxyOrderBy() const {
     return _qSession->getProxyOrderBy();
 }
 
@@ -379,7 +382,7 @@ void UserQuerySelect::setupChunking() {
 }
 
 // register query in qmeta database
-void UserQuerySelect::qMetaRegister()
+void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName)
 {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";    // we do not have access to that info yet
@@ -404,8 +407,13 @@ void UserQuerySelect::qMetaRegister()
         qMerge = mergeStmt->getQueryTemplate().sqlFragment();
     }
     std::string proxyOrderBy = _qSession->getProxyOrderBy();
+    _resultLoc = resultLocation;
+    if (_resultLoc.empty()) {
+        // Special token #QID# is replaced with query ID later.
+        _resultLoc = "table:result_#QID#";
+    }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, proxyOrderBy);
+                       qTemplate, qMerge, proxyOrderBy, _resultLoc, msgTableName);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;
@@ -427,8 +435,21 @@ void UserQuerySelect::qMetaRegister()
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
-    _resultTable = "result_" + std::to_string(_qMetaQueryId);
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuery registered " << _qSession->getOriginal());
+
+    // update #QID# with actual query ID
+    boost::replace_all(_resultLoc, "#QID#", std::to_string(_qMetaQueryId));
+
+    // guess query result location
+    if (_resultLoc.compare(0, 6, "table:") == 0) {
+        _resultTable = _resultLoc.substr(6);
+    } else {
+        // we only support results going to tables for now, abort for anything else
+        std::string const msg = "Unexpected result location '" + _resultLoc + "'";
+        _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+        throw UserQueryError(getQueryIdString() + _errorExtra);
+    }
+
     if (_executive != nullptr) {
         _executive->setQueryId(_qMetaQueryId);
     } else {
