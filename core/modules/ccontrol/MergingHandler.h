@@ -58,10 +58,14 @@ public:
         _id = "MBI=" + std::to_string(_sequence++);
         zero();
     }
+    MergeBuffer(MergeBuffer const&) = delete;
+    MergeBuffer& operator=(MergeBuffer const&) = delete;
     virtual ~MergeBuffer();
 
-    std::shared_ptr<bufType> getBuffer();
-    size_t getSize();
+    /// @return a reference to the contents of the buffer.
+    bufType& getBuffer();
+    size_t getSize(); ///< @return the current size of the buffer.
+    /// @return the size the buffer needs to be when data is ready.
     size_t getTargetSize() { return _targetSize; }
     void setTargetSize(int sz);
     void resizeToTargetSize();
@@ -72,9 +76,9 @@ private:
     void _resize(int sz);
 
     std::string _id;
-    std::shared_ptr<bufType> _buff;
+    std::unique_ptr<bufType> _buff;
     int _targetSize{0};
-    static std::atomic<long long int> _totalBytes; ///< number of bytes held by all instances.
+    static std::atomic<std::int64_t> _totalBytes; ///< number of bytes held by all instances.
     static std::atomic<int> _sequence;
 };
 
@@ -110,7 +114,7 @@ public:
     /// bytes) or there is an error.
     std::vector<char>& nextBuffer() override {
         _mBuf.resizeToTargetSize();
-        return *_mBuf.getBuffer();
+        return _mBuf.getBuffer();
     }
 
     size_t nextBufferSize() override {

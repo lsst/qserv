@@ -199,7 +199,7 @@ if platform_default() == "darwin":
 
 # library used by other shared libs
 shlibs["qserv_common"] = dict(mods="""global memman proto mysql sql util""",
-                              libs="""log protobuf mysqlclient_r  """ +
+                              libs="""log protobuf mysqlclient_r """ +
                               cryptoLib)
 
 # library implementing xrootd logging intercept (worker side)

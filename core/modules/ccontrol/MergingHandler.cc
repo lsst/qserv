@@ -57,7 +57,7 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-std::atomic<long long int> MergeBuffer::_totalBytes{0};
+std::atomic<std::int64_t> MergeBuffer::_totalBytes{0};
 std::atomic<int> MergeBuffer::_sequence{0};
 
 ////////////////////////////////////////////////////////////////////////
@@ -101,8 +101,8 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
     }
     switch(_state) {
     case MsgState::HEADER_SIZE_WAIT:
-        _response->headerSize = static_cast<unsigned char>((*_mBuf.getBuffer())[0]);
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *_mBuf.getBuffer())) {
+        _response->headerSize = static_cast<unsigned char>((_mBuf.getBuffer())[0]);
+        if (!proto::ProtoHeaderWrap::unwrap(_response, _mBuf.getBuffer())) {
             std::string s = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
             _setError(ccontrol::MSG_RESULT_DECODE, s);
             _state = MsgState::HEADER_ERR;
@@ -125,7 +125,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         if (!_setResult()) { return false; } // set _response->result
         largeResult = _response->result.largeresult();
         LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf "
-             << util::prettyCharList(*_mBuf.getBuffer(), 5));
+             << util::prettyCharList(_mBuf.getBuffer(), 5));
         _mBuf.zero(); // not needed after _response->result set.
         {
             bool msgContinues = _response->result.continues();
@@ -148,7 +148,7 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             return success;
         }
     case MsgState::RESULT_EXTRA:
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *_mBuf.getBuffer())) {
+        if (!proto::ProtoHeaderWrap::unwrap(_response, _mBuf.getBuffer())) {
             _setError(ccontrol::MSG_RESULT_DECODE,
                       std::string("Error decoding proto header for ") + getStateStr(_state));
             _state = MsgState::HEADER_ERR;
@@ -255,7 +255,7 @@ void MergingHandler::_setError(int code, std::string const& msg) {
 bool MergingHandler::_setResult() {
     auto start = std::chrono::system_clock::now();
     auto buff = _mBuf.getBuffer();
-    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((*buff)[0]), _mBuf.getSize())) {
+    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((buff)[0]), _mBuf.getSize())) {
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
@@ -267,7 +267,7 @@ bool MergingHandler::_setResult() {
 }
 bool MergingHandler::_verifyResult() {
     auto buff = _mBuf.getBuffer();
-    if (_response->protoHeader.md5() != util::StringHash::getMd5(buff->data(), _mBuf.getSize())) {
+    if (_response->protoHeader.md5() != util::StringHash::getMd5(buff.data(), _mBuf.getSize())) {
         _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;
         return false;
@@ -284,12 +284,12 @@ MergeBuffer::~MergeBuffer() {
 }
 
 
-std::shared_ptr<MergeBuffer::bufType> MergeBuffer::getBuffer() {
+MergeBuffer::bufType& MergeBuffer::getBuffer() {
     if (_buff == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, _id << " getBuffer making buffer");
+        LOGS(_log, LOG_LVL_ERROR, _id << " getBuffer making buffer");
         zero();
     }
-    return _buff;
+    return *_buff;
 }
 
 
