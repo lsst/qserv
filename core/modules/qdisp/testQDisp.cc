@@ -132,6 +132,9 @@ public:
     std::vector<char>& nextBuffer() override {
         return _vect;
     }
+    size_t nextBufferSize() override {
+        return _vect.size();
+    }
     bool flush(int bLen, bool& last, bool& largeResult) override {
         return bLen == magic();
     }

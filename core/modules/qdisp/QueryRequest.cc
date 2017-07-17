@@ -248,7 +248,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
         const void* pbuf = (void*)(&buffer[0]);
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState
-                << " _importStream->GetResponseData size=" << buffer.size() << " "
+                << " DataFunc->GetResponseData size=" << buffer.size() << " "
                 << pbuf << " " << util::prettyCharList(buffer, 5));
         if (!GetResponseData(&buffer[0], buffer.size())) {
             _errorFinish();
@@ -290,7 +290,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
 
     if (flushOk) {
         if (last) {
-            auto sz = jq->getDescription()->respHandler()->nextBuffer().size();
+            auto sz = jq->getDescription()->respHandler()->nextBufferSize();
             if (last && sz != 0) {
                 LOGS(_log, LOG_LVL_WARN,
                      _jobIdStr << " Connection closed when more information expected sz=" << sz);

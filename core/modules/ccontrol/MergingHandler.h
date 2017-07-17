@@ -24,6 +24,7 @@
 #define LSST_QSERV_CCONTROL_MERGINGHANDLER_H
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -44,6 +45,43 @@ namespace rproc {
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+
+/// A class to delay creating the buffer until it is requested
+/// by xrootd SSI. The size of the buffer that will be needed is
+/// set using setTargetSize(int sz), and the buffer of that size is
+/// created by calling resizeToTargetSize(). When a buffer is no longer
+/// needed, zero() should be called to free the memory.
+class MergeBuffer {
+public:
+    using bufType = std::vector<char>;
+    MergeBuffer() {
+        _id = "MBI=" + std::to_string(_sequence++);
+        zero();
+    }
+    MergeBuffer(MergeBuffer const&) = delete;
+    MergeBuffer& operator=(MergeBuffer const&) = delete;
+    virtual ~MergeBuffer();
+
+    /// @return a reference to the contents of the buffer.
+    bufType& getBuffer();
+    size_t getSize(); ///< @return the current size of the buffer.
+    /// @return the size the buffer needs to be when data is ready.
+    size_t getTargetSize() { return _targetSize; }
+    void setTargetSize(int sz);
+    void resizeToTargetSize();
+    void zero(); ///< Set buffer size and _targetSize to zero, ensure memory is freed.
+
+
+private:
+    void _resize(int sz);
+
+    std::string _id;
+    std::unique_ptr<bufType> _buff;
+    int _targetSize{0};
+    static std::atomic<std::int64_t> _totalBytes; ///< number of bytes held by all instances.
+    static std::atomic<int> _sequence;
+};
+
 
 /// MergingHandler is an implementation of a ResponseHandler that implements
 /// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
@@ -74,7 +112,14 @@ public:
     /// should be sized to the request size. The buffer will be filled
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
-    std::vector<char>& nextBuffer() override { return _buffer; }
+    std::vector<char>& nextBuffer() override {
+        _mBuf.resizeToTargetSize();
+        return _mBuf.getBuffer();
+    }
+
+    size_t nextBufferSize() override {
+        return _mBuf.getTargetSize();
+    }
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
@@ -111,7 +156,7 @@ private:
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
     std::string _tableName; ///< Target table name
-    std::vector<char> _buffer; ///< Raw response buffer, resized for each msg
+    MergeBuffer _mBuf;
     Error _error; ///< Error description
     mutable std::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
