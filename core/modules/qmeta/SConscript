@@ -25,3 +25,6 @@ pySwig = env.File(os.path.join('python', 'qmetaLib.py'))
 
 # runs standard stuff _after_ above to install Python module
 standardModule(env, unit_tests=[])
+
+# install schema files
+build_data['install'] += env.Install("$prefix/share/qserv/schema/qmeta", env.Glob("schema/*.sql"))
