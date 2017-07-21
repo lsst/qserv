@@ -42,9 +42,9 @@ def buildVersionHeader(target, source, env):
     commitStr = "xxxUnknownCommitxxx"
     try:
         p = Popen(shlex.split(showVersion), stdout=PIPE).communicate()
-        versionStr = p[0].strip()
+        versionStr = p[0].decode().strip()
         p = Popen(shlex.split(showCommit), stdout=PIPE).communicate()
-        commitStr = p[0].strip()
+        commitStr = p[0].decode().strip()
     except:
         versionStr = "tarball"
 

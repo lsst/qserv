@@ -58,7 +58,7 @@ def generate(env):
 
     # define special variable for location of Python headers
     command = ['python', '-c', 'from distutils import sysconfig; print(sysconfig.get_python_inc())']
-    output = subprocess.check_output(command).strip()
+    output = subprocess.check_output(command).decode().strip()
     env['PYTHON_INC_DIR'] = output
 
 

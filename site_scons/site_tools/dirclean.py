@@ -31,7 +31,7 @@ def CleanEmptyDirs(env, targets, dir_list):
     was done for specified target list.
     """
     targets = env.arg2nodes(targets, Entry)
-    state.log.debug("CleanEmptyDirs() : targets: %r" % map(str, targets))
+    state.log.debug("CleanEmptyDirs() : targets: %r" % [str(t) for t in targets])
     state.log.debug("CleanEmptyDirs() : dir_list: %r" % dir_list)
 
     nodes = all_children(targets)

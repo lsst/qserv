@@ -17,8 +17,8 @@ antlrTgts = env.Antlr(['SqlSQL2.g'],
     ANTLR_OUT='.',
     )
 
-antlrSrcs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_CCSUFFIX')), antlrTgts)
-antlrHdrs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_HSUFFIX')), antlrTgts)
+antlrSrcs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_CCSUFFIX'))]
+antlrHdrs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_HSUFFIX'))]
 
 env.Depends(antlrSrcs[0], 'DmlSQL2.g')
 env.Depends(antlrSrcs[0], tokenFile)
