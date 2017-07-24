@@ -11,7 +11,6 @@ standardModule(env, test_libs='log4cxx')
 # If you need to rebuild the map, use:
 # ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
 def charArrayGenerator(filename):
-    bSize = 70
     # TODO: Ideally want to read bytes not characters. This code will
     # probably give the wrong answer if unicode characters are in file.
     # On Python3 can use bytearray and remove ord() call.
