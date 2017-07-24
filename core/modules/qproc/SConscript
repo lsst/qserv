@@ -11,11 +11,11 @@ standardModule(env, test_libs='log4cxx')
 # ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
 def charArrayGenerator(filename):
     bSize = 70
-    with open(filename,"rb") as f:
+    with open(filename, "r") as f:
         while True:
             block = f.read(10)
             if not block: return
-            yield ",".join(map(lambda s: hex(ord(s)), block))
+            yield ",".join(hex(ord(s)) for s in block)
 
 ## Scons wants args=(target, source, env)
 ## target: headerFile
@@ -29,7 +29,7 @@ def buildHeader(target, source, env):
     length = os.stat(blobFile).st_size
     targetFile = open(str(target[0]), "w") # coerce SCons.File to string
     targetFile.write(headerPfx)
-    lines = ",\n".join(map(lambda s:s, charArrayGenerator(blobFile)))
+    lines = ",\n".join(s for s in charArrayGenerator(blobFile))
     targetFile.write(lines + "\n")
     targetFile.write(headerSfx + "\n")
     targetFile.write("size_t %s_length = %d;\n" % (arrayName, length))
