@@ -6,6 +6,7 @@ import os
 
 standardModule(env, test_libs='log4cxx')
 
+
 # build kvmap.h
 # If you need to rebuild the map, use:
 # ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
@@ -14,20 +15,22 @@ def charArrayGenerator(filename):
     with open(filename, "r") as f:
         while True:
             block = f.read(10)
-            if not block: return
+            if not block:
+                return
             yield ",".join(hex(ord(s)) for s in block)
 
-## Scons wants args=(target, source, env)
-## target: headerFile
-## source: blobFile
+
+#  Scons wants args=(target, source, env)
+#  target: headerFile
+#  source: blobFile
 def buildHeader(target, source, env):
-    blobFile = str(source[0]) # coerce SCons.File to string
+    blobFile = str(source[0])  # coerce SCons.File to string
     (name, ext) = os.path.splitext(blobFile)
     arrayName = os.path.basename(name)
     headerPfx = "unsigned char %s[] = {" % arrayName
     headerSfx = "};"
     length = os.stat(blobFile).st_size
-    targetFile = open(str(target[0]), "w") # coerce SCons.File to string
+    targetFile = open(str(target[0]), "w")  # coerce SCons.File to string
     targetFile.write(headerPfx)
     lines = ",\n".join(s for s in charArrayGenerator(blobFile))
     targetFile.write(lines + "\n")
@@ -36,8 +39,9 @@ def buildHeader(target, source, env):
     targetFile.close()
     return None
 
-bld = Builder(action = buildHeader,
-              suffix = '.h',
-              src_suffix = '.kvmap')
-env.Append(BUILDERS = {'HeaderKvmap' : bld})
+
+bld = Builder(action=buildHeader,
+              suffix='.h',
+              src_suffix='.kvmap')
+env.Append(BUILDERS={'HeaderKvmap': bld})
 header = env.HeaderKvmap('testMap')

@@ -9,6 +9,6 @@ pFiles = env.Protoc(
     PROTOC_PATH='.',
     PROTOC_CCOUT='.',
     PROTOC_PYOUT='.',
-    )
+)
 
 standardModule(env, test_libs='log4cxx')

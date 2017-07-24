@@ -101,10 +101,12 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     build_data = DefaultEnvironment()['build_data']
 
     path = '.' if module is None else module
-    if module is None: module = os.path.basename(os.getcwd())
+    if module is None:
+        module = os.path.basename(os.getcwd())
     state.log.debug('standardModule: module = %s path = %s' % (module, path))
 
-    # find all *.cc files and split then in two groups: files for libraries and files for test apps
+    # find all *.cc files and split then in two groups: files for libraries
+    # and files for test apps
     cc_files = set(env.Glob(os.path.join(path, "*.cc"), source=True, strings=True, exclude=exclude))
     cc_tests = set(fname for fname in cc_files if os.path.basename(fname).startswith("test"))
     cc_objects = cc_files - cc_tests
@@ -115,10 +117,12 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     objects = Flatten([env.SharedObject(cc) for cc in cc_objects])
     build_data['module_objects'][module] = objects
 
-    # Targets for test apps. Complication here is that we do not install those apps
-    # and we run them from build/ and even before we install libraries (e.g. as unit tests).
-    # To support this we need to set RPATH to build/ dir where are libraries are built,
-    # also we include build/ in LIBBPATH to find libraries that are being built.
+    # Targets for test apps. Complication here is that we do not install those
+    # apps and we run them from build/ and even before we install libraries
+    # (e.g. as unit tests).
+    # To support this we need to set RPATH to build/ dir where are libraries
+    # are built also we include build/ in LIBBPATH to find libraries that are
+    # being built.
     # Libraries included in the link are:
     #  - library that this module belongs to
     #  - all dependent libraries
@@ -127,9 +131,11 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     libs = [mylib]
     libs += Split(build_data['shlibs'].get(mylib, {}).get('libs', []))
     libs += Split(test_libs or [])
+
     def Prog(cc_files):
         return env.Program(cc_files, LIBS=libs,
-                           LIBPATH=['$build_dir'] + env["LIBPATH"], RPATH='$build_dir')
+                           LIBPATH=['$build_dir'] + env["LIBPATH"],
+                           RPATH='$build_dir')
     tests = Flatten([Prog(cc) for cc in cc_tests])
     build_data['tests'] += tests
 
@@ -155,6 +161,7 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     state.log.debug('standardModule: py_scripts = ' + str(py_scripts))
     py_installed = env.Install("$prefix/bin", py_scripts)
     build_data['install'] += py_installed
+
 
 # ================== SConscript logic start here ====================
 
@@ -254,7 +261,8 @@ state.log.debug('all_modules: ' + str(all_modules))
 # setup build data structure, which is a map with these keys and values:
 #    install: list of all install targets
 #    module_objects: maps module name to list of shared object targets
-#    shlibs: maps library name to dict as defined above (copy of the above shlibs)
+#    shlibs: maps library name to dict as defined above
+#            (copy of the above shlibs)
 #    tests: list of all test app targets
 #    unit_tests: list of unit test targets
 #    module_lib: maps module name to library name
@@ -282,7 +290,7 @@ state.log.debug('initialized build_data: ' + defEnv.Dump('build_data'))
 # call all modules' SConscripts or use standard method
 for mod in all_modules:
     scriptPath = os.path.join(mod, "SConscript")
-    if env.Glob(scriptPath): # os.access is faulty with VariantDir
+    if env.Glob(scriptPath):  # os.access is faulty with VariantDir
         SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
     else:
         standardModule(env, module=mod)
@@ -301,7 +309,8 @@ for shlib, shopt in shlibs.items():
         state.log.debug("module %s objects: %s" % (mod, map(str, mod_objects)))
     state.log.debug("library %s objects: %s" % (shlib, map(str, objects)))
 
-    # add build/ to LIBPATH so that dependent qserv libs can be found while linking
+    # add build/ to LIBPATH so that dependent qserv libs can be found
+    # while linking
     libPath = ['$build_dir'] + env['LIBPATH']
     state.log.debug('libPath: %s' % libPath)
 

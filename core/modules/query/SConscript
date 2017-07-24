@@ -6,9 +6,11 @@ import convertVocab
 
 standardModule(env)
 
+
 # Generate token file header
 def convertVocabStub(env, target, source):
     m = convertVocab.Main()
     m.convertFile(str(source[0]), str(target[0]))
+
 
 tokenHdr = env.Command('SqlSQL2Tokens.h', 'SqlSQL2Tokens.txt', convertVocabStub)

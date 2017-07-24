@@ -42,19 +42,19 @@ if ['doc'] == COMMAND_LINE_TARGETS:
     state.log.debug("Only building Qserv documentation")
 
 else:
-################################
-#
-# Init build environment
-#
-################################
+    ################################
+    #
+    # Init build environment
+    #
+    ################################
     state.initBuild()
-    env.Replace(configuration_prefix = os.path.join( env['prefix'], "share", "qserv", "configuration"))
+    env.Replace(configuration_prefix=os.path.join(env['prefix'], "share", "qserv", "configuration"))
 
-#########################
-#
-# Install admin commands
-#
-#########################
+    #########################
+    #
+    # Install admin commands
+    #
+    #########################
     adminbin_target = os.path.join(env['prefix'], "bin")
     adminbin_targets = env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
     python_admin = env.InstallPythonModule(target=env['python_prefix'],
@@ -69,14 +69,14 @@ else:
                template_targets,
                adminbin_targets])
 
-#############################
-#
-# Install Qserv code
-#
-#############################
+    #############################
+    #
+    # Install Qserv code
+    #
+    #############################
 
-# Trigger the modules build
-############################
+    # Trigger the modules build
+    ############################
 
     SConscript('core/modules/SConscript',
                variant_dir=env['build_dir'],
@@ -96,10 +96,10 @@ else:
         template_dir_path = os.path.join("admin", "templates", "installation")
         target_lst = []
 
-        state.log.info("Applying configuration information " + 
-                        "via templates files located in " +
-                        "{0}".format(template_dir_path) 
-        )
+        state.log.info("Applying configuration information " +
+                       "via templates files located in " +
+                       "{0}".format(template_dir_path)
+                       )
 
         script_dict = {'{{QSERV_DIR}}': os.path.abspath(env['prefix']),
                        '{{XROOTD_DIR}}': env['XROOTD_DIR'],
@@ -110,7 +110,8 @@ else:
 
         for src_node in fileutils.recursive_glob(template_dir_path, "*", env):
 
-            target_node = fileutils.replace_base_path(template_dir_path, env['configuration_prefix'], src_node, env)
+            target_node = fileutils.replace_base_path(template_dir_path, env['configuration_prefix'],
+                                                      src_node, env)
 
             if isinstance(src_node, SCons.Node.FS.File):
 
@@ -138,4 +139,3 @@ else:
     env.Help('Recognized targets:\n')
     for alias in aliases:
         env.Help('  %s\n' % alias)
-
