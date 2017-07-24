@@ -12,6 +12,9 @@ standardModule(env, test_libs='log4cxx')
 # ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
 def charArrayGenerator(filename):
     bSize = 70
+    # TODO: Ideally want to read bytes not characters. This code will
+    # probably give the wrong answer if unicode characters are in file.
+    # On Python3 can use bytearray and remove ord() call.
     with open(filename, "r") as f:
         while True:
             block = f.read(10)
