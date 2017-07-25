@@ -4,7 +4,7 @@
 
 # Container images names
 MASTER_IMAGE="qserv/qserv:${VERSION}_master"
-WORKER_IMAGE="qserv/qserv:${VERSION}_worker"
+CONTAINER_IMAGE="qserv/qserv:${VERSION}"
 
 # Pods names
 # ==========

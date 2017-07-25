@@ -22,8 +22,8 @@ do
     retry=0
     started=false
     while [ $started = false ]; do
-	    echo "Wait for pod '$qserv_pod' to start"
-	    if kubectl exec "$qserv_pod" /qserv/scripts/wait.sh
+	    echo "Wait for pod '$qserv_pod' to start: TODO not correct rewrite me (see DM-11131)..."
+	    if kubectl exec "$qserv_pod" true
         then
             echo "Succeed to start pod '$qserv_pod'"
             started=true

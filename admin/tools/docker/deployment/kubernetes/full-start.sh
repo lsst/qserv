@@ -9,6 +9,7 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 echo "Setup Kubernetes cluster and launch Qserv"
 
+"$DIR"/admin/scp-orchestration.sh
 "$DIR"/kube-destroy.sh
 "$DIR"/kube-create.sh
 "$DIR"/start.sh

@@ -11,9 +11,6 @@ spec:
     - name: master
       image: "<INI_IMAGE>"
       imagePullPolicy: Always
-      env:
-        - name: QSERV_MASTER
-          value: "<INI_MASTER_HOSTNAME>"
     # command: ["tail","-f", "/dev/null"]
       securityContext:
         capabilities:
