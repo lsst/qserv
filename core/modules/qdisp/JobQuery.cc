@@ -65,7 +65,7 @@ JobQuery::~JobQuery() {
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
 bool JobQuery::runJob() {
-    LOGS(_log, LOG_LVL_DEBUG, "runJob " << *this);
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, getIdStr() << "runJob failed executive==nullptr");
@@ -73,6 +73,7 @@ bool JobQuery::runJob() {
     }
     bool cancelled = executive->getCancelled();
     bool handlerReset = _jobDescription->respHandler()->reset();
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob cancelled=" << cancelled << "hreset=" << handlerReset);
     if (!cancelled && handlerReset) {
         auto criticalErr = [this, &executive](std::string const& msg) {
             LOGS(_log, LOG_LVL_ERROR, getIdStr() << " " << msg << " "
@@ -80,19 +81,24 @@ bool JobQuery::runJob() {
             executive->squash(); // This should kill all jobs in this user query.
         };
 
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob checking attempt=" << _jobDescription->getAttemptCount());
         auto qr = std::make_shared<QueryResource>(shared_from_this());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob trying");
             bool okCount = _jobDescription->incrAttemptCountScrubResults();
             if (!okCount) {
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob count fail");
                 criticalErr("hit structural max of retries");
                 return false;
             }
             if (!_jobDescription->verifyPayload()) {
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob bad payload");
                 criticalErr("bad payload");
                 return false;
             }
         } else {
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob max retries");
             criticalErr("hit maximum number of retries");
             return false;
         }
@@ -102,9 +108,10 @@ bool JobQuery::runJob() {
         // only if the executive has not already been cancelled. The cancellation
         // procedure changes significantly once the executive calls xrootd's Provision().
         // The only way xrdSsiProvision can fail is if the user query is cancelled.
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob try to provision");
         if (executive->xrdSsiProvision(_queryResourcePtr, qr)) return true;
     }
-
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&runJob returning false");
     LOGS_WARN(getIdStr() << " JobQuery Failed to RunJob failed. cancelled=" << cancelled
               << " reset=" << handlerReset);
     return false;
