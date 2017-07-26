@@ -394,9 +394,11 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
             // TODO: Add code to send message back to czar to cancel this user query.
         }
     } else {
-        if (uq->_tasksBooted > _maxTasksBooted) {
+        if (false && uq->_tasksBooted > _maxTasksBooted) { // &&& something seems wrong here.
             LOGS(_log, LOG_LVL_INFO, task->getIdStr()
-                 << " entire UserQuery booting from " << sched->getName());
+                 << " entire UserQuery booting from " << sched->getName()
+                 << " tasksBooted=" << uq->_tasksBooted
+                 << " maxTasksBooted=" << _maxTasksBooted);
             uq->_queryBooted = true;
             bSched->moveUserQueryToSnail(uq->_queryId, sched);
         }
