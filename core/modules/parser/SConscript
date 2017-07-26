@@ -1,5 +1,5 @@
 # -*- python -*-
-## SConscript for parser module
+# SConscript for parser module
 Import('env')
 Import('standardModule')
 
@@ -13,18 +13,18 @@ tokenFile = env.Command("SqlSQL2ImpTokenTypes.txt",
                         Copy("$TARGET", "$SOURCE"))
 
 antlrTgts = env.Antlr(['SqlSQL2.g'],
-    ANTLR_GLIB='DmlSQL2.g',
-    ANTLR_OUT='.',
-    )
+                      ANTLR_GLIB='DmlSQL2.g',
+                      ANTLR_OUT='.',
+                      )
 
-antlrSrcs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_CCSUFFIX')), antlrTgts)
-antlrHdrs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_HSUFFIX')), antlrTgts)
+antlrSrcs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_CCSUFFIX'))]
+antlrHdrs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_HSUFFIX'))]
 
 env.Depends(antlrSrcs[0], 'DmlSQL2.g')
 env.Depends(antlrSrcs[0], tokenFile)
 
-#print "ANTLR srcs=", map(str, antlrSrcs)
-#print "ANTLR hdrs=", antlrHdrs
+# print("ANTLR srcs=", [str(s) for s in antlrSrcs])
+# print("ANTLR hdrs=", antlrHdrs)
 # Ignore output antlr .txt files for now.
 
 build_data = DefaultEnvironment()['build_data']
