@@ -97,7 +97,7 @@ def generate(env):
         if not re.search(r"-install_name", str(env['SHLINKFLAGS'])):
             env.Append(SHLINKFLAGS=["-install_name", "@rpath/${TARGET.file}"])
 
-    elif platform == 'linux2':
+    elif platform.startswith('linux'):
         # Linux with any compiler
 
         # Increase compiler strictness
