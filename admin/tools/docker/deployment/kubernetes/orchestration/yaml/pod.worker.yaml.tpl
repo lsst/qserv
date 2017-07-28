@@ -23,3 +23,4 @@ spec:
           - IPC_LOCK
   nodeSelector:
     kubernetes.io/hostname: <INI_HOST>
+  restartPolicy: Never

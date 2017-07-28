@@ -127,10 +127,11 @@ class Configurator(object):
                                                  'if none is provided\nthen whole configuration procedure will'
                                                  ' be launched')
 
+        # Add only ETC and CLIENT configuration steps to options
+        #
         for step_name in configure.ALL_STEPS:
             if step_name in configure.INIT:
                 group = init_group
-            # complex steps are removed from options
             elif step_name in configure.ETC + configure.CLIENT:
                 group = config_group
             else:
@@ -164,6 +165,12 @@ class Configurator(object):
                             help="Absolute path to qserv_run_dir. Default: %(default)s"
                             )
 
+        # disable database initialisation scripts execution, but not their creation, required for k8s.
+        parser.add_argument("--disable-db-init", dest="disable_db_init", action='store_true',
+                            default=False,
+                            help="Disable database initialisation scripts execution, but not their creation. Default: %(default)s"
+                            )
+
         # data dir, all business data/meta-data related to a qserv running instance are located here
         init_group.add_argument("-D", "--qserv-data-dir", dest="qserv_data_dir",
                                 default=None,
@@ -191,9 +198,11 @@ class Configurator(object):
             lsst.qserv.admin.logger.setup_logging(self.args.log_conf)
 
         if self.args.all:
-            self.args.step_list = configure.ALL_STEPS
+            self.cfg_steps = configure.ALL_STEPS
         elif self.args.step_list is None:
-            self.args.step_list = configure.CONFIGURATION_STEPS
+            self.cfg_steps = configure.ALL_CONFIGURATION_STEPS
+        else:
+            self.cfg_steps = self.args.step_list
 
         qserv_dir = os.path.abspath(
             os.path.join(
@@ -301,7 +310,7 @@ class Configurator(object):
                 " stop it before running this script.", self.args.qserv_run_dir)
             sys.exit(1)
 
-        if configure.INIT in self.args.step_list:
+        if configure.INIT in self.cfg_steps:
 
             if os.path.exists(self.args.qserv_run_dir) and os.listdir(self.args.qserv_run_dir):
 
@@ -329,7 +338,7 @@ class Configurator(object):
         # Running configuration procedure
         #
         #
-        if configure.has_configuration_step(self.args.step_list):
+        if configure.has_configuration_step(self.cfg_steps):
 
             try:
                 _LOG.info("Reading meta-configuration file {0}".format(self._meta_config_file))
@@ -342,33 +351,23 @@ class Configurator(object):
                 _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 
-            if configure.DIRTREE in self.args.step_list:
+            if configure.DIRTREE in self.cfg_steps:
                 _LOG.info("Define main directory structure")
                 configure.update_root_dirs()
                 configure.update_root_symlinks()
 
             #
-            #
-            # Creating Qserv services configuration
+            # Create Qserv services configuration
             # using templates and meta_config_file
-            #
             #
             qserv_run_dir = config['qserv']['qserv_run_dir']
             qserv_data_dir = config['qserv']['qserv_data_dir']
 
-            if configure.ETC in self.args.step_list:
+            if configure.ETC in self.cfg_steps:
                 _LOG.info(
                     "Create configuration files in {0}".format(os.path.join(qserv_run_dir, "etc")) +
                     " and scripts in {0}".format(os.path.join(qserv_run_dir, "tmp"))
                 )
-
-                # TODO: see DM-2580
-                # in_template_config_dir = os.path.join(self._in_config_dir, "templates")
-                # out_template_config_dir = os.path.join(self.args.qserv_run_dir, "templates")
-                # _LOG.info("Copying template configuration from {0} to {1}".format(in_template_config_dir,
-                #                                                                   self.args.qserv_run_dir)
-                #          )
-                # shutil.copytree(in_template_config_dir, out_template_config_dir)
 
                 dest_root = os.path.join(qserv_run_dir)
                 self._templater.applyAll(self._template_root, dest_root)
@@ -376,9 +375,16 @@ class Configurator(object):
                 if self._custom_template_root:
                     self._templater.applyAll(self._custom_template_root, dest_root)
 
-            component_cfg_steps = configure.intersect(
-                self.args.step_list, configure.COMPONENTS)
-            if len(component_cfg_steps) > 0:
+            #
+            #  Disable database initialisation scripts if specified by user or if data directory is not empty
+            #
+            if self.args.disable_db_init or os.listdir(self._qserv_data_dir):
+                _LOG.warn("Remove configuration steps impacting data, %s will remain untouched",
+                          self._qserv_data_dir)
+                self.cfg_steps = configure.filter_list(self.cfg_steps, configure.DB_COMPONENTS)
+
+            script_cfg_steps = configure.intersect_list(self.cfg_steps, configure.COMPONENTS)
+            if len(script_cfg_steps) > 0:
                 _LOG.info("Run configuration scripts")
                 configuration_scripts_dir = os.path.join(
                     qserv_run_dir, 'tmp', 'configure'
@@ -389,26 +395,30 @@ class Configurator(object):
                         "Master instance: not configuring " +
                         "{0}".format(configure.WORKER)
                     )
-                    component_cfg_steps.remove(configure.WORKER)
+                    script_cfg_steps = configure.filter_list(script_cfg_steps, [configure.WORKER])
+
                 elif config['qserv']['node_type'] in ['worker']:
                     _LOG.info(
                         "Worker instance: not configuring " +
                         "{0}".format(configure.CZAR)
                     )
-                    component_cfg_steps.remove(configure.CZAR)
+                    script_cfg_steps = configure.filter_list(script_cfg_steps, [configure.CZAR])
 
-                component_cfg_steps = configure.keep_data(component_cfg_steps, qserv_data_dir)
-
-                for comp in component_cfg_steps:
+                #
+                #
+                # Launching configuration scripts
+                #
+                #
+                for comp in script_cfg_steps:
                     cfg_script = os.path.join(
                         configuration_scripts_dir, comp + ".sh")
                     if os.path.isfile(cfg_script):
                         commons.run_command([cfg_script])
 
-            if configure.CSS_WATCHER in self.args.step_list:
+            if configure.CSS_WATCHER in self.cfg_steps:
                 self._template_to_client_config(configure.MYSQL)
 
-            if configure.CLIENT in self.args.step_list:
+            if configure.CLIENT in self.cfg_steps:
                 self._template_to_client_config(configure.QSERV)
 
 

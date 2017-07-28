@@ -72,9 +72,9 @@ SCISQL = 'scisql'
 DB_COMPONENTS = [MYSQL, CZAR, WORKER, SCISQL]
 NODB_COMPONENTS = [CSS_WATCHER]
 COMPONENTS = NODB_COMPONENTS + DB_COMPONENTS
-CONFIGURATION_STEPS = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
+ALL_CONFIGURATION_STEPS = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
 
-ALL_STEPS = [INIT] + CONFIGURATION_STEPS
+ALL_STEPS = [INIT] + ALL_CONFIGURATION_STEPS
 ALL_STEPS_DOC = {
     INIT: "Remove previous QSERV_RUN_DIR if exists, then create QSERV_RUN_DIR pointing to both current Qserv binaries "
           "and QSERV_DATA_DIR (see QSERV_RUN_DIR/qserv-meta.conf for details)",
@@ -188,24 +188,6 @@ def _symlink(target, link_name):
     os.symlink(target, link_name)
 
 
-def keep_data(components, qserv_data_dir):
-    """
-    If qserv_data_dir isn't empty then remove from components list
-    those whose configuration impact data
-
-    @param components: list of components to analyze
-    @param qserv_data_dir: absolute path to directory containing data
-    @return: list of components to configure
-    """
-    if os.listdir(qserv_data_dir):
-        current_db_comp = intersect(components, DB_COMPONENTS)
-        _LOG.warn("Remove configuration steps impacting data (%r) because of non-empty QSERV_DATA_DIR (%r)",
-                  current_db_comp,
-                  qserv_data_dir)
-        components = [item for item in components if item not in current_db_comp]
-    return components
-
-
 def user_yes_no_query(question):
     sys.stdout.write('\n%r [y/n]\n' % question)
     while True:
@@ -215,17 +197,29 @@ def user_yes_no_query(question):
             sys.stdout.write('Please respond with \'y\' or \'n\'.\n')
 
 
-def intersect(seq1, seq2):
+def intersect_list(seq1, seq2):
     """
-    Performs intersection of two configuration steps lists
+    Performs intersection of two lists
+    @param seq1: first list
+    @type: list
+    @param seq2: second list
+    @type: list
+    @return: subset of seq1 which is contained in seq2, keeping original ordering of items
+    """
+    seq2 = set(seq2)
+    return [item for item in seq1 if item in seq2]
+
+def filter_list(seq1, seq2):
+    """
+    Remove all the elements that occur in one list from another
     @param seq1: first list of string
     @type: list
     @param seq2: second list of string
     @type: list
-    @return: subset of seq1 which is contained in seq2 keeping original ordering of items
+    @return: subset of seq1 which do not contain any seq2 element, keeping original ordering of items
     """
     seq2 = set(seq2)
-    return [item for item in seq1 if item in seq2]
+    return [item for item in seq1 if item not in seq2]
 
 
 def has_configuration_step(steps):
@@ -234,7 +228,7 @@ def has_configuration_step(steps):
     @param step_list: list of string
     @return: True if step_list contains a configuration step
     """
-    return bool(intersect(steps, CONFIGURATION_STEPS))
+    return bool(intersect_list(steps, ALL_CONFIGURATION_STEPS))
 
 
 class Templater(object):

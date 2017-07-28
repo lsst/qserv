@@ -58,6 +58,7 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
+QSERV_DATA_DIR=/qserv/data
 QSERV_RUN_DIR=/qserv/run
 QSERV_CUSTOM_DIR=/qserv/custom
 # QSERV_MASTER is set using k8s yaml configuration
@@ -65,7 +66,7 @@ QSERV_CUSTOM_DIR=/qserv/custom
 . /qserv/stack/loadLSST.bash
 setup qserv_distrib -t qserv-dev
 
-# TODO: check if it is always empty as it should?
+# May not be empty if current script has previously crashed
 rm -rf "$QSERV_RUN_DIR/*"
 
 echo "Configure Qserv $NODE_TYPE"
@@ -83,10 +84,8 @@ awk \
   print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
 
 echo "Configure Qserv $NODE_TYPE (master hostname: $QSERV_MASTER)"
-qserv-configure.py --qserv-run-dir "$QSERV_RUN_DIR" --force
-
-# Scisql plugin must be installed in MariaDB container
-# TODO: improve mariadb container configuration (see DM-11126)
-cp "$MARIADB_DIR"/lib/plugin/libscisql-scisql_*.so "$QSERV_RUN_DIR"
+qserv-configure.py --disable-db-init \
+                   --qserv-run-dir "$QSERV_RUN_DIR" \
+                   --force
 
 mkdir "$QSERV_CUSTOM_DIR"

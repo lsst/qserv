@@ -3,20 +3,13 @@
 set -e
 
 QSERV_RUN_DIR='{{QSERV_RUN_DIR}}'
-SCISQL_DIR='{{SCISQL_DIR}}'
 MYSQL_DIR='{{MYSQL_DIR}}'
 MYSQLD_SOCK='{{MYSQLD_SOCK}}'
 MYSQLD_PASSWORD_ROOT='{{MYSQLD_PASSWORD_ROOT}}'
-PYTHON_BIN='{{PYTHON_BIN}}'
-export PYTHONPATH='{{PYTHONPATH}}'
-
-PYTHON_DIR=$(dirname ${PYTHON_BIN})
-export PATH=${PYTHON_DIR}:${PATH}
-export LD_LIBRARY_PATH='{{LD_LIBRARY_PATH}}'
 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start
 echo "-- Deploying sciSQL plugin in MySQL database"
-echo "${MYSQLD_PASSWORD_ROOT}" | "${SCISQL_DIR}/bin/scisql-deploy.py" --mysql-dir="$MYSQL_DIR" \
+echo "${MYSQLD_PASSWORD_ROOT}" | scisql-deploy.py --mysql-dir="$MYSQL_DIR" \
 				 --mysql-socket="${MYSQLD_SOCK}" \
 				 --mysql-user="root"
 "${QSERV_RUN_DIR}/etc/init.d/mysqld" stop ||

@@ -22,7 +22,7 @@ SECRET_KEY = '{{WMGR_SECRET_KEY}}'
 # ======== application-specific parameters =========
 
 #  database connection parameters, use None for defaults
-DB_HOST = '127.0.0.1'
+DB_HOST = 'localhost'
 DB_PORT = {{MYSQLD_PORT}}
 DB_SOCKET = '{{MYSQLD_SOCK}}'
 

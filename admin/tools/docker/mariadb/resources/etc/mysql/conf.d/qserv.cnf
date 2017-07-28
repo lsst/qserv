@@ -1,0 +1,42 @@
+[client]
+socket=/qserv/data/mysql/mysql.sock
+
+[mysqld]
+
+datadir=/qserv/data/mysql
+socket=/qserv/data/mysql/mysql.sock
+
+# Disabling symbolic-links is recommended to prevent assorted security risks
+symbolic-links=0
+
+# In order to avoid "table is full" error
+tmp_table_size=4G
+max_heap_table_size=4G
+
+# enable InnoDB support via plugin
+ignore-builtin-innodb
+plugin-load=innodb=ha_innodb.so
+innodb_file_per_table=1
+
+# Configure max number of connections
+# Recommended value: 256 for every 50 simultaneous queries
+max_connections=512
+
+# Configure usage of stats tables if available/generated,
+# enable independant storage engine statistics
+# for query optimization
+use_stat_tables='preferably'
+
+user=mysql
+
+# Controls which statistics can be used by the optimizer when
+# looking for the best query execution plan
+optimizer_use_condition_selectivity=3
+
+#
+# Advanced logging
+#
+# Be aware that this log type is a performance killer.
+general-log=0
+general-log-file=/qserv/log/mysql-queries.log
+
