@@ -28,6 +28,7 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
+#include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -39,6 +40,11 @@
 
 
 namespace {
+
+// Current version of QMeta schema, to avoid conversion I define it as string,
+// change both when updating schema.
+int const VERSION = 1;
+char const VERSION_STR[] = "1";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -249,6 +255,8 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     std::string const user = "'" + _conn.escapeString(qInfo.user()) + "'";
     std::string const queryText = "'" + _conn.escapeString(qInfo.queryText()) + "'";
     std::string const queryTemplate = "'" + _conn.escapeString(qInfo.queryTemplate()) + "'";
+    std::string const resultLocation = "'" + _conn.escapeString(qInfo.resultLocation()) + "'";
+    std::string const msgTableName = "'" + _conn.escapeString(qInfo.msgTableName()) + "'";
     std::string qMerge = "NULL";
     if (not qInfo.mergeQuery().empty()) {
         qMerge = "'" + _conn.escapeString(qInfo.mergeQuery()) + "'";
@@ -258,7 +266,7 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
         proxyOrderBy = "'" + _conn.escapeString(qInfo.proxyOrderBy()) + "'";
     }
     std::string query = "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
-                        "proxyOrderBy, status) VALUES (";
+                        "proxyOrderBy, status, messageTable, resultLocation) VALUES (";
     query += qType;
     query += ", ";
     query += boost::lexical_cast<std::string>(qInfo.czarId());
@@ -272,7 +280,11 @@ QMetaMysql::registerQuery(QInfo const& qInfo,
     query += qMerge;
     query += ", ";
     query += proxyOrderBy;
-    query += ", 'EXECUTING')";
+    query += ", 'EXECUTING',";
+    query += msgTableName;
+    query += ", ";
+    query += resultLocation;
+    query += ")";
 
     // run query
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -605,7 +617,8 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     std::string query = "SELECT qType, czarId, user, query, qTemplate, qMerge, proxyOrderBy, status,"
-            " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned)"
+            " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned), "
+            " messageTable, resultLocation"
             " FROM QInfo WHERE queryId = ";
     query += boost::lexical_cast<std::string>(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -636,6 +649,11 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     std::time_t submitted(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
     std::time_t completed(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
     std::time_t returned(row[10].first ? boost::lexical_cast<std::time_t>(row[10].first) : std::time_t(0));
+    std::string messageTable(row[11].first ? row[11].first : "");
+    std::string resultLocation(row[12].first ? row[12].first : "");
+    // result location may contain #QID# token to be replaced with query ID
+    boost::replace_all(resultLocation, "#QID#", std::to_string(queryId));
+
 
     if (++ rowIter != results.end()) {
         // something else found
@@ -645,8 +663,8 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
 
     trans.commit();
 
-    return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge, proxyOrderBy, qStatus,
-                 submitted, completed, returned);
+    return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge, proxyOrderBy,
+                 resultLocation, messageTable, qStatus, submitted, completed, returned);
 }
 
 // Get queries which use specified database.
@@ -746,7 +764,7 @@ QMetaMysql::_checkDb() {
     }
 
     // check that all tables are there
-    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker"};
+    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker", "QMetadata"};
     int const nTables = sizeof requiredTables / sizeof requiredTables[0];
     for (int i = 0; i != nTables; ++ i) {
         char const* const table = requiredTables[i];
@@ -755,6 +773,28 @@ QMetaMysql::_checkDb() {
             throw MissingTableError(ERR_LOC, table);
         }
     }
+
+    // check schema version
+    sql::SqlResults results;
+    std::string query = "SELECT value FROM QMetadata WHERE metakey = 'version'";
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    // expect one record, will throw if different number of records in result
+    std::string value;
+    if (not results.extractFirstValue(value, errObj)) {
+        throw ConsistencyError(ERR_LOC, "QMetadata table may be missing 'version' record: " + errObj.errMsg());
+    }
+
+    // compare versions
+    if (value != ::VERSION_STR) {
+        throw ConsistencyError(ERR_LOC, "QMeta version mismatch, expecting version " +
+                               std::string(::VERSION_STR) + ", database schema version is " +
+                               value);
+    }
+
 }
 
 }}} // namespace lsst::qserv::qmeta

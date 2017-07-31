@@ -1,0 +1,2 @@
+
+from schemaMigMgr import SchemaMigMgr

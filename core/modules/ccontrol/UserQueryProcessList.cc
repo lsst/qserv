@@ -115,7 +115,7 @@ UserQueryProcessList::UserQueryProcessList(bool full,
     _query = "SELECT Id, User, Host, db, Command, Time, State, ";
     _query += full ? "Info, " : "SUBSTRING(Info FROM 1 FOR 100) Info, ";
     // These are non-standard but they need to be there because they appear in WHERE
-    _query += "CzarId, Submitted, Completed";
+    _query += "CzarId, Submitted, Completed, ResultLocation";
     _query += " FROM ShowProcessList";
 
     // only show stuff for current czar and not too old

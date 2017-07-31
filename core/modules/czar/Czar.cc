@@ -28,6 +28,7 @@
 #include <thread>
 
 // Third-party headers
+#include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
@@ -35,8 +36,10 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
+#include "sql/SqlConnection.h"
 #include "util/IterableFormatter.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
@@ -45,6 +48,13 @@ extern XrdSsiProvider *XrdSsiProviderClient;
 
 
 namespace {
+
+std::string const createAsyncResultTmpl("CREATE TABLE IF NOT EXISTS %1% "
+    "(jobId BIGINT, resultLocation VARCHAR(1024))"
+    "ENGINE=MEMORY;"
+    "INSERT INTO %1% (jobId, resultLocation) "
+    "VALUES (%2%, '%3%')");
+
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
@@ -116,13 +126,12 @@ Czar::submitQuery(std::string const& query,
     std::string defaultDb = hintsConfigStore.get("db");
     LOGS(_log, LOG_LVL_INFO, "Default database is \"" << defaultDb <<"\"");
 
-
-
     // make message table name
     std::string userQueryId = std::to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
     std::string resultDb = _czarConfig.getMySqlResultConfig().dbName;
-    std::string const lockName = resultDb + ".message_" + userQueryId;
+    std::string const msgTableName = "message_" + userQueryId;
+    std::string const lockName = resultDb + "." + msgTableName;
 
     SubmitResult result;
 
@@ -141,7 +150,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getLargeResultMgr(), userQueryId);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getLargeResultMgr(), userQueryId, msgTableName);
     }
     auto queryIdStr = uq->getQueryIdString();
 
@@ -172,33 +181,37 @@ Czar::submitQuery(std::string const& query,
     std::thread finalThread(finalizer);
     finalThread.detach();
 
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        // first cleanup client query map from completed queries
-        for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
-            if (iter->second.expired()) {
-                iter = _clientToQuery.erase(iter);
-            } else {
-                ++ iter;
-            }
-        }
-
-        // remember query (weak pointer) in case we want to kill query
-        if (not clientId.empty() and threadId >= 0) {
-            ClientThreadId ctId(clientId, threadId);
-            _clientToQuery.insert(std::make_pair(ctId, uq));
-            LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " Remembering query: (" << clientId << ", "
-                 << threadId << ") (new map size: " << _clientToQuery.size() << ")");
-        }
-    }
+    // update/cleanup query map
+    _updateQueryHistory(clientId, threadId, uq);
 
     // return all info to caller
-    if (not uq->getResultTableName().empty()) {
-        result.resultTable = resultDb + "." + uq->getResultTableName();
+    if (uq->isAsync()) {
+
+        // make separate message and result tables to return info about ASYNC query,
+        // we do not need to lock message because result is ready before we return
+        std::string const resultTableName = resultDb + ".result_async_" + userQueryId;
+        std::string const asyncLockName = resultDb + ".message_async_" + userQueryId;
+        MessageTable msgTable(asyncLockName, _czarConfig.getMySqlResultConfig());
+        try {
+            _makeAsyncResult(resultTableName, uq->getQueryId(), uq->getResultLocation());
+            msgTable.create();
+        } catch (std::exception const& exc) {
+            result.errorMessage = exc.what();
+            return result;
+        }
+
+        result.resultTable = resultTableName;
+        result.messageTable = asyncLockName;
+
+    } else {
+
+        if (not uq->getResultTableName().empty()) {
+            result.resultTable = resultDb + "." + uq->getResultTableName();
+        }
+        result.messageTable = lockName;
+        result.orderBy = uq->getProxyOrderBy();
+
     }
-    result.messageTable = lockName;
-    result.orderBy = uq->getProxyOrderBy();
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
          << result.resultTable << " messageTable=" << result.messageTable
          << " orderBy=" << result.orderBy);
@@ -244,6 +257,58 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     }
 
     return std::string();
+}
+
+void
+Czar::_updateQueryHistory(std::string const& clientId,
+                          int threadId,
+                          ccontrol::UserQuery::Ptr const& uq) {
+
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    // first cleanup client query map from completed queries
+    for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
+        if (iter->second.expired()) {
+            iter = _clientToQuery.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+
+    // remember query (weak pointer) in case we want to kill query
+    if (not clientId.empty() and threadId >= 0) {
+        ClientThreadId ctId(clientId, threadId);
+        _clientToQuery.insert(std::make_pair(ctId, uq));
+        LOGS(_log, LOG_LVL_DEBUG, uq->getQueryIdString() << " Remembering query: ("
+             << clientId << ", " << threadId << ") (new map size: "
+             << _clientToQuery.size() << ")");
+    }
+}
+
+void
+Czar::_makeAsyncResult(std::string const& asyncResultTable,
+                       QueryId queryId,
+                       std::string const& resultLoc) {
+
+    sql::SqlConnection sqlConn(_czarConfig.getMySqlResultConfig());
+    LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
+
+    sql::SqlErrorObject sqlErr;
+    std::string resultLocEscaped;
+    if (not sqlConn.escapeString(resultLoc, resultLocEscaped,sqlErr)) {
+        SqlError exc(ERR_LOC, "Failure in escapString", sqlErr);
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
+    }
+
+    std::string query = (boost::format(::createAsyncResultTmpl)
+                    % asyncResultTable % queryId % resultLocEscaped).str();
+
+    if (not sqlConn.runQuery(query, sqlErr)) {
+        SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
+    }
 }
 
 }}} // namespace lsst::qserv::czar

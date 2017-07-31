@@ -66,11 +66,13 @@ public:
     /// @param defaultDb:   Default database name, may be empty
     /// @param largeResultMgr: Manager instance for large results
     /// @param userQueryId: Unique string identifying query
+    /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
                                 std::string const& defaultDb,
                                 qdisp::LargeResultMgr::Ptr const& largeResultMgr,
-                                std::string const& userQueryId);
+                                std::string const& userQueryId,
+                                std::string const& msgTableName);
 
 private:
     class Impl;
