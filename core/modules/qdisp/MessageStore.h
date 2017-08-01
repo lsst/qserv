@@ -88,7 +88,8 @@ public:
      * @param severity_ message severity level, default to MSG_INFO
      */
     void addMessage(int chunkId, int code, std::string const& description,
-                    MessageSeverity severity_ = MessageSeverity::MSG_INFO);
+                    MessageSeverity severity_ = MessageSeverity::MSG_INFO,
+                    std::time_t timestamp = std::time_t(0));
 
     /** Add an error message to this MessageStore
      *

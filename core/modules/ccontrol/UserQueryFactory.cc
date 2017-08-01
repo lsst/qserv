@@ -37,6 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
@@ -125,6 +126,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
     std::string dbName, tableName;
     bool full = false;
+    QueryId userJobId = 0;
 
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
@@ -196,6 +198,12 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();
         }
+        return uq;
+    } else if (UserQueryType::isSelectResult(query, userJobId)) {
+        auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _impl->qMetaCzarId,
+                                                         _impl->queryMetadata,
+                                                         _impl->resultDbConn.get());
+        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isDropTable(query, dbName, tableName)) {
         // processing DROP TABLE

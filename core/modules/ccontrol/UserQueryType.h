@@ -23,12 +23,13 @@
 #define LSST_QSERV_CCONTROL_USERQUERYTYPE_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Third-party headers
 
 // Qserv headers
-
+#include "global/intTypes.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,7 +52,7 @@ public:
     /// Returns true if query is DROP TABLE
     static bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName);
 
-    /// Returns true if query is SELECT
+    /// Returns true if query is regular SELECT (not isSelectResult())
     static bool isSelect(std::string const& query);
 
     /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
@@ -77,6 +78,12 @@ public:
      *  in `stripped` string.
      */
     static bool isSubmit(std::string const& query, std::string& stripped);
+
+    /**
+     *  Returns true if query is SELECT * FROM QSERV_RESULT(...), returns
+     *  query ID in `queryId` argument.
+     */
+    static bool isSelectResult(std::string const& query, QueryId& queryId);
 
 };
 

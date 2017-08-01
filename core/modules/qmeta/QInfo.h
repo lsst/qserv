@@ -26,6 +26,9 @@
 #include <ctime>
 #include <string>
 
+// Qserv headers
+#include "qmeta/types.h"
+
 namespace lsst {
 namespace qserv {
 namespace qmeta {
@@ -77,7 +80,7 @@ public:
      *  @param completed: Time when query finished execution, 0 if not finished.
      *  @param returned: Time when query result was sent to client, 0 if not sent yet.
      */
-    QInfo(QType qType, int czarId, std::string const& user,
+    QInfo(QType qType, CzarId czarId, std::string const& user,
           std::string const& qText, std::string const& qTemplate,
           std::string const& qMerge, std::string const& qProxyOrderBy,
           std::string const& resultLoc, std::string const& msgTableName,
@@ -99,7 +102,7 @@ public:
     QStatus queryStatus() const { return _qStatus; }
 
     /// Returns czar Id
-    int czarId() const { return _czarId; }
+    CzarId czarId() const { return _czarId; }
 
     /// Returns user name
     std::string const& user() const { return _user; }
@@ -140,7 +143,7 @@ private:
 
     QType _qType;           // Query type, one of QType constants
     QStatus _qStatus;       // Query processing status
-    int _czarId;            // Czar ID, non-negative number.
+    CzarId _czarId;         // Czar ID, non-negative number.
     std::string _user;      // User name for user who issued the query.
     std::string _qText;     // Original query text as given by user.
     std::string _qTemplate; // Query template used to build per-chunk queries.
