@@ -333,13 +333,14 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     return XrdSsiRequest::PRD_Normal;
 }
 
-void QueryRequest::cancel() {
+/// @return true if QueryRequest cancelled successfully.
+bool QueryRequest::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::cancel");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" QueryRequest::cancel already cancelled, ignoring");
-            return; // Don't do anything if already cancelled.
+            return false; // Don't do anything if already cancelled.
         }
         _cancelled = true;
         _retried.store(true); // Prevent retries.
@@ -349,7 +350,7 @@ void QueryRequest::cancel() {
             if (jq != nullptr) jq->getStatus()->updateInfo(JobStatus::CANCEL);
         }
     }
-    _errorFinish(true);
+    return _errorFinish(true); // return true if errorFinish cancelled
 }
 
 
@@ -392,16 +393,21 @@ void QueryRequest::cleanup() {
 
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
-void QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish() shouldCancel=" << shouldCancel);
+/// @return true if this QueryRequest object had the authority to make changes.
+bool QueryRequest::_errorFinish(bool shouldCancel) {
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _errorFinish() shouldCancel=" << shouldCancel);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
+        LOGS_DEBUG(_jobIdStr << " &&& _errorFinish() finishStatus=" << _finishStatus
+                << " ACTIVE=" << ACTIVE << " jq=" << jq);
         if (_finishStatus != ACTIVE || jq == nullptr) {
             // Either _finish or _errorFinish has already been called.
-            LOGS_DEBUG(_jobIdStr << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
-            return;
+            LOGS_DEBUG(_jobIdStr << " _errorFinish() job no longer ACTIVE, ignoring "
+                       << " _finishStatus=" << _finishStatus
+                       << " ACTIVE=" << ACTIVE << " jq=" << jq);
+            return false;
         }
         _finishStatus = ERROR;
     }
@@ -430,6 +436,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         _callMarkComplete(false);
     }
     cleanup(); // Reset smart pointers so this object can be deleted.
+    return true;
 }
 
 /// Finalize under success conditions and report completion.

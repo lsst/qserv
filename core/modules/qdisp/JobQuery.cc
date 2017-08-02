@@ -143,12 +143,19 @@ bool JobQuery::cancel() {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         // If _queryRequestPtr is not nullptr, then this job has been passed to xrootd and
         // cancellation is complicated.
+        bool cancelled = false;
         if (_queryRequestPtr != nullptr) {
             LOGS_DEBUG(getIdStr() << " cancel QueryRequest in progress");
-            _queryRequestPtr->cancel();
-        } else {
+            if (_queryRequestPtr->cancel()) {
+                LOGS_DEBUG(getIdStr() << " cancelled by QueryRequest");
+                cancelled = true;
+            } else {
+                LOGS_DEBUG(getIdStr() << " QueryRequest could not cancel");
+            }
+        }
+        if (!cancelled) {
             std::ostringstream os;
-            os << getIdStr() <<" cancel before QueryRequest" ;
+            os << getIdStr() <<" cancel QueryRequest=" << _queryRequestPtr ;
             LOGS_DEBUG(os.str());
             getDescription()->respHandler()->errorFlush(os.str(), -1);
             auto executive = _executive.lock();

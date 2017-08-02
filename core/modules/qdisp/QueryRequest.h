@@ -111,7 +111,7 @@ public:
     /// Called by xrootd when new data is available.
     XrdSsiRequest::PRD_Xeq ProcessResponseData(char *buff, int blen, bool last) override;
 
-    void cancel();
+    bool cancel();
     bool isQueryCancelled();
     bool isQueryRequestCancelled();
     void doNotRetry() { _retried.store(true); }
@@ -123,7 +123,7 @@ private:
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
-    void _errorFinish(bool shouldCancel=false);
+    bool _errorFinish(bool shouldCancel=false);
     void _finish();
 
     qdisp::LargeResultMgr::Ptr _largeResultMgr;
