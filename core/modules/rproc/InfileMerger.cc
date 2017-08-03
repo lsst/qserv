@@ -284,7 +284,11 @@ bool InfileMerger::finalize() {
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
                                + " DROP COLUMN " +  _jobIdColName;
         LOGS(_log, LOG_LVL_DEBUG, "Removing w/" << sqlDropCol);
+        auto begin = std::chrono::system_clock::now();
         finalizeOk = _applySqlLocal(sqlDropCol);
+        auto end = std::chrono::system_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+        LOGS(_log, LOG_LVL_DEBUG, "dropCol Removing microseconds=" << diff.count());
     }
     LOGS(_log, LOG_LVL_DEBUG, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
@@ -300,7 +304,11 @@ bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
     std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
                              + " WHERE " +  _jobIdColName + "=" + std::to_string(jobIdAttempt);
     LOGS(_log, LOG_LVL_DEBUG, "Deleting invalid rows w/" << sqlDelRows);
+    auto begin = std::chrono::system_clock::now();
     bool ok = _applySqlLocal(sqlDelRows);
+    auto end = std::chrono::system_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+    LOGS(_log, LOG_LVL_DEBUG, "invalid rows Removing microseconds=" << diff.count());
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
         return false;
