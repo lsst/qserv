@@ -346,7 +346,7 @@ struct QhttpFixture
 
 BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
 {
-    //----- set up server with a handler on "/" and a request timeout of 200ms
+    //----- set up server with a handler on "/" and a request timeout of 20ms
 
     server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
         resp->sendStatus(200);
@@ -375,11 +375,15 @@ BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
     asio::write(socket, asio::buffer(req), ec);
     BOOST_TEST(!ec);
 
-    //----- attempt to read response (should fail with EOF after timeout)
+    //----- attempt to read response (should fail after timeout)
+    //
+    //      Note: previously this test checked for ec == EOF.  As it turns out, boost::asio guarantees
+    //      only a zero return value from read_until() on error, and not any particular error codes.
+    //
 
     asio::streambuf respbuf;
-    asio::read_until(socket, respbuf, "\r\n\r\n", ec);
-    BOOST_TEST(ec == boost::asio::error::eof);
+    size_t num_read_after_timeout = asio::read_until(socket, respbuf, "\r\n\r\n", ec);
+    BOOST_TEST(num_read_after_timeout == (size_t)0);
 }
 
 
