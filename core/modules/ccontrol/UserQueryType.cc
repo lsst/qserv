@@ -72,6 +72,12 @@ boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _submitRe(R"(^submit\s+(.+)$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for SELECT * FROM QSERV_RESULT(12345)
+// group 1 is the query ID number
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _selectResultRe(R"(^select\s+\*\s+from\s+qserv_result\s*\(\s*(\d+)\s*\)$)",
+                             boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 }
 
 namespace lsst {
@@ -105,7 +111,7 @@ UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::s
     return match;
 }
 
-/// Returns true if query is SELECT
+/// Returns true if query is regular SELECT (not isSelectResult())
 bool
 UserQueryType::isSelect(std::string const& query) {
     LOGS(_log, LOG_LVL_DEBUG, "isSelect: " << query);
@@ -113,6 +119,10 @@ UserQueryType::isSelect(std::string const& query) {
     bool match = boost::regex_match(query, sm, _selectRe);
     if (match) {
         LOGS(_log, LOG_LVL_DEBUG, "isSelect: match");
+        if (boost::regex_match(query, sm, _selectResultRe)) {
+            LOGS(_log, LOG_LVL_DEBUG, "isSelect: match select result");
+            match = false;
+        }
     }
     return match;
 }
@@ -161,6 +171,19 @@ UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
          LOGS(_log, LOG_LVL_DEBUG, "isSubmit: match: " << stripped);
      }
      return match;
- }
+}
+
+/// Returns true if query is SELECT * FROM QSERV_RESULT(...)
+bool
+UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
+     LOGS(_log, LOG_LVL_DEBUG, "isSelectResult: " << query);
+     boost::smatch sm;
+     bool match = boost::regex_match(query, sm, _selectResultRe);
+     if (match) {
+         queryId = std::stoull(sm.str(1));
+         LOGS(_log, LOG_LVL_DEBUG, "isSelectResult: queryId: " << queryId);
+     }
+     return match;
+}
 
 }}} // namespace lsst::qserv::ccontrol
