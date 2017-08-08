@@ -188,6 +188,7 @@ private:
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
+    bool _applySqlLocal(std::string const& sql, std::string const& logMsg);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);

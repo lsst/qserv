@@ -70,6 +70,31 @@ public:
     std::string s;
 };
 
+
+/// It is extremely important that _largeResultMgr->finishBlock() is called exactly once
+/// for every time _largeResultMgr->startBlock() is called, otherwise the semaphore would
+/// vary in value, disastrous if it gets used up or grows large. This class is meant to
+/// ensure that it doesn't happen.
+class LargeResultSafety {
+public:
+    LargeResultSafety(qdisp::LargeResultMgr::Ptr const& largeResultMgr,
+                      std::string const& jobId) :
+        _largeResultMgr(largeResultMgr), _jobIdStr(jobId) {}
+    ~LargeResultSafety();
+    LargeResultSafety(LargeResultSafety const&) = delete;
+    LargeResultSafety& operator=(LargeResultSafety const&) = delete;
+
+    void startBlock();
+    bool finishBlock();
+
+private:
+    qdisp::LargeResultMgr::Ptr _largeResultMgr;
+    bool _startBlockCalled{false}; ///< True if _largeResultMgr->startBlock() called.
+    std::mutex _blockMtx; ///< Protects _startBlockCalled.
+    std::string _jobIdStr;
+};
+
+
 /// A client implementation of an XrdSsiRequest that adapts qserv's executing
 /// queries to the XrdSsi API.
 ///
@@ -126,9 +151,6 @@ private:
     bool _errorFinish(bool shouldCancel=false);
     void _finish();
 
-    qdisp::LargeResultMgr::Ptr _largeResultMgr;
-    bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
-
     /// _holdState indicates the data is being held by xrootd for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.
@@ -154,6 +176,9 @@ private:
     std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
     std::string _jobIdStr {QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
     util::InstanceCount _instC{"QueryRequest"};
+
+    LargeResultSafety _largeResultSafety;
+    bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

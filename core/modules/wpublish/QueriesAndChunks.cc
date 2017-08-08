@@ -394,7 +394,8 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
             // TODO: Add code to send message back to czar to cancel this user query.
         }
     } else {
-        if (false && uq->_tasksBooted > _maxTasksBooted) { // &&& something seems wrong here.
+        // Disabled as too aggressive and vulnerable to bad statistics. DM-11526
+        if (false && uq->_tasksBooted > _maxTasksBooted) {
             LOGS(_log, LOG_LVL_INFO, task->getIdStr()
                  << " entire UserQuery booting from " << sched->getName()
                  << " tasksBooted=" << uq->_tasksBooted

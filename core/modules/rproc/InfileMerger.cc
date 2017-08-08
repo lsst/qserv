@@ -220,6 +220,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _sizeCheckRowCount = 0;
         auto tSize = _getResultTableSizeMB();
         if (tSize > _maxResultTableSizeMB) {
+            // TODO:DM-11524 Try deleting invalid rows if there are any, then check size again
             std::ostringstream os;
             os << queryIdJobStr << " cancelling queryResult table " << _mergeTable
                << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;
@@ -255,6 +256,7 @@ bool InfileMerger::finalize() {
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
     }
+    // TODO:DM-11524   delete all invalid rows in the table.
     if (_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
@@ -262,7 +264,7 @@ bool InfileMerger::finalize() {
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " ENGINE=MyISAM " + mergeSelect;
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
-        finalizeOk = _applySqlLocal(createMerge);
+        finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
@@ -284,11 +286,7 @@ bool InfileMerger::finalize() {
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
                                + " DROP COLUMN " +  _jobIdColName;
         LOGS(_log, LOG_LVL_DEBUG, "Removing w/" << sqlDropCol);
-        auto begin = std::chrono::system_clock::now();
-        finalizeOk = _applySqlLocal(sqlDropCol);
-        auto end = std::chrono::system_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-        LOGS(_log, LOG_LVL_DEBUG, "dropCol Removing microseconds=" << diff.count());
+        finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
     }
     LOGS(_log, LOG_LVL_DEBUG, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
@@ -304,11 +302,7 @@ bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
     std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
                              + " WHERE " +  _jobIdColName + "=" + std::to_string(jobIdAttempt);
     LOGS(_log, LOG_LVL_DEBUG, "Deleting invalid rows w/" << sqlDelRows);
-    auto begin = std::chrono::system_clock::now();
-    bool ok = _applySqlLocal(sqlDelRows);
-    auto end = std::chrono::system_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-    LOGS(_log, LOG_LVL_DEBUG, "invalid rows Removing microseconds=" << diff.count());
+    bool ok = _applySqlLocal(sqlDelRows, "deleteInvalidRows");
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
         return false;
@@ -333,6 +327,17 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 bool InfileMerger::scrubResults(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
     return _invalidJobAttemptMgr.holdMergingForRowDelete(jobIdAttempt);
+}
+
+
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
+    auto begin = std::chrono::system_clock::now();
+    bool success = _applySqlLocal(sql);
+    auto end = std::chrono::system_clock::now();
+    LOGS(_log, LOG_LVL_DEBUG, logMsg << " success=" << success
+         << " microseconds="
+         << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
+    return success;
 }
 
 
@@ -494,7 +499,7 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
         createStmt += " ENGINE=MyISAM";
         LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
 
-        if (not _applySqlLocal(createStmt)) {
+        if (not _applySqlLocal(createStmt, "setupTable")) {
             _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
                                        "Error creating table (" + _mergeTable + ")");
             _isFinished = true; // Cannot continue.
