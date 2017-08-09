@@ -41,7 +41,7 @@ namespace mysql {
  */
 class MySqlConfig {
 public:
-    MySqlConfig() : port(0) {}
+    MySqlConfig() : port(0), maxTableSizeMB(0) {}
 
     /**
      *  Create MySqlConfig instance

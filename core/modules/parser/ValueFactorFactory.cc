@@ -116,6 +116,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         a = a->getFirstChild();
         // COLUMN_REF should have REGULAR_ID as only child.
         // Fall through to REGULAR_ID handler
+        /* no break */
     case SqlSQL2TokenTypes::REGULAR_ID:
         vt = _newColumnFactor(a); // Column ref or id.
         break;
@@ -162,6 +163,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         t = child;
         child = t->getFirstChild();
         // Fall-through to REGULAR_ID handler
+        /* no break */
     case SqlSQL2TokenTypes::REGULAR_ID:
         // make column ref. (no further children)
         {
