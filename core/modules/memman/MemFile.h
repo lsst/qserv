@@ -99,7 +99,7 @@ public:
     struct MFResult {
         MemFile* mfP;
         int      retc;
-        MFResult() {}
+        MFResult() : mfP(nullptr), retc(0) {}
         MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
     };
 

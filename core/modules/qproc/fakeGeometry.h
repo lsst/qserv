@@ -31,6 +31,8 @@
   */
 
 // System headers
+#include <memory>
+#include <utility>
 #include <vector>
 
 // Qserv headers

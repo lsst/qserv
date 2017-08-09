@@ -37,6 +37,7 @@
 
 // System headers
 #include <cassert>
+#include <map>
 #include <mutex>
 
 namespace lsst {
