@@ -58,10 +58,11 @@ namespace qdisp {
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest( XrdSsiSession* session, JobQuery::Ptr const& jobQuery) :
-  _session(session), _jobQuery(jobQuery),
-  _jobIdStr(jobQuery->getIdStr()) {
+  _session(session),
+  _jobQuery(jobQuery),
+  _jobIdStr(jobQuery->getIdStr()),
+  _largeResultSafety(_jobQuery->getLargeResultMgr(), _jobIdStr){
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
-    _largeResultMgr = _jobQuery->getLargeResultMgr();
 }
 
 QueryRequest::~QueryRequest() {
@@ -223,8 +224,8 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
 
     // If the _holdState is MERGE2, _largeResultMgr->finishBlock must be called at the end of this function.
     std::function<void()> resetHoldState = [this]() {
-        _largeResultMgr->finishBlock(_jobIdStr);
         _setHoldState(NO_HOLD0);
+        _largeResultSafety.finishBlock();
     };
     CallOnFuncExit callOnExit(_holdState == MERGE2, resetHoldState);
 
@@ -305,7 +306,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
                 LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " being held");
                 if (_holdState == NO_HOLD0) {
                     _setHoldState(GET_DATA1);
-                    _largeResultMgr->startBlock(_jobIdStr);
+                    _largeResultSafety.startBlock();
                     return XrdSsiRequest::PRD_Hold; // semaphore locked.
                 }
                 return XrdSsiRequest::PRD_Normal;
@@ -333,15 +334,18 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     return XrdSsiRequest::PRD_Normal;
 }
 
-void QueryRequest::cancel() {
+
+/// @return true if QueryRequest cancelled successfully.
+bool QueryRequest::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::cancel");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" QueryRequest::cancel already cancelled, ignoring");
-            return; // Don't do anything if already cancelled.
+            return false; // Don't do anything if already cancelled.
         }
         _cancelled = true;
+        _largeResultSafety.finishBlock(); // Better to release it early than to never release it.
         _retried.store(true); // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
@@ -349,7 +353,7 @@ void QueryRequest::cancel() {
             if (jq != nullptr) jq->getStatus()->updateInfo(JobStatus::CANCEL);
         }
     }
-    _errorFinish(true);
+    return _errorFinish(true); // return true if errorFinish cancelled
 }
 
 
@@ -365,7 +369,7 @@ bool QueryRequest::isQueryCancelled() {
 }
 
 
-/// @return true if QueryRequest::cancel() has been cancelled.
+/// @return true if QueryRequest::cancel() has been called.
 /// QueryRequest::isCancelled() is a much better indicator of user query cancellation.
 bool QueryRequest::isQueryRequestCancelled() {
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
@@ -392,16 +396,19 @@ void QueryRequest::cleanup() {
 
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
-void QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::_errorFinish() shouldCancel=" << shouldCancel);
+/// @return true if this QueryRequest object had the authority to make changes.
+bool QueryRequest::_errorFinish(bool shouldCancel) {
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _errorFinish() shouldCancel=" << shouldCancel);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE || jq == nullptr) {
             // Either _finish or _errorFinish has already been called.
-            LOGS_DEBUG(_jobIdStr << " QueryRequest::_errorFinish() job no longer ACTIVE, ignoring");
-            return;
+            LOGS_DEBUG(_jobIdStr << " _errorFinish() job no longer ACTIVE, ignoring "
+                       << " _finishStatus=" << _finishStatus
+                       << " ACTIVE=" << ACTIVE << " jq=" << jq);
+            return false;
         }
         _finishStatus = ERROR;
     }
@@ -430,6 +437,7 @@ void QueryRequest::_errorFinish(bool shouldCancel) {
         _callMarkComplete(false);
     }
     cleanup(); // Reset smart pointers so this object can be deleted.
+    return true;
 }
 
 /// Finalize under success conditions and report completion.
@@ -483,6 +491,32 @@ std::string QueryRequest::getXrootdErr(int *eCode) {
     std::ostringstream os;
     os << "xrootdErr(" << errNum << ":" << errText << ")";
     return os.str();
+}
+
+
+
+LargeResultSafety::~LargeResultSafety() {
+    if (finishBlock()) {
+        LOGS(_log, LOG_LVL_INFO, _jobIdStr << " ~LargeResultSafety had to call finishBlock");
+    }
+}
+
+void LargeResultSafety::startBlock() {
+    std::lock_guard<std::mutex> lg(_blockMtx);
+    _startBlockCalled = true;
+    _largeResultMgr->startBlock(_jobIdStr);
+}
+
+
+/// @return true if finishBlock() was called.
+bool LargeResultSafety::finishBlock() {
+    std::lock_guard<std::mutex> lg(_blockMtx);
+    if (_startBlockCalled) {
+        _startBlockCalled = false;
+        _largeResultMgr->finishBlock(_jobIdStr);
+        return true;
+    }
+    return false;
 }
 
 }}} // lsst::qserv::qdisp

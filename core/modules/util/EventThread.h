@@ -128,7 +128,7 @@ public:
     EventThread() {}
     explicit EventThread(CommandQueue::Ptr const& q) : _q{q} {}
     EventThread(EventThread const&) = delete;
-    EventThread operator=(EventThread const&) = delete;
+    EventThread& operator=(EventThread const&) = delete;
     virtual ~EventThread() {}
 
     void handleCmds(); //< Event loop!!!

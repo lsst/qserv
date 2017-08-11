@@ -61,7 +61,7 @@ public:
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
-    virtual void taskCancelled(wbase::Task *task) { return; }
+    void taskCancelled(wbase::Task *task) override { return; }
 };
 
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.

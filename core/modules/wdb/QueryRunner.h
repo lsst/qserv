@@ -65,7 +65,7 @@ public:
                                            mysql::MySqlConfig const& mySqlConfig);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
-    QueryRunner operator=(QueryRunner const&) = delete;
+    QueryRunner& operator=(QueryRunner const&) = delete;
     ~QueryRunner();
 
     bool runQuery() override;
