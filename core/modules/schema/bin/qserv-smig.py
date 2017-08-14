@@ -29,16 +29,11 @@ from __future__ import absolute_import, division, print_function
 #  Imports of standard modules --
 # --------------------------------
 import argparse
+import configparser
 import importlib
 import logging
 import os
 import sys
-
-try:
-    import configparser
-except ImportError:
-    # for Python2
-    import ConfigParser as configparser
 
 # -----------------------------
 # Imports for other modules --
@@ -122,8 +117,8 @@ def _normalizeConfig(config):
     if config.get("technology") == "mysql":
         res["drivername"] = "mysql+mysqldb"
     elif config.get("technology") is not None:
-        raise ValueError("Unexpected technology specified for connection: " +
-                         str(config.get("technology")))
+        raise ValueError("Unexpected technology specified for connection:"
+                         " {}".format(config.get("technology")))
     res["username"] = config.get("username") or config.get("user")
     res["password"] = config.get("password") or config.get("passwd") or config.get("pass")
     res["host"] = config.get("hostname") or config.get("host")

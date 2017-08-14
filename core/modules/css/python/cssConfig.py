@@ -10,6 +10,7 @@ Module containing Python-specific methods for CSS configuration.
 # ---------------------------------
 #  Imports of base class module --
 # ---------------------------------
+from builtins import str
 import logging
 
 # -----------------------------

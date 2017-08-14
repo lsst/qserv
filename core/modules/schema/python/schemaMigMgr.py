@@ -3,6 +3,8 @@
 
 from __future__ import absolute_import, division, print_function
 
+from builtins import object
+from future.utils import with_metaclass
 __all__ = ["SchemaMigMgr"]
 
 #--------------------------------
@@ -27,11 +29,9 @@ _log = logging.getLogger(__name__)
 #------------------------
 
 
-class SchemaMigMgr:
+class SchemaMigMgr(with_metaclass(ABCMeta, object)):
     """Abstract base class for schema migration managers.
     """
-
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def current_version(self):

@@ -125,4 +125,4 @@ class Auth(object):
                 raise RuntimeError("invalid content of secret file (empty fields): " + fileName)
             return secret
         except Exception as exc:
-            raise RuntimeError("failed to read secret file: " + str(exc))
+            raise RuntimeError("failed to read secret file: {}".format(exc))

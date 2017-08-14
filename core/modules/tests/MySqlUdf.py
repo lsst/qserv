@@ -98,7 +98,7 @@ class MySqlUdfTestCase(unittest.TestCase):
                          " did not return %s." % dbparam(result))
 
     def _angSep(self, result, *args):
-        args = tuple(map(dbparam, args))
+        args = tuple(dbparam(arg) for arg in args)
         query = "SELECT scisql_angSep(%s, %s, %s, %s)" % args
         qresult = self._conn.execute(query)
         rows = qresult.fetchall()
@@ -109,7 +109,7 @@ class MySqlUdfTestCase(unittest.TestCase):
             self.assertAlmostEqual(rows[0][0], result, 11, msg)
 
     def testAngSep(self):
-        for i in xrange(4):
+        for i in range(4):
             a = [0.0]*4
             a[i] = None
             self._angSep(None, *a)
@@ -118,7 +118,7 @@ class MySqlUdfTestCase(unittest.TestCase):
             self._angSep(None, 0.0, 0.0, 0.0, d)
         for d in (0.0, 90.0, -90.0):
             self._angSep(0.0, 0.0, d, 0.0, d)
-        for i in xrange(100):
+        for i in range(100):
             args = [random.uniform(0.0, 360.0),
                     random.uniform(-90.0, 90.0),
                     random.uniform(0.0, 360.0),
@@ -126,12 +126,12 @@ class MySqlUdfTestCase(unittest.TestCase):
             self._angSep(angSep(*args), *args)
 
     def _ptInSphBox(self, result, *args):
-        args = tuple(map(dbparam, args))
+        args = tuple(dbparam(arg) for arg in args)
         query = "SELECT scisql_s2PtInBox(%s, %s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphBox(self):
-        for i in xrange(6):
+        for i in range(6):
             a = [0.0]*6
             a[i] = None
             self._ptInSphBox(0, *a)
@@ -148,12 +148,12 @@ class MySqlUdfTestCase(unittest.TestCase):
             self._ptInSphBox(0, ra, dec, 350.0, 0.0, 370.0, 1.0)
 
     def _ptInSphCircle(self, result, *args):
-        args = tuple(map(dbparam, args))
+        args = tuple(dbparam(arg) for arg in args)
         query = "SELECT scisql_s2PtInCircle(%s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphCircle(self):
-        for i in xrange(5):
+        for i in range(5):
             a = [0.0]*5
             a[i] = None
             self._ptInSphCircle(0, *a)
@@ -162,11 +162,11 @@ class MySqlUdfTestCase(unittest.TestCase):
             self._ptInSphCircle(None, 0.0, 0.0, 0.0, d, 0.0)
         for r in (-1.0, 181.0):
             self._ptInSphCircle(None, 0.0, 0.0, 0.0, 0.0, r)
-        for i in xrange(10):
+        for i in range(10):
             ra_cen = random.uniform(0.0, 360.0)
             dec_cen = random.uniform(-90.0, 90.0)
             radius = random.uniform(0.0001, 10.0)
-            for j in xrange(100):
+            for j in range(100):
                 delta = radius / math.cos(math.radians(dec_cen))
                 ra = random.uniform(ra_cen - delta, ra_cen + delta)
                 dec = random.uniform(max(dec_cen - radius, -90.0),
@@ -178,12 +178,12 @@ class MySqlUdfTestCase(unittest.TestCase):
                     self._ptInSphCircle(0, ra, dec, ra_cen, dec_cen, radius)
 
     def _ptInSphEllipse(self, result, *args):
-        args = tuple(map(dbparam, args))
+        args = tuple(dbparam(arg) for arg in args)
         query = "SELECT scisql_s2PtInEllipse(%s, %s, %s, %s, %s, %s, %s)" % args
         self._query(query, result)
 
     def testPtInSphEllipse(self):
-        for i in xrange(7):
+        for i in range(7):
             a = [0.0]*7
             a[i] = None
             self._ptInSphEllipse(0, *a)
@@ -193,13 +193,13 @@ class MySqlUdfTestCase(unittest.TestCase):
         self._ptInSphEllipse(None, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 0.0)
         self._ptInSphEllipse(None, 0.0, 0.0, 0.0, 0.0, 2.0, -1.0, 0.0)
         self._ptInSphEllipse(None, 0.0, 0.0, 0.0, 0.0, 36001.0, 1.0, 0.0)
-        for i in xrange(10):
+        for i in range(10):
             ra_cen = random.uniform(0.0, 360.0)
             dec_cen = random.uniform(-90.0, 90.0)
             smaa = random.uniform(0.0001, 36000.0)
             smia = random.uniform(0.00001, smaa)
             ang = random.uniform(-180.0, 180.0)
-            for j in xrange(100):
+            for j in range(100):
                 smaaDeg = smaa / 3600.0
                 delta = smaaDeg / math.cos(math.radians(dec_cen))
                 ra = random.uniform(ra_cen - delta, ra_cen + delta)
@@ -212,13 +212,13 @@ class MySqlUdfTestCase(unittest.TestCase):
                     self._ptInSphEllipse(0, ra, dec, ra_cen, dec_cen, smaa, smia, ang)
 
     def _ptInSphPoly(self, result, *args):
-        args = ', '.join(map(dbparam, args))
+        args = ', '.join(dbparam(arg) for arg in args)
         query = "SELECT scisql_s2PtInCPoly(%s)" % args
         self._query(query, result)
 
     def testPtInSphPoly(self):
         # Test for NULL in any argument, returns 0
-        for i in xrange(8):
+        for i in range(8):
             a = [0.0, 0.0, 0, 0, 90, 0, 0, 90]
             a[i] = None
             self._ptInSphPoly(0, *a)
@@ -247,7 +247,7 @@ class MySqlUdfTestCase(unittest.TestCase):
                 ((360, 0), ny, nz), (ny, nx, nz), (nx, y, nz), (y, x, nz)]
         for t in tris:
             spec = flatten(t)
-            for i in xrange(100):
+            for i in range(100):
                 ra = random.uniform(0.0, 360.0)
                 dec = random.uniform(-90.0, 90.0)
                 if ((t[2][1] > 0 and (dec < 0.0 or ra < t[0][0] or ra > t[1][0])) or

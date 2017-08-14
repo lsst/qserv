@@ -30,7 +30,7 @@
 # Note, this tool is no longer needed for qserv, but may be useful in
 #  the future if ANTLR parse symbols are needed in other languages in
 #  qserv.
-from itertools import imap
+
 import re
 import sys
 
@@ -102,8 +102,8 @@ def main():
             "src": sys.argv[1]}
     srcList = list(src)
     fpHeader.write(headerPreamble % subs)
-    fpHeader.write("\n".join(imap(formatIntLine, srcList)))
-    fpHeader.write("\n".join(imap(formatStrLine, srcList)))
+    fpHeader.write("\n".join([formatIntLine(item) for item in srcList]))
+    fpHeader.write("\n".join([formatStrLine(item) for item in srcList]))
     fpHeader.write(headerFooter % subs)
     fpTokens.close()
     fpHeader.close()

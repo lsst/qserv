@@ -30,12 +30,6 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-# ------------------------------
-#  Module's version from CVS --
-# ------------------------------
-__version__ = "$Revision: 8 $"
-# $Source$
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -95,7 +89,7 @@ class wmgrClientTest(unittest.TestCase):
                     '--1234567890--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(len(encoder), expectedLen)
         self.assertEqual(lines, expected)
 
@@ -126,7 +120,7 @@ class wmgrClientTest(unittest.TestCase):
                     '--1234567890--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(lines, expected)
         self.assertEqual(len(encoder), expectedLen)
 
@@ -160,7 +154,7 @@ class wmgrClientTest(unittest.TestCase):
                     '--part-X-of-the-multipart-request--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(lines, expected)
         self.assertEqual(len(encoder), expectedLen)
 

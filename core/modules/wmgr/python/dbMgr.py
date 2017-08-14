@@ -523,9 +523,9 @@ def listChunks(dbName, tblName):
                 else:
                     chunk['overlapTable'] = True
 
-    _log.debug('found chunks: %s', chunks.keys())
+    _log.debug('found chunks: %s', list(chunks.keys()))
 
-    return json.jsonify(results=chunks.values())
+    return json.jsonify(results=list(chunks.values()))
 
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks', methods=['POST'])

@@ -29,6 +29,7 @@ Module defining WmgrClient class and related methods.
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
+from past.builtins import basestring
 import io
 import logging
 
@@ -42,7 +43,7 @@ from requests.compat import urlencode
 # Local non-exported definitions --
 # ----------------------------------
 
-# used as default value to distingush from None
+# used as default value to distinguish from None
 _None = object()
 
 _log = logging.getLogger(__name__)
