@@ -87,11 +87,11 @@ class TestWatcherLib(unittest.TestCase):
 
         dbs = wCss.getDbs()
         self.assertEqual(len(dbs), 5)
-        self.assert_("DB1" in dbs)
-        self.assert_("DB2" in dbs)
-        self.assert_("DB3" in dbs)
-        self.assert_("DB4" in dbs)
-        self.assert_("DB5" in dbs)
+        self.assertIn("DB1", dbs)
+        self.assertIn("DB2", dbs)
+        self.assertIn("DB3", dbs)
+        self.assertIn("DB4", dbs)
+        self.assertIn("DB5", dbs)
         self.assertEqual(dbs["DB1"], "READY")
         self.assertEqual(dbs["DB2"], "DO_NOT_USE")
         self.assertEqual(dbs["DB3"], "PENDING_CREATE:12345")
@@ -121,10 +121,10 @@ class TestWatcherLib(unittest.TestCase):
 
         tables = wCss.getTables()
         self.assertEqual(len(tables), 4)
-        self.assert_(("DB1", "TABLE1") in tables)
-        self.assert_(("DB1", "TABLE2") in tables)
-        self.assert_(("DB2", "TABLE1") in tables)
-        self.assert_(("DB2", "TABLE2") in tables)
+        self.assertIn(("DB1", "TABLE1"), tables)
+        self.assertIn(("DB1", "TABLE2"), tables)
+        self.assertIn(("DB2", "TABLE1"), tables)
+        self.assertIn(("DB2", "TABLE2"), tables)
         self.assertEqual(tables[("DB1", "TABLE1")], "READY")
         self.assertEqual(tables[("DB1", "TABLE2")], "FAILED:Not again")
         self.assertEqual(tables[("DB2", "TABLE1")], "PENDING_DELETE:")
@@ -168,7 +168,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP DATABASE DB1")
         self.assertEqual(executor.lastOptions, "12345")
-        self.assert_('DB1' not in wCss.getDbs())
+        self.assertNotIn('DB1', wCss.getDbs())
 
     def test_12_createTable(self):
         """ Test for creating table """
@@ -212,7 +212,7 @@ class TestWatcherLib(unittest.TestCase):
         watcher.run(True)
         self.assertEqual(executor.lastCall, "DROP TABLE DB1.TABLE1")
         self.assertEqual(executor.lastOptions, "12345")
-        self.assert_(('DB1', 'TABLE1') not in wCss.getTables())
+        self.assertNotIn(('DB1', 'TABLE1'), wCss.getTables())
 
     def test_20_createDbFail(self):
         """ Test for creating database """

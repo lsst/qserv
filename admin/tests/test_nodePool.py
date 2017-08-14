@@ -53,17 +53,17 @@ class TestNodePool(unittest.TestCase):
     def test_ExecParallel(self):
         """ Check parallel execution of command """
         failed = self._nodePool.execParallel('echo ECHO')
-        self.assertEquals(failed, 0)
+        self.assertEqual(failed, 0)
 
     def test_ExecParallel_Stdin(self):
         """ Check parallel execution of command from stdin """
         failed = self._nodePool.execParallel('echo ECHO')
-        self.assertEquals(failed, 0)
+        self.assertEqual(failed, 0)
 
     def test_ExecParallel_Fail(self):
         """ Check parallel execution of command, with failure """
         failed = self._nodePool.execParallel('false')
-        self.assertEquals(failed, self._nb_nodes)
+        self.assertEqual(failed, self._nb_nodes)
 
 
 #
