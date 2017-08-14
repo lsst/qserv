@@ -25,12 +25,12 @@ DataLoader class is used to simplify data loading procedure.
 
 @author  Andy Salnikov, SLAC
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
-from cStringIO import StringIO
+from io import StringIO
 import logging
 import os
 import re
@@ -185,7 +185,7 @@ class DataLoader(object):
             self._checkCss(database, table)
 
         # make chunk mapper
-        self.chunkMap = ChunkMapping(self.workerWmgrMap.keys(), database, table, self.css)
+        self.chunkMap = ChunkMapping(list(self.workerWmgrMap.keys()), database, table, self.css)
 
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir(data)

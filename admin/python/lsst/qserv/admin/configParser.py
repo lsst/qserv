@@ -28,9 +28,12 @@ Most of the code is stolen from partitioner C++ code and adopted for Python.
 @author  Andy Salnikov, SLAC
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
+from builtins import chr
 
 # -----------------------------
 # Imports for other modules --
@@ -134,7 +137,7 @@ class ConfigParser(object):
         cp = int(val, 16)
 
         # UTF-8 encode the code-point.
-        val = unichr(cp).encode('utf_8')
+        val = chr(cp).encode('utf_8')
 
         return val
 

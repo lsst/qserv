@@ -38,12 +38,13 @@ A Qserv run directory can only run one Qserv instance at a time.
 @author  Fabrice Jammes, IN2P3
 
 """
+from __future__ import absolute_import, division, print_function
 
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-import ConfigParser
+import configparser
 import logging
 import os
 import re
@@ -334,7 +335,7 @@ class Configurator(object):
                 # used in templates targets comments
                 config['qserv']['meta_config_file'] = self._meta_config_file
 
-            except ConfigParser.NoOptionError as exc:
+            except configparser.NoOptionError as exc:
                 _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 

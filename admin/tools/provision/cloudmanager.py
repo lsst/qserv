@@ -12,7 +12,10 @@ and provisioning
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 import os
 import re
@@ -139,7 +142,7 @@ class CloudManager(object):
 
         default_instance_prefix = "{0}-qserv-".format(self._safe_username)
 
-        config = ConfigParser.RawConfigParser(
+        config = configparser.RawConfigParser(
             {'limit_memlock': 'infinity',
              'registry_host': None,
              'registry_port': 5000,
@@ -220,7 +223,7 @@ class CloudManager(object):
         if volume_format:
             volume_first_id = config.getint('volume', 'first_id')
             volume_last_id = config.getint('volume', 'last_id')
-            volume_ids = range(volume_first_id, volume_last_id+1)
+            volume_ids = range(volume_first_id, volume_last_id + 1)
             self.volume_names = [volume_format.format(i) for i in volume_ids]
         else:
             self.volume_names = None
@@ -299,8 +302,9 @@ class CloudManager(object):
         :param instance_id: instance id
         :return:            instance name
         """
-        if isinstance(instance_id, unicode):
-            instance_id = instance_id.encode('ascii', 'ignore')
+        # Strip invalid characters from instance ID
+        # TODO: this fix should not be needed, we should require valid names
+        instance_id = re.sub("[^-_.a-zA-Z0-9]", "", instance_id)
         instance_name = "{0}{1}".format(self._hostname_tpl, instance_id)
         return instance_name
 

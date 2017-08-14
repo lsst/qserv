@@ -27,9 +27,12 @@ Utilities for directory tree creation, templates management and command-line opt
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # -------------------------------
+from builtins import input
 from distutils.util import strtobool
 import getpass
 import logging
@@ -207,7 +210,7 @@ def user_yes_no_query(question):
     sys.stdout.write('\n%r [y/n]\n' % question)
     while True:
         try:
-            return strtobool(raw_input().lower())
+            return strtobool(input().lower())
         except ValueError:
             sys.stdout.write('Please respond with \'y\' or \'n\'.\n')
 

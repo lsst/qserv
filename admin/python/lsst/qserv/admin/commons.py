@@ -24,12 +24,12 @@ Commons functions for Qserv administration tools
 @author  Fabrice Jammes, IN2P3
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
 # --------------------------------
 #  Imports of standard modules --
 # -------------------------------
-import ConfigParser
+import configparser
 import logging
 import os
 import re
@@ -71,7 +71,7 @@ def read_config(config_file):
         _LOG.fatal("qserv configuration file not found: %r" % config_file)
         exit(1)
 
-    parser = ConfigParser.SafeConfigParser()
+    parser = configparser.SafeConfigParser()
     # TODO: add unicode support for passwords: see DM-5985
     parser.read(config_file)
 
@@ -86,8 +86,8 @@ def read_config(config_file):
             config[section][option] = parser.get(section, option)
 
     # normalize directories names
-    for section in config.keys():
-        for option in config[section].keys():
+    for section in config:
+        for option in config[section]:
             if re.match(".*_dir", option):
                 config[section][option] = os.path.normpath(
                     config[section][option])

@@ -32,10 +32,11 @@ Known issues and todos:
  - many commands still need to be implemented
  - need to separate dangerous admin commands like DROP EVERYTHING
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # standard library imports
-import ConfigParser
+from builtins import input
+import configparser
 import logging
 from argparse import ArgumentParser
 import os
@@ -58,37 +59,37 @@ class _ToolError(RuntimeError):
 class _NotImplementedError(_ToolError):
 
     def __init__(self, cmd):
-        _ToolError.__init__(self, "Command not implemented: " + str(cmd))
+        _ToolError.__init__(self, "Command not implemented: {}".format(cmd))
 
 
 class _IllegalCommandError(_ToolError):
 
     def __init__(self, cmd):
-        _ToolError.__init__(self, "Unexpected command or option, see HELP for details: " + str(cmd))
+        _ToolError.__init__(self, "Unexpected command or option, see HELP for details: {}".format(cmd))
 
 
 class _WrongParamError(_ToolError):
 
     def __init__(self, parm):
-        _ToolError.__init__(self, "Unrecognized parameter: " + str(parm))
+        _ToolError.__init__(self, "Unrecognized parameter: {}".format(parm))
 
 
 class _MissingParamError(_ToolError):
 
     def __init__(self, parm):
-        _ToolError.__init__(self, "Missing parameter: " + str(parm))
+        _ToolError.__init__(self, "Missing parameter: {}".format(parm))
 
 
 class _MissingConfigError(_ToolError):
 
     def __init__(self, config):
-        _ToolError.__init__(self, "Config file not found: " + str(config))
+        _ToolError.__init__(self, "Config file not found: {}".format(config))
 
 
 class _UnreadableConfigError(_ToolError):
 
     def __init__(self, config):
-        _ToolError.__init__(self, "Can't access the config file: " + str(config))
+        _ToolError.__init__(self, "Can't access the config file: {}".format(config))
 
 
 class CommandParser(object):
@@ -197,7 +198,7 @@ class CommandParser(object):
         cmd = ''
         prompt = self._prompt
         while True:
-            line = raw_input(prompt).strip()
+            line = input(prompt).strip()
             cmd += line + ' '
             if prompt:
                 prompt = self._prompt if line.endswith(';') else "~ "
@@ -567,7 +568,7 @@ class CommandParser(object):
             raise _MissingConfigError(fName)
         if not os.access(fName, os.R_OK):
             raise _UnreadableConfigError(fName)
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.optionxform = str  # case sensitive
         config.read(fName)
         xx = {}
@@ -601,8 +602,7 @@ class CommandParser(object):
 
     def _setDefault(self, opts, key, defaultValue, force=False):
         if key not in opts:
-            self._logger.info(
-                "param '" + key + "' not found, will use default: " + str(defaultValue))
+            self._logger.info("param '%s' not found, will use default: %s", key, defaultValue)
             opts[key] = defaultValue
         elif force and opts[key] != defaultValue:
             raise _WrongParamError("Got '{0}' expected '{1}'".format(opts[key], defaultValue))
@@ -742,7 +742,7 @@ def main():
             try:
                 parser.parse(cmd)
             except (_ToolError, css.CssError) as e:
-                print("ERROR: ", str(e))
+                print("ERROR: ", e)
                 sys.exit(1)
     else:
         try:

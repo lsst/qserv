@@ -9,7 +9,7 @@ Create k8s pods configuration files
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-import ConfigParser
+import configparser
 import logging
 import os
 import sys
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
         _config_logger(args.verbose)
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         with open(args.iniFile, 'r') as f:
             config.readfp(f)
