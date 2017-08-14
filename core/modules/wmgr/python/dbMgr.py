@@ -84,6 +84,7 @@ def _validateColumnName(columnName):
     """ Validate column name """
     return _validateId("Column", columnName)
 
+
 # list of database names that we want to ignore
 _specialDbs = set(['mysql', 'information_schema'])
 
@@ -129,6 +130,7 @@ def _getArgFlag(mdict, option, default=True):
 # ------------------------
 # Exported definitions --
 # ------------------------
+
 
 dbService = Blueprint('dbService', __name__, template_folder='dbService')
 

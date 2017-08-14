@@ -93,7 +93,7 @@ QUERY_POOLS["FTSObj"] = [
     # "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2.27e-30", #   475,244,843 rows / ~ 7 GB
     # "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 2e-30",     #    42,021,567 rows / ~ 0.5 GB
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.75e-30",
-        #     1,932,988 rows / ~ 29 MB
+    #     1,932,988 rows / ~ 29 MB
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.8e-30",
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.81e-30",
     "SELECT deepSourceId, u_apFluxSigma FROM Object WHERE u_apFluxSigma between 0 and 1.5e-30"  # 119,423 rows / ~ 2 MB
@@ -297,6 +297,7 @@ def main():
             t.join
 
     time.sleep(60*60*48)
+
 
 if __name__ == "__main__":
     main()

@@ -345,7 +345,7 @@ class CloudManager(object):
         @param data_volume_name: name of data volume to attach
         """
         data_volumes = self.cinder.volumes.list(search_opts={'name':
-                                                data_volume_name})
+                                                             data_volume_name})
         if (not len(data_volumes) == 1):
             msg = "Cinder data volume not found "
             "(volumes found: {})".format(data_volumes)

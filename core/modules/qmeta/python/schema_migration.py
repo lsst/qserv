@@ -28,6 +28,7 @@ _log = logging.getLogger(__name__)
 # Exported definitions --
 #------------------------
 
+
 class QMetaMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for QMeta database.
     """

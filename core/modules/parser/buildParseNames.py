@@ -40,6 +40,7 @@ def openReadAndWrite(read, write):
     fpWrite = open(write, "w")
     return (fpRead, fpWrite)
 
+
 quotedStrMatch = '"([^"]+)"'
 defRegex = re.compile('^(\w+)\(' + quotedStrMatch + '\)\s*=\s*(\d+)')
 
@@ -106,6 +107,7 @@ def main():
     fpHeader.write(headerFooter % subs)
     fpTokens.close()
     fpHeader.close()
+
 
 if __name__ == "__main__":
     main()

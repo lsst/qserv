@@ -71,6 +71,7 @@ def _readAll(input):
 #  Unit test class definition --
 # -------------------------------
 
+
 logging.basicConfig(level=logging.WARNING)
 
 
@@ -162,6 +163,7 @@ class wmgrClientTest(unittest.TestCase):
         expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
         self.assertEqual(lines, expected)
         self.assertEqual(len(encoder), expectedLen)
+
 
 #
 #  run unit tests when imported as a main module

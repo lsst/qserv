@@ -673,6 +673,7 @@ class WordCompleter(object):
                    if word.startswith(text.upper())] + [None]
         return results[state]
 
+
 readline.parse_and_bind("tab: complete")
 words = ['CONFIG',
          'CREATE',
@@ -749,6 +750,7 @@ def main():
             parser.receiveCommands()
         except(KeyboardInterrupt, SystemExit, EOFError):
             print()
+
 
 if __name__ == "__main__":
     main()

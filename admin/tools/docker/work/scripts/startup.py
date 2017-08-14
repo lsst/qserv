@@ -17,4 +17,5 @@ def cmdHook(Eups, cmd, opts, args):
                     .format(", ".join(opts.tag), ", ".join(args))
                 print(msg, file=utils.stdinfo)
 
+
 eups.commandCallbacks.add(cmdHook)

@@ -407,6 +407,7 @@ class Configurator(object):
             if configure.CLIENT in self.args.step_list:
                 self._template_to_client_config(configure.QSERV)
 
+
 if __name__ == '__main__':
     try:
         configurator = Configurator()

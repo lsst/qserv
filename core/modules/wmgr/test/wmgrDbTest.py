@@ -223,6 +223,7 @@ class wmgrDbTest(unittest.TestCase):
         # drop database
         response = self._getJson(self.app.delete('/dbs/' + dbName))
 
+
 #
 #  run unit tests when imported as a main module
 #

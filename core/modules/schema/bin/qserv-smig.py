@@ -56,6 +56,7 @@ _def_scripts = os.path.join(os.environ.get("QSERV_DIR", ""), "share/qserv/schema
 _mig_module_name = "schema_migration"
 _factory_method_name = "make_migration_manager"
 
+
 def _load_migration_mgr(mod_name, engine, scripts_dir):
     """Dynamic loading of the migration manager based on module name.
 
@@ -225,6 +226,7 @@ def main():
             print("Database was migrated to version {}".format(final))
         else:
             print("Database would be migrated to version {}".format(final))
+
 
 if __name__ == "__main__":
     sys.exit(main())

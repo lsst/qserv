@@ -122,6 +122,7 @@ def _restartXrootd():
 # Exported definitions --
 # ------------------------
 
+
 xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 
 

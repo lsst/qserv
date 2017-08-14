@@ -26,6 +26,7 @@ _log = logging.getLogger(__name__)
 # Exported definitions --
 #------------------------
 
+
 class SchemaMigMgr:
     """Abstract base class for schema migration managers.
     """
