@@ -116,6 +116,7 @@ class NoValueError(ValueError):
         super(NoValueError, self).__init__(descr)
         pass
 
+
 # Mimic ANTLR 2.7 generated header format.
 # {0} sanitized filename
 # {1} source filename
@@ -351,6 +352,7 @@ class Main:
                 self.oParser.print_help()
                 return
             self.convertFile(args[0], args[1])
+
 
 if __name__ == "__main__":
     # debugTest()

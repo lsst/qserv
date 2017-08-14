@@ -166,48 +166,48 @@ def _setEnvWithDependencies():
     opts.AddVariables(
         (PathVariable('PROTOBUF_DIR', 'protobuf install dir',
                       _findPrefixFromPath('PROTOBUF_DIR', env['PROTOC']), PathVariable.PathIsDir)),
-            (PathVariable('ANTLR_DIR', 'antlr install dir',
-             _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
+        (PathVariable('ANTLR_DIR', 'antlr install dir',
+                      _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
     opts.AddVariables(
         (PathVariable('ANTLR_INC', 'antlr include path',
                       os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('ANTLR_LIB', 'antlr libraries path',
-             os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
-                env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
-            (PathVariable('XROOTD_LIB', 'xrootd libraries path',
-             os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_INC', 'mysql include path',
-             os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_LIB', 'mysql libraries path',
-             os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LIBCURL_INC', 'libcurl include path',
-             os.path.join(env['LIBCURL_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('LIBCURL_LIB', 'libcurl libraries path',
-             os.path.join(env['LIBCURL_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LOG4CXX_INC', 'log4cxx include path',
-             os.path.join(env['LOG4CXX_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('LOG4CXX_LIB', 'log4cxx libraries path',
-             os.path.join(env['LOG4CXX_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LOG_INC', 'log include path', os.path.join(
-                env['LOG_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('LOG_LIB', 'log libraries path',
-             os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_INC', 'protobuf include path',
-             os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_LIB', 'protobuf libraries path',
-             os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('LUA_INC', 'lua include path', os.path.join(
-                env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('SPHGEOM_INC', 'sphgeom include path',
-             os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('PYBIND11_INC', 'pybind11 include path',
-             os.path.join(env['PYBIND11_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path',
-             os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('ANTLR_LIB', 'antlr libraries path',
+         os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
+            env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
+        (PathVariable('XROOTD_LIB', 'xrootd libraries path',
+         os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_INC', 'mysql include path',
+         os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_LIB', 'mysql libraries path',
+         os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('LIBCURL_INC', 'libcurl include path',
+         os.path.join(env['LIBCURL_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('LIBCURL_LIB', 'libcurl libraries path',
+         os.path.join(env['LIBCURL_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('LOG4CXX_INC', 'log4cxx include path',
+         os.path.join(env['LOG4CXX_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('LOG4CXX_LIB', 'log4cxx libraries path',
+         os.path.join(env['LOG4CXX_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('LOG_INC', 'log include path', os.path.join(
+            env['LOG_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('LOG_LIB', 'log libraries path',
+         os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_INC', 'protobuf include path',
+         os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_LIB', 'protobuf libraries path',
+         os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('LUA_INC', 'lua include path', os.path.join(
+            env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('SPHGEOM_INC', 'sphgeom include path',
+         os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('PYBIND11_INC', 'pybind11 include path',
+         os.path.join(env['PYBIND11_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path',
+         os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
@@ -222,11 +222,11 @@ def _setEnvWithDependencies():
     if boost_dir:
         opts.AddVariables(
             (PathVariable('BOOST_DIR', 'boost install dir',
-             _findPrefixFromName("BOOST"), PathVariable.PathIsDir)),
+                          _findPrefixFromName("BOOST"), PathVariable.PathIsDir)),
             (PathVariable('BOOST_INC', 'boost include path',
-             os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
+                          os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
             (PathVariable('BOOST_LIB', 'boost libraries path',
-             os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
+                          os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
         )
         opts.Update(env)
 
@@ -282,10 +282,10 @@ def init(src_dir):
     opts.AddVariables(
         PathVariable('build_dir', 'Qserv build dir', os.path.join(
                      src_dir, 'build'), PathVariable.PathIsDirCreate),
-            ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH")),
-            # Default to in-place install
-            PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate),
-            ('CXX', 'Choose the C++ compiler to use', env['CXX'])
+        ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH")),
+        # Default to in-place install
+        PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate),
+        ('CXX', 'Choose the C++ compiler to use', env['CXX'])
     )
 
     opts.Update(env)

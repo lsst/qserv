@@ -141,11 +141,12 @@ def _protoc_emitter(target, source, env):
 
     return target, source
 
+
 _protoc_builder = Builder(
-    action = Action('$PROTOC_COM', '$PROTOC_COMSTR'),
-        suffix = '$PROTOC_CCSUFFIX',
-        src_suffix = '$PROTOC_SUFFIX',
-        emitter = _protoc_emitter,
+    action=Action('$PROTOC_COM', '$PROTOC_COMSTR'),
+    suffix='$PROTOC_CCSUFFIX',
+    src_suffix='$PROTOC_SUFFIX',
+    emitter=_protoc_emitter,
 )
 
 
@@ -157,26 +158,26 @@ def generate(env):
     env.SetDefault(
 
         # Additional command-line flags
-        PROTOC_FLAGS = SCons.Util.CLVar(''),
+        PROTOC_FLAGS=SCons.Util.CLVar(''),
 
         # Source path(s)
-        PROTOC_PATH = SCons.Util.CLVar(''),
+        PROTOC_PATH=SCons.Util.CLVar(''),
 
         # Output path
-        PROTOC_CCOUT = '',
-        PROTOC_PYOUT = '',
-        PROTOC_JAVAOUT = '',
+        PROTOC_CCOUT='',
+        PROTOC_PYOUT='',
+        PROTOC_JAVAOUT='',
 
         # Suffixies / prefixes
-        PROTOC_SUFFIX = '.proto',
-        PROTOC_HSUFFIX = '.pb.h',
-        PROTOC_CCSUFFIX = '.pb.cc',
-        PROTOC_PYSUFFIX = '_pb2.py',
-        PROTOC_JAVASUFFIX = '.java',
+        PROTOC_SUFFIX='.proto',
+        PROTOC_HSUFFIX='.pb.h',
+        PROTOC_CCSUFFIX='.pb.cc',
+        PROTOC_PYSUFFIX='_pb2.py',
+        PROTOC_JAVASUFFIX='.java',
 
         # Protoc command
         PROTOC_COM="$PROTOC $PROTOC_FLAGS $SOURCES",
-        PROTOC_COMSTR = '',
+        PROTOC_COMSTR='',
 
     )
 
