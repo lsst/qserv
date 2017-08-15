@@ -78,7 +78,7 @@ class Configurator(object):
         Constructor parse all arguments and prepares for execution.
         """
 
-        qserv_version = check_output(["qserv-version.sh"])
+        qserv_version = check_output(["qserv-version.sh"]).decode()
         qserv_version = qserv_version.strip(' \t\n\r')
         valid_dir_name = re.sub('[^\w_.-]', '_', qserv_version)
         default_qserv_run_dir = os.path.join(

@@ -179,9 +179,9 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
         (stdoutdata, stderrdata) = process.communicate()
 
         if stdoutdata != None and len(stdoutdata) > 0:
-            _LOG.info("\tstdout :\n--\n%r--" % stdoutdata)
+            _LOG.info("\tstdout :\n--\n%s--", stdoutdata.decode(errors='replace'))
         if stderrdata != None and len(stderrdata) > 0:
-            _LOG.info("\tstderr :\n--\n%r--" % stderrdata)
+            _LOG.info("\tstderr :\n--\n%s--", stderrdata.decode(errors='replace'))
 
         if process.returncode != 0:
             _LOG.fatal(

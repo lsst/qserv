@@ -35,10 +35,10 @@ Known issues and todos:
 from __future__ import absolute_import, division, print_function
 
 # standard library imports
+from argparse import ArgumentParser
 from builtins import input
 import configparser
 import logging
-from argparse import ArgumentParser
 import os
 import re
 import readline

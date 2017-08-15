@@ -27,4 +27,4 @@ Top level Central State System (CSS) module
 """
 
 # local imports
-from cssLib import *
+from .cssLib import *
