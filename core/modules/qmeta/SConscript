@@ -8,23 +8,18 @@ Import('standardModule')
 pythonInc = env['PYTHON_INC_DIR']
 cppPath = env['CPPPATH'] + [pythonInc]
 
-# Use special C++ file suffix to avoid mix with standardModule()
-# Python module is generated in python/ directory for standardModule()
-swigged = env.SharedObject(source="qmetaLib.i",
-                           SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-                           SWIGPATH=['..', pythonInc],
-                           CPPPATH=cppPath,
-                           SWIGCXXFILESUFFIX='_wrap.c++',
-                           SWIGOUTDIR=env.Dir("python"))
+# pybind11 Python wrapper goes to a separate library, cc file is also
+# excluded from standardModule()
+# pybind11 makes too many warnings when built with -pedantic
+ccflags = [flag for flag in env['CCFLAGS'] if flag != '-pedantic']
+py_wrapper = env.SharedObject("qmetaPythonWrapper.cc", CPPPATH=cppPath, CCFLAGS=ccflags)
 
 build_data = DefaultEnvironment()['build_data']
-build_data['module_objects']['qmeta:python'] = swigged
-
-# Create entry for python file, which SCons SWIG builder ignores
-pySwig = env.File(os.path.join('python', 'qmetaLib.py'))
+build_data['module_objects']['qmeta:python'] = py_wrapper
 
 # runs standard stuff _after_ above to install Python module
-standardModule(env, unit_tests=[])
+standardModule(env,  exclude="./qmetaPythonWrapper.cc",
+               unit_tests=[])
 
 # install schema files
 build_data['install'] += env.Install("$prefix/share/qserv/schema/qmeta", env.Glob("schema/*.sql"))

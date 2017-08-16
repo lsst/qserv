@@ -76,6 +76,9 @@ public:
      *  @param qTemplate:  Query template used to build per-chunk queries.
      *  @param qMerge: Aggregate query to be executed on results table, possibly empty.
      *  @param qProxyOrderBy: ORDER BY clause for proxy-side SELECT statement, possibly empty.
+     *  @param resultLoc: Location of the query result.
+     *  @param msgTableName: Name of the message table.
+     *  @param qStatus: Query processing status.
      *  @param submitted: Time when query was submitted (seconds since epoch).
      *  @param completed: Time when query finished execution, 0 if not finished.
      *  @param returned: Time when query result was sent to client, 0 if not sent yet.

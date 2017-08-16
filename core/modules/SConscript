@@ -249,10 +249,10 @@ shlibs["cssLib"] = dict(mods="css:python",
                         instDir="$python_prefix/lsst/qserv/css")
 
 # Python extension module wrapping qserv_qmeta
-shlibs["_qmetaLib"] = dict(mods="qmeta:python",
-                           libs="qserv_qmeta log",
-                           SHLIBPREFIX='',
-                           instDir="$python_prefix/lsst/qserv/qmeta")
+shlibs["qmetaLib"] = dict(mods="qmeta:python",
+                          libs="qserv_qmeta log",
+                          SHLIBPREFIX='',
+                          instDir="$python_prefix/lsst/qserv/qmeta")
 
 # get list of all modules
 all_modules = sorted(str(d) for d in Glob('*', source=True) if os.path.isdir(d.srcnode().abspath))
