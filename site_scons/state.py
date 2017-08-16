@@ -157,6 +157,8 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsDir)),
         (PathVariable('SPHGEOM_DIR', 'sphgeom library install dir', _findPrefixFromName('SPHGEOM'),
                       PathVariable.PathIsDir)),
+        (PathVariable('PYBIND11_DIR', 'pybind install dir', _findPrefixFromName('PYBIND11'),
+                      PathVariable.PathIsDir)),
         (PathVariable('python_relative_prefix',
                       'qserv install directory for python modules, relative to prefix',
                       os.path.join("lib", "python"), PathVariable.PathAccept))
@@ -204,6 +206,8 @@ def _setEnvWithDependencies():
                 env['LUA_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('SPHGEOM_INC', 'sphgeom include path',
              os.path.join(env['SPHGEOM_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('PYBIND11_INC', 'pybind11 include path',
+             os.path.join(env['PYBIND11_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('SPHGEOM_LIB', 'sphgeom libraries path',
              os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
     )

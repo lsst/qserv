@@ -243,10 +243,10 @@ shlibs["qhttp"] = dict(mods="""qhttp""",
                        libs="""boost_filesystem boost_regex boost_system""")
 
 # Python extension module wrapping qserv_css
-shlibs["_cssLib"] = dict(mods="css:python",
-                         libs="qserv_css log boost_thread",
-                         SHLIBPREFIX='',
-                         instDir="$python_prefix/lsst/qserv/css")
+shlibs["cssLib"] = dict(mods="css:python",
+                        libs="qserv_css log boost_thread",
+                        SHLIBPREFIX='',
+                        instDir="$python_prefix/lsst/qserv/css")
 
 # Python extension module wrapping qserv_qmeta
 shlibs["_qmetaLib"] = dict(mods="qmeta:python",
