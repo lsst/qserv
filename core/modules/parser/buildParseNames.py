@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2012 LSST Corporation.
@@ -30,6 +30,8 @@
 # Note, this tool is no longer needed for qserv, but may be useful in
 #  the future if ANTLR parse symbols are needed in other languages in
 #  qserv.
+
+from __future__ import absolute_import, division, print_function
 
 import re
 import sys

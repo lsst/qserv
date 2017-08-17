@@ -7,6 +7,8 @@ This is a unit test for CSS node definitions.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 import logging
 import unittest
 

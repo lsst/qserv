@@ -27,6 +27,8 @@ This is a unit test for chunkMapping module.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 import unittest
 
 from lsst.qserv import css

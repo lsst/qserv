@@ -5,6 +5,8 @@ Create k8s pods configuration files
 @author Fabrice Jammes, IN2P3
 """
 
+from __future__ import absolute_import, division, print_function
+
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------

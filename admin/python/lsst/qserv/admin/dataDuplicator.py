@@ -27,6 +27,8 @@ https://github.com/LSST/partition/blob/master/docs/duplication.md
 @author  Vaikunth Thukral, TAMU/SLAC
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------

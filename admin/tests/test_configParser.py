@@ -27,6 +27,8 @@ This is a unittest for configParser
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 import io
 import unittest
 

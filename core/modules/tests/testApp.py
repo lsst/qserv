@@ -21,7 +21,7 @@
 """
 This is an out-of-date test harness for the app.py functions in qserv/master.
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import lsst.qserv.master as qMaster
 import unittest
 
