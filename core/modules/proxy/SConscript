@@ -9,11 +9,3 @@ build_data = DefaultEnvironment()['build_data']
 
 # install Lua file
 build_data['install'] += env.Install("$prefix/share/lua/qserv", "mysqlProxy.lua")
-
-# SWIG -Lua wrapper
-swigged = env.SharedObject(source="czarProxy.i",
-                           SWIGFLAGS=['-lua', '-c++', '-Iinclude'],
-                           SWIGPATH=['..'],
-                           SWIGCXXFILESUFFIX='_wrap.c++')
-
-build_data['module_objects']['proxy'] += swigged

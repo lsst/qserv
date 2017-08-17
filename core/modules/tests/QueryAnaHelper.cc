@@ -50,7 +50,6 @@ using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVec;
 using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::util::printable;
@@ -75,8 +74,7 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     querySession->analyzeQuery(stmt);
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        ConstraintVec cv(querySession->getConstraints());
-        std::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
+        std::shared_ptr<ConstraintVector> cvRaw(querySession->getConstraints());
         if (cvRaw) {
             LOGS(_log, LOG_LVL_DEBUG, util::printable(*cvRaw));
         }

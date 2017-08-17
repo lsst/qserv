@@ -59,27 +59,6 @@ std::ostream&
 operator<<(std::ostream& os, Constraint const& c);
 typedef std::vector<Constraint> ConstraintVector;
 
-/// A SWIG-purposed wrapper of a ConstraintVector.
-class ConstraintVec {
-public:
-    ConstraintVec(std::shared_ptr<ConstraintVector > v)
-        : _vec(v) {}
-
-    // SWIG-friendly interface
-    Constraint const& get(int i) const {
-        return (*_vec)[i];
-    }
-    int size() const {
-        if(!_vec.get()) return 0; // NULL vector -> 0 size
-        return _vec->size();
-    }
-    // Internal vector
-    std::shared_ptr<ConstraintVector> getVector() { return _vec; }
-
-private:
-    std::shared_ptr<ConstraintVector> _vec;
-};
-
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_CONSTRAINT_H

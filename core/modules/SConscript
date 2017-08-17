@@ -18,7 +18,6 @@ of the job definig targets for their own code, this includes:
   - installing Python code and scripts
   - building test applications
   - defining unit tests
-  - making SWIG wrappers and shared object for those
 
 This file provides `standardModule()` method which does most of the above,
 if a module has no special code then the module does not even need to create
@@ -50,7 +49,7 @@ importing.
 
 Some modules can contribute their shared objects to more than one library
 (e.g. `css` module has regular C++ code which goes to a library libqserv_css,
-but it also makes SWIG wrapper for Python which needs to be in a separate
+but it also builds Python wrapper which needs to be in a separate
 shared library used as Python extension module). To support this feature
 modules can define special "sub-modules" which are just special convention
 for module names appearing in `build_data` dictionary. The same `css` module
@@ -85,8 +84,8 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
 
     @param exclude: pattern or list of patterns for *.cc files to exclude
                 from shared object targets (see Glob's exclude). Typically
-                this may be used for *.cc files produced by generators
-                like SWIG.
+                this may be used for *.cc files used for Python wrappers which
+                usually go into separate shared object.
     @param module: module name, used by this SConscript only, should not be
                 used in module's SConscript
     @param test_libs: list (or space-separated string) of additional library
