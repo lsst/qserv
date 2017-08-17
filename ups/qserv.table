@@ -20,7 +20,6 @@ setupRequired(scisql)
 setupRequired(scons)
 setupRequired(sphgeom)
 setupRequired(sqlalchemy)
-setupRequired(swig)
 setupRequired(xrootd)
 
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)

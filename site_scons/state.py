@@ -134,8 +134,6 @@ def _setEnvWithDependencies():
         (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
         (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc', "Looking for protoc compiler"),
                       PathVariable.PathIsFile)),
-        (PathVariable('SWIG_BIN', 'swig binary path', _getBinPath('swig', "Looking for swig preprocessor"),
-                      PathVariable.PathIsFile)),
         # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
         (PathVariable('ANTLR', 'antlr binary path',
                       _getBinPathFromBinList(['antlr', 'runantlr'], 'Looking for antlr parser generator'),
@@ -232,32 +230,6 @@ def _setEnvWithDependencies():
         )
         opts.Update(env)
 
-    # SWIG_LIB_ENV specification: Useful when swig can't find its own *.i files
-    # This is a SWIG_LIB envvar, read by swig, not the same as the location of
-    # swig's *.so libs. For system-installed swig, this is usually /usr/share/swig/x.y.z
-    # or path/to/lsst/stack/Linux64/swig/x.y.z/share/swig/x.y.z
-    # No validation: a custom SWIG_LIB_ENV is not essential.
-    opts.AddVariables(
-        (PathVariable('SWIG_LIB_ENV',
-                      'swig SWIG_LIB envvar for broken swig setups',
-                      None,
-                      PathVariable.PathIsDir))
-    )
-    opts.Update(env)
-    if 'SWIG_LIB_ENV' in env:  # PathIsDir tests os.path.isdir
-        env['ENV']['SWIG_LIB'] = env['SWIG_LIB_ENV']
-
-    # if during load of 'default' tools (i.e. Environment construction):
-    #   1. swig binary path was not in default internal scons PATH
-    #      (this prevent recognition of .i files by scons and break the build)
-    #   2. swig binary path was not the one specified by the user
-    # then it is required to add it and reload the swig scons tool.
-    if SCons.Util.WhereIs("swig", env['ENV']['PATH']) != env['SWIG_BIN']:
-        swig_dirname = os.path.dirname(env['SWIG_BIN'])
-        env.PrependENVPath('PATH', swig_dirname)
-        env.Tool('swig')
-        log.debug("swig tool loaded using: {0}".format(env['SWIG_BIN']))
-
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
@@ -266,7 +238,6 @@ def _setBuildEnv():
 
     env.Tool('compiler')
     env.Tool('recinstall')
-    env.Tool('swig_scanner')
     env.Tool('protoc')
     env.Tool('antlr')
     env.Tool('unittest')
@@ -324,7 +295,6 @@ def init(src_dir):
         env['LINKCOMSTR'] = "Linking static object $TARGET"
         env['SHCCCOMSTR'] = env['SHCXXCOMSTR'] = "Compiling shared object $TARGET"
         env['SHLINKCOMSTR'] = "Linking shared object $TARGET"
-        env['SWIGCOMSTR'] = "Running SWIG wrapper on $SOURCE"
         env['PROTOC_COMSTR'] = "Running protoc on $SOURCE"
         env['ANTLR_COMSTR'] = "Running antlr on $SOURCE"
 

@@ -21,14 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief Struct containing 2 integers, for C++-->python swig.
-  *
-  * @Author Jacek Becla, SLAC
-  */
-
 #ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
 #define LSST_QSERV_CSS_STRIPINGPARAMS_H
 
