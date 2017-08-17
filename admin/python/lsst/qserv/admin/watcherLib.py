@@ -590,7 +590,7 @@ class QservExecutor(IExecutor):
                         _LOG.debug('Updating QMeta status for qid=%s', qid)
                         self.qmeta.completeQuery(qid, qmeta.QInfo.COMPLETED)
                         self.qmeta.finishQuery(qid)
-                    except qmeta.Exception as ex:
+                    except qmeta.QMetaError as ex:
                         # should go on
                         _LOG.warning('Failed to update QMeta status for DROP TABLE: %s', ex)
 

@@ -114,14 +114,14 @@ PYBIND11_PLUGIN(qmetaLib) {
         ;
 
     // Exception classes
-    static py::exception<Exception> Exception(mod, "Exception");
-    py::register_exception<CzarNameError>(mod, "CzarNameError", Exception.ptr());
-    py::register_exception<CzarIdError>(mod, "CzarIdError", Exception.ptr());
-    py::register_exception<QueryIdError>(mod, "QueryIdError", Exception.ptr());
-    py::register_exception<ChunkIdError>(mod, "ChunkIdError", Exception.ptr());
-    py::register_exception<SqlError>(mod, "SqlError", Exception.ptr());
-    py::register_exception<MissingTableError>(mod, "MissingTableError", Exception.ptr());
-    py::register_exception<ConsistencyError>(mod, "ConsistencyError", Exception.ptr());
+    static py::exception<QMetaError> clsQMetaError(mod, "QMetaError");
+    py::register_exception<CzarNameError>(mod, "CzarNameError", clsQMetaError.ptr());
+    py::register_exception<CzarIdError>(mod, "CzarIdError", clsQMetaError.ptr());
+    py::register_exception<QueryIdError>(mod, "QueryIdError", clsQMetaError.ptr());
+    py::register_exception<ChunkIdError>(mod, "ChunkIdError", clsQMetaError.ptr());
+    py::register_exception<SqlError>(mod, "SqlError", clsQMetaError.ptr());
+    py::register_exception<MissingTableError>(mod, "MissingTableError", clsQMetaError.ptr());
+    py::register_exception<ConsistencyError>(mod, "ConsistencyError", clsQMetaError.ptr());
 
     return mod.ptr();
 }
