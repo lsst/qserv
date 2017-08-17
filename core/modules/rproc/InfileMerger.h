@@ -107,7 +107,7 @@ public:
 class InvalidJobAttemptMgr {
 public:
     InvalidJobAttemptMgr() {}
-    void setDeleteFunc(std::function<bool(int)> func) {_deleteFunc = func; }
+    void setDeleteFunc(std::function<bool(std::set<int> const& jobAttempts)> func) {_deleteFunc = func; }
     void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
@@ -119,22 +119,26 @@ public:
     void decrConcurrentMergeCount();
 
 
-    bool holdMergingForRowDelete(int jobIdAttempt);
+    bool holdMergingForRowDelete(std::string const& msg="");
 
     /// @return true if jobIdAttempt is in the invalid set.
     bool isJobAttemptInvalid(int jobIdAttempt);
+
+    bool prepScrub(int jobIdAttempt);
 private:
     /// Precondition: must hold _iJAMtx before calling.
     /// @return true if jobIdAttempt is in the invalid set.
     bool _isJobAttemptInvalid(int jobIdAttempt);
+    void _cleanupIJA(); ///< Helper to send notice to all waiting on _cv.
 
     std::mutex _iJAMtx;
-    std::set<int> _invalidJobAttempts;
-    std::set<int> _jobIdAttemptsHaveRows;
+    std::set<int> _invalidJobAttempts; ///< Set of job-attempts that failed.
+    std::set<int> _invalidJAWithRows;  ///< Set of job-attempts that failed and have rows in result table.
+    std::set<int> _jobIdAttemptsHaveRows; ///< Set of job-attempts that have rows in result table.
     int _concurrentMergeCount{0};
     bool _waitFlag{false};
     std::condition_variable  _cv;
-    std::function<bool(int)> _deleteFunc;
+    std::function<bool(std::set<int> const& jobAttempts)> _deleteFunc;
     std::function<bool(void)> _tableExistsFunc;
 };
 
@@ -232,7 +236,7 @@ private:
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
-    bool _deleteInvalidRows(int jobIdAttempt);
+    bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
 
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.

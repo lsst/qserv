@@ -123,8 +123,8 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
 
-    _invalidJobAttemptMgr.setDeleteFunc([this](int jobIdAttempt) -> bool {
-        return _deleteInvalidRows(jobIdAttempt);
+    _invalidJobAttemptMgr.setDeleteFunc([this](std::set<int> const& jobAttempts) -> bool {
+        return _deleteInvalidRows(jobAttempts);
     });
 
     _invalidJobAttemptMgr.setTableExistsFunc([this]() -> bool {
@@ -220,7 +220,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _sizeCheckRowCount = 0;
         auto tSize = _getResultTableSizeMB();
         if (tSize > _maxResultTableSizeMB) {
-            // TODO:DM-11524 Try deleting invalid rows if there are any, then check size again
+            // TODO:DM-11524 Try deleting invalid rows if there are any, then check size again &&&
             std::ostringstream os;
             os << queryIdJobStr << " cancelling queryResult table " << _mergeTable
                << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;
@@ -256,7 +256,7 @@ bool InfileMerger::finalize() {
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
     }
-    // TODO:DM-11524   delete all invalid rows in the table.
+    // TODO:DM-11524   delete all invalid rows in the table. &&&
     if (_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
@@ -297,7 +297,7 @@ bool InfileMerger::isFinished() const {
     return _isFinished;
 }
 
-
+#if 0 // &&&
 bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
     std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
                              + " WHERE " +  _jobIdColName + "=" + std::to_string(jobIdAttempt);
@@ -306,6 +306,34 @@ bool InfileMerger::_deleteInvalidRows(int jobIdAttempt) {
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
         return false;
+    }
+    return true;
+}
+#endif
+
+bool InfileMerger::_deleteInvalidRows(std::set<int> const& jobIdAttempts) {
+    // delete several rows at a time
+    int maxRows = 5000;
+    auto iter = jobIdAttempts.begin();
+    auto end = jobIdAttempts.end();
+    while (iter != end) {
+        int j = 0;
+        bool first = true;
+        std::string invalidStr;
+        for (int j=0; j < maxRows && iter != end; ++j) {
+            if (!first) {
+                invalidStr += ",";
+            }
+            invalidStr += *iter;
+            ++iter;
+        }
+        std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
+                + " WHERE " + _jobIdColName + " IN (" + invalidStr + ")";
+        bool ok = _applySqlLocal(sqlDelRows, "deleteInvalidRows");
+        if (!ok) {
+             LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
+             return false;
+         }
     }
     return true;
 }
@@ -326,7 +354,7 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 
 bool InfileMerger::scrubResults(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
-    return _invalidJobAttemptMgr.holdMergingForRowDelete(jobIdAttempt);
+    return _invalidJobAttemptMgr.holdMergingForRowDelete(jobIdAttempt); // &&& create new func to do actual delete, call this scrubPrep
 }
 
 
@@ -568,11 +596,32 @@ void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
 }
 
 
+bool InvalidJobAttemptMgr::prepScrub(int jobId, int attemptCount) {
+    int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
+    std::unique_lock<std::mutex> lockJA(_iJAMtx);
+    _waitFlag = true;
+    _invalidJobAttempts.insert(jobIdAttempt);
+    bool invalidRowsInResult = false
+    if (_jobIdAttemptsHaveRows.find(jobIdAttempt) != _jobIdAttemptsHaveRows.end()) {
+        invalidRowsInResult = true;
+        _invalidJAWithRows.insert(jobIdAttempt);
+    }
+    _cleanupIJA();
+    return invalidRowsInResult;
+}
+
+
+void InvalidJobAttemptMgr::_cleanupIJA() {
+    _waitFlag = false;
+    _cv.notify_all();
+}
+
+#if 0 // &&&
 bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
-    auto cleanup = [this](){
-        _waitFlag = false;
-        _cv.notify_all();
-    };
+    // &&& auto cleanup = [this](){
+    // &&&     _waitFlag = false;
+    // &&&     _cv.notify_all();
+    // &&& };
 
     std::unique_lock<std::mutex> lockJA(_iJAMtx);
     _waitFlag = true;
@@ -582,7 +631,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
     // If this jobAttempt hasn't had any rows added, no need to delete rows.
     if (_jobIdAttemptsHaveRows.find(jobIdAttempt) == _jobIdAttemptsHaveRows.end()) {
         LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " should not have any rows, not deleting.");
-        cleanup();
+        _cleanupIJA();
         return true;
     }
     lockJA.unlock();
@@ -590,7 +639,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
     /// Rows with jobIdAttempt should be prevented from joining the result table.
     if (!_tableExistsFunc()) {
         LOGS(_log, LOG_LVL_INFO, "Nothing to do as no table yet made for " << jobIdAttempt);
-        cleanup();
+        _cleanupIJA();
         return true;
     }
 
@@ -602,7 +651,47 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(int jobIdAttempt) {
     LOGS(_log, LOG_LVL_INFO, "Deleting rows for " << jobIdAttempt);
     bool res = _deleteFunc(jobIdAttempt);
     // Table scrubbed, continue merging results.
-    cleanup();
+    _cleanupIJA();
+    return res;
+}
+#endif
+
+
+bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
+    // &&& auto cleanup = [this](){
+    // &&&     _waitFlag = false;
+    // &&&     _cv.notify_all();
+    // &&& };
+
+    std::unique_lock<std::mutex> lockJA(_iJAMtx);
+    _waitFlag = true;
+
+
+    // If this jobAttempt hasn't had any rows added, no need to delete rows.
+    // if (!_invalidRowsInResult) { &&&
+    if (_invalidJAWithRows.empty()) {
+        LOGS(_log, LOG_LVL_INFO, msg << " should not have any invalid rows, no delete needed.");
+        _cleanupIJA();
+        return true;
+    }
+    lockJA.unlock();
+    /// If the table hasn't been made yet, just return true, nothing to remove.
+    /// Rows with jobIdAttempt should be prevented from joining the result table.
+    if (!_tableExistsFunc()) {
+        LOGS(_log, LOG_LVL_INFO, msg << " Nothing to do as no table yet made");
+        _cleanupIJA();
+        return true;
+    }
+
+    lockJA.lock();
+    if (_concurrentMergeCount > 0) {
+        _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
+    }
+
+    LOGS(_log, LOG_LVL_INFO, "Deleting rows for " << util::printable(_invalidJobAttempts));
+    bool res = _deleteFunc(_invalidJAWithRows);
+    // Table scrubbed, continue merging results.
+    _cleanupIJA();
     return res;
 }
 
