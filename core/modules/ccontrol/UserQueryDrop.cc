@@ -98,7 +98,7 @@ void UserQueryDrop::submit() {
     QueryId qMetaQueryId = 0;
     try {
         qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
-    } catch (qmeta::Exception const& exc) {
+    } catch (qmeta::QMetaError const& exc) {
         // not fatal, just print error message and continue
         LOGS(_log, LOG_LVL_WARN, "QMeta failure (non-fatal): " << exc.what());
     }
@@ -140,7 +140,7 @@ void UserQueryDrop::submit() {
         if (qMetaQueryId) {
             try {
                 _queryMetadata->completeQuery(qMetaQueryId, qmeta::QInfo::FAILED);
-            } catch (qmeta::Exception const& exc) {
+            } catch (qmeta::QMetaError const& exc) {
                 // not fatal, just print error message and continue
                 LOGS(_log, LOG_LVL_WARN, "QMeta failure (non-fatal): " << exc.what());
             }
