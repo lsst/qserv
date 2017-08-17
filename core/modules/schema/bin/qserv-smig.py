@@ -29,7 +29,10 @@ from __future__ import absolute_import, division, print_function
 #  Imports of standard modules --
 # --------------------------------
 import argparse
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import importlib
 import logging
 import os

@@ -14,7 +14,10 @@ from __future__ import absolute_import, division, print_function
 #  Imports of standard modules --
 # --------------------------------
 from argparse import ArgumentParser
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 
 # -----------------------------

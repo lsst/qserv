@@ -9,7 +9,10 @@ Create k8s pods configuration files
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 import os
 import sys
