@@ -623,48 +623,64 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
     BOOST_TEST(n3 == 0);
 
     //
-    //----- Start a thread that will push an update to the first ajax endpoint every 100ms, then run the
-    //      libcurl multi in this thread for at most 225ms.  When we get control back, check via counters
+    //----- Start a thread that will push an two updates to the first ajax endpoint, separated by 100ms.
+    //      Run the libcurl multi in this thread for at least 25ms after the last update.  Check via counters
     //      that both installed handlers for the first endpoint have run twice, and that the handler for
     //      the second endpoint has not been run erroneously.
     //
 
-    std::atomic_bool stop{false};
-    std::thread t1([&ajax1, &stop]() {
-        while(!stop) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{100});
-            ajax1->update("1");
-        }
+    std::atomic<bool> done1{false};
+    std::thread t1([&ajax1, &done1]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax1->update("1");
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax1->update("1");
+        done1 = true;
     });
 
-    m.perform(225);
+    while(!done1) m.perform(25);
+    m.perform(25);
+
     BOOST_TEST(n1 == 2);
     BOOST_TEST(n2 == 2);
     BOOST_TEST(n3 == 0);
 
     //
-    //----- Start an additional thread that will push an update to the second ajax endpoint every 100ms.
-    //      Run the libcurl multi in this thread for at most 225ms.  When we get control back, check via
+    //----- Start threads that will push two additional updates to both ajax endpoints, separated by 100ms.
+    //      Run the libcurl multi in this thread for at least 25ms after the last update.  Check via
     //      counters that all three handlers have run two additional times.
     //
 
-    std::thread t2([&ajax2, &stop]() {
-        while(!stop) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{100});
-            ajax2->update("2");
-        }
+    std::atomic<bool> done2{false};
+    std::thread t2([&ajax1, &done2]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax1->update("1");
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax1->update("1");
+        done2 = true;
     });
 
-    m.perform(225);
+    std::atomic<bool> done3{false};
+    std::thread t3([&ajax2, &done3]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax2->update("2");
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        ajax2->update("2");
+        done3 = true;
+    });
+
+    while(!done2 || !done3) m.perform(25);
+    m.perform(25);
+
     BOOST_TEST(n1 == 4);
     BOOST_TEST(n2 == 4);
     BOOST_TEST(n3 == 2);
 
-    //----- Signal update threads to exit, and join them.
+    //----- Join exited threads
 
-    stop = true;
     t1.join();
     t2.join();
+    t3.join();
 }
 
 }} // namespace lsst::qserv
