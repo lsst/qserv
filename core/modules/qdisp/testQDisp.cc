@@ -158,7 +158,7 @@ public:
         _processCancelCalled = true;
     }
 
-    bool scrubResults(int jobId, int attempt) override {
+    bool prepScrubResults(int jobId, int attempt) override {
         return true;
     }
 

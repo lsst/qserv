@@ -63,7 +63,7 @@ JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resou
 
 bool JobDescription::incrAttemptCountScrubResults() {
     if (_attemptCount >= 0) {
-        _respHandler->prepScrubResults(_jobId, _attemptCount); // &&& this just needs to register job-attempt as invalid
+        _respHandler->prepScrubResults(_jobId, _attemptCount); // Registers the job-attempt as invalid
     }
     ++_attemptCount;
     if (_attemptCount > MAX_JOB_ATTEMPTS) {

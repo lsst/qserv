@@ -119,6 +119,10 @@ public:
     void decrConcurrentMergeCount();
 
 
+    /// @return true if query results are valid. If it returns false, the query results are invalid.
+    /// This function will stop all merging to the result table and delete all invalid
+    /// rows in the table. If it returns false, invalid rows remain in the result table,
+    /// and the query should probably be cancelled.
     bool holdMergingForRowDelete(std::string const& msg="");
 
     /// @return true if jobIdAttempt is in the invalid set.
@@ -179,6 +183,7 @@ public:
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
+    bool prepScrub(int jobId, int attempt);
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 

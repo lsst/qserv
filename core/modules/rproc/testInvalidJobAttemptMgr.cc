@@ -51,18 +51,21 @@ struct Fixture {
 class MockResult {
 public:
     MockResult() {
-        iJAMgr.setDeleteFunc([this](int id) -> bool {
-            return deleteFunc(id);
+        iJAMgr.setDeleteFunc([this](std::set<int> const& jobAttempts) -> bool {
+            return deleteFunc(jobAttempts);
         });
         iJAMgr.setTableExistsFunc([this]() -> bool {
             return tableExists_;
         });
     }
 
-    bool deleteFunc(int id) {
+    bool deleteFunc(std::set<int> const& jobAttempts) {
         deleteCalled_ = true;
-        testSet.erase(id);
-        return deleteSuccess_;
+        for (auto iter = jobAttempts.begin(), end = jobAttempts.end(); iter != end; ++iter) {
+            int id = *iter;
+            testSet.erase(id);
+        }
+        return true;
     }
 
     rproc::InvalidJobAttemptMgr iJAMgr;
@@ -70,12 +73,11 @@ public:
     std::mutex mtx;
     bool tableExists_{false};
     bool deleteCalled_{false};
-    bool deleteSuccess_{true};
 
     void insert(int begin, int end) {
         tableExists_ = true;
-        for(int j=begin; j <= end; ++j) {
-            if(!iJAMgr.incrConcurrentMergeCount(j)) {
+        for (int j=begin; j <= end; ++j) {
+            if (!iJAMgr.incrConcurrentMergeCount(j)) {
                 {
                     std::lock_guard<std::mutex> lck(mtx);
                     testSet.insert(j);
@@ -99,37 +101,41 @@ BOOST_FIXTURE_TEST_SUITE(suite, Fixture)
 BOOST_AUTO_TEST_CASE(InvalidJob) {
     MockResult mRes;
 
-    LOGS_DEBUG("DeleteFunc should not be called since table doesn't exist.");
+    LOGS_DEBUG("test: DeleteFunc should not be called since table doesn't exist.");
     int delRow0 = 7;
-    mRes.iJAMgr.holdMergingForRowDelete(delRow0);
+    mRes.iJAMgr.prepScrub(delRow0);
+    mRes.iJAMgr.holdMergingForRowDelete();
     BOOST_CHECK(mRes.deleteCalled_ == false);
 
-    LOGS_DEBUG("Check if row removed from results.");
+    LOGS_DEBUG("test: Check if row removed from results.");
     mRes.insert(0, 20);
     unsigned int expectedSize = 20; // 21 - 1 for delRow0
     BOOST_CHECK(mRes.testSet.find(delRow0) == mRes.testSet.end());
     BOOST_CHECK(mRes.testSet.size() == expectedSize);
 
+    LOGS_DEBUG("test: Check if existing row removed from results.");
     int delRow1 = 11;
     BOOST_CHECK(mRes.testSet.find(delRow1) != mRes.testSet.end());
-    mRes.iJAMgr.holdMergingForRowDelete(delRow1);
+    mRes.iJAMgr.prepScrub(delRow1);
+    mRes.iJAMgr.holdMergingForRowDelete();
     --expectedSize;
     LOGS_DEBUG("testSet=" << mRes.dumpTestSet());
     BOOST_CHECK(mRes.testSet.find(delRow1) == mRes.testSet.end());
     BOOST_CHECK(mRes.testSet.size() == expectedSize);
     BOOST_CHECK(mRes.deleteCalled_ == true);
 
-    LOGS_DEBUG("Check if row prevented from being added to results.");
+    LOGS_DEBUG("test: Check if row prevented from being added to results.");
     BOOST_CHECK(mRes.iJAMgr.isJobAttemptInvalid(delRow1) == true);
     mRes.insert(delRow1, delRow1);
     BOOST_CHECK(mRes.testSet.find(delRow1) == mRes.testSet.end());
     BOOST_CHECK(mRes.testSet.size() == expectedSize);
 
-    LOGS_DEBUG("Check to make sure delete is not called on row that has not been added.");
+    LOGS_DEBUG("test: Check to make sure delete is not called on row that has not been added.");
     int delRow2 = 37; // Does not exist in result set.
     BOOST_CHECK(mRes.testSet.find(delRow2) == mRes.testSet.end());
     mRes.deleteCalled_ = false;
-    mRes.iJAMgr.holdMergingForRowDelete(delRow2);
+    mRes.iJAMgr.prepScrub(delRow2);
+    mRes.iJAMgr.holdMergingForRowDelete();
     BOOST_CHECK(mRes.deleteCalled_ == false);
 
     LOGS_DEBUG("Concurrent test");
@@ -148,7 +154,8 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
     }
 
     int delRow3 = 42;
-    mRes.iJAMgr.holdMergingForRowDelete(delRow3);
+    mRes.iJAMgr.prepScrub(delRow3);
+    mRes.iJAMgr.holdMergingForRowDelete();
     expectedSize -= concurrent;
     BOOST_CHECK(mRes.iJAMgr.isJobAttemptInvalid(delRow3) == true);
 
@@ -159,7 +166,8 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
 
     int delRow4 = 101;
     mRes.deleteCalled_ = false;
-    mRes.iJAMgr.holdMergingForRowDelete(delRow4);
+    mRes.iJAMgr.prepScrub(delRow4);
+    mRes.iJAMgr.holdMergingForRowDelete();
     expectedSize -= concurrent;
     BOOST_CHECK(mRes.deleteCalled_ == true);
     BOOST_CHECK(mRes.iJAMgr.isJobAttemptInvalid(delRow4) == true);
