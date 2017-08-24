@@ -51,9 +51,11 @@ struct Fixture {
 class MockResult {
 public:
     MockResult() {
-        iJAMgr.setDeleteFunc([this](std::set<int> const& jobAttempts) -> bool {
-            return deleteFunc(jobAttempts);
-        });
+        iJAMgr.setDeleteFunc(
+            [this](rproc::InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
+                return deleteFunc(jobAttempts);
+            }
+        );
         iJAMgr.setTableExistsFunc([this]() -> bool {
             return tableExists_;
         });

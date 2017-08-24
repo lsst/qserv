@@ -124,7 +124,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
 
-    _invalidJobAttemptMgr.setDeleteFunc([this](std::set<int> const& jobAttempts) -> bool {
+    _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
     });
 
@@ -311,7 +311,7 @@ bool InfileMerger::isFinished() const {
 }
 
 
-bool InfileMerger::_deleteInvalidRows(std::set<int> const& jobIdAttempts) {
+bool InfileMerger::_deleteInvalidRows(InvalidJobAttemptMgr::jASetType const& jobIdAttempts) {
     // delete several rows at a time
     unsigned int maxSize = 950000; /// default 1mb limit
     auto iter = jobIdAttempts.begin();
@@ -322,8 +322,10 @@ bool InfileMerger::_deleteInvalidRows(std::set<int> const& jobIdAttempts) {
         while (invalidStr.size() < maxSize && iter != end) {
             if (!first) {
                 invalidStr += ",";
+            } else {
+                first = false;
             }
-            invalidStr += *iter;
+            invalidStr += std::to_string(*iter);
             ++iter;
         }
         std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
@@ -335,8 +337,6 @@ bool InfileMerger::_deleteInvalidRows(std::set<int> const& jobIdAttempts) {
         }
     }
     return true;
-
-
 }
 
 

@@ -106,8 +106,11 @@ public:
 /// Deletes are only to be allowed when _concurrentMergeCount is 0.
 class InvalidJobAttemptMgr {
 public:
+    using jASetType = std::set<int>;
+    using deleteFuncType = std::function<bool(jASetType const&)>;
+
     InvalidJobAttemptMgr() {}
-    void setDeleteFunc(std::function<bool(std::set<int> const& jobAttempts)> func) {_deleteFunc = func; }
+    void setDeleteFunc(deleteFuncType func) {_deleteFunc = func; }
     void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
@@ -136,13 +139,13 @@ private:
     void _cleanupIJA(); ///< Helper to send notice to all waiting on _cv.
 
     std::mutex _iJAMtx;
-    std::set<int> _invalidJobAttempts; ///< Set of job-attempts that failed.
-    std::set<int> _invalidJAWithRows;  ///< Set of job-attempts that failed and have rows in result table.
-    std::set<int> _jobIdAttemptsHaveRows; ///< Set of job-attempts that have rows in result table.
+    jASetType _invalidJobAttempts; ///< Set of job-attempts that failed.
+    jASetType _invalidJAWithRows;  ///< Set of job-attempts that failed and have rows in result table.
+    jASetType _jobIdAttemptsHaveRows; ///< Set of job-attempts that have rows in result table.
     int _concurrentMergeCount{0};
     bool _waitFlag{false};
     std::condition_variable  _cv;
-    std::function<bool(std::set<int> const& jobAttempts)> _deleteFunc;
+    deleteFuncType _deleteFunc;
     std::function<bool(void)> _tableExistsFunc;
 };
 
