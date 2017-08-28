@@ -27,12 +27,13 @@ all parameters related to table partitioning.
 @author  Andy Salnikov, SLAC
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
 import logging
 import itertools
-import UserDict
 
 # -----------------------------
 # Imports for other modules --
@@ -48,7 +49,7 @@ from lsst.qserv.admin.configParser import ConfigParser
 # ------------------------
 
 
-class PartConfig(UserDict.UserDict):
+class PartConfig(dict):
     """
     Class which holds all table partition options.
     Implemented as a dictionary with some extra methods.
@@ -70,7 +71,7 @@ class PartConfig(UserDict.UserDict):
         Process all config files, throws on error
         """
 
-        UserDict.UserDict.__init__(self)
+        dict.__init__(self)
 
         def _options(group):
             '''massage options list, takes list of (key, opt) pairs'''
@@ -98,15 +99,16 @@ class PartConfig(UserDict.UserDict):
 
             # in partitioner config files loaded earlier have higher priority
             # (options are not overwritten by later configs), do the same here
-            options.update(self.data)
-            self.data = options
+            for k, v in options.items():
+                if k not in self:
+                    self[k] = v
 
         # check that we have a set of required options defined
-        missing = [key for key in self.requiredConfigKeys if key not in self.data]
+        missing = [key for key in self.requiredConfigKeys if key not in self]
         if self.isRefMatch:
-            missing += [key for key in self.requiredRefMatchKeys if key not in self.data]
+            missing += [key for key in self.requiredRefMatchKeys if key not in self]
         elif self.partitioned:
-            missing += [key for key in self.requiredPartKeys if key not in self.data]
+            missing += [key for key in self.requiredPartKeys if key not in self]
         if missing:
             logging.error('Required options are missing from configuration files: %r',
                           ' '.join(missing))
@@ -115,7 +117,7 @@ class PartConfig(UserDict.UserDict):
     @property
     def partitioned(self):
         """Returns True if table is partitioned"""
-        return 'part.pos' in self.data or 'part.pos1' in self.data
+        return 'part.pos' in self or 'part.pos1' in self
 
     @property
     def isSubChunked(self):
@@ -133,7 +135,7 @@ class PartConfig(UserDict.UserDict):
     @property
     def isView(self):
         """Returns True if table is a view"""
-        return bool(self.data.get('view', False))
+        return bool(self.get('view', False))
 
     def isDirector(self, dbName, tableName):
         """

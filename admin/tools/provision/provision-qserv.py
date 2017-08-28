@@ -17,6 +17,8 @@ Script performs these tasks:
 @author  Oualid Achbal, IN2P3
 """
 
+from __future__ import absolute_import, division, print_function
+
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
@@ -151,7 +153,7 @@ SWARM_NODES=$(seq --format "${{HOSTNAME_TPL}}{orch_node_suffix}-%g" \
             raise ValueError("Invalid number of cinder data volumes")
         for (instance, vol_name) in zip(qserv_instances,
                                         cloudManager.volume_names):
-                cloudManager.nova_create_server_volume(instance.id, vol_name)
+            cloudManager.nova_create_server_volume(instance.id, vol_name)
         cloudManager.mount_volume(qserv_instances)
 
     logging.debug("SUCCESS: Qserv Openstack cluster is up")

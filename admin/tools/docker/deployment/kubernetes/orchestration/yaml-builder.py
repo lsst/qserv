@@ -5,11 +5,16 @@ Create k8s pods configuration files
 @author Fabrice Jammes, IN2P3
 """
 
+from __future__ import absolute_import, division, print_function
+
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 import os
 import sys
@@ -62,10 +67,10 @@ def _config_logger(verbose):
 
 
 def _get_container_id(container_name):
-        for i, container in enumerate(yaml_data['spec']['containers']):
-            if container['name'] == container_name:
-                return i
-        return None
+    for i, container in enumerate(yaml_data['spec']['containers']):
+        if container['name'] == container_name:
+            return i
+    return None
 
 
 def _mount_volume(container_name, container_dir, volume_name):
@@ -87,22 +92,22 @@ def _mount_volume(container_name, container_dir, volume_name):
 
 
 def _add_volume(host_dir, volume_name):
-        if 'volumes' not in yaml_data['spec']:
-            yaml_data['spec']['volumes'] = []
-        volume = {'hostPath': {'path': host_dir},
-                  'name': volume_name}
-        volumes = yaml_data['spec']['volumes']
-        volumes.append(volume)
+    if 'volumes' not in yaml_data['spec']:
+        yaml_data['spec']['volumes'] = []
+    volume = {'hostPath': {'path': host_dir},
+              'name': volume_name}
+    volumes = yaml_data['spec']['volumes']
+    volumes.append(volume)
 
 
 def _add_emptydir_volume(volume_name):
-        if 'volumes' not in yaml_data['spec']:
-            yaml_data['spec']['volumes'] = []
+    if 'volumes' not in yaml_data['spec']:
+        yaml_data['spec']['volumes'] = []
 
-        volume = {'emptyDir': {},
-                  'name': volume_name}
-        volumes = yaml_data['spec']['volumes']
-        volumes.append(volume)
+    volume = {'emptyDir': {},
+              'name': volume_name}
+    volumes = yaml_data['spec']['volumes']
+    volumes.append(volume)
 
 
 if __name__ == "__main__":
@@ -131,7 +136,7 @@ if __name__ == "__main__":
 
         _config_logger(args.verbose)
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
 
         with open(args.iniFile, 'r') as f:
             config.readfp(f)

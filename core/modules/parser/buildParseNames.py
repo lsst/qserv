@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2012 LSST Corporation.
@@ -30,7 +30,9 @@
 # Note, this tool is no longer needed for qserv, but may be useful in
 #  the future if ANTLR parse symbols are needed in other languages in
 #  qserv.
-from itertools import imap
+
+from __future__ import absolute_import, division, print_function
+
 import re
 import sys
 
@@ -39,6 +41,7 @@ def openReadAndWrite(read, write):
     fpRead = open(read)
     fpWrite = open(write, "w")
     return (fpRead, fpWrite)
+
 
 quotedStrMatch = '"([^"]+)"'
 defRegex = re.compile('^(\w+)\(' + quotedStrMatch + '\)\s*=\s*(\d+)')
@@ -101,11 +104,12 @@ def main():
             "src": sys.argv[1]}
     srcList = list(src)
     fpHeader.write(headerPreamble % subs)
-    fpHeader.write("\n".join(imap(formatIntLine, srcList)))
-    fpHeader.write("\n".join(imap(formatStrLine, srcList)))
+    fpHeader.write("\n".join([formatIntLine(item) for item in srcList]))
+    fpHeader.write("\n".join([formatStrLine(item) for item in srcList]))
     fpHeader.write(headerFooter % subs)
     fpTokens.close()
     fpHeader.close()
+
 
 if __name__ == "__main__":
     main()

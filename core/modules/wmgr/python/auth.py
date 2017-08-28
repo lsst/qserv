@@ -26,6 +26,8 @@ Module defining Auth class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -125,4 +127,4 @@ class Auth(object):
                 raise RuntimeError("invalid content of secret file (empty fields): " + fileName)
             return secret
         except Exception as exc:
-            raise RuntimeError("failed to read secret file: " + str(exc))
+            raise RuntimeError("failed to read secret file: {}".format(exc))

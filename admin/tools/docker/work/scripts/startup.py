@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 hooks.config.Eups.colorize = True
 hooks.config.Eups.userTags += ["git"]
 
@@ -16,5 +16,6 @@ def cmdHook(Eups, cmd, opts, args):
                 msg = "Using default tags: {0} to setup {1}" \
                     .format(", ".join(opts.tag), ", ".join(args))
                 print(msg, file=utils.stdinfo)
+
 
 eups.commandCallbacks.add(cmdHook)

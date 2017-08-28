@@ -26,6 +26,8 @@ Module defining Flask blueprint for database management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -84,6 +86,7 @@ def _validateColumnName(columnName):
     """ Validate column name """
     return _validateId("Column", columnName)
 
+
 # list of database names that we want to ignore
 _specialDbs = set(['mysql', 'information_schema'])
 
@@ -129,6 +132,7 @@ def _getArgFlag(mdict, option, default=True):
 # ------------------------
 # Exported definitions --
 # ------------------------
+
 
 dbService = Blueprint('dbService', __name__, template_folder='dbService')
 
@@ -521,9 +525,9 @@ def listChunks(dbName, tblName):
                 else:
                     chunk['overlapTable'] = True
 
-    _log.debug('found chunks: %s', chunks.keys())
+    _log.debug('found chunks: %s', list(chunks.keys()))
 
-    return json.jsonify(results=chunks.values())
+    return json.jsonify(results=list(chunks.values()))
 
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks', methods=['POST'])

@@ -12,6 +12,8 @@ This module provides Basic and Digest HTTP authentication for Flask routes.
 # with some modifications.
 #
 
+from __future__ import absolute_import, division, print_function
+
 from functools import wraps
 from hashlib import md5
 from random import Random, SystemRandom
@@ -42,7 +44,7 @@ class HTTPAuth(object):
             if isinstance(res, str):
                 res = make_response(res)
                 res.status_code = 401
-            if 'WWW-Authenticate' not in res.headers.keys():
+            if 'WWW-Authenticate' not in res.headers:
                 res.headers['WWW-Authenticate'] = self.authenticate_header()
             return res
         self.auth_error_callback = decorated

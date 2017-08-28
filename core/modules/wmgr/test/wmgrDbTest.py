@@ -30,6 +30,8 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
+from __future__ import absolute_import, division, print_function
+
 # ------------------------------
 #  Module's version from CVS --
 # ------------------------------
@@ -222,6 +224,7 @@ class wmgrDbTest(unittest.TestCase):
 
         # drop database
         response = self._getJson(self.app.delete('/dbs/' + dbName))
+
 
 #
 #  run unit tests when imported as a main module

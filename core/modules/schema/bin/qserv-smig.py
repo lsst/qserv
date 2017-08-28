@@ -29,16 +29,14 @@ from __future__ import absolute_import, division, print_function
 #  Imports of standard modules --
 # --------------------------------
 import argparse
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import importlib
 import logging
 import os
 import sys
-
-try:
-    import configparser
-except ImportError:
-    # for Python2
-    import ConfigParser as configparser
 
 # -----------------------------
 # Imports for other modules --
@@ -55,6 +53,7 @@ _def_scripts = os.path.join(os.environ.get("QSERV_DIR", ""), "share/qserv/schema
 
 _mig_module_name = "schema_migration"
 _factory_method_name = "make_migration_manager"
+
 
 def _load_migration_mgr(mod_name, engine, scripts_dir):
     """Dynamic loading of the migration manager based on module name.
@@ -121,8 +120,8 @@ def _normalizeConfig(config):
     if config.get("technology") == "mysql":
         res["drivername"] = "mysql+mysqldb"
     elif config.get("technology") is not None:
-        raise ValueError("Unexpected technology specified for connection: " +
-                         str(config.get("technology")))
+        raise ValueError("Unexpected technology specified for connection:"
+                         " {}".format(config.get("technology")))
     res["username"] = config.get("username") or config.get("user")
     res["password"] = config.get("password") or config.get("passwd") or config.get("pass")
     res["host"] = config.get("hostname") or config.get("host")
@@ -225,6 +224,7 @@ def main():
             print("Database was migrated to version {}".format(final))
         else:
             print("Database would be migrated to version {}".format(final))
+
 
 if __name__ == "__main__":
     sys.exit(main())

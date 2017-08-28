@@ -26,6 +26,8 @@ Module defining Flask blueprint for xrootd management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -121,6 +123,7 @@ def _restartXrootd():
 # ------------------------
 # Exported definitions --
 # ------------------------
+
 
 xrdService = Blueprint('xrdService', __name__, template_folder='xrdService')
 

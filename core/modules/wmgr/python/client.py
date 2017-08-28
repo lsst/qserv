@@ -26,9 +26,12 @@ Module defining WmgrClient class and related methods.
 @author Andy Salnikov <salnikov@slac.stanford.edu>
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
+from past.builtins import basestring
 import io
 import logging
 
@@ -42,7 +45,7 @@ from requests.compat import urlencode
 # Local non-exported definitions --
 # ----------------------------------
 
-# used as default value to distingush from None
+# used as default value to distinguish from None
 _None = object()
 
 _log = logging.getLogger(__name__)
@@ -467,7 +470,8 @@ class WmgrClient(object):
 
         @param dbName:     Database name
         @param tableName:  Table name
-        @param dataFile:   File object for file with data
+        @param dataFile:   File object for file with data, file must be open in binary
+                           mode and return bytes in Python3 (or plain str in Python2)
         @param fileName:   File name to use, if data is compressed then pass name which
                            ends with .gz or set compressed argument to True.
         @param chunkId:    Chunk ID, number, if None then table is not partitioned

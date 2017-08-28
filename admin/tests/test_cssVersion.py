@@ -27,6 +27,8 @@ This is a unittest for checking CSS version functionality in CssAccess.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 import unittest
 
 from lsst.qserv import css
@@ -114,6 +116,7 @@ class TestCssVersion(unittest.TestCase):
             css_inst = _makeCss(initData)
 
 #
+
 
 if __name__ == "__main__":
     unittest.main()

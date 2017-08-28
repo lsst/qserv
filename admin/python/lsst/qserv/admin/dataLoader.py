@@ -25,12 +25,12 @@ DataLoader class is used to simplify data loading procedure.
 
 @author  Andy Salnikov, SLAC
 """
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
-from cStringIO import StringIO
+from io import BytesIO
 import logging
 import os
 import re
@@ -185,7 +185,7 @@ class DataLoader(object):
             self._checkCss(database, table)
 
         # make chunk mapper
-        self.chunkMap = ChunkMapping(self.workerWmgrMap.keys(), database, table, self.css)
+        self.chunkMap = ChunkMapping(list(self.workerWmgrMap.keys()), database, table, self.css)
 
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir(data)
@@ -666,7 +666,7 @@ class DataLoader(object):
             data[name] = self.partOptions.get(csvPrefix + '.' + name, default)
 
         try:
-            file = open(path)
+            file = open(path, "rb")
         except IOError as exc:
             self._log.error('failed to open file %r', path)
             raise
@@ -723,7 +723,7 @@ class DataLoader(object):
         schema = self.czarWmgr.tableSchema(database, table)
         # strip CREATE TABLE
         i = schema.find('(')
-        return schema[i:].encode('utf_8')
+        return schema[i:]
 
     def _makeEmptyChunks(self):
         """
@@ -833,10 +833,10 @@ class DataLoader(object):
         columns = (idxCol, 'chunkId', 'subChunkId')
         indexData = wmgr.getIndex(database, table, chunkId=chunk, columns=columns)
 
-        # dump it into a in-memory file
-        data = StringIO()
+        # dump it into a in-memory file, loadData expects binary mode
+        data = BytesIO()
         for row in indexData:
-            data.write("%d\t%d\t%d\n" % tuple(row))
+            data.write(b"%d\t%d\t%d\n" % tuple(row))
         data.seek(0)
 
         # send that file to czar

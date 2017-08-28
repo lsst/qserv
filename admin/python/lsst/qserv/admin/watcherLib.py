@@ -4,9 +4,13 @@ Module defining methods and classes used by watcher.
 @author Andy Salnikov
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
+from past.builtins import basestring
+from future.utils import with_metaclass
 from abc import ABCMeta, abstractmethod
 import logging
 import time
@@ -52,7 +56,7 @@ class WatcherCss(object):
         """
 
         _LOG.debug('connecting to css: %s', config)
-        if isinstance(config, (str, unicode)):
+        if isinstance(config, basestring):
             config = cssConfig.configFromUrl(config)
         self.css = css.CssAccess.createFromConfig(config, "")
         self.wmgrSecretFile = wmgrSecretFile
@@ -157,11 +161,10 @@ class WatcherCss(object):
         return czars, workers
 
 
-class IExecutor(object):
+class IExecutor(with_metaclass(ABCMeta, object)):
     """
     Class defining interface for executor.
     """
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def createDb(self, dbName, options):

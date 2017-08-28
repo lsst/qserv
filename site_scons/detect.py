@@ -169,6 +169,7 @@ class AntlrChecker:
         return libName + self.suffix
     pass  # AntlrChecker
 
+
 null_source_file = """
 int main(int argc, char **argv) {
         return 0;

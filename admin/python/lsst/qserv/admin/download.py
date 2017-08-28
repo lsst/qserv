@@ -1,9 +1,15 @@
+
+from __future__ import absolute_import, division, print_function
+
+from future import standard_library
+standard_library.install_aliases()
+from builtins import chr
 import os
 import logging
 from datetime import datetime
 import sys
-
-from urllib2 import Request, urlopen, URLError, HTTPError
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 
 def download(file_name, url_str):

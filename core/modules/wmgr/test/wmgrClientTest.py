@@ -30,11 +30,7 @@ This is a unit test but it requires few other things to be present:
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-# ------------------------------
-#  Module's version from CVS --
-# ------------------------------
-__version__ = "$Revision: 8 $"
-# $Source$
+from __future__ import absolute_import, division, print_function
 
 # --------------------------------
 #  Imports of standard modules --
@@ -71,6 +67,7 @@ def _readAll(input):
 #  Unit test class definition --
 # -------------------------------
 
+
 logging.basicConfig(level=logging.WARNING)
 
 
@@ -94,7 +91,7 @@ class wmgrClientTest(unittest.TestCase):
                     '--1234567890--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(len(encoder), expectedLen)
         self.assertEqual(lines, expected)
 
@@ -125,7 +122,7 @@ class wmgrClientTest(unittest.TestCase):
                     '--1234567890--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(lines, expected)
         self.assertEqual(len(encoder), expectedLen)
 
@@ -159,9 +156,10 @@ class wmgrClientTest(unittest.TestCase):
                     '--part-X-of-the-multipart-request--',
                     ''
                     ]
-        expectedLen = sum(map(len, expected)) + 2 * (len(expected) - 1)
+        expectedLen = sum(len(x) for x in  expected) + 2 * (len(expected) - 1)
         self.assertEqual(lines, expected)
         self.assertEqual(len(encoder), expectedLen)
+
 
 #
 #  run unit tests when imported as a main module

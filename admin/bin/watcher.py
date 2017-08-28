@@ -8,11 +8,16 @@ database makes sure that state of the local mysql server correctly reflects
 the state of CSS by creating/deleting databases and tables.
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
 from argparse import ArgumentParser
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 
 # -----------------------------
@@ -58,7 +63,7 @@ def main():
 
     # parse config file
     defaults = dict(interval=str(interval))
-    cfg = ConfigParser.SafeConfigParser(defaults)
+    cfg = configparser.SafeConfigParser(defaults)
     cfg.readfp(open(args.configFile))
 
     # get few parameters

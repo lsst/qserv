@@ -3,6 +3,8 @@ Module containing Python-specific methods for CSS configuration.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------

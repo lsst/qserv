@@ -27,7 +27,9 @@ This is a unittest for configParser
 
 """
 
-import StringIO
+from __future__ import absolute_import, division, print_function
+
+import io
 import unittest
 
 from lsst.qserv.admin.configParser import ConfigParser
@@ -39,7 +41,7 @@ class TestConfigParser(unittest.TestCase):
 
         data = "a, b: c\n[d,e]"
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         options = parser.parse()
 
         self.assertEqual(len(options), 4)
@@ -49,7 +51,7 @@ class TestConfigParser(unittest.TestCase):
 
         data = "a = { b = [c, d, e] }"
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         options = parser.parse()
 
         self.assertEqual(len(options), 3)
@@ -59,7 +61,7 @@ class TestConfigParser(unittest.TestCase):
 
         data = r'''a = { b = "a b 'c", c: '\t\n\b\r\f\u1AX' }'''
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         options = parser.parse()
 
         self.assertEqual(len(options), 2)
@@ -69,7 +71,7 @@ class TestConfigParser(unittest.TestCase):
 
         data = r''' "a b c" : 'a b c' '''
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         options = parser.parse()
 
         self.assertEqual(len(options), 1)
@@ -79,7 +81,7 @@ class TestConfigParser(unittest.TestCase):
 
         data = '''#comment\na = b  # comment\n\n  #comment\n'''
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         options = parser.parse()
 
         self.assertEqual(len(options), 1)
@@ -89,28 +91,28 @@ class TestConfigParser(unittest.TestCase):
 
         data = "a = { b "
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         self.assertRaises(ValueError, parser.parse)
 
     def testExcept2(self):
 
         data = "a = 'b"
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         self.assertRaises(ValueError, parser.parse)
 
     def testExcept3(self):
 
         data = """a = 'b" """
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         self.assertRaises(ValueError, parser.parse)
 
     def testExcept4(self):
 
         data = """ a = x\x13y """
 
-        parser = ConfigParser(StringIO.StringIO(data))
+        parser = ConfigParser(io.StringIO(data))
         self.assertRaises(ValueError, parser.parse)
 
 

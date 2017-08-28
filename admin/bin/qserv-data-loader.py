@@ -52,6 +52,8 @@ option may be added later.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
@@ -255,7 +257,8 @@ class Loader(object):
         """
         self.loader.load(self.args.database, self.args.table, self.args.schema, self.args.data)
         if self.loader.chunks:
-            logging.getLogger('Loader').info('loaded chunks: %s', ' '.join(map(str, self.loader.chunks)))
+            logging.getLogger('Loader').info('loaded chunks: %s',
+                                             ' '.join([str(c) for c in self.loader.chunks]))
         return 0
 
     def _wmgrConnect(self, nodeName, css):

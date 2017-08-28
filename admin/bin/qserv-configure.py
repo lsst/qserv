@@ -38,12 +38,16 @@ A Qserv run directory can only run one Qserv instance at a time.
 @author  Fabrice Jammes, IN2P3
 
 """
+from __future__ import absolute_import, division, print_function
 
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser  # python2
 import logging
 import os
 import re
@@ -77,7 +81,7 @@ class Configurator(object):
         Constructor parse all arguments and prepares for execution.
         """
 
-        qserv_version = check_output(["qserv-version.sh"])
+        qserv_version = check_output(["qserv-version.sh"]).decode()
         qserv_version = qserv_version.strip(' \t\n\r')
         valid_dir_name = re.sub('[^\w_.-]', '_', qserv_version)
         default_qserv_run_dir = os.path.join(
@@ -334,7 +338,7 @@ class Configurator(object):
                 # used in templates targets comments
                 config['qserv']['meta_config_file'] = self._meta_config_file
 
-            except ConfigParser.NoOptionError as exc:
+            except configparser.NoOptionError as exc:
                 _LOG.fatal("Missing option in meta-configuration file: %s", exc)
                 sys.exit(1)
 
@@ -406,6 +410,7 @@ class Configurator(object):
 
             if configure.CLIENT in self.args.step_list:
                 self._template_to_client_config(configure.QSERV)
+
 
 if __name__ == '__main__':
     try:

@@ -29,9 +29,12 @@ qserv nodes, for example creating/deleting databases or tables.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
+from __future__ import absolute_import, division, print_function
+
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
+from past.builtins import basestring
 import logging
 
 # -----------------------------
@@ -113,7 +116,7 @@ class NodeMgmt(object):
 
         # convert to instances
         return [NodeAdmin(name=key, css=self.css, wmgrSecretFile=self.wmgrSecretFile)
-                for key, _ in nodes.items()]
+                for key in nodes]
 
     def selectDict(self, state=None, nodeType=None):
         """
@@ -131,7 +134,7 @@ class NodeMgmt(object):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)
-        nodes = self.css.getAllNodeParams().items()
+        nodes = list(self.css.getAllNodeParams().items())
 
         # filter out those that don't match
         if state is not None:

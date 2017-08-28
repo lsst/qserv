@@ -27,6 +27,8 @@ This is a unit test for CSS node definitions.
 
 """
 
+from __future__ import absolute_import, division, print_function
+
 import unittest
 
 from lsst.qserv import css
@@ -346,6 +348,7 @@ class TestCssNodes(unittest.TestCase):
         self.assertEqual(len(nodes), 0)
 
 #
+
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCssNodes)
