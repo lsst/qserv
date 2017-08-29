@@ -106,8 +106,11 @@ public:
 /// Deletes are only to be allowed when _concurrentMergeCount is 0.
 class InvalidJobAttemptMgr {
 public:
+    using jASetType = std::set<int>;
+    using deleteFuncType = std::function<bool(jASetType const&)>;
+
     InvalidJobAttemptMgr() {}
-    void setDeleteFunc(std::function<bool(int)> func) {_deleteFunc = func; }
+    void setDeleteFunc(deleteFuncType func) {_deleteFunc = func; }
     void setTableExistsFunc(std::function<bool(void)> func) {_tableExistsFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
@@ -119,22 +122,30 @@ public:
     void decrConcurrentMergeCount();
 
 
-    bool holdMergingForRowDelete(int jobIdAttempt);
+    /// @return true if query results are valid. If it returns false, the query results are invalid.
+    /// This function will stop all merging to the result table and delete all invalid
+    /// rows in the table. If it returns false, invalid rows remain in the result table,
+    /// and the query should probably be cancelled.
+    bool holdMergingForRowDelete(std::string const& msg="");
 
     /// @return true if jobIdAttempt is in the invalid set.
     bool isJobAttemptInvalid(int jobIdAttempt);
+
+    bool prepScrub(int jobIdAttempt);
 private:
     /// Precondition: must hold _iJAMtx before calling.
     /// @return true if jobIdAttempt is in the invalid set.
     bool _isJobAttemptInvalid(int jobIdAttempt);
+    void _cleanupIJA(); ///< Helper to send notice to all waiting on _cv.
 
     std::mutex _iJAMtx;
-    std::set<int> _invalidJobAttempts;
-    std::set<int> _jobIdAttemptsHaveRows;
+    jASetType _invalidJobAttempts; ///< Set of job-attempts that failed.
+    jASetType _invalidJAWithRows;  ///< Set of job-attempts that failed and have rows in result table.
+    jASetType _jobIdAttemptsHaveRows; ///< Set of job-attempts that have rows in result table.
     int _concurrentMergeCount{0};
     bool _waitFlag{false};
     std::condition_variable  _cv;
-    std::function<bool(int)> _deleteFunc;
+    deleteFuncType _deleteFunc;
     std::function<bool(void)> _tableExistsFunc;
 };
 
@@ -175,6 +186,7 @@ public:
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
+    bool prepScrub(int jobId, int attempt);
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
@@ -232,7 +244,7 @@ private:
     std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
 
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
-    bool _deleteInvalidRows(int jobIdAttempt);
+    bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
 
 
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.

@@ -143,8 +143,8 @@ public:
         return _error;
     }
 
-    /// Scrub the results from jobId-attempt from the result table.
-    bool scrubResults(int jobId, int attempt) override;
+    /// Prepare to scrub the results from jobId-attempt from the result table.
+    bool prepScrubResults(int jobId, int attempt) override;
 
 private:
     void _initState();

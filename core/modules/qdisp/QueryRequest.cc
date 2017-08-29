@@ -414,6 +414,7 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     }
 
     // Make the calls outside of the mutex lock.
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " calling Finished(shouldCancel=" << shouldCancel << ")");
     bool ok = Finished(shouldCancel);
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " QueryRequest::_errorFinish !ok " << getXrootdErr(nullptr));
