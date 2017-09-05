@@ -121,24 +121,35 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
         return true;
 
     case MsgState::RESULT_WAIT:
-        if (!_verifyResult()) { return false; }
-        if (!_setResult()) { return false; } // set _response->result
-        largeResult = _response->result.largeresult();
-        LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf "
-             << util::prettyCharList(_mBuf.getBuffer(), 5));
-        _mBuf.zero(); // not needed after _response->result set.
         {
+            auto jobQuery = getJobQuery().lock();
+            if (jobQuery == nullptr) {
+                LOGS(_log, LOG_LVL_DEBUG, "flush ignoring message, nullptr");
+                return false;
+            }
+            auto jobId = jobQuery->getIdStr();
+            if (_cancelled) {
+                LOGS(_log, LOG_LVL_DEBUG, jobId << " flush ignoring message, cancelled");
+                return false;
+            }
+
+            if (!_verifyResult()) { return false; }
+            if (!_setResult()) { return false; } // set _response->result
+            largeResult = _response->result.largeresult();
+            LOGS(_log, LOG_LVL_DEBUG, jobId << " From:" << _wName << " _mBuf "
+                    << util::prettyCharList(_mBuf.getBuffer(), 5));
+            _mBuf.zero(); // not needed after _response->result set.
             bool msgContinues = _response->result.continues();
             _state = MsgState::RESULT_RECV;
             if (msgContinues) {
-                LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
+                LOGS(_log, LOG_LVL_DEBUG, jobId << " Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
                 _mBuf.setTargetSize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Message ends, setting last=true");
+                LOGS(_log, LOG_LVL_DEBUG, jobId << " Message ends, setting last=true");
                 last = true;
             }
-            LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
+            LOGS(_log, LOG_LVL_DEBUG, jobId << " Flushed msgContinues=" << msgContinues
                  << " last=" << last << " for tableName=" << _tableName);
 
             auto success = _merge();
@@ -226,7 +237,7 @@ void MergingHandler::_initState() {
 
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
-        if (job->isQueryCancelled()) {
+        if (_cancelled) {
             LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
             return false;
         }

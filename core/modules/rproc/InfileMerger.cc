@@ -109,6 +109,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     _alterJobIdColName(); // initialize jobIdColName.
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
+    _maxResultTableSizeMB = 2500; // &&& delete
 
     // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
     // Subtract that from the count so the first check doesn't happen for a while.
@@ -222,12 +223,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _sizeCheckRowCount = 0;
         if (tSize > _maxResultTableSizeMB) {
             // Try deleting invalid rows if there are any, then check size again
-            bool invalidResult = _invalidJobAttemptMgr.holdMergingForRowDelete("Checking size");
+            bool validResult = _invalidJobAttemptMgr.holdMergingForRowDelete("Checking size");
             tSize = _getResultTableSizeMB();
-            if (tSize > _maxResultTableSizeMB || invalidResult) {
+            if (tSize > _maxResultTableSizeMB || !validResult) {
                 std::ostringstream os;
                 os << queryIdJobStr << " cancelling queryResult table " << _mergeTable;
-                if (invalidResult) {
+                if (!validResult) {
                     os << " failed to delete invalid rows.";
                 } else {
                     os << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;

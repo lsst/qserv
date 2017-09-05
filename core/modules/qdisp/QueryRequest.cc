@@ -78,6 +78,7 @@ QueryRequest::~QueryRequest() {
 
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
+    util::InstanceCount instC("&&& QueryRequest::GetRequest");
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     auto jq = _jobQuery;
     if (_finishStatus != ACTIVE || jq == nullptr) {
@@ -100,6 +101,7 @@ void QueryRequest::RelRequestBuffer() {
 // Callback function for XrdSsiRequest.
 // See QueryResource::ProvisionDone which invokes ProcessRequest(QueryRequest*))
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
+    util::InstanceCount instC("&&& QueryRequest::ProcessResponse");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse");
     std::string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
@@ -202,6 +204,7 @@ void QueryRequest::_setHoldState(HoldState state) {
 
 
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
+    util::InstanceCount instC("&&& QueryRequest::ProcessResponseData");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
 
