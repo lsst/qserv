@@ -143,6 +143,10 @@ public:
         return _error;
     }
 
+    void processCancel() override {
+        _cancelled = true;
+    }
+
     /// Prepare to scrub the results from jobId-attempt from the result table.
     bool prepScrubResults(int jobId, int attempt) override;
 
@@ -152,6 +156,7 @@ private:
     void _setError(int code, std::string const& msg);
     bool _setResult();
     bool _verifyResult();
+    std::atomic<bool> _cancelled{false};
 
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate

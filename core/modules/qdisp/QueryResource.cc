@@ -72,6 +72,7 @@ QueryResource::~QueryResource() {
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
 void QueryResource::ProvisionDone(XrdSsiSession* s) {
+    util::InstanceCount instC("&&& QueryResource::ProvisionDone");
     LOGS_DEBUG(_jobIdStr << " QueryResource::ProvisionDone");
     struct Destroyer {
         Destroyer(JobQuery::Ptr const& job, QueryResource* qr)
