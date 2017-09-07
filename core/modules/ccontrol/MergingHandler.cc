@@ -122,18 +122,11 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
 
     case MsgState::RESULT_WAIT:
         {
+            LOGS(_log, LOG_LVL_DEBUG, "&&& flush RESULT_WAIT 1");
             auto jobQuery = getJobQuery().lock();
-            if (jobQuery == nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "flush ignoring message, nullptr");
-                return false;
-            }
-            auto jobId = jobQuery->getIdStr();
-            if (_cancelled) {
-                LOGS(_log, LOG_LVL_DEBUG, jobId << " flush ignoring message, cancelled");
-                return false;
-            }
-
+            auto jobId = (jobQuery != nullptr) ? jobQuery->getIdStr() : "?";
             if (!_verifyResult()) { return false; }
+            LOGS(_log, LOG_LVL_DEBUG, "&&& flush RESULT_WAIT 5");
             if (!_setResult()) { return false; } // set _response->result
             largeResult = _response->result.largeresult();
             LOGS(_log, LOG_LVL_DEBUG, jobId << " From:" << _wName << " _mBuf "
@@ -237,10 +230,6 @@ void MergingHandler::_initState() {
 
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
-        if (_cancelled) {
-            LOGS(_log, LOG_LVL_WARN, "MergingRequester::_merge(), but already cancelled");
-            return false;
-        }
         if (_flushed) {
             throw Bug("MergingRequester::_merge : already flushed");
         }

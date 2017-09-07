@@ -236,7 +236,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     JobQuery::Ptr jq = _jobQuery;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE || jq == nullptr) {
+        if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
             // Something must have killed this job.
             if (_holdState != NO_HOLD0) {
@@ -333,7 +333,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         }
         return XrdSsiRequest::PRD_Normal;
     }
-
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& QueryRequest::ProcessResponseData " << instC.getCount());
     return XrdSsiRequest::PRD_Normal;
 }
 
