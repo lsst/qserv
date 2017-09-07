@@ -144,6 +144,7 @@ public:
     }
 
     void processCancel() override {
+        std::lock_guard<std::mutex> lock(_cancelledMtx);
         _cancelled = true;
     }
 
@@ -156,7 +157,9 @@ private:
     void _setError(int code, std::string const& msg);
     bool _setResult();
     bool _verifyResult();
-    std::atomic<bool> _cancelled{false};
+    bool _cancelled{false};
+    std::mutex _cancelledMtx;
+
 
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
