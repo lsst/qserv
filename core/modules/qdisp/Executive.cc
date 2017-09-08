@@ -256,7 +256,8 @@ void Executive::markCompleted(int jobId, bool success) {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
             if (iter != _incompleteJobs.end()) {
-                err = iter->second->getDescription()->respHandler()->getError();
+                auto jobQuery =  iter->second;
+                err = jobQuery->getDescription()->respHandler()->getError();
             } else {
                 std::string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                         " size=" + std::to_string(_incompleteJobs.size());
@@ -309,8 +310,18 @@ void Executive::squash() {
         }
     }
 
+    // Cancel the jobs outside of the mutex lock and release one large result in case
+    // the LargeResultMgr is jammed on this query. Releasing many could cause the
+    // large results to overload the system.
+    int freed = false;
     for (auto const& job : jobsToCancel) {
         job->cancel();
+        if (!freed) {
+            auto jobQuery = job->getQueryRequest();
+            if (jobQuery != nullptr && jobQuery->releaseLargeResultSafety()) {
+                freed = true;
+            }
+        }
     }
     LOGS_DEBUG(getIdStr() << " Executive::squash done");
 }

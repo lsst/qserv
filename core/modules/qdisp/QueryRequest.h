@@ -143,6 +143,10 @@ public:
     std::string getXrootdErr(int *eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.
 
+    /// If this job has incremented the large result semaphore, decrement it now.
+    /// @return true if the semaphore was decremented.
+    bool releaseLargeResultSafety() { return _largeResultSafety.finishBlock(); }
+
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     void _callMarkComplete(bool success);

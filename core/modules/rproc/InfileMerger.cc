@@ -109,7 +109,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     _alterJobIdColName(); // initialize jobIdColName.
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
-    _maxResultTableSizeMB = 2500; // &&& delete
 
     // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
     // Subtract that from the count so the first check doesn't happen for a while.

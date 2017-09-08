@@ -122,11 +122,9 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
 
     case MsgState::RESULT_WAIT:
         {
-            LOGS(_log, LOG_LVL_DEBUG, "&&& flush RESULT_WAIT 1");
             auto jobQuery = getJobQuery().lock();
             auto jobId = (jobQuery != nullptr) ? jobQuery->getIdStr() : "?";
             if (!_verifyResult()) { return false; }
-            LOGS(_log, LOG_LVL_DEBUG, "&&& flush RESULT_WAIT 5");
             if (!_setResult()) { return false; } // set _response->result
             largeResult = _response->result.largeresult();
             LOGS(_log, LOG_LVL_DEBUG, jobId << " From:" << _wName << " _mBuf "
