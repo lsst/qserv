@@ -380,7 +380,7 @@ function queryProcessing()
         czarProxy.log("mysql-proxy", "INFO", "Killing query/connection: " .. q)
         local ok, msg = pcall(czarProxy.killQuery, qU, proxy.connection.client.dst.name)
         if (not ok) then
-            return err.set(ERR_CZAR_EXCEPTION, "Exception in call to czar method: " .. msg)
+            return err.setAndSend(ERR_CZAR_EXCEPTION, "KILL failed: " .. msg)
         end
 
         -- Assemble result

@@ -75,9 +75,8 @@ czar::SubmitResult submitQuery(std::string const& query,
  *
  * @param query: (client)proxy-provided "KILL QUERY NNN" or "KILL NNN" string
  * @param clientId: client_dst_name from proxy
- * @return: Error message, empty on success
  */
-std::string killQuery(std::string const& query, std::string const& clientId);
+void killQuery(std::string const& query, std::string const& clientId);
 
 /**
  *  Send message to logging system. level is a string like "DEBUG".
