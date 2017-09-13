@@ -169,7 +169,12 @@ void UserQuerySelect::kill() {
     if (!_killed) {
         _killed = true;
         try {
-            _executive->squash();
+            // make a copy of executive pointer to keep it alive and avoid race
+            // with pointer being reset in discard() method
+            std::shared_ptr<qdisp::Executive> exec = _executive;
+            if (exec != nullptr) {
+                exec->squash();
+            }
         } catch(UserQueryError const &e) {
             // Silence merger discarding errors, because this object is being
             // released. Client no longer cares about merger errors.

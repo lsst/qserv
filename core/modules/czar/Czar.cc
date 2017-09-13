@@ -254,7 +254,13 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     // assume this cannot fail or throw
     LOGS(_log, LOG_LVL_DEBUG, "Killing query for thread: " << threadId);
     if (uq) {
-        uq->kill();
+        // query killing can potentially take very long and we do now want to block
+        // proxy from serving other requests so run it in a detached thread
+        std::thread killThread([uq, threadId]() {
+            uq->kill();
+            LOGS(_log, LOG_LVL_DEBUG, "Finished killing query for thread: " << threadId);
+        });
+        killThread.detach();
     }
 }
 
