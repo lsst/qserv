@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Extract data from containers 
+# Remove Qserv data from host nodes
 
 # @author Fabrice Jammes SLAC/IN2P3
 
@@ -10,16 +10,12 @@ set -x
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/../env-cluster.sh"
 
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/extract-data.sh"
-
 DATA_DIR="/qserv/data"
-TMP_DIR="/qserv/tmp/data"
 
 for node in $MASTER $WORKERS
 do
-    echo "Move data on $node"
+    echo "Remove Qserv data on $node"
 	ssh $SSH_CFG_OPT "$node" "sudo -u centos -- \
-        sh -c 'cp -r ${TMP_DIR}/* $DATA_DIR && \
-        rm -r $TMP_DIR'"
+        rm -rf $DATA_DIR/*"
 done
 

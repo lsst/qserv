@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Wait for all Qserv pods to be in running state 
+# Wait for all Qserv pods to be in running state
 
 # @author Fabrice Jammes SLAC/IN2P3
 

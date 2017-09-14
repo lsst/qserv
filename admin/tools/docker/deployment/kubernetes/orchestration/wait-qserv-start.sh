@@ -22,11 +22,22 @@ do
     retry=0
     started=false
     while [ $started = false ]; do
-	    echo "Wait for pod '$qserv_pod' to start: TODO not correct rewrite me (see DM-11131)..."
-	    if kubectl exec "$qserv_pod" true
+        echo "Wait for pod '$qserv_pod' to start"
+        if [ "$qserv_pod" = master ]
+        then
+            kubectl exec "$qserv_pod" /qserv/scripts/wait.sh && started=true
+        else
+            # this check should be enough because:
+            # - xrootd is the latest service to be started
+            # - if mysql or qserv-wmgr crashes, then related container will
+            #   crash, preventing pod to be in RUNNING state
+            kubectl exec "$qserv_pod" -c worker -- \
+                sh -c "/qserv/run/etc/init.d/xrootd status > /dev/null 2>&1" \
+                && started=true
+        fi
+        if [ $started = true ]
         then
             echo "Succeed to start pod '$qserv_pod'"
-            started=true
         else
             retry=$((retry+1));
             if [ $retry -gt $MAX_RETRY ]
