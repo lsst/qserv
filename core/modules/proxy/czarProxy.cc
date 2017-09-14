@@ -102,12 +102,12 @@ submitQuery(std::string const& query, std::map<std::string, std::string> const& 
     return ::_czar->submitQuery(query, hints);
 }
 
-std::string
+void
 killQuery(std::string const& query, std::string const& clientId) {
     if (not ::_czar) {
         throw std::runtime_error("czarProxy/killQuery(): czar instance not initialized");
     }
-    return ::_czar->killQuery(query, clientId);
+    ::_czar->killQuery(query, clientId);
 }
 
 void log(std::string const& loggername, std::string const& level,

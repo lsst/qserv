@@ -138,11 +138,10 @@ int luaKillQuery(lua_State *L) {
         const char* query = lua_tolstring(L, -2, &lenQuery);
         const char* clientId = lua_tolstring(L, -1, &lenClientId);
 
-        auto msg = lsst::qserv::proxy::killQuery(std::string(query, lenQuery),
+        lsst::qserv::proxy::killQuery(std::string(query, lenQuery),
                 std::string(clientId, lenClientId));
 
-        lua_pushlstring(L, msg.data(), msg.size());
-        return 1;
+        return 0;
 
     } catch (std::exception const& exc) {
         lua_pushstring(L, exc.what());

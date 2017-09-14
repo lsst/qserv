@@ -79,8 +79,9 @@ public:
      *
      * @param query: (client)proxy-provided "KILL QUERY ..." string
      * @param clientId : client name from proxy
+     * @throws Exception is thrown if query Id is not known
      */
-    std::string killQuery(std::string const& query, std::string const& clientId);
+    void killQuery(std::string const& query, std::string const& clientId);
 
     /**
      * Make new instance.

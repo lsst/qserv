@@ -219,7 +219,7 @@ Czar::submitQuery(std::string const& query,
     return result;
 }
 
-std::string
+void
 Czar::killQuery(std::string const& query, std::string const& clientId) {
 
     LOGS(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
@@ -233,7 +233,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     int threadId = ::parseKillQuery(query);
     LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
     if (threadId < 0) {
-        return "Failed to parse query: " + query;
+        throw std::runtime_error("Failed to parse query: " + query);
     }
 
     ClientThreadId ctId(clientId, threadId);
@@ -245,7 +245,8 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
         // find it in the client map based in client/thread id
         auto iter = _clientToQuery.find(ctId);
         if (iter == _clientToQuery.end()) {
-            return "Unknown thread ID: " + query;
+            LOGS(_log, LOG_LVL_INFO, "Cannot find client thread id: " << threadId);
+            throw std::runtime_error("Unknown thread ID: " + query);
         }
         uq = iter->second.lock();
     }
@@ -253,10 +254,14 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     // assume this cannot fail or throw
     LOGS(_log, LOG_LVL_DEBUG, "Killing query for thread: " << threadId);
     if (uq) {
-        uq->kill();
+        // query killing can potentially take very long and we do now want to block
+        // proxy from serving other requests so run it in a detached thread
+        std::thread killThread([uq, threadId]() {
+            uq->kill();
+            LOGS(_log, LOG_LVL_DEBUG, "Finished killing query for thread: " << threadId);
+        });
+        killThread.detach();
     }
-
-    return std::string();
 }
 
 void
