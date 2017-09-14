@@ -1,11 +1,11 @@
-FROM mariadb:10.1.25
+ARG  MARIADB_VERSION=latest
+FROM mariadb:$MARIADB_VERSION
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 # Start with this long step not to re-run it on
 # each Dockerfile update
 # TODO manage scisql dependencies with eups
 RUN apt-get -y update && \
-    apt-get -y upgrade && \
     apt-get -y install apt-utils && \
     apt-get -y install gcc git make libmariadbclient-dev \
                        python python-dev python-pip && \

@@ -378,13 +378,14 @@ class Configurator(object):
             #
             #  Disable database initialisation scripts if specified by user or if data directory is not empty
             #
-            if self.args.disable_db_init or os.listdir(self._qserv_data_dir):
-                _LOG.warn("Remove configuration steps impacting data, %s will remain untouched",
+            has_data = (os.path.exists(self._qserv_data_dir) and os.listdir(self._qserv_data_dir))
+            if self.args.disable_db_init or has_data :
+                _LOG.info("Remove configuration steps impacting data, %s will remain untouched",
                           self._qserv_data_dir)
                 self.cfg_steps = configure.filter_list(self.cfg_steps, configure.DB_COMPONENTS)
 
             script_cfg_steps = configure.intersect_list(self.cfg_steps, configure.COMPONENTS)
-            if len(script_cfg_steps) > 0:
+            if script_cfg_steps:
                 _LOG.info("Run configuration scripts")
                 configuration_scripts_dir = os.path.join(
                     qserv_run_dir, 'tmp', 'configure'

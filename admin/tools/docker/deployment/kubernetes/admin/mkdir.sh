@@ -19,7 +19,7 @@ REMOTE_USER=centos
 for node in $MASTER $WORKERS
 do
     echo "mkdir $REMOTE_DIR on $node"
-	ssh $SSH_CFG_OPT "$node" "sudo rm -rf $REMOTE_DIR && \
+    ssh $SSH_CFG_OPT "$node" "sudo rm -rf $REMOTE_DIR && \
     sudo mkdir -p $REMOTE_DIR && \
     sudo chown $REMOTE_USER:$REMOTE_USER $REMOTE_DIR"
 done

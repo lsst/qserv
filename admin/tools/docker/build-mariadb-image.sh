@@ -12,7 +12,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 MARIADB_VERSION="10.1.25"
 
-TAG="$DOCKER_REPO_MARIADB:10.1.25"
+TAG="$DOCKER_REPO_MARIADB:$MARIADB_VERSION"
 VERSION=$(date --date='-1 month' +'%Y-%m')
 
 usage() {
@@ -24,7 +24,8 @@ usage() {
     -C          Rebuild the images from scratch
     -h          This message
 
-    Create Docker images from 'qserv_latest' (default) or 'qserv-dev' eups tags.
+    Create Docker images containing Mariadb $MARIADB_VERSION and scisql (master
+    branch tip)
 
 EOD
 }
@@ -47,9 +48,9 @@ fi
 DOCKERDIR="$DIR/mariadb"
 
 # Build the image
-printf "Building image %s from %s, using eups tag %s\n" \
-    "$TAG" "$DOCKERDIR" "$EUPS_TAG"
-docker build $CACHE_OPT --tag="$TAG" "$DOCKERDIR"
+printf "Building image %s from %s, using mariadb $MARIADB_VERSION\n" \
+    "$TAG" "$DOCKERDIR"
+docker build $CACHE_OPT --build-arg="$MARIADB_VERSION" --tag="$TAG" "$DOCKERDIR"
 
 docker push "$TAG"
 
