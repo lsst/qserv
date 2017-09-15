@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
         yaml_data['spec']['nodeSelector']['kubernetes.io/hostname'] = config.get('spec', 'host')
 
-        # Configure custom-dir
+        # Attach custom-dir to containers
         #
         if config.get('spec', 'host_custom_dir'):
             volume_name = 'custom-volume'
@@ -200,7 +200,7 @@ if __name__ == "__main__":
             _mount_volume('mariadb', mount_path, volume_name)
             _mount_volume('worker', mount_path, volume_name)
 
-        # Configure log-dir
+        # Attach log-dir to containers
         #
         if config.get('spec', 'host_log_dir'):
             volume_name = 'log-volume'
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             _mount_volume('mariadb', mount_path, volume_name)
             _mount_volume('worker', mount_path, volume_name)
 
-        # Configure tmp-dir
+        # Attach tmp-dir to containers
         #
         if config.get('spec', 'host_tmp_dir'):
             volume_name = 'tmp-volume'
@@ -219,6 +219,19 @@ if __name__ == "__main__":
             _mount_volume('master', mount_path, volume_name)
             _mount_volume('mariadb', mount_path, volume_name)
             _mount_volume('worker', mount_path, volume_name)
+
+        # Attach data-dir to containers
+        #
+        # TODO add emptydir volume if config file is empty
+        if config.get('spec', 'host_data_dir'):
+            data_volume_name = 'data-volume'
+            data_mount_path = '/qserv/data'
+            _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
+            _mount_volume('master', data_mount_path, data_volume_name)
+            _mount_volume('mariadb', data_mount_path, data_volume_name)
+            # xrootd mmap/mlock *.MYD files and need to access mysql.sock
+            # qserv-wmgr require access to mysql.sock
+            _mount_volume('worker', data_mount_path, data_volume_name)
 
         if _get_container_id('worker') is not None:
 
@@ -246,8 +259,6 @@ if __name__ == "__main__":
 
             # initContainer: configure qserv-data-dir using mariadb image
             #
-            data_volume_name = 'data-volume'
-            data_mount_path = '/qserv/data'
             init_container = dict()
             scriptpath = os.path.join(resourcePath, 'configure-mariadb.sh')
             script = open(scriptpath, 'r').read()
@@ -266,13 +277,6 @@ if __name__ == "__main__":
             _add_emptydir_volume(run_volume_name)
             _mount_volume('worker', run_mount_path, run_volume_name)
 
-            # Attach qserv-data-dir to worker container
-            #
-            _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
-            _mount_volume('mariadb', data_mount_path, data_volume_name)
-            # xrootd mmap/mlock *.MYD files and need to access mysql.sock
-            # qserv-wmgr require access to mysql.sock
-            _mount_volume('worker', data_mount_path, data_volume_name)
 
 
         with open(args.yamlFile, 'w') as f:

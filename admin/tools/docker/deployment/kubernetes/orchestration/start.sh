@@ -13,7 +13,11 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 CFG_DIR="${DIR}/yaml"
 RESOURCE_DIR="${DIR}/resource"
 
+# For in2p3 cluster: k8s schema cache must not be on AFS
 TMP_DIR=$(mktemp -d --suffix=-kube-$USER)
+SCHEMA_CACHE_OPT="--schema-cache-dir=$TMP_DIR/schema"
+
+
 
 usage() {
   cat << EOD
@@ -61,7 +65,7 @@ EOF
 "$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
 
 echo "Create kubernetes pod for Qserv master"
-kubectl create -f "$YAML_FILE"
+kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
 
 YAML_WORKER_TPL="${CFG_DIR}/pod.worker.yaml.tpl"
 j=1
@@ -84,6 +88,6 @@ pod_name: worker-$j
 EOF
     "$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_WORKER_TPL" -o "$YAML_FILE"
     echo "Create kubernetes pod for Qserv worker-${j}"
-    kubectl create -f "$YAML_FILE"
+    kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
     j=$((j+1));
 done

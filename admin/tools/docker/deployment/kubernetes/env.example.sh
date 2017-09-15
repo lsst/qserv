@@ -5,6 +5,7 @@
 # VERSION can be a git ticket branch but with _ instead of /
 # example: tickets_DM-7139, or dev
 VERSION=dev
+MARIADB_VERSION=10.1.25
 
 # `docker run` settings
 # =====================
@@ -15,13 +16,13 @@ VERSION=dev
 # for additional information
 HOST_CUSTOM_DIR=/qserv/custom
 
-# Data directory location on docker host, optional
-# HOST_DATA_DIR=/qserv/data
+# Data directory location on docker host
+HOST_DATA_DIR=/qserv/data
 
-# Log directory location on docker host, optional
+# Log directory location on docker host
 HOST_LOG_DIR=/qserv/log
 
-# Qserv temporary directory location on docker host, optional
+# Qserv temporary directory location on docker host
 HOST_TMP_DIR=/qserv/tmp
 
 # Use for debugging purpose
