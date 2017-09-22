@@ -85,6 +85,18 @@ public:
      */
     static bool isSelectResult(std::string const& query, QueryId& queryId);
 
+    /**
+     *  Returns true if query is KILL [QUERY|CONNECTION] NNN, returns
+     *  thread ID in `threadId` argument.
+     */
+    static bool isKill(std::string const& query, int& threadId);
+
+    /**
+     *  Returns true if query is CANCEL NNN, returns
+     *  query ID in `queryId` argument.
+     */
+    static bool isCancel(std::string const& query, QueryId& queryId);
+
 };
 
 }}} // namespace lsst::qserv::ccontrol

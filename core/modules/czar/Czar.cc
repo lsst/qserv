@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
@@ -57,11 +58,6 @@ std::string const createAsyncResultTmpl("CREATE TABLE IF NOT EXISTS %1% "
 
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
-
-// Parse KILL/CANCEL query.
-// Returns false on parsing failure. On success for KILL queries threadId will
-// be non-zero, for CANCEL query queryId will be non-zero.
-bool parseKillQuery(std::string const& aQuery, int& threadId, lsst::qserv::QueryId& queryId);
 
 } // anonymous namespace
 
@@ -233,17 +229,14 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     //   "KILL NNN" - same as "KILL CONNECTION NNN"
     //   "CANCEL NNN" - kill query with ID=NNN
 
-    int threadId;
-    QueryId queryId;
-    if (! parseKillQuery(query, threadId, queryId)) {
-        throw std::runtime_error("Failed to parse query: " + query);
-    }
 
     // Clean query maps from expired entries
     _cleanupQueryHistory();
 
     ccontrol::UserQuery::Ptr uq;
-    if (threadId != 0) {
+    int threadId;
+    QueryId queryId;
+    if (ccontrol::UserQueryType::isKill(query, threadId)) {
         LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -255,7 +248,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
             throw std::runtime_error("Unknown thread ID: " + query);
         }
         uq = iter->second.lock();
-    } else if (queryId != QueryId(0)) {
+    } else if (ccontrol::UserQueryType::isCancel(query, queryId)) {
         LOGS(_log, LOG_LVL_DEBUG, "query ID: " << queryId);
         std::lock_guard<std::mutex> lock(_mutex);
 
@@ -366,43 +359,3 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
 }
 
 }}} // namespace lsst::qserv::czar
-
-namespace {
-
-bool
-parseKillQuery(std::string const& aQuery, int& threadId, lsst::qserv::QueryId& queryId) {
-    // the query that proxy passes us is all uppercase and spaces compressed
-    // but it may have trailing space which we strip first
-    std::string query = aQuery;
-    auto pos = query.find_last_not_of(' ');
-    query.erase(pos+1);
-
-    // try to match against one or another form of KILL
-    threadId = 0;
-    queryId = 0;
-    static const std::string prefixes[] = {"KILL QUERY ", "KILL CONNECTION ", "KILL ", "CANCEL "};
-    for (auto& prefix: prefixes) {
-        LOGS(_log, LOG_LVL_DEBUG, "checking prefix: '" << prefix << "'");
-        if (query.compare(0, prefix.size(), prefix) == 0) {
-            LOGS(_log, LOG_LVL_DEBUG, "match found");
-            try {
-                std::string const idStr(query, prefix.size());
-                if (prefix == "CANCEL ") {
-                    LOGS(_log, LOG_LVL_DEBUG, "query id: '" << idStr << "'");
-                    queryId = boost::lexical_cast<uint64_t>(idStr);
-                } else {
-                    LOGS(_log, LOG_LVL_DEBUG, "thread id: '" << idStr << "'");
-                    threadId = boost::lexical_cast<int>(idStr);
-                }
-                return true;
-            } catch (boost::bad_lexical_cast const& exc) {
-                // error in query syntax
-                return false;
-            }
-        }
-    }
-
-    return false;
-}
-
-} // namespace

@@ -78,6 +78,19 @@ boost::regex _submitRe(R"(^submit\s+(.+)$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _selectResultRe(R"(^select\s+\*\s+from\s+qserv_result\s*\(\s*(\d+)\s*\)$)",
                              boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for KILL [QUERY|CONNECTION] 12345
+// group 1 is the thread ID number
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _killRe(R"(^kill\s+(?:QUERY\s+|CONNECTION\s+)?(\d+)\s*$)",
+                     boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for CANCEL 12345
+// group 1 is the query ID number
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _cancelRe(R"(^cancel\s+(\d+)\s*$)",
+                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 }
 
 namespace lsst {
@@ -184,6 +197,32 @@ UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
          LOGS(_log, LOG_LVL_DEBUG, "isSelectResult: queryId: " << queryId);
      }
      return match;
+}
+
+// Returns true if query is KILL [QUERY|CONNECTION] NNN
+bool
+UserQueryType::isKill(std::string const& query, int& threadId) {
+    LOGS(_log, LOG_LVL_DEBUG, "isKill: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _killRe);
+    if (match) {
+        threadId = std::stoi(sm.str(1));
+        LOGS(_log, LOG_LVL_DEBUG, "isKill: threadId: " << threadId);
+    }
+    return match;
+}
+
+// Returns true if query is CANCEL NNN
+bool
+UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
+    LOGS(_log, LOG_LVL_DEBUG, "isCancel: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _cancelRe);
+    if (match) {
+        queryId = std::stoull(sm.str(1));
+        LOGS(_log, LOG_LVL_DEBUG, "isCancel: queryId: " << queryId);
+    }
+    return match;
 }
 
 }}} // namespace lsst::qserv::ccontrol
