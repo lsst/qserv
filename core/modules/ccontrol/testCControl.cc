@@ -223,6 +223,63 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
     for (auto test: proclist_table_fail) {
         BOOST_CHECK(not UserQueryType::isProcessListTable(test.db, test.table));
     }
+
+    struct {
+        const char* query;
+        int id;
+    } kill_query_ok[] = {
+        {"KILL 100", 100},
+        {"KilL 101  ", 101},
+        {"kill   102  ", 102},
+        {"KILL QUERY 100", 100},
+        {"kill\tquery   100   ", 100},
+        {"KILL CONNECTION 100", 100},
+        {"KILL \t CONNECTION   100  ", 100},
+    };
+    for (auto test: kill_query_ok) {
+        int threadId;
+        BOOST_CHECK(UserQueryType::isKill(test.query, threadId));
+        BOOST_CHECK_EQUAL(threadId, test.id);
+    }
+
+    const char* kill_query_fail[] = {
+        "NOT KILL 100",
+        "KILL SESSION 100 ",
+        "KILL QID100",
+        "KILL 100Q ",
+        "KILL QUIERY=100 ",
+    };
+    for (auto test: kill_query_fail) {
+        int threadId;
+        BOOST_CHECK(not UserQueryType::isKill(test, threadId));
+    }
+
+    struct {
+        const char* query;
+        QueryId id;
+    } cancel_ok[] = {
+        {"CANCEL 100", 100},
+        {"CAnCeL 101  ", 101},
+        {"cancel \t  102  ", 102},
+    };
+    for (auto test: cancel_ok) {
+        QueryId queryId;
+        BOOST_CHECK(UserQueryType::isCancel(test.query, queryId));
+        BOOST_CHECK_EQUAL(queryId, test.id);
+    }
+
+    const char* cancel_fail[] = {
+        "NOT CANCLE 100",
+        "CANCEL QUERY 100 ",
+        "CANCEL q100",
+        "cancel 100Q ",
+        "cancel QUIERY=100 ",
+    };
+    for (auto test: cancel_fail) {
+        QueryId queryId;
+        BOOST_CHECK(not UserQueryType::isCancel(test, queryId));
+    }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

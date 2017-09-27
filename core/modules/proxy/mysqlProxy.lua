@@ -232,7 +232,8 @@ function queryType()
     ---------------------------------------------------------------------------
 
     local isKill = function(qU)
-        if string.find(qU, "^KILL ") then
+        if string.find(qU, "^KILL ") or
+           string.find(qU, "^CANCEL ") then
             return true
         end
         return false
@@ -380,7 +381,7 @@ function queryProcessing()
         czarProxy.log("mysql-proxy", "INFO", "Killing query/connection: " .. q)
         local ok, msg = pcall(czarProxy.killQuery, qU, proxy.connection.client.dst.name)
         if (not ok) then
-            return err.setAndSend(ERR_CZAR_EXCEPTION, "KILL failed: " .. msg)
+            return err.setAndSend(ERR_CZAR_EXCEPTION, "KILL/CANCEL failed: " .. msg)
         end
 
         -- Assemble result

@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
@@ -57,9 +58,6 @@ std::string const createAsyncResultTmpl("CREATE TABLE IF NOT EXISTS %1% "
 
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
-
-// parse KILL query, return thread ID or -1
-int parseKillQuery(std::string const& query);
 
 } // anonymous namespace
 
@@ -229,39 +227,83 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     //   "KILL CONNECTION NNN" - kills connection associated with thread NNN
     //                           and all queries in that connection
     //   "KILL NNN" - same as "KILL CONNECTION NNN"
+    //   "CANCEL NNN" - kill query with ID=NNN
 
-    int threadId = ::parseKillQuery(query);
-    LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
-    if (threadId < 0) {
-        throw std::runtime_error("Failed to parse query: " + query);
-    }
 
-    ClientThreadId ctId(clientId, threadId);
+    // Clean query maps from expired entries
+    _cleanupQueryHistory();
+
     ccontrol::UserQuery::Ptr uq;
-
-    {
+    int threadId;
+    QueryId queryId;
+    if (ccontrol::UserQueryType::isKill(query, threadId)) {
+        LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
         std::lock_guard<std::mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
+        ClientThreadId ctId(clientId, threadId);
         auto iter = _clientToQuery.find(ctId);
         if (iter == _clientToQuery.end()) {
             LOGS(_log, LOG_LVL_INFO, "Cannot find client thread id: " << threadId);
             throw std::runtime_error("Unknown thread ID: " + query);
         }
         uq = iter->second.lock();
+    } else if (ccontrol::UserQueryType::isCancel(query, queryId)) {
+        LOGS(_log, LOG_LVL_DEBUG, "query ID: " << queryId);
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        // find it in the client map based in client/thread id
+        auto iter = _idToQuery.find(queryId);
+        if (iter == _idToQuery.end()) {
+            LOGS(_log, LOG_LVL_INFO, "Cannot find query id: " << queryId);
+            throw std::runtime_error("Unknown or finished query ID: " + query);
+        }
+        uq = iter->second.lock();
+    } else {
+        throw std::runtime_error("Failed to parse query: " + query);
     }
 
     // assume this cannot fail or throw
-    LOGS(_log, LOG_LVL_DEBUG, "Killing query for thread: " << threadId);
     if (uq) {
+        LOGS(_log, LOG_LVL_DEBUG, "Killing query: " << uq->getQueryId());
         // query killing can potentially take very long and we do now want to block
         // proxy from serving other requests so run it in a detached thread
         std::thread killThread([uq, threadId]() {
             uq->kill();
-            LOGS(_log, LOG_LVL_DEBUG, "Finished killing query for thread: " << threadId);
+            LOGS(_log, LOG_LVL_DEBUG, "Finished killing query: " << uq->getQueryId());
         });
         killThread.detach();
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, "Query has expired/finished: " << query);
+        throw std::runtime_error("Query has already finished: " + query);
     }
+}
+
+void
+Czar::_cleanupQueryHistoryLocked() {
+    // _mutex must be locked
+
+    // first cleanup client query maps from completed queries
+    for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
+        if (iter->second.expired()) {
+            iter = _clientToQuery.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+    for (auto iter = _idToQuery.begin(); iter != _idToQuery.end(); ) {
+        if (iter->second.expired()) {
+            iter = _idToQuery.erase(iter);
+        } else {
+            ++ iter;
+        }
+    }
+}
+
+void
+Czar::_cleanupQueryHistory() {
+    std::lock_guard<std::mutex> lock(_mutex);
+    _cleanupQueryHistoryLocked();
 }
 
 void
@@ -271,16 +313,16 @@ Czar::_updateQueryHistory(std::string const& clientId,
 
     std::lock_guard<std::mutex> lock(_mutex);
 
-    // first cleanup client query map from completed queries
-    for (auto iter = _clientToQuery.begin(); iter != _clientToQuery.end(); ) {
-        if (iter->second.expired()) {
-            iter = _clientToQuery.erase(iter);
-        } else {
-            ++ iter;
-        }
-    }
+    // first cleanup client query maps from completed queries
+    _cleanupQueryHistoryLocked();
 
     // remember query (weak pointer) in case we want to kill query
+    if (uq->getQueryId() != QueryId(0)) {
+        _idToQuery.insert(std::make_pair(uq->getQueryId(), uq));
+        LOGS(_log, LOG_LVL_DEBUG, uq->getQueryIdString() << " Remembering query ID: "
+             << uq->getQueryId() << " (new map size: "
+             << _idToQuery.size() << ")");
+    }
     if (not clientId.empty() and threadId >= 0) {
         ClientThreadId ctId(clientId, threadId);
         _clientToQuery.insert(std::make_pair(ctId, uq));
@@ -317,34 +359,3 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
 }
 
 }}} // namespace lsst::qserv::czar
-
-namespace {
-
-int
-parseKillQuery(std::string const& aQuery) {
-    // the query that proxy passes us is all uppercase and spaces compressed
-    // but it may have trailing space which we strip first
-    std::string query = aQuery;
-    auto pos = query.find_last_not_of(' ');
-    query.erase(pos+1);
-
-    // try to match against one or another form of KILL
-    static const std::string prefixes[] = {"KILL QUERY ", "KILL CONNECTION ", "KILL "};
-    for (auto& prefix: prefixes) {
-        LOGS(_log, LOG_LVL_DEBUG, "checking prefix: '" << prefix << "'");
-        if (query.compare(0, prefix.size(), prefix) == 0) {
-            LOGS(_log, LOG_LVL_DEBUG, "match found");
-            try {
-                LOGS(_log, LOG_LVL_DEBUG, "thread id: '" << query.substr(prefix.size()) << "'");
-                return boost::lexical_cast<int>(query.substr(prefix.size()));
-            } catch (boost::bad_lexical_cast const& exc) {
-                // error in query syntax
-                return -1;
-            }
-        }
-    }
-
-    return -1;
-}
-
-} // namespace

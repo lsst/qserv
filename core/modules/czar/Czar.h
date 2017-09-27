@@ -111,7 +111,13 @@ private:
     /// Private constructor for singleton.
     Czar(std::string const& configPath, std::string const& czarName);
 
-    /// Clean client-to-query map from expired entries, add new query
+    /// Clean query maps from expired entries, _mutex must be locked
+    void _cleanupQueryHistoryLocked();
+
+    /// Clean query maps from expired entries
+    void _cleanupQueryHistory();
+
+    /// Clean query maps from expired entries, add new query
     void _updateQueryHistory(std::string const& clientId,
                              int threadId,
                              ccontrol::UserQuery::Ptr const& uq);
@@ -126,6 +132,7 @@ private:
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;
     typedef std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> ClientToQuery;
+    typedef std::map<QueryId, std::weak_ptr<ccontrol::UserQuery>> IdToQuery;
 
     std::string const _czarName;        ///< Unique czar name
     CzarConfig const _czarConfig;
@@ -133,7 +140,8 @@ private:
     std::atomic<uint64_t> _idCounter;   ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
     ClientToQuery _clientToQuery;       ///< maps client ID to query
-    std::mutex _mutex;                  ///< protects both _uqFactory and _clientToQuery
+    IdToQuery _idToQuery;               ///< maps query ID to query (for currently running queries)
+    std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
     qdisp::LargeResultMgr::Ptr _largeResultMgr; ///< Large result manager for all user queries.
 };

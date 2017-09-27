@@ -291,6 +291,10 @@ QueryState UserQuerySelect::join() {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " Joined everything (success)");
         return SUCCESS;
+    } else if (_killed) {
+        // status is already set to ABORTED
+        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " Joined everything (killed)");
+        return ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
         LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " Joined everything (failure!)");
