@@ -10,11 +10,7 @@ set -x
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/env-cluster.sh"
   
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sh -c ~/orchestration/delete-nodes.sh"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sh -c ~/orchestration/delete-nodes.sh && \
+    sudo -- kubeadm reset"
 
-for node in $ORCHESTRATOR $MASTER $WORKERS
-do
-    echo "Reset Kubernetes on $node"
-    ssh $SSH_CFG_OPT "$node" "sudo -- kubeadm reset"
-done
-
+parallel --nonall --slf "$PARALLEL_SSH_CFG" --tag "sudo -- kubeadm reset"

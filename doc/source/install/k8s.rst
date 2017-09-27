@@ -58,19 +58,25 @@ In :file:`env.sh`, set your container configuration (qserv images, attached volu
 You also need to create file below in `~/.lsst/qserv-cluster`:
   - an environment file named `env-infrastructure.sh` with all node hostnames (see example below)
   - optionally, an ssh client configuration file
+  - optionally, a parallel  configuration file (see 2nd example below)
 
-.. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/env.example.sh
+.. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/env-infrastructure.example.in2p3.sh
    :language: bash
    :linenos:
 
-Run Openstack provisioning script and check `~/.lsst/qserv-cluster` directory to see examples.
+
+.. literalinclude:: ../../../admin/tools/docker/deployment/kubernetes/sshloginfile.example.in2p3
+   :language: bash
+   :linenos:
+
+.. note::
+
+   An alternative solution is to run Openstack provisioning script and check `~/.lsst/qserv-cluster` directory to see examples.
 
 Then, install Kubernetes, Qserv and launch multinodes integration tests.
 
 .. code-block:: bash
 
-   # Create kubernetes cluster
-   ./kube-create.sh
    # Start Qserv (pods and unix services)
    ./start.sh
    # Check Qserv status
@@ -80,9 +86,25 @@ Then, install Kubernetes, Qserv and launch multinodes integration tests.
    # Stop Qserv
    ./stop.sh
 
+*********************
+Administer Kubernetes
+*********************
+
+This tasks require sudo access and should be performed by system administrators.
+
+.. code-block:: bash
+
+   # Destroy kubernetes cluster
+   ./kube-destroy.sh
+   # Create kubernetes cluster
+   ./kube-create.sh
+
 ***********
-Useful tips
+Cheat sheet
 ***********
+
+Debug
+-----
 
 For debugging purpose, it might be useful not to start Qserv services in pods:
 
@@ -92,5 +114,20 @@ For debugging purpose, it might be useful not to start Qserv services in pods:
    mkdir -p /qserv/custom/bin
    touch /qserv/custom/bin/qserv-start.sh
    chmod u+x /qserv/custom/bin/qserv-start.sh
+   # Qserv startup script will be here replaced by an empty file
 
+Interacting with running Pods
+-----------------------------
 
+.. code-block:: bash
+
+    kubectl logs my-pod                               # dump pod logs (stdout)
+$ kubectl logs my-pod -c my-container                 # dump pod container logs (stdout, multi-container case)
+$ kubectl logs -f my-pod                              # stream pod logs (stdout)
+$ kubectl logs -f my-pod -c my-container              # stream pod container logs (stdout, multi-container case)
+$ kubectl run -i --tty busybox --image=busybox -- sh  # Run pod as interactive shell
+$ kubectl attach my-pod -i                            # Attach to Running Container
+$ kubectl port-forward my-pod 5000:6000               # Forward port 6000 of Pod to your to 5000 on your local machine
+$ kubectl exec my-pod -- ls /                         # Run command in existing pod (1 container case)
+$ kubectl exec my-pod -c my-container -- ls /         # Run command in existing pod (multi-container case)
+$ kubectl top pod POD_NAME --containers               # Show metrics for a given pod and its containers

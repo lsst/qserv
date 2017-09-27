@@ -8,3 +8,4 @@ Installation
    quick-start
    automated
    docker
+   k8s

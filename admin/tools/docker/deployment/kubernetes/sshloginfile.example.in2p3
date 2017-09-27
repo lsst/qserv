@@ -1,0 +1,26 @@
+# All kubernetes nodes except master nodes
+ssh  ccqserv100
+ssh  ccqserv101
+ssh  ccqserv102
+ssh  ccqserv103
+ssh  ccqserv104
+ssh  ccqserv105
+ssh  ccqserv106
+ssh  ccqserv107
+ssh  ccqserv108
+ssh  ccqserv109
+ssh  ccqserv110
+ssh  ccqserv111
+ssh  ccqserv112
+ssh  ccqserv113
+ssh  ccqserv114
+ssh  ccqserv115
+ssh  ccqserv116
+ssh  ccqserv117
+ssh  ccqserv118
+ssh  ccqserv119
+ssh  ccqserv120
+ssh  ccqserv121
+ssh  ccqserv122
+ssh  ccqserv123
+ssh  ccqserv124
