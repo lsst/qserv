@@ -206,9 +206,13 @@ bool MergingHandler::reset() {
     return true;
 }
 
-
+// No one ever inspects the return value, this should be void! abh
+// Note that generally we always have an _infileMerger object except during
+// a unit test. I suppose we could try to figure out how to create one.
+//
 bool MergingHandler::prepScrubResults(int jobId, int attemptCount) {
-    return _infileMerger->prepScrub(jobId, attemptCount);
+    if (_infileMerger) return _infileMerger->prepScrub(jobId, attemptCount);
+    return true;
 }
 
 

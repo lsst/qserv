@@ -52,34 +52,44 @@ namespace qserv {
 namespace xrdsvc {
 
 SsiSession::~SsiSession() {
-    // XrdSsiSession::sessName is unmanaged, need to free()
     LOGS(_log, LOG_LVL_DEBUG, "~SsiSession()");
-    if (sessName) { ::free(sessName); sessName = 0; }
 }
 
 // Step 4
 /// Called by XrdSsi to actually process a request.
-void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
+void SsiSession::Execute(XrdSsiRequest& req) {
     util::Timer t;
 
-    LOGS(_log, LOG_LVL_DEBUG, "ProcessRequest, service=" << sessName);
+    LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
 
     char *reqData = nullptr;
     int reqSize;
     t.start();
-    reqData = req->GetRequest(reqSize);
+    reqData = req.GetRequest(reqSize);
     t.stop();
     LOGS(_log, LOG_LVL_DEBUG, "GetRequest took " << t.getElapsed() << " seconds");
 
     auto replyChannel = std::make_shared<ReplyChannel>(*this);
 
-    auto errorFunc = [this, &req, &replyChannel](std::string const& errStr) {
+    // errorFunc() is here to vector error responses via the reply channel
+    // which logs any failures (there should be none). The request must already
+    // be bound to this object in order for us to post any responses.
+    auto errorFunc = [this, &replyChannel](std::string const& errStr) {
         replyChannel->sendError(errStr, EINVAL);
-        BindRequest(req, this);
         ReleaseRequestBuffer();
     };
 
-    ResourceUnit ru(sessName);
+    // We bind this object to the request now. This allows us to respond at any
+    // time (much simpler). Though the manual forgot to say that all pending
+    // events will be reflected on a different thread the moment we bind the
+    // request; the fact allows us to use a mutex to serialize the order of
+    // initialization and possible early cancellation. We protect this code
+    // with a mutex gaurd which will be released upon exit.
+    //
+    std::lock_guard<std::mutex> lock(_finMutex);
+    BindRequest(req);
+
+    ResourceUnit ru(_resourceName);
     if (ru.unitType() != ResourceUnit::DBCHUNK) {
         std::ostringstream os;
         os << "Unexpected unit type in query db=" << ru.db() << " unitType=" << ru.unitType();
@@ -118,32 +128,34 @@ void SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         return;
     }
 
-    // Once BindRequest has been called, we don't want to send errors back to xrootd
-    // if the task has been cancelled. Also, task needs to exist before binding
-    // to avoid any chance of missing the cancel call.
-    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-    _addTask(task);
-    t.start();
-    BindRequest(req, this); // Step 5
-    t.stop();
     // Now that the request is decoded (successfully or not), release the
     // xrootd request buffer. To avoid data races, this must happen before
     // the task is handed off to another thread for processing, as there is a
     // reference to this SsiSession inside the reply channel for the task,
     // and after the call to BindRequest.
+    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
     ReleaseRequestBuffer();
     t.start();
     _processor->processTask(task); // Queues task to be run later.
     t.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "BindRequest took " << t.getElapsed() << " seconds");
     LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
+
+    // Note that upon exit the _finMutex will be unlocked allowing Finished()
+    // to actually do something once everything is actually setup.
 }
 
-/// Called by XrdSsi to free resources.
-void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
+/// Called by SSI to free resources.
+void SsiSession::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
+    // But first we must make sure that request setup (i.e Execute() completed).
+    // We simply lock the serialization mutex and then immediately unlock it.
+    // If we got the mutex, Execute() completed. This code should not be
+    // optimized out even though it looks like it does nothing (lock_gaurd?).
+    // We could potentially do this with _tasksMutex but that would require
+    // moving the lock into Execute() and obtaining it unobviously early.
+    _finMutex.lock(); _finMutex.unlock();
     {
         std::lock_guard<std::mutex> lock(_tasksMutex);
         if (cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled
@@ -161,16 +173,17 @@ void SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo
     case XrdSsiRespInfo::isError: type = "type=isError"; break;
     case XrdSsiRespInfo::isFile: type = "type=isFile"; break;
     case XrdSsiRespInfo::isStream: type = "type=isStream"; break;
+    case XrdSsiRespInfo::isHandle: type = "type=isHandle"; break;
     }
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
-}
 
-bool SsiSession::Unprovision(bool forced) {
-    // All requests guaranteed to be finished or cancelled.
+    // Now that we are done, we can unbind ourselves from the request to allow
+    // it to be reclaimed by the SSI framework. Afterwards, we simply delete
+    // ouselves as there should be nothing referencing this object!
+    UnBindRequest();
     delete this;
-    return true; // false if we can't unprovision now.
 }
 
 void SsiSession::_addTask(wbase::Task::Ptr const& task) {

@@ -50,7 +50,8 @@
 #include "boost/format.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh"
 #include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh" // Resource
+#include "XrdSsi/XrdSsiResource.hh"
+#include "XrdSsi/XrdSsiService.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -61,7 +62,7 @@
 #include "global/ResourceUnit.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
-#include "qdisp/QueryResource.h"
+#include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "util/EventThread.h"
@@ -190,18 +191,33 @@ void Executive::waitForAllJobsToStart() {
 }
 
 
-/// If the executive has not been cancelled, this calls xrootd's Provision and
-/// sets jobQueryResource = sourceQR.
-/// @return true if Provision was called and sets jobQueryResource = sourceQR.
-bool Executive::xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
-                                std::shared_ptr<QueryResource> const& sourceQR) {
+// If the executive has not been cancelled, then we simply start the query.
+// @return true if query was actually started (i.e. we were not cancelled)
+//
+bool Executive::StartQuery(std::shared_ptr<JobQuery> const& jobQuery) {
+
     std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
-    if (!_cancelled) {
-        jobQueryResource = sourceQR;
-        getXrdSsiService()->Provision(jobQueryResource.get());
-        return true;
-    }
-    return false;
+
+    // If we have been cancelled, then return false.
+    //
+    if (_cancelled) return false;
+
+    // Construct a temporary resource object to pass to ProcessRequest().
+    // For now, we don't set any other attributes except the resource name.
+    //
+    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path());
+
+    // Now construct the actual query request and tie it to the jobQuery. The
+    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
+    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
+    //
+    QueryRequest::Ptr qr = std::make_shared<QueryRequest>(jobQuery);
+    jobQuery->setQueryRequest(qr);
+
+    // Start the query. The rest is magically done in the background.
+    //
+    getXrdSsiService()->ProcessRequest(*(qr.get()), jobResource);
+    return true;
 }
 
 

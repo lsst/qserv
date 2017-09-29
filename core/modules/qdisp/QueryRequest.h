@@ -44,7 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-/// Bad response received from xrootd API
+/// Bad response received from SSI API
 class BadResponseError : public std::exception {
 public:
     BadResponseError(std::string const& s_)
@@ -118,29 +118,33 @@ private:
 class QueryRequest : public XrdSsiRequest {
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
-    QueryRequest(XrdSsiSession* session, std::shared_ptr<JobQuery> const& jobQuery);
+    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
 
     virtual ~QueryRequest();
 
-    /// Called by xrootd to get the request payload
+    /// Called by SSI to get the request payload
     /// @return content of request data
     char* GetRequest(int& requestLength) override;
 
-    /// Called by xrootd to release the allocated request payload
-    void RelRequestBuffer() override;
+    /// Called by SSI to release the allocated request payload. As we don't
+    /// own the buffer, so we can't release it. Therefore, we accept the
+    /// default implementation that does nothing.
+    /// void RelRequestBuffer() override;
 
-    /// Called by xrootd when a response is ready
+    /// Called by SSI when a response is ready
     /// precondition: rInfo.rType != isNone
-    bool ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) override;
+    bool ProcessResponse(XrdSsiErrInfo const& eInfo,
+                         XrdSsiRespInfo const& rInfo) override;
 
-    /// Called by xrootd when new data is available.
-    XrdSsiRequest::PRD_Xeq ProcessResponseData(char *buff, int blen, bool last) override;
+    /// Called by SSI when new data is available.
+    XrdSsiRequest::PRD_Xeq ProcessResponseData(XrdSsiErrInfo const& eInfo, 
+                           char *buff, int blen, bool last) override;
 
     bool cancel();
     bool isQueryCancelled();
     bool isQueryRequestCancelled();
     void doNotRetry() { _retried.store(true); }
-    std::string getXrootdErr(int *eCode);
+    std::string getSSIErr(XrdSsiErrInfo const& eInfo, int* eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.
 
     /// If this job has incremented the large result semaphore, decrement it now.
@@ -155,13 +159,12 @@ private:
     bool _errorFinish(bool shouldCancel=false);
     void _finish();
 
-    /// _holdState indicates the data is being held by xrootd for a large response using LargeResultMgr.
+    /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.
     enum HoldState {NO_HOLD0 = 0, GET_DATA1 = 1, MERGE2 = 2};
     void _setHoldState(HoldState state);
     HoldState _holdState{NO_HOLD0};
-    XrdSsiSession* _session;
 
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
     /// A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with _finishStatusMutex

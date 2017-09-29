@@ -79,7 +79,7 @@ SsiProviderServer::~SsiProviderServer() {}
 /******************************************************************************/
 
 bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
-                             char const*   cfgFn, char const*    parms,
+                             std::string   cfgFn, std::string    parms,
                              int           argc,  char**         argv) {
 
     lsst::qserv::xrdsvc::XrdName x;

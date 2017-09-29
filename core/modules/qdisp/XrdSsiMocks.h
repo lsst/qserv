@@ -20,22 +20,18 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
- *      @author: John Gates, SLAC
+ *      @author: John Gates, SLAC (heavily modified by Andrew Hanushevsky, SLAC)
  */
 
 #ifndef LSST_QSERV_QDISP_XRDSSIMOCKS_H
 #define LSST_QSERV_QDISP_XRDSSIMOCKS_H
 
-
 // External headers
-#include "XrdSsi/XrdSsiService.hh"
-#include "XrdSsi/XrdSsiSession.hh"
 #include "XrdSsi/XrdSsiRequest.hh"
+#include "XrdSsi/XrdSsiResource.hh"
+#include "XrdSsi/XrdSsiService.hh"
 
 // Local headers
-#include "qdisp/QueryRequest.h"
-#include "qdisp/QueryResource.h"
-#include "util/threadSafe.h"
 
 namespace lsst {
 namespace qserv {
@@ -43,40 +39,41 @@ namespace qdisp {
 
 class Executive;
 
-/** A greatly simplified version of XrdSsiService for testing the Executive class.
+/** A simplified version of XrdSsiService for testing qserv.
  */
 class XrdSsiServiceMock : public XrdSsiService
 {
 public:
-    virtual void Provision(Resource *resP, unsigned short timeOut=0, bool userConn=false);
+     virtual void   ProcessRequest(XrdSsiRequest  &reqRef,
+                                   XrdSsiResource &resRef
+                                  ) override;
+
+//   virtual void   Finished(XrdSsiRequest&        rqstR,
+//                           XrdSsiRespInfo const& rInfo,
+//                           bool cancel=false) override {}
+
     XrdSsiServiceMock(Executive *executive) {};
-    void setGo(bool go) {
-        _go.exchangeNotify(go);
-    }
-protected:
-    void mockProvisionTest(QueryResource *resP, unsigned short timeOut);
-public:
+
     virtual ~XrdSsiServiceMock() {}
-    static util::FlagNotify<bool> _go;
-    static util::Sequential<int> _count;
-};
 
-/** Class used to fake calls to XrdSsiSession::ProcessRequest.
- */
-class XrdSsiSessionMock : public XrdSsiSession
-{
-public:
-    XrdSsiSessionMock(char *sname, char *sloc=0) : XrdSsiSession(sname, sloc) {}
-    virtual ~XrdSsiSessionMock() {}
-    static const char* getMockString() {
-        return "MockTrue";
-    }
-    virtual void ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut);
+    static int getCount();
 
-    virtual bool Unprovision(bool forced=false){return true;};
+    static int getCanCount();
 
-protected:
-    virtual void RequestFinished(XrdSsiRequest  *rqstP, const XrdSsiRespInfo &rInfo, bool cancel=false) {};
+    static int getFinCount();
+
+    static int getReqCount();
+
+    static bool isAOK();
+
+    static void Reset();
+
+    static void setGo(bool go);
+
+    static void setRName(std::string const rname) {_myRName = rname;}
+
+    private:
+    static std::string _myRName;
 };
 
 }}} // namespace

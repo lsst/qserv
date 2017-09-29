@@ -50,14 +50,14 @@ class SsiProviderServer : public XrdSsiProvider
 {
 public:
 
-    virtual XrdSsiService *GetService(XrdSsiErrInfo& eInfo,
-                                      char const*    contact,
-                                      int            oHold=256) override {
+    virtual XrdSsiService *GetService(XrdSsiErrInfo&     eInfo,
+                                      std::string const& contact,
+                                      int                oHold=256) override {
         return _service.get();
     }
 
     virtual bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
-                       char const*   cfgFn, char const*    parms,
+                       std::string   cfgFn, std::string    parms,
                        int           argc,  char**         argv) override;
 
     virtual rStat QueryResource(char const* rName,

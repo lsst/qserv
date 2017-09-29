@@ -24,104 +24,283 @@
  */
 
 // System headers
+#include <atomic>
 #include <cstddef>
+#include <errno.h>
+#include <mutex>
 #include <string>
 #include <stdlib.h>
 #include <thread>
 #include <unistd.h>
 
+// Third party headers
+#include "XrdSsi/XrdSsiErrInfo.hh"
+#include "XrdSsi/XrdSsiResponder.hh"
+#include "XrdSsi/XrdSsiStream.hh"
+
 // LSST headers
 #include "lsst/log/Log.h"
+#include "proto/ProtoHeaderWrap.h"
+#include "proto/worker.pb.h"
+#include "util/StringHash.h"
+#include "util/threadSafe.h"
 
-// Local headers
+// Qserv headers
 #include "qdisp/Executive.h"
+#include "qdisp/QueryRequest.h"
 #include "qdisp/XrdSsiMocks.h"
 
 using namespace std;
 
 namespace {
+
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.XrdSsiMock");
+
+lsst::qserv::util::FlagNotify<bool> _go(true);
+
+std::atomic<int> canCount{0};
+std::atomic<int> finCount{0};
+std::atomic<int> reqCount{0};
+std::atomic<int> totCount{0};
+
+bool _aOK = true;
+
+enum RespType {RESP_BADREQ, RESP_DATA, RESP_ERROR, RESP_ERRNR,
+               RESP_STREAM, RESP_STRERR};
+
+class Agent : public XrdSsiResponder, public XrdSsiStream {
+public:
+
+    void Finished(XrdSsiRequest&        rqstR,
+                  XrdSsiRespInfo const& rInfo,
+                  bool cancel) {
+         const char *how = (cancel ? " cancelled" : "");
+         LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum
+                                   << " rName=" << _rName << how);
+         _rrMutex.lock();
+         UnBindRequest();
+         if (cancel) canCount++;
+         finCount++;
+         _isFIN = true;
+         if (_active) {
+            _rrMutex.unlock();
+            } else {
+            _rrMutex.unlock();
+            delete this;
+         }
+    }
+
+    void Reply(RespType rType) {
+         _go.wait(true);
+
+         // We may have been cancelled before being able to reply
+         //
+         if (_isCancelled(true)) return; // we are locked now
+
+         // Do requested reply
+         //
+         switch(rType) {
+              case RESP_DATA:
+                   _ReplyData();
+                   break;
+              case RESP_ERRNR:
+                   _reqP->doNotRetry();
+              case RESP_ERROR:
+                   _ReplyError();
+                   break;
+              case RESP_STRERR:
+                   _noData = true;
+                   _reqP->doNotRetry();  // Kill retries on stream errors
+                   _ReplyStream();
+                   break;
+              default:
+                   _reqP->doNotRetry();
+                   _ReplyError("Bad mock request!", 13);
+                   break;
+         }
+         _isCancelled(false);
+    }
+
+    bool SetBuff(XrdSsiErrInfo& eRef, char* buff, int  blen) override {
+
+         // We may have been cancelled while waiting
+         //
+         if (_isCancelled(true)) return false;
+         std::thread (&Agent::_StrmResp, this, &eRef, buff, blen).detach();
+         _rrMutex.unlock();
+         return true;
+    }
+
+    Agent(lsst::qserv::qdisp::QueryRequest* rP, std::string rname, int rnum) :
+         XrdSsiStream(XrdSsiStream::isPassive),
+         _reqP(rP), _rName(rname), _rNum(rnum), _noData(true),
+         _isFIN(false), _active(true)
+ {
+         // Initialize a null message we will return as a response
+         //
+         lsst::qserv::proto::ProtoHeader* ph =
+                                          new lsst::qserv::proto::ProtoHeader;
+         ph->set_protocol(2);
+         ph->set_size(0);
+         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
+         ph->set_wname("localhost");
+         ph->set_largeresult(false);
+         std::string pHdrString;
+         ph->SerializeToString(&pHdrString);
+         _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
+         _bOff = 0;
+         _bLen = _msgBuf.size();
+    }
+
+    ~Agent() {}
+
+private:
+
+    bool _isCancelled(bool activate) {
+         if (activate) _rrMutex.lock();
+         if (_isFIN) {
+            _rrMutex.unlock();
+            delete this;
+            return true;
+         }
+         _active = activate;
+         if (!activate) _rrMutex.unlock();
+         return false;
+         }
+
+    void _ReplyData() {
+         _rspBuf = "MockResponse";
+         SetResponse(_rspBuf.c_str(), _rspBuf.size());
+         }
+
+    void _ReplyError(const char* eMsg="Mock Request Ignored!", int eNum=17) {
+         SetErrResponse(eMsg, eNum);
+         }
+
+    void _ReplyStream() {SetResponse((XrdSsiStream*)this);}
+
+    void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
+          std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
+                   <<_bLen <<'\n' <<std::flush;
+          bool last;
+
+          // Check for cancellation while we were waiting
+          //
+          if (_isCancelled(true)) return;
+
+          // Either reply with an error or actual data
+          //
+          if (_noData) {
+             blen = -17;
+             last = true;
+             eP->Set("Mock stream error!", 17);
+          } else {
+             if (_bLen <= blen)
+                {memcpy(buff, _msgBuf.data()+_bOff, _bLen);
+                 blen = _bLen; _bLen = 0;
+                 last = true;
+             } else {
+                 memcpy(buff, _msgBuf.data()+_bOff,  blen);
+                 _bOff += blen; _bLen -= blen;
+                 last = false;
+             }
+          }
+          _reqP->ProcessResponseData(*eP, buff, blen, last);
+          _isCancelled(false);
+    }
+
+    std::recursive_mutex _rrMutex;
+    lsst::qserv::qdisp::QueryRequest* _reqP;
+    std::string _rName;
+    std::string _rspBuf;
+    std::string _msgBuf;
+    int         _bOff;
+    int         _bLen;
+    int         _rNum;
+    bool        _noData;
+    bool        _isFIN;
+    bool        _active;
+};
 }
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-class QueryResourceDebug {
-public:
-    static JobStatus::Ptr getStatus(QueryResource& qr) {
-        return qr._jobQuery->getStatus();
-    }
-    static std::string const& getPayload(QueryResource& qr) {
-        return qr.getJobQuery()->getDescription()->payload();
-    }
-    static void finish(QueryResource& qr) {
-        LOGS_DEBUG("QueryResourceDebug::finish");
-        qr.getJobQuery()->getMarkCompleteFunc()->operator ()(true);
-    }
-};
+std::string XrdSsiServiceMock::_myRName;
 
-util::FlagNotify<bool> XrdSsiServiceMock::_go(true);
-util::Sequential<int> XrdSsiServiceMock::_count(0);
+int  XrdSsiServiceMock::getCount() {return totCount;}
 
-/** Class to fake being a request to xrootd.
- * Fire up thread that sleeps for a bit and then indicates it was successful.
- */
-void XrdSsiServiceMock::Provision(Resource *resP, unsigned short timeOut, bool userConn){
-    LOGS_DEBUG("XrdSsiServiceMock::Provision");
-    if (resP == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "XrdSsiServiceMock::Provision() invoked with a null Resource pointer.");
-        return;
+int  XrdSsiServiceMock::getCanCount() {return canCount;}
+
+int  XrdSsiServiceMock::getFinCount() {return finCount;}
+
+int  XrdSsiServiceMock::getReqCount() {return reqCount;}
+
+bool XrdSsiServiceMock::isAOK() {return _aOK;}
+
+void XrdSsiServiceMock::Reset() {
+      canCount = 0;
+      finCount = 0;
+      reqCount = 0;
+     }
+
+void XrdSsiServiceMock::setGo(bool go) {_go.exchangeNotify(go);}
+
+void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
+                                       XrdSsiResource &resRef) {
+    static struct {const char *cmd; RespType rType;} reqTab[] =
+           {{"respdata",   RESP_DATA},   {"resperror",  RESP_ERROR},
+            {"resperrnr",  RESP_ERRNR},  {"respstream", RESP_STREAM},
+            {"respstrerr", RESP_STRERR}, {0, RESP_BADREQ}};
+    int reqNum = totCount++;
+
+    // Check if we should verify the resource name
+    //
+    if (_myRName.size() && _myRName != resRef.rName) {
+       LOGS_DEBUG("Expected rname " <<_myRName <<" got " <<resRef.rName
+                  <<" from req #" <<reqNum);
+       _aOK = false;
     }
-    QueryResource *qr = dynamic_cast<QueryResource*>(resP);
-    if (qr == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "XrdSsiServiceMock::Provision() unexpected resource type.");
-        return;
-    }
-    _count.incr();
 
-    std::thread t(&XrdSsiServiceMock::mockProvisionTest, this, qr, timeOut);
-    // Thread must live past the end of this function, and the calling body
-    // is not really dealing with threads, and this is for testing only.
-    t.detach();
-}
-
-/** Mock class for testing Executive.
- * The payload of qr should contain the number of milliseconds this function will
- * sleep before returning.
- */
-void XrdSsiServiceMock::mockProvisionTest(QueryResource *qr,
-                                          unsigned short timeOut) {
-    LOGS_DEBUG("XrdSsiServiceMock::mockProvisionTest");
-    string payload = QueryResourceDebug::getPayload(*qr);
-    int millisecs = atoi(payload.c_str());
-    // barrier for all threads when _go is false.
-    _go.wait(true);
-    // No attempt should be made to cancel a mock job after _go is set to true.
-    if (qr->getJobQuery()->isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest job cancelled");
-        // markComplete() should have been called by JobQuery::cancel(), shouldn't
-        // call again due to possible race condition where Executive is already deleted.
-        return;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep begin");
-    usleep(1000*millisecs);
-    LOGS(_log, LOG_LVL_DEBUG, "XrdSsiServiceMock::mockProvisionTest sleep end");
-    JobStatus::Ptr status = QueryResourceDebug::getStatus(*qr);
-    status->updateInfo(JobStatus::RESPONSE_DONE);
-    QueryResourceDebug::finish(*qr);
-}
-
-void XrdSsiSessionMock::ProcessRequest(XrdSsiRequest *reqP, unsigned short tOut) {
-    std::string s = getMockString();
-    bool res = s.compare(sessName) == 0;
-    LOGS(_log, LOG_LVL_DEBUG, "sessName=" << sessName << " res=" << res);
-    // Normally, reqP->ProcessResponse() would be called, which invokes
-    // cleanup code that is necessary to avoid memory leaks. Instead,
-    // clean up the request manually.
-    QueryRequest * r = dynamic_cast<QueryRequest *>(reqP);
+    // Get the query request object for this request and process it.
+    //
+    QueryRequest * r = dynamic_cast<QueryRequest *>(&reqRef);
     if (r) {
-        r->cleanup();
+        Agent* aP = new Agent(r, resRef.rName, reqNum);
+        RespType doResp;
+        aP->BindRequest(reqRef);
+
+        // Get the request data and setup to handle request
+        //
+        int reqLen;
+        const char *reqData = r->GetRequest(reqLen);
+        if (reqData == 0) {
+           reqData = "";
+           reqLen  = 0;
+        }
+
+        // Convert request to response type
+        //
+        int i = 0;
+        while(reqTab[i].cmd && strcmp(reqTab[i].cmd, reqData)) i++;
+        if (reqTab[i].cmd) {
+           doResp = reqTab[i].rType;
+        } else {
+           LOGS_DEBUG("Unknown request '" <<reqData <<"' from req #" <<reqNum);
+           _aOK = false;
+           doResp = RESP_BADREQ;
+        }
+
+        // Release the request buffer (typically a no-op)
+        //
+        if (reqData == 0) reqLen = 0; // Keep the compiler happy
+        r->ReleaseRequestBuffer();
+
+        // Schedule a response
+        //
+        reqCount++;
+        std::thread (&Agent::Reply, aP, doResp).detach();
     }
 }
 

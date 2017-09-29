@@ -34,7 +34,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-/** Monitor execution of a chunk query against a xrootd ressource
+/** Monitor execution of a chunk query against an SSI ressource
  *
  *  JobStatus instances receive timestamped reports of execution State. This
  *  allows a manager object to receive updates on status without exposing its
@@ -59,7 +59,6 @@ public:
                  REQUEST, REQUEST_ERROR,
                  RESPONSE_READY, RESPONSE_ERROR,
                  RESPONSE_DATA, RESPONSE_DATA_NACK, RESPONSE_DATA_ERROR,
-                 RESPONSE_DATA_ERROR_OK, RESPONSE_DATA_ERROR_CORRUPT,
                  RESPONSE_DONE,
                  RESULT_ERROR,
                  MERGE_OK, // ???

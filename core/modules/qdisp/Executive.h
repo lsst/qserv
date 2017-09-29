@@ -55,7 +55,6 @@ namespace qdisp {
 class JobQuery;
 class LargeResultMgr;
 class MessageStore;
-class QueryResource;
 
 
 /// class Executive manages the execution of jobs for a UserQuery, while
@@ -123,8 +122,7 @@ public:
 
     std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
 
-    bool xrdSsiProvision(std::shared_ptr<QueryResource> &jobQueryResource,
-                         std::shared_ptr<QueryResource> const& sourceQr);
+    bool StartQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
     std::mutex sumMtx; // TEMPORARY-timing
     int cancelLockQSEASum{0}; // TEMPORARY-timing

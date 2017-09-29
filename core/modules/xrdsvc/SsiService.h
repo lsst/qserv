@@ -28,6 +28,7 @@
 #include <memory>
 
 // Third-party headers
+#include "XrdSsi/XrdSsiResource.hh"
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
@@ -66,10 +67,9 @@ public:
     SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig);
     virtual ~SsiService();
 
-    /// Called by xrootd daemon to handle new resource requests
-    void Provision(XrdSsiService::Resource* r,
-                           unsigned short timeOut=0,
-                           bool userConn=false) override;
+    /// Called by SSI framework to handle new requests
+    virtual void ProcessRequest(XrdSsiRequest  &reqRef,
+                                XrdSsiResource &resRef) override;
 
 private:
     void _initInventory();

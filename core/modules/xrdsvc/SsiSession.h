@@ -29,7 +29,6 @@
 #include <vector>
 
 // Third-party headers
-#include "XrdSsi/XrdSsiSession.hh"
 #include "XrdSsi/XrdSsiResponder.hh"
 
 // Local headers
@@ -39,36 +38,37 @@
 // Forward declarations
 class XrdSsiService;
 
+/*
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
   class SsiResponder;
 }}}
+*/
 
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-/// An implementation of both XrdSsiSession and XrdSsiResponder that is used by
-/// SsiService to provide qserv worker services. The XrdSsi interface encourages
-/// such an approach, and object lifetimes are somewhat unclear when the
-/// responsibilities are separated into separate XrdSsiSession and
-/// XrdSsiResponder classes.
-class SsiSession : public XrdSsiSession, public XrdSsiResponder {
+/// An implementation of XrdSsiResponder that is used by SsiService to provide
+/// qserv worker services. The SSI interface encourages such an approach, and
+/// object lifetimes are explicitly stated in the documentation which we
+/// adhere to using BindRequest() and UnBindRequest() responder methods.
+class SsiSession : public XrdSsiResponder {
 public:
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
 
     /// Construct a new session (called by SsiService)
-    SsiSession(char const* sname, ValidatorPtr validator, std::shared_ptr<wbase::MsgProcessor> processor)
-        : XrdSsiSession{strdup(sname), 0}, XrdSsiResponder{this, nullptr},
-          _validator{validator}, _processor{processor} {}
+    SsiSession(std::string &rname, ValidatorPtr validator, std::shared_ptr<wbase::MsgProcessor> processor)
+        : _validator{validator}, _processor{processor}, _resourceName(rname) {}
 
     virtual ~SsiSession();
 
-    // XrdSsiSession and XrdSsiResponder interfaces
-    virtual void ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
-    virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo, bool cancel=false);
-    virtual bool Unprovision(bool forced);
+    virtual void Execute(XrdSsiRequest& req);
+
+    // XrdSsiResponder interfaces
+    virtual void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo,
+                          bool cancel=false) override;
 
 private:
     void _addTask(wbase::Task::Ptr const& task);
@@ -84,7 +84,8 @@ private:
     std::vector<wbase::Task::Ptr> _tasks;
     std::atomic<bool> _cancelled{false}; ///< true if the session has been cancelled.
 
-    friend class SsiProcessor; // Allow access for cancellation
+    std::mutex  _finMutex;  ///< Protects Execute() from Finish()
+    std::string _resourceName;
 };
 }}} // namespace
 
