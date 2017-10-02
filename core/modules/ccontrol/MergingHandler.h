@@ -143,6 +143,7 @@ public:
         return _error;
     }
 
+
     /// Prepare to scrub the results from jobId-attempt from the result table.
     bool prepScrubResults(int jobId, int attempt) override;
 
@@ -152,6 +153,7 @@ private:
     void _setError(int code, std::string const& msg);
     bool _setResult();
     bool _verifyResult();
+
 
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate

@@ -202,6 +202,7 @@ void QueryRequest::_setHoldState(HoldState state) {
 
 
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
+    util::InstanceCount instC("instC QueryRequest::ProcessResponseData");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
          << " " << (last ? "(last)" : "(more)"));
 
@@ -233,7 +234,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
     JobQuery::Ptr jq = _jobQuery;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE || jq == nullptr) {
+        if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
             // Something must have killed this job.
             if (_holdState != NO_HOLD0) {
@@ -323,14 +324,14 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(char *buff, int blen, b
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
         _retried.store(true); // Do not retry
-        _errorFinish();
+        _errorFinish(true);
         if (_holdState != NO_HOLD0) {
             // Must call largeResultMgr->finishBlock to free the semaphore since it was locked.
             callOnExit.setCallLargeResult();
         }
         return XrdSsiRequest::PRD_Normal;
     }
-
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::ProcessResponseData " << instC.getCount());
     return XrdSsiRequest::PRD_Normal;
 }
 
@@ -345,7 +346,6 @@ bool QueryRequest::cancel() {
             return false; // Don't do anything if already cancelled.
         }
         _cancelled = true;
-        _largeResultSafety.finishBlock(); // Better to release it early than to never release it.
         _retried.store(true); // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
@@ -376,7 +376,8 @@ bool QueryRequest::isQueryRequestCancelled() {
     return _cancelled;
 }
 
-/// Cleanup pointers so class can be deleted and this should only be called by _finish or _errorFinish.
+
+/// Cleanup pointers so class can be deleted. This should only be called by _finish or _errorFinish.
 void QueryRequest::cleanup() {
     LOGS_DEBUG(_jobIdStr << " QueryRequest::cleanup()");
     {
@@ -386,6 +387,12 @@ void QueryRequest::cleanup() {
             return;
         }
     }
+
+    // Release this in the off chance it has not been released already.
+    if (_largeResultSafety.finishBlock()) {
+        LOGS_ERROR(_jobIdStr << " QueryRequest::cleanup had to call finishBlock()");
+    }
+
     // These need to be outside the mutex lock, or you could delete
     // _finishStatusMutex before it is unlocked.
     // This should reset _jobquery and _keepAlive without risk of either being deleted
@@ -393,6 +400,7 @@ void QueryRequest::cleanup() {
     std::shared_ptr<JobQuery> jq(std::move(_jobQuery));
     std::shared_ptr<QueryRequest> keep(std::move(_keepAlive));
 }
+
 
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.

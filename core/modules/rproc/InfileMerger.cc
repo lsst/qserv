@@ -222,12 +222,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         _sizeCheckRowCount = 0;
         if (tSize > _maxResultTableSizeMB) {
             // Try deleting invalid rows if there are any, then check size again
-            bool invalidResult = _invalidJobAttemptMgr.holdMergingForRowDelete("Checking size");
+            bool validResult = _invalidJobAttemptMgr.holdMergingForRowDelete("Checking size");
             tSize = _getResultTableSizeMB();
-            if (tSize > _maxResultTableSizeMB || invalidResult) {
+            if (tSize > _maxResultTableSizeMB || !validResult) {
                 std::ostringstream os;
                 os << queryIdJobStr << " cancelling queryResult table " << _mergeTable;
-                if (invalidResult) {
+                if (!validResult) {
                     os << " failed to delete invalid rows.";
                 } else {
                     os << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;
