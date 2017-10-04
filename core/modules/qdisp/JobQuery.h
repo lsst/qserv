@@ -120,11 +120,11 @@ protected:
 
     // Values that need mutex protection
     mutable std::recursive_mutex _rmutex; ///< protects _jobDescription,
-                                          ///< _queryRequestPtr, and _inSSI
+                                          ///< _queryRequestPtr, and _inSsi
 
     // SSI items
     std::shared_ptr<QueryRequest> _queryRequestPtr;
-    bool _inSSI{false};
+    bool _inSsi{false};
 
     // Cancellation
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.

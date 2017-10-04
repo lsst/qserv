@@ -68,8 +68,8 @@ public:
     virtual ~SsiService();
 
     /// Called by SSI framework to handle new requests
-    virtual void ProcessRequest(XrdSsiRequest  &reqRef,
-                                XrdSsiResource &resRef) override;
+    void ProcessRequest(XrdSsiRequest  &reqRef,
+                        XrdSsiResource &resRef) override;
 
 private:
     void _initInventory();

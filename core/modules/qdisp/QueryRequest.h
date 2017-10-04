@@ -144,7 +144,7 @@ public:
     bool isQueryCancelled();
     bool isQueryRequestCancelled();
     void doNotRetry() { _retried.store(true); }
-    std::string getSSIErr(XrdSsiErrInfo const& eInfo, int* eCode);
+    std::string getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.
 
     /// If this job has incremented the large result semaphore, decrement it now.

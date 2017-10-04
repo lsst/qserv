@@ -57,7 +57,7 @@ SsiSession::~SsiSession() {
 
 // Step 4
 /// Called by XrdSsi to actually process a request.
-void SsiSession::Execute(XrdSsiRequest& req) {
+void SsiSession::execute(XrdSsiRequest& req) {
     util::Timer t;
 
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
@@ -149,13 +149,14 @@ void SsiSession::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
-    // But first we must make sure that request setup (i.e Execute() completed).
+    // But first we must make sure that request setup (i.e execute() completed).
     // We simply lock the serialization mutex and then immediately unlock it.
-    // If we got the mutex, Execute() completed. This code should not be
+    // If we got the mutex, execute() completed. This code should not be
     // optimized out even though it looks like it does nothing (lock_gaurd?).
     // We could potentially do this with _tasksMutex but that would require
-    // moving the lock into Execute() and obtaining it unobviously early.
-    _finMutex.lock(); _finMutex.unlock();
+    // moving the lock into execute() and obtaining it unobviously early.
+    _finMutex.lock();
+    _finMutex.unlock();
     {
         std::lock_guard<std::mutex> lock(_tasksMutex);
         if (cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled

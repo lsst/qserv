@@ -123,7 +123,6 @@ std::shared_ptr<qdisp::JobQuery> addMockRequests(
         qdisp::JobDescription::Ptr job = makeMockJobDescription(
                                              ex, sequence.incr(), ru,
                                              msg, rv[j]);
-        // ex->add() is not thread safe.
         jobQuery = ex->add(job);
     }
     return jobQuery;
@@ -206,46 +205,50 @@ BOOST_AUTO_TEST_CASE(Executive) {
     int jobs = 0;
     _log.setLevel(LOG_LVL_DEBUG); // Ugly but boost test suite forces this
     std::thread timeoutT(&timeoutFunc, std::ref(done), millisInt*10);
-    qdisp::XrdSsiServiceMock::setRName((std::string)"/chk/Mock/1234");
+    qdisp::XrdSsiServiceMock::setRName("/chk/Mock/1234");
 
     // Test single instance
-   {LOGS_DEBUG("Executive single query test");
-    SetupTest tEnv("respdata");
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    jobs = 1;
-    LOGS_DEBUG("jobs=1");
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                qdisp::JobStatus::COMPLETE);
-    BOOST_CHECK(tEnv.ex->getEmpty() == true);
-   }
+    {
+        LOGS_DEBUG("Executive single query test");
+        SetupTest tEnv("respdata");
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        jobs = 1;
+        LOGS_DEBUG("jobs=1");
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
+                    qdisp::JobStatus::COMPLETE);
+        BOOST_CHECK(tEnv.ex->getEmpty() == true);
+    }
 
-    // Test 4 jobs
-   {LOGS_DEBUG("Executive four parallel jobs test");
-    SetupTest tEnv("respdata");
-    executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 4);
-    jobs += 4;
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.ex->getEmpty() == true);
-   }
+     // Test 4 jobs
+    {
+        LOGS_DEBUG("Executive four parallel jobs test");
+        SetupTest tEnv("respdata");
+        executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 4);
+        jobs += 4;
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.ex->getEmpty() == true);
+    }
 
     // Test that we can detect ex._empty == false.
-   {LOGS_DEBUG("Executive detect non-empty job queue test");
-    SetupTest tEnv("respdata");
-    qdisp::XrdSsiServiceMock::setGo(false);
-    executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 5);
-    jobs += 5;
-    while (qdisp::XrdSsiServiceMock::getCount() < jobs) {
-        LOGS_DEBUG("waiting for _count(" << qdisp::XrdSsiServiceMock::getCount()
-                   << ") == jobs(" << jobs << ")");
-        usleep(10000);
+    {
+        LOGS_DEBUG("Executive detect non-empty job queue test");
+        SetupTest tEnv("respdata");
+        qdisp::XrdSsiServiceMock::setGo(false);
+        executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 5);
+        jobs += 5;
+        while (qdisp::XrdSsiServiceMock::getCount() < jobs) {
+            LOGS_DEBUG("waiting for _count(" << qdisp::XrdSsiServiceMock::getCount()
+                       << ") == jobs(" << jobs << ")");
+            usleep(10000);
+        }
+
+        BOOST_CHECK(tEnv.ex->getEmpty() == false);
+        qdisp::XrdSsiServiceMock::setGo(true);
+        tEnv.ex->join();
+        LOGS_DEBUG("ex->join() joined");
+        BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
-    BOOST_CHECK(tEnv.ex->getEmpty() == false);
-    qdisp::XrdSsiServiceMock::setGo(true);
-    tEnv.ex->join();
-    LOGS_DEBUG("ex->join() joined");
-    BOOST_CHECK(tEnv.ex->getEmpty() == true);
-   }
     done.exchange(true);
     timeoutT.join();
     LOGS_DEBUG("Executive test end");
@@ -267,40 +270,43 @@ BOOST_AUTO_TEST_CASE(MessageStore) {
 }
 
 BOOST_AUTO_TEST_CASE(QueryRequest) {
-   {LOGS_DEBUG("QueryRequest error retry test");
-    // Setup Executive and for retry test when receiving an error
-    // Note executive maps RESPONSE_ERROR to RESULT_ERROR
-    SetupTest tEnv("resperror");
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                qdisp::JobStatus::RESULT_ERROR);
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() > 1); // Retried, eh?
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() ==
-                qdisp::XrdSsiServiceMock::getReqCount());
-   }
+    {
+        LOGS_DEBUG("QueryRequest error retry test");
+        // Setup Executive and for retry test when receiving an error
+        // Note executive maps RESPONSE_ERROR to RESULT_ERROR
+        SetupTest tEnv("resperror");
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
+                    qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() > 1); // Retried, eh?
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() ==
+                    qdisp::XrdSsiServiceMock::getReqCount());
+    }
 
-   {LOGS_DEBUG("QueryRequest error noretry test 2");
-    // Setup Executive and for no retry test when receiving an error
-    // Note executive maps RESPONSE_ERROR to RESULT_ERROR
-    SetupTest tEnv("resperrnr");
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                qdisp::JobStatus::RESULT_ERROR);
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
-   }
+    {
+        LOGS_DEBUG("QueryRequest error noretry test 2");
+        // Setup Executive and for no retry test when receiving an error
+        // Note executive maps RESPONSE_ERROR to RESULT_ERROR
+        SetupTest tEnv("resperrnr");
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
+                    qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
+    }
 
-   {LOGS_DEBUG("QueryRequest stream with data error test");
-    // Setup Executive and for no retry test when receiving an error
-    // Note executive maps RESPONSE_DATA_NACK to RESULT_ERROR
-    SetupTest tEnv("respstrerr");
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                qdisp::JobStatus::RESULT_ERROR);
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1); // No retries!
-   }
+    {
+        LOGS_DEBUG("QueryRequest stream with data error test");
+        // Setup Executive and for no retry test when receiving an error
+        // Note executive maps RESPONSE_DATA_NACK to RESULT_ERROR
+        SetupTest tEnv("respstrerr");
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
+                    qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1); // No retries!
+    }
 
     // We wish we could do the stream response with no results test but the
     // needed information is too complex to figure out (well, one day we will).
@@ -308,14 +314,15 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
     // responses (see XrdSsiMocks::Agent). So, this gets punted into the
     // integration test (too bad).
 /*
-   {LOGS_DEBUG("QueryRequest stream with no results test");
-    SetupTest tEnv("respstream");
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                qdisp::JobStatus::COMPLETE);
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
-   }
+    {
+        LOGS_DEBUG("QueryRequest stream with no results test");
+        SetupTest tEnv("respstream");
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
+                    qdisp::JobStatus::COMPLETE);
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
+    }
 */
     LOGS_DEBUG("QueryRequest test end");
 }
@@ -323,38 +330,40 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
 BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     // Test that aJobQuery can be cancelled and ends in correct state
     //
-   {LOGS_DEBUG("ExecutiveCancel: squash it test");
-    SetupTest tEnv("respdata");
-    qdisp::XrdSsiServiceMock::setGo(false); // Can't let jobs run or they are untracked before squash
-    tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-    tEnv.ex->squash();
-    qdisp::XrdSsiServiceMock::setGo(true);
-    usleep(250000); // Give mock threads a quarter second to complete.
-    tEnv.ex->join();
-    BOOST_CHECK(tEnv.jqTest->isQueryCancelled() == true);
-    // Note that the query might not have actually called ProcessRequest()
-    // but if it did, then it must have called Finished() with cancel.
-    //
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getCanCount() ==
-                qdisp::XrdSsiServiceMock::getReqCount());
-   }
+    {
+        LOGS_DEBUG("ExecutiveCancel: squash it test");
+        SetupTest tEnv("respdata");
+        qdisp::XrdSsiServiceMock::setGo(false); // Can't let jobs run or they are untracked before squash
+        tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
+        tEnv.ex->squash();
+        qdisp::XrdSsiServiceMock::setGo(true);
+        usleep(250000); // Give mock threads a quarter second to complete.
+        tEnv.ex->join();
+        BOOST_CHECK(tEnv.jqTest->isQueryCancelled() == true);
+        // Note that the query might not have actually called ProcessRequest()
+        // but if it did, then it must have called Finished() with cancel.
+        //
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getCanCount() ==
+                    qdisp::XrdSsiServiceMock::getReqCount());
+    }
 
     // Test that multiple JobQueries are cancelled.
-   {LOGS_DEBUG("ExecutiveCancel: squash 20 test");
-    SetupTest tEnv("respdata");
-    qdisp::XrdSsiServiceMock::setGo(false); // Can't let jobs run or they are untracked before squash
-    executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 20);
-    tEnv.ex->squash();
-    tEnv.ex->squash(); // check that squashing twice doesn't cause issues.
-    qdisp::XrdSsiServiceMock::setGo(true);
-    usleep(250000); // Give mock threads a quarter second to complete.
-    tEnv.ex->join();
-    // Note that the cancel count might not be 20 as some queries will cancel
-    // themselves before they get around to issuing ProcessRequest().
-    //
-    BOOST_CHECK(qdisp::XrdSsiServiceMock::getCanCount() ==
-                qdisp::XrdSsiServiceMock::getReqCount());
-   }
+    {
+        LOGS_DEBUG("ExecutiveCancel: squash 20 test");
+        SetupTest tEnv("respdata");
+        qdisp::XrdSsiServiceMock::setGo(false); // Can't let jobs run or they are untracked before squash
+        executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 20);
+        tEnv.ex->squash();
+        tEnv.ex->squash(); // check that squashing twice doesn't cause issues.
+        qdisp::XrdSsiServiceMock::setGo(true);
+        usleep(250000); // Give mock threads a quarter second to complete.
+        tEnv.ex->join();
+        // Note that the cancel count might not be 20 as some queries will cancel
+        // themselves before they get around to issuing ProcessRequest().
+        //
+        BOOST_CHECK(qdisp::XrdSsiServiceMock::getCanCount() ==
+                    qdisp::XrdSsiServiceMock::getReqCount());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(ServiceMock) {

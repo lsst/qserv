@@ -194,7 +194,7 @@ void Executive::waitForAllJobsToStart() {
 // If the executive has not been cancelled, then we simply start the query.
 // @return true if query was actually started (i.e. we were not cancelled)
 //
-bool Executive::StartQuery(std::shared_ptr<JobQuery> const& jobQuery) {
+bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
 
     std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
 

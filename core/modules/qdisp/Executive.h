@@ -122,7 +122,7 @@ public:
 
     std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
 
-    bool StartQuery(std::shared_ptr<JobQuery> const& jobQuery);
+    bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
     std::mutex sumMtx; // TEMPORARY-timing
     int cancelLockQSEASum{0}; // TEMPORARY-timing

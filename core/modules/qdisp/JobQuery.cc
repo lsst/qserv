@@ -104,12 +104,12 @@ bool JobQuery::runJob() {
         //
         LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob calls StartQuery()");
         std::shared_ptr<JobQuery> jq(shared_from_this());
-        _inSSI = true;
-        if (executive->StartQuery(jq)) {
+        _inSsi = true;
+        if (executive->startQuery(jq)) {
            _jobStatus->updateInfo(JobStatus::REQUEST);
            return true;
         }
-        _inSSI = false;
+        _inSsi = false;
     }
     LOGS(_log, LOG_LVL_WARN, _idStr << " runJob failed. cancelled=" << cancelled
               << " reset=" << handlerReset);
@@ -121,10 +121,10 @@ bool JobQuery::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        // If _inSSI is true then this quequest has been passed to SSI and
+        // If _inSsi is true then this query request has been passed to SSI and
         // _queryRequestPtr cannot be a nullptr. Cancellation is complicated.
         bool cancelled = false;
-        if (_inSSI) {
+        if (_inSsi) {
             LOGS(_log, LOG_LVL_DEBUG, _idStr << " cancel QueryRequest in progress");
             if (_queryRequestPtr->cancel()) {
                 LOGS(_log, LOG_LVL_DEBUG, _idStr << " cancelled by QueryRequest");

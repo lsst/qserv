@@ -110,7 +110,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
     if (eInfo.hasError()) {
         std::ostringstream os;
         os << _jobIdStr << "ProcessResponse request failed "
-           << getSSIErr(eInfo, nullptr);
+           << getSsiErr(eInfo, nullptr);
         jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
         _errorFinish();
@@ -121,7 +121,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
         break;
     case XrdSsiRespInfo::isData: // Local-only for Mock tests!
-        if (!strcmp(rInfo.buff, "MockResponse")) {
+        if (!strncmp(rInfo.buff, "MockResponse", rInfo.blen)) {
            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
            _finish();
            return true;
@@ -247,7 +247,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
 
     if (blen < 0) { // error, check errinfo object.
         int eCode;
-        auto reason = getSSIErr(eInfo, &eCode);
+        auto reason = getSsiErr(eInfo, &eCode);
         jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
@@ -470,7 +470,7 @@ std::ostream& operator<<(std::ostream& os, QueryRequest const& qr) {
 
 /// @return The error text and code that SSI set.
 /// if eCode != nullptr, it is set to the error code set by SSI.
-std::string QueryRequest::getSSIErr(XrdSsiErrInfo const& eInfo, int* eCode) {
+std::string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
     int errNum;
     std::string errText = eInfo.Get(errNum);
     if (eCode != nullptr) {

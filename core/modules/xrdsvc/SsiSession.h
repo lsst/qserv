@@ -38,14 +38,6 @@
 // Forward declarations
 class XrdSsiService;
 
-/*
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
-  class SsiResponder;
-}}}
-*/
-
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
@@ -59,16 +51,18 @@ public:
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
 
     /// Construct a new session (called by SsiService)
-    SsiSession(std::string &rname, ValidatorPtr validator, std::shared_ptr<wbase::MsgProcessor> processor)
-        : _validator{validator}, _processor{processor}, _resourceName(rname) {}
+    SsiSession(std::string const& rname,
+               ValidatorPtr validator,
+               std::shared_ptr<wbase::MsgProcessor> const& processor)
+        : _validator(validator), _processor(processor), _resourceName(rname) {}
 
     virtual ~SsiSession();
 
-    virtual void Execute(XrdSsiRequest& req);
+    void execute(XrdSsiRequest& req);
 
     // XrdSsiResponder interfaces
-    virtual void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo,
-                          bool cancel=false) override;
+    void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo,
+                  bool cancel=false) override;
 
 private:
     void _addTask(wbase::Task::Ptr const& task);
@@ -84,7 +78,7 @@ private:
     std::vector<wbase::Task::Ptr> _tasks;
     std::atomic<bool> _cancelled{false}; ///< true if the session has been cancelled.
 
-    std::mutex  _finMutex;  ///< Protects Execute() from Finish()
+    std::mutex  _finMutex;  ///< Protects execute() from Finish()
     std::string _resourceName;
 };
 }}} // namespace

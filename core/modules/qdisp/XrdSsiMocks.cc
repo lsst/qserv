@@ -58,10 +58,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.XrdSsiMock");
 
 lsst::qserv::util::FlagNotify<bool> _go(true);
 
-std::atomic<int> canCount{0};
-std::atomic<int> finCount{0};
-std::atomic<int> reqCount{0};
-std::atomic<int> totCount{0};
+std::atomic<int> canCount(0);
+std::atomic<int> finCount(0);
+std::atomic<int> reqCount(0);
+std::atomic<int> totCount(0);
 
 bool _aOK = true;
 
@@ -74,82 +74,83 @@ public:
     void Finished(XrdSsiRequest&        rqstR,
                   XrdSsiRespInfo const& rInfo,
                   bool cancel) {
-         const char *how = (cancel ? " cancelled" : "");
-         LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum
-                                   << " rName=" << _rName << how);
-         _rrMutex.lock();
-         UnBindRequest();
-         if (cancel) canCount++;
-         finCount++;
-         _isFIN = true;
-         if (_active) {
-            _rrMutex.unlock();
-            } else {
-            _rrMutex.unlock();
-            delete this;
-         }
+        const char *how = (cancel ? " cancelled" : "");
+        LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum
+                                  << " rName=" << _rName << how);
+        _rrMutex.lock();
+        UnBindRequest();
+        if (cancel) canCount++;
+        finCount++;
+        _isFIN = true;
+        if (_active) {
+           _rrMutex.unlock();
+        } else {
+           _rrMutex.unlock();
+           delete this;
+        }
     }
 
     void Reply(RespType rType) {
-         _go.wait(true);
+        _go.wait(true);
 
-         // We may have been cancelled before being able to reply
-         //
-         if (_isCancelled(true)) return; // we are locked now
+        // We may have been cancelled before being able to reply
+        //
+        if (_isCancelled(true)) return; // we are locked now
 
-         // Do requested reply
-         //
-         switch(rType) {
-              case RESP_DATA:
-                   _ReplyData();
-                   break;
-              case RESP_ERRNR:
-                   _reqP->doNotRetry();
-              case RESP_ERROR:
-                   _ReplyError();
-                   break;
-              case RESP_STRERR:
-                   _noData = true;
-                   _reqP->doNotRetry();  // Kill retries on stream errors
-                   _ReplyStream();
-                   break;
-              default:
-                   _reqP->doNotRetry();
-                   _ReplyError("Bad mock request!", 13);
-                   break;
-         }
-         _isCancelled(false);
+        // Do requested reply
+        //
+        switch(rType) {
+             case RESP_DATA:
+                  _ReplyData();
+                  break;
+             case RESP_ERRNR:
+                  _reqP->doNotRetry();
+             case RESP_ERROR:
+                  _ReplyError();
+                  break;
+             case RESP_STRERR:
+                  _noData = true;
+                  _reqP->doNotRetry();  // Kill retries on stream errors
+                  _ReplyStream();
+                  break;
+             default:
+                  _reqP->doNotRetry();
+                  _ReplyError("Bad mock request!", 13);
+                  break;
+        }
+        _isCancelled(false);
     }
 
     bool SetBuff(XrdSsiErrInfo& eRef, char* buff, int  blen) override {
 
-         // We may have been cancelled while waiting
-         //
-         if (_isCancelled(true)) return false;
-         std::thread (&Agent::_StrmResp, this, &eRef, buff, blen).detach();
-         _rrMutex.unlock();
-         return true;
+        // We may have been cancelled while waiting
+        //
+        if (_isCancelled(true)) return false;
+        std::thread (&Agent::_StrmResp, this, &eRef, buff, blen).detach();
+        _rrMutex.unlock();
+        return true;
     }
 
-    Agent(lsst::qserv::qdisp::QueryRequest* rP, std::string rname, int rnum) :
+    Agent(lsst::qserv::qdisp::QueryRequest* rP,
+          std::string const& rname, int rnum) :
          XrdSsiStream(XrdSsiStream::isPassive),
          _reqP(rP), _rName(rname), _rNum(rnum), _noData(true),
-         _isFIN(false), _active(true)
- {
-         // Initialize a null message we will return as a response
-         //
-         lsst::qserv::proto::ProtoHeader* ph =
-                                          new lsst::qserv::proto::ProtoHeader;
-         ph->set_protocol(2);
-         ph->set_size(0);
-         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
-         ph->set_wname("localhost");
-         ph->set_largeresult(false);
-         std::string pHdrString;
-         ph->SerializeToString(&pHdrString);
-         _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
-         _bOff = 0;
-         _bLen = _msgBuf.size();
+         _isFIN(false), _active(true) {
+
+        // Initialize a null message we will return as a response
+        //
+        lsst::qserv::proto::ProtoHeader* ph =
+                                         new lsst::qserv::proto::ProtoHeader;
+        ph->set_protocol(2);
+        ph->set_size(0);
+        ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
+        ph->set_wname("localhost");
+        ph->set_largeresult(false);
+        std::string pHdrString;
+        ph->SerializeToString(&pHdrString);
+        _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
+        _bOff = 0;
+        _bLen = _msgBuf.size();
     }
 
     ~Agent() {}
@@ -157,56 +158,56 @@ public:
 private:
 
     bool _isCancelled(bool activate) {
-         if (activate) _rrMutex.lock();
-         if (_isFIN) {
-            _rrMutex.unlock();
-            delete this;
-            return true;
-         }
-         _active = activate;
-         if (!activate) _rrMutex.unlock();
-         return false;
-         }
+        if (activate) _rrMutex.lock();
+        if (_isFIN) {
+           _rrMutex.unlock();
+           delete this;
+           return true;
+        }
+        _active = activate;
+        if (!activate) _rrMutex.unlock();
+        return false;
+    }
 
     void _ReplyData() {
-         _rspBuf = "MockResponse";
-         SetResponse(_rspBuf.c_str(), _rspBuf.size());
-         }
+        _rspBuf = "MockResponse";
+        SetResponse(_rspBuf.data(), _rspBuf.size());
+    }
 
     void _ReplyError(const char* eMsg="Mock Request Ignored!", int eNum=17) {
-         SetErrResponse(eMsg, eNum);
-         }
+        SetErrResponse(eMsg, eNum);
+    }
 
-    void _ReplyStream() {SetResponse((XrdSsiStream*)this);}
+    void _ReplyStream() {SetResponse(this);}
 
     void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
-          std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
-                   <<_bLen <<'\n' <<std::flush;
-          bool last;
+        std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
+                 <<_bLen <<'\n' <<std::flush;
+        bool last;
 
-          // Check for cancellation while we were waiting
-          //
-          if (_isCancelled(true)) return;
+        // Check for cancellation while we were waiting
+        //
+        if (_isCancelled(true)) return;
 
-          // Either reply with an error or actual data
-          //
-          if (_noData) {
-             blen = -17;
-             last = true;
-             eP->Set("Mock stream error!", 17);
-          } else {
-             if (_bLen <= blen)
-                {memcpy(buff, _msgBuf.data()+_bOff, _bLen);
-                 blen = _bLen; _bLen = 0;
-                 last = true;
-             } else {
-                 memcpy(buff, _msgBuf.data()+_bOff,  blen);
-                 _bOff += blen; _bLen -= blen;
-                 last = false;
-             }
-          }
-          _reqP->ProcessResponseData(*eP, buff, blen, last);
-          _isCancelled(false);
+        // Either reply with an error or actual data
+        //
+        if (_noData) {
+            blen = -17;
+            last = true;
+            eP->Set("Mock stream error!", 17);
+        } else {
+            if (_bLen <= blen) {
+                memcpy(buff, _msgBuf.data()+_bOff, _bLen);
+                blen = _bLen; _bLen = 0;
+                last = true;
+            } else {
+                memcpy(buff, _msgBuf.data()+_bOff,  blen);
+                _bOff += blen; _bLen -= blen;
+                last = false;
+            }
+        }
+        _reqP->ProcessResponseData(*eP, buff, blen, last);
+        _isCancelled(false);
     }
 
     std::recursive_mutex _rrMutex;
@@ -240,19 +241,24 @@ int  XrdSsiServiceMock::getReqCount() {return reqCount;}
 bool XrdSsiServiceMock::isAOK() {return _aOK;}
 
 void XrdSsiServiceMock::Reset() {
-      canCount = 0;
-      finCount = 0;
-      reqCount = 0;
-     }
+    canCount = 0;
+    finCount = 0;
+    reqCount = 0;
+}
 
 void XrdSsiServiceMock::setGo(bool go) {_go.exchangeNotify(go);}
 
 void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
                                        XrdSsiResource &resRef) {
-    static struct {const char *cmd; RespType rType;} reqTab[] =
-           {{"respdata",   RESP_DATA},   {"resperror",  RESP_ERROR},
-            {"resperrnr",  RESP_ERRNR},  {"respstream", RESP_STREAM},
-            {"respstrerr", RESP_STRERR}, {0, RESP_BADREQ}};
+    static struct {const char *cmd; RespType rType;} reqTab[] = {
+           {"respdata",   RESP_DATA},
+           {"resperror",  RESP_ERROR},
+           {"resperrnr",  RESP_ERRNR},
+           {"respstream", RESP_STREAM},
+           {"respstrerr", RESP_STRERR},
+           {0, RESP_BADREQ}
+    };
+
     int reqNum = totCount++;
 
     // Check if we should verify the resource name
@@ -271,14 +277,14 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
         RespType doResp;
         aP->BindRequest(reqRef);
 
-        // Get the request data and setup to handle request
+        // Get the request data and setup to handle request. Make sure the
+        // request string is null terminated (it should be).
         //
+        std::string reqStr;
         int reqLen;
         const char *reqData = r->GetRequest(reqLen);
-        if (reqData == 0) {
-           reqData = "";
-           reqLen  = 0;
-        }
+        if (reqData != nullptr) reqStr.assign(reqData, reqLen);
+        reqData = reqStr.c_str();
 
         // Convert request to response type
         //
@@ -294,8 +300,7 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
 
         // Release the request buffer (typically a no-op)
         //
-        if (reqData == 0) reqLen = 0; // Keep the compiler happy
-        r->ReleaseRequestBuffer();
+        if (reqLen != 0) r->ReleaseRequestBuffer();
 
         // Schedule a response
         //

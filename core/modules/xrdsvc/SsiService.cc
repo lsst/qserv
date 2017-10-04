@@ -160,7 +160,7 @@ void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.
     //
-    session->Execute(reqRef);
+    session->execute(reqRef);
 }
 
 void SsiService::_initInventory() {
