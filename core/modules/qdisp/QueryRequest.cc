@@ -121,7 +121,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
         break;
     case XrdSsiRespInfo::isData: // Local-only for Mock tests!
-        if (!strncmp(rInfo.buff, "MockResponse", rInfo.blen)) {
+        if (std::string(rInfo.buff, rInfo.blen) == "MockResponse") {
            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
            _finish();
            return true;
