@@ -1,16 +1,39 @@
 FROM debian:jessie
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
-RUN echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-COPY scripts/install-deps.sh /root/install-deps.sh
+# RUN echo "deb http://ftp.debian.org/debian stretch-backports main" >> /etc/apt/sources.list
 
 # Start with this long step not to re-run it on
 # each Dockerfile update
+RUN echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
 RUN apt-get -y update && \
     apt-get -y install apt-utils && \
-    /root/install-deps.sh && \
     apt-get -y upgrade && \
     apt-get -y clean
+
+# Install LSST stack dependencies
+#
+RUN apt-get -y install bison \
+        bzip2 \
+        cmake \
+        curl \
+        flex \
+        g++ \
+        gettext \
+        git \
+        libbz2-dev \
+        libglib2.0-dev \
+        libpthread-workqueue-dev \
+        libreadline-dev \
+        libssl-dev \
+        make \
+        ncurses-dev \
+        openjdk-7-jre-headless \
+        openssl \
+        patch \
+        zlib1g-dev
+
+RUN apt-get --yes -t jessie-backports install cmake
 
 RUN groupadd qserv && \
     useradd -m -g qserv qserv && \
@@ -18,15 +41,28 @@ RUN groupadd qserv && \
     mkdir /qserv && \
     chown qserv:qserv /qserv
 
+ARG EUPS_TAG
+
+# Install development and debugging tools
+#
+RUN if [ "$EUPS_TAG" = "qserv-dev" ] ; then \
+    apt-get -y install byobu dnsutils \
+        gdb graphviz lsof \
+        net-tools vim ; \
+    fi
+
 USER qserv
 
-WORKDIR /qserv
+# Install LSST stack
+#
+ENV STACK_DIR /qserv/stack
+RUN mkdir $STACK_DIR && cd $STACK_DIR && \
+    curl -OL \
+    https://raw.githubusercontent.com/lsst/lsst/13.0/scripts/newinstall.sh && \
+    bash newinstall.sh -b
 
-# Copying only install-stack.sh to avoid re-installing if
-# other files changes in scripts/
-ARG EUPS_TAG
-COPY scripts/install-stack.sh scripts/install-stack.sh
+RUN bash -c ". $STACK_DIR/loadLSST.bash && eups distrib install qserv_distrib -t '$EUPS_TAG'"
 
-RUN /bin/bash /qserv/scripts/install-stack.sh 2>&1 /qserv/STACK_INSTALL.out
+COPY scripts/*.sh /qserv/scripts/
 
-COPY scripts/*.sh scripts/
+WORKDIR /home/qserv
