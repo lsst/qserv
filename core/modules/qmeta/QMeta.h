@@ -116,6 +116,15 @@ public:
     virtual void setCzarActive(CzarId czarId, bool active) = 0;
 
     /**
+     *  @brief Cleanup of query status.
+     *
+     *  Usually called when czar starts to do post-crash cleanup.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    virtual void cleanup(CzarId czarId) = 0;
+
+    /**
      *  @brief Register new query.
      *
      *  This method will throw if czar ID is not known.

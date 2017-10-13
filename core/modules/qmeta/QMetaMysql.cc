@@ -240,6 +240,28 @@ QMetaMysql::setCzarActive(CzarId czarId, bool active) {
     trans.commit();
 }
 
+// Cleanup of query status.
+void
+QMetaMysql::cleanup(CzarId czarId) {
+    std::lock_guard<std::mutex> sync(_dbMutex);
+
+    QMetaTransaction trans(_conn);
+
+    // run query
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    std::string const query = "UPDATE QInfo SET status = 'ABORTED', completed = NOW() "
+            " WHERE czarId = " + boost::lexical_cast<std::string>(czarId) +
+            " AND status = 'EXECUTING'";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn.runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans.commit();
+}
+
 // Register new query.
 QueryId
 QMetaMysql::registerQuery(QInfo const& qInfo,

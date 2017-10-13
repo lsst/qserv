@@ -97,6 +97,12 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
     _impl->qMetaCzarId = _impl->queryMetadata->registerCzar(czarName);
+
+    // When czar crashes/exits while some queries are still in flight they
+    // are left in EXECUTING state in QMeta. We want to cleanup that state
+    // to avoid confusion. Note that when/if clean czar restart is implemented
+    // we'll need a new logic to restart query processing.
+    _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
 }
 
 UserQuery::Ptr

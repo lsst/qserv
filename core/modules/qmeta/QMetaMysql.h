@@ -92,6 +92,15 @@ public:
     virtual void setCzarActive(CzarId czarId, bool active) override;
 
     /**
+     *  @brief Cleanup of query status.
+     *
+     *  Usually called when czar starts to do post-crash cleanup.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    void cleanup(CzarId czarId) override;
+
+    /**
      *  @brief Register new query.
      *
      *  This method will throw if czar ID is not known.
