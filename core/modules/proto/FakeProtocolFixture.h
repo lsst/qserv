@@ -28,9 +28,6 @@
 #include <memory>
 #include <string>
 
-// Qserv headers
-#include "util/Callable.h"
-
 namespace lsst {
 namespace qserv {
 namespace proto {

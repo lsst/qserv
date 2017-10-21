@@ -94,7 +94,6 @@
 #include "query/JoinRef.h"
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
-#include "util/Callable.h"
 #include "util/IterableFormatter.h"
 
 namespace {
@@ -106,7 +105,7 @@ namespace qserv {
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
-class ProtoPrinter: public util::UnaryCallable<void, std::shared_ptr<proto::TaskMsg> > {
+class ProtoPrinter {
 public:
     ProtoPrinter() {}
     virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
