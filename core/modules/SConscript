@@ -108,7 +108,9 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     # and files for test apps
     cc_files = set(env.Glob(os.path.join(path, "*.cc"), source=True, strings=True, exclude=exclude))
     cc_tests = set(fname for fname in cc_files if os.path.basename(fname).startswith("test"))
-    cc_objects = cc_files - cc_tests
+    # In Python3 order of set iteration is undefined, do manual sorting
+    cc_objects = sorted(cc_files - cc_tests)
+    cc_tests = sorted(cc_tests)
     state.log.debug('standardModule: cc_objects = ' + str(cc_objects))
     state.log.debug('standardModule: cc_tests = ' + str(cc_tests))
 
