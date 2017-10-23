@@ -24,9 +24,9 @@ else
     all.role server
 
     # Use XrdSsi plugin
-    xrootd.fslib libXrdSsi.so
+    xrootd.fslib libXrdSsiV1.so
     ssi.svclib libxrdsvc.so
-    oss.statlib -2 libXrdSsi.so
+    oss.statlib -2 libXrdSsiV1.so
 
     # Force disable asyncronous access
     # because of XrdSsi
