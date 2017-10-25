@@ -24,10 +24,10 @@ before_install:
 
 install:
   # Retrieve container with Qserv dependencies
-  - docker pull qserv/qserv:dev
+  - travis_wait docker pull qserv/qserv:dev
 
 script:
-  # Only message in 'script' section are displayer, meesage below have to be there
+  # Only message in 'script' section are displayed, message below have to be there
   - echo "Building and testing $IMAGE (alias $BRANCH_IMAGE) and related master and worker images"
   - ./admin/tools/docker/3_build-git-image.sh -L -T "$IMAGE" "$PWD"
   - ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE"
