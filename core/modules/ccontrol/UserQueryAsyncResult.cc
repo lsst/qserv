@@ -50,7 +50,9 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId,
                                            qmeta::CzarId qMetaCzarId,
                                            std::shared_ptr<qmeta::QMeta> const& qMeta,
                                            sql::SqlConnection* resultDbConn)
-    : UserQuery(), _qMetaCzarId(qMetaCzarId),
+    : UserQuery(),
+      _queryId(queryId),
+      _qMetaCzarId(qMetaCzarId),
       _resultDbConn(resultDbConn),
       _messageStore(std::make_shared<qdisp::MessageStore>()) {
 

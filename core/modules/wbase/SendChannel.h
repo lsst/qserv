@@ -32,7 +32,6 @@
 
 // Qserv headers
 #include "global/Bug.h"
-#include "util/Callable.h"
 
 namespace lsst {
 namespace qserv {
