@@ -18,7 +18,3 @@ fi
 # Machine names
 ENV_INFRASTRUCTURE_FILE="$CLUSTER_CONFIG_DIR/env-infrastructure.sh"
 . "$ENV_INFRASTRUCTURE_FILE"
-
-# Location of orchestration scripts on orchestration node
-ORCHESTRATION_HOME=$(ssh $SSH_CFG_OPT "$ORCHESTRATOR" "pwd")
-ORCHESTRATION_DIR="$ORCHESTRATION_HOME/orchestration"

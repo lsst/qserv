@@ -17,7 +17,7 @@ MARIADB_VERSION=10.1.25
 HOST_CUSTOM_DIR=/qserv/custom
 
 # Data directory location on docker host
-HOST_DATA_DIR=/qserv/data
+# HOST_DATA_DIR=/qserv/data
 
 # Log directory location on docker host
 HOST_LOG_DIR=/qserv/log
@@ -33,5 +33,26 @@ HOST_TMP_DIR=/qserv/tmp
 # Advanced configuration
 # ======================
 
-DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "${DIR}/common.sh"
+# FIXME: infrastructure should be abstracted from k8s
+# Parameters related to infrastructure,used to place containers:
+# - node hostnames
+. "$HOME/.kube/env-infrastructure.sh"
+
+# Container images names
+MASTER_IMAGE="qserv/qserv:${VERSION}_master"
+CONTAINER_IMAGE="qserv/qserv:${VERSION}"
+
+# Pods names
+# ==========
+
+MASTER_POD='master'
+WORKER_POD_FORMAT='worker-%g'
+
+# List of worker pods (and containers) names
+j=1
+WORKER_PODS=''
+for host in $WORKERS;
+do
+    WORKER_PODS="$WORKER_PODS worker-$j"
+    j=$((j+1));
+done

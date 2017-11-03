@@ -7,6 +7,6 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env.sh"
+. "$HOME/.kube/env.sh"
 
 parallel 'kubectl exec {} -- sh -c "printf \"host: %s, ip: %s\n\" \$(hostname) \$(hostname --ip-address)"' ::: $MASTER_POD $WORKER_PODS

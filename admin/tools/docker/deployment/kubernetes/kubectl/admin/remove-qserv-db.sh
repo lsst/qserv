@@ -9,7 +9,7 @@ set -e
 set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env.sh"
+. "$HOME/.kube/env.sh"
 
 DB=LSST20
 

@@ -7,7 +7,7 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env.sh"
+. "$HOME/.kube/env.sh"
 
 # Retry Qserv startup test because K8s pod might crash for unknow reason:
 # k8s might try to restart pods in-between, so there is no garantee qserv

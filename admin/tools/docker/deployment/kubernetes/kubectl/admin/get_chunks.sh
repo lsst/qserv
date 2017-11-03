@@ -7,7 +7,7 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env.sh"
+. "$HOME/.kube/env.sh"
 
 DATA_DIR="/qserv/data/mysql/LSST"
 RESULT_DIR="out_chunks"

@@ -79,13 +79,13 @@ if [ -n "$CREATE" ]; then
     "$DIR/create-image.py" --cleanup --config "$CONF_FILE" -vv
 fi
 
+CONFIG_DIR="$HOME/.lsst/qserv-cluster"
+mkdir -p "$CONFIG_DIR" 
 if [ -n "$PROVISION" ]; then
     echo "Provision Qserv cluster on Openstack"
     "$DIR/provision-qserv.py" --cleanup \
         --config "$CONF_FILE" \
         -vv
-    CONFIG_DIR="$HOME/.lsst/qserv-cluster"
-    mkdir -p "$CONFIG_DIR" 
 	ln -f "$DIR/ssh_config" "$CONFIG_DIR"
 	ln -f "$DIR/env-infrastructure.sh" "$CONFIG_DIR"
     "$DIR/../docker/deployment/parallel/create-gnuparallel-slf.sh"
@@ -100,23 +100,25 @@ if [ -n "$SWARM" ]; then
     "$SWARM_DIR"/setup-and-test.sh
 
 elif [ -n "$KUBERNETES" ]; then
-	WORK_DIR="$DIR/../docker/deployment/kubernetes"
-    ENV_FILE="$WORK_DIR/env.sh"
-    cp "$WORK_DIR/env.example.sh" "$ENV_FILE"
+	K8S_DIR="$DIR/../docker/deployment/kubernetes"
+    ENV_FILE="$CONFIG_DIR/env.sh"
+    cp "$K8S_DIR/env.example.sh" "$ENV_FILE"
 
     if [ -n "$LARGE" ]; then
         sed -i "s,# HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," \
             "$ENV_FILE"
     fi
 
-	"$WORK_DIR/full-start.sh"
+	# Trigger special behaviour for Openstack
+	export OPENSTACK=true
+	"$K8S_DIR/full-start.sh"
 
     if [ -n "$LARGE" ]; then
         echo "Launch large scale tests"
-        "$WORK_DIR/run-large-scale-tests.sh"
+        "$K8S_DIR"/run-kubectl.sh -C "/root/admin/run-large-scale-tests.sh"
     else
         echo "Launch multinode tests"
-        "$WORK_DIR/run-multinode-tests.sh"
+        "$K8S_DIR"/run-kubectl.sh -C "/root/admin/run-multinode-tests.sh"
     fi
 
 elif [ -n "$SHMUX" ]; then
@@ -145,7 +147,7 @@ elif [ -n "$SHMUX" ]; then
     sed -i "s/WORKER_LAST_ID=3/WORKER_LAST_ID=${WORKER_LAST_ID}/" env.sh
 
     if [ -n "$LARGE" ]; then
-        sed -i "s,#HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," env.sh
+        sed -i "s,# HOST_DATA_DIR=/qserv/data,HOST_DATA_DIR=/mnt/qserv/data," env.sh
         ./run.sh
         ./run-large-scale-tests.sh
     else

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Create Kubernetes cluster
 
@@ -8,21 +8,16 @@ set -e
 set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env-cluster.sh"
+. "$DIR/../env-cluster.sh"
 
 echo "Create Kubernetes cluster"
 ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- systemctl start kubelet"
 TOKEN=$(ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm token generate")
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm init --token '$TOKEN'"
+# TODO add option for openstack
+SSH_TUNNEL_OPT="--apiserver-cert-extra-sans=localhost"
+ssh $SSH_CFG_OPT "$ORCHESTRATOR" "sudo -- kubeadm init $SSH_TUNNEL_OPT --token '$TOKEN'"
 
 JOIN_CMD="kubeadm join --token '$TOKEN' $ORCHESTRATOR:6443"
-
-if [ "$MASTER" = "$ORCHESTRATOR" ]; then
-    # Qserv master and Kubernetes master (orchestrator)
-    # are running on the same host
-    # Allow to run pods on kubernetes master
-    ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl taint nodes --all dedicated-"
-fi
 
 # Join Kubernetes nodes
 parallel --nonall --slf "$PARALLEL_SSH_CFG" --tag "sudo -- systemctl start kubelet && \

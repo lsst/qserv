@@ -7,16 +7,15 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env-cluster.sh"
 
 echo
 echo "Check that Qserv master and workers pods are running on all nodes"
 echo "================================================================="
 echo
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl get pods -l app=qserv"
+"$DIR"/run-kubectl.sh -C "kubectl get pods -l app=qserv"
 
 echo
 echo "Check that Qserv services are running on all these pods"
 echo "======================================================="
 echo
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "$ORCHESTRATION_DIR/qserv-status.sh"
+"$DIR"/run-kubectl.sh -C "/root/admin/status.sh"

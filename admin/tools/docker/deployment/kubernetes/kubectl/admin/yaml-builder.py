@@ -222,16 +222,19 @@ if __name__ == "__main__":
 
         # Attach data-dir to containers
         #
-        # TODO add emptydir volume if config file is empty
+        data_volume_name = 'data-volume'
+        data_mount_path = '/qserv/data'
         if config.get('spec', 'host_data_dir'):
-            data_volume_name = 'data-volume'
-            data_mount_path = '/qserv/data'
             _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
+            # TODO use volume when master is splitted in 2 containers 
             _mount_volume('master', data_mount_path, data_volume_name)
-            _mount_volume('mariadb', data_mount_path, data_volume_name)
-            # xrootd mmap/mlock *.MYD files and need to access mysql.sock
-            # qserv-wmgr require access to mysql.sock
-            _mount_volume('worker', data_mount_path, data_volume_name)
+        else: 
+            _add_emptydir_volume(data_volume_name)
+
+        _mount_volume('mariadb', data_mount_path, data_volume_name)
+        # xrootd mmap/mlock *.MYD files and need to access mysql.sock
+        # qserv-wmgr require access to mysql.sock
+        _mount_volume('worker', data_mount_path, data_volume_name)
 
         if _get_container_id('worker') is not None:
 
