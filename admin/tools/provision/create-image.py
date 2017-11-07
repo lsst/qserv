@@ -82,6 +82,8 @@ groups:
 - docker
 
 packages:
+# required for gnu-parallel
+- [bzip2]
 - [docker-engine, 1.12.3-1.el7.centos]
 - ebtables
 - epel-release
