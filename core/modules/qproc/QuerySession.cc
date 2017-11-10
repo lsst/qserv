@@ -377,7 +377,6 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
     if (!_context->queryMapping) {
         throw QueryProcessingBug("Missing QueryMapping in _context");
     }
-    qana::QueryMapping const& queryMapping = *_context->queryMapping;
 
     for (auto&& queryTemplate: queryTemplates) {
         std::string str = _context->queryMapping->apply(chunkSpec, queryTemplate);
