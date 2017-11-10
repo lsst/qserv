@@ -117,12 +117,6 @@ public:
 
         for(auto i=_tupleDeque.begin(); i != _tupleDeque.end(); ++i) {
             newE->s = replace(newE->s, i->pat, i->tgt);
-            if (i->param == QueryMapping::SUBCHUNK) {
-                // Remember that we mapped a subchunk,
-                    // so we know to iterate over subchunks.
-                    // Or... the plugins could signal that subchunks
-                    // are needed somehow. FIXME.
-            }
         }
         return newE;
     }
