@@ -38,6 +38,7 @@
 #include <memory>
 
 // Third-party headers
+#include <boost/algorithm/string/replace.hpp>
 #include <mysql/mysql.h>
 
 // Class header
@@ -48,6 +49,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/constants.h"
 #include "global/DbTable.h"
 #include "global/debugUtil.h"
 #include "global/UnsupportedError.h"
@@ -75,6 +77,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
 namespace lsst {
 namespace qserv {
 namespace wdb {
+
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
@@ -416,11 +419,23 @@ bool QueryRunner::_dispatchChannel() {
                 break;
             }
             proto::TaskMsg_Fragment const& fragment(m.fragment(i));
+            std::vector<std::string> queries;
+            for (const std::string queryStr: fragment.query()) {
+                if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
+                    for (auto subchunkId : fragment.subchunks().id()) {
+                        std::string s(queryStr);
+                        boost::algorithm::replace_all(s, SUBCHUNK_TAG, std::to_string(subchunkId));
+                        queries.push_back(s);
+                    }
+                } else {
+                    queries.push_back(queryStr);
+                }
+            }
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
-            for(int qi=0, qe=fragment.query_size(); qi != qe; ++qi) {
-                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " running fragment=" << fragment.query(qi));
-                MYSQL_RES* res = _primeResult(fragment.query(qi)); // This runs the SQL query.
+            for (auto const& query : queries) {
+                LOGS(_log, LOG_LVL_DEBUG, "running fragment=" << query);
+                MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
                 if (!res) {
                     erred = true;
                     continue;
