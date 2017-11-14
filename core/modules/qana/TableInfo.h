@@ -98,9 +98,6 @@ struct TableInfo {
     /// `CHUNK_TAG` is a pattern that is replaced with a chunk number
     /// when generating concrete query text from a template.
     static std::string const CHUNK_TAG;
-    /// `SUBCHUNK_TAG` is a pattern that is replaced with a subchunk number
-    /// when generating concrete query text from a template.
-    static std::string const SUBCHUNK_TAG;
 
     enum Kind { DIRECTOR = 0, CHILD, MATCH, NUM_KINDS };
 

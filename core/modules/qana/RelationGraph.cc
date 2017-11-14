@@ -53,6 +53,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
+#include "global/constants.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.RelationGraph");
@@ -1019,7 +1020,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
                                      "references that require overlap");
     }
     // At least one table requires overlap, so sub-chunking must be turned on.
-    mapping.insertSubChunkEntry(TableInfo::SUBCHUNK_TAG);
+    mapping.insertSubChunkEntry(SUBCHUNK_TAG);
     // Rewrite director table references not requiring overlap as their
     // corresponding sub-chunk templates, and record the names of all
     // sub-chunked tables.
