@@ -8,4 +8,5 @@ Installation
    quick-start
    automated
    docker
-   k8s
+   k8s-user
+   k8s-sysadmin
