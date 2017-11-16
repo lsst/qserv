@@ -8,7 +8,6 @@ set -e
 set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env-cluster.sh"
 
 # IN2P3
 KUBECONFIG_DEFAULT_1="/qserv/kubernetes"
