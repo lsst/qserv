@@ -169,11 +169,11 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
 BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string stmt = "select count(*) from Object as o1, Object as o2 "
         "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.001;";
-    std::string expected_100_100000_core =
-        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2 "
+    std::string expected_100_subchunk_core =
+        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.Object_100_%S\007S% AS o2 "
         "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,6,6,7,7)=1 AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.001";
-    std::string expected_100_100010_overlap =
-        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_100010 AS o1,Subchunks_LSST_100.ObjectFullOverlap_100_100010 AS o2 "
+    std::string expected_100_subchunk_overlap =
+        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.ObjectFullOverlap_100_%S\007S% AS o2 "
         "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,6,6,7,7)=1 AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.001";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
@@ -196,13 +196,13 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     auto queryTemplates = qs->makeQueryTemplates();
     auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first->queries.size();
-    BOOST_CHECK_EQUAL(numQueries, 6);
+    BOOST_CHECK_EQUAL(numQueries, 2);
     BOOST_REQUIRE(numQueries > 0);
     // DEBUG
     //std::copy(first.queries.begin(), first.queries.end(), std::ostream_iterator<std::string>(std::cout, "\n\n"));
-    BOOST_CHECK_EQUAL(first->queries[0], expected_100_100000_core);
-    BOOST_REQUIRE(numQueries > 3);
-    BOOST_CHECK_EQUAL(first->queries[3], expected_100_100010_overlap);
+    BOOST_CHECK_EQUAL(first->queries[0], expected_100_subchunk_core);
+    BOOST_REQUIRE(numQueries > 1);
+    BOOST_CHECK_EQUAL(first->queries[1], expected_100_subchunk_overlap);
 }
 
 BOOST_AUTO_TEST_CASE(Triple) {
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
         "0.024 > scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) and "
         "Source.objectIdSourceTest=o2.objectIdObjTest;";
     std::string expected =
-        "SELECT * FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2,LSST.Source_100 AS QST_1_ "
+        "SELECT * FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.Object_100_%S\007S% AS o2,LSST.Source_100 AS QST_1_ "
         "WHERE o1.id!=o2.id AND "
         "0.024>scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) AND "
         "QST_1_.objectIdSourceTest=o2.objectIdObjTest";
@@ -333,8 +333,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
         "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
         "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.02";
     std::string expected = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o1,"
-        "Subchunks_LSST_100.Object_100_100000 AS o2 "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,"
+        "Subchunks_LSST_100.Object_100_%S\007S% AS o2 "
         "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,5.5,5.5,6.1,6.1)=1 "
         "AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,5.5,5.5,6.1,6.1)=1 "
         "AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.02";
@@ -692,7 +692,7 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
         "AND o1.objectId <> o2.objectId AND "
         "ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;";
     expected = "SELECT o1.objectId,o2.objectId AS objectId2 "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2 "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.Object_100_%S\007S% AS o2 "
         "WHERE scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.00001 "
         "AND o1.objectId<>o2.objectId AND "
         "ABS((scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS))-(scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)))<1";
@@ -967,15 +967,15 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
         "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
         "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
         "WHERE  closestToObj = 1 OR closestToObj is NULL;";
-    std::string expected_100_100000_core = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o "
+    std::string expected_100_subchunk_core = "SELECT count(*) AS QS1_COUNT "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o "
         "INNER JOIN LSST.RefObjMatch_100 AS o2t ON o.objectIdObjTest=o2t.objectId "
-        "INNER JOIN Subchunks_LSST_100.SimRefObject_100_100000 AS t ON o2t.refObjectId=t.refObjectId "
+        "INNER JOIN Subchunks_LSST_100.SimRefObject_100_%S\007S% AS t ON o2t.refObjectId=t.refObjectId "
         "WHERE closestToObj=1 OR closestToObj IS NULL";
-    std::string expected_100_100020_overlap = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_100020 AS o "
+    std::string expected_100_subchunk_overlap = "SELECT count(*) AS QS1_COUNT "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o "
         "INNER JOIN LSST.RefObjMatch_100 AS o2t ON o.objectIdObjTest=o2t.objectId "
-        "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_100020 AS t ON o2t.refObjectId=t.refObjectId "
+        "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_%S\007S% AS t ON o2t.refObjectId=t.refObjectId "
         "WHERE closestToObj=1 OR closestToObj IS NULL";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -989,11 +989,11 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     auto queryTemplates = qs->makeQueryTemplates();
     auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
     int numQueries = first->queries.size();
-    BOOST_CHECK_EQUAL(numQueries, 6);
+    BOOST_CHECK_EQUAL(numQueries, 2);
     BOOST_REQUIRE(numQueries > 0);
-    BOOST_CHECK_EQUAL(first->queries[0], expected_100_100000_core);
-    BOOST_REQUIRE(numQueries > 5);
-    BOOST_CHECK_EQUAL(first->queries[5], expected_100_100020_overlap);
+    BOOST_CHECK_EQUAL(first->queries[0], expected_100_subchunk_core);
+    BOOST_REQUIRE(numQueries > 1);
+    BOOST_CHECK_EQUAL(first->queries[1], expected_100_subchunk_overlap);
     // JOIN syntax, "is NULL" syntax
 }
 
