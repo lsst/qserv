@@ -203,6 +203,10 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK_EQUAL(first->queries[0], expected_100_subchunk_core);
     BOOST_REQUIRE(numQueries > 1);
     BOOST_CHECK_EQUAL(first->queries[1], expected_100_subchunk_overlap);
+    BOOST_REQUIRE_EQUAL(first->subChunkIds.size(), 3);
+    BOOST_CHECK_EQUAL(first->subChunkIds[0], 100000);
+    BOOST_CHECK_EQUAL(first->subChunkIds[1], 100010);
+    BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
 BOOST_AUTO_TEST_CASE(Triple) {
@@ -222,6 +226,11 @@ BOOST_AUTO_TEST_CASE(Triple) {
     BOOST_CHECK(context);
     std::string parallel = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(parallel, expected);
+    auto first = qs->buildChunkQuerySpec(qs->makeQueryTemplates(), *qs->cQueryBegin());
+    BOOST_REQUIRE_EQUAL(first->subChunkIds.size(), 3);
+    BOOST_CHECK_EQUAL(first->subChunkIds[0], 100000);
+    BOOST_CHECK_EQUAL(first->subChunkIds[1], 100010);
+    BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
 BOOST_AUTO_TEST_CASE(BadDbAccess) {
@@ -995,6 +1004,10 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_REQUIRE(numQueries > 1);
     BOOST_CHECK_EQUAL(first->queries[1], expected_100_subchunk_overlap);
     // JOIN syntax, "is NULL" syntax
+    BOOST_REQUIRE_EQUAL(first->subChunkIds.size(), 3);
+    BOOST_CHECK_EQUAL(first->subChunkIds[0], 100000);
+    BOOST_CHECK_EQUAL(first->subChunkIds[1], 100010);
+    BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1083) {
