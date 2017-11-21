@@ -58,7 +58,7 @@ USER qserv
 ENV STACK_DIR /qserv/stack
 RUN mkdir $STACK_DIR && cd $STACK_DIR && \
     curl -OL \
-    https://raw.githubusercontent.com/lsst/lsst/14.0/scripts/newinstall.sh && \
+    https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh && \
     bash newinstall.sh -b
 
 RUN bash -c ". $STACK_DIR/loadLSST.bash && eups distrib install qserv_distrib -t '$EUPS_TAG'"
