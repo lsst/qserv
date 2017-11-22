@@ -27,7 +27,7 @@
   * @brief JobStatus implementation
   *
   * Store information message issused by a job
-  * running a chunkQuery on a xrootd ressource
+  * running a chunkQuery on an SSI ressource
   *
   * @author Fabrice Jammes, IN2P3
   */
@@ -95,12 +95,6 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
         break;
     case JobStatus::RESPONSE_DATA_ERROR:
         msg = "Error retrieving response data";
-        break;
-    case JobStatus::RESPONSE_DATA_ERROR_OK:
-        msg = "Error retrieving response, session is OK";
-        break;
-    case JobStatus::RESPONSE_DATA_ERROR_CORRUPT:
-        msg = "Error retrieving response session is corrupt";
         break;
     case JobStatus::RESPONSE_DATA_NACK:
         msg = "Error in response data";

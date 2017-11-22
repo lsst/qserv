@@ -145,7 +145,7 @@ public:
 
 
     /// Prepare to scrub the results from jobId-attempt from the result table.
-    bool prepScrubResults(int jobId, int attempt) override;
+    void prepScrubResults(int jobId, int attempt) override;
 
 private:
     void _initState();

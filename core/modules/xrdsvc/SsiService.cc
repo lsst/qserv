@@ -32,7 +32,6 @@
 #include <unistd.h>
 
 // Third-party headers
-#include "XProtocol/XProtocol.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
@@ -154,12 +153,14 @@ SsiService::~SsiService() {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
 }
 
-void SsiService::Provision(XrdSsiService::Resource* r,
-                           unsigned short timeOut,
-                           bool userConn) { // Step 2
-    LOGS(_log, LOG_LVL_DEBUG, "Got provision call where rName is: " << r->rDesc.rName);
-    XrdSsiSession* session = new SsiSession(r->rDesc.rName, _chunkInventory->newValidator(), _foreman);
-    r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
+void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
+    LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
+    SsiSession* session = new SsiSession(resRef.rName, _chunkInventory->newValidator(), _foreman);
+
+    // Continue execution in the session object as SSI gave us a new thread.
+    // Object deletes itself when finished is called.
+    //
+    session->execute(reqRef);
 }
 
 void SsiService::_initInventory() {

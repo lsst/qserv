@@ -177,7 +177,7 @@ def _setEnvWithDependencies():
         (PathVariable('ANTLR_LIB', 'antlr libraries path',
          os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
-            env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
+            env['XROOTD_DIR'], "include", "xrootd/private"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_LIB', 'xrootd libraries path',
          os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('MYSQL_INC', 'mysql include path',

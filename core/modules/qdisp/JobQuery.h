@@ -82,17 +82,9 @@ public:
     bool cancel();
     bool isQueryCancelled();
 
-    void freeQueryResource(QueryResource* qr);
-
     Executive::Ptr getExecutive() { return _executive.lock(); }
 
     std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
-
-    void provisioningFailed(std::string const& msg, int code);
-    std::shared_ptr<QueryResource> getQueryResource() {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _queryResourcePtr;
-    }
 
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
@@ -116,8 +108,7 @@ protected:
 
     // Values that don't change once set.
     std::weak_ptr<Executive>  _executive;
-    /// The job description needs to survive until the task is complete. Some elements are passed to
-    /// xrootd as raw pointers.
+    /// The job description needs to survive until the task is complete.
     JobDescription::Ptr _jobDescription;
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
@@ -128,12 +119,12 @@ protected:
     std::string const _idStr; ///< Identifier string for logging.
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex; ///< protects _jobDescription, _queryResourcePtr,
-                                          /// _queryRequestPtr
+    mutable std::recursive_mutex _rmutex; ///< protects _jobDescription,
+                                          ///< _queryRequestPtr, and _inSsi
 
-    // xrootd items
-    std::shared_ptr<QueryResource> _queryResourcePtr;
+    // SSI items
     std::shared_ptr<QueryRequest> _queryRequestPtr;
+    bool _inSsi{false};
 
     // Cancellation
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
