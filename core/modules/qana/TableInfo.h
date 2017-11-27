@@ -178,16 +178,6 @@ struct TableInfo {
     friend std::ostream& operator<<(std::ostream& os, TableInfo const& ti);
 };
 
-/// `TableInfoLt` is a less-than comparison functor for non-null `TableInfo`
-/// pointers.
-struct TableInfoLt {
-    bool operator()(TableInfo const* t1, TableInfo const* t2) const {
-        int c = t1->table.compare(t2->table);
-        return c < 0 || (c == 0 && t1->database < t2->database);
-    }
-};
-
-
 /// `DirTableInfo` contains metadata for director tables.
 struct DirTableInfo : TableInfo {
     std::string pk;  ///< `pk` is the name of the director's primary key column.

@@ -28,14 +28,15 @@
 /// \brief A class for creating and pooling table metadata objects.
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace query {
-    class QueryContext;
+namespace css {
+    class CssAccess;
 }
 namespace qana {
     struct TableInfo;
@@ -57,13 +58,12 @@ namespace qana {
 /// `TableInfoPool` is not currently thread-safe.
 class TableInfoPool {
 public:
-    TableInfoPool() {}
-    ~TableInfoPool();
+    TableInfoPool(std::string const& defaultDb, css::CssAccess const& css)
+        : _defaultDb(defaultDb), _css(css) {}
 
-    /// `get` returns a pointer to metadata for the given table, or null if
-    /// there is none available. The pool retains pointer ownership.
-    TableInfo const* get(std::string const& db,
-                         std::string const& table) const;
+    // not implemented
+    TableInfoPool(TableInfoPool const&) = delete;
+    TableInfoPool& operator=(TableInfoPool const&) = delete;
 
     /// `get` returns a pointer to metadata for the given table, creating
     /// a metadata object if necessary. The pool retains pointer ownership.
@@ -78,21 +78,19 @@ public:
     /// unowned pointers to other metadata objects - these can sometimes
     /// be successfully created and added to the pool before an exception
     /// is thrown for the directly requested object.
-    TableInfo const* get(query::QueryContext const& ctx,
-                         std::string const& db,
+    TableInfo const* get(std::string const& db,
                          std::string const& table);
 
 private:
     // A set implemented as a sorted vector since the number of entries
     // is expected to be small.
-    typedef std::vector<TableInfo const*> Pool;
+    typedef std::vector<std::unique_ptr<TableInfo const>> Pool;
 
-    // not implemented
-    TableInfoPool(TableInfoPool const&);
-    TableInfoPool& operator=(TableInfoPool const&);
+    // save owned TableInfo pointer in pool, return non-owned pointer.
+    TableInfo const* _insert(std::unique_ptr<TableInfo const> t);
 
-    void _insert(TableInfo const* t);
-
+    std::string const _defaultDb;
+    css::CssAccess const& _css;
     Pool _pool;
 };
 

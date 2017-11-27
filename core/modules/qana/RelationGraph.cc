@@ -732,7 +732,7 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
             "passed to RelationGraph constructor.");
     }
     // Create a graph for the left-most table in a join sequence.
-    RelationGraph g(*tr, pool.get(ctx, tr->getDb(), tr->getTable()), overlap);
+    RelationGraph g(*tr, pool.get(tr->getDb(), tr->getTable()), overlap);
     // Process remaining tables in the JOIN sequence. Note that joins are
     // left-associative in the absence of parentheses, i.e. "A JOIN B JOIN C"
     // is equivalent to "(A JOIN B) JOIN C", and that relation graphs are

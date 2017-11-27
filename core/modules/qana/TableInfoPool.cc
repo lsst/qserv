@@ -40,54 +40,50 @@
 #include "qana/TableInfo.h"
 #include "query/QueryContext.h"
 
+namespace {
+/// `TableInfoLt` is a less-than comparison functor for non-null `TableInfo`
+/// pointers.
+struct TableInfoLt {
+    bool operator()(std::unique_ptr<lsst::qserv::qana::TableInfo const> const& t1,
+            std::unique_ptr<lsst::qserv::qana::TableInfo const> const& t2) const {
+        return *t1 < *t2;
+    }
+};
+}
+
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
-TableInfoPool::~TableInfoPool() {
-    // Delete all table metadata objects in the pool
-    for (Pool::iterator i = _pool.begin(), e = _pool.end(); i != e; ++i) {
-        delete *i;
-    }
-}
+TableInfo const*
+TableInfoPool::get(std::string const& db, std::string const& table) {
 
-TableInfo const* TableInfoPool::get(std::string const& db,
-                                    std::string const& table) const
-{
+    std::string const& db_ = db.empty() ? _defaultDb : db;
+
     // Note that t.kind is irrelevant to the search,
     // and is set to an arbitrary value.
-    TableInfo t(db, table, TableInfo::DIRECTOR);
-    std::pair<Pool::const_iterator, Pool::const_iterator> p =
-        std::equal_range(_pool.begin(), _pool.end(), &t, TableInfoLt());
-    return (p.first == p.second) ? 0 : *p.first;
-}
-
-TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
-                                    std::string const& db,
-                                    std::string const& table)
-{
-    std::string const& db_ = db.empty() ? ctx.defaultDb : db;
-    TableInfo const* t = get(db_, table);
-    if (t) {
-        return t;
+    std::unique_ptr<TableInfo const> t(new TableInfo(db, table, TableInfo::DIRECTOR));
+    auto range = std::equal_range(_pool.begin(), _pool.end(), t, TableInfoLt());
+    if (range.first != range.second) {
+        return range.first->get();
     }
-    css::CssAccess const& css = *ctx.css;
-    css::TableParams const tParam = css.getTableParams(db_, table);
+
+    css::TableParams const tParam = _css.getTableParams(db_, table);
     css::PartTableParams const& partParam = tParam.partitioning;
     int const chunkLevel = partParam.chunkLevel();
     // unpartitioned table
     if (chunkLevel == 0) {
-        return 0;
+        return nullptr;
     }
     // match table
     if (tParam.match.isMatchTable()) {
         css::MatchTableParams const& m = tParam.match;
         std::unique_ptr<MatchTableInfo> p(new MatchTableInfo(db_, table));
         p->director.first = dynamic_cast<DirTableInfo const*>(
-            get(ctx, db_, m.dirTable1));
+            get(db_, m.dirTable1));
         p->director.second = dynamic_cast<DirTableInfo const*>(
-            get(ctx, db_, m.dirTable2));
+            get(db_, m.dirTable2));
         if (!p->director.first || !p->director.second) {
             throw InvalidTableError(db_ + "." + table + " is a match table, but"
                                     " does not reference two director tables!");
@@ -106,8 +102,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
                                     " relates two director tables with"
                                     " different partitionings!");
         }
-        _insert(p.get());
-        return p.release();
+        return _insert(std::move(p));
     }
     std::string const& dirTable = partParam.dirTable;
     // director table
@@ -117,7 +112,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
                                     "table, but cannot be sub-chunked!");
         }
         std::unique_ptr<DirTableInfo> p(new DirTableInfo(db_, table));
-        std::vector<std::string> v = css.getPartTableParams(db, table).partitionCols();
+        std::vector<std::string> v = _css.getPartTableParams(db, table).partitionCols();
         if (v.size() != 3 ||
             v[0].empty() || v[1].empty() || v[2].empty() ||
             v[0] == v[1] || v[1] == v[2] || v[0] == v[2]) {
@@ -129,9 +124,8 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
         p->pk = v[2];
         p->lon = v[0];
         p->lat = v[1];
-        p->partitioningId = css.getDbStriping(db_).partitioningId;
-        _insert(p.get());
-        return p.release();
+        p->partitioningId = _css.getDbStriping(db_).partitioningId;
+        return _insert(std::move(p));
     }
     // child table
     if (chunkLevel != 1) {
@@ -140,7 +134,7 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
     }
     std::unique_ptr<ChildTableInfo> p(new ChildTableInfo(db_, table));
     p->director = dynamic_cast<DirTableInfo const*>(
-        get(ctx, db_, partParam.dirTable));
+        get(db_, partParam.dirTable));
     if (!p->director) {
         throw InvalidTableError(db_ + "." + table + " is a child table, but"
                                 " does not reference a director table!");
@@ -150,16 +144,19 @@ TableInfo const* TableInfoPool::get(query::QueryContext const& ctx,
         throw InvalidTableError("Child table " + db_ + "." + table + " metadata"
                                 " does not contain a director column name!");
     }
-    _insert(p.get());
-    return p.release();
+
+    return _insert(std::move(p));
 }
 
-void TableInfoPool::_insert(TableInfo const* t) {
-    if (t) {
-        Pool::iterator i =
+TableInfo const*
+TableInfoPool::_insert(std::unique_ptr<TableInfo const> t) {
+    if (t != nullptr) {
+        Pool::iterator iter =
             std::upper_bound(_pool.begin(), _pool.end(), t, TableInfoLt());
-        _pool.insert(i, t);
+        iter = _pool.insert(iter, std::move(t));
+        return iter->get();
     }
+    return nullptr;
 }
 
 }}} // namespace lsst::qserv::qana

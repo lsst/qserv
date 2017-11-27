@@ -325,7 +325,7 @@ void
 TablePlugin::applyPhysical(QueryPlugin::Plan& p,
                            query::QueryContext& context)
 {
-    TableInfoPool pool;
+    TableInfoPool pool(context.defaultDb, *context.css);
     if (!context.queryMapping) {
         context.queryMapping = std::make_shared<QueryMapping>();
     }
