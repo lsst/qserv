@@ -184,9 +184,10 @@ struct DirTableInfo : TableInfo {
     std::string lon; ///< `lon` is the name of the director's longitude column.
     std::string lat; ///< `lat` is the name of the director's latitude column.
     int32_t partitioningId;
+    double overlap;  ///< overlap value for partitioning of this table
 
-    DirTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, DIRECTOR), partitioningId(0) {}
+    DirTableInfo(std::string const& db, std::string const& t, double o) :
+        TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;
@@ -265,10 +266,10 @@ struct MatchTableInfo : TableInfo {
     /// `fk` is the pair of names for the foreign key columns referencing
     /// `director.first->pk` and `director.second->pk`.
     std::pair<std::string, std::string> fk;
+    double angSep; ///< allowed angular separation between objects in director tables
 
-    MatchTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, MATCH),
-        director(static_cast<DirTableInfo*>(nullptr), static_cast<DirTableInfo*>(nullptr)) {}
+    MatchTableInfo(std::string const& db, std::string const& t, double sep) :
+        TableInfo(db, t, MATCH), director(), angSep(sep) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;

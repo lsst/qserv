@@ -79,12 +79,16 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     // match table
     if (tParam.match.isMatchTable()) {
         css::MatchTableParams const& m = tParam.match;
-        std::unique_ptr<MatchTableInfo> p(new MatchTableInfo(db_, table));
-        p->director.first = dynamic_cast<DirTableInfo const*>(
+        // TODO: match table angular separation should come from a separate
+        // parameter which we do not have currently. For now abuse per-database
+        // partition overlap parameter for that purpose.
+        double angSep = _css.getDbStriping(db_).overlap;
+        std::unique_ptr<MatchTableInfo> infoPtr(new MatchTableInfo(db_, table, angSep));
+        infoPtr->director.first = dynamic_cast<DirTableInfo const*>(
             get(db_, m.dirTable1));
-        p->director.second = dynamic_cast<DirTableInfo const*>(
+        infoPtr->director.second = dynamic_cast<DirTableInfo const*>(
             get(db_, m.dirTable2));
-        if (!p->director.first || !p->director.second) {
+        if (!infoPtr->director.first || !infoPtr->director.second) {
             throw InvalidTableError(db_ + "." + table + " is a match table, but"
                                     " does not reference two director tables!");
         }
@@ -94,15 +98,15 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
                                     " metadata does not contain 2 non-empty"
                                     " and distinct director column names!");
         }
-        p->fk.first = m.dirColName1;
-        p->fk.second = m.dirColName2;
-        if (p->director.first->partitioningId !=
-            p->director.second->partitioningId) {
+        infoPtr->fk.first = m.dirColName1;
+        infoPtr->fk.second = m.dirColName2;
+        if (infoPtr->director.first->partitioningId !=
+            infoPtr->director.second->partitioningId) {
             throw InvalidTableError("Match table " + db_ + "." + table +
                                     " relates two director tables with"
                                     " different partitionings!");
         }
-        return _insert(std::move(p));
+        return _insert(std::move(infoPtr));
     }
     std::string const& dirTable = partParam.dirTable;
     // director table
@@ -111,7 +115,10 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
             throw InvalidTableError(db_ + "." + table + " is a director "
                                     "table, but cannot be sub-chunked!");
         }
-        std::unique_ptr<DirTableInfo> p(new DirTableInfo(db_, table));
+        css::StripingParams dbStriping = _css.getDbStriping(db_);
+        // use per-table or per-database overlap value
+        double overlap = partParam.overlap != 0.0 ? partParam.overlap : dbStriping.overlap;
+        std::unique_ptr<DirTableInfo> infoPtr(new DirTableInfo(db_, table, overlap));
         std::vector<std::string> v = _css.getPartTableParams(db, table).partitionCols();
         if (v.size() != 3 ||
             v[0].empty() || v[1].empty() || v[2].empty() ||
@@ -121,31 +128,31 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
                                     " distinct director, longitude and"
                                     " latitude column names.");
         }
-        p->pk = v[2];
-        p->lon = v[0];
-        p->lat = v[1];
-        p->partitioningId = _css.getDbStriping(db_).partitioningId;
-        return _insert(std::move(p));
+        infoPtr->pk = v[2];
+        infoPtr->lon = v[0];
+        infoPtr->lat = v[1];
+        infoPtr->partitioningId = dbStriping.partitioningId;
+        return _insert(std::move(infoPtr));
     }
     // child table
     if (chunkLevel != 1) {
         throw InvalidTableError(db_ + "." + table + " is a child"
                                 " table, but can be sub-chunked!");
     }
-    std::unique_ptr<ChildTableInfo> p(new ChildTableInfo(db_, table));
-    p->director = dynamic_cast<DirTableInfo const*>(
+    std::unique_ptr<ChildTableInfo> infoPtr(new ChildTableInfo(db_, table));
+    infoPtr->director = dynamic_cast<DirTableInfo const*>(
         get(db_, partParam.dirTable));
-    if (!p->director) {
+    if (!infoPtr->director) {
         throw InvalidTableError(db_ + "." + table + " is a child table, but"
                                 " does not reference a director table!");
     }
-    p->fk = partParam.dirColName;
-    if (p->fk.empty()) {
+    infoPtr->fk = partParam.dirColName;
+    if (infoPtr->fk.empty()) {
         throw InvalidTableError("Child table " + db_ + "." + table + " metadata"
                                 " does not contain a director column name!");
     }
 
-    return _insert(std::move(p));
+    return _insert(std::move(infoPtr));
 }
 
 TableInfo const*
