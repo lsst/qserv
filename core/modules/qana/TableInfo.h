@@ -63,6 +63,7 @@
 // System headers
 #include <cstddef>
 #include <memory>
+#include <iostream>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -172,11 +173,15 @@ struct TableInfo {
         return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
     }
 
-    /// C++ isn't doing the redirection on  os << *(a->info); to use the child classes' operator<< functions.
-    /// Overloading the pointer could work, but then it is more difficult to print the raw pointer. Meh.
-    virtual std::string dump() const;
-    friend std::ostream& operator<<(std::ostream& os, TableInfo const& ti);
+    virtual void dump(std::ostream& os) const;
 };
+
+inline
+std::ostream&
+operator<<(std::ostream& os, TableInfo const& ti) {
+    ti.dump(os);
+    return os;
+}
 
 /// `DirTableInfo` contains metadata for director tables.
 struct DirTableInfo : TableInfo {
@@ -211,8 +216,7 @@ struct DirTableInfo : TableInfo {
                                     std::string const& a,
                                     std::string const& b,
                                     bool outer) const;
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, DirTableInfo const& dti);
+    void dump(std::ostream& os) const override;
 };
 
 
@@ -253,8 +257,7 @@ struct ChildTableInfo : TableInfo {
                                     std::string const& b,
                                     bool outer) const;
 
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, ChildTableInfo const& cti);
+    void dump(std::ostream& os) const override;
 };
 
 
@@ -296,8 +299,7 @@ struct MatchTableInfo : TableInfo {
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
 
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, MatchTableInfo const& mti);
+    void dump(std::ostream& os) const override;
 };
 
 }}} // namespace lsst::qserv::qana

@@ -78,69 +78,34 @@ std::string const TableInfo::CHUNK_TAG("%CC%");
 std::string const TableInfo::SUBCHUNK_TAG("%SS%");
 
 
-std::ostream& operator<<(std::ostream& os, TableInfo const& ti) {
-    return os << "TI(" << ti.database << "." << ti.table << " kind=" << ti.kind << ")";
+void TableInfo::dump(std::ostream& os) const {
+    os << "TI(" << database << "." << table << " kind=" << kind << ")";
 }
 
+void DirTableInfo::dump(std::ostream& os) const {
+    os << "DTI(" << database << "." << table << " kind=" << kind
+       << " pk=" << pk
+       << " lon=" << lon
+       << " lat=" << lat
+       << " partId=" << partitioningId
+       << ")";
+}
 
-std::ostream& operator<<(std::ostream& os, ChildTableInfo const& cti) {
-    os << "CTI(" << static_cast<TableInfo const&>(cti)
-       << " fk=" << cti.fk
-       << " director=(" << *cti.director
+void ChildTableInfo::dump(std::ostream& os) const {
+    os << "CTI(" << database << "." << table << " kind=" << kind
+       << " fk=" << fk
+       << " director=(" << *director
        << "))";
-    return os;
 }
 
-
-std::ostream& operator<<(std::ostream& os, DirTableInfo const& dti) {
-    os << "DTI(" << static_cast<TableInfo const&>(dti)
-       << " pk=" << dti.pk
-       << " lon=" << dti.lon
-       << " lat=" << dti.lat
-       << " partId=" << dti.partitioningId
+void MatchTableInfo::dump(std::ostream& os) const {
+    os << "MTI(" << database << "." << table << " kind=" << kind
+       << " director_1[" << *director.first << "]"
+       << " director_2[" << *director.second << "]"
+       << " fk_1=" << fk.first
+       << " fk_2=" << fk.second
        << ")";
-    return os;
 }
-
-
-std::ostream& operator<<(std::ostream& os, MatchTableInfo const& mti) {
-    os << "MTI(" << static_cast<TableInfo const&>( mti )
-       << " director_1[" << *mti.director.first << "]"
-       << " director_2[" << *mti.director.second << "]"
-       << " fk_1=" << mti.fk.first
-       << " fk_2=" << mti.fk.second
-       << ")";
-    return os;
-}
-
-
-std::string TableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string DirTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string ChildTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
-
-std::string MatchTableInfo::dump() const {
-    std::ostringstream os;
-    os << *this;
-    return os.str();
-}
-
 
 std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(
     std::string const& tableAlias) const

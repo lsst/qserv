@@ -618,8 +618,7 @@ public:
 
     /// This constructor creates a relation graph from a query.
     /// If the query is not evaluable, an exception is thrown.
-    RelationGraph(query::QueryContext const& ctx,
-                  query::SelectStmt& stmt,
+    RelationGraph(query::SelectStmt& stmt,
                   TableInfoPool& pool);
 
     /// `empty` returns `true` if this graph has no vertices.
@@ -645,13 +644,8 @@ private:
 
     // Constructors and related helpers
     RelationGraph() : _query(0) {}
-    RelationGraph(query::TableRef& tr,
-                  TableInfo const* info,
-                  double overlap);
-    RelationGraph(query::QueryContext const& ctx,
-                  query::TableRef::Ptr const& tr,
-                  double overlap,
-                  TableInfoPool& pool);
+    RelationGraph(query::TableRef& tr, TableInfo const* info);
+    RelationGraph(query::TableRef::Ptr const& tr, TableInfoPool& pool);
 
     size_t _addOnEqEdges(query::BoolTerm::Ptr on,
                          bool outer,
@@ -661,15 +655,15 @@ private:
                             bool outer,
                             RelationGraph& g);
     size_t _addWhereEqEdges(query::BoolTerm::Ptr where);
-    size_t _addSpEdges(query::BoolTerm::Ptr bt, double overlap);
+    size_t _addSpEdges(query::BoolTerm::Ptr bt);
     void _fuse(query::JoinRef::Type joinType,
                bool natural,
                query::JoinSpec::Ptr const& joinSpec,
-               double overlap,
                RelationGraph& g);
+    void _dumpGraph() const;
 
     // Graph validation
-    bool _validate(double overlap);
+    bool _validate();
 };
 
 }}} // namespace lsst::qserv::qana
