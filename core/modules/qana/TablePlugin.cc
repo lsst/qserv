@@ -325,7 +325,7 @@ void
 TablePlugin::applyPhysical(QueryPlugin::Plan& p,
                            query::QueryContext& context)
 {
-    TableInfoPool pool;
+    TableInfoPool pool(context.defaultDb, *context.css);
     if (!context.queryMapping) {
         context.queryMapping = std::make_shared<QueryMapping>();
     }
@@ -333,7 +333,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
     typedef SelectStmtPtrVector::iterator Iter;
     SelectStmtPtrVector newList;
     for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
-        RelationGraph g(context, **i, pool);
+        RelationGraph g(**i, pool);
         g.rewrite(newList, *context.queryMapping);
     }
     p.dominantDb = _dominantDb;

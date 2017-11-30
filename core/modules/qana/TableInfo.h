@@ -63,6 +63,7 @@
 // System headers
 #include <cstddef>
 #include <memory>
+#include <iostream>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -172,21 +173,15 @@ struct TableInfo {
         return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
     }
 
-    /// C++ isn't doing the redirection on  os << *(a->info); to use the child classes' operator<< functions.
-    /// Overloading the pointer could work, but then it is more difficult to print the raw pointer. Meh.
-    virtual std::string dump() const;
-    friend std::ostream& operator<<(std::ostream& os, TableInfo const& ti);
+    virtual void dump(std::ostream& os) const;
 };
 
-/// `TableInfoLt` is a less-than comparison functor for non-null `TableInfo`
-/// pointers.
-struct TableInfoLt {
-    bool operator()(TableInfo const* t1, TableInfo const* t2) const {
-        int c = t1->table.compare(t2->table);
-        return c < 0 || (c == 0 && t1->database < t2->database);
-    }
-};
-
+inline
+std::ostream&
+operator<<(std::ostream& os, TableInfo const& ti) {
+    ti.dump(os);
+    return os;
+}
 
 /// `DirTableInfo` contains metadata for director tables.
 struct DirTableInfo : TableInfo {
@@ -194,9 +189,10 @@ struct DirTableInfo : TableInfo {
     std::string lon; ///< `lon` is the name of the director's longitude column.
     std::string lat; ///< `lat` is the name of the director's latitude column.
     int32_t partitioningId;
+    double overlap;  ///< overlap value for partitioning of this table
 
-    DirTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, DIRECTOR), partitioningId(0) {}
+    DirTableInfo(std::string const& db, std::string const& t, double o) :
+        TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;
@@ -220,8 +216,7 @@ struct DirTableInfo : TableInfo {
                                     std::string const& a,
                                     std::string const& b,
                                     bool outer) const;
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, DirTableInfo const& dti);
+    void dump(std::ostream& os) const override;
 };
 
 
@@ -262,8 +257,7 @@ struct ChildTableInfo : TableInfo {
                                     std::string const& b,
                                     bool outer) const;
 
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, ChildTableInfo const& cti);
+    void dump(std::ostream& os) const override;
 };
 
 
@@ -275,10 +269,10 @@ struct MatchTableInfo : TableInfo {
     /// `fk` is the pair of names for the foreign key columns referencing
     /// `director.first->pk` and `director.second->pk`.
     std::pair<std::string, std::string> fk;
+    double angSep; ///< allowed angular separation between objects in director tables
 
-    MatchTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, MATCH),
-        director(static_cast<DirTableInfo*>(nullptr), static_cast<DirTableInfo*>(nullptr)) {}
+    MatchTableInfo(std::string const& db, std::string const& t, double sep) :
+        TableInfo(db, t, MATCH), director(), angSep(sep) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;
@@ -305,8 +299,7 @@ struct MatchTableInfo : TableInfo {
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
 
-    std::string dump() const override;
-    friend std::ostream& operator<<(std::ostream& os, MatchTableInfo const& mti);
+    void dump(std::ostream& os) const override;
 };
 
 }}} // namespace lsst::qserv::qana

@@ -245,7 +245,7 @@ size_t addEqEdge(std::string const& ca,
     }
     TableInfo const& ta = *(a->info);
     TableInfo const& tb = *(b->info);
-    LOGS(_log, LOG_LVL_DEBUG, "addEqEdge a=" << a->info->dump() << " b=" << b->info->dump());
+    LOGS(_log, LOG_LVL_DEBUG, "addEqEdge a=" << *a->info << " b=" << *b->info);
     if (ta.isEqPredAdmissible(tb, ca, cb, outer)) {
         // Add a pair of Edge objects, a → b and b → a.
         LOGS(_log, LOG_LVL_DEBUG, "addEqEdge true for (" << ca << "," << cb << ")");
@@ -498,7 +498,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
 /// `_addSpEdges` creates a graph edge for each admissible top-level spatial
 /// predicate extracted from the given boolean term. The number of admissible
 /// predicates is returned.
-size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
+size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
 {
     size_t numEdges = 0;
     bt = findFirstNonTrivialChild(bt);
@@ -507,7 +507,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
         // Recurse to the children.
         typedef BoolTerm::PtrVector::const_iterator BtIter;
         for (BtIter i = at->_terms.begin(), e = at->_terms.end(); i != e; ++i) {
-            numEdges += _addSpEdges(*i, overlap);
+            numEdges += _addSpEdges(*i);
         }
         return numEdges;
     }
@@ -524,16 +524,16 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
     // Try to extract a scisql_angSep() call and a numeric constant
     // from the comparison predicate.
     FuncExpr::Ptr fe;
-    double x = std::numeric_limits<double>::quiet_NaN();
+    double angSep = std::numeric_limits<double>::quiet_NaN();
     switch (cp->op) {
         case SqlSQL2TokenTypes::LESS_THAN_OP: // fallthrough
         case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
             fe = getAngSepFunc(cp->left);
-            x = getNumericConst(cp->right);
+            angSep = getNumericConst(cp->right);
             break;
         case SqlSQL2TokenTypes::GREATER_THAN_OP: // fallthrough
         case SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
-            x = getNumericConst(cp->left);
+            angSep = getNumericConst(cp->left);
             fe = getAngSepFunc(cp->right);
             break;
         case SqlSQL2TokenTypes::EQUALS_OP:
@@ -542,17 +542,17 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
             // technically evaluable.
             fe = getAngSepFunc(cp->left);
             if (!fe) {
-                x = getNumericConst(cp->left);
+                angSep = getNumericConst(cp->left);
                 fe = getAngSepFunc(cp->right);
             } else {
-                x = getNumericConst(cp->right);
+                angSep = getNumericConst(cp->right);
             }
             break;
     }
-    if (!fe || (boost::math::isnan)(x) || x > overlap) {
+    if (!fe || boost::math::isnan(angSep)) {
         // The scisql_angSep() call and/or numeric constant is missing,
-        // the constant exceeds the partition overlap or the comparison
-        // operator is invalid (e.g. "x < scisql_angSep(...)")
+        // or the comparison operator is invalid (e.g.
+        // "angSep < scisql_angSep(...)")
         return 0;
     }
     // Extract column references from fe
@@ -594,8 +594,8 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
         return 0;
     }
     // Finally, add an edge between v[0] and v[2].
-    v[0]->insert(Edge(v[2], x));
-    v[2]->insert(Edge(v[0], x));
+    v[0]->insert(Edge(v[2], angSep));
+    v[2]->insert(Edge(v[0], angSep));
     return 1;
 }
 
@@ -605,7 +605,6 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
 void RelationGraph::_fuse(JoinRef::Type joinType,
                           bool natural,
                           JoinSpec::Ptr const& joinSpec,
-                          double overlap,
                           RelationGraph& g)
 {
     if (this == &g) {
@@ -668,15 +667,14 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
     _map.fuse(g._map, natural, usingCols);
     // Add spatial edges
     if (!outer && joinSpec && joinSpec->getOn()) {
-        _addSpEdges(joinSpec->getOn(), overlap);
+        _addSpEdges(joinSpec->getOn());
     }
 }
 
 /// This constructor creates a relation graph for a single partitioned
 /// table reference.
-RelationGraph::RelationGraph(TableRef& tr,
-                             TableInfo const* info,
-                             double overlap) :
+/// `matchAngSep` - assumed angular separation for match tables
+RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
     _query(0)
 {
     typedef std::vector<ColumnRefConstPtr>::const_iterator Iter;
@@ -684,10 +682,14 @@ RelationGraph::RelationGraph(TableRef& tr,
     if (!info) {
         return;
     } else if (info->kind != TableInfo::MATCH) {
+        LOGS(_log, LOG_LVL_DEBUG, "RG: non-match table tr=\"" << tr << "\" info=" << *info);
         _vertices.push_back(Vertex(tr, info));
         ColumnVertexMap m(_vertices.front());
         _map.swap(m);
     } else {
+        double matchAngSep = static_cast<MatchTableInfo const&>(*info).angSep;
+        LOGS(_log, LOG_LVL_DEBUG, "RG: match table tr=\"" << tr << "\" info=" << *info
+                << " matchAngSep=" << matchAngSep);
         // Decompose match table references into a pair of vertices - one for
         // each foreign key in the match table.
         _vertices.push_back(Vertex(tr, info));
@@ -696,8 +698,8 @@ RelationGraph::RelationGraph(TableRef& tr,
         // match table metadata included the maximum angular separation between
         // matched entities, it could be used instead of the partition overlap
         // below (the latter is an upper bound on the former).
-        _vertices.front().insert(Edge(&_vertices.back(), overlap));
-        _vertices.back().insert(Edge(&_vertices.front(), overlap));
+        _vertices.front().insert(Edge(&_vertices.back(), matchAngSep));
+        _vertices.back().insert(Edge(&_vertices.front(), matchAngSep));
         // Split column references for the match table reference across vertices.
         std::vector<ColumnRefConstPtr> refs =
             info->makeColumnRefs(tr.getAlias());
@@ -720,10 +722,7 @@ RelationGraph::RelationGraph(TableRef& tr,
 
 /// This constructor creates a relation graph for a `TableRef`
 /// and its constituent joins.
-RelationGraph::RelationGraph(QueryContext const& ctx,
-                             TableRef::Ptr const& tr,
-                             double overlap,
-                             TableInfoPool& pool) :
+RelationGraph::RelationGraph(TableRef::Ptr const& tr, TableInfoPool& pool) :
     _query(0)
 {
     if (!tr) {
@@ -731,8 +730,10 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
             "Parser/query analysis bug: NULL TableRef pointer "
             "passed to RelationGraph constructor.");
     }
+    LOGS(_log, LOG_LVL_DEBUG, "RG: tr=" << *tr);
+
     // Create a graph for the left-most table in a join sequence.
-    RelationGraph g(*tr, pool.get(ctx, tr->getDb(), tr->getTable()), overlap);
+    RelationGraph g(*tr, pool.get(tr->getDb(), tr->getTable()));
     // Process remaining tables in the JOIN sequence. Note that joins are
     // left-associative in the absence of parentheses, i.e. "A JOIN B JOIN C"
     // is equivalent to "(A JOIN B) JOIN C", and that relation graphs are
@@ -744,8 +745,8 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
     typedef JoinRefPtrVector::const_iterator Iter;
     for (Iter i = joins.begin(), e = joins.end(); i != e; ++i) {
         JoinRef& j = **i;
-        RelationGraph tmp(ctx, j.getRight(), overlap, pool);
-        g._fuse(j.getJoinType(), j.isNatural(), j.getSpec(), overlap, tmp);
+        RelationGraph tmp(j.getRight(), pool);
+        g._fuse(j.getJoinType(), j.isNatural(), j.getSpec(), tmp);
     }
     swap(g);
 }
@@ -794,18 +795,15 @@ struct VertexQueue {
 };
 
 /// `computeMinimumOverlap` visits every vertex linked to `v` via one or more
-/// paths and computes its minimum required overlap (if it is less than or
-/// equal to `partitionOverlap`).
-void computeMinimumOverlap(Vertex* v, double const partitionOverlap)
+/// paths and computes its minimum required overlap.
+void computeMinimumOverlap(Vertex& vtx)
 {
     typedef std::vector<Edge>::const_iterator Iter;
 
     VertexQueue q;
-    if (v) {
-        // The required overlap for the initial vertex is 0.
-        v->overlap = 0;
-    }
-    while (v) {
+    // The required overlap for the initial vertex is 0.
+    vtx.overlap = 0;
+    for (Vertex* v = &vtx; v != nullptr; v = q.dequeue()) {
         // Loop over edges incident to v.
         for (Iter e = v->edges.begin(), end = v->edges.end(); e != end; ++e) {
             Vertex* u = e->vertex;
@@ -820,10 +818,11 @@ void computeMinimumOverlap(Vertex* v, double const partitionOverlap)
             // between the pair of vertices created for a single match table
             // reference.
             double availableOverlap = 0.0;
-            if (u->info->kind == TableInfo::DIRECTOR ||
-                (u->info->kind == TableInfo::MATCH &&
-                 v->info->kind == TableInfo::MATCH)) {
-                availableOverlap = partitionOverlap;
+            if (u->info->kind == TableInfo::DIRECTOR) {
+                availableOverlap = static_cast<DirTableInfo const&>(*u->info).overlap;
+            } else if (u->info->kind == TableInfo::MATCH &&
+                 v->info->kind == TableInfo::MATCH) {
+                availableOverlap = static_cast<MatchTableInfo const&>(*u->info).angSep;
             }
             // The overlap required for u is the overlap required for v plus
             // the angular separation threshold of the edge between them.
@@ -853,9 +852,6 @@ void computeMinimumOverlap(Vertex* v, double const partitionOverlap)
                 q.enqueue(u);
             }
         }
-        // Remove a vertex from the visitation queue and repeat the process.
-        // When q is empty, v is null and the loop terminates.
-        v = q.dequeue();
     }
 }
 
@@ -885,15 +881,15 @@ void resetVertices(std::list<Vertex>& vertices)
 
 /// `_validate` searches for a graph traversal that proves the input query
 /// is evaluable.
-bool RelationGraph::_validate(double overlap)
+bool RelationGraph::_validate()
 {
     typedef std::list<Vertex>::iterator Iter;
     size_t numStarts = 0;
-    for (Iter i = _vertices.begin(), e = _vertices.end(); i != e; ++i) {
-        if (i->info->kind != TableInfo::MATCH) {
+    for (Vertex& vtx: _vertices) {
+        if (vtx.info->kind != TableInfo::MATCH) {
             ++numStarts;
             resetVertices(_vertices);
-            computeMinimumOverlap(&(*i), overlap);
+            computeMinimumOverlap(vtx);
             if (isEvaluable(_vertices)) {
                 return true;
             }
@@ -911,11 +907,11 @@ bool RelationGraph::_validate(double overlap)
     return false;
 }
 
-RelationGraph::RelationGraph(QueryContext const& ctx,
-                             SelectStmt& stmt,
-                             TableInfoPool& pool) :
+RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) :
     _query(&stmt)
 {
+    LOGS(_log, LOG_LVL_DEBUG, "RG: stmt=" << stmt);
+
     // Check that at least one thing is being selected.
     if (!stmt.getSelectList().getValueExprList() ||
         stmt.getSelectList().getValueExprList()->empty()) {
@@ -927,29 +923,51 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
         throw QueryNotEvaluableError(
             "Query must include at least one table reference");
     }
-    double overlap = ctx.css->getDbStriping(ctx.dominantDb).overlap;
     // Build a graph for the first entry in the from list
-    RelationGraph g(ctx, refs.front(), overlap, pool);
+    RelationGraph g(refs.front(), pool);
     // "SELECT ... FROM A, B, C, ..." is equivalent to
     // "SELECT ... FROM ((A CROSS JOIN B) CROSS JOIN C) ..."
     typedef TableRefList::const_iterator Iter;
     for (Iter i = ++refs.begin(), e = refs.end(); i != e; ++i) {
-        RelationGraph tmp(ctx, *i, overlap, pool);
-        g._fuse(JoinRef::CROSS, false, JoinSpec::Ptr(), overlap, tmp);
+        RelationGraph tmp(*i, pool);
+        g._fuse(JoinRef::CROSS, false, JoinSpec::Ptr(), tmp);
     }
     // Add edges for admissible join predicates extracted from the
     // WHERE clause
     if (stmt.hasWhereClause()) {
         BoolTerm::Ptr where = stmt.getWhereClause().getRootTerm();
         g._addWhereEqEdges(where);
-        g._addSpEdges(where, overlap);
+        g._addSpEdges(where);
     }
-    if (!g._validate(overlap)) {
+
+    g._dumpGraph();
+
+    if (!g._validate()) {
         throw QueryNotEvaluableError(
             "Query involves partitioned table joins that Qserv does not "
             "know how to evaluate using only partition-local data");
     }
+
     swap(g);
+}
+
+void RelationGraph::_dumpGraph() const {
+    // dump graph
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        LOGS(_log, LOG_LVL_DEBUG, "RelationGraph:");
+        std::map<Vertex const*, int> vtxId;
+        for (auto&& vtx: _vertices) {
+            int id = vtxId.size();
+            vtxId[&vtx] = id;
+            LOGS(_log, LOG_LVL_DEBUG, "   vertex " << id << " info=" << *vtx.info);
+        }
+        for (auto&& vtx: _vertices) {
+            for (auto&& edge: vtx.edges) {
+                LOGS(_log, LOG_LVL_DEBUG, "   edge " << vtxId[&vtx] << " <-> "
+                        << vtxId[edge.vertex] << " angSep=" << edge.angSep);
+            }
+        }
+    }
 }
 
 void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
