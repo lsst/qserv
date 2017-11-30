@@ -988,7 +988,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
     }
 
     LOGS(_log, LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
-    mapping.insertChunkEntry(TableInfo::CHUNK_TAG);
+    mapping.insertChunkEntry(CHUNK_TAG);
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.
     std::vector<Vertex*> overlapRefs;

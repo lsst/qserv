@@ -95,10 +95,6 @@ struct MatchTableInfo;
 /// unpartitioned tables, which are omitted because they are uninteresting
 /// for query analysis.
 struct TableInfo {
-    /// `CHUNK_TAG` is a pattern that is replaced with a chunk number
-    /// when generating concrete query text from a template.
-    static std::string const CHUNK_TAG;
-
     enum Kind { DIRECTOR = 0, CHILD, MATCH, NUM_KINDS };
 
     std::string const database;
