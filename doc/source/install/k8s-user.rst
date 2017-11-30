@@ -82,5 +82,5 @@ For debugging purpose, it might be useful not to start Qserv services in pods:
    mkdir -p /qserv/custom/bin
    touch /qserv/custom/bin/qserv-start.sh
    chmod u+x /qserv/custom/bin/qserv-start.sh
-   # Qserv startup script will be here replaced by an empty file
+   # Qserv startup script will be replaced by an empty file
 

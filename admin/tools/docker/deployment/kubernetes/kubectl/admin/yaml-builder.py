@@ -226,7 +226,7 @@ if __name__ == "__main__":
         data_mount_path = '/qserv/data'
         if config.get('spec', 'host_data_dir'):
             _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
-            # TODO use volume when master is splitted in 2 containers 
+            # TODO use volume when master is split in 2 containers 
             _mount_volume('master', data_mount_path, data_volume_name)
         else: 
             _add_emptydir_volume(data_volume_name)

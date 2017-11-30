@@ -16,7 +16,7 @@ Pre-requisites
    Cloud-Computing infrastructure. We provide Openstack support in pre-alpha
    version, please contact us for additional information.
 
-This tasks require sudo access and should be performed by system administrators.
+These tasks require sudo access and should be performed by system administrators.
 
 - Required packages installed: `yum install docker-engine ebtables kubeadm kubectl kubelet kubernetes-cni util-linux`
 - A sudo-enabled user account on a handful of Linux machines, for example: account *myuser* on a workstation  named *myhost.domain.org*, and on cluster nodes named *qserv00.domain.org* to *qserv03.domain.org*
