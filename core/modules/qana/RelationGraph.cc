@@ -1019,8 +1019,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         throw QueryNotEvaluableError("Query contains too many table "
                                      "references that require overlap");
     }
-    // At least one table requires overlap, so sub-chunking must be turned on.
-    mapping.insertSubChunkEntry(SUBCHUNK_TAG);
+
     // Rewrite director table references not requiring overlap as their
     // corresponding sub-chunk templates, and record the names of all
     // sub-chunked tables.
