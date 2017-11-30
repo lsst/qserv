@@ -7,7 +7,7 @@
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env.sh"
+. "$HOME/.kube/env.sh"
 
 echo "Wait for all Qserv pods to terminate"
 while true

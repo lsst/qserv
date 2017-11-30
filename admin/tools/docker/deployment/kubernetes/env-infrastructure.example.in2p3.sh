@@ -17,5 +17,4 @@ WORKERS=$(seq --format "${HOSTNAME_TPL}%g" --separator=' ' "$WORKER_FIRST_ID" "$
 
 # Used for ssh access to Kubernetes master (i.e. orchestrator)
 # Here Kubernetes master and Qserv master pods are on the same machine
-ORCHESTRATOR="${MASTER}"
-
+ORCHESTRATOR="ccqservkm1"

@@ -5,10 +5,11 @@
 # @author  Fabrice Jammes, IN2P3/SLAC
 
 set -e
+set -x
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-. "${DIR}/env.sh"
+. "$HOME/.kube/env.sh"
 
 CFG_DIR="${DIR}/yaml"
 RESOURCE_DIR="${DIR}/resource"
@@ -16,8 +17,6 @@ RESOURCE_DIR="${DIR}/resource"
 # For in2p3 cluster: k8s schema cache must not be on AFS
 TMP_DIR=$(mktemp -d --suffix=-kube-$USER)
 SCHEMA_CACHE_OPT="--schema-cache-dir=$TMP_DIR/schema"
-
-
 
 usage() {
   cat << EOD

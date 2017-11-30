@@ -8,7 +8,7 @@ DB=qservResult
 USER=root
 PASSWORD=changeme
 
-MYSQL_CMD="mysql --socket /qserv/run/var/lib/mysql/mysql.sock --user=$USER --password=$PASSWORD"
+MYSQL_CMD="mysql --socket /qserv/data/mysql/mysql.sock --user=$USER --password=$PASSWORD"
 
 kubectl exec master -- bash -c ". /qserv/stack/loadLSST.bash && \
 setup mariadbclient && \

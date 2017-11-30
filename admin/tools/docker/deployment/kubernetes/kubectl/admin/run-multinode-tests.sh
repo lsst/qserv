@@ -4,11 +4,10 @@
 
 # @author Fabrice Jammes SLAC/IN2P3
 
-set -x
 set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-. "$DIR/env-cluster.sh"
+. "$HOME/.kube/env.sh"
 
 # Build CSS input data
 i=1
@@ -19,8 +18,8 @@ host=${node}; "
     i=$((i+1))
 done
 
-ssh $SSH_CFG_OPT "$ORCHESTRATOR" "kubectl exec master -- bash -c '. /qserv/stack/loadLSST.bash && \
+kubectl exec master -- bash -c ". /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py && \
-    qserv-test-integration.py -V DEBUG'"
+    qserv-test-integration.py -V DEBUG"
 
