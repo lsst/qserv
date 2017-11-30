@@ -75,7 +75,6 @@ namespace qana {
 /// moved to the worker.
 class QueryMapping {
 public:
-    typedef std::shared_ptr<QueryMapping> Ptr;
     enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
     typedef std::map<std::string,Parameter> ParameterMap;
 
@@ -89,7 +88,6 @@ public:
 
     // Modifiers
     void insertSubChunkTable(DbTable const& dbTable) { _subChunkTables.insert(dbTable); }
-    void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
     void insertChunkEntry(std::string const& tag) { _subs[tag] = CHUNK; }
     void insertSubChunkEntry(std::string const& tag) { _subs[tag] = SUBCHUNK; }
 
