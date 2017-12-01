@@ -21,5 +21,5 @@ done
 kubectl exec master -c master -- bash -c ". /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py -c mysql://qsmaster@127.0.0.1:13306/qservCssData && \
-    qserv-test-integration.py -V DEBUG"
+    qserv-check-integration.py --case=01 --load -V DEBUG"
 

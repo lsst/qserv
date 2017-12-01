@@ -1,7 +1,0 @@
-### used by css (i.e. watcher.py)
-[client]
-user     = qsmaster
-# host/port and/or socket
-host     = 127.0.0.1
-port     = 13306
-socket   = /qserv/run/var/lib/mysql/mysql.sock

@@ -1,3 +1,6 @@
+-- Grant access to 'user@127.0.0.1'
+-- required for inter-container communication in a pod
+
 CREATE USER IF NOT EXISTS 'qsmaster'@'localhost';
 
 CREATE DATABASE IF NOT EXISTS qservResult;

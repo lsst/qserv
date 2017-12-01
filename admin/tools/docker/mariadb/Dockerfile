@@ -43,5 +43,4 @@ ENV PYTHONPATH=/usr/local/python
 # Add mysql, scisql, qserv dabatase initialisation scripts
 # WARN: cannot copy to / because /tmp acl are changed
 #
-COPY resources/etc/ /etc/
 COPY resources/tmp /tmp/
