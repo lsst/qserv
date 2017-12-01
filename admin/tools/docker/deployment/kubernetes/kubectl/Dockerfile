@@ -10,7 +10,8 @@ RUN apt-get -y update && \
     apt-get -y upgrade && \
     apt-get -y clean
 
-RUN apt-get -y install curl bash-completion git jq mariadb-client \
+RUN apt-get -y install curl bash-completion git \
+    gnupg jq lsb-release mariadb-client \
     openssh-client parallel \
     python3 python3-yaml unzip vim wget && \
     ln -s /usr/bin/python3 /usr/bin/python
