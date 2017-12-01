@@ -116,16 +116,8 @@ MASTER="${{HOSTNAME_TPL}}master-1"
 WORKERS=$(seq --format "${{HOSTNAME_TPL}}worker-%g" \
     --separator=' ' "$WORKER_FIRST_ID" "$WORKER_LAST_ID")
 
-# Used for ssh access to Kubernetes master or Docker Swarm manager
+# Used for ssh access to Kubernetes master
 ORCHESTRATOR="${{HOSTNAME_TPL}}{orch_node_suffix}-1"
-
-# Used by Docker Swarm
-# Swarm leader is named orchestrator
-SWARM_FIRST_ID=1
-SWARM_LAST_ID="{swarm_last_id}"
-SWARM_NODES=$(seq --format "${{HOSTNAME_TPL}}{orch_node_suffix}-%g" \
-    --separator=' ' "$SWARM_FIRST_ID" "$SWARM_LAST_ID")
-
 '''
 
     envfile = envfile_tpl.format(swarm_last_id=cloudManager.nbOrchestrator,

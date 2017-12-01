@@ -27,8 +27,7 @@ Usage: `basename $0` [options]
     -k          launch Qserv integration test using kubernetes 
     -p          provision Qserv cluster on Openstack
     -s          launch Qserv integration test using shmux
-    -S          launch Qserv integration test using swarm
-                -S has priority on -k which has priority on -s
+                -k has priority on -s
 
   Create up to date CentOS7 snapshot and use it to provision Qserv cluster on
   Openstack, then install Qserv and launch integration test on it.
@@ -49,7 +48,6 @@ while getopts hckLpsS c ; do
         L) LARGE="TRUE" ;;
         p) PROVISION="TRUE" ;;
         s) SHMUX="TRUE" ;;
-        S) SWARM="TRUE" ;;
         \?) usage ; exit 2 ;;
     esac
 done
@@ -62,7 +60,6 @@ fi
 
 if [ "$OPTIND" -eq 1 ]; then
     PROVISION="TRUE"
-    SWARM="TRUE"
 fi
 
 # Check if openstack connection parameters are available
@@ -91,15 +88,7 @@ if [ -n "$PROVISION" ]; then
     "$DIR/../docker/deployment/parallel/create-gnuparallel-slf.sh"
 fi
 
-
-if [ -n "$SWARM" ]; then
-    SWARM_DIR="$DIR/../docker/deployment/swarm"
-    ln -sf "$DIR/ssh_config" "$SWARM_DIR"
-    ln -sf "$DIR/env-infrastructure.sh" "$SWARM_DIR"
-
-    "$SWARM_DIR"/setup-and-test.sh
-
-elif [ -n "$KUBERNETES" ]; then
+if [ -n "$KUBERNETES" ]; then
 	K8S_DIR="$DIR/../docker/deployment/kubernetes"
     ENV_FILE="$CONFIG_DIR/env.sh"
     cp "$K8S_DIR/env.example.sh" "$ENV_FILE"
