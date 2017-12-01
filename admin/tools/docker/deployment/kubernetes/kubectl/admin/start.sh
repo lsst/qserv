@@ -56,12 +56,22 @@ host_data_dir: $HOST_DATA_DIR
 host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR
 host: $MASTER
-image: $MASTER_IMAGE
+image: $CONTAINER_IMAGE
+image_mariadb: qserv/mariadb_scisql:$MARIADB_VERSION
 master_hostname: $MASTER
 pod_name: master
 EOF
 
 "$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
+
+echo "Create kubernetes configmap for sql files"
+kubectl delete configmap --ignore-not-found=true config-sql
+kubectl create configmap --from-file="$RESOURCE_DIR/cm_sql" config-sql
+
+echo "Create kubernetes configmap for Qserv master"
+tar -zcvf "$RESOURCE_DIR/cm_master.tgz" -C "$RESOURCE_DIR/cm_master" .
+kubectl delete configmap --ignore-not-found=true config-master
+kubectl create configmap --from-file="$RESOURCE_DIR/cm_master" config-master
 
 echo "Create kubernetes pod for Qserv master"
 kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"

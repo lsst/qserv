@@ -49,24 +49,11 @@ else
     echo "Container timezone not modified"
 fi
 
+
 QSERV_RUN_DIR=/qserv/run
 QSERV_CUSTOM_DIR=/qserv/custom
 
-# Check $QSERV_MASTER was provided at container execution and use it
-# to update container configuration
-if [ -n "$QSERV_MASTER" ]
-then
-    cp "$QSERV_RUN_DIR/qserv-meta.conf" /tmp/qserv-meta.conf.orig
-    awk -v MASTER="${QSERV_MASTER}" \
-        '{gsub(/<DOCKER_ENV_QSERV_MASTER>/, MASTER);
-          print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
-    bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && \
-             qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' \
-                                --qserv-custom-dir '$QSERV_CUSTOM_DIR' --etc"
-else
-    echo "ERROR: \$QSERV_MASTER is unset"
-    exit 1
-fi
+tar -C "$QSERV_RUN_DIR" -zxvf cm_master.tgz
 
 # TODO: Improve secret management (see DM-11127)
 # for example, pass password via k8s env variable, see

@@ -1,0 +1,12 @@
+# Qserv parameters used for monitoring
+qserv:
+
+    version: travis-gde9786aa4e
+
+    # Path to Qserv and dependencies binaries
+    install_dir:
+        qserv_dir: /qserv/stack/stack/miniconda3-4.3.21-10a4fa6/Linux64/qserv/travis-gde9786aa4e
+        xrootd_dir: /qserv/stack/stack/miniconda3-4.3.21-10a4fa6/Linux64/xrootd/master-gb6706eb477
+        mysqlproxy_dir: /qserv/stack/stack/miniconda3-4.3.21-10a4fa6/Linux64/mysqlproxy/0.8.5-1-g072f2a0+2
+        mariadb_dir: /qserv/stack/stack/miniconda3-4.3.21-10a4fa6/Linux64/mariadb/10.1.21.lsst2
+        lua_dir: /qserv/stack/stack/miniconda3-4.3.21-10a4fa6/Linux64/lua/5.1.4.lsst1-2-gda519a9

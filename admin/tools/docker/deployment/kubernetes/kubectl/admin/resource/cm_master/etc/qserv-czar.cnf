@@ -1,0 +1,58 @@
+
+[frontend]
+
+xrootd=<DOCKER_ENV_QSERV_MASTER>:1094
+
+#[mgmtdb]
+#db=qservMeta
+# Steal resultdb settings for now.
+
+[css]
+technology = mysql
+hostname =
+port =
+username = qsmaster
+password =
+database = qservCssData
+socket = /qserv/run/var/lib/mysql/mysql.sock
+
+[resultdb]
+passwd =
+db = qservResult
+unix_socket = /qserv/run/var/lib/mysql/mysql.sock
+host =
+user= qsmaster
+port = 0
+# maximum user query result size in MB
+maxtablesize_mb = 5100
+
+# database connection for QMeta database
+[qmeta]
+passwd =
+db = qservMeta
+unix_socket = /qserv/run/var/lib/mysql/mysql.sock
+host =
+user = qsmaster
+port = 0
+
+[partitioner]
+# emptyChunkPath is used to check existence of empty_$DBNAME.txt
+emptyChunkPath = /qserv/data/qserv
+
+# If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
+# doesn't exist then emptyChunkListFile is used for queries on $DBNAME
+emptyChunkListFile = /qserv/data/qserv/emptyChunks.txt
+
+[tuning]
+#memoryEngine = yes
+#largeResultConcurrentMerges = 3
+largeResultConcurrentMerges = 6
+# xrootdCBThreadsInit must be less than xrootdCBThreadsMax
+xrootdCBThreadsMax = 500
+xrootdCBThreadsInit = 50
+
+#[debug]
+#chunkLimit = -1
+
+[log]
+logConfig = /qserv/run/etc/log4cxx.czar.properties

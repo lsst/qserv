@@ -1,0 +1,66 @@
+#
+# configuration file for wmgrService, production version
+#
+
+# interface to listen to, defaults to 127.0.0.1
+WMGR_INTERFACE = '0.0.0.0'
+WMGR_PORT = 5012
+
+# for production set both to 0
+DEBUG = 0
+TESTING = 0
+
+LOGGER_NAME = "wmgr"
+
+JSON_AS_ASCII = False
+JSON_SORT_KEYS = True
+JSONIFY_PRETTYPRINT_REGULAR = False
+
+# complex secret key is needed for things like auth and sessions
+SECRET_KEY = 'ebEjirLYzDUMC5ZNLcxkpsJZlMRzQxr5dptu6zibEESipKCXo22n4Fa1M'
+
+# ======== application-specific parameters =========
+
+#  database connection parameters, use None for defaults
+DB_HOST = 'localhost'
+DB_PORT = 13306
+DB_SOCKET = '/qserv/run/var/lib/mysql/mysql.sock'
+
+# regular database account
+DB_USER = 'qsmaster'
+DB_PASSWD = ''
+
+# special account used to create new databases
+DB_USER_PRIV = 'root'
+DB_PASSWD_PRIV = 'CHANGEME'
+
+# parameters for mysql-proxy connection, these are only useful
+# for czar wmgr instance
+PROXY_HOST = '127.0.0.1'
+PROXY_PORT = 4040
+PROXY_USER = 'qsmaster'
+PROXY_PASSWD = ''
+
+# CSS-related parameters
+# CSS_CONFIG is a dictionary as accepted by CssAccess.createFromConfig() method,
+# all values in a dictionary must be strings even if they represent numbers
+USE_CSS = True
+CSS_CONFIG = {
+    'technology': 'mysql',
+    'hostname': '<DOCKER_ENV_QSERV_MASTER>',
+    'port': '13306',
+    'username': 'qsmaster',
+    'database': 'qservCssData',
+}
+
+# location of the run directory
+RUN_DIR = "/qserv/run"
+
+# location of the temporary directory, used for data loading
+TMP_DIR = "/qserv/run/tmp"
+
+# Authentication type used by the service, one of "none", "basic" or "digest"
+AUTH_TYPE = "digest"
+
+# location of the file containing a secret
+SECRET_FILE = "/qserv/run/etc/wmgr.secret"

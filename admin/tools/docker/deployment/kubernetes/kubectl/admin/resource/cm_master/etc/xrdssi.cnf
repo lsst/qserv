@@ -1,0 +1,74 @@
+# Qserv xrdssi plugin configuration file
+# Default values for parameters are commented
+
+[mysql]
+
+# hostname =
+# port =
+
+# Username for mysql connections
+username = qsmaster
+password =
+
+# MySQL socket file path for db connections
+socket = /qserv/run/var/lib/mysql/mysql.sock
+
+[memman]
+
+# MemMan class to use for managing memory for tables
+# can be "MemManReal" or "MemManNone"
+# class = MemManReal
+
+# Memory available for locking tables, in MB
+# memory = 1000
+memory = 7900
+
+# Path to database tables
+location = /qserv/data/mysql
+
+[scheduler]
+
+# Thread pool size
+# thread_pool_size = 10
+thread_pool_size = 20
+
+# Required number of completed tasks for table in a chunk for the average time to be valid
+# required_tasks_completed = 25
+required_tasks_completed = 1
+
+# Maximum group size for GroupScheduler
+# group_size = 1
+group_size = 10
+
+# Scheduler priority - higher numbers mean higher priority.
+# Running the fast scheduler at high priority tends to make it use significant 
+# resources on a small number of queries.
+# priority_snail = -20
+# priority_slow = 2
+priority_slow = 4
+# priority_med = 3
+# priority_fast = 4
+priority_fast = 2
+
+
+
+# Maximum number of threads to reserve per scan scheduler
+# reserve_snail = 2
+# reserve_slow = 2
+# reserve_med = 2
+# reserve_fast = 2
+
+# Maximum number of active chunks per scan scheduler
+# maxActiveChunks_snail = 1
+# maxActiveChunks_slow = 4
+# maxActiveChunks_med = 4
+# maxActiveChunks_fast = 4
+
+# Maximum time for all tasks in a user query to complete.
+# scanmaxminutes_fast = 60
+# scanmaxminutes_med = 480
+# scanmaxminutes_slow = 720
+# scanmaxminutes_snail = 1440
+
+# Maximum number of Tasks that can take too long before moving a query to the snail scan.
+# maxtasksbootedperuserquery = 5

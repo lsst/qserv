@@ -226,21 +226,40 @@ if __name__ == "__main__":
         data_mount_path = '/qserv/data'
         if config.get('spec', 'host_data_dir'):
             _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
-            # TODO use volume when master is split in 2 containers 
-            _mount_volume('master', data_mount_path, data_volume_name)
         else: 
             _add_emptydir_volume(data_volume_name)
 
         _mount_volume('mariadb', data_mount_path, data_volume_name)
+        _mount_volume('master', data_mount_path, data_volume_name)
         # xrootd mmap/mlock *.MYD files and need to access mysql.sock
         # qserv-wmgr require access to mysql.sock
         _mount_volume('worker', data_mount_path, data_volume_name)
+
+        # initContainer
+        #
+        yaml_data['spec']['initContainers'] = []
+        if _get_container_id('master') is not None:
+            # initContainer: configure qserv-data-dir using mariadb image
+            #
+            init_container = dict()
+            scriptpath = os.path.join(resourcePath, 'configure-mariadb-master.sh')
+            script = open(scriptpath, 'r').read()
+            command = ["bash", "-c", script]
+            init_container['command'] = command
+            init_container['image'] = config.get('spec', 'image_mariadb')
+            init_container['imagePullPolicy'] = 'Always'
+            init_container['name'] = 'init-data-dir'
+            init_container['volumeMounts'] = []
+            init_container['volumeMounts'].append({'mountPath': data_mount_path,
+                'name': data_volume_name})
+            init_container['volumeMounts'].append({'mountPath':
+                "/tmp/configure/sql", 'name': 'config-sql'})
+            yaml_data['spec']['initContainers'].append(init_container)
 
         if _get_container_id('worker') is not None:
 
             # initContainer: configure qserv-run-dir using qserv image
             #
-            yaml_data['spec']['initContainers'] = []
             run_volume_name = 'run-volume'
             run_mount_path = '/qserv/run'
             init_container = dict()
@@ -263,7 +282,7 @@ if __name__ == "__main__":
             # initContainer: configure qserv-data-dir using mariadb image
             #
             init_container = dict()
-            scriptpath = os.path.join(resourcePath, 'configure-mariadb.sh')
+            scriptpath = os.path.join(resourcePath, 'configure-mariadb-worker.sh')
             script = open(scriptpath, 'r').read()
             command = ["bash", "-c", script]
             init_container['command'] = command
@@ -279,8 +298,6 @@ if __name__ == "__main__":
             #
             _add_emptydir_volume(run_volume_name)
             _mount_volume('worker', run_mount_path, run_volume_name)
-
-
 
         with open(args.yamlFile, 'w') as f:
             f.write(yaml.dump(yaml_data, default_flow_style=False))

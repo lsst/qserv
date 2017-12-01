@@ -1,0 +1,72 @@
+# Unified configuration for xrootd/cmsd for both manager and server instances
+# "if"-block separates manager-only and server-only configuration.
+
+###################################################################################
+# NOTE : mono-node support requires to comment out some configuration directives
+#        and do not start cmsd. Mono-node uses server mode.
+###################################################################################
+
+############################
+# if: manager node
+############################
+# test xrootd instance name
+if named master
+
+    # Use manager mode
+    all.role manager
+
+############################
+# else: server nodes
+############################
+else
+
+    # Use server mode
+    all.role server
+
+    # Use XrdSsi plugin
+    xrootd.fslib libXrdSsi.so
+    ssi.svclib libxrdsvc.so
+    oss.statlib -2 libXrdSsi.so
+
+    # Force disable asyncronous access
+    # because of XrdSsi
+    xrootd.async off
+
+    ssi.trace all debug
+
+fi
+
+########################################
+# Shared directives (manager and server)
+########################################
+
+# Writable paths for administration
+# cmsd and xrootd paths for pid
+all.pidpath /qserv/run/var/run
+
+# Path to write logging and other information
+all.adminpath /qserv/run/tmp
+
+# host:port of manager instance (2131 is default)
+all.manager <DOCKER_ENV_QSERV_MASTER>:2131
+
+# Do not change. This specifies valid virtual paths that can be accessed.
+# "nolock" directive prevents write-locking and is important for qserv
+# qserv is hardcoded for these paths.
+all.export / nolock
+
+# Specify that no significant free space is required on servers
+# Indeed current configuration doesn't expect to be dynamically
+# written to, but export the space in R/W mode
+cms.space 1k 2k
+
+ssi.loglib libxrdlog.so
+
+# Optional: Prevent dns resolution in logs.
+# This may speed up request processing.
+xrd.network nodnr
+
+xrd.port 1094
+
+# Uncomment the following line for detailed xrootd debugging
+# xrootd.trace all debug
