@@ -31,6 +31,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
+class QueryMapping;
 
 /// TablePlugin is a query plugin that inserts place holders for table
 /// name substitution.
