@@ -1,9 +1,0 @@
-[spec]
-host_custom_dir: /qserv/custom
-host_data_dir: 
-host_log_dir: /qserv/log
-host_tmp_dir: /qserv/tmp
-host: qserv-ceph-worker-1
-image: qserv/qserv:dev_worker
-master_hostname: qserv-ceph-master-1
-pod_name: worker-1
