@@ -143,11 +143,12 @@ class CommandParser(object):
             "state"],
     }
 
-    def __init__(self, connInfo):
+    def __init__(self, connInfo, read_only):
         """
         Initialize shared metadata, including list of supported commands.
 
         @param connInfo     Connection information.
+        @param read_only    Disable modification if True.
         """
         self._initLogging()
         self._funcMap = {
@@ -164,7 +165,7 @@ class CommandParser(object):
             'UPDATE': self._parseUpdate
         }
         config = cssConfig.configFromUrl(connInfo)
-        self._css = css.CssAccess.createFromConfig(config, "")
+        self._css = css.CssAccess.createFromConfig(config, "", read_only)
         self._supportedCommands = """
   Supported commands:
     CREATE DATABASE <dbName> <configFile>;
@@ -177,7 +178,9 @@ class CommandParser(object):
     DROP DATABASE <dbName>;
     DROP TABLE <dbName>.<tableName>;
     DROP EVERYTHING;
-    DUMP EVERYTHING [<outFile>];
+    DUMP </key> [<outFile>];      # dumps given key and its sub-keys
+    DUMP EVERYTHING [<outFile>];  # same as "DUMP / [<outFile>]"
+    DUMP;                         # same as "DUMP /"
     RESTORE <inFile>;
     SHOW DATABASES;
     SHOW NODES;
@@ -383,7 +386,7 @@ class CommandParser(object):
             dbName, tbName = CommandParser._parseDbTable(tokens[1])
             self._css.dropTable(dbName, tbName)
         elif t == 'EVERYTHING':
-            raise _NotImplementedError(t)
+            self._css.getKvI().deleteKey("/")
         else:
             raise _IllegalCommandError(t)
 
@@ -431,18 +434,17 @@ class CommandParser(object):
         """
         if len(tokens) > 2:
             raise _IllegalCommandError("unexpected number of arguments")
-        t = tokens[0].upper()
+        key = ""
+        if len(tokens) > 0:
+            if tokens[0].upper() != 'EVERYTHING':
+                key = tokens[0]
         if len(tokens) == 2:
             # this may throw
             dest = open(tokens[1], 'w')
         else:
             dest = sys.stdout
-        if t == 'EVERYTHING':
-            res = self._css.getKvI().dumpKV()
-            dest.write(res)
-            dest.write("\n")
-        else:
-            raise _IllegalCommandError(t)
+        res = self._css.getKvI().dumpKV(key)
+        dest.write(res)
 
     def _justExit(self, tokens):
         raise SystemExit()
@@ -712,10 +714,20 @@ to print the list of supported commands.
 """
 
     parser = ArgumentParser(description=description)
-    parser.add_argument("-v", dest="verbosity", default="WARN", choices=['DEBUG', 'INFO', 'WARN', 'ERROR'],
+    parser.add_argument("-v", dest="verbosity", default="WARN",
+                        choices=['DEBUG', 'INFO', 'WARN', 'ERROR'],
                         help="Verbosity threshold, def: %(default)s")
-    parser.add_argument("-c", dest="connection", default='mysql://qsmaster@127.0.0.1:13306/qservCssData',
-                        help="CSS connection information, def: %(default)s")
+    parser.add_argument("-c", dest="connection",
+                        default='mysql://qsmaster@127.0.0.1:13306/qservCssData',
+                        help="CSS connection information in form of URL. "
+                        "`mysql://user:pass@host:port/database' for mysql, "
+                        "`mem:///' for empty in-memory CSS, "
+                        "`mem:///path/to/file.ext' for in-memory CSS "
+                        "(relative path name), `mem:////path/to/file.ext' for "
+                        "in-memory CSS (absolute path name). "
+                        "Def: %(default)s")
+    parser.add_argument("-r", "--read-only", default=False, action="store_true",
+                        help="Run in read-only mode.")
     parser.add_argument('commands', metavar='commands', nargs='*', default=[],
                         help='list of commands to be executed')
 
@@ -737,7 +749,7 @@ def main():
     pylgr = logging.getLogger()
     pylgr.addHandler(lsst.log.LogHandler())
 
-    parser = CommandParser(args.connection)
+    parser = CommandParser(args.connection, args.read_only)
     if args.commands:
         for cmd in args.commands:
             # strip semicolons just in case

@@ -47,6 +47,8 @@
 #include "boost/algorithm/string/split.hpp"
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
+#include "boost/property_tree/ptree.hpp"
+#include "boost/property_tree/json_parser.hpp"
 #include "mysql/mysqld_error.h"
 
 // LSST headers
@@ -60,6 +62,7 @@
 using std::map;
 using std::string;
 using std::vector;
+namespace ptree = boost::property_tree;
 
 namespace {
 
@@ -96,6 +99,15 @@ bool extractIntValueFromSqlResults(SqlResults* results, unsigned int* value) {
     }
     return true;
 }
+
+// Normalizes key path, takes user-provided key and converts it into
+// acceptable path for storage.
+std::string norm_key(std::string const& key) {
+    // root key is stored as empty string (if stored at all)
+    std::string path(key == "/" ? "" : key);
+    return path;
+}
+
 } // anonymous namespace
 
 namespace lsst {
@@ -219,7 +231,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
     // key is validated by _create
     KvTransaction transaction(_conn);
 
-    std::string path = key;
+    std::string path = norm_key(key);
     if (unique) {
         // Need to add unique suffix which includes digits only, use 10-digit
         // numbers with padding for that. See if there are matching keys there
@@ -230,7 +242,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         // substring operations. This may kill indexing so it's not very efficient.
         const char* qTemplate = "SELECT RIGHT(kvKey, 10) FROM kvData WHERE "
                         "LENGTH(kvKey) = %1%+10 AND LEFT(kvKey, %1%) = '%2%'";
-        std::string query = (boost::format(qTemplate)  % key.size() % _escapeSqlString(key)).str();
+        std::string query = (boost::format(qTemplate)  % path.size() % _escapeSqlString(path)).str();
 
         // run query
         sql::SqlErrorObject errObj;
@@ -260,7 +272,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
             ++ uniqueId;
             std::ostringstream str;
             str << std::setfill('0') << std::setw(10) << uniqueId;
-            path = key + str.str();
+            path = norm_key(key) + str.str();
             try {
                 _create(path, value, false, transaction);
                 break;
@@ -270,7 +282,6 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         }
 
     } else {
-        if (path == "/") path.erase();
         _create(path, value, false, transaction);
     }
 
@@ -331,7 +342,7 @@ KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
 
     // key is validated by _create
     KvTransaction transaction(_conn);
-    _create(key, value, true, transaction);
+    _create(norm_key(key), value, true, transaction);
     transaction.commit();
 }
 
@@ -365,7 +376,7 @@ KvInterfaceImplMySql::exists(std::string const& key) {
 std::map<std::string, std::string>
 KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     for (auto& key: keys) {
-        if (key != "/") _validateKey(key);    // slash == ""
+        _validateKey(norm_key(key));
     }
 
     // build query
@@ -375,7 +386,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
         if (not first) query += ", ";
         first = false;
         query += '"';
-        if (key != "/") query += _escapeSqlString(key);  // slash == ""
+        query += _escapeSqlString(norm_key(key));
         query += '"';
     }
     query += ')';
@@ -408,8 +419,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
 
 std::vector<std::string>
 KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
-    std::string key = parentKey;
-    if (key == "/") key.erase();
+    std::string key = norm_key(parentKey);
 
     _validateKey(key);
     // get the children with a /fully/qualified/path
@@ -433,8 +443,7 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 std::map<std::string, std::string>
 KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
 
-    std::string key = parentKey;
-    if (key == "/") key.erase();
+    std::string key = norm_key(parentKey);
 
     _validateKey(key);
 
@@ -528,15 +537,14 @@ KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
         throw ReadonlyCss();
     }
 
-    std::string key = keyArg;
-    if (key == "/") key.erase();
+    std::string key = norm_key(keyArg);
     KvTransaction transaction(_conn);
     _delete(key, transaction);
     transaction.commit();
 }
 
 
-std::string KvInterfaceImplMySql::dumpKV() {
+std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
 
     // It's better to make them ordered so that /key comes before /key/subkey
     std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
@@ -553,32 +561,29 @@ std::string KvInterfaceImplMySql::dumpKV() {
         throw CssError(ss.str());
     }
 
-    // copy results
-    std::string result;
+    // copy results into property tree
+    const string pfx(norm_key(key) + "/");
+    ptree::ptree tree;
     for (auto& row: results) {
-        if (row[0].first[0] == '\0') {
-            // skip root key, it is not useful and not supposed to have any data
-            continue;
-        }
-        if (not result.empty()) result += '\n';
-        // row is the vector of pair<char const*, unsigned long>
-        // key cannot be NULL, but value could be?
-        result += row[0].first;
-        result += '\t';
-        if (row[1].first == nullptr or *row[1].first == '\0') {
-            result += "\\N";
-        } else {
-/*
-            if (strchr(row[1].first, '\n') != nullptr) {
-                throw CssError("KvInterfaceImplMySql::dumpKV - value contains newline");
+        // filter the key, note that root key which is empty string will
+        // be filtered out because pfx is never empty
+        if (boost::starts_with(row[0].first, pfx)) {
+            // row is the vector of pair<char const*, unsigned long>
+            // key cannot be NULL, but value could be?
+            if (row[1].first == nullptr or *row[1].first == '\0') {
+                tree.push_back(ptree::ptree::value_type(row[0].first, ptree::ptree()));
+            } else {
+                tree.push_back(ptree::ptree::value_type(row[0].first, ptree::ptree(row[1].first)));
             }
-*/
-            result += row[1].first;
         }
     }
 
     transaction.commit();
-    return result;
+
+    // format property tree into a string as JSON
+    std::ostringstream str;
+    ptree::json_parser::write_json(str, tree);
+    return str.str();
 }
 
 
@@ -621,8 +626,7 @@ KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& trans
 std::string
 KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& defaultValue, bool throwIfKeyNotFound) {
 
-    std::string key = keyArg;
-    if (key == "/") key.erase();
+    std::string key = norm_key(keyArg);
 
     KvTransaction transaction(_conn);
 

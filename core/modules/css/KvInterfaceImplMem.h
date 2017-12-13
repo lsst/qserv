@@ -63,7 +63,7 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key) override;
     virtual std::map<std::string, std::string> getChildrenValues(std::string const& key) override;
     virtual void deleteKey(std::string const& key) override;
-    virtual std::string dumpKV() override;
+    virtual std::string dumpKV(std::string const& key=std::string()) override;
 
     std::shared_ptr<KvInterfaceImplMem> clone() const;
 
@@ -75,7 +75,7 @@ protected:
 private:
     void _init(std::istream& mapStream);
     std::map<std::string, std::string> _kvMap;
-    bool _readOnly;
+    bool _readOnly = false;
 };
 
 }}} // namespace lsst::qserv::css

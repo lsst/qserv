@@ -43,6 +43,8 @@
 // Third-party headers
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
+#include "boost/property_tree/ptree.hpp"
+#include "boost/property_tree/json_parser.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -54,9 +56,19 @@
 using std::map;
 using std::string;
 using std::vector;
+namespace ptree = boost::property_tree;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.KvInterfaceImplMem");
+
+// Normalizes key path, takes user-provided key and converts it into
+// acceptable path for storage.
+std::string norm_key(std::string const& key) {
+    // root key is stored as empty string (if stored at all)
+    std::string path(key == "/" ? "" : key);
+    return path;
+}
+
 }
 
 namespace lsst {
@@ -78,15 +90,17 @@ namespace css {
   * 3) then copy the generate file to final destination:
   *    mv /tmp/testMap.kvmap <destination>
   */
-KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream, bool readOnly)
-    : _readOnly(readOnly) {
+KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream, bool readOnly) {
     _init(mapStream);
+    // read-only should only be set after _init
+    _readOnly = readOnly;
 }
 
-KvInterfaceImplMem::KvInterfaceImplMem(string const& filename, bool readOnly)
-    : _readOnly(readOnly) {
+KvInterfaceImplMem::KvInterfaceImplMem(string const& filename, bool readOnly) {
     std::ifstream f(filename.c_str());
     _init(f);
+    // read-only should only be set after _init
+    _readOnly = readOnly;
 }
 
 KvInterfaceImplMem::~KvInterfaceImplMem() {
@@ -100,7 +114,7 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
         throw ReadonlyCss();
     }
 
-    string path = key;
+    std::string path = norm_key(key);
     if (unique) {
         // append unique suffix, in-memory KVI is not meant for large-scale
         // storage, so we can do dumb brute-force loop
@@ -118,7 +132,6 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
     string parent = path;
     for (string::size_type p = parent.rfind('/'); p != string::npos; p = parent.rfind('/')) {
         parent = parent.substr(0, p);
-        if (parent.empty()) break;
         if (_kvMap.find(parent) != _kvMap.end()) break;
         _kvMap.insert(std::make_pair(parent, string()));
     }
@@ -136,21 +149,23 @@ KvInterfaceImplMem::set(string const& key, string const& value) {
         throw ReadonlyCss();
     }
 
+    std::string path = norm_key(key);
+
     // create all parents
-    string parent = key;
+    string parent = path;
     for (string::size_type p = parent.rfind('/'); p != string::npos; p = parent.rfind('/')) {
         parent = parent.substr(0, p);
-        if (parent.empty()) break;
         if (_kvMap.find(parent) != _kvMap.end()) break;
         _kvMap.insert(std::make_pair(parent, string()));
     }
 
-    _kvMap[key] = value;
+    _kvMap[path] = value;
 }
 
 bool
 KvInterfaceImplMem::exists(string const& key) {
-    bool ret = _kvMap.find(key) != _kvMap.end();
+    std::string path = norm_key(key);
+    bool ret = _kvMap.find(path) != _kvMap.end();
     LOGS(_log, LOG_LVL_DEBUG, "exists(" << key << "): " << (ret?"YES":"NO"));
     return ret;
 }
@@ -159,7 +174,8 @@ std::map<std::string, std::string>
 KvInterfaceImplMem::getMany(std::vector<std::string> const& keys) {
     std::map<std::string, std::string> result;
     for (auto& key: keys) {
-        auto iter = _kvMap.find(key);
+        std::string path = norm_key(key);
+        auto iter = _kvMap.find(path);
         if (iter != _kvMap.end()) {
             result.insert(*iter);
         }
@@ -172,13 +188,14 @@ KvInterfaceImplMem::_get(string const& key,
                          string const& defaultValue,
                          bool throwIfKeyNotFound) {
     LOGS(_log, LOG_LVL_DEBUG, "get(" << key << ")");
-    if ( !exists(key) ) {
+    std::string path = norm_key(key);
+    if ( !exists(path) ) {
         if (throwIfKeyNotFound) {
-            throw NoSuchKey(key);
+            throw NoSuchKey(path);
         }
         return defaultValue;
     }
-    string s = _kvMap[key];
+    string s = _kvMap[path];
     LOGS(_log, LOG_LVL_DEBUG, "got: '" << s << "'");
     return s;
 }
@@ -186,10 +203,11 @@ KvInterfaceImplMem::_get(string const& key,
 vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildren(), key: " << key);
-    if ( ! exists(key) ) {
-        throw NoSuchKey(key);
+    std::string path = norm_key(key);
+    if ( ! exists(path) ) {
+        throw NoSuchKey(path);
     }
-    const string pfx(key == "/" ? key : key + "/");
+    const string pfx(path + "/");
     vector<string> retV;
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
@@ -210,10 +228,11 @@ KvInterfaceImplMem::getChildren(string const& key) {
 std::map<std::string, std::string>
 KvInterfaceImplMem::getChildrenValues(std::string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues(), key: " << key);
-    if ( ! exists(key) ) {
-        throw NoSuchKey(key);
+    std::string path = norm_key(key);
+    if ( ! exists(path) ) {
+        throw NoSuchKey(path);
     }
-    const string pfx(key == "/" ? key : key + "/");
+    const string pfx(path + "/");
     std::map<std::string, std::string> retV;
     for (auto const& pair: _kvMap) {
         auto& fullKey = pair.first;
@@ -238,14 +257,16 @@ KvInterfaceImplMem::deleteKey(string const& key) {
         throw ReadonlyCss();
     }
 
-    auto iter = _kvMap.find(key);
+    std::string path = norm_key(key);
+
+    auto iter = _kvMap.find(path);
     if (iter == _kvMap.end()) {
-        throw NoSuchKey(key);
+        throw NoSuchKey(path);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing key " << key);
+    LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing key " << path);
     _kvMap.erase(iter);
     // delete all children keys, not very efficient but we don't care
-    std::string const keyPfx = key + "/";
+    std::string const keyPfx(path + "/");
     for (auto iter = _kvMap.begin(); iter != _kvMap.end(); ) {
         auto const& iterKey = iter->first;
         if (iterKey.size() > keyPfx.size() and iterKey.compare(0, keyPfx.size(), keyPfx) == 0) {
@@ -257,38 +278,37 @@ KvInterfaceImplMem::deleteKey(string const& key) {
     }
 }
 
-std::string KvInterfaceImplMem::dumpKV() {
-    std::string result;
+std::string KvInterfaceImplMem::dumpKV(std::string const& key) {
+    const string pfx(norm_key(key) + "/");
+    ptree::ptree tree;
     for (auto& pair: _kvMap) {
-        if (not result.empty()) result += '\n';
-        result += pair.first;
-        result += '\t';
-        if (pair.second.empty()) {
-            result += "\\N";
-        } else {
-            if (pair.second.find('\n') != std::string::npos) {
-                throw CssError("KvInterfaceImplMem::dumpKV - value contains newline");
-            }
-            result += pair.second;
+        // filter the key, note that root key which is empty string will
+        // be filtered out because pfx is never empty
+        if (boost::starts_with(pair.first, pfx)) {
+            tree.push_back(ptree::ptree::value_type(pair.first, ptree::ptree(pair.second)));
         }
     }
-    return result;
+
+    // format property tree into a string as JSON
+    std::ostringstream str;
+    ptree::write_json(str, tree);
+    return str.str();
 }
 
 void KvInterfaceImplMem::_init(std::istream& mapStream) {
     if (mapStream.fail()) {
         throw ConnError();
     }
-    string line;
-    vector<string> strs;
-    while ( std::getline(mapStream, line) ) {
-        boost::split(strs, line, boost::is_any_of("\t"));
-        string theKey = strs[0];
-        string theVal = strs[1];
-        if (theVal == "\\N") {
-            theVal = "";
-        }
-        _kvMap[theKey] = theVal;
+
+    ptree::ptree tree;
+    try {
+        ptree::read_json(mapStream, tree);
+    } catch (ptree::json_parser_error const& exc) {
+        throw CssError("KvInterfaceImplMem - failed to parse JSON file");
+    }
+
+    for (auto&& pair: tree) {
+        set(pair.first, pair.second.data());
     }
 }
 

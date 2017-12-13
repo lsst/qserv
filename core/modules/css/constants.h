@@ -33,7 +33,7 @@ namespace css {
 // Version number is stored in the KV store by qservAdmin when first
 // database is created. All other clients are supposed to check stored
 // version against compiled-in version and fail if they do not match.
-// Another place where version number appears is qproc/testMap.kvmap.
+// Another place where version number appears is tests/testKvMap.h.
 char const VERSION_KEY[] = "/css_meta/version"; ///< Path to version
 int const VERSION = 1; ///< Current supported version (integer)
 // kvInterface treats everything as strings, so to avoid multiple

@@ -60,6 +60,9 @@ def configFromUrl(url):
             cssConfig['database'] = url.database
         if url.query and 'unix_socket' in url.query:
             cssConfig['socket'] = url.query['unix_socket']
+    elif url.drivername == 'mem':
+        cssConfig['data'] = url.query.get('data', '')
+        cssConfig['file'] = url.database or ''
     else:
         raise ValueError('Technology %s is not supported (yet)' % url.drivername)
 

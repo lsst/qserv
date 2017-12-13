@@ -728,20 +728,21 @@ BOOST_AUTO_TEST_CASE(testAddChunk) {
 BOOST_AUTO_TEST_SUITE_END()
 
 // inline test data for test cases below
-char const* testData = "\
-/\t\\N\n\
-/css_meta\t\\N\n\
-/css_meta/version\t1\n\
-/DBS\t\\N\n\
-/DBS/LSST\tLSST\n\
-";
+char const* testData = R"(
+{
+    "/css_meta": "",
+    "/css_meta/version": "1",
+    "/DBS": "",
+    "/DBS/LSST": "LSST"
+}
+)";
 
 // Test quite for CssAccess factory methods
 BOOST_AUTO_TEST_SUITE(CssAccessFactoryTestSuite)
 
 BOOST_AUTO_TEST_CASE(testDataString) {
 
-    auto css1 = CssAccess::createFromData("", "");
+    auto css1 = CssAccess::createFromData("{}", "");
     auto css2 = CssAccess::createFromData(testData, "");
     auto names = css2->getDbNames();
     BOOST_CHECK_EQUAL(names.size(), 1U);
@@ -823,7 +824,7 @@ BOOST_AUTO_TEST_CASE(testReadOnly) {
 BOOST_AUTO_TEST_CASE(testCssVersion) {
 
     // version mismatch
-    testData = "/\t\\N\n/css_meta\t\\N\n/css_meta/version\t1000000";
+    testData = R"({"/": "", "/css_meta": "", "/css_meta/version": "1000000"})";
     BOOST_CHECK_THROW(CssAccess::createFromData(testData, ""), VersionMismatchError);
 }
 
