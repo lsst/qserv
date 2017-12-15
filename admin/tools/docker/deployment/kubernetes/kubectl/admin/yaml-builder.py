@@ -157,14 +157,8 @@ if __name__ == "__main__":
             container = yaml_data['spec']['containers'][container_id]
             # TODO: (see DM-11130) remove QSERV_MASTER when master pod
             # is splitted into multiple containers
-            env = dict()
-            scriptpath = os.path.join(resourcePath, 'start-master.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+            command = ["sh", "/config-start/start.sh"]
             container['command'] = command
-            env['name'] = 'QSERV_MASTER'
-            env['value'] = config.get('spec', 'master_hostname')
-            container['env'] = [env]
             container['image'] = config.get('spec', 'image')
             yaml_data['spec']['containers'][container_id] = container
 
@@ -173,9 +167,7 @@ if __name__ == "__main__":
         container_id = _get_container_id('worker')
         if container_id is not None:
             yaml_data['spec']['containers'][container_id]['image'] = config.get('spec', 'image')
-            scriptpath = os.path.join(resourcePath, 'start-worker.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+            command = ["sh", "/config-start/start.sh"]
             yaml_data['spec']['containers'][container_id]['command'] = command
 
         # Configure mariadb
@@ -183,22 +175,10 @@ if __name__ == "__main__":
         container_id = _get_container_id('mariadb')
         if container_id is not None:
             yaml_data['spec']['containers'][container_id]['image'] = config.get('spec', 'image_mariadb')
-            scriptpath = os.path.join(resourcePath, 'start-mariadb.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+            command = ["sh", "/config-start/mariadb-start.sh"]
             yaml_data['spec']['containers'][container_id]['command'] = command
 
         yaml_data['spec']['nodeSelector']['kubernetes.io/hostname'] = config.get('spec', 'host')
-
-        # Attach custom-dir to containers
-        #
-        if config.get('spec', 'host_custom_dir'):
-            volume_name = 'custom-volume'
-            mount_path = '/qserv/custom'
-            _add_volume(config.get('spec', 'host_custom_dir'), volume_name)
-            _mount_volume('master', mount_path, volume_name)
-            _mount_volume('mariadb', mount_path, volume_name)
-            _mount_volume('worker', mount_path, volume_name)
 
         # Attach log-dir to containers
         #
@@ -226,7 +206,7 @@ if __name__ == "__main__":
         data_mount_path = '/qserv/data'
         if config.get('spec', 'host_data_dir'):
             _add_volume(config.get('spec', 'host_data_dir'), data_volume_name)
-        else: 
+        else:
             _add_emptydir_volume(data_volume_name)
 
         _mount_volume('mariadb', data_mount_path, data_volume_name)
@@ -235,16 +215,45 @@ if __name__ == "__main__":
         # qserv-wmgr require access to mysql.sock
         _mount_volume('worker', data_mount_path, data_volume_name)
 
+        # Attach qserv-run-dir to master and worker container
+        #
+        run_volume_name = 'run-volume'
+        run_mount_path = '/qserv/run'
+        _add_emptydir_volume(run_volume_name)
+        _mount_volume('worker', run_mount_path, run_volume_name)
+        _mount_volume('master', run_mount_path, run_volume_name)
+
         # initContainer
         #
         yaml_data['spec']['initContainers'] = []
+        run_volume_name = 'run-volume'
+        run_mount_path = '/qserv/run'
         if _get_container_id('master') is not None:
+
+            # initContainer: configure qserv-run-dir using qserv image
+            #
+            init_container = dict()
+            command = ["bash", "/config/qserv-configure.sh"]
+            init_container['command'] = command
+            init_container['env'] = []
+            init_container['env'].append({'name': 'NODE_TYPE',
+                'value': 'master'})
+            init_container['env'].append({'name': 'QSERV_MASTER',
+                'value': config.get('spec', 'master_hostname')})
+            init_container['image'] = config.get('spec', 'image')
+            init_container['imagePullPolicy'] = 'Always'
+            init_container['name'] = 'init-run-dir'
+            init_container['volumeMounts'] = []
+            init_container['volumeMounts'].append({'mountPath': run_mount_path,
+                'name': run_volume_name})
+            init_container['volumeMounts'].append({'mountPath':
+                "/config/", 'name': 'config-qserv-configure'})
+            yaml_data['spec']['initContainers'].append(init_container)
+
             # initContainer: configure qserv-data-dir using mariadb image
             #
             init_container = dict()
-            scriptpath = os.path.join(resourcePath, 'configure-mariadb-master.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+            command = ["sh", "/config-mariadb/mariadb-configure.sh"]
             init_container['command'] = command
             init_container['image'] = config.get('spec', 'image_mariadb')
             init_container['imagePullPolicy'] = 'Always'
@@ -253,19 +262,18 @@ if __name__ == "__main__":
             init_container['volumeMounts'].append({'mountPath': data_mount_path,
                 'name': data_volume_name})
             init_container['volumeMounts'].append({'mountPath':
-                "/tmp/configure/sql", 'name': 'config-sql'})
+                "/config-mariadb/", 'name': 'config-mariadb-configure'})
+            init_container['volumeMounts'].append({'mountPath':
+                "/config-sql", 'name': 'config-master-sql'})
             yaml_data['spec']['initContainers'].append(init_container)
 
         if _get_container_id('worker') is not None:
 
             # initContainer: configure qserv-run-dir using qserv image
             #
-            run_volume_name = 'run-volume'
-            run_mount_path = '/qserv/run'
             init_container = dict()
-            scriptpath = os.path.join(resourcePath, 'configure.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+
+            command = ["bash", "/config/qserv-configure.sh"]
             init_container['command'] = command
             env = dict()
             env['name'] = 'QSERV_MASTER'
@@ -277,14 +285,14 @@ if __name__ == "__main__":
             init_container['volumeMounts'] = []
             init_container['volumeMounts'].append({'mountPath': run_mount_path,
                 'name': run_volume_name})
+            init_container['volumeMounts'].append({'mountPath':
+                "/config/", 'name': 'config-qserv-configure'})
             yaml_data['spec']['initContainers'].append(init_container)
 
             # initContainer: configure qserv-data-dir using mariadb image
             #
             init_container = dict()
-            scriptpath = os.path.join(resourcePath, 'configure-mariadb-worker.sh')
-            script = open(scriptpath, 'r').read()
-            command = ["bash", "-c", script]
+            command = ["sh", "/config-mariadb/mariadb-configure.sh"]
             init_container['command'] = command
             init_container['image'] = config.get('spec', 'image_mariadb')
             init_container['imagePullPolicy'] = 'Always'
@@ -292,12 +300,12 @@ if __name__ == "__main__":
             init_container['volumeMounts'] = []
             init_container['volumeMounts'].append({'mountPath': data_mount_path,
                 'name': data_volume_name})
+            init_container['volumeMounts'].append({'mountPath':
+                "/config-mariadb/", 'name': 'config-mariadb-configure'})
+            init_container['volumeMounts'].append({'mountPath':
+                "/config-sql", 'name': 'config-worker-sql'})
             yaml_data['spec']['initContainers'].append(init_container)
 
-            # Attach qserv-run-dir to worker container
-            #
-            _add_emptydir_volume(run_volume_name)
-            _mount_volume('worker', run_mount_path, run_volume_name)
 
         with open(args.yamlFile, 'w') as f:
             f.write(yaml.dump(yaml_data, default_flow_style=False))

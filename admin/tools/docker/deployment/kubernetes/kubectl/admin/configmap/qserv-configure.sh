@@ -34,20 +34,25 @@ Usage: $(basename "$0") [options]
 
   Available options:
     -h          this message
-    -m          configure Qserv master, instead of worker by default
 
-  Configure a Qserv worker/master in a docker image,
-  except Qserv master hostname parameter, set later at container execution.
+  Configure a Qserv worker/master image, at pod startup
+
+  Environnement variables:
+  - QSERV_MASTER must be defined
+  - NODE_TYPE can be set to 'master', default to worker
 EOD
 }
+NODE_TYPE=${NODE_TYPE:-worker}
 
-NODE_TYPE="worker"
+if [ -z "$QSERV_MASTER" ]; then
+    echo "ERROR: define QSERV_MASTER environment variable"
+	exit 2
+fi
 
 # get the options
 while getopts hm c ; do
     case $c in
             h) usage ; exit 0 ;;
-            m) NODE_TYPE="master" ;;
             \?) usage ; exit 2 ;;
     esac
 done

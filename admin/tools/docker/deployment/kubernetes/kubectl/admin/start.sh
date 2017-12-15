@@ -13,6 +13,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 CFG_DIR="${DIR}/yaml"
 RESOURCE_DIR="${DIR}/resource"
+CONFIGMAP_DIR="${DIR}/configmap"
 
 # For in2p3 cluster: k8s schema cache must not be on AFS
 TMP_DIR=$(mktemp -d --suffix=-kube-$USER)
@@ -51,7 +52,6 @@ INI_FILE="${CFG_DIR}/pod.master.ini"
 
 cat << EOF > "$INI_FILE"
 [spec]
-host_custom_dir: $HOST_CUSTOM_DIR
 host_data_dir: $HOST_DATA_DIR
 host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR
@@ -64,14 +64,30 @@ EOF
 
 "$DIR"/yaml-builder.py -i "$INI_FILE" -r "$RESOURCE_DIR" -t "$YAML_MASTER_TPL" -o "$YAML_FILE"
 
-echo "Create kubernetes configmap for sql files"
-kubectl delete configmap --ignore-not-found=true config-sql
-kubectl create configmap --from-file="$RESOURCE_DIR/cm_sql" config-sql
+echo "Create kubernetes configmaps for Qserv"
+kubectl delete configmap --ignore-not-found=true config-mariadb-configure
+kubectl create configmap --from-file="$CONFIGMAP_DIR/mariadb-configure.sh" config-mariadb-configure
 
-echo "Create kubernetes configmap for Qserv master"
-tar -zcvf "$RESOURCE_DIR/cm_master.tgz" -C "$RESOURCE_DIR/cm_master" .
-kubectl delete configmap --ignore-not-found=true config-master
-kubectl create configmap --from-file="$RESOURCE_DIR/cm_master" config-master
+kubectl delete configmap --ignore-not-found=true config-mariadb-start
+kubectl create configmap --from-file="$CONFIGMAP_DIR/mariadb-start.sh" config-mariadb-start
+
+kubectl delete configmap --ignore-not-found=true config-master-sql
+kubectl create configmap --from-file="$CONFIGMAP_DIR/master/sql" config-master-sql
+
+kubectl delete configmap --ignore-not-found=true config-my-dot-cnf
+kubectl create configmap --from-file="$CONFIGMAP_DIR/my.cnf" config-my-dot-cnf
+
+kubectl delete configmap --ignore-not-found=true config-qserv-configure
+kubectl create configmap --from-file="$CONFIGMAP_DIR/qserv-configure.sh" config-qserv-configure
+
+kubectl delete configmap --ignore-not-found=true config-master-start
+kubectl create configmap --from-file="$CONFIGMAP_DIR/master/start.sh" config-master-start
+
+kubectl delete configmap --ignore-not-found=true config-worker-sql
+kubectl create configmap --from-file="$CONFIGMAP_DIR/worker/sql" config-worker-sql
+
+kubectl delete configmap --ignore-not-found=true config-worker-start
+kubectl create configmap --from-file="$CONFIGMAP_DIR/worker/start.sh" config-worker-start
 
 echo "Create kubernetes pod for Qserv master"
 kubectl create $SCHEMA_CACHE_OPT -f "$YAML_FILE"
@@ -84,7 +100,6 @@ do
     INI_FILE="${CFG_DIR}/pod.worker-${j}.ini"
     cat << EOF > "$INI_FILE"
 [spec]
-host_custom_dir: $HOST_CUSTOM_DIR
 host_data_dir: $HOST_DATA_DIR
 host_log_dir: $HOST_LOG_DIR
 host_tmp_dir: $HOST_TMP_DIR

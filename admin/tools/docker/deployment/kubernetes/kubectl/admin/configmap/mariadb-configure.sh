@@ -18,8 +18,13 @@ MYSQLD_SOCKET="$MYSQLD_DATA_DIR/mysql.sock"
 MYSQLD_PASSWORD_ROOT="CHANGEME"
 USER="mysql"
 # TODO manage via configmap
-SQL_DIR="/tmp/configure/sql"
-SQL_FILES="qserv-czar.sql"
+SQL_DIR="/config-sql"
+
+MARIADB_CONF="/config-mariadb/my.cnf"
+if [ -e "$MARIADB_CONF" ]; then
+    cp /etc/mysql/my.cnf /etc/mysql/my.cnf.0
+    ln -sf "$MARIADB_CONF" /etc/mysql/my.cnf
+fi
 
 # Make timezone adjustments (if requested)
 # TODO: set tz using k8s: http://cloudgeekz.com/1170/howto-timezone-for-kubernetes-pods.html
@@ -60,11 +65,11 @@ then
     mysqladmin -u root password "$MYSQLD_PASSWORD_ROOT"
 
     echo "-- "
-    echo "-- Initializing Qserv master database"
-    for file_name in ${SQL_FILES}; do
+    echo "-- Initializing Qserv database"
+    for file_name in "${SQL_DIR}"/*; do
         echo "-- Loading ${file_name} in MySQL"
         if mysql -vvv --user="root" --password="${MYSQLD_PASSWORD_ROOT}" \
-            < "${SQL_DIR}/${file_name}"
+            < "${file_name}"
         then
             echo "-- -> success"
         else
@@ -72,6 +77,15 @@ then
             exit 1
         fi
     done
+
+    echo "-- "
+    echo "-- Deploy scisql plugin"
+	# WARN: SciSQL shared library (libcisql*.so) deployed by command
+	# below will be removed at each container startup.
+    # That's why this shared library is currently 
+	# installed in mysql plugin directory at image creation.
+    echo "$MYSQLD_PASSWORD_ROOT" | scisql-deploy.py --mysql-plugin-dir=/usr/lib/mysql/plugin/ \
+        --mysql-bin=/usr/bin/mysql --mysql-socket="$MYSQLD_SOCKET"
 
     echo "-- Stop mariadb server."
     mysqladmin -u root --password="$MYSQLD_PASSWORD_ROOT" shutdown

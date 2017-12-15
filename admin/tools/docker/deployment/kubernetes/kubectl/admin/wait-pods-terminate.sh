@@ -13,7 +13,7 @@ echo "Wait for all Qserv pods to terminate"
 while true
 do
     GO_TPL='{{range .items}}- {{.metadata.name}} state: {{.status.phase}}{{"\n"}}{{end}}'
-    PODS=$(kubectl get pods -l app=qserv -o go-template --template "$GO_TPL")
+    PODS=$(kubectl get pods -l app=qserv -o go-template --show-all --template "$GO_TPL")
     if [ -n "$PODS" ]; then
         echo "Not terminated pods: "
         echo "$PODS"
