@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Launch Qserv multinode tests on Swarm cluster
+# Launch Qserv multinode tests on k8s cluster
 
 # @author Fabrice Jammes SLAC/IN2P3
 
