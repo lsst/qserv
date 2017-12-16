@@ -73,7 +73,7 @@ public:
 
     virtual void deleteKey(std::string const& key) override;
 
-    virtual std::string dumpKV() override;
+    virtual std::string dumpKV(std::string const& key=std::string()) override;
 
 protected:
     virtual std::string _get(std::string const& key,

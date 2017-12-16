@@ -139,10 +139,13 @@ public:
     /**
      *  Dumps complete CSS contents as a string.
      *
+     *  If key argument is given then only dump this key and all its sub-keys,
+     *  by default dump everything.
+     *
      *  Result can be fed to CssAccess::createFromData() method to create
      *  a new instance with the copy of CSS data.
      */
-    virtual std::string dumpKV() = 0;
+    virtual std::string dumpKV(std::string const& key=std::string()) = 0;
 
 protected:
     KvInterface() {}
