@@ -94,9 +94,13 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) {
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
     std::unique_lock<std::mutex> guardStats(_queryStatsMtx);
-    QueryStatistics::Ptr& stats = _queryStats[qid];
-    if (stats == nullptr) {
+    auto itr = _queryStats.find(qid);
+    QueryStatistics::Ptr stats;
+    if (_queryStats.end() == itr) {
         stats = std::make_shared<QueryStatistics>(qid);
+        _queryStats[qid] = stats;
+    } else {
+        stats = itr->second;
     }
     guardStats.unlock();
     stats->addTask(task);
@@ -255,7 +259,7 @@ void QueriesAndChunks::examineAll() {
     {
         std::lock_guard<std::mutex> g(_queryStatsMtx);
         for (auto const& ele : _queryStats) {
-            auto const& q = ele.second;
+            auto const q = ele.second;
             uqs.push_back(q);
         }
     }
