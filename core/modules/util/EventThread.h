@@ -30,6 +30,7 @@
 #include <atomic>
 #include <cassert>
 #include <deque>
+#include <queue>
 #include <thread>
 #include <vector>
 
@@ -124,6 +125,7 @@ protected:
 /// Thread must be started with run(). Stop the thread by calling queEnd().
 class EventThread : public CmdData {
 public:
+    typedef std::shared_ptr<EventThread> Ptr;
     enum { HALT = -1000 };
     EventThread() {}
     explicit EventThread(CommandQueue::Ptr const& q) : _q{q} {}
@@ -172,6 +174,49 @@ protected:
 private:
     Command::Ptr _cmd;
     std::atomic<Command*> _currentCommand{nullptr};
+};
+
+
+class EventThreadJoiner {
+public:
+    EventThreadJoiner();
+
+    ~EventThreadJoiner() {
+        _continue = false;
+    }
+
+    void joinLoop() {
+        EventThread::Ptr pet;
+        while(_continue) {
+            {
+                std::lock_guard<std::mutex> lg;
+                if(!_eventThreads.empty()) {
+                    pet = _eventThreads.front();
+                    _eventThreads.pop();
+                }
+                pet->join();
+            } else {
+                sleep(_sleepTime);
+            }
+        }
+    }
+
+    void addThread(EventThread::Ptr const& eventThread) {
+        if (eventThread == nullPtr) return;
+        std::lock_guard<std::mutex> lg;
+        ++_count;
+        _eventThreads.push(eventThread);
+    }
+
+
+
+private:
+    std::atomic<bool> _continue{true};
+    int _count{0};
+    int sleepTime{100000};
+    std::queue<EventThread::Ptr> _eventThreads;
+    std::mutex _mtxJoiner;
+    std::thread _tJoiner;
 };
 
 
