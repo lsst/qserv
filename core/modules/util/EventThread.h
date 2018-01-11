@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -177,144 +177,31 @@ private:
 };
 
 
+/// This class is used to join threads that are no longer wanted by their original owners. In
+/// most cases, this means a ThreadPool no longer wants them. The threads are added to a queue
+/// and the _tJoiner thread will join each of them in turn.
+/// Future: Possibly make a class that detaches EventThreads instead of joining them.
 class EventThreadJoiner {
 public:
+    typedef std::shared_ptr<EventThreadJoiner> Ptr;
+
     EventThreadJoiner();
+    ~EventThreadJoiner();
 
-    ~EventThreadJoiner() {
-        _continue = false;
-    }
-
-    void joinLoop() {
-        EventThread::Ptr pet;
-        while(_continue) {
-            {
-                std::lock_guard<std::mutex> lg;
-                if(!_eventThreads.empty()) {
-                    pet = _eventThreads.front();
-                    _eventThreads.pop();
-                }
-                pet->join();
-            } else {
-                sleep(_sleepTime);
-            }
-        }
-    }
-
-    void addThread(EventThread::Ptr const& eventThread) {
-        if (eventThread == nullPtr) return;
-        std::lock_guard<std::mutex> lg;
-        ++_count;
-        _eventThreads.push(eventThread);
-    }
-
-
+    void joinLoop();
+    void addThread(EventThread::Ptr const& eventThread);
+    int getCount() { return _count; }
+    void shutdownJoin();
+    bool joinable() { return _tJoiner.joinable(); }
 
 private:
-    std::atomic<bool> _continue{true};
-    int _count{0};
-    int sleepTime{100000};
-    std::queue<EventThread::Ptr> _eventThreads;
-    std::mutex _mtxJoiner;
-    std::thread _tJoiner;
+    std::atomic<bool> _continue{true}; ///< Stop checking
+    std::atomic<int> _count{0};
+    std::chrono::milliseconds _sleepTime{1000}; ///< Wait time before checking, only if queue is empty.
+    std::queue<EventThread::Ptr> _eventThreads; ///< Queue of EventThreads that need joining.
+    std::mutex _mtxJoiner; ///< Protects _eventThreads
+    std::thread _tJoiner; ///< Thread where joining will happen.
 };
-
-
-class ThreadPool;
-
-
-/// An EventThread to be used by the ThreadPool class.
-/// finishup() is used to tell the ThreadPool that this thread is finished.
-class PoolEventThread : public EventThread, public std::enable_shared_from_this<PoolEventThread> {
-public:
-    using Ptr = std::shared_ptr<PoolEventThread>;
-
-    static PoolEventThread::Ptr newPoolEventThread(std::shared_ptr<ThreadPool> const& threadPool,
-                                                   CommandQueue::Ptr const& q);
-    ~PoolEventThread();
-
-    void leavePool();
-    bool leavePool(Command::Ptr const& cmd);
-
-protected:
-    void specialActions(Command::Ptr const& cmd) override;
-    void finishup() override;
-    std::shared_ptr<ThreadPool> _threadPool;
-    std::atomic<bool> _finishupOnce{false}; //< Ensure finishup() only called once.
-
-private:
-    PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
-};
-
-
-/// A Command that is aware that it is running as part of a PoolEventThread,
-// which allows it to tell the event thread and pool to take special actions.
-class CommandThreadPool : public CommandTracked {
-public:
-    using Ptr = std::shared_ptr<CommandThreadPool>;
-
-    CommandThreadPool() {}
-    CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
-
-    PoolEventThread::Ptr getAndNullPoolEventThread();
-
-    friend class PoolEventThread;
-private:
-    void _setPoolEventThread(PoolEventThread::Ptr const& poolEventThread);
-
-    std::weak_ptr<PoolEventThread> _poolEventThread;
-};
-
-
-/// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
-/// Growing the pool is simple, shrinking the pool is complex. Both operations should
-/// have no effect on items running or on the queue.
-/// Note: endAll() MUST be called to shutdown the ThreadPool. There are self
-///   referential pointer between ThreadPool and its PoolEventThread's. This is a lesser
-///   evil than having PoolEventThread's running without their ThreadPool.
-class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
-public:
-    using Ptr = std::shared_ptr<ThreadPool>;
-    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
-                                         CommandQueue::Ptr const& q) {
-        Ptr thp{new ThreadPool{thrdCount, q}}; // private constructor
-        thp->_resize();
-        return thp;
-    }
-    virtual ~ThreadPool();
-
-    CommandQueue::Ptr getQueue() {return _q;}
-    unsigned int getTargetThrdCount() {
-        std::lock_guard<std::mutex> lock(_countMutex);
-        return _targetThrdCount;
-    }
-    unsigned int size() {
-        std::lock_guard<std::mutex> lock(_poolMutex);
-        return _pool.size();
-    }
-
-    void waitForResize(int millisecs);
-    void endAll() { resize(0); }
-    void resize(unsigned int targetThrdCount);
-    PoolEventThread::Ptr release(PoolEventThread *thread);
-
-protected:
-    ThreadPool(unsigned int thrdCount, CommandQueue::Ptr const& q) : _targetThrdCount{thrdCount}, _q{q} {
-        if (_q == nullptr) {
-            _q = std::make_shared<CommandQueue>();
-        }
-    }
-    void _resize();
-
-    std::mutex _poolMutex; ///< Protects _pool
-    std::vector<std::shared_ptr<PoolEventThread>> _pool; ///< All the threads in our pool.
-    unsigned int _targetThrdCount{0}; ///< How many threads we want to have.
-    std::mutex _countMutex; ///< protects _targetThrdCount
-    std::condition_variable _countCV; ///< Notifies about changes to _pool size, uses _countMutex.
-    CommandQueue::Ptr _q; ///< The queue used by all threads in the _pool.
-
-};
-
 
 }}} // namespace lsst:qserv:util
 

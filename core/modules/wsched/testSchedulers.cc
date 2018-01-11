@@ -864,11 +864,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
 
-
-
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
-    pool->endAll();
-    pool->waitForResize(0);
+    pool->shutdownPool();
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest done");
 }
 

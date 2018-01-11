@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2016 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -80,195 +80,55 @@ void EventThread::run() {
 }
 
 
-/// PoolEventThread factory to ensure shared_this.
-PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadPool> const& threadPool,
-                                                         CommandQueue::Ptr const& q) {
-    PoolEventThread::Ptr pet{new PoolEventThread(threadPool, q)};
-    return pet;
+EventThreadJoiner::EventThreadJoiner() {
+    std::thread t(&EventThreadJoiner::joinLoop, this);
+    _tJoiner = std::move(t);
 }
 
 
-PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
-: EventThread(q), _threadPool{threadPool} {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::PoolEventThread() " << this);
-}
-
-
-PoolEventThread::~PoolEventThread() {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread() " << this);
-}
-
-
-/// If cmd is a CommandThreadPool object, give it a copy of our this pointer.
-void PoolEventThread::specialActions(Command::Ptr const& cmd) {
-    CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
-    if (cmdPool != nullptr) {
-        cmdPool->_setPoolEventThread(shared_from_this());
+EventThreadJoiner::~EventThreadJoiner() {
+    if (_continue) {
+        LOGS(_log, LOG_LVL_ERROR, "~EventThreadJoiner() called without shutdownJoiner() being called");
     }
 }
 
 
-
-
-/// Cause this thread to leave the thread pool, this can be called from outside of the
-// thread that will be removed from the pool. This would most likely be done by
-// a CommandQueue which was having some trouble due to 'cmd', such as 'cmd' taking
-// too long to complete. This allows the CommandQueue to continue but will have other
-// consequences.
-// @return false if a different command is running than cmd.
-bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
-    // This thread will stop accepting commands
-    _loop = false;
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
-    if (cmd.get() != getCurrentCommand()) {
-        LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
-        // cmd must have finished before the event loop stopped.
-        // The current command will complete normally, and the pool
-        // should replace this thread with a new one when finishup()
-        // is called in handleCmds(). No harm aside from some wasted CPU cycles.
-        return false;
-    }
-
-    // Have the CommandQueue deal with any accounting that needs to be done.
-    callCommandFinish(cmd);
-
-    // Have the thread pool release this thread, which will cause a replacement thread
-    // to be created.
-    finishup();
-    return true;
+void EventThreadJoiner::shutdownJoin() {
+    _continue = false;
+    LOGS(_log, LOG_LVL_DEBUG, "Waiting for joiner thread to finish.");
+    _tJoiner.join();
 }
 
 
-/// Cause this thread to leave the thread pool, this MUST only called from within
-// the thread that will be removed (most likely from within a CommandThreadPool action).
-void PoolEventThread::leavePool() {
-    // This thread will stop accepting commands
-    _loop = false;
-    leavePool(_getCurrentCommandPtr());
-}
-
-
-void PoolEventThread::finishup() {
-    if (_finishupOnce.exchange(true) == false) {
-        // 'pet' will keep this PoolEventThread instance alive until this thread completes,
-        // otherwise it would likely be deleted when _threadPool->release(this) is called.
-        auto pet = _threadPool->release(this);
-        LOGS(_log, LOG_LVL_DEBUG, "start finishup pet=" << pet << " c=" << pet.use_count());
-        if (pet != nullptr) {
-            auto f = [pet](){
-                pet->join();
-                LOGS(_log, LOG_LVL_DEBUG, "finishup pet join() " << pet << " c=" << pet.use_count());
-            };
-            std::thread t{f};
-            t.detach();
+void EventThreadJoiner::joinLoop() {
+    EventThread::Ptr pet;
+    while(true) {
+        std::unique_lock<std::mutex> ulock(_mtxJoiner);
+        if(!_eventThreads.empty()) {
+            pet = _eventThreads.front();
+            _eventThreads.pop();
+            ulock.unlock();
+            pet->join();
+            pet.reset();
+            _count--;
+            LOGS(_log, LOG_LVL_DEBUG, "joined count=" << _count);
         } else {
-            LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "done finishup pet=" << pet << " c=" << pet.use_count());
-    }
-}
-
-
-/// Set _poolEventThread pointer to the thread running this command.
-void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
-    _poolEventThread = poolEventThread;
-}
-
-
-/// Invalidate _poolEventThread so it can't be used again.
-/// At this point, the reason to get _poolEventThread is to
-/// have the thread leave the pool. This prevents that from
-/// happening more than once.
-PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
-    auto pet = _poolEventThread.lock();
-    _poolEventThread.reset();
-    return pet;
-}
-
-
-ThreadPool::~ThreadPool() {
-    endAll();
-    waitForResize(0);
-}
-
-/// Release the thread from the thread pool and return a shared pointer to the
-/// released thread.
-PoolEventThread::Ptr ThreadPool::release(PoolEventThread *thrd) {
-    // Search for the the thread to free
-    auto func = [thrd](PoolEventThread::Ptr const& pt)->bool {
-        return pt.get() == thrd;
-    };
-
-    PoolEventThread::Ptr thrdPtr;
-    {
-        std::lock_guard<std::mutex> lock(_poolMutex);
-        auto iter = std::find_if(_pool.begin(), _pool.end(), func);
-        if (iter == _pool.end()) {
-            LOGS(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
-        } else {
-            thrdPtr = *iter;
-            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
-            _pool.erase(iter);
+            if (!_continue) break;
+            ulock.unlock();
+            std::this_thread::sleep_for(_sleepTime);
         }
     }
-    _resize(); // Check if more threads need to be released.
-    return thrdPtr;
+    LOGS(_log, LOG_LVL_DEBUG, "join loop exiting");
 }
 
-/// Change the size of the thread pool.
-void ThreadPool::resize(unsigned int targetThrdCount) {
-    {
-        std::lock_guard<std::mutex> lock(_countMutex);
-        _targetThrdCount = targetThrdCount;
-    }
-    _resize();
+
+void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
+    if (eventThread == nullptr) return;
+    std::lock_guard<std::mutex> lg(_mtxJoiner);
+    ++_count;
+    _eventThreads.push(eventThread);
 }
 
-/// Do the work of changing the size of the thread pool.
-/// Making the pool larger is just a matter of adding threads.
-/// Shrinking the pool requires ending one thread at a time.
-void ThreadPool::_resize() {
-    std::lock_guard<std::mutex> lock(_poolMutex);
-    auto target = getTargetThrdCount();
-    while (target > _pool.size()) {
-        LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize creating new PoolEventThread");
-        auto t = PoolEventThread::newPoolEventThread(shared_from_this(), _q);
-        _pool.push_back(t);
-        t->run();
-    }
-    // Shrinking the thread pool is much harder. Adding a message to end one thread
-    // is sent. When that thread ends, it calls release(), which will then call
-    // this function again to check if more threads need to be ended.
-    if (target < _pool.size()) {
-        auto thrd = _pool.front();
-        if (thrd != nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize sending thrd->queEnd()");
-            thrd->queEnd(); // Since all threads share the same queue, this could be answered by any thread.
-        } else {
-            LOGS(_log, LOG_LVL_WARN, "ThreadPool::_resize thrd == nullptr");
-        }
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "_resize target=" << target << " size=" << _pool.size());
-    {
-        std::unique_lock<std::mutex> countlock(_countMutex);
-        _countCV.notify_all();
-    }
-}
-
-/// Wait for the pool to reach the _targetThrdCount number of threads.
-/// It will wait forever if 'millisecs' is zero, otherwise it will timeout
-/// after that number of milliseconds.
-/// Note that this wont detect changes to _targetThrdCount.
-void ThreadPool::waitForResize(int millisecs) {
-    auto eqTest = [this](){ return _targetThrdCount == _pool.size(); };
-    std::unique_lock<std::mutex> lock(_countMutex);
-    if (millisecs > 0) {
-        _countCV.wait_for(lock, std::chrono::milliseconds(millisecs), eqTest);
-    } else {
-        _countCV.wait(lock, eqTest);
-    }
-}
-
-}}} // namespace
+}}} // namespace lsst:qserv:util
 
 

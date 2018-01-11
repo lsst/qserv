@@ -44,6 +44,7 @@
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
+#include "util/ThreadPool.h"
 
 // Forward declarations
 class XrdSsiService;
