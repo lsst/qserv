@@ -32,18 +32,19 @@ namespace css {
 
 /// A container for match-table metadata.
 struct MatchTableParams {
-    MatchTableParams() {}
+    MatchTableParams() : angSep(0.0) {}
     MatchTableParams(std::string const& dirTable1_, std::string const& dirColName1_,
                      std::string const& dirTable2_, std::string const& dirColName2_,
-                     std::string const& flagColName_) :
+                     std::string const& flagColName_, double angSep_) :
         dirTable1(dirTable1_), dirColName1(dirColName1_), dirTable2(dirTable2_),
-        dirColName2(dirColName2_), flagColName(flagColName_) {}
+        dirColName2(dirColName2_), flagColName(flagColName_), angSep(angSep_) {}
 
     std::string dirTable1;   ///< First director-table involved in match.
     std::string dirColName1; ///< The column used to join with dirTable1.
     std::string dirTable2;   ///< Second director-table involved in match.
     std::string dirColName2; ///< The column used to join with dirTable2.
     std::string flagColName; ///< Match-flags column name.
+    double angSep; ///< Max angular separation between objects in director tables.
 
     /// Returns true if table is a match table
     bool isMatchTable() const { return not dirTable1.empty(); }

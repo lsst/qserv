@@ -46,6 +46,7 @@ const char testKvMap[] = R"////(
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/match\/dirTable1": "SimRefObject",
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/match\/dirTable2": "Object",
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/match\/flagColName": "flags",
+    "\/DBS\/LSST\/TABLES\/RefObjMatch\/match\/angSep": "0.0001",
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/partitioning": "",
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/partitioning\/subChunks": "0",
     "\/DBS\/LSST\/TABLES\/RefObjMatch\/uuid": "5edfb315-b7b1-40a5-b8f4-4e16802d6441",

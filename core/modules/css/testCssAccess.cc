@@ -114,10 +114,11 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/RefMatch/match/dirTable2", "Source"));
     kv.push_back(make_pair(p + "/RefMatch/match/dirColName2", "sourceId"));
     kv.push_back(make_pair(p + "/RefMatch/match/flagColName", "flag"));
+    kv.push_back(make_pair(p + "/RefMatch/match/angSep", "0.001"));
     kv.push_back(make_pair(p + "/RefMatch2", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/RefMatch2/match", ""));
     kv.push_back(make_pair(p + "/RefMatch2/match/.packed.json",
-                           R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag"})"));
+                           R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag", "angSep": "0.002"})"));
     kv.push_back(make_pair(p + "/TempTable1", KEY_STATUS_IGNORE));
     kv.push_back(make_pair(p + "/TempTable2", "PENDING_CREATE:12345"));
 
@@ -376,6 +377,7 @@ BOOST_AUTO_TEST_CASE(testGetMatchTableParams) {
     BOOST_CHECK_EQUAL(params.dirTable2, "Source");
     BOOST_CHECK_EQUAL(params.dirColName2, "sourceId");
     BOOST_CHECK_EQUAL(params.flagColName, "flag");
+    BOOST_CHECK_EQUAL(params.angSep, 0.001);
 
     // packed params
     params = getMatchTableParams("dbC", "RefMatch2");
@@ -384,6 +386,7 @@ BOOST_AUTO_TEST_CASE(testGetMatchTableParams) {
     BOOST_CHECK_EQUAL(params.dirTable2, "Source");
     BOOST_CHECK_EQUAL(params.dirColName2, "sourceId");
     BOOST_CHECK_EQUAL(params.flagColName, "flag");
+    BOOST_CHECK_EQUAL(params.angSep, 0.002);
 
     BOOST_CHECK_THROW(params = getMatchTableParams("dbC", "NoRefMatch"), NoSuchTable);
 }
@@ -449,6 +452,7 @@ BOOST_AUTO_TEST_CASE(testGetTableParams) {
     BOOST_CHECK_EQUAL(params.match.dirTable2, "Source");
     BOOST_CHECK_EQUAL(params.match.dirColName2, "sourceId");
     BOOST_CHECK_EQUAL(params.match.flagColName, "flag");
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.001);
     BOOST_CHECK(params.partitioning.dirDb.empty());
     BOOST_CHECK(params.partitioning.dirTable.empty());
     BOOST_CHECK(params.partitioning.dirColName.empty());
@@ -464,6 +468,7 @@ BOOST_AUTO_TEST_CASE(testGetTableParams) {
     BOOST_CHECK_EQUAL(params.match.dirTable2, "Source");
     BOOST_CHECK_EQUAL(params.match.dirColName2, "sourceId");
     BOOST_CHECK_EQUAL(params.match.flagColName, "flag");
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.002);
     BOOST_CHECK(params.partitioning.dirDb.empty());
     BOOST_CHECK(params.partitioning.dirTable.empty());
     BOOST_CHECK(params.partitioning.dirColName.empty());
@@ -509,6 +514,7 @@ BOOST_AUTO_TEST_CASE(testCreateTable) {
     BOOST_CHECK(params.match.dirTable2.empty());
     BOOST_CHECK(params.match.dirColName2.empty());
     BOOST_CHECK(params.match.flagColName.empty());
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.0);
     BOOST_CHECK(params.partitioning.dirDb.empty());
     BOOST_CHECK(params.partitioning.dirTable.empty());
     BOOST_CHECK(params.partitioning.dirColName.empty());
@@ -531,6 +537,7 @@ BOOST_AUTO_TEST_CASE(testCreateTable) {
     BOOST_CHECK(params.match.dirTable2.empty());
     BOOST_CHECK(params.match.dirColName2.empty());
     BOOST_CHECK(params.match.flagColName.empty());
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.0);
     BOOST_CHECK_EQUAL(params.partitioning.dirDb, "dbA");
     BOOST_CHECK_EQUAL(params.partitioning.dirTable, "SomeTable");
     BOOST_CHECK_EQUAL(params.partitioning.dirColName, "dirColName");
@@ -554,6 +561,7 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     BOOST_CHECK(params.match.dirTable2.empty());
     BOOST_CHECK(params.match.dirColName2.empty());
     BOOST_CHECK(params.match.flagColName.empty());
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.0);
     BOOST_CHECK(params.partitioning.dirDb.empty());
     BOOST_CHECK(params.partitioning.dirTable.empty());
     BOOST_CHECK(params.partitioning.dirColName.empty());
@@ -564,7 +572,8 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
 
     BOOST_CHECK_THROW(createMatchTable("dbA", "MatchTable", "(INT I)", mParams), TableExists);
 
-    MatchTableParams params1{"dirTable1", "dirCol1", "dirTable2", "dirCol2", "flagCol"};
+    double matchAngSep = 0.01;
+    MatchTableParams params1{"dirTable1", "dirCol1", "dirTable2", "dirCol2", "flagCol", matchAngSep};
     createMatchTable("dbA", "MatchTable2", "(INT X)", params1);
     BOOST_CHECK(containsTable("dbA", "MatchTable2"));
 
@@ -576,6 +585,7 @@ BOOST_AUTO_TEST_CASE(testCreateMatchTable) {
     BOOST_CHECK_EQUAL(params.match.dirTable2, "dirTable2");
     BOOST_CHECK_EQUAL(params.match.dirColName2, "dirCol2");
     BOOST_CHECK_EQUAL(params.match.flagColName, "flagCol");
+    BOOST_CHECK_EQUAL(params.match.angSep, 0.01);
     BOOST_CHECK(params.partitioning.dirDb.empty());
     BOOST_CHECK(params.partitioning.dirTable.empty());
     BOOST_CHECK(params.partitioning.dirColName.empty());

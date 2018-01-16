@@ -302,7 +302,7 @@ class CommandParser(object):
             if options.get('match', False):
                 matchParams = css.MatchTableParams(options['dirTable1'], options['dirColName1'],
                                                    options['dirTable2'], options['dirColName2'],
-                                                   options['flagColName'])
+                                                   options['flagColName'], options['angSep'])
                 self._css.createMatchTable(dbName, tbName, options['schema'], matchParams)
             else:
                 if 'dirTable' in options:
