@@ -72,7 +72,7 @@ Foreman::~Foreman() {
     LOGS(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
     // It will take significant effort to have xrootd shutdown cleanly and this will never get called
     // until that happens.
-    _pool->endAll();
+    _pool->shutdownPool();
 }
 
 /// Put the task on the scheduler to be run later.

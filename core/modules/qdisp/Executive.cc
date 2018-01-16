@@ -186,8 +186,7 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
 
 
 void Executive::waitForAllJobsToStart() {
-    _startJobsPool->endAll();
-    _startJobsPool->waitForResize(0); // No time limit.
+    _startJobsPool->shutdownPool(); // Wait forever
 }
 
 

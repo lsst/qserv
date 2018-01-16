@@ -38,7 +38,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "util/EventThread.h"
+#include "util/ThreadPool.h"
 #include "util/InstanceCount.h"
 
 // Boost unit test header
@@ -85,6 +85,28 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     /// Create a thread pool
     std::weak_ptr<CommandQueue> weak_que;
     std::weak_ptr<ThreadPool> weak_pool;
+
+
+    /// Create a thread pool
+    {
+        auto cmdQueue = std::make_shared<CommandQueue>();
+        weak_que = cmdQueue;
+        uint sz = 2; // size of thread pool to create
+        auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
+        weak_pool = pool;
+        LOGS_DEBUG("pool size=" << sz);
+        BOOST_CHECK(pool->size() == sz);
+
+        // Shrink the pool to zero and verify that the pool is shutdown.
+        pool->shutdownPool();
+        LOGS_DEBUG("pool size=" << 0 << " weak_pool.use_count=" << weak_pool.use_count());
+        pool->resize(20); // Size should remain zero, since shutdownPool() called.
+        BOOST_CHECK(pool->size() == 0);
+    }
+    BOOST_CHECK(weak_pool.use_count() == 0);
+    BOOST_CHECK(weak_que.use_count() == 0);
+
+
     {
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
@@ -95,12 +117,12 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         BOOST_CHECK(pool->size() == sz);
         sz += 10; // test increase in size of thread pool.
         pool->resize(sz);
-        LOGS_DEBUG("pool size=" << sz);
+        LOGS_DEBUG("pool size=" << sz << " weak_pool.use_count=" << weak_pool.use_count());
         BOOST_CHECK(pool->size() == sz);
         sz = 5; // test decrease in size of thread pool.
         pool->resize(sz);
         pool->waitForResize(10000);
-        LOGS_DEBUG("pool size=" << sz);
+        LOGS_DEBUG("pool size=" << sz << " weak_pool.use_count=" << weak_pool.use_count());
         BOOST_CHECK(pool->size() == sz);
 
         /// Queue up a sum using the pool.
@@ -115,7 +137,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         LOGS_DEBUG("Summing with pool");
         sz = 20; // Want enough threads so that there are reasonable chance of collisions.
         pool->resize(sz);
-        LOGS_DEBUG("pool size=" << sz);
+        LOGS_DEBUG("pool size=" << sz << " weak_pool.use_count=" << weak_pool.use_count());
         BOOST_CHECK(pool->size() == sz);
 
         for (int j=1;j<2000;j++) {
@@ -126,12 +148,14 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         LOGS_DEBUG("stopping all threads in pool");
         pool->endAll(); // These are added to end of queue, everything on queue should complete.
         pool->waitForResize(0);
+        LOGS_DEBUG("pool size=" << 0 << " weak_pool.use_count=" << weak_pool.use_count());
         BOOST_CHECK(total == poolSum.total);
 
         // Test that a threads can leave the pool and complete and the pool size recovers.
         sz = 5;
         pool->resize(sz);
         pool->waitForResize(0);
+        LOGS_DEBUG("pool size=" << sz << " weak_pool.use_count=" << weak_pool.use_count());
         Sum sum;
         std::vector<Tracker::Ptr> trackedCmds;
         bool go = false;
@@ -140,6 +164,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         // Create more threads than can fit in the pool and don't let any complete.
         int threadsRunning = 2*sz;
         for (int j=0; j<threadsRunning; j++) {
+            // The command to run.
             auto cmdDelaySum = std::make_shared<CommandThreadPool>(
                 [&sum, &go, &goCV, &goCVMtx](CmdData* eventThread){
                     PoolEventThread* peThread = dynamic_cast<PoolEventThread*>(eventThread);
@@ -151,8 +176,8 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
                     goCV.wait(goLock, goCVTest); // wait on go == true;
                     sum.add(1);
             });
-            trackedCmds.push_back(cmdDelaySum);
-            poolQueue->queCmd(cmdDelaySum);
+            trackedCmds.push_back(cmdDelaySum); // Remember the command so we can check status later.
+            poolQueue->queCmd(cmdDelaySum); // Have the pool run the command when it can.
         }
         // Wait briefly (5sec) for all threads to be running.
         LOGS_DEBUG("Wait for all threads to be running.");
@@ -165,6 +190,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         // Shrink the pool to zero and verify the separated threads complete.
         pool->resize(0);
         pool->waitForResize(0);
+        LOGS_DEBUG("pool size=" << 0 << " weak_pool.use_count=" << weak_pool.use_count());
         BOOST_CHECK(pool->size() == 0);
         // Have the separated threads finish.
         {
@@ -179,11 +205,10 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         }
         // sum.total should now be double what it was.
         BOOST_CHECK(sum.total == 2*threadsRunning);
-    }
-
-    // Give it some time to finish deleting everything (5 seconds total)
-    for (int j = 0; weak_pool.use_count() > 0 && j<50 ; j++) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        LOGS_DEBUG("Shutting down pool.");
+        pool->shutdownPool();
+        pool.reset();
+        LOGS_DEBUG("pool !exists weak_pool.use_count=" << weak_pool.use_count());
     }
     BOOST_CHECK(weak_pool.use_count() == 0);
     BOOST_CHECK(weak_que.use_count() == 0);
@@ -224,7 +249,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         LOGS_DEBUG("cmdSumUnprotected=" << sum.total
                    << " commandData=" << commandData->total);
         BOOST_CHECK(sum.total == commandData->total);
-        pool->endAll();
+        pool->shutdownPool();
     }
 
     // Give it some time to finish deleting everything (5 seconds)

@@ -443,6 +443,11 @@ struct SchedFixture {
     int maxActiveChunks{20};
     int priority{2};
 
+private:
+    double _maxScanTimeFast{oneHr}; ///< Don't hit time limit in tests.
+    int _examineAllSleep{0}; ///< Don't run _examineThread when 0
+
+public:
     lsst::qserv::memman::MemManNone::Ptr memMan{
         std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
     wsched::GroupScheduler::Ptr group{std::make_shared<wsched::GroupScheduler>(
@@ -458,10 +463,6 @@ struct SchedFixture {
 
     lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
     wsched::BlendScheduler::Ptr blend;
-
-private:
-    double _maxScanTimeFast{oneHr}; ///< Don't hit time limit in tests.
-    int _examineAllSleep{0}; ///< Don't run _examineThread when 0
 };
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
@@ -863,11 +864,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
 
-
-
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
-    pool->endAll();
-    pool->waitForResize(0);
+    pool->shutdownPool();
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest done");
 }
 

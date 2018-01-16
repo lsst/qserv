@@ -39,7 +39,7 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
-#include "util/EventThread.h"
+#include "util/ThreadPool.h"
 #include "util/threadSafe.h"
 
 // Forward declarations
