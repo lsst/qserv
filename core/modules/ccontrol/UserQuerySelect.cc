@@ -284,8 +284,21 @@ void UserQuerySelect::submit() {
 /// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
     bool successful = _executive->join(); // Wait for all data
-    _infileMerger->finalize(); // Since all data are in, run final SQL commands like GROUP BY.
-    _discardMerger();
+    // Since all data are in, run final SQL commands like GROUP BY.
+    if (!_infileMerger->finalize()) {
+        successful = false;
+        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " InfileMerger::finalize failed");
+        // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
+        _messageStore->addMessage(-1, 1105, "Failure while merging result",
+                MessageSeverity::MSG_ERROR);
+    }
+    try {
+        _discardMerger();
+    } catch (std::exception const& exc) {
+        // exception here means error in qserv logic, we do not want to leak
+        // it or expose it to user, just dump it to log
+        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " exception from _discardMerger: "<< exc.what());
+    }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " Joined everything (success)");
