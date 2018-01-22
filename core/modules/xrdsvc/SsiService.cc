@@ -30,6 +30,7 @@
 #include <string>
 #include <stdlib.h>
 #include <unistd.h>
+#include <xrdsvc/SsiRequest.h>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiLogger.hh"
@@ -51,7 +52,6 @@
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
-#include "xrdsvc/SsiSession.h"
 #include "xrdsvc/XrdName.h"
 
 
@@ -155,12 +155,12 @@ SsiService::~SsiService() {
 
 void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    SsiSession* session = new SsiSession(resRef.rName, _chunkInventory->newValidator(), _foreman);
+    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory->newValidator(), _foreman);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.
     //
-    session->execute(reqRef);
+    request->execute(reqRef);
 }
 
 void SsiService::_initInventory() {
