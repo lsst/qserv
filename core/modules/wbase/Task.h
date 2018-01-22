@@ -56,6 +56,11 @@ namespace proto {
 
 namespace lsst {
 namespace qserv {
+
+namespace xrdsvc {
+class SsiSession;
+}
+
 namespace wbase {
 
 /// Base class for tracking a database query for a worker Task.
@@ -68,6 +73,7 @@ public:
 };
 
 class Task;
+
 
 /// Base class for scheduling Tasks.
 /// Allows the scheduler to take appropriate action when a task is cancelled.
@@ -119,7 +125,8 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
+    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc,
+                  std::shared_ptr<xrdsvc::SsiSession> const& ssi);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -172,6 +179,7 @@ public:
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
 private:
+    std::shared_ptr<xrdsvc::SsiSession> _ssiSession; ///< Keep SsiSession alive until this task is done.
     QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
     int      const    _attemptCount{0}; // attemptCount from czar

@@ -46,15 +46,18 @@ namespace xrdsvc {
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
 /// adhere to using BindRequest() and UnBindRequest() responder methods.
-class SsiSession : public XrdSsiResponder {
+class SsiSession : public XrdSsiResponder, public std::enable_shared_from_this<SsiSession> {
 public:
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
+    typedef std::shared_ptr<SsiSession> Ptr;
 
-    /// Construct a new session (called by SsiService)
-    SsiSession(std::string const& rname,
+    // Use factory to ensure proper construction for enable_shared_from_this.
+    static SsiSession::Ptr newSsiSession(std::string const& rname,
                ValidatorPtr validator,
-               std::shared_ptr<wbase::MsgProcessor> const& processor)
-        : _validator(validator), _processor(processor), _resourceName(rname) {}
+               std::shared_ptr<wbase::MsgProcessor> const& processor) {
+        SsiSession::Ptr ssiPtr(new SsiSession(rname, validator, processor));
+        return ssiPtr;
+    }
 
     virtual ~SsiSession();
 
@@ -65,18 +68,16 @@ public:
                   bool cancel=false) override;
 
 private:
-    void _addTask(wbase::Task::Ptr const& task);
-
+    /// Construct a new session (called by SsiService)
+    SsiSession(std::string const& rname,
+               ValidatorPtr validator,
+               std::shared_ptr<wbase::MsgProcessor> const& processor)
+        : _validator(validator), _processor(processor), _resourceName(rname) {}
     class ReplyChannel;
     friend class ReplyChannel;
 
     ValidatorPtr _validator; ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
-
-    /// List of Tasks.
-    std::mutex _tasksMutex; ///< protects _tasks.
-    std::vector<wbase::Task::Ptr> _tasks;
-    std::atomic<bool> _cancelled{false}; ///< true if the session has been cancelled.
 
     std::mutex  _finMutex;  ///< Protects execute() from Finish()
     std::string _resourceName;

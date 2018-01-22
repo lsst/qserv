@@ -53,6 +53,7 @@ namespace xrdsvc {
 
 SsiSession::~SsiSession() {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiSession()");
+    UnBindRequest();
 }
 
 // Step 4
@@ -133,7 +134,7 @@ void SsiSession::execute(XrdSsiRequest& req) {
     // the task is handed off to another thread for processing, as there is a
     // reference to this SsiSession inside the reply channel for the task,
     // and after the call to BindRequest.
-    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel, shared_from_this());
     ReleaseRequestBuffer();
     t.start();
     _processor->processTask(task); // Queues task to be run later.
@@ -157,14 +158,7 @@ void SsiSession::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // moving the lock into execute() and obtaining it unobviously early.
     _finMutex.lock();
     _finMutex.unlock();
-    {
-        std::lock_guard<std::mutex> lock(_tasksMutex);
-        if (cancel && !_cancelled.exchange(true)) { // Cancel if not already cancelled
-            for (auto task: _tasks) {
-                task->cancel();
-            }
-        }
-    }
+
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
     const char* type = "";
@@ -179,24 +173,6 @@ void SsiSession::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
-
-    // Now that we are done, we can unbind ourselves from the request to allow
-    // it to be reclaimed by the SSI framework. Afterwards, we simply delete
-    // ouselves as there should be nothing referencing this object!
-    UnBindRequest();
-    delete this;
-}
-
-void SsiSession::_addTask(wbase::Task::Ptr const& task) {
-    {
-        std::lock_guard<std::mutex> lock(_tasksMutex);
-        _tasks.push_back(task);
-
-    }
-    if (_cancelled) {
-        // Calling Task::cancel multiple times should be harmless.
-        task->cancel();
-    }
 }
 
 }}} // namespace

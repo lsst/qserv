@@ -83,7 +83,8 @@ struct Fixture {
     std::shared_ptr<Task> newTask() {
         std::shared_ptr<TaskMsg> msg(newTaskMsg());
         std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        return std::make_shared<lsst::qserv::wbase::Task>(msg, sc);
+        Task::Ptr taskPtr(new Task(msg, sc, nullptr));
+        return taskPtr;
     }
 
     MySqlConfig newMySqlConfig() {
@@ -103,7 +104,7 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 BOOST_AUTO_TEST_CASE(Simple) {
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-    std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
+    Task::Ptr task(new Task(msg, sc, nullptr));
     FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
@@ -114,7 +115,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     std::string out;
     std::shared_ptr<TaskMsg> msg(newTaskMsg());
     std::shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
-    std::shared_ptr<Task> task = std::make_shared<Task>(msg, sc);
+    Task::Ptr task(new Task(msg, sc, nullptr));
     FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
