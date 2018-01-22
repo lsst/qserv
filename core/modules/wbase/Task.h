@@ -56,11 +56,6 @@ namespace proto {
 
 namespace lsst {
 namespace qserv {
-
-namespace xrdsvc {
-class SsiSession;
-}
-
 namespace wbase {
 
 /// Base class for tracking a database query for a worker Task.
@@ -73,7 +68,6 @@ public:
 };
 
 class Task;
-
 
 /// Base class for scheduling Tasks.
 /// Allows the scheduler to take appropriate action when a task is cancelled.
