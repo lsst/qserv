@@ -79,10 +79,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     // match table
     if (tParam.match.isMatchTable()) {
         css::MatchTableParams const& m = tParam.match;
-        // TODO: match table angular separation should come from a separate
-        // parameter which we do not have currently. For now abuse per-database
-        // partition overlap parameter for that purpose.
-        double angSep = _css.getDbStriping(db_).overlap;
+        double angSep = m.angSep;
         std::unique_ptr<MatchTableInfo> infoPtr(new MatchTableInfo(db_, table, angSep));
         infoPtr->director.first = dynamic_cast<DirTableInfo const*>(
             get(db_, m.dirTable1));

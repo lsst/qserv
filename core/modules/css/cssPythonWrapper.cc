@@ -70,13 +70,14 @@ PYBIND11_PLUGIN(cssLib) {
     py::class_<MatchTableParams>(mod, "MatchTableParams")
         .def(py::init<>())
         .def(py::init<std::string const&, std::string const&, std::string const&,
-                std::string const&, std::string const&>())
+                std::string const&, std::string const&, double>())
         .def("isMatchTable", &MatchTableParams::isMatchTable)
         .def_readwrite("dirTable1", &MatchTableParams::dirTable1)
         .def_readwrite("dirColName1", &MatchTableParams::dirColName1)
         .def_readwrite("dirTable2", &MatchTableParams::dirTable2)
         .def_readwrite("dirColName2", &MatchTableParams::dirColName2)
         .def_readwrite("flagColName", &MatchTableParams::flagColName)
+        .def_readwrite("angSep", &MatchTableParams::angSep)
         ;
 
     py::class_<NodeParams>(mod, "NodeParams")

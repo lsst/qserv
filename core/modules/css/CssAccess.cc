@@ -441,7 +441,7 @@ CssAccess::getMatchTableParams(std::string const& dbName,
     MatchTableParams params;
 
     std::vector<std::string> subKeys{"match/dirTable1", "match/dirColName1", "match/dirTable2",
-            "match/dirColName2", "match/flagColName"};
+            "match/dirColName2", "match/flagColName", "match/angSep"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
@@ -449,7 +449,7 @@ CssAccess::getMatchTableParams(std::string const& dbName,
         return params;
     }
 
-    _fillMatchTableParams(paramMap, params);
+    _fillMatchTableParams(paramMap, params, tableKey);
     return params;
 }
 
@@ -513,7 +513,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
         "partitioning/lonColName", "partitioning/overlap", "partitioning/secIndexColName",
         "sharedScann/lockInMem", "sharedScan/scanRating",
         "match/dirTable1", "match/dirColName1", "match/dirTable2", "match/dirColName2",
-        "match/flagColName", "partitioning"};
+        "match/flagColName", "match/angSep", "partitioning"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
@@ -522,7 +522,7 @@ CssAccess::getTableParams(std::string const& dbName, std::string const& tableNam
     }
 
     // fill the structure
-    _fillMatchTableParams(paramMap, params.match);
+    _fillMatchTableParams(paramMap, params.match, tableKey);
     _fillPartTableParams(paramMap, params.partitioning, tableKey);
     _fillScanTableParams(paramMap, params.sharedScan, tableKey);
 
@@ -614,6 +614,7 @@ CssAccess::createMatchTable(std::string const& dbName,
             std::make_pair("dirTable2", matchParams.dirTable2),
             std::make_pair("dirColName2", matchParams.dirColName2),
             std::make_pair("flagColName", matchParams.flagColName),
+            std::make_pair("angSep", std::to_string(matchParams.angSep)),
         };
         _storePacked(tableKey + "/match", partMap);
         // match table is always partitioned and needs corresponding key
@@ -1038,12 +1039,25 @@ CssAccess::_fillPartTableParams(std::map<std::string, std::string>& paramMap,
 
 void
 CssAccess::_fillMatchTableParams(std::map<std::string, std::string>& paramMap,
-                                 MatchTableParams& params) const {
+                                 MatchTableParams& params,
+                                 std::string const& tableKey) const {
     params.dirTable1 = paramMap["match/dirTable1"];
     params.dirColName1 = paramMap["match/dirColName1"];
     params.dirTable2 = paramMap["match/dirTable2"];
     params.dirColName2 = paramMap["match/dirColName2"];
     params.flagColName = paramMap["match/flagColName"];
+    params.angSep = 0.0;
+    try {
+        auto iter = paramMap.find("match/angSep");
+        if (iter != paramMap.end()) {
+            params.angSep = std::stod(iter->second);
+        }
+    } catch (std::exception const& exc) {
+        LOGS(_log, LOG_LVL_ERROR, "match/angSep is not numeric: "
+             << util::printable(paramMap));
+        throw KeyValueError(tableKey + "match/angSep",
+                "match/angSep is not numeric: " + std::string(exc.what()));
+    }
 }
 
 void

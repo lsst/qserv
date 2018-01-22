@@ -544,7 +544,8 @@ private:
                               PartTableParams& params,
                               std::string const& tableKey) const;
     void _fillMatchTableParams(std::map<std::string, std::string>& paramMap,
-                               MatchTableParams& params) const;
+                               MatchTableParams& params,
+                               std::string const& tableKey) const;
     void _fillScanTableParams(std::map<std::string, std::string>& paramMap,
                               ScanTableParams& params,
                               std::string const& tableKey) const;
