@@ -63,7 +63,7 @@ using lsst::qserv::wbase::SendChannel;
 double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>(), nullptr));
+    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }

@@ -44,7 +44,7 @@ class SsiSession::ReplyChannel : public wbase::SendChannel {
 public:
     typedef std::shared_ptr<ReplyChannel> Ptr;
 
-    ReplyChannel(SsiSession& s)
+    ReplyChannel(SsiSession::Ptr const& s)
         : _ssiSession(s), _stream(0) {}
 
     virtual bool send(char const* buf, int bufLen);
@@ -55,7 +55,7 @@ public:
 private:
     void _initStream();
 
-    SsiSession& _ssiSession;
+    SsiSession::Ptr _ssiSession;
     ChannelStream* _stream;
 };
 

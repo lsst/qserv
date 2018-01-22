@@ -125,8 +125,7 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc,
-                  std::shared_ptr<xrdsvc::SsiSession> const& ssi);
+    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -179,7 +178,6 @@ public:
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
 private:
-    std::shared_ptr<xrdsvc::SsiSession> _ssiSession; ///< Keep SsiSession alive until this task is done.
     QueryId  const    _qId{0}; //< queryId from czar
     int      const    _jId{0}; //< jobId from czar
     int      const    _attemptCount{0}; // attemptCount from czar

@@ -41,7 +41,7 @@ namespace xrdsvc {
 
 bool
 SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
-    Status s = _ssiSession.SetResponse(buf, bufLen);
+    Status s = _ssiSession->SetResponse(buf, bufLen);
     if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response of length=" << bufLen);
         return false;
@@ -51,7 +51,7 @@ SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
 
 bool
 SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
-    Status s = _ssiSession.SetErrResponse(msg.c_str(), code);
+    Status s = _ssiSession->SetErrResponse(msg.c_str(), code);
     if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post error response " << msg);
         return false;
@@ -63,7 +63,7 @@ bool
 SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
     util::Timer t;
     t.start();
-    Status s = _ssiSession.SetResponse(fSize, fd);
+    Status s = _ssiSession->SetResponse(fSize, fd);
     if (s == XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
     } else {
@@ -100,7 +100,7 @@ void
 SsiSession::ReplyChannel::_initStream() {
     //_stream.reset(new Stream);
     _stream = new ChannelStream();
-    _ssiSession.SetResponse(_stream);
+    _ssiSession->SetResponse(_stream);
 }
 
 }}} // lsst::qserv::xrdsvc

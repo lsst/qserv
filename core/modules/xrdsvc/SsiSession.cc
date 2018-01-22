@@ -70,7 +70,7 @@ void SsiSession::execute(XrdSsiRequest& req) {
     t.stop();
     LOGS(_log, LOG_LVL_DEBUG, "GetRequest took " << t.getElapsed() << " seconds");
 
-    auto replyChannel = std::make_shared<ReplyChannel>(*this);
+    auto replyChannel = std::make_shared<ReplyChannel>(shared_from_this());
 
     // errorFunc() is here to vector error responses via the reply channel
     // which logs any failures (there should be none). The request must already
@@ -134,7 +134,7 @@ void SsiSession::execute(XrdSsiRequest& req) {
     // the task is handed off to another thread for processing, as there is a
     // reference to this SsiSession inside the reply channel for the task,
     // and after the call to BindRequest.
-    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel, shared_from_this());
+    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
     ReleaseRequestBuffer();
     t.start();
     _processor->processTask(task); // Queues task to be run later.
