@@ -22,9 +22,8 @@
  */
 
 // Class header
-#include "xrdsvc/SsiSession.h"
-
-// System headers
+#include <xrdsvc/SsiRequest.h>
+#include <xrdsvc/SsiRequest_ReplyChannel.h>
 #include <cctype>
 #include <cstddef>
 #include <iostream>
@@ -41,24 +40,23 @@
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/SendChannel.h"
-#include "xrdsvc/SsiSession_ReplyChannel.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiSession");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 }
 
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-SsiSession::~SsiSession() {
-    LOGS(_log, LOG_LVL_DEBUG, "~SsiSession()");
+SsiRequest::~SsiRequest() {
+    LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
     UnBindRequest();
 }
 
 // Step 4
 /// Called by XrdSsi to actually process a request.
-void SsiSession::execute(XrdSsiRequest& req) {
+void SsiRequest::execute(XrdSsiRequest& req) {
     util::Timer t;
 
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
@@ -132,7 +130,7 @@ void SsiSession::execute(XrdSsiRequest& req) {
     // Now that the request is decoded (successfully or not), release the
     // xrootd request buffer. To avoid data races, this must happen before
     // the task is handed off to another thread for processing, as there is a
-    // reference to this SsiSession inside the reply channel for the task,
+    // reference to this SsiRequest inside the reply channel for the task,
     // and after the call to BindRequest.
     auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
     ReleaseRequestBuffer();
@@ -146,7 +144,7 @@ void SsiSession::execute(XrdSsiRequest& req) {
 }
 
 /// Called by SSI to free resources.
-void SsiSession::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
+void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)

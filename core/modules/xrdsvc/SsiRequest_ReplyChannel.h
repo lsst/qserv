@@ -20,15 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_SSISESSION_REPLYCHANNEL_H
-#define LSST_QSERV_XRDSVC_SSISESSION_REPLYCHANNEL_H
+#ifndef LSST_QSERV_XRDSVC_SSIREQUEST_REPLYCHANNEL_H
+#define LSST_QSERV_XRDSVC_SSIREQUEST_REPLYCHANNEL_H
 
 // Third-party headers
+#include "SsiRequest.h"
 #include "XrdSsi/XrdSsiResponder.hh"
 
 // Qserv headers
 #include "wbase/SendChannel.h"
-#include "xrdsvc/SsiSession.h"
 
 namespace lsst {
 namespace qserv {
@@ -38,14 +38,14 @@ class ChannelStream; // Forward declaration
 
 /// ReplyChannel is a SendChannel implementation that adapts XrdSsiSession
 /// objects as backend data acceptors. ReplyChannel channel instances are
-/// tightly coupled to SsiSession instances, and make use of protected fields in
-/// XrdSsiResponder (which SsiSession inherits from).
-class SsiSession::ReplyChannel : public wbase::SendChannel {
+/// tightly coupled to SsiRequest instances, and make use of protected fields in
+/// XrdSsiResponder (which SsiRequest inherits from).
+class SsiRequest::ReplyChannel : public wbase::SendChannel {
 public:
     typedef std::shared_ptr<ReplyChannel> Ptr;
 
-    ReplyChannel(SsiSession::Ptr const& s)
-        : _ssiSession(s), _stream(0) {}
+    ReplyChannel(SsiRequest::Ptr const& s)
+        : _ssiRequest(s), _stream(0) {}
 
     virtual bool send(char const* buf, int bufLen);
     virtual bool sendError(std::string const& msg, int code);
@@ -55,10 +55,10 @@ public:
 private:
     void _initStream();
 
-    SsiSession::Ptr _ssiSession;
+    SsiRequest::Ptr _ssiRequest;
     ChannelStream* _stream;
 };
 
 }}} // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDSVC_SSISESSION_REPLYCHANNEL_H
+#endif // LSST_QSERV_XRDSVC_SSIREQUEST_REPLYCHANNEL_H

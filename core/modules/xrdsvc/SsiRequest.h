@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_SSISESSION_H
-#define LSST_QSERV_XRDSVC_SSISESSION_H
+#ifndef LSST_QSERV_XRDSVC_SSIREQUEST_H
+#define LSST_QSERV_XRDSVC_SSIREQUEST_H
 
 // System headers
 #include <atomic>
@@ -46,20 +46,20 @@ namespace xrdsvc {
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
 /// adhere to using BindRequest() and UnBindRequest() responder methods.
-class SsiSession : public XrdSsiResponder, public std::enable_shared_from_this<SsiSession> {
+class SsiRequest : public XrdSsiResponder, public std::enable_shared_from_this<SsiRequest> {
 public:
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
-    typedef std::shared_ptr<SsiSession> Ptr;
+    typedef std::shared_ptr<SsiRequest> Ptr;
 
     // Use factory to ensure proper construction for enable_shared_from_this.
-    static SsiSession::Ptr newSsiSession(std::string const& rname,
+    static SsiRequest::Ptr newSsiRequest(std::string const& rname,
                ValidatorPtr validator,
                std::shared_ptr<wbase::MsgProcessor> const& processor) {
-        SsiSession::Ptr ssiPtr(new SsiSession(rname, validator, processor));
+        SsiRequest::Ptr ssiPtr(new SsiRequest(rname, validator, processor));
         return ssiPtr;
     }
 
-    virtual ~SsiSession();
+    virtual ~SsiRequest();
 
     void execute(XrdSsiRequest& req);
 
@@ -68,8 +68,8 @@ public:
                   bool cancel=false) override;
 
 private:
-    /// Construct a new session (called by SsiService)
-    SsiSession(std::string const& rname,
+    /// Constructor (called by SsiService)
+    SsiRequest(std::string const& rname,
                ValidatorPtr validator,
                std::shared_ptr<wbase::MsgProcessor> const& processor)
         : _validator(validator), _processor(processor), _resourceName(rname) {}
@@ -84,4 +84,4 @@ private:
 };
 }}} // namespace
 
-#endif // LSST_QSERV_XRDSVC_SSISESSION_H
+#endif // LSST_QSERV_XRDSVC_SSIREQUEST_H

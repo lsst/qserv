@@ -22,9 +22,8 @@
  */
 
 // Class header
-#include "xrdsvc/SsiSession_ReplyChannel.h"
+#include <xrdsvc/SsiRequest_ReplyChannel.h>
 
-// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -32,7 +31,7 @@
 #include "xrdsvc/ChannelStream.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiSession_ReplyChannel");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest_ReplyChannel");
 }
 
 namespace lsst {
@@ -40,8 +39,8 @@ namespace qserv {
 namespace xrdsvc {
 
 bool
-SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
-    Status s = _ssiSession->SetResponse(buf, bufLen);
+SsiRequest::ReplyChannel::send(char const* buf, int bufLen) {
+    Status s = _ssiRequest->SetResponse(buf, bufLen);
     if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response of length=" << bufLen);
         return false;
@@ -50,8 +49,8 @@ SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
 }
 
 bool
-SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
-    Status s = _ssiSession->SetErrResponse(msg.c_str(), code);
+SsiRequest::ReplyChannel::sendError(std::string const& msg, int code) {
+    Status s = _ssiRequest->SetErrResponse(msg.c_str(), code);
     if (s != XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post error response " << msg);
         return false;
@@ -60,10 +59,10 @@ SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
 }
 
 bool
-SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
+SsiRequest::ReplyChannel::sendFile(int fd, Size fSize) {
     util::Timer t;
     t.start();
-    Status s = _ssiSession->SetResponse(fSize, fd);
+    Status s = _ssiRequest->SetResponse(fSize, fd);
     if (s == XrdSsiResponder::wasPosted) {
         LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
     } else {
@@ -83,7 +82,7 @@ SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
 }
 
 bool
-SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
+SsiRequest::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
     // Initialize streaming object if not initialized.
     LOGS(_log, LOG_LVL_DEBUG, "sendStream, checking stream " << (void *) _stream
          << " len=" << bufLen << " last=" << last);
@@ -97,10 +96,10 @@ SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
 }
 
 void
-SsiSession::ReplyChannel::_initStream() {
+SsiRequest::ReplyChannel::_initStream() {
     //_stream.reset(new Stream);
     _stream = new ChannelStream();
-    _ssiSession->SetResponse(_stream);
+    _ssiRequest->SetResponse(_stream);
 }
 
 }}} // lsst::qserv::xrdsvc
