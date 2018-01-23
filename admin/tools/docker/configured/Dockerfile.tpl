@@ -1,7 +1,6 @@
 FROM <DOCKER_IMAGE>
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
-
 # Allow the start.sh script to modify the local timezone settings
 # if requested.
 

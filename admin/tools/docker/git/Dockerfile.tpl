@@ -25,3 +25,17 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
     eupspkg -er install && \
     eupspkg -er decl -t qserv-dev && \
     rm -rf /tmp/qserv"
+
+# Ease container management in k8s
+#
+
+# Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
+# required by k8s setup
+RUN bash -c ". /qserv/stack/loadLSST.bash && \
+             setup qserv -t qserv-dev && \
+             qserv-configure.py --init --force --qserv-run-dir "$QSERV_RUN_DIR" && \
+             qserv-configure.py --etc --qserv-run-dir "$QSERV_RUN_DIR" --force "
+
+# Allow install of additional packages in pods and ease install scripts
+# execution
+USER root
