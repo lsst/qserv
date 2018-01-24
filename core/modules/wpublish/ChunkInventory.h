@@ -55,13 +55,17 @@ namespace wpublish {
 /// ChunkInventory contains a record of what chunks are available for execution
 /// on a worker node.
 class ChunkInventory {
+
 public:
+
     typedef std::deque<std::string> StringDeque;
+
     // These should be converted to unordered_* with C++11
-    typedef std::set<std::string> StringSet;
-    typedef std::map<int,StringSet> ChunkMap;
+    typedef std::set<std::string>           StringSet;
+    typedef std::map<int, StringSet>        ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
-    typedef std::shared_ptr<ChunkInventory> Ptr;
+
+    typedef std::shared_ptr<ChunkInventory>       Ptr;
     typedef std::shared_ptr<ChunkInventory const> CPtr;
 
     ChunkInventory() {}
@@ -79,6 +83,9 @@ public:
     bool has(std::string const& db, int chunk,
              std::string table=std::string()) const;
 
+    /// @return a unique identifier of a worker instance
+    std::string const& id () const { return _id; }
+
     /// Construct a ResourceUnit::Checker backed by this instance
     std::shared_ptr<ResourceUnit::Checker> newValidator();
 
@@ -89,6 +96,9 @@ private:
 
     ExistMap _existMap;
     std::string _name;
+
+    /// a unique identifier of a worker
+    std::string _id;
 };
 
 }}} // namespace lsst::qserv::wpublish

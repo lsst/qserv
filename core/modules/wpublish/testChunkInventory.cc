@@ -52,55 +52,62 @@ struct ChunkInvFixture {
 };
 
 struct ChunkSql : public MockSql {
-    ChunkSql(char const* const* tablesBegin, char const* const* tablesEnd)
-        : _tablesBegin(tablesBegin), _tablesEnd(tablesEnd) {
+    ChunkSql(std::vector<std::vector<std::string>> const& chunks,
+             std::vector<std::vector<std::string>> const& workerId)
+
+        :   _selectChunkTuples   (chunks),
+            _selectWorkerIdTuples(workerId) {
+
         Tuple t;
         t.push_back("LSST");
-        _selectDbTuples.push_back(t);
-
-    }
-    virtual bool listTables(std::vector<std::string>& v,
-                            SqlErrorObject& errObj,
-                            std::string const& prefixed,
-                            std::string const& dbName) {
-        if (dbName == "LSST") {
-            v.insert(v.begin(), _tablesBegin, _tablesEnd);
-            return true;
-        } else {
-            return false;
-        }
+        _selectDbTuples.push_back(t);        
     }
     virtual std::string getActiveDb() const {
         return std::string("LSST");
     }
     virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
-        if (startswith(query, "SELECT db FROM")) {
-            std::shared_ptr<SqlIter> it;
-            it = std::make_shared<SqlIter>(_selectDbTuples.begin(),
-                                           _selectDbTuples.end());
-            return it;
-        }
-        return std::shared_ptr<SqlIter>();
+        if (startswith(query, "SELECT db FROM"))
+            return std::make_shared<SqlIter>(_selectDbTuples.begin(),
+                                             _selectDbTuples.end  ());
+        else if (startswith(query, "SELECT db,`table`,chunk FROM"))
+            return std::make_shared<SqlIter>(_selectChunkTuples.begin(),
+                                             _selectChunkTuples.end  ());
+        else if (startswith(query, "SELECT id,created FROM"))
+            return std::make_shared<SqlIter>(_selectWorkerIdTuples.begin(),
+                                             _selectWorkerIdTuples.end  ());
+        else
+            return std::shared_ptr<SqlIter>();
     }
 
     typedef std::vector<std::string> Tuple;
-    typedef std::vector<Tuple> TupleVector;
-    typedef TupleVector::const_iterator TupleVectorIter;
+    typedef std::vector<Tuple>       TupleVector;
+    typedef TupleVector::const_iterator    TupleVectorIter;
     typedef MockSql::Iter<TupleVectorIter> SqlIter;
 
     TupleVector _selectDbTuples;
-    char const* const* _tablesBegin;
-    char const* const* _tablesEnd;
-};
-char const* tables[] = {"Object_31415", "Source_31415",
-                        "Object_1234567890", "Source_1234567890", };
-int tablesSize = sizeof(tables)/sizeof(tables[0]);
+    TupleVector _selectChunkTuples;
+    TupleVector _selectWorkerIdTuples;
 
+};
+
+std::vector<std::vector<std::string>> chunks = {
+    {"LSST","Object_31415","31415"},
+    {"LSST","Source_31415","31415"},
+    {"LSST","Object_1234567890","1234567890"},
+    {"LSST","Source_1234567890","1234567890"}
+};
+std::vector<std::vector<std::string>> chunksNoDummy = {
+    {"LSST","Object_31415","31415"},
+    {"LSST","Source_31415","31415"}
+};
+std::vector<std::vector<std::string>> workerId = {
+    {"worker","2018-01-24 01:16:35"}
+};
 
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)
 
 BOOST_AUTO_TEST_CASE(Test1) {
-    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(tables, tables+tablesSize);
+    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(chunks, workerId);
     ChunkInventory ci("test", cs);
     BOOST_CHECK(ci.has("LSST", 31415));
     BOOST_CHECK(ci.has("LSST", 1234567890));
@@ -108,14 +115,14 @@ BOOST_AUTO_TEST_CASE(Test1) {
 }
 
 BOOST_AUTO_TEST_CASE(Test2) {
-    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(tables, tables+tablesSize);
+    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(chunks, workerId);
     ChunkInventory ci("test", cs);
     BOOST_CHECK(!ci.has("Winter2012", 31415));
     BOOST_CHECK(!ci.has("Winter2012", 123));
 }
 BOOST_AUTO_TEST_CASE(MissingDummy) {
     // Construct the mock without the dummy chunk
-    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(tables, tables+2);
+    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(chunksNoDummy, workerId);
     // FIXME: enable when throwing on corrupt dbs is enabled.
     //BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
     ChunkInventory ci("test", cs);
@@ -124,4 +131,11 @@ BOOST_AUTO_TEST_CASE(MissingDummy) {
     BOOST_CHECK(!ci.has("LSST", 123));
 
 }
+
+BOOST_AUTO_TEST_CASE(WorkerId) {
+    std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(chunks, workerId);
+    ChunkInventory ci("test", cs);
+    BOOST_CHECK(ci.id() == "worker");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
