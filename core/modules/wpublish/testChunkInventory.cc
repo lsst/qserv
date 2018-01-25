@@ -69,10 +69,10 @@ struct ChunkSql : public MockSql {
         if (startswith(query, "SELECT db FROM"))
             return std::make_shared<SqlIter>(_selectDbTuples.begin(),
                                              _selectDbTuples.end  ());
-        else if (startswith(query, "SELECT db,`table`,chunk FROM"))
+        else if (startswith(query, "SELECT db,chunk FROM"))
             return std::make_shared<SqlIter>(_selectChunkTuples.begin(),
                                              _selectChunkTuples.end  ());
-        else if (startswith(query, "SELECT id,created FROM"))
+        else if (startswith(query, "SELECT id FROM"))
             return std::make_shared<SqlIter>(_selectWorkerIdTuples.begin(),
                                              _selectWorkerIdTuples.end  ());
         else
@@ -91,17 +91,14 @@ struct ChunkSql : public MockSql {
 };
 
 std::vector<std::vector<std::string>> chunks = {
-    {"LSST","Object_31415","31415"},
-    {"LSST","Source_31415","31415"},
-    {"LSST","Object_1234567890","1234567890"},
-    {"LSST","Source_1234567890","1234567890"}
+    {"LSST","31415"},
+    {"LSST","1234567890"}
 };
 std::vector<std::vector<std::string>> chunksNoDummy = {
-    {"LSST","Object_31415","31415"},
-    {"LSST","Source_31415","31415"}
+    {"LSST","31415"}
 };
 std::vector<std::vector<std::string>> workerId = {
-    {"worker","2018-01-24 01:16:35"}
+    {"worker","UUID","2018-01-24 01:16:35"}
 };
 
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)

@@ -61,8 +61,7 @@ public:
     typedef std::deque<std::string> StringDeque;
 
     // These should be converted to unordered_* with C++11
-    typedef std::set<std::string>           StringSet;
-    typedef std::map<int, StringSet>        ChunkMap;
+    typedef std::set<int> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
 
     typedef std::shared_ptr<ChunkInventory>       Ptr;
@@ -73,15 +72,11 @@ public:
 
     void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
-    /// (helper) Create a key string from a (db, chunk) pair
-    static inline std::string makeKey(std::string const& db, int chunk) {
-        std::stringstream ss;
-        ss << db << chunk << "**key";
-        return std::string(ss.str());
-    }
     /// @return true if the specified db and chunk are in the inventory
-    bool has(std::string const& db, int chunk,
-             std::string table=std::string()) const;
+    bool has(std::string const& db, int chunk) const;
+
+    /// @return a unique identifier of a worker instance
+    std::string const& id () const { return _id; }
 
     /// @return a unique identifier of a worker instance
     std::string const& id () const { return _id; }
