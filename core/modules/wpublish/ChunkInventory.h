@@ -78,9 +78,6 @@ public:
     /// @return a unique identifier of a worker instance
     std::string const& id () const { return _id; }
 
-    /// @return a unique identifier of a worker instance
-    std::string const& id () const { return _id; }
-
     /// Construct a ResourceUnit::Checker backed by this instance
     std::shared_ptr<ResourceUnit::Checker> newValidator();
 
