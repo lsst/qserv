@@ -27,10 +27,7 @@
 
 // System headers
 #include <cassert>
-#include <exception>
 #include <iostream>
-#include <iterator>
-#include <sstream>
 
 // Third-party headers
 
@@ -85,7 +82,7 @@ void fetchChunks(std::string const& instanceName,
                  SqlConnection& sc,
                  ChunkInventory::ChunkMap& chunkMap) {
 
-    std::string const query = "SELECT db,`table`,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
+    std::string const query = "SELECT db,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
@@ -100,10 +97,8 @@ void fetchChunks(std::string const& instanceName,
     }
     bool nothing = true;
     for(; !resultP->done(); ++(*resultP)) {
-        std::string const table =            (**resultP)[1];
-        int         const chunk = std::atoi(((**resultP)[2]).c_str());
-        ChunkInventory::StringSet& ss = chunkMap[chunk];
-        ss.insert(table);
+        int const chunk = std::stoi((**resultP)[1]);
+        chunkMap.insert(chunk);
         nothing = false;
     }
     if (nothing)
@@ -117,7 +112,7 @@ void fetchId(std::string const& instanceName,
 
     // Look for the newest one
     // FIXME: perhaps we should allow multiple identifiers?
-    std::string const query = "SELECT id,created FROM qservw_" + instanceName + ".Id ORDER BY created DESC LIMIT 1";
+    std::string const query = "SELECT id FROM qservw_" + instanceName + ".Id WHERE `type`='UUID'";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
@@ -165,8 +160,7 @@ void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& myS
     _init(sc);
 }
 
-bool ChunkInventory::has(std::string const& db, int chunk,
-                         std::string table) const {
+bool ChunkInventory::has(std::string const& db, int chunk) const {
 
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return false;
@@ -175,10 +169,7 @@ bool ChunkInventory::has(std::string const& db, int chunk,
     auto        chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return false;
 
-    if (table.empty()) return true;
-
-    auto const& tables = chunkItr->second;
-    return tables.find(table) != tables.end();
+    return true;
 }
 
 std::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
@@ -197,22 +188,17 @@ void ChunkInventory::dbgPrint(std::ostream& os) {
         auto const& db     = dbItr->first;
         auto const& chunks = dbItr->second;
 
-        os << "db: " << db << " chunks=";
+        os << "db: " << db << ", chunks: [";
         for (auto chunkItr      = chunks.begin(),
                   chunkItrBegin = chunks.begin(),
                   chunkItrEnd   = chunks.end(); chunkItr != chunkItrEnd; ++chunkItr) {
 
-            if (chunkItr != chunkItrBegin) os << "; ";
+            if (chunkItr != chunkItrBegin) os << ",";
 
-            auto const& chunk  = chunkItr->first;
-            auto const& tables = chunkItr->second;
-
-            os << chunk << " [";
-            std::copy(tables.begin(),
-                      tables.end(),
-                      std::ostream_iterator<std::string>(os, ","));
-            os << "] \t";
+            auto const& chunk = *chunkItr;
+            os << chunk;
         }
+        os << "]";
     }
     os << ")";
 }
