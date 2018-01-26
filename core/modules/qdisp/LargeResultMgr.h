@@ -30,6 +30,7 @@
 #include <string>
 
 // Qserv headers
+#include "ResponsePool.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,12 +52,15 @@ public:
 
     LargeResultMgr(int runningCountMax) : _runningCountMax{runningCountMax} { _setup(); }
     LargeResultMgr() { _setup(); }
+    ~LargeResultMgr();
 
     void startBlock(std::string const& jobId);
     void finishBlock(std::string const& jobId);
 
     void incrOutGoingQueries();
     void decrOutGoingQueries();
+
+    ResponsePool::Ptr responsePool; // &&& serious hack for expediency. If it works, this will replace LargeResultMgr.
 
 private:
     void _setup();

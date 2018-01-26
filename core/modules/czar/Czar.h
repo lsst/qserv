@@ -144,6 +144,8 @@ private:
     std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
     qdisp::LargeResultMgr::Ptr _largeResultMgr; ///< Large result manager for all user queries.
+
+    qdisp::ResponsePool::Ptr _responsePool; ///< Thread pool for handling Responses from XrdSsi.
 };
 
 }}} // namespace lsst::qserv::czar

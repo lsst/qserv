@@ -39,6 +39,7 @@
 #include "czar/Czar.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/LargeResultMgr.h"
+#include "qdisp/ResponsePool.h"
 
 namespace lsst {
 namespace qserv {
@@ -115,10 +116,10 @@ private:
 /// cancellation function with its client that maintains a pointer to the
 /// QueryRequest. After Finished(), the cancellation function must be prevented
 /// from accessing the QueryRequest instance.
-class QueryRequest : public XrdSsiRequest {
+class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<QueryRequest> {
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
-    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
+    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery); // &&& make private with factory function
 
     virtual ~QueryRequest();
 
@@ -151,6 +152,8 @@ public:
     /// @return true if the semaphore was decremented.
     bool releaseLargeResultSafety() { return _largeResultSafety.finishBlock(); }
 
+    class AskForResponseDataCmd;
+
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     void _callMarkComplete(bool success);
@@ -158,6 +161,7 @@ private:
     bool _importError(std::string const& msg, int code);
     bool _errorFinish(bool shouldCancel=false);
     void _finish();
+    void _processData(JobQuery::Ptr const& jq, int blen, bool last);
 
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
@@ -186,6 +190,8 @@ private:
 
     LargeResultSafety _largeResultSafety;
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
+    ResponsePool::Ptr _responsePool;
+    std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

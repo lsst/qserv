@@ -50,6 +50,17 @@ void LargeResultMgr::_setup() {
     for (int j = 0; j < _runningCountMax; ++j) {
         _post("initialization");
     }
+    if (responsePool == nullptr) {
+        responsePool = std::make_shared<ResponsePool>();
+    }
+}
+
+LargeResultMgr::~LargeResultMgr() {
+    if (responsePool) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ~LargeResultMgr() a");
+        responsePool->shutdownPool();
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ~LargeResultMgr() b");
+    }
 }
 
 

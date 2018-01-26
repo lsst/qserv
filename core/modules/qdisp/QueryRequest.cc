@@ -54,13 +54,102 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+// Run action() when the system expects to have time to accept data.
+class QueryRequest::AskForResponseDataCmd : public util::Command {
+public:
+    typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
+    enum class State { STARTED0, DATAREADY1, DONE2 };
+    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq)
+        : _qRequest(qr), _jQuery(jq) {}
+    void action(util::CmdData *data) override {
+        util::InstanceCount ic1("&&&AskForResponseDataCmd:action 1");
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic1=" << ic1.getCount());
+        if (_qRequest->isQueryCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "AskForResponseData query was cancelled");
+            return;
+        }
+        std::vector<char>& buffer = _jQuery->getDescription()->respHandler()->nextBuffer();
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << " Asking for GetResponseData size=" << buffer.size());
+        _qRequest->GetResponseData(&buffer[0], buffer.size());
+        // wait for ProcessResponseData to be called
+        {
+            std::unique_lock<std::mutex> uLock(_mtx);
+            _cv.wait(uLock, [this](){ return _state != State::STARTED0; }); // &&& make timed wait, check for wedged
+        }
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "Ask data should be DATAREADY1 " << (int)_state);
+        // Process the response data
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            if (_state == State::DONE2) {
+                // There was a problem and everything has already been handled.
+                _clearPointers();
+                return;
+            }
+        }
+
+        util::InstanceCount ic2("&&&AskForResponseDataCmd:action 2");
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic2=" << ic2.getCount());
+        _qRequest->_processData(_jQuery, _blen, _last);
+        // _processData will have created another AskForResponseDataCmd object if needed.
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            _state = State::DONE2;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "Ask data is done.");
+        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic1,2="
+                << ic1.getCount() << "," << ic2.getCount());
+        _clearPointers();
+    }
+
+    void receivedProcessResponseDataParameters(int blen, bool last) {
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            _blen = blen;
+            _last = last;
+            _state = State::DATAREADY1;
+        }
+        _cv.notify_one();
+    }
+
+    void failedProcessResponseData() {
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            _state = State::DONE2;
+        }
+    }
+
+    State getState() {
+        std::lock_guard<std::mutex> lg(_mtx);
+        return _state;
+    }
+
+private:
+    void _clearPointers() {
+        _jQuery.reset();
+        _qRequest.reset();
+    }
+
+    QueryRequest::Ptr _qRequest;
+    JobQuery::Ptr _jQuery;
+    std::mutex _mtx;
+    std::condition_variable _cv;
+    State _state = State::STARTED0;
+
+    int _blen{-1};
+    bool _last{true};
+    util::InstanceCount _ic{"&&&AskForResponseDataCmd"};
+};
+
+
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
   _jobQuery(jobQuery),
   _jobIdStr(jobQuery->getIdStr()),
-  _largeResultSafety(_jobQuery->getLargeResultMgr(), _jobIdStr){
+  _largeResultSafety(_jobQuery->getLargeResultMgr(), _jobIdStr),
+  _responsePool(_jobQuery->getResponsePool()){
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
 }
 
@@ -143,17 +232,22 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
     return _importError(errorDesc, -1);
 }
 
+
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
-
-    // Pass ResponseHandler's buffer directly.
-    std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream buffer.size=" << buffer.size());
-    const void* pbuf = (void*)(&buffer[0]);
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream->GetResponseData size="
-         << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
-    GetResponseData(&buffer[0], buffer.size());
+    if (_askForResponseDataCmd != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
+        // Keep the previous object from wedging the pool.
+        _askForResponseDataCmd->failedProcessResponseData();
+    }
+    _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+    if (_largeResult) {  // &&& Note: _largeResult always false. Consider having largeResut in Executive
+                         // &&& and use that value here, or always use high priority.
+        _responsePool->queCmdLow(_askForResponseDataCmd);
+    } else {
+        _responsePool->queCmdHigh(_askForResponseDataCmd);
+    }
     return true;
 }
 
@@ -181,8 +275,8 @@ void QueryRequest::_setHoldState(HoldState state) {
     _holdState = state;
 }
 
-
-XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
+#if 0
+XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseDataOld(XrdSsiErrInfo const& eInfo,
                                      char *buff, int blen, bool last) { // Step 7
     util::InstanceCount instC("instC QueryRequest::ProcessResponseData");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
@@ -313,6 +407,145 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
     }
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::ProcessResponseData " << instC.getCount());
     return XrdSsiRequest::PRD_Normal;
+}
+#endif
+
+
+XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
+                                                         char *buff, int blen, bool last) { // Step 7
+    // buff actually points to jq->getDescription()->respHandler()->_mBuf which is a member of MergingHandler.
+    util::InstanceCount instC("instC QueryRequest::ProcessResponseData");
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
+                              << " " << (last ? "(last)" : "(more)"));
+    if (_askForResponseDataCmd == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr <<
+             " ProcessResponseData called with invalid _askForResponseDataCmd!!!");
+        return XrdSsiRequest::PRD_Normal;
+    }
+
+    // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
+    JobQuery::Ptr jq = _jobQuery;
+    {
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
+        if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
+            LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
+            // Something must have killed this job.
+            // &&& should _errorFinish be called???
+            return XrdSsiRequest::PRD_Normal;
+        }
+    }
+
+    // If there's an error, it makes sense to handle it immediately.
+    if (blen < 0) { // error, check errinfo object.
+        int eCode;
+        auto reason = getSsiErr(eInfo, &eCode);
+        jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
+             << " " << reason << ")");
+        jq->getDescription()->respHandler()->errorFlush(
+            "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
+        _errorFinish();
+        _askForResponseDataCmd->failedProcessResponseData();
+        // An error occurred, let processing continue so it can be cleaned up soon.
+    }
+
+    jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
+
+    // Handle the response in a separate thread so owe can give this one back to XrdSsi.
+    // _askForResponseDataCmd should call QueryRequest::_processData() after this.
+    _askForResponseDataCmd->receivedProcessResponseDataParameters(blen, last);
+
+    // _processData(jq, blen, last);
+
+    /* &&& delete
+    bool largeResult = false;
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
+    if (largeResult) {
+        if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
+        _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+    }
+
+    if (flushOk) {
+        if (last) {
+            auto sz = jq->getDescription()->respHandler()->nextBufferSize();
+            if (last && sz != 0) {
+                LOGS(_log, LOG_LVL_WARN,
+                     _jobIdStr << " Connection closed when more information expected sz=" << sz);
+            }
+            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+            _finish();
+            // At this point all blocks for this job have been read, there's no point in
+            // having XrdSsi wait for anything.
+            return XrdSsiRequest::PRD_Normal;
+        } else {
+            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "queuing askForResponseDataCmd");
+            if (_largeResult) {
+                _responsePool->queCmdLow(_askForResponseDataCmd);
+            } else {
+                _responsePool->queCmdLow(_askForResponseDataCmd);
+            }
+        }
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
+        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+        jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+        // @todo DM-2378 Take a closer look at what causes this error and take
+        // appropriate action. There could be cases where this is recoverable.
+        _retried.store(true); // Do not retry
+        _errorFinish(true);
+    }
+    */
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::ProcessResponseData " << instC.getCount());
+    return XrdSsiRequest::PRD_Normal;
+}
+
+
+void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
+    // It's possible jq and _jobQuery differ, so need to use jq.
+    if (jq->isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, this->_jobIdStr << "QueryRequest::_processData job was cancelled.");
+        // &&& should _errorFinish be called???
+        return;
+    }
+    bool largeResult = false;
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
+    if (largeResult) {
+        if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
+        _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
+    }
+
+    if (flushOk) {
+        if (last) {
+            auto sz = jq->getDescription()->respHandler()->nextBufferSize();
+            if (last && sz != 0) {
+                LOGS(_log, LOG_LVL_WARN,
+                     _jobIdStr << " Connection closed when more information expected sz=" << sz);
+            }
+            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+            _finish();
+            // At this point all blocks for this job have been read, there's no point in
+            // having XrdSsi wait for anything.
+            return;
+        } else {
+            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "queuing askForResponseDataCmd");
+            if (_largeResult) {
+                _responsePool->queCmdLow(_askForResponseDataCmd);
+            } else {
+                _responsePool->queCmdLow(_askForResponseDataCmd);
+            }
+        }
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
+        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+        jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+        // @todo DM-2378 Take a closer look at what causes this error and take
+        // appropriate action. There could be cases where this is recoverable.
+        _retried.store(true); // Do not retry
+        _errorFinish(true);
+    }
+    return;
 }
 
 

@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
     // the same chunkID for all tests (see setRName() below).
     //
     SequentialInt sequence(0);
-    int chunkId = 1234, millisInt = 200;
+    int chunkId = 1234, millisInt = 5000;
 
 BOOST_AUTO_TEST_CASE(Executive) {
     // Variables for all executive sub-tests. Note that all executive tests
@@ -215,18 +215,20 @@ BOOST_AUTO_TEST_CASE(Executive) {
         jobs = 1;
         LOGS_DEBUG("jobs=1");
         tEnv.ex->join();
+        LOGS_DEBUG("Executive single query test checking");
         BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
                     qdisp::JobStatus::COMPLETE);
         BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
 
-     // Test 4 jobs
+    // Test 4 jobs
     {
         LOGS_DEBUG("Executive four parallel jobs test");
         SetupTest tEnv("respdata");
         executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 4);
         jobs += 4;
         tEnv.ex->join();
+        LOGS_DEBUG("Executive four parallel jobs test checking");
         BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
 
