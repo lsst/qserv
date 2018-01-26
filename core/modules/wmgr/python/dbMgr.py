@@ -565,7 +565,7 @@ def createChunk(dbName, tblName):
     overlapFlag = _getArgFlag(request.form, 'overlapFlag', True)
 
     # check that table exists
-    with Config.instance().dbEngine().begin() as dbConn:
+    with Config.instance().dbEngine().begin() as dbConn, Config.instance().privDbEngine().begin() as dbPrivConn:
         if not utils.tableExists(dbConn, tblName, dbName):
             raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
@@ -605,6 +605,15 @@ def createChunk(dbName, tblName):
                 _log.debug('make chunk table: %s', chunkTable)
                 try:
                     utils.createTableLike(dbConn, dbName, chunkTable, dbName, tblName)
+                    # make sure the chunk entry has been registered as well
+                    _log.info('register chunk for db=%s and chunk=%d', dbName, chunkId)
+                    try:
+                        dbPrivConn.execute("DELETE FROM qservw_worker.Chunks WHERE db=%s AND chunk=%s", dbName, chunkId)
+                        dbPrivConn.execute("INSERT INTO qservw_worker.Chunks (db,chunk) VALUES(%s, %s)", dbName, chunkId)
+                    except SQLAlchemyError as exc:
+                        _log.error('exception when registering chunk for db=%s and chunk=%d: %s', dbName, chunkId, exc)
+                        raise ExceptionResponse(404, "ChunkRegisterFailed",
+                                                "Failed to register chunk for db=%s and chunk=%d" % (dbName, chunkId))
                 except utils.TableExistsError as exc:
                     _log.error('Db exception when creating table: %s', exc)
                     raise ExceptionResponse(409, "TableExists",

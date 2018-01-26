@@ -4,3 +4,7 @@ Import('standardModule')
 
 standardModule(env, unit_tests="testQuerySql testChunkResource",
                test_libs='log4cxx')
+
+# install schema files
+build_data = DefaultEnvironment()['build_data']
+build_data['install'] += env.Install("$prefix/share/qserv/schema/wdb", env.Glob("schema/*.sql"))
