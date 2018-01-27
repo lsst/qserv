@@ -8,6 +8,8 @@ USER qserv
 # see https://confluence.lsstcorp.org/display/DM/Qserv+Release+Procedure
 RUN bash -c ". /qserv/stack/loadLSST.bash && eups distrib install qserv_distrib -t qserv-dev -vvv"
 
+ENV QSERV_RUN_DIR /qserv/run
+
 # Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
 # required by k8s setup
 RUN bash -c ". /qserv/stack/loadLSST.bash && \

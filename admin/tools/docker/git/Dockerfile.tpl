@@ -29,6 +29,8 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
 # Ease container management in k8s
 #
 
+ENV QSERV_RUN_DIR /qserv/run
+
 # Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
 # required by k8s setup
 RUN bash -c ". /qserv/stack/loadLSST.bash && \
