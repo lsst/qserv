@@ -54,14 +54,11 @@ public:
     // codes, but maybe we can be clever and avoid an ugly remap/translation
     // with msgCode.h. 1201-1289 (inclusive) are free and MSG_FINALIZED==2000
     enum State { UNKNOWN=0,
-                 PROVISION=1201,
-                 PROVISION_NACK,
-                 REQUEST, REQUEST_ERROR,
+                 REQUEST=1203,
                  RESPONSE_READY, RESPONSE_ERROR,
-                 RESPONSE_DATA, RESPONSE_DATA_NACK, RESPONSE_DATA_ERROR,
+                 RESPONSE_DATA, RESPONSE_DATA_NACK,
                  RESPONSE_DONE,
                  RESULT_ERROR,
-                 MERGE_OK, // ???
                  MERGE_ERROR,
                  CANCEL, COMPLETE=2000};
 
@@ -70,6 +67,7 @@ public:
      *
      *  Useful for logging and error reporting
      *
+     *  @param idMsg string for message containing job id and other log information.
      *  @param s state value
      *  @param code code value, default to 0
      *  @param desc message, default to ""
@@ -78,7 +76,7 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(State s, int code=0, std::string const& desc="");
+    void updateInfo(std::string const& idMsg, State s, int code=0, std::string const& desc="");
 
     struct Info {
         Info();

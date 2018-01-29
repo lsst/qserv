@@ -107,7 +107,7 @@ bool JobQuery::runJob() {
         std::shared_ptr<JobQuery> jq(shared_from_this());
         _inSsi = true;
         if (executive->startQuery(jq)) {
-           _jobStatus->updateInfo(JobStatus::REQUEST);
+           _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);
            return true;
         }
         _inSsi = false;

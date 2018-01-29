@@ -201,7 +201,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         os << _jobIdStr << "ProcessResponse request failed "
            << getSsiErr(eInfo, nullptr);
         jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
     }
@@ -211,20 +211,21 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         break;
     case XrdSsiRespInfo::isData: // Local-only for Mock tests!
         if (std::string(rInfo.buff, rInfo.blen) == "MockResponse") {
-           jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+           jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
            _finish();
            return true;
         }
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isData";
         break;
     case XrdSsiRespInfo::isError:
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR, rInfo.eNum, std::string(rInfo.eMsg));
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR,
+                                    rInfo.eNum, std::string(rInfo.eMsg));
         return _importError(std::string(rInfo.eMsg), rInfo.eNum);
     case XrdSsiRespInfo::isFile: // Local-only
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
         break;
     case XrdSsiRespInfo::isStream: // All remote requests
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_READY);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY);
         return _importStream(jq);
     default:
         errorDesc += "Out of range XrdSsiRespInfo.rType";
@@ -439,7 +440,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
     if (blen < 0) { // error, check errinfo object.
         int eCode;
         auto reason = getSsiErr(eInfo, &eCode);
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
         jq->getDescription()->respHandler()->errorFlush(
@@ -449,7 +450,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         // An error occurred, let processing continue so it can be cleaned up soon.
     }
 
-    jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA);
 
     // Handle the response in a separate thread so owe can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() after this.
@@ -522,7 +523,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
                 LOGS(_log, LOG_LVL_WARN,
                      _jobIdStr << " Connection closed when more information expected sz=" << sz);
             }
-            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
@@ -539,7 +540,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
         ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-        jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
         _retried.store(true); // Do not retry
@@ -563,7 +564,7 @@ bool QueryRequest::cancel() {
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _jobQuery;
-            if (jq != nullptr) jq->getStatus()->updateInfo(JobStatus::CANCEL);
+            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL);
         }
     }
     return _errorFinish(true); // return true if errorFinish cancelled

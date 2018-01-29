@@ -291,7 +291,9 @@ void Executive::markCompleted(int jobId, bool success) {
              << " " << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
-            _jobMap[jobId]->getStatus()->updateInfo(JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
+            auto job = _jobMap[jobId];
+            std::string id = job->getIdStr() + "<>" + idStr;
+            job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
         }
         {
             std::lock_guard<std::mutex> lock(_errorsMutex);

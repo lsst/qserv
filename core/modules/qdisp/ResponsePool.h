@@ -55,7 +55,7 @@ public:
 
 private:
     util::CommandQueue::Ptr _highQueue{new util::CommandQueue()};
-    util::ThreadPool::Ptr _highPriority{util::ThreadPool::newThreadPool(7, _highQueue)};
+    util::ThreadPool::Ptr _highPriority{util::ThreadPool::newThreadPool(10, _highQueue)};
 
     util::CommandQueue::Ptr _lowQueue{new util::CommandQueue()};
     util::ThreadPool::Ptr _lowPRiority{util::ThreadPool::newThreadPool(3, _lowQueue)};
