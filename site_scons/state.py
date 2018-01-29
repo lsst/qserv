@@ -113,6 +113,36 @@ def _findPrefixFromPath(key, binFullPath):
     return prefix
 
 
+def _findUnitTestLogConfig(src_dir):
+    """Finds location of the logging config file to be used with unit tests.
+    """
+    cfgname = "log4cxx.unittest.properties"
+
+    # try qserv admin template folder first
+    path = os.path.join(src_dir, "admin/templates/configuration/etc", cfgname)
+    if os.path.isfile(path):
+        return os.path.abspath(path)
+
+    # next $QSERV_DIR/share...
+    path = os.path.join(os.environ.get("QSERV_DIR", ""),
+                        "share/qserv/configuration/templates/etc", cfgname)
+    if os.path.isfile(path):
+        return os.path.abspath(path)
+
+    return None
+
+
+def _validatePathIsFileOrEmpty(key, val, env):
+    """Special validator for file names which also accepts empty paths.
+
+    To be used with scons PathVariable. Raises exception if path (``val``) is not
+    empty but does not refer to existing file.
+    """
+    if val is None or val == "":
+        return
+    PathVariable.PathIsFile(key, val, env)
+
+
 def _initOptions():
     SCons.Script.AddOption('--verbose', dest='verbose', action='store_true', default=False,
                            help="Print additional messages for debugging.")
@@ -285,7 +315,11 @@ def init(src_dir):
         ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH")),
         # Default to in-place install
         PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate),
-        ('CXX', 'Choose the C++ compiler to use', env['CXX'])
+        ('CXX', 'Choose the C++ compiler to use', env['CXX']),
+        PathVariable('UNIT_TEST_LOG_CONFIG',
+                     'logging config file used for unit tests',
+                     _findUnitTestLogConfig(src_dir),
+                     _validatePathIsFileOrEmpty)
     )
 
     opts.Update(env)
