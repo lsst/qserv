@@ -58,7 +58,7 @@ JobStatus::Info::Info()
 void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int code, std::string const& desc) {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    LOGS(_log, LOG_LVL_WARN, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
+    LOGS(_log, LOG_LVL_INFO, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
     _info.stateTime = ::time(NULL);
     _info.state = s;
     _info.stateCode = code;
