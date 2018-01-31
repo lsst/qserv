@@ -51,9 +51,16 @@ namespace wcontrol {
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
-class Scheduler : public wbase::TaskScheduler, public util::CommandQueue {
+class Scheduler
+    :   public wbase::TaskScheduler,
+        public util::CommandQueue {
+
 public:
+
+    /// Smart pointer type for objects of this class
     using Ptr = std::shared_ptr<Scheduler>;
+
+    /// The destructor
     virtual ~Scheduler() {}
 
     virtual std::string getName() const = 0; //< @return the name of the scheduler.
@@ -61,31 +68,53 @@ public:
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
-    void taskCancelled(wbase::Task *task) override { return; }
+    void taskCancelled(wbase::Task *task) override {}
 };
 
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.
 /// It also manages sub-chunk tables with the ChunkResourceMgr.
 /// The schedulers may limit the number of threads they will use from the thread pool.
-class Foreman : public wbase::MsgProcessor {
+class Foreman
+    :   public wbase::MsgProcessor {
+
 public:
-    Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
+
+    /**
+     * @param scheduler   - pointer to the scheduler
+     * @param poolSize    - size of the thread pool
+     * @param mySqlConfig - configuration object for the MySQL service
+     * @param queries     - query statistics collector
+     */
+    Foreman(Scheduler::Ptr                  const& scheduler,
+            uint                                   poolSize,
+            mysql::MySqlConfig              const& mySqlConfig,
             wpublish::QueriesAndChunks::Ptr const& queries);
+
     virtual ~Foreman();
-    // This class should not be copied.
+
+    // This class doesn't have the default construction or copy semantics
+    Foreman() = delete;
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
+    /**
+     * Implement the corresponding method of the base class
+     *
+     * @see MsgProcessor::processTask()
+     */
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
 private:
-    std::shared_ptr<wdb::SQLBackend> _backend;
-    std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
-    util::ThreadPool::Ptr _pool;
-    Scheduler::Ptr _scheduler;
-    mysql::MySqlConfig const _mySqlConfig;
-    wpublish::QueriesAndChunks::Ptr _queries;
 
+    std::shared_ptr<wdb::SQLBackend>       _backend;
+    std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
+
+    util::ThreadPool::Ptr _pool;
+    Scheduler::Ptr        _scheduler;
+
+
+    mysql::MySqlConfig const        _mySqlConfig;
+    wpublish::QueriesAndChunks::Ptr _queries;
 };
 
 }}}  // namespace lsst::qserv::wcontrol
