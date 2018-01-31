@@ -64,9 +64,11 @@ class _unitTest(object):
         out = str(target[0])
         exe = str(source[0])
 
+        # additional envvars to pass to command
+        cmdenv = []
+
         # On Mac OS X El Capitan we will need to side load the library load path
         # and fix up the binary rpath
-        libpathstr = ""
         if platform_default() == 'darwin':
             # El Capitan is Darwin 15.x. We could simply always set this
             # variable on OS X rather than restricting to version as
@@ -81,11 +83,16 @@ class _unitTest(object):
             # We need to tell the tests where the uninstalled Qserv libraries
             # are located because rpaths aren't (yet?) handled properly
             # when the libraries and binaries are built on OS X.
-            libpathstr = "{}='{}:{}'".format("DYLD_LIBRARY_PATH",
-                                             env["build_dir"], os.environ["DYLD_LIBRARY_PATH"])
+            cmdenv.append("{}='{}:{}'".format("DYLD_LIBRARY_PATH",
+                                              env["build_dir"], os.environ["DYLD_LIBRARY_PATH"]))
+
+        # pass logging config file if defined
+        log_config = env.get("UNIT_TEST_LOG_CONFIG")
+        if log_config:
+            cmdenv.append("LSST_LOG_CONFIG={}".format(log_config))
 
         try:
-            cmd = "{} {} > {} 2>&1".format(libpathstr, exe, out)
+            cmd = "{} {} > {} 2>&1".format(" ".join(cmdenv), exe, out)
             ret = os.system(cmd)
 
             if ret != 0:
