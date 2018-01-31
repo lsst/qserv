@@ -57,10 +57,6 @@ ReloadChunkListCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, msg);
 
-#if 0
-    // Send back a error code
-    _sendChannel->sendError(msg, 0);
-#else
     // Send back a protobuf object with the status of the operation
     proto::WorkerCmdReply reply;
     reply.set_status(proto::WorkerCmdReply::SUCCESS);
@@ -69,12 +65,6 @@ ReloadChunkListCommand::run() {
     reply.SerializeToString(&replyString);
 
     _sendChannel->send(replyString.data(), replyString.size());
-#endif
-
-#if 0
-    // This may be needed to optimize buffer management
-    _sendChannel->release();
-#endif
 }
 
 }}} // namespace lsst::qserv::wcontrol

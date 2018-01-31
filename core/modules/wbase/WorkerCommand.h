@@ -30,8 +30,7 @@
 #include <string>
 
 // Qserv headers
-#include "util/ThreadPool.h"    // class CommandThreadPool
-#include "util/threadSafe.h"
+#include "util/Command.h"
 
 // Forward declarations
 namespace lsst {
@@ -49,7 +48,7 @@ namespace wbase {
   * management commmands.
   */
 class WorkerCommand
-    :   public util::CommandThreadPool {
+    :   public util::Command {
 
 public:
 
@@ -63,7 +62,6 @@ public:
 
     /**
      * The normal constructor of the class
-     *
      * @param sendChannel - communication channel for reporting results
      */
     explicit WorkerCommand(std::shared_ptr<SendChannel> const& sendChannel);

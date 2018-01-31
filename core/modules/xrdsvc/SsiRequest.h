@@ -97,6 +97,9 @@ private:
             _processor(processor),
             _resourceName(rname) {
     }
+    
+    /// For internal error reporting
+    void reportError (std::string const& errStr);
 
     class ReplyChannel;
     friend class ReplyChannel;

@@ -67,7 +67,7 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
     // It will delete temporary tables that it can identify as being created by a worker.
     // Previous instances of the worker will terminate when they try to use or create temporary tables.
     // Previous instances of the worker should be terminated before a new worker is started.
-    _backend          = std::make_shared<wdb::SQLBackend>(_mySqlConfig);
+    _backend = std::make_shared<wdb::SQLBackend>(_mySqlConfig);
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_backend);
 
     assert(_scheduler); // Cannot operate without scheduler.

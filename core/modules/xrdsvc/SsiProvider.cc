@@ -160,7 +160,7 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
 
         // Extract db and chunk from path and validate result
 
-        // If the chunk exists on our node then tell he caller it is here.
+        // If the chunk exists on our node then tell the caller it is here.
         if (_chunkInventory.has(ru.db(), ru.chunk())) {
             LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
             return isPresent;
