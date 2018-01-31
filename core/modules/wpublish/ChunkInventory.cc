@@ -136,7 +136,11 @@ class Validator : public lsst::qserv::ResourceUnit::Checker {
 public:
     Validator(lsst::qserv::wpublish::ChunkInventory& c) : chunkInventory(c) {}
     virtual bool operator()(lsst::qserv::ResourceUnit const& ru) {
-        return chunkInventory.has(ru.db(), ru.chunk());
+        switch (ru.unitType()) {
+            case lsst::qserv::ResourceUnit::DBCHUNK: return chunkInventory.has(ru.db(), ru.chunk());
+            case lsst::qserv::ResourceUnit::WORKER:  return chunkInventory.id() == ru.hashName();
+            default: return false;
+        }
     }
     lsst::qserv::wpublish::ChunkInventory& chunkInventory;
 };

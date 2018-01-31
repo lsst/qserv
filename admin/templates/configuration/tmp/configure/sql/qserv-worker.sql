@@ -37,6 +37,17 @@ CREATE TABLE qservw_worker.Id (
 
 INSERT INTO qservw_worker.Id (`id`) VALUES (UUID());
 
+CREATE TABLE IF NOT EXISTS qservw_worker.QMetadata (
+
+  `metakey` CHAR(64) NOT NULL COMMENT 'Key string',
+  `value`   TEXT         NULL COMMENT 'Value string',
+
+  PRIMARY KEY (`metakey`)
+
+) ENGINE = InnoDB COMMENT = 'Metadata about database as a whole, key-value pairs';
+
+INSERT INTO qservw_worker.QMetadata (`metakey`, `value`) VALUES ('version', '1');
+
 
 GRANT ALL ON `q\_memoryLockDb`.* TO '{{MYSQLD_USER_QSERV}}'@'localhost';
 

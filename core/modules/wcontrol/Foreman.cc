@@ -41,6 +41,7 @@
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
+#include "wbase/WorkerCommand.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -73,6 +74,9 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
 
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize);
     _pool = util::ThreadPool::newThreadPool(poolSize, _scheduler);
+
+    _workerCommandQueue = std::make_shared<util::CommandQueue>();
+    _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
 }
 
 Foreman::~Foreman() {
@@ -103,6 +107,11 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
     task->setFunc(func);
     _queries->addTask(task);
     _scheduler->queCmd(task);
+}
+
+
+void Foreman::processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) {
+    _workerCommandQueue->queCmd(command);
 }
 
 }}} // namespace

@@ -98,4 +98,10 @@ BOOST_AUTO_TEST_CASE(Old) {
     BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::RESULT);
 }
 
+BOOST_AUTO_TEST_CASE(Worker) {
+    ResourceUnit res("/worker/worker-1");
+    BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::WORKER);
+    BOOST_CHECK_EQUAL(res.hashName(), "worker-1");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -40,6 +40,12 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
+namespace wbase {
+struct MsgProcessor;
+}}}
+
+namespace lsst {
+namespace qserv {
 namespace xrdsvc {
 
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
@@ -101,6 +107,7 @@ private:
     std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
 };
+
 }}} // namespace
 
 #endif // LSST_QSERV_XRDSVC_SSIREQUEST_H

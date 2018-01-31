@@ -39,7 +39,9 @@
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
+#include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
+#include "wcontrol/ReloadChunkListCommand.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
@@ -89,55 +91,120 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     BindRequest(req);
 
     ResourceUnit ru(_resourceName);
-    if (ru.unitType() != ResourceUnit::DBCHUNK) {
-        std::ostringstream os;
-        os << "Unexpected unit type in query db=" << ru.db() << " unitType=" << ru.unitType();
-        LOGS(_log, LOG_LVL_ERROR, os.str());
-        errorFunc(os.str());
-        return;
-    }
 
-    if (!(*_validator)(ru)) {
-        std::ostringstream os;
-        os << "WARNING: unowned chunk query detected:" << ru.path();
-        LOGS(_log, LOG_LVL_WARN, os.str());
-        errorFunc(os.str());
-        return;
-    }
+    switch (ru.unitType()) {
 
-    // reqData has the entire request, so we can unpack it without waiting for
-    // more data.
-    LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
-    auto taskMsg = std::make_shared<proto::TaskMsg>();
-    bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
-    if (!ok) {
-        std::ostringstream os;
-        os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGS(_log, LOG_LVL_ERROR, os.str());
-        errorFunc(os.str());
-        return;
-    }
+        case ResourceUnit::DBCHUNK:
 
-    if (!taskMsg->has_db() || !taskMsg->has_chunkid()
-        || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
-        std::ostringstream os;
-        os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
-        LOGS(_log, LOG_LVL_ERROR, os.str());
-        errorFunc(os.str());
-        return;
-    }
+            {
+                if (!(*_validator)(ru)) {
+                    std::ostringstream os;
+                    os << "WARNING: unowned chunk query detected:" << ru.path();
+                    LOGS(_log, LOG_LVL_WARN, os.str());
+                    errorFunc(os.str());
+                    return;
+                }
 
-    // Now that the request is decoded (successfully or not), release the
-    // xrootd request buffer. To avoid data races, this must happen before
-    // the task is handed off to another thread for processing, as there is a
-    // reference to this SsiRequest inside the reply channel for the task,
-    // and after the call to BindRequest.
-    auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
-    ReleaseRequestBuffer();
-    t.start();
-    _processor->processTask(task); // Queues task to be run later.
-    t.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
+                // reqData has the entire request, so we can unpack it without waiting for
+                // more data.
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
+                auto taskMsg = std::make_shared<proto::TaskMsg>();
+                bool ok = taskMsg->ParseFromArray(reqData, reqSize) && taskMsg->IsInitialized();
+                if (!ok) {
+                    std::ostringstream os;
+                    os << "Failed to decode TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
+                    LOGS(_log, LOG_LVL_ERROR, os.str());
+                    errorFunc(os.str());
+                    return;
+                }
+            
+                if (!taskMsg->has_db() || !taskMsg->has_chunkid()
+                    || (ru.db() != taskMsg->db()) || (ru.chunk() != taskMsg->chunkid())) {
+                    std::ostringstream os;
+                    os << "Mismatched db/chunk in TaskMsg on resource db=" << ru.db() << " chunkId=" << ru.chunk();
+                    LOGS(_log, LOG_LVL_ERROR, os.str());
+                    errorFunc(os.str());
+                    return;
+                }
+            
+                // Now that the request is decoded (successfully or not), release the
+                // xrootd request buffer. To avoid data races, this must happen before
+                // the task is handed off to another thread for processing, as there is a
+                // reference to this SsiRequest inside the reply channel for the task,
+                // and after the call to BindRequest.
+                auto task = std::make_shared<wbase::Task>(taskMsg, replyChannel);
+                ReleaseRequestBuffer();
+                t.start();
+                _processor->processTask(task); // Queues task to be run later.
+                t.stop();
+                LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
+            }
+            break;
+
+        case ResourceUnit::WORKER:
+            {
+                if (!(*_validator)(ru)) {
+                    std::ostringstream os;
+                    os << "WARNING: unowned worker detected:" << ru.path();
+                    LOGS(_log, LOG_LVL_WARN, os.str());
+                    errorFunc(os.str());
+                    return;
+                }
+
+                // reqData has the entire request, so we can unpack it without waiting for
+                // more data.
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCmdMsg of size " << reqSize);
+                auto workerCmdMsg = std::make_shared<proto::WorkerCmdMsg>();
+                bool ok = workerCmdMsg->ParseFromArray(reqData, reqSize) && workerCmdMsg->IsInitialized();
+                if (!ok) {
+                    std::ostringstream os;
+                    os << "Failed to decode WorkerCmdMsg on worker=" << ru.hashName();
+                    LOGS(_log, LOG_LVL_ERROR, os.str());
+                    errorFunc(os.str());
+                    return;
+                }
+                LOGS(_log, LOG_LVL_INFO, "WorkerCmdMsg: cmd=" << proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg->cmd()));
+
+            
+                // Now that the request is decoded (successfully or not), release the
+                // xrootd request buffer. To avoid data races, this must happen before
+                // the command is handed off to another thread for processing, as there is a
+                // reference to this SsiRequest inside the reply channel for the task,
+                // and after the call to BindRequest.
+                wbase::WorkerCommand::Ptr command;
+                switch (workerCmdMsg->cmd()) {
+
+                    case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST:
+                        command = std::make_shared<wcontrol::ReloadChunkListCommand>(replyChannel);
+                        break;
+
+                    default:
+                        {
+                            std::ostringstream os;
+                            os  << "Unsupported command " << proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg->cmd())
+                                << " found in WorkerCmdMsg on worker=" << ru.hashName();
+                            LOGS(_log, LOG_LVL_ERROR, os.str());
+                            errorFunc(os.str());
+                            return;
+                        }
+                }
+                ReleaseRequestBuffer();
+                t.start();
+                _processor->processCommand(command);    // Queues the command to be run later.
+                t.stop();
+                LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru << " in " << t.getElapsed() << " seconds");
+            }
+            break;
+
+        default:
+            {
+                std::ostringstream os;
+                os << "Unexpected unit type '" << ru.unitType() << "', resource name: " << _resourceName;
+                LOGS(_log, LOG_LVL_ERROR, os.str());
+                errorFunc(os.str());
+            }
+            break;
+    }
 
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.

@@ -32,7 +32,8 @@
 #include "mysql/MySqlConfig.h"
 #include "util/EventThread.h"
 #include "wbase/Base.h"
-#include "wbase/Task.h"
+#include "wbase/MsgProcessor.h"
+//#include "wbase/Task.h"
 #include "wpublish/QueriesAndChunks.h"
 
 
@@ -104,6 +105,13 @@ public:
      */
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
+   /**
+     * Implement the corresponding method of the base class
+     *
+     * @see MsgProcessor::processCommand()
+     */
+    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
+
 private:
 
     std::shared_ptr<wdb::SQLBackend>       _backend;
@@ -112,6 +120,8 @@ private:
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr        _scheduler;
 
+    util::CommandQueue::Ptr _workerCommandQueue;    //< dedicated queue for the worker commands
+    util::ThreadPool::Ptr   _workerCommandPool;     //< dedicated pool for executing worker commands
 
     mysql::MySqlConfig const        _mySqlConfig;
     wpublish::QueriesAndChunks::Ptr _queries;
