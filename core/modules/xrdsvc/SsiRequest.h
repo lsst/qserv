@@ -40,48 +40,77 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
+namespace wbase {
+struct MsgProcessor;
+}}}
+
+namespace lsst {
+namespace qserv {
 namespace xrdsvc {
 
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
 /// adhere to using BindRequest() and UnBindRequest() responder methods.
-class SsiRequest : public XrdSsiResponder, public std::enable_shared_from_this<SsiRequest> {
-public:
-    typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
-    typedef std::shared_ptr<SsiRequest> Ptr;
+class SsiRequest
+    :   public XrdSsiResponder,
+        public std::enable_shared_from_this<SsiRequest> {
 
-    // Use factory to ensure proper construction for enable_shared_from_this.
-    static SsiRequest::Ptr newSsiRequest(std::string const& rname,
-               ValidatorPtr validator,
-               std::shared_ptr<wbase::MsgProcessor> const& processor) {
-        SsiRequest::Ptr ssiPtr(new SsiRequest(rname, validator, processor));
-        return ssiPtr;
+public:
+
+    // Smart pointer definitions
+
+    typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
+    typedef std::shared_ptr<SsiRequest>            Ptr;
+
+    /// Use factory to ensure proper construction for enable_shared_from_this.
+    static SsiRequest::Ptr newSsiRequest (
+            std::string const&                          rname,
+            ValidatorPtr                                validator,
+            std::shared_ptr<wbase::MsgProcessor> const& processor) {
+
+        return SsiRequest::Ptr(new SsiRequest(rname,
+                                              validator,
+                                              processor));
     }
 
     virtual ~SsiRequest();
 
     void execute(XrdSsiRequest& req);
 
-    // XrdSsiResponder interfaces
-    void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo,
-                  bool cancel=false) override;
+    /**
+     * Implements the virtual method defined in the base class
+     *
+     * @see XrdSsiResponder::Finished
+     */
+    void Finished(XrdSsiRequest&        req,
+                  XrdSsiRespInfo const& rinfo,
+                  bool                  cancel=false) override;
 
 private:
+
     /// Constructor (called by SsiService)
-    SsiRequest(std::string const& rname,
-               ValidatorPtr validator,
+    SsiRequest(std::string const&                          rname,
+               ValidatorPtr                                validator,
                std::shared_ptr<wbase::MsgProcessor> const& processor)
-        : _validator(validator), _processor(processor), _resourceName(rname) {}
+        :   _validator(validator),
+            _processor(processor),
+            _resourceName(rname) {
+    }
+    
+    /// For internal error reporting
+    void reportError (std::string const& errStr);
+
     class ReplyChannel;
     friend class ReplyChannel;
 
-    ValidatorPtr _validator; ///< validates request against what's available
-    std::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
+    ValidatorPtr                         _validator;    ///< validates request against what's available
+    std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
-    std::mutex  _finMutex;  ///< Protects execute() from Finish()
+    std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
 };
+
 }}} // namespace
 
 #endif // LSST_QSERV_XRDSVC_SSIREQUEST_H

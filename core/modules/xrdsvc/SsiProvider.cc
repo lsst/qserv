@@ -153,25 +153,38 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
 XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
                                                        char const* contact) {
 
-    // Extract db and chunk from path and validate result
-    //
+    // Validate resource name based on its proposed type
+
     ResourceUnit ru(rName);
-    if (ru.unitType() != ResourceUnit::DBCHUNK) {
-        // FIXME: Do we need to support /result here?
-        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");
+    if (ru.unitType() == ResourceUnit::DBCHUNK) {
+
+        // Extract db and chunk from path and validate result
+
+        // If the chunk exists on our node then tell the caller it is here.
+        if (_chunkInventory.has(ru.db(), ru.chunk())) {
+            LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
+            return isPresent;
+        }
+    
+        // Tell the caller we do not have the chunk.
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
+        return notPresent;
+
+    } else if (ru.unitType() == ResourceUnit::WORKER) {
+
+        // Extract the worker name and alidate it against the one which is
+        // provided through the inventory
+        if (not _chunkInventory.id().empty() and _chunkInventory.id() == ru.hashName()) {
+            LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
+            return isPresent;
+        }
+
+        // Tell the caller we don't recognize this worker
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
         return notPresent;
     }
 
-    // If the chunk exists on our node then tell he caller it is here.
-    //
-    if (_chunkInventory.has(ru.db(), ru.chunk())) {
-        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
-        return isPresent;
-    }
-
-    // Tell the caller we do not have the chunk.
-    //
-    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
+    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");
     return notPresent;
 }
 

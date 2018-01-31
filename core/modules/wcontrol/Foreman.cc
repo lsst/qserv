@@ -41,6 +41,7 @@
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
+#include "wbase/WorkerCommand.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -52,9 +53,15 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig const& mySqlConfig,
-    wpublish::QueriesAndChunks::Ptr const& queries)
-    : _scheduler{s}, _mySqlConfig(mySqlConfig), _queries{queries} {
+Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
+                 uint                                   poolSize,
+                 mysql::MySqlConfig              const& mySqlConfig,
+                 wpublish::QueriesAndChunks::Ptr const& queries)
+
+    :   _scheduler  (scheduler),
+        _mySqlConfig(mySqlConfig),
+        _queries    (queries) {
+
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -62,10 +69,14 @@ Foreman::Foreman(Scheduler::Ptr const& s, uint poolSize, mysql::MySqlConfig cons
     // Previous instances of the worker should be terminated before a new worker is started.
     _backend = std::make_shared<wdb::SQLBackend>(_mySqlConfig);
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_backend);
-    assert(s); // Cannot operate without scheduler.
+
+    assert(_scheduler); // Cannot operate without scheduler.
 
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize);
     _pool = util::ThreadPool::newThreadPool(poolSize, _scheduler);
+
+    _workerCommandQueue = std::make_shared<util::CommandQueue>();
+    _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
 }
 
 Foreman::~Foreman() {
@@ -96,6 +107,11 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
     task->setFunc(func);
     _queries->addTask(task);
     _scheduler->queCmd(task);
+}
+
+
+void Foreman::processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) {
+    _workerCommandQueue->queCmd(command);
 }
 
 }}} // namespace

@@ -46,7 +46,7 @@ namespace qserv {
 class ResourceUnit {
 public:
     class Checker;
-    enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT};
+    enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT, WORKER};
 
     ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
 
@@ -89,7 +89,7 @@ private:
     UnitType _unitType; //< Type of unit
     std::string _db; //< for CQUERY and DBCHUNK types
     int _chunk; //< for CQUERY and DBCHUNK types
-    std::string _hashName; //< for RESULT types
+    std::string _hashName; //< for RESULT and WORKER types
 
     typedef std::map<std::string, std::string> VarMap;
     VarMap _vars; //< Key-value specifiers

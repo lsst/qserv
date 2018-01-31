@@ -194,12 +194,6 @@ private:
     std::chrono::system_clock::time_point _finishTime;
 };
 
-/// MsgProcessor implementations handle incoming Task objects.
-struct MsgProcessor {
-    virtual ~MsgProcessor() {}
-    virtual void processTask(std::shared_ptr<wbase::Task> const& task) = 0;
-};
-
 }}} // namespace lsst::qserv::wbase
 
 #endif // LSST_QSERV_WBASE_TASK_H

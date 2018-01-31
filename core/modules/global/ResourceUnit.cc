@@ -91,6 +91,7 @@ ResourceUnit::path() const {
         ss << _pathSep << "UNKNOWN_RESOURCE_UNIT";
         break;
     case RESULT:
+    case WORKER:
         ss << _hashName;
         break;
     default:
@@ -120,6 +121,8 @@ ResourceUnit::prefix(UnitType const& r) {
         return "UNKNOWN";
     case RESULT:
         return "result";
+    case WORKER:
+        return "worker";
     case GARBAGE:
     default:
         return "GARBAGE";
@@ -192,6 +195,12 @@ ResourceUnit::_setFromPath(std::string const& path) {
 
     } else if (rTypeString == prefix(RESULT)) {
         _unitType = RESULT;
+        if (_markGarbageIfDone(t)) { return; }
+        t.next();
+        _hashName = t.token();
+        if (_hashName.empty()) { _unitType = GARBAGE; return; }
+    } else if (rTypeString == prefix(WORKER)) {
+        _unitType = WORKER;
         if (_markGarbageIfDone(t)) { return; }
         t.next();
         _hashName = t.token();
