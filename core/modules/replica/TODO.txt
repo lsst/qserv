@@ -1,0 +1,4 @@
+____________________________________________
+Incremental implementation of REPLICA_CREATE
+
+Introduce a state (variable) 
