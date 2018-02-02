@@ -1,0 +1,49 @@
+/*
+ * LSST Data Management System
+ * Copyright 2011-2018 LSST Corporation.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+/// replication.proto
+/// This defines the wire-messages sent between replication master and workers.
+
+package lsst.qserv.proto;
+
+
+message LoaderFileRequest {
+    /// The name of a file (including its extention and excluding any path)
+    required string file = 2;
+}
+
+message LoaderFileResponse {
+
+    /// The flag indicating if the earlier requested file is available,
+    /// and it can be read by the server.
+    required bool available = 1;
+
+    /// The file size (bytes)
+    required uint64 size = 2;
+
+    /// The file content modification time in seconds (since UNIX Epoch)
+    required uint32 mtime = 3;
+
+}
+
+
+
+ 
