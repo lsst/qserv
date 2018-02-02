@@ -75,7 +75,8 @@ void FileServer::run() {
     beginAccept();
 
     // Launch all threads in the pool
-    std::vector<std::shared_ptr<std::thread>> threads(_fileServerConfig->getTargetPoolSize());
+    // std::vector<std::shared_ptr<std::thread>> threads(_fileServerConfig->getTargetPoolSize()); &&& old?
+    std::vector<std::shared_ptr<std::thread>> threads(_serviceProvider.config()->workerNumFsProcessingThreads());
     for (std::size_t i = 0; i < threads.size(); ++i) {
         std::shared_ptr<std::thread> ptr(
             new std::thread(boost::bind(&boost::asio::io_service::run, &_io_service))); // &&& Why is boost::bind needed?
@@ -115,6 +116,7 @@ void FileServer::handleAccept (FileServerConnection::Ptr const& connection, boos
 //////////////////////// &&& delete this
 
 // typedef std::shared_ptr<lsst::qserv::replica_core::ProtocolBuffer> ProtocolBufferPtr; &&&
+typedef std::shared_ptr<lsst::qserv::replica_core::ProtocolBuffer> ProtocolBufferPtr;
 
 /// The context for diagnostic & debug printouts
 const std::string context = "FILE-SERVER-CONNECTION  "; // &&& replace with identifier for file request.
@@ -131,7 +133,8 @@ bool FileServerConnection::_isErrorCode (boost::system::error_code ec, std::stri
     return false;
 }
 
-
+<<<<<<< f8c7cac198ebca7232da3eb855e09d9eae9638ac
+/* &&& old
 FileServer::DataSizeType FileServerConnection::_parseMsgLength(FileServer::DataBuffer &buff) {
     if (buff.size() < sizeof(FileServer::DataSizeType)) {
         std::overflow_error("not enough data to describe message length");
@@ -147,10 +150,20 @@ bool FileServerConnection::_readIntoBuffer(FileServer::DataBuffer &buff) {
     FileServer::DataType *data = &(buff[0]);
     auto bytes = buff.size();
     boost::asio::read(_socket, boost::asio::buffer(data, bytes), boost::asio::transfer_at_least(bytes), ec);
+*/
+
+bool FileServerConnection::_readIntoBuffer (size_t bytes) {
+    _bufferPtr->resize(bytes);     // make sure the buffer has enough space to accomodate
+                            // the data of the message.
+
+    boost::system::error_code ec;
+    boost::asio::read (_socket, boost::asio::buffer (_bufferPtr->data(), bytes),
+        boost::asio::transfer_at_least(bytes), ec);
     return !_isErrorCode(ec, "readIntoBuffer");
 }
 
 
+/* &&& old?
 bool FileServerConnection::_readMessage(FileServer::DataBuffer &lengthBuff,
                                         proto::LoaderFileRequest &message) {
     FileServer::DataSizeType bytes = _parseMsgLength(lengthBuff);
@@ -162,7 +175,11 @@ bool FileServerConnection::_readMessage(FileServer::DataBuffer &lengthBuff,
     if (!message.ParseFromArray(data, bytes)) {
         LOGS(_log, LOG_LVL_WARN, context << " failed to parse message");
     }
+*/
+bool FileServerConnection::_readMessage(size_t bytes, proto::ReplicationFileRequest &message) {
+    if (!_readIntoBuffer (bytes)) return false;
 
+    _bufferPtr->parse(message, bytes);
     return true;
 }
 
@@ -187,8 +204,13 @@ FileServerConnection::Ptr FileServerConnection::create(FileServer::Ptr const& fi
 FileServerConnection::FileServerConnection(FileServer::Ptr const& fileServer,
                                            FileServerConfig::Ptr const& fileServerConfig)
     : _fileServer(fileServer),
+/* &&& old?
       _socket(fileServer->getIoService()),
      _fileBufSize(fileServerConfig->getFileBufferSize()) {
+*/
+      _bufferPtr (std::make_shared<ProtocolBuffer>(fileServerConfig()->requestBufferSizeBytes())),
+      _socket(fileServer->getIOService()),
+     _fileBufSize(serviceProvider.config()->workerFsBufferSizeBytes()) {
 
     if (!_fileBufSize || _fileBufSize > maxFileBufSizeBytes)
         throw std::invalid_argument("FileServerConnection: the buffer size must be in a range of: 0-" +
@@ -213,6 +235,7 @@ void FileServerConnection::beginProtocol () {
     receiveRequest();
 }
 
+/* &&& old?
 void FileServerConnection::receiveRequest() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << "receiveRequest");
@@ -227,6 +250,29 @@ void FileServerConnection::receiveRequest() {
     boost::asio::async_read(
         _socket,
         boost::asio::buffer(data, bytes),
+*/
+void FileServerConnection::receiveRequest () {
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "receiveRequest");
+
+    // Start with receiving the fixed length frame carrying
+    // the size (in bytes) the length of the subsequent message.
+    //
+    // The message itself will be read from the handler using
+    // the synchronous read method. This is based on an assumption
+    // that a client sends the whole message (its frame and
+    // the message itsef) at once.
+
+    const size_t bytes = sizeof(uint32_t);
+
+    _bufferPtr->resize(bytes);
+
+    boost::asio::async_read (
+        _socket,
+        boost::asio::buffer (
+            _bufferPtr->data(),
+            bytes
+        ),
         boost::asio::transfer_at_least(bytes),
         boost::bind (
             &FileServerConnection::requestReceived,
@@ -241,6 +287,7 @@ void FileServerConnection::receiveRequest() {
 void FileServerConnection::requestReceived (boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG, context << "requestReceived");
 
+/* old?
     if (_isErrorCode(ec, "requestReceived")) return;
 
     // Now read the body of the request
@@ -254,6 +301,15 @@ void FileServerConnection::requestReceived (boost::system::error_code const& ec,
     }
 
     LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> file: " << request.file());
+*/
+    if ( ::isErrorCode (ec, "requestReceived")) return;
+
+    // Now read the body of the request
+    proto::ReplicationFileRequest request;
+    if (!_readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+
+    LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> database: " << request.database()
+         << ", file: " << request.file());
 
     // Find a file requested by a client
 

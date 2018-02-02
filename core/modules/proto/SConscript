@@ -3,6 +3,7 @@ Import('env')
 Import('standardModule')
 
 # Construct proto env (add protoc Builder)
+<<<<<<< f8c7cac198ebca7232da3eb855e09d9eae9638ac
 env.Protoc(File("worker.proto"),
     PROTOC_PATH='.',
     PROTOC_CCOUT='.',
@@ -15,5 +16,19 @@ env.Protoc(File("loader.proto"),
     PROTOC_PATH='.',
     PROTOC_CCOUT='.',
     PROTOC_PYOUT='.',)
+=======
+proto = File("worker.proto")
+pFiles = [
+    env.Protoc(File("worker.proto"),
+        PROTOC_PATH='.',
+        PROTOC_CCOUT='.',
+        PROTOC_PYOUT='.',
+    ),
+    env.Protoc(File("loader.proto"),
+        PROTOC_PATH='.',
+        PROTOC_CCOUT='.',
+        PROTOC_PYOUT='.',)
+]   
+>>>>>>> Modified FileServer and added lader to build.
 
 standardModule(env, test_libs='log4cxx')

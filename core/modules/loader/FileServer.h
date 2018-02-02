@@ -28,6 +28,7 @@
 #include <memory>
 
 // Qserv headers
+#include "replica/FileServerConnection.h"
 
 
 namespace lsst {
@@ -40,7 +41,7 @@ class LoaderFileRequest;
 namespace loader {
 
 class FileServerConnection;
-
+/* &&& old
 class FileServerConfig {
 public:
     using Ptr = std::shared_ptr<FileServerConfig>;
@@ -59,18 +60,26 @@ private:
     int _targetPoolSize{5};
     int _fileBufferSize{4000000}; // &&& needs a better guess.
 };
+*/
+namespace loader {
+
+class FileServerConnection;
+class FileServerConfig;
 
 
 /// This class is meant to simply provide the requested file.
 /// Based on FileServer in Igor Gaponenko's replication system.
 class FileServer : public std::enable_shared_from_this<FileServer>  {
 public:
+/* &&& old?
     using Ptr = std::shared_ptr<FileServer>;
 
     using DataType = char;
     using DataBuffer = std::vector<DataType>;
     using DataSizeType = uint32_t; // If this changes, fix associated ntohl calls.
     using DataBufferPtr = std::shared_ptr<DataBuffer>;
+*/
+    typedef std::shared_ptr<FileServer> Ptr;
 
     // Factory function to ensure proper creation for enable_shared_from_this.
     static Ptr create(FileServerConfig::Ptr const& fileServerConfig);
@@ -150,7 +159,7 @@ private:
   */
 class FileServerConnection :   public std::enable_shared_from_this<FileServerConnection> {
 public:
-    using Ptr = std::shared_ptr<FileServerConnection>;
+    typedef std::shared_ptr<FileServerConnection> Ptr;
 
     /// Factory to ensure correct construction for enable_shared_from_this.
     static Ptr create(FileServer::Ptr const& fileServer);
@@ -190,13 +199,15 @@ private:
     void dataSent (boost::system::error_code const& ec, size_t bytes_transferred);
 
     bool _isErrorCode (boost::system::error_code ec, std::string const& scope);
+/* &&& old
     bool _readIntoBuffer (FileServer::DataBuffer &buff);
     bool _readMessage(FileServer::DataBuffer &lengthBuff, proto::LoaderFileRequest &message);
     FileServer::DataSizeType _parseMsgLength(FileServer::DataBuffer &buff);
-
+*/
     std::weak_ptr<FileServer> _fileServer;
     boost::asio::ip::tcp::socket _socket;
 
+/* &&& old?
     // std::shared_ptr<ProtocolBuffer> _bufferPtr; ///< Buffer serialization. &&& delete
 
     /// Buffer for sending size of data. There can only one request at a time!
@@ -205,12 +216,13 @@ private:
     FileServer::DataBufferPtr _buffer;
 
     std::shared_ptr<proto::LoaderFileRequest> _protoLoaderFileRequest;
+*/
+    std::shared_ptr<ProtocolBuffer> _bufferPtr; ///< Buffer serialization.
     std::string _fileName; ///< The name of the file being transferred.
     std::FILE* _filePtr;   ///< The file.
     size_t _fileBufSize{0};   ///< The file record buffer size (bytes)
     std::vector<uint8_t> _fileVect; ///< container for the fileBuf
     uint8_t *_fileBuf;     ///< Pointer to the start of _fileVect's internal array.
-
 };
 
 
