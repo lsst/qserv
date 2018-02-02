@@ -62,4 +62,7 @@ ReplicaFinder::ReplicaFinder(Controller::Ptr const& controller,
     track();
 }
 
+ReplicaFinder::~ReplicaFinder () {
+}
+
 }}} // namespace lsst::qserv::replica
