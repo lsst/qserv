@@ -20,6 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "wbase/SendChannel.h"
 
 // System headers
@@ -31,6 +33,16 @@
 
 // Third-party headers
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
+#include "xrdsvc/SsiRequest.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannel");
+}
+
 namespace lsst {
 namespace qserv {
 namespace wbase {
@@ -39,6 +51,9 @@ namespace wbase {
 /// debugging code without an XrdSsi channel.
 class NopChannel : public SendChannel {
 public:
+//??NopChannel() : SendChannel(0) {}
+    NopChannel() {}
+
     virtual bool send(char const* buf, int bufLen) {
         std::cout << "NopChannel send(" << (void*) buf
                   << ", " << bufLen << ");\n";
@@ -72,6 +87,7 @@ SendChannel::Ptr SendChannel::newNopChannel() {
 /// remembers what it has received.
 class StringChannel : public SendChannel {
 public:
+//??StringChannel(std::string& dest) : SendChannel(0),_dest(dest) {}
     StringChannel(std::string& dest) : _dest(dest) {}
 
     virtual bool send(char const* buf, int bufLen) {
@@ -121,6 +137,26 @@ private:
 SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
     return std::make_shared<StringChannel>(d);
 
+}
+
+/// This is the standard definition of SendChannel which acually does something!
+///
+bool SendChannel::send(char const* buf, int bufLen) {
+    return _ssiRequest->reply(buf, bufLen);
+}
+
+bool SendChannel::sendError(std::string const& msg, int code) {
+    return _ssiRequest->replyError(msg.c_str(), code);
+}
+
+bool SendChannel::sendFile(int fd, Size fSize) {
+    if (_ssiRequest->replyFile(fSize, fd)) return true;
+    release();
+    return false;
+}
+
+bool SendChannel::sendStream(char const* buf, int bufLen, bool last) {
+    return _ssiRequest->replyStream(buf, bufLen, last);
 }
 
 }}} // namespace

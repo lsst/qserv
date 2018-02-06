@@ -23,7 +23,6 @@
 
 // Class header
 #include <xrdsvc/SsiRequest.h>
-#include <xrdsvc/SsiRequest_ReplyChannel.h>
 #include <cctype>
 #include <cstddef>
 #include <iostream>
@@ -42,6 +41,7 @@
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "wcontrol/ReloadChunkListCommand.h"
+#include "xrdsvc/ChannelStream.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
@@ -58,7 +58,7 @@ SsiRequest::~SsiRequest () {
 
 void SsiRequest::reportError (std::string const& errStr) {
     LOGS(_log, LOG_LVL_WARN, errStr);
-    std::make_shared<ReplyChannel>(shared_from_this())->sendError(errStr, EINVAL);
+    replyError(errStr, EINVAL);
     ReleaseRequestBuffer();
 }
 
@@ -122,9 +122,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto task = std::make_shared<wbase::Task>(
-                            taskMsg,
-                            std::make_shared<ReplyChannel>(shared_from_this()));
+            auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
+            auto task = std::make_shared<wbase::Task>(taskMsg, sC);
             ReleaseRequestBuffer();
             t.start();
             _processor->processTask(task); // Queues task to be run later.
@@ -154,11 +153,11 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // and after the call to BindRequest.
             wbase::WorkerCommand::Ptr command;
             switch (workerCmdMsg.cmd()) {
-                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST:
-                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(
-                                    std::make_shared<ReplyChannel>(shared_from_this()));
+                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST: {
+                    auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
+                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(sC);
                     break;
-
+                }
                 default:
                     reportError("Unsupported command " + proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()) +
                                 " found in WorkerCmdMsg on worker=" + ru.hashName());
@@ -209,6 +208,65 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
+}
+
+bool SsiRequest::reply(char const* buf, int bufLen) {
+    Status s = SetResponse(buf, bufLen);
+    if (s != XrdSsiResponder::wasPosted) {
+        LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response of length=" << bufLen);
+        return false;
+    }
+    return true;
+}
+
+bool SsiRequest::replyError(std::string const& msg, int code) {
+    Status s = SetErrResponse(msg.c_str(), code);
+    if (s != XrdSsiResponder::wasPosted) {
+        LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post error response " << msg);
+        return false;
+    }
+    return true;
+}
+
+bool SsiRequest::replyFile(int fd, long long fSize) {
+    util::Timer t;
+    t.start();
+    Status s = SetResponse(fSize, fd);
+    if (s == XrdSsiResponder::wasPosted) {
+        LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
+    } else {
+        if (s == XrdSsiResponder::notActive) {
+            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length="
+                 << fSize << ", responder not active.");
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length=" << fSize);
+        }
+        replyError("Internal error posting response file", 1);
+        t.stop();
+        return false; // call must handle everything else.
+    }
+    t.stop();
+    LOGS(_log, LOG_LVL_DEBUG, "replyFile took " << t.getElapsed() << " seconds");
+    return true;
+}
+
+
+bool SsiRequest::replyStream(char const* buf, int bufLen, bool last) {
+    // Create a streaming object if not already created.
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream " << (void *) _stream
+         << " len=" << bufLen << " last=" << last);
+    if (!_stream) {
+       _stream = new ChannelStream();
+       SetResponse(_stream);
+    } else if (_stream->closed()) {
+
+        return false;
+
+    }
+
+    _stream->append(buf, bufLen, last);
+
+    return true;
 }
 
 }}} // namespace
