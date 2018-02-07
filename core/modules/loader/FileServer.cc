@@ -33,6 +33,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "proto/loader.pb.h"
 
 #include "lsst/log/Log.h"
 
@@ -74,7 +75,7 @@ void FileServer::run() {
     beginAccept();
 
     // Launch all threads in the pool
-    std::vector<std::shared_ptr<std::thread>> threads(_serviceProvider.config()->workerNumFsProcessingThreads());
+    std::vector<std::shared_ptr<std::thread>> threads(_fileServerConfig->getTargetPoolSize());
     for (std::size_t i = 0; i < threads.size(); ++i) {
         std::shared_ptr<std::thread> ptr(
             new std::thread(boost::bind(&boost::asio::io_service::run, &_io_service))); // &&& Why is boost::bind needed?
@@ -113,7 +114,7 @@ void FileServer::handleAccept (FileServerConnection::Ptr const& connection, boos
 
 //////////////////////// &&& delete this
 
-typedef std::shared_ptr<lsst::qserv::replica_core::ProtocolBuffer> ProtocolBufferPtr;
+// typedef std::shared_ptr<lsst::qserv::replica_core::ProtocolBuffer> ProtocolBufferPtr; &&&
 
 /// The context for diagnostic & debug printouts
 const std::string context = "FILE-SERVER-CONNECTION  "; // &&& replace with identifier for file request.
@@ -130,21 +131,38 @@ bool FileServerConnection::_isErrorCode (boost::system::error_code ec, std::stri
     return false;
 }
 
-bool FileServerConnection::_readIntoBuffer (size_t bytes) {
-    _bufferPtr->resize(bytes);     // make sure the buffer has enough space to accomodate
-                            // the data of the message.
 
+FileServer::DataSizeType FileServerConnection::_parseMsgLength(FileServer::DataBuffer &buff) {
+    if (buff.size() < sizeof(FileServer::DataSizeType)) {
+        std::overflow_error("not enough data to describe message length");
+    }
+
+    FileServer::DataType *data = &(buff[0]);
+    return ntohl(*(reinterpret_cast<FileServer::DataSizeType const*>(data)));
+}
+
+
+bool FileServerConnection::_readIntoBuffer(FileServer::DataBuffer &buff) {
     boost::system::error_code ec;
-    boost::asio::read (_socket, boost::asio::buffer (_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes), ec);
+    FileServer::DataType *data = &(buff[0]);
+    auto bytes = buff.size();
+    boost::asio::read(_socket, boost::asio::buffer(data, bytes), boost::asio::transfer_at_least(bytes), ec);
     return !_isErrorCode(ec, "readIntoBuffer");
 }
 
 
-bool FileServerConnection::_readMessage(size_t bytes, proto::ReplicationFileRequest &message) {
-    if (!_readIntoBuffer (bytes)) return false;
+bool FileServerConnection::_readMessage(FileServer::DataBuffer &lengthBuff,
+                                        proto::LoaderFileRequest &message) {
+    FileServer::DataSizeType bytes = _parseMsgLength(lengthBuff);
+    _buffer.reset(new FileServer::DataBuffer(bytes));
 
-    _bufferPtr->parse(message, bytes);
+    if (!_readIntoBuffer(*_buffer)) return false;
+
+    FileServer::DataType *data = &((*_buffer)[0]);
+    if (!message.ParseFromArray(data, bytes)) {
+        LOGS(_log, LOG_LVL_WARN, context << " failed to parse message");
+    }
+
     return true;
 }
 
@@ -169,9 +187,8 @@ FileServerConnection::Ptr FileServerConnection::create(FileServer::Ptr const& fi
 FileServerConnection::FileServerConnection(FileServer::Ptr const& fileServer,
                                            FileServerConfig::Ptr const& fileServerConfig)
     : _fileServer(fileServer),
-      _bufferPtr (std::make_shared<ProtocolBuffer>(fileServerConfig()->requestBufferSizeBytes())),
-      _socket(fileServer->getIOService()),
-     _fileBufSize(serviceProvider.config()->workerFsBufferSizeBytes()) {
+      _socket(fileServer->getIoService()),
+     _fileBufSize(fileServerConfig->getFileBufferSize()) {
 
     if (!_fileBufSize || _fileBufSize > maxFileBufSizeBytes)
         throw std::invalid_argument("FileServerConnection: the buffer size must be in a range of: 0-" +
@@ -196,28 +213,20 @@ void FileServerConnection::beginProtocol () {
     receiveRequest();
 }
 
-void FileServerConnection::receiveRequest () {
+void FileServerConnection::receiveRequest() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << "receiveRequest");
 
-    // Start with receiving the fixed length frame carrying
-    // the size (in bytes) the length of the subsequent message.
+    // Receive the size of the subsequent message (in bytes).
     //
-    // The message itself will be read from the handler using
-    // the synchronous read method. This is based on an assumption
-    // that a client sends the whole message (its frame and
-    // the message itsef) at once.
+    // The message itself will be read using the synchronous read method.
+    // The client should send it's entire message at once.
+    const size_t bytes = sizeof(FileServer::DataSizeType);
+    FileServer::DataType *data = &(_sizeBufVect[0]);
 
-    const size_t bytes = sizeof(uint32_t);
-
-    _bufferPtr->resize(bytes);
-
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
-            _bufferPtr->data(),
-            bytes
-        ),
+        boost::asio::buffer(data, bytes),
         boost::asio::transfer_at_least(bytes),
         boost::bind (
             &FileServerConnection::requestReceived,
@@ -232,14 +241,19 @@ void FileServerConnection::receiveRequest () {
 void FileServerConnection::requestReceived (boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG, context << "requestReceived");
 
-    if ( ::isErrorCode (ec, "requestReceived")) return;
+    if (_isErrorCode(ec, "requestReceived")) return;
 
     // Now read the body of the request
-    proto::ReplicationFileRequest request;
-    if (!_readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+    proto::LoaderFileRequest request;
+    //if (!_readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+    // _sizeBuf should contain the results of FileServerConnection::receiveRequest()
+    // &&& maybe add bytes transferred check
+    if (!_readMessage(_sizeBufVect, request)) {
+        LOGS(_log, LOG_LVL_WARN, context << " failed to read message.");
+        return;
+    }
 
-    LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> database: " << request.database()
-         << ", file: " << request.file());
+    LOGS(_log, LOG_LVL_INFO, context << "requestReceived  <OPEN> file: " << request.file());
 
     // Find a file requested by a client
 
