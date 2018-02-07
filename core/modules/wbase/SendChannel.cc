@@ -51,7 +51,6 @@ namespace wbase {
 /// debugging code without an XrdSsi channel.
 class NopChannel : public SendChannel {
 public:
-//??NopChannel() : SendChannel(0) {}
     NopChannel() {}
 
     virtual bool send(char const* buf, int bufLen) {
@@ -87,7 +86,6 @@ SendChannel::Ptr SendChannel::newNopChannel() {
 /// remembers what it has received.
 class StringChannel : public SendChannel {
 public:
-//??StringChannel(std::string& dest) : SendChannel(0),_dest(dest) {}
     StringChannel(std::string& dest) : _dest(dest) {}
 
     virtual bool send(char const* buf, int bufLen) {
@@ -140,6 +138,8 @@ SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
 }
 
 /// This is the standard definition of SendChannel which acually does something!
+/// We vector responses posted to SendChannel via the tightly bound SsiRequest
+/// object as this object knows how to effect Ssi responses.
 ///
 bool SendChannel::send(char const* buf, int bufLen) {
     return _ssiRequest->reply(buf, bufLen);

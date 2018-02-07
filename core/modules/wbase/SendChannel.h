@@ -48,7 +48,6 @@ public:
     using Ptr = std::shared_ptr<SendChannel>;
     using Size = long long;
 
-//  SendChannel(xrdsvc::SsiRequest::Ptr const& s) : _ssiRequest(s) {}
     SendChannel(std::shared_ptr<xrdsvc::SsiRequest> const& s) : _ssiRequest(s) {}
     SendChannel() {} // Strictly for non-Request versions of this object.
 
@@ -92,7 +91,6 @@ protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
 
 private:
-//    xrdsvc::SsiRequest::Ptr _ssiRequest;
     std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
 };
 
