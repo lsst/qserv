@@ -48,6 +48,8 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
+class ChannelStream; // Forward declaration
+
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
@@ -87,6 +89,11 @@ public:
                   XrdSsiRespInfo const& rinfo,
                   bool                  cancel=false) override;
 
+    bool reply(char const* buf, int bufLen);
+    bool replyError(std::string const& msg, int code);
+    bool replyFile(int fd, long long fSize);
+    bool replyStream(char const* buf, int bufLen, bool last);
+
 private:
 
     /// Constructor (called by SsiService)
@@ -95,20 +102,19 @@ private:
                std::shared_ptr<wbase::MsgProcessor> const& processor)
         :   _validator(validator),
             _processor(processor),
-            _resourceName(rname) {
+            _resourceName(rname),
+            _stream(0) {
     }
     
     /// For internal error reporting
     void reportError (std::string const& errStr);
-
-    class ReplyChannel;
-    friend class ReplyChannel;
 
     ValidatorPtr                         _validator;    ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
     std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
+    ChannelStream* _stream;
 };
 
 }}} // namespace

@@ -35,6 +35,9 @@
 
 namespace lsst {
 namespace qserv {
+namespace xrdsvc {
+    class SsiRequest;    // Forward declaration
+}
 namespace wbase {
 
 /// SendChannel objects abstract an byte-output mechanism. Provides a layer of
@@ -45,19 +48,29 @@ public:
     using Ptr = std::shared_ptr<SendChannel>;
     using Size = long long;
 
+    SendChannel(std::shared_ptr<xrdsvc::SsiRequest> const& s) : _ssiRequest(s) {}
+    SendChannel() {} // Strictly for non-Request versions of this object.
+
     virtual ~SendChannel() {}
 
-    virtual bool send(char const* buf, int bufLen) = 0;
-    virtual bool sendError(std::string const& msg, int code) = 0;
+    /// ******************************************************************
+    /// The following methods are used to send responses back to a request.
+    /// The "send" calls may vector the response via the tightly bound
+    /// SsiRequest object (the constructor default) or use some other
+    /// mechanism (see newNopChannel and newStringChannel).
+    ///
+    virtual bool send(char const* buf, int bufLen);
+    virtual bool sendError(std::string const& msg, int code);
 
     /// Send the bytes from a POSIX file handle
-    virtual bool sendFile(int fd, Size fSize) = 0;
+    virtual bool sendFile(int fd, Size fSize);
 
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
-    virtual bool sendStream(char const* buf, int bufLen, bool last) {
-        throw Bug("Streaming is unimplemented, should not see this");
-    }
+    virtual bool sendStream(char const* buf, int bufLen, bool last);
+
+    ///
+    /// ******************************************************************
 
     /// Set a function to be called when a resources from a deferred send*
     /// operation may be released. This allows a sendFile() caller to be
@@ -76,6 +89,10 @@ public:
 
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
+
+private:
+    std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
 };
+
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_SENDCHANNEL_H
