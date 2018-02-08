@@ -219,6 +219,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 /// continues in later messages.
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
+    util::InstanceCount ic("&&& qr::_fillRows");
 
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
@@ -278,6 +279,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
+    util::InstanceCount ic("&&&qr::_transmit");
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -297,6 +299,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
          << " resultString=" << util::prettyCharList(resultString, 5));
     if (!_cancelled) {
+        util::InstanceCount ic("&&&qr::_transmit send");
         bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");

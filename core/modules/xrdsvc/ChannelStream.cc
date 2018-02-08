@@ -44,6 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
+/* &&& delete
 /// SimpleBuffer is a really simple buffer for transferring data packets to
 /// XrdSsi
 class SimpleBuffer : public XrdSsiStream::Buffer, boost::noncopyable {
@@ -67,6 +68,7 @@ public:
         delete[] data;
     }
 };
+*/
 
 ////////////////////////////////////////////////////////////////////////
 // ChannelStream implementation
@@ -86,9 +88,9 @@ ChannelStream::~ChannelStream() {
 #endif
 }
 
+
 /// Push in a data packet
-void
-ChannelStream::append(char const* buf, int bufLen, bool last) {
+void ChannelStream::append(char const* buf, int bufLen, bool last) {
     if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
@@ -102,6 +104,25 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
         _hasDataCondition.notify_one();
     }
 }
+
+
+
+/// Push in a data packet
+void ChannelStream::append(SimpleBuffer::Ptr simpleBuffer, bool last) {
+    if (_closed) {
+        throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
+
+        _msgs.push_back(std::string(buf, bufLen));
+        _closed = last; // if last is true, then we are closed.
+        _hasDataCondition.notify_one();
+    }
+}
+
 
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
 XrdSsiStream::Buffer*

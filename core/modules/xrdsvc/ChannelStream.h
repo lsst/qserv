@@ -29,6 +29,9 @@
 #include <mutex>
 #include <string>
 
+// qserv headers
+#include "util/InstanceCount.h" // &&&
+
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
@@ -36,6 +39,66 @@
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
+
+
+/// SimpleBuffer is a buffer for transferring data packets to XrdSsi.
+class SimpleBuffer : public XrdSsiStream::Buffer {
+public:
+    using Ptr = std::shared_ptr<SimpleBuffer>;
+
+    SimpleBuffer::Ptr create(std::string &input) {
+        Ptr ptr(new SimpleBuffer(input));
+        ptr->_selfKeepAlive = ptr;
+        return ptr;
+    }
+
+    SimpleBuffer() = delete;
+    SimpleBuffer(SimpleBuffer const&) = delete;
+    SimpleBuffer& operator=(SimpleBuffer const&) = delete;
+
+    //!> Call to recycle the buffer when finished
+    void Recycle() override {
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            doneWithThis = true;
+        }
+        _cv.notify_all();
+
+        // delete this;
+        // Effectively reset _selfPointer, and if nobody else was
+        // referencing this, it will delete itself when this call is done.
+        Ptr keepAlive = std::move(_selfKeepAlive);
+    }
+
+    // Wait until recycle is called.
+    void waitForDoneWithThis() {
+        std::unique_lock<std::mutex> uLock(_mtx);
+        _cv.wait(uLock, [this](){ return doneWithThis == true; });
+    }
+
+    // Inherited from XrdSsiStream:
+    // char  *data; //!> -> Buffer containing the data
+    // Buffer *next; //!> For chaining by buffer receiver
+
+    virtual ~SimpleBuffer() {
+        delete[] data;
+    }
+
+private:
+    SimpleBuffer(std::string const& input) {
+        data = new char[input.size()];
+        memcpy(data, input.data(), input.size());
+        next = 0;
+    }
+
+    std::mutex _mtx;
+    std::condition_variable _cv;
+    bool doneWithThis{false};
+    Ptr _selfKeepAlive; // keep this object alive
+    util::InstanceCount _ic("&&&SimpleBuffer");
+};
+
+
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
 /// SendChannel streamed data.
 class ChannelStream : public XrdSsiStream {
@@ -54,7 +117,7 @@ public:
 private:
     bool _closed; ///< Closed to new append() calls?
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
-    std::deque<std::string> _msgs; ///< Message queue
+    std::deque<SimpleBuffer::Ptr> _msgs; ///< Message queue
     std::mutex _mutex; ///< _msgs protection
     std::condition_variable _hasDataCondition; ///< _msgs condition
 };

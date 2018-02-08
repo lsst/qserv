@@ -61,45 +61,57 @@ public:
     typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
     AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq)
-        : _qRequest(qr), _jQuery(jq) {}
+        : _qRequest(qr), _jQuery(jq), _idStr(jq->getIdStr()) {}
+
     void action(util::CmdData *data) override {
         util::InstanceCount ic1("&&&AskForResponseDataCmd:action 1");
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic1=" << ic1.getCount());
-        if (_qRequest->isQueryCancelled()) {
-            LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "AskForResponseData query was cancelled");
-            return;
+        {
+            auto jq = _jQuery.lock();
+            auto qr = _qRequest.lock();
+            if (jq == nullptr || qr == nullptr) {
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before GetResponseData");
+                _setState(State::DONE2);
+                return;
+            }
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << "&&&AskForResponseData ic1=" << ic1.getCount());
+            if (qr->isQueryCancelled()) {
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResponseData query was cancelled");
+                _setState(State::DONE2);
+                return;
+            }
+            std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Asking for GetResponseData size=" << buffer.size());
+            qr->GetResponseData(&buffer[0], buffer.size());
         }
-        std::vector<char>& buffer = _jQuery->getDescription()->respHandler()->nextBuffer();
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << " Asking for GetResponseData size=" << buffer.size());
-        _qRequest->GetResponseData(&buffer[0], buffer.size());
         // wait for ProcessResponseData to be called
         {
             std::unique_lock<std::mutex> uLock(_mtx);
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; }); // &&& make timed wait, check for wedged
-        }
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "Ask data should be DATAREADY1 " << (int)_state);
-        // Process the response data
-        {
-            std::lock_guard<std::mutex> lg(_mtx);
+            // _mtx is locked at this point.
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
                 // There was a problem and everything has already been handled.
-                _clearPointers();
+                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResponseDataCmd returning early");
                 return;
             }
         }
-
         util::InstanceCount ic2("&&&AskForResponseDataCmd:action 2");
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic2=" << ic2.getCount());
-        _qRequest->_processData(_jQuery, _blen, _last);
-        // _processData will have created another AskForResponseDataCmd object if needed.
         {
-            std::lock_guard<std::mutex> lg(_mtx);
-            _state = State::DONE2;
+            auto jq = _jQuery.lock();
+            auto qr = _qRequest.lock();
+            if (jq == nullptr || qr == nullptr) {
+                _setState(State::DONE2);
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
+                return;
+            }
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&AskForResponseData ic2=" << ic2.getCount());
+            qr->_processData(jq, _blen, _last);
+            // _processData will have created another AskForResponseDataCmd object if needed.
         }
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "Ask data is done.");
-        LOGS(_log, LOG_LVL_DEBUG, _jQuery->getIdStr() << "&&&AskForResponseData ic1,2="
+        _setState(State::DONE2);
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&AskForResponseData ic1,2="
                 << ic1.getCount() << "," << ic2.getCount());
-        _clearPointers();
     }
 
     void receivedProcessResponseDataParameters(int blen, bool last) {
@@ -113,10 +125,8 @@ public:
     }
 
     void failedProcessResponseData() {
-        {
-            std::lock_guard<std::mutex> lg(_mtx);
-            _state = State::DONE2;
-        }
+        _setState(State::DONE2);
+        _cv.notify_one();
     }
 
     State getState() {
@@ -125,13 +135,14 @@ public:
     }
 
 private:
-    void _clearPointers() {
-        _jQuery.reset();
-        _qRequest.reset();
+    void _setState(State const state) {
+        std::lock_guard<std::mutex> lg(_mtx);
+        _state = State::DONE2;
     }
 
-    QueryRequest::Ptr _qRequest;
-    JobQuery::Ptr _jQuery;
+    std::weak_ptr<QueryRequest> _qRequest;
+    std::weak_ptr<JobQuery> _jQuery;
+    std::string _idStr;
     std::mutex _mtx;
     std::condition_variable _cv;
     State _state = State::STARTED0;
@@ -155,6 +166,9 @@ QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
 
 QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
+    if (_askForResponseDataCmd != nullptr) {
+        _askForResponseDataCmd->failedProcessResponseData();
+    }
 }
 
 // content of request data
