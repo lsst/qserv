@@ -95,38 +95,47 @@ void ChannelStream::append(char const* buf, int bufLen, bool last) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
     LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
+    std::string str(buf, bufLen);
+    SimpleBuffer::Ptr simpleBuffer(SimpleBuffer::create(str));
     {
         std::unique_lock<std::mutex> lock(_mutex);
         LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
 
-        _msgs.push_back(std::string(buf, bufLen));
+        //_msgs.push_back(std::string(buf, bufLen));
+        _msgs.push_back(simpleBuffer);
         _closed = last; // if last is true, then we are closed.
         _hasDataCondition.notify_one();
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& waiting for simpleBuffer release 2");
+    simpleBuffer->waitForDoneWithThis();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& simpleBuffer released 2");
 }
 
 
 
 /// Push in a data packet
-void ChannelStream::append(SimpleBuffer::Ptr simpleBuffer, bool last) {
+void ChannelStream::append(SimpleBuffer::Ptr const& simpleBuffer, bool last) {
     if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "last=" << last << " " << util::prettyCharBuf(buf, bufLen, 10));
+    LOGS(_log, LOG_LVL_DEBUG, "last=" << last
+         << " " << util::prettyCharBuf(simpleBuffer->data, simpleBuffer->getSize(), 10));
     {
         std::unique_lock<std::mutex> lock(_mutex);
         LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
 
-        _msgs.push_back(std::string(buf, bufLen));
+        _msgs.push_back(simpleBuffer);
         _closed = last; // if last is true, then we are closed.
         _hasDataCondition.notify_one();
     }
+    LOGS(_log, LOG_LVL_DEBUG, "&&& waiting for simpleBuffer release 1");
+    simpleBuffer->waitForDoneWithThis();
+    LOGS(_log, LOG_LVL_DEBUG, "&&& simpleBuffer released 1");
 }
 
 
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-XrdSsiStream::Buffer*
-ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     std::unique_lock<std::mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
@@ -140,12 +149,14 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
         eInfo.Set("Not an active stream", EOPNOTSUPP);
         return 0;
     }
-    SimpleBuffer* sb = new SimpleBuffer(_msgs.front());
-    dlen = _msgs.front().size();
+    SimpleBuffer::Ptr sb = _msgs.front();
+    // SimpleBuffer* sbPointer = new SimpleBuffer(_msgs.front()); &&&
+    //dlen = _msgs.front().size();
+    dlen = sb->getSize();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
     LOGS(_log, LOG_LVL_DEBUG, "returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
-    return sb;
+    return sb.get();
 }
 
 }}} // lsst::qserv::xrdsvc

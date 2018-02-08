@@ -46,15 +46,20 @@ class SimpleBuffer : public XrdSsiStream::Buffer {
 public:
     using Ptr = std::shared_ptr<SimpleBuffer>;
 
-    SimpleBuffer::Ptr create(std::string &input) {
+    SimpleBuffer() = delete;
+       SimpleBuffer(SimpleBuffer const&) = delete;
+       SimpleBuffer& operator=(SimpleBuffer const&) = delete;
+
+    // Factory function, because this should be able to delete itself when Recycle() is called.
+    static SimpleBuffer::Ptr create(std::string &input) {
         Ptr ptr(new SimpleBuffer(input));
         ptr->_selfKeepAlive = ptr;
         return ptr;
     }
 
-    SimpleBuffer() = delete;
-    SimpleBuffer(SimpleBuffer const&) = delete;
-    SimpleBuffer& operator=(SimpleBuffer const&) = delete;
+
+    size_t getSize() const {return _size;}
+
 
     //!> Call to recycle the buffer when finished
     void Recycle() override {
@@ -85,17 +90,19 @@ public:
     }
 
 private:
-    SimpleBuffer(std::string const& input) {
-        data = new char[input.size()];
-        memcpy(data, input.data(), input.size());
+    SimpleBuffer(std::string const& input) : _size(input.size()) {
+        data = new char[_size];
+        memcpy(data, input.data(), _size);
         next = 0;
     }
 
+
+    size_t const  _size; ///< Size of *data, needs to be immutable.
     std::mutex _mtx;
     std::condition_variable _cv;
     bool doneWithThis{false};
     Ptr _selfKeepAlive; // keep this object alive
-    util::InstanceCount _ic("&&&SimpleBuffer");
+    util::InstanceCount _ic{"&&&SimpleBuffer"};
 };
 
 
@@ -107,7 +114,8 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    void append(char const* buf, int bufLen, bool last);
+    void append(char const* buf, int bufLen, bool last); // &&& delete
+    void append(SimpleBuffer::Ptr const& simpleBuffer, bool last);
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
     virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
