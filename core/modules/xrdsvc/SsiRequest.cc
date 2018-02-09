@@ -353,7 +353,7 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
     return true;
 }
 
-
+/* &&&
 bool SsiRequest::replyStream(char const* buf, int bufLen, bool last) {
     // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream " << (void *) _stream
@@ -369,6 +369,20 @@ bool SsiRequest::replyStream(char const* buf, int bufLen, bool last) {
 
     _stream->append(buf, bufLen, last);
 
+    return true;
+}
+*/
+
+bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
+    // Create a streaming object if not already created.
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+    if (!_stream) {
+       _stream = new ChannelStream();
+       SetResponse(_stream);
+    } else if (_stream->closed()) {
+        return false;
+    }
+    _stream->append(sBuf, last);
     return true;
 }
 

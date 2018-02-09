@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 LSST Corporation.
+ * Copyright 2014-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,7 +30,7 @@
 #include <string>
 
 // qserv headers
-#include "util/InstanceCount.h" // &&&
+#include "xrdsvc/StreamBuffer.h"
 
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
@@ -40,7 +40,7 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-
+/* &&&
 /// SimpleBuffer is a buffer for transferring data packets to XrdSsi.
 class SimpleBuffer : public XrdSsiStream::Buffer {
 public:
@@ -104,6 +104,7 @@ private:
     Ptr _selfKeepAlive; // keep this object alive
     util::InstanceCount _ic{"&&&SimpleBuffer"};
 };
+*/
 
 
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
@@ -114,8 +115,8 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    void append(char const* buf, int bufLen, bool last); // &&& delete
-    void append(SimpleBuffer::Ptr const& simpleBuffer, bool last);
+    //void append(char const* buf, int bufLen, bool last); // &&& delete
+    void append(StreamBuffer::Ptr const& StreamBuffer, bool last);
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
     virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
@@ -125,7 +126,7 @@ public:
 private:
     bool _closed; ///< Closed to new append() calls?
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
-    std::deque<SimpleBuffer::Ptr> _msgs; ///< Message queue
+    std::deque<StreamBuffer::Ptr> _msgs; ///< Message queue
     std::mutex _mutex; ///< _msgs protection
     std::condition_variable _hasDataCondition; ///< _msgs condition
 };

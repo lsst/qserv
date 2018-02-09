@@ -70,10 +70,8 @@ AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> c
 AddChunkGroupCommand::~AddChunkGroupCommand() {
 }
 
-void
-AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                  std::string const& message) {
-
+void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                       std::string const& message) {
     LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::reportError  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
@@ -82,7 +80,10 @@ AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status
     reply.set_error (message);
 
     _frameBuf.serialize(reply);
-    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
+    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
+    _sendChannel->sendStream(streamBuffer, true);
 }
 
 void
@@ -133,7 +134,10 @@ AddChunkGroupCommand::run() {
         }
     }
     _frameBuf.serialize(reply);
-    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
+    _sendChannel->sendStream(streamBuffer, true);
+    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
 }
 
 }}} // namespace lsst::qserv::wpublish

@@ -155,8 +155,14 @@ bool SendChannel::sendFile(int fd, Size fSize) {
     return false;
 }
 
+/* &&&
 bool SendChannel::sendStream(char const* buf, int bufLen, bool last) {
     return _ssiRequest->replyStream(buf, bufLen, last);
+}
+*/
+
+bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
+    return _ssiRequest->replyStream(sBuf, last);
 }
 
 }}} // namespace

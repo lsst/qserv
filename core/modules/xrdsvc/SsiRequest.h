@@ -32,12 +32,14 @@
 // Third-party headers
 #include "XrdSsi/XrdSsiResponder.hh"
 
-// Local headers
+// Qserv headers
 #include "global/ResourceUnit.h"
 #include "mysql/MySqlConfig.h"
 #include "wbase/Task.h"
 #include "wbase/WorkerCommand.h"
 #include "wpublish/ChunkInventory.h"
+#include "xrdsvc/StreamBuffer.h"
+
 
 // Forward declarations
 class XrdSsiService;
@@ -101,7 +103,8 @@ public:
     bool reply(char const* buf, int bufLen);
     bool replyError(std::string const& msg, int code);
     bool replyFile(int fd, long long fSize);
-    bool replyStream(char const* buf, int bufLen, bool last);
+    // bool replyStream(char const* buf, int bufLen, bool last); // &&& delete
+    bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
 private:
 

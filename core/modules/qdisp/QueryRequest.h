@@ -188,6 +188,8 @@ private:
     std::string _jobIdStr {QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
     util::InstanceCount _instC{"QueryRequest"};
 
+    std::atomic<bool> _finishedCalled{false};
+
     LargeResultSafety _largeResultSafety;
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
     ResponsePool::Ptr _responsePool;

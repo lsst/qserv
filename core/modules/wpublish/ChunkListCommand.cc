@@ -87,7 +87,10 @@ ChunkListCommand::reportError(std::string const& message) {
     reply.set_error (message);
 
     _frameBuf.serialize(reply);
-    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
+    _sendChannel->sendStream(streamBuffer, true);
 }
 
 void
@@ -205,7 +208,10 @@ ChunkListCommand::run() {
         }
     }
     _frameBuf.serialize(reply);
-    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
+    _sendChannel->sendStream(streamBuffer, true);
 }
 
 }}} // namespace lsst::qserv::wpublish
