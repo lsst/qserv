@@ -36,12 +36,14 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "wcontrol/ReloadChunkListCommand.h"
 #include "xrdsvc/ChannelStream.h"
+#include "wcontrol/TestEchoCommand.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
@@ -50,6 +52,61 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
+
+// --------------------------------------
+// ---------- ReplyChannelImpl ----------
+// --------------------------------------
+
+/**
+ * Class ReplyChannelImpl implements the corresponding interface by forwarding
+ * all replies to the corresponding methods of class SsiRequest
+ */
+class ReplyChannelImpl
+    :   public ReplyChannel {
+
+    /**
+     * The static factory method is needed to ensure that objects of this class
+     *
+     * @param request - request object for processing replies
+     */
+    static ReplyChannel::Ptr create(SsiRequest::Ptr const& request) {
+        return ReplyChannel::Ptr(new ReplyChannelImpl(request);
+    }
+
+    // Default construction and copy semantics are prohibited for this class
+    ReplyChannelImpl() delete;
+    ReplyChannelImpl(ReplyChannelImpl const&) delete;
+    ReplyChannelImpl& operator=(ReplyChannelImpl const&) delete;
+
+    /// Destructor
+    ~ReplyChannelImpl() override {}
+
+    // Implement methods of the base class
+
+    bool reply      (char const* buf, int bufLen)            override { return _request->reply      (buf, bufLen); }
+    bool replyError (std::string const& msg, int code)       override { return _request->replyError (msg, code); }
+    bool replyFile  (int fd, long long fSize)                override { return _request->replyFile  (fd, fSize); }
+    bool replyStream(char const* buf, int bufLen, bool last) override { return _request->replyStream(buf, bufLen, last); }
+
+private:
+
+    /**
+     * The normal constructor
+     *
+     * @param request - request object for processing replies
+     */
+    explicit ReplyChannel(SsiRequest::Ptr const& request)
+        :   _request(request) {
+    }
+
+private:
+    SsiRequest::Ptr _request;
+};
+
+
+// --------------------------------
+// ---------- SsiRequest ----------
+// --------------------------------
 
 SsiRequest::~SsiRequest () {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -133,18 +190,54 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
             break;
         }
-        case ResourceUnit::WORKER: {
+        case ResourceUnit::WORKER:
+        
+            try {
 
-            // reqData has the entire request, so we can unpack it without waiting for
-            // more data.
-            LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCmdMsg of size " << reqSize);
-            proto::WorkerCmdMsg workerCmdMsg;
-            if (!workerCmdMsg.ParseFromArray(reqData, reqSize) ||
-                !workerCmdMsg.IsInitialized()) {
-                reportError("Failed to decode WorkerCmdMsg on worker=" + ru.hashName());
-                return;
-            }
-            LOGS(_log, LOG_LVL_INFO, "WorkerCmdMsg: cmd=" << proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()));
+                // reqData has the entire request, so we can unpack it without waiting for
+                // more data.
+                proto::FrameBufferView view(reqData, reqSize);
+    
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
+                proto::WorkerCommandH header;
+                view.parse(header);
+
+                LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
+                     proto::WorkerCommandH_Command_Name(header.command()));
+
+                wbase::WorkerCommand::Ptr command;
+                switch (header.command()) {
+                    case proto::WorkerCommandH::TEST_ECHO: {
+                        LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
+                        proto::WorkerCommandTestEchoM echo;
+                        view.parse(echo);
+
+                        command = std::make_shared<wcontrol::TestEchoCommand>(
+                                        ReplyChannel::create(shared_from_this()),
+                                        echo.value());
+                        break;
+                    }
+                    case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
+                        command = std::make_shared<wcontrol::ReloadChunkListCommand>(
+                                        ReplyChannel::create(shared_from_this()),
+                                        _chunkInventory,
+                                        _mySqlConfig);
+                        break;
+
+                    default:
+                        reportError("Unsupported command " +
+                                    proto::WorkerCommandH_Command_Name(header.command()) +
+                                    " found in WorkerCommandH on worker=" + ru.hashName());
+                        return;
+                }
+                
+                // The buffer must be released before submitting commands for
+                // further processing.
+                ReleaseRequestBuffer();
+                _processor->processCommand(command);    // Queues the command to be run later.
+    
+                LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
+                     " in " << t.getElapsed() << " seconds");
 
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
@@ -153,23 +246,21 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // and after the call to BindRequest.
             wbase::WorkerCommand::Ptr command;
             switch (workerCmdMsg.cmd()) {
-                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST: {
-                    auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
-                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(sC);
+                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST:
+                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(
+                                    ReplyChannel::create(shared_from_this()));
                     break;
-                }
                 default:
                     reportError("Unsupported command " + proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()) +
                                 " found in WorkerCmdMsg on worker=" + ru.hashName());
                     return;
+            } catch (proto::FrameBufferError const& ex) {
+                reportError("Failed to decode a worker management command, error: " +
+                            std::string(ex.what()));
+                return;
             }
-            ReleaseRequestBuffer();
-            _processor->processCommand(command);    // Queues the command to be run later.
-
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
             break;
-        }
+
         default:
             reportError("Unexpected unit type '" + std::to_string(ru.unitType()) +
                         "', resource name: " + _resourceName);

@@ -33,7 +33,10 @@
 
 // Local headers
 #include "global/ResourceUnit.h"
+#include "mysql/MySqlConfig.h"
 #include "wbase/Task.h"
+#include "wbase/WorkerCommand.h"
+#include "wpublish/ChunkInventory.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -49,6 +52,27 @@ namespace qserv {
 namespace xrdsvc {
 
 class ChannelStream; // Forward declaration
+
+/**
+ * Class ReplyChannel is needed to avoid injecting direct dependency onto
+ * XrdSsi-specific classes from the client code which needs to comminicate
+ * back with a requestor.
+ */
+class ReplyChannel
+    :   public std::enable_shared_from_this<ReplyChannel> {
+
+    // Smart pointer to instances of this class
+    typedef std::shared_ptr<ReplyChannel> Ptr;
+
+    /// Destructor
+    virtual ~ReplyChannel() {}
+
+    virtual bool reply(char const* buf, int bufLen)=0;
+    virtual bool replyError(std::string const& msg, int code)=0;
+    virtual bool replyFile(int fd, long long fSize)=0;
+    virtual bool replyStream(char const* buf, int bufLen, bool last)=0;
+};
+
 
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
@@ -67,13 +91,15 @@ public:
 
     /// Use factory to ensure proper construction for enable_shared_from_this.
     static SsiRequest::Ptr newSsiRequest (
-            std::string const&                          rname,
-            ValidatorPtr                                validator,
-            std::shared_ptr<wbase::MsgProcessor> const& processor) {
+            std::string const&                               rname,
+            std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+            std::shared_ptr<wbase::MsgProcessor> const&      processor,
+            mysql::MySqlConfig const&                        mySqlConfig) {
 
         return SsiRequest::Ptr(new SsiRequest(rname,
-                                              validator,
-                                              processor));
+                                              chunkInventory,
+                                              processor,
+                                              mySqlConfig));
     }
 
     virtual ~SsiRequest();
@@ -97,24 +123,32 @@ public:
 private:
 
     /// Constructor (called by SsiService)
-    SsiRequest(std::string const&                          rname,
-               ValidatorPtr                                validator,
-               std::shared_ptr<wbase::MsgProcessor> const& processor)
-        :   _validator(validator),
+    SsiRequest(std::string const&                               rname,
+               std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+               std::shared_ptr<wbase::MsgProcessor> const&      processor,
+               mysql::MySqlConfig const&                        mySqlConfig)
+        :   _chunkInventory(chunkInventory),
+            _validator(_chunkInventory->newValidator()),
             _processor(processor),
             _resourceName(rname),
-            _stream(0) {
+            _stream(0),
+            _mySqlConfig(mySqlConfig) {
     }
     
     /// For internal error reporting
     void reportError (std::string const& errStr);
+
+    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
 
     ValidatorPtr                         _validator;    ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
     std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
+
     ChannelStream* _stream;
+
+    mysql::MySqlConfig const _mySqlConfig;
 };
 
 }}} // namespace

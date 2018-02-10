@@ -24,12 +24,25 @@
 // Class header
 #include "wcontrol/ReloadChunkListCommand.h"
 
+// System headers
+#include <sstream>
+
 // Third-party headers
+#include "XrdSsi/XrdSsiCluster.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
+#include "xrdsvc/SsiProvider.h"
+#include "xrdsvc/XrdName.h"
+
+/******************************************************************************/
+/*                               G l o b a l s                                */
+/******************************************************************************/
+
+extern XrdSsiProvider* XrdSsiProviderServer;
+
 
 // Qserv headers
 
@@ -37,34 +50,130 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.ReloadChunkListCommand");
 
+
+/// Print the inventory status onto the logging stream
+void dumpInventory (lsst::qserv::wpublish::ChunkInventory const& inventory,
+                    std::string                           const& context) {
+    std::ostringstream os;
+    inventory.dbgPrint(os);
+    LOGS(_log, LOG_LVL_DEBUG, context << os.str());
+}
+
+
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-ReloadChunkListCommand::ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel)
-    :   wbase::WorkerCommand(sendChannel) {
+ReloadChunkListCommand::ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel>       const& sendChannel,
+                                               std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                                               mysql::MySqlConfig                        const& mySqlConfig)
+    :   wbase::WorkerCommand(sendChannel),
+
+        _chunkInventory(chunkInventory),
+        _mySqlConfig   (mySqlConfig) {
 }
 
 ReloadChunkListCommand::~ReloadChunkListCommand() {
 }
 
 void
+ReloadChunkListCommand::reportError(std::string const& message) {
+
+    LOGS(_log, LOG_LVL_ERROR, "ReloadChunkListCommand::run  " << message);
+
+    proto::WorkerCommandReloadChunkListR reply;
+
+    reply.set_status(proto::WorkerCommandReloadChunkListR::ERROR);
+    reply.set_error (message);
+
+    _frameBuf.serialize(reply);
+    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+}
+
+void
 ReloadChunkListCommand::run() {
 
-    std::string const msg = "ReloadChunkListCommand::run  ** NOT IMPLEMENTED **";
+    LOGS(_log, LOG_LVL_DEBUG, "ReloadChunkListCommand::run");
 
-    LOGS(_log, LOG_LVL_DEBUG, msg);
+    // Load the new map from the database into a local variable
+    wpublish::ChunkInventory newChunkInventory;
+    try {
+        xrdsvc::XrdName x;
+        newChunkInventory.init(x.getName(), _mySqlConfig);
+    } catch (std::exception const& ex) {
+        reportError("database operation failed: " + std::string(ex.what()));
+        return;
+    }
+    ::dumpInventory(*_chunkInventory,  "ReloadChunkListCommand::run  _chunkInventory: ");
+    ::dumpInventory(newChunkInventory, "ReloadChunkListCommand::run  newChunkInventory: ");
+ 
+    // Compare two maps and worker identifiers to see which resources were
+    // were added or removed. Then Update the current map and notify XRootD
+    // accordingly.
 
-    // Send back a protobuf object with the status of the operation
-    proto::WorkerCmdReply reply;
-    reply.set_status(proto::WorkerCmdReply::SUCCESS);
+    wpublish::ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
+    wpublish::ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
 
-    std::string replyString;
-    reply.SerializeToString(&replyString);
+    XrdSsiCluster* clusterManager =
+        dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderServer)->GetClusterManager();
 
-    _sendChannel->send(replyString.data(), replyString.size());
+    proto::WorkerCommandReloadChunkListR reply;
+    reply.set_status(proto::WorkerCommandReloadChunkListR::SUCCESS);
+
+    if (not removedChunks.empty()) {
+
+        for (auto const& entry: removedChunks) {
+            std::string const& db = entry.first;
+
+            for (int chunk: entry.second) {
+                std::string const resource = "/chk/" + db + "/" + std::to_string(chunk);
+
+                LOGS(_log, LOG_LVL_DEBUG, "ReloadChunkListCommand::run  removing resource: " << resource);
+
+                try {
+                    clusterManager->Removed(resource.c_str());  // Notify XRootD/cmsd
+                    _chunkInventory->remove(db, chunk);         // Notify QServ
+                } catch (std::exception const& ex) {
+                    reportError("failed to remove the chunk: " + std::string(ex.what()));
+                    return;
+                }
+
+                // Notify the caller of this service
+                proto::WorkerCommandReloadChunkListR::Chunk* ptr = reply.add_removed();
+                ptr->set_db(db);
+                ptr->set_chunk(chunk);
+            }
+        }
+    }
+    if (not addedChunks.empty()) {
+
+        for (auto const& entry: addedChunks) {
+            std::string const& db = entry.first;
+
+            for (int chunk: entry.second) {
+                std::string const resource = "/chk/" + db + "/" + std::to_string(chunk);
+
+                LOGS(_log, LOG_LVL_DEBUG, "ReloadChunkListCommand::run  adding resource: " << resource);
+
+                try {
+                    clusterManager->Added(resource.c_str());    // Notify XRootD/cmsd
+                    _chunkInventory->add(db, chunk);            // Notify QServ
+                } catch (std::exception const& ex) {
+                    reportError("failed to add the chunk: " + std::string(ex.what()));
+                    return;
+                }
+
+                // Notify the caller of this service
+                proto::WorkerCommandReloadChunkListR::Chunk* ptr = reply.add_added();
+                ptr->set_db(db);
+                ptr->set_chunk(chunk);
+            }
+        }
+    }
+    _frameBuf.serialize(reply);
+    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
 }}} // namespace lsst::qserv::wcontrol

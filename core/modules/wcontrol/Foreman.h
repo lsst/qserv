@@ -120,8 +120,8 @@ private:
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr        _scheduler;
 
-    util::CommandQueue::Ptr _workerCommandQueue;    //< dedicated queue for the worker commands
-    util::ThreadPool::Ptr   _workerCommandPool;     //< dedicated pool for executing worker commands
+    util::CommandQueue::Ptr _workerCommandQueue;    ///< dedicated queue for the worker commands
+    util::ThreadPool::Ptr   _workerCommandPool;     ///< dedicated pool for executing worker commands
 
     mysql::MySqlConfig const        _mySqlConfig;
     wpublish::QueriesAndChunks::Ptr _queries;

@@ -27,6 +27,7 @@
 
 // System headers
 #include <cassert>
+#include <deque>
 #include <iostream>
 
 // Third-party headers
@@ -37,6 +38,11 @@
 // Qserv headers
 #include "global/constants.h"
 #include "sql/SqlConnection.h"
+
+// This macro to appear witin each block which requires thread safety
+
+#define LOCK_GUARD \
+std::lock_guard<std::mutex> lock(_mtx)
 
 namespace { // File-scope helpers
 
@@ -164,7 +170,39 @@ void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& myS
     _init(sc);
 }
 
+void ChunkInventory::add(std::string const& db, int chunk) {
+
+    LOCK_GUARD;
+
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
+
+    // Adding unconditionally. if the database key doesn't exist then it will
+    // be automatically added by this operation.
+    _existMap[db].insert(chunk);
+}
+
+void ChunkInventory::remove(std::string const& db, int chunk) {
+
+    LOCK_GUARD;
+
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
+
+    // If no such database or a chunk exsist in the map then simply
+    // quite and make no fuss about it.
+
+    auto dbItr = _existMap.find(db);
+    if (dbItr == _existMap.end()) return;
+
+    auto chunks   = dbItr->second;
+    auto chunkItr = chunks.find(chunk);
+    if (chunkItr == chunks.end()) return;
+
+    chunks.erase(chunkItr);
+}
+
 bool ChunkInventory::has(std::string const& db, int chunk) const {
+
+    LOCK_GUARD;
 
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return false;
@@ -180,7 +218,9 @@ std::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
     return std::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
 }
 
-void ChunkInventory::dbgPrint(std::ostream& os) {
+void ChunkInventory::dbgPrint(std::ostream& os) const {
+
+    LOCK_GUARD;
 
     os << "ChunkInventory(";
     for(auto dbItr      = _existMap.begin(),
@@ -209,6 +249,8 @@ void ChunkInventory::dbgPrint(std::ostream& os) {
 
 void ChunkInventory::_init(SqlConnection& sc) {
 
+    LOCK_GUARD;
+
     // Check metadata for databases to track
 
     std::deque<std::string> dbs;
@@ -223,5 +265,39 @@ void ChunkInventory::_init(SqlConnection& sc) {
     ::fetchId(_name, sc, _id);
 }
 
-}}} // lsst::qserv::wpublish
+ChunkInventory::ExistMap ChunkInventory::existMap() const {
 
+    ChunkInventory::ExistMap result;
+
+    LOCK_GUARD;
+
+    // Make this copy while holding the mutex too guarantee a consistent
+    // result o fthe operation.
+    result = _existMap;
+
+    return result;
+}
+
+ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs) {
+
+    // The comparision will be made based on two self-consistent copies of
+    // the maps obtained by calling the thread-safe accessor methods.
+
+    ChunkInventory::ExistMap const lhs_existMap = lhs.existMap();
+    ChunkInventory::ExistMap const rhs_existMap = rhs.existMap();
+    ChunkInventory::ExistMap result;
+
+    for (auto const& entry: lhs_existMap) {
+        std::string const& db = entry.first;
+        ChunkInventory::ChunkMap const& chunks = entry.second;
+        if (rhs_existMap.count(db)) {
+            for (int chunk: chunks)
+                if (not rhs_existMap.at(db).count(chunk))
+                    result[db].insert(chunk);   // this chunk was missing
+        } else
+            result[db] = chunks;    // the whole database was missing
+    }
+    return result;
+}
+
+}}} // lsst::qserv::wpublish
