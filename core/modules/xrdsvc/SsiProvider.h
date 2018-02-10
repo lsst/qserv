@@ -56,6 +56,14 @@ public:
          return _service.get();
     }
 
+    wpublish::ChunkInventory &GetChunkInventory() {
+        return _chunkInventory;
+    }
+
+    XrdSsiCluster *GetClusterManager() {
+        return _cmsSsi;
+    }
+
     bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
                std::string   cfgFn, std::string    parms,
                int           argc,  char**         argv) override;
