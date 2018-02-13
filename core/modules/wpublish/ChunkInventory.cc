@@ -197,7 +197,7 @@ void ChunkInventory::remove(std::string const& db, int chunk) {
     auto chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return;
 
-    chunks.erase(chunkItr);
+    _existMap[db].erase(chunk);
 }
 
 bool ChunkInventory::has(std::string const& db, int chunk) const {

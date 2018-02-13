@@ -71,6 +71,10 @@ public:
     rStat QueryResource(char const* rName,
                         char const* contact=0) override;
 
+    void ResourceAdded(const char *rName) override;
+
+    void ResourceRemoved(const char *rName) override;
+
                   SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
     virtual      ~SsiProviderServer();
 
