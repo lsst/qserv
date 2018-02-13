@@ -41,7 +41,7 @@
 /*                               G l o b a l s                                */
 /******************************************************************************/
 
-extern XrdSsiProvider* XrdSsiProviderServer;
+extern XrdSsiProvider* XrdSsiProviderLookup;
 
 
 // Qserv headers
@@ -117,7 +117,7 @@ ReloadChunkListCommand::run() {
     wpublish::ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
 
     XrdSsiCluster* clusterManager =
-        dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderServer)->GetClusterManager();
+        dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
 
     proto::WorkerCommandReloadChunkListR reply;
     reply.set_status(proto::WorkerCommandReloadChunkListR::SUCCESS);
