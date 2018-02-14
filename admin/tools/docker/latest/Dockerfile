@@ -31,6 +31,7 @@ RUN apt-get -y install bison \
         openjdk-7-jre-headless \
         openssl \
         patch \
+        uuid-dev \
         zlib1g-dev
 
 RUN apt-get --yes -t jessie-backports install cmake
