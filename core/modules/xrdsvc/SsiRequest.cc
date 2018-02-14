@@ -53,61 +53,6 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-// --------------------------------------
-// ---------- ReplyChannelImpl ----------
-// --------------------------------------
-
-/**
- * Class ReplyChannelImpl implements the corresponding interface by forwarding
- * all replies to the corresponding methods of class SsiRequest
- */
-class ReplyChannelImpl
-    :   public ReplyChannel {
-
-    /**
-     * The static factory method is needed to ensure that objects of this class
-     *
-     * @param request - request object for processing replies
-     */
-    static ReplyChannel::Ptr create(SsiRequest::Ptr const& request) {
-        return ReplyChannel::Ptr(new ReplyChannelImpl(request);
-    }
-
-    // Default construction and copy semantics are prohibited for this class
-    ReplyChannelImpl() delete;
-    ReplyChannelImpl(ReplyChannelImpl const&) delete;
-    ReplyChannelImpl& operator=(ReplyChannelImpl const&) delete;
-
-    /// Destructor
-    ~ReplyChannelImpl() override {}
-
-    // Implement methods of the base class
-
-    bool reply      (char const* buf, int bufLen)            override { return _request->reply      (buf, bufLen); }
-    bool replyError (std::string const& msg, int code)       override { return _request->replyError (msg, code); }
-    bool replyFile  (int fd, long long fSize)                override { return _request->replyFile  (fd, fSize); }
-    bool replyStream(char const* buf, int bufLen, bool last) override { return _request->replyStream(buf, bufLen, last); }
-
-private:
-
-    /**
-     * The normal constructor
-     *
-     * @param request - request object for processing replies
-     */
-    explicit ReplyChannel(SsiRequest::Ptr const& request)
-        :   _request(request) {
-    }
-
-private:
-    SsiRequest::Ptr _request;
-};
-
-
-// --------------------------------
-// ---------- SsiRequest ----------
-// --------------------------------
-
 SsiRequest::~SsiRequest () {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
     UnBindRequest();
@@ -179,8 +124,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto task = std::make_shared<wbase::Task>(taskMsg, sC);
+            auto task = std::make_shared<wbase::Task>(taskMsg,
+                                                      std::make_shared<wbase::SendChannel>(
+                                                            shared_from_this()));
             ReleaseRequestBuffer();
             t.start();
             _processor->processTask(task); // Queues task to be run later.
@@ -213,13 +159,13 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                         view.parse(echo);
 
                         command = std::make_shared<wcontrol::TestEchoCommand>(
-                                        ReplyChannel::create(shared_from_this()),
+                                        std::make_shared<wbase::SendChannel>(shared_from_this()),
                                         echo.value());
                         break;
                     }
                     case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
                         command = std::make_shared<wcontrol::ReloadChunkListCommand>(
-                                        ReplyChannel::create(shared_from_this()),
+                                        std::make_shared<wbase::SendChannel>(shared_from_this()),
                                         _chunkInventory,
                                         _mySqlConfig);
                         break;
@@ -239,21 +185,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
                      " in " << t.getElapsed() << " seconds");
 
-            // Now that the request is decoded (successfully or not), release the
-            // xrootd request buffer. To avoid data races, this must happen before
-            // the command is handed off to another thread for processing, as there is a
-            // reference to this SsiRequest inside the reply channel for the task,
-            // and after the call to BindRequest.
-            wbase::WorkerCommand::Ptr command;
-            switch (workerCmdMsg.cmd()) {
-                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST:
-                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(
-                                    ReplyChannel::create(shared_from_this()));
-                    break;
-                default:
-                    reportError("Unsupported command " + proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()) +
-                                " found in WorkerCmdMsg on worker=" + ru.hashName());
-                    return;
             } catch (proto::FrameBufferError const& ex) {
                 reportError("Failed to decode a worker management command, error: " +
                             std::string(ex.what()));

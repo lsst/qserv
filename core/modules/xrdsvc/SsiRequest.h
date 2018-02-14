@@ -53,27 +53,6 @@ namespace xrdsvc {
 
 class ChannelStream; // Forward declaration
 
-/**
- * Class ReplyChannel is needed to avoid injecting direct dependency onto
- * XrdSsi-specific classes from the client code which needs to comminicate
- * back with a requestor.
- */
-class ReplyChannel
-    :   public std::enable_shared_from_this<ReplyChannel> {
-
-    // Smart pointer to instances of this class
-    typedef std::shared_ptr<ReplyChannel> Ptr;
-
-    /// Destructor
-    virtual ~ReplyChannel() {}
-
-    virtual bool reply(char const* buf, int bufLen)=0;
-    virtual bool replyError(std::string const& msg, int code)=0;
-    virtual bool replyFile(int fd, long long fSize)=0;
-    virtual bool replyStream(char const* buf, int bufLen, bool last)=0;
-};
-
-
 /// An implementation of XrdSsiResponder that is used by SsiService to provide
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
