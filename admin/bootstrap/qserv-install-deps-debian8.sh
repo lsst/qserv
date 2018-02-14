@@ -49,6 +49,7 @@ apt-get --yes install bash \
     patch \
     python-dev \
     python-setuptools \
+    uuid-dev \
     zlib1g-dev
 
 apt-get --yes -t jessie-backports install cmake
