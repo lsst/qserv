@@ -137,6 +137,7 @@ message Result {
 // sending this message carrying an identifier of a command. Specific
 // commands may require additional parameters which should be sent as
 // separate messages (of the correspoding types).
+//
 message WorkerCommandH {
 
     // Types of commands
@@ -146,24 +147,30 @@ message WorkerCommandH {
         // The command is meant for testing the protocol
         TEST_ECHO = 1;
 
-        // Reload the list of available chunks
-        RELOAD_CHUNK_LIST = 2;
+        // Add a group of collocated chunks
+        ADD_CHUNK_GROUP = 2;
 
-        // Amend the list of available chunks
-        MODIFY_CHUNK_LIST = 3;
+        // Remove a group of collocated chunks
+        REMOVE_CHUNK_GROUP = 3;
+
+        // Reload the list of available chunks
+        RELOAD_CHUNK_LIST = 4;
     }
     required Command command = 1;
 }
 
 // This message must be sent after the command header to provide
-// a service with a value to be echoed back.
+// a service with a value to be echoed back in response to
+// the 'TEST_ECHO' command.
+//
 message WorkerCommandTestEchoM {
 
     // An input string to be returned back by the service
     required string value = 1;
 }
 
-// The message to be sent back in response to the 'Echo' command
+// The message to be sent back in response to the 'TEST_ECHO' command
+//
 message WorkerCommandTestEchoR {
 
     // Completion status of the operation
@@ -180,8 +187,40 @@ message WorkerCommandTestEchoR {
     required string value = 3;
 }
 
-// The message to be sent back in response to the 'Reload Chunk List'
+// This message must be sent after the command header for the 'ADD_CHUNK_GROUP'
+// or 'REMOVE_CHUNK_GROUP' command to tell the service which chunks needs to be
+// added or removed.
+//
+message WorkerCommandChunkGroupM {
+
+   // There must be at least one database in the group
+   repeated string dbs = 1;
+   required uint32 chunk = 2;
+
+   optional bool force = 3 [ default = false];
+}
+
+// The message to be sent back in response to the 'ADD_CHUNK_GROUP'
+// or 'REMOVE_CHUNK_GROUP' commands.
+//
+message WorkerCommandChunkGroupR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        INVALID = 2;    // invalid parameters of the request
+        IN_USE  = 3;    // request is rejected because one of the chunks is in use
+        ERROR   = 4;    // an error occured during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depenidng on the status)
+    optional string error = 2 [default = ""];
+}
+
+// The message to be sent back in response to the 'RELOAD_CHUNK_LIST'
 // command
+//
 message WorkerCommandReloadChunkListR {
 
     // Completion status of the operation
@@ -202,31 +241,3 @@ message WorkerCommandReloadChunkListR {
     repeated Chunk removed = 4;   // chunks which have been removed
 
 }
-
-// This message must be sent after the command header for the 'Update Chunk List'
-// command to tell the service which chunks needs to be added or removed
-message WorkerCommandModifyChunkListM {
-
-    message Chunk {
-        required string db = 1;
-        required uint32 chunk = 2;
-    }
-    repeated Chunk added   = 1;   // chunks to be added
-    repeated Chunk removed = 2;   // chunks to be removed
-}
-
-// The message to be sent back in response to the 'Update Chunk List'
-// command
-message WorkerCommandModifyChunkListR {
-
-    // Completion status of the operation
-    enum Status {
-        SUCCESS = 1;    // successful completion of a request
-        ERROR   = 2;    // an error occured during command execution
-    }
-    required Status status = 1;
-
-    // Optional error message (depenidng on the status)
-    optional string error = 2 [default = ""];
-}
-

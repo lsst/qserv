@@ -41,9 +41,11 @@
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
+#include "wcontrol/AddChunkGroupCommand.h"
 #include "wcontrol/ReloadChunkListCommand.h"
-#include "xrdsvc/ChannelStream.h"
+#include "wcontrol/RemoveChunkGroupCommand.h"
 #include "wcontrol/TestEchoCommand.h"
+#include "xrdsvc/ChannelStream.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
@@ -92,7 +94,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Make sure the requested resource belongs to this worker
     if (!(*_validator)(ru)) {
-        reportError("WARNING: request to the unowned resource detected:" + ru.path());
+        reportError("WARNING: request to the unowned resource detected:" + _resourceName);
         return;
     }
     
@@ -124,9 +126,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto task = std::make_shared<wbase::Task>(taskMsg,
-                                                      std::make_shared<wbase::SendChannel>(
-                                                            shared_from_this()));
+            auto task = std::make_shared<wbase::Task>(
+                                taskMsg,
+                                std::make_shared<wbase::SendChannel>(shared_from_this()));
             ReleaseRequestBuffer();
             t.start();
             _processor->processTask(task); // Queues task to be run later.
@@ -136,62 +138,21 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
             break;
         }
-        case ResourceUnit::WORKER:
+        case ResourceUnit::WORKER: {
         
-            try {
+            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
+            if (not command) return;
+            
+            // The buffer must be released before submitting commands for
+            // further processing.
+            ReleaseRequestBuffer();
+            _processor->processCommand(command);    // Queues the command to be run later.
 
-                // reqData has the entire request, so we can unpack it without waiting for
-                // more data.
-                proto::FrameBufferView view(reqData, reqSize);
-    
-                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
-                proto::WorkerCommandH header;
-                view.parse(header);
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
+                 " in " << t.getElapsed() << " seconds");
 
-                LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
-                     proto::WorkerCommandH_Command_Name(header.command()));
-
-                wbase::WorkerCommand::Ptr command;
-                switch (header.command()) {
-                    case proto::WorkerCommandH::TEST_ECHO: {
-                        LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
-                        proto::WorkerCommandTestEchoM echo;
-                        view.parse(echo);
-
-                        command = std::make_shared<wcontrol::TestEchoCommand>(
-                                        std::make_shared<wbase::SendChannel>(shared_from_this()),
-                                        echo.value());
-                        break;
-                    }
-                    case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
-                        command = std::make_shared<wcontrol::ReloadChunkListCommand>(
-                                        std::make_shared<wbase::SendChannel>(shared_from_this()),
-                                        _chunkInventory,
-                                        _mySqlConfig);
-                        break;
-
-                    default:
-                        reportError("Unsupported command " +
-                                    proto::WorkerCommandH_Command_Name(header.command()) +
-                                    " found in WorkerCommandH on worker=" + ru.hashName());
-                        return;
-                }
-                
-                // The buffer must be released before submitting commands for
-                // further processing.
-                ReleaseRequestBuffer();
-                _processor->processCommand(command);    // Queues the command to be run later.
-    
-                LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
-                     " in " << t.getElapsed() << " seconds");
-
-            } catch (proto::FrameBufferError const& ex) {
-                reportError("Failed to decode a worker management command, error: " +
-                            std::string(ex.what()));
-                return;
-            }
             break;
-
+        }
         default:
             reportError("Unexpected unit type '" + std::to_string(ru.unitType()) +
                         "', resource name: " + _resourceName);
@@ -200,6 +161,90 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
+}
+
+wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
+
+    wbase::SendChannel::Ptr const sendChannel =
+        std::make_shared<wbase::SendChannel>(shared_from_this());
+
+    wbase::WorkerCommand::Ptr command;
+
+    try {
+
+        // reqData has the entire request, so we can unpack it without waiting for
+        // more data.
+        proto::FrameBufferView view(reqData, reqSize);
+    
+        LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
+        proto::WorkerCommandH header;
+        view.parse(header);
+    
+        LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
+             proto::WorkerCommandH_Command_Name(header.command()));
+    
+        switch (header.command()) {
+            case proto::WorkerCommandH::TEST_ECHO: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
+                proto::WorkerCommandTestEchoM echo;
+                view.parse(echo);
+    
+                command = std::make_shared<wcontrol::TestEchoCommand>(
+                                sendChannel,
+                                echo.value());
+                break;
+            }
+            case proto::WorkerCommandH::ADD_CHUNK_GROUP:
+            case proto::WorkerCommandH::REMOVE_CHUNK_GROUP: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandChunkGroupM");
+                proto::WorkerCommandChunkGroupM group;
+                view.parse(group);
+
+                std::vector<std::string> dbs;
+                for (int i = 0, num = group.dbs_size(); i < num; ++i)
+                    dbs.push_back(group.dbs(i));
+
+                int  const chunk = group.chunk();
+                bool const force = group.force();
+
+                if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
+                    command = std::make_shared<wcontrol::AddChunkGroupCommand>(
+                                    sendChannel,
+                                    _chunkInventory,
+                                    chunk,
+                                    dbs);
+                else
+                    command = std::make_shared<wcontrol::RemoveChunkGroupCommand>(
+                                    sendChannel,
+                                    _chunkInventory,
+                                    chunk,
+                                    dbs,
+                                    force);
+
+                break;
+
+            }
+            case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
+                command = std::make_shared<wcontrol::ReloadChunkListCommand>(
+                                sendChannel,
+                                _chunkInventory,
+                                _mySqlConfig);
+                break;
+    
+            default:
+                reportError("Unsupported command " +
+                            proto::WorkerCommandH_Command_Name(header.command()) +
+                            " found in WorkerCommandH on worker resource=" + _resourceName);
+                break;
+        }
+
+    } catch (proto::FrameBufferError const& ex) {
+        reportError("Failed to decode a worker management command, error: " +
+                    std::string(ex.what()));
+    }
+    return command;
 }
 
 /// Called by SSI to free resources.
