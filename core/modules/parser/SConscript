@@ -16,12 +16,21 @@ antlrTgts = env.Antlr(['SqlSQL2.g'],
                       ANTLR_GLIB='DmlSQL2.g',
                       ANTLR_OUT='.',
                       )
+
+antlr4LexerTgt = env.Antlr4(['MySqlLexer.g4'], ANTLR4_OUT='.')
+# The exuction of the antlr4 tool on MySqlLexer.g4 (on the line above) generates
+# `MySqlLexer.tokens` (used on the line below).
+antlr4ParserTgt = env.Antlr4(['MySqlLexer.tokens', 'MySqlParser.g4'], ANTLR4_OUT='.')
                   
 antlrSrcs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_CCSUFFIX'))]
 antlrHdrs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_HSUFFIX'))]
+
+antlr4Srcs = [f for f in (antlr4LexerTgt + antlr4ParserTgt) if str(f).endswith(env.subst('$ANTLR4_CCSUFFIX'))]
+antlr4Hdrs = [f for f in (antlr4LexerTgt + antlr4ParserTgt) if str(f).endswith(env.subst('$ANTLR4_HSUFFIX'))]
 
 env.Depends(antlrSrcs[0], 'DmlSQL2.g')
 env.Depends(antlrSrcs[0], tokenFile)
 
 build_data = DefaultEnvironment()['build_data']
 build_data['module_objects']['parser'] += antlrSrcs
+build_data['module_objects']['parser'] += antlr4Srcs
