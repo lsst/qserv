@@ -40,6 +40,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
+#include "qdisp/ResponsePool.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
@@ -158,6 +159,8 @@ private:
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
     std::shared_ptr<LargeResultMgr> _largeResultMgr;
+    ResponsePool::Ptr _commonThreadPool;
+    std::vector<util::CommandTracked::Ptr> _jobStartCmdList;
 
     /** Execution errors */
     util::MultiError _multiError;
@@ -178,8 +181,10 @@ private:
     std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
 
+    /* &&&
     util::CommandQueue::Ptr _startJobsQueue{std::make_shared<util::CommandQueue>()};
     util::ThreadPool::Ptr _startJobsPool{util::ThreadPool::newThreadPool(10, _startJobsQueue)};
+    */
 };
 
 class MarkCompleteFunc {

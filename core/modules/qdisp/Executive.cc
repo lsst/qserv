@@ -92,7 +92,7 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
         std::shared_ptr<LargeResultMgr> const& largeResultMgr)
-    : _config(*c), _messageStore(ms), _largeResultMgr(largeResultMgr) {
+    : _config(*c), _messageStore(ms), _largeResultMgr(largeResultMgr), _commonThreadPool(largeResultMgr->responsePool) {
     _setup();
 }
 
@@ -175,7 +175,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     return jobQuery;
 }
 
-
+/* &&& delete
 void Executive::_queueJobStart(JobQuery::Ptr const& job) {
     std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
         job->runJob();
@@ -188,6 +188,26 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
 void Executive::waitForAllJobsToStart() {
     _startJobsPool->shutdownPool(); // Wait forever
 }
+*/
+
+
+void Executive::_queueJobStart(JobQuery::Ptr const& job) {
+    std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
+        job->runJob();
+    };
+    auto cmd = std::make_shared<util::CommandTracked>(func);
+    _jobStartCmdList.push_back(cmd);
+    _commonThreadPool->queCmdHigh(cmd);
+}
+
+
+void Executive::waitForAllJobsToStart() {
+    // Wait for each command to start.
+    for(auto& cmd : _jobStartCmdList) {
+        cmd->waitComplete();
+    }
+}
+
 
 
 // If the executive has not been cancelled, then we simply start the query.

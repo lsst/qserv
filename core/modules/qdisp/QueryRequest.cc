@@ -76,7 +76,7 @@ public:
                 _setState(State::DONE2);
                 return;
             }
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << "&&&AskForResponseData ic1=" << ic1.getCount());
+
             if (qr->isQueryCancelled()) {
                 LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResponseData query was cancelled");
                 qr->_errorFinish(true);
@@ -105,7 +105,6 @@ public:
                 return;
             }
         }
-        util::InstanceCount ic2("&&&AskForResponseDataCmd:action 2");
 
         // Actually process the data.
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
@@ -118,14 +117,11 @@ public:
                 LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
                 return;
             }
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&AskForResponseData ic2=" << ic2.getCount());
             qr->_processData(jq, _blen, _last);
             // _processData will have created another AskForResponseDataCmd object if needed.
         }
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&&AskForResponseData ic1,2="
-                << ic1.getCount() << "," << ic2.getCount());
     }
 
     void notifyDataSuccess(int blen, bool last) {
