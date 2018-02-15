@@ -75,6 +75,8 @@ public:
                                 std::string const& msgTableName);
 
 private:
+    UserQuery::Ptr a4NewUserQuery(const std::string& userQuery);
+
     class Impl;
     std::shared_ptr<Impl> _impl;
 };

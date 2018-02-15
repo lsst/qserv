@@ -30,6 +30,13 @@
 #include <string>
 
 // Third-party headers
+#include "antlr4-runtime.h"
+
+// these must be included before Log.h because they have a function called LOGS
+// that conflicts with the LOGS macro defined in Log.h
+#include "parser/MySqlLexer.h"
+#include "parser/MySqlParser.h"
+
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -60,6 +67,12 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+
+// antlr4 C++ runtime seems to require that we use namespace antlr4; trying to use it with classes
+// results in at least one error where the `tree` decl assumes that it's already operating in the
+// antlr4 namespace. I may be wrong about this though; it needs research (before merge to master).
+// If I'm right we should see about fixing the antlr4 cpp runtime & issuing a PR to them.
+using namespace antlr4;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -105,6 +118,32 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
     _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
 }
 
+
+UserQuery::Ptr UserQueryFactory::a4NewUserQuery(const std::string& userQuery) {
+    ANTLRInputStream input(userQuery);
+    MySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+
+    tokens.fill();
+    // for (auto token : tokens.getTokens()) {
+    //  std::cout << token->toString() << std::endl;
+    // }
+
+    MySqlParser parser(&tokens);
+    tree::ParseTree *tree = parser.root();
+
+    std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
+
+    tree::ParseTreeWalker walker;
+    //QsMySqlListener listener;
+    //walker.walk(&listener, tree);
+    std::cout << std::endl;
+    //std::cout << *listener.getRootComponent() << std::endl;
+
+    return nullptr; //temp
+}
+
+
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -118,6 +157,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
     // First check for SUBMIT and strip it
     std::string query = aQuery;
+
+    UserQuery::Ptr antlr4GeneratedQuery = a4NewUserQuery(query);
+
     std::string stripped;
     bool async = false;
     if (UserQueryType::isSubmit(query, stripped)) {
@@ -133,6 +175,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     std::string dbName, tableName;
     bool full = false;
     QueryId userJobId = 0;
+
+
 
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
