@@ -36,7 +36,7 @@ namespace query{
 }
 namespace parser {
 
-class ListenContext;
+class Listener;
 
 class MySqlListener : public MySqlParserBaseListener {
 public:
@@ -55,6 +55,9 @@ protected:
     // entering a SELECT statement
     virtual void enterSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
     virtual void exitSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
+
+    virtual void enterSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
+    virtual void exitSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
 
 //    virtual void enterParenthesisSelect(MySqlParser::ParenthesisSelectContext * /*ctx*/) override;
 //    virtual void enterUnionSelect(MySqlParser::UnionSelectContext * /*ctx*/) override;
@@ -75,15 +78,19 @@ protected:
     // simpleId for many different contexts
 //    virtual void enterSimpleId(MySqlParser::SimpleIdContext * /*ctx*/) override;
     // column name for different contexts
-    virtual void enterFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
-    virtual void exitFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
 
 private:
     // ListenContext is a base class for a stack of listener objects. Listeners implement appropriate API for
     // the kinds of children that may be assigned to them. The stack represents execution state of the call
     // to listen. The root object (separate from the stack) will end up owning the parsed query.
-    std::stack<std::shared_ptr<ListenContext>> _contextStack;
-    std::shared_ptr<ListenContext> _rootContext;
+    std::stack<std::shared_ptr<Listener>> _listenerStack;
+    std::shared_ptr<Listener> _rootListener;
+
+    template<typename ParentListener, typename ChildListener>
+    std::shared_ptr<ChildListener> pushListenerStack();
+
+    template<typename ChildListener>
+    void popListenerStack();
 };
 
 }}} // namespace lsst::qserv::parser
