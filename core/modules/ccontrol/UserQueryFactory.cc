@@ -57,6 +57,7 @@
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
+#include "parser/MySqlListener.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
@@ -132,11 +133,11 @@ UserQuery::Ptr UserQueryFactory::a4NewUserQuery(const std::string& userQuery) {
     MySqlParser parser(&tokens);
     tree::ParseTree *tree = parser.root();
 
-    std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
+    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
 
     tree::ParseTreeWalker walker;
-    //QsMySqlListener listener;
-    //walker.walk(&listener, tree);
+    parser::MySqlListener listener;
+    walker.walk(&listener, tree);
     std::cout << std::endl;
     //std::cout << *listener.getRootComponent() << std::endl;
 
