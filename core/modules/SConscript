@@ -70,7 +70,7 @@ import state
 Import('env')
 
 
-def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=None):
+def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=None, bin_cc_targets=None):
     """
     Implementation of SConscript logic for "standard" module.
 
@@ -95,6 +95,14 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
                 then use this parameter to pass list (or space-separated
                 string) of application names. Can be empty string or list to
                 not run any unit tests.
+    @param bin_cc_files: a dictionary defining whgich binary products (not
+                the unit tests should be built out of C/C++ files. Each key
+                of the dictionary is the name of a C/C++ file (with function
+                'main'). This file will be excluded from the unit tests and
+                from a list of *.cc files which are complied into a shared
+                library of the module. And the corresponding value of
+                the dictionary is a list of libraries which are required to
+                build the binary.
     """
 
     build_data = DefaultEnvironment()['build_data']
@@ -104,13 +112,23 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
         module = os.path.basename(os.getcwd())
     state.log.debug('standardModule: module = %s path = %s' % (module, path))
 
+    # using two optional lists provided by the nmodule to build names of
+    # *.cc files to be excluded from being used to build module's
+    # library or unit tests
+    exclude_cc_files = []
+    if exclude is not None:
+        exclude_cc_files = exclude
+    if bin_cc_targets is not None:
+        for f in bin_cc_targets: exclude_cc_files.append(f)
+
     # find all *.cc files and split then in two groups: files for libraries
-    # and files for test apps
-    cc_files = set(env.Glob(os.path.join(path, "*.cc"), source=True, strings=True, exclude=exclude))
+    # and files for test apps.
+    cc_files = set(env.Glob(os.path.join(path, "*.cc"), source=True, strings=True, exclude=exclude_cc_files))
     cc_tests = set(fname for fname in cc_files if os.path.basename(fname).startswith("test"))
     # In Python3 order of set iteration is undefined, do manual sorting
     cc_objects = sorted(cc_files - cc_tests)
     cc_tests = sorted(cc_tests)
+    state.log.debug('standardModule: exclude_cc_files = ' + str(exclude_cc_files))
     state.log.debug('standardModule: cc_objects = ' + str(cc_objects))
     state.log.debug('standardModule: cc_tests = ' + str(cc_tests))
 
@@ -163,6 +181,18 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     py_installed = env.Install("$prefix/bin", py_scripts)
     build_data['install'] += py_installed
 
+    # inject binary targets build of the optionally provided C/C++ files
+    if bin_cc_targets is not None:
+        for f,dependencies in bin_cc_targets.items():
+            source = os.path.basename(str(f))
+            target = source[:-3]
+            p = env.Program(
+            target=target,
+            source=[source],
+            LIBS=dependencies,
+            LIBPATH=['$build_dir'] + env['LIBPATH'])
+        build_data['build_targets'] += p
+        build_data['install'] += env.Install("$prefix/bin", p)
 
 # ================== SConscript logic start here ====================
 
@@ -274,6 +304,7 @@ build_data['shlibs'] = shlibs.copy()
 build_data['tests'] = []
 build_data['unit_tests'] = []
 build_data['module_lib'] = defaultdict(lambda: None)
+build_data['build_targets'] = []
 
 # store in env so that modules can use it
 defEnv = DefaultEnvironment()
@@ -290,15 +321,10 @@ state.log.debug('initialized build_data: ' + defEnv.Dump('build_data'))
 
 # call all modules' SConscripts or use standard method
 # and harvest locally defined build targets (if any) from each module.
-build_targets = []
 for mod in all_modules:
     scriptPath = os.path.join(mod, "SConscript")
     if env.Glob(scriptPath): # os.access is faulty with VariantDir
-        module_build_targets = SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
-        if module_build_targets:
-            for t in module_build_targets:
-                build_targets.append(t)
-                build_data['install'] += env.Install("$prefix/bin", t)
+        SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
     else:
         standardModule(env, module=mod)
 
@@ -324,7 +350,7 @@ for shlib, shopt in shlibs.items():
     pfx = shopt.get('SHLIBPREFIX', env['SHLIBPREFIX'])
     out = env.SharedLibrary(shlib, objects, LIBS=Split(shopt['libs']),
                             SHLIBPREFIX=pfx, LIBPATH=libPath)
-    build_targets += out
+    build_data['build_targets'] += out
 
     # install target
     instDir = shopt.get('instDir', 'lib')
@@ -346,11 +372,11 @@ if utests:
     # special builder that checks that unit tests were successful
     utests = env.UnitTestCheck('unit-test-check-tag', utests)
 
-build_targets += build_data['tests']
+build_data['build_targets'] += build_data['tests']
 
 # define/extend all aliases
-state.log.debug("build targets: %s" % map(str, build_targets))
-env.Alias("build", build_targets)
+state.log.debug("build targets: %s" % map(str, build_data['build_targets']))
+env.Alias("build", build_data['build_targets'])
 state.log.debug("install targets: %s" % map(str, build_data['install']))
 env.Alias("install-notest", build_data['install'])
 if utests:

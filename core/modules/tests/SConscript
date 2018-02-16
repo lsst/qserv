@@ -13,29 +13,12 @@ import os.path
 # SConscript. Also add the source file into a list of sources to be excluded
 # from the shared library product.
 
-env.Append(LIBPATH=['$build_dir'] + env['LIBPATH'])
-
-module_build_targets = []
-exclude = []
-
+bin_cc_targets = {}
 path = "."
 for f in env.Glob(os.path.join(path, "tests_*.cc"), source=True, strings=True):
-    source = os.path.basename(str(f))
-    target = source[:-3]
-    module_build_targets += env.Program(
-        target=target,
-        source=[source],
-        LIBS  =["qserv_common",
-                "util",
-                "protobuf",
-                "log",
-                "log4cxx"])
-    exclude.append(f)
+    bin_cc_targets[f] = ["qserv_common","util","protobuf","log","log4cxx"]
 
 # Initiate the standard sequence of actions for this module by excluding
-# the above discovered bibary sources
+# the above discovered binary sources
 
-standardModule(env, exclude=exclude, unit_tests="")
-
-Return('module_build_targets')
-s
+standardModule(env, bin_cc_targets=bin_cc_targets, unit_tests="")
