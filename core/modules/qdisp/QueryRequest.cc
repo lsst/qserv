@@ -275,13 +275,33 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         _askForResponseDataCmd->notifyFailed();
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+    _queueAskForResponse(_askForResponseDataCmd, jq);
+    /*  &&&&
     if (_largeResult) {  // &&& Note: _largeResult always false. Consider having largeResut in Executive
-                         // &&& and use that value here, or always use high priority.
+        // &&& and use that value here, or always use high priority.
         _responsePool->queCmdLow(_askForResponseDataCmd);
     } else {
-        _responsePool->queCmdNorm(_askForResponseDataCmd);
+        if (jq->getDescription()->getScanInteractive()) {
+            _responsePool->queCmdHigh(_askForResponseDataCmd);
+        } else {
+            _responsePool->queCmdNorm(_askForResponseDataCmd);
+        }
     }
+    */
     return true;
+}
+
+
+void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
+    if (_largeResult) {
+        _responsePool->queCmdLow(_askForResponseDataCmd);
+    } else {
+        if (jq->getDescription()->getScanInteractive()) {
+            _responsePool->queCmdHigh(_askForResponseDataCmd);
+        } else {
+            _responsePool->queCmdNorm(_askForResponseDataCmd);
+        }
+    }
 }
 
 /// Process an incoming error.
@@ -392,11 +412,14 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         } else {
             _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "queuing askForResponseDataCmd");
+            _queueAskForResponse(_askForResponseDataCmd, jq);
+            /* &&&
             if (_largeResult) {
                 _responsePool->queCmdLow(_askForResponseDataCmd);
             } else {
                 _responsePool->queCmdNorm(_askForResponseDataCmd);
             }
+            */
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");

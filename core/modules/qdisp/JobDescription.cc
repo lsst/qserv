@@ -36,6 +36,7 @@
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/ResponseHandler.h"
+#include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
 
 
@@ -89,6 +90,11 @@ bool JobDescription::verifyPayload() const {
         return false;
     }
     return true;
+}
+
+
+bool JobDescription::getScanInteractive() const {
+    return _chunkQuerySpec->scanInteractive;
 }
 
 
