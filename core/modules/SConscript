@@ -95,7 +95,7 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
                 then use this parameter to pass list (or space-separated
                 string) of application names. Can be empty string or list to
                 not run any unit tests.
-    @param bin_cc_files: a dictionary defining whgich binary products (not
+    @param bin_cc_targets: a dictionary defining whgich binary products (not
                 the unit tests should be built out of C/C++ files. Each key
                 of the dictionary is the name of a C/C++ file (with function
                 'main'). This file will be excluded from the unit tests and
