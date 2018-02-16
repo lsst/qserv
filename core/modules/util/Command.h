@@ -66,9 +66,9 @@ struct CmdData {
 class Command {
 public:
     using Ptr = std::shared_ptr<Command>;
-    Command() {};
-    Command(std::function<void(CmdData*)> func) : _func{func} {}
-    virtual ~Command() {};
+    Command() {}
+    Command(std::function<void(CmdData*)> func) : _func(func) {}
+    virtual ~Command() {}
     virtual void action(CmdData *data) {
         _func(data);
     };
@@ -88,9 +88,9 @@ protected:
 class CommandTracked : public virtual Command, public virtual Tracker {
 public:
     using Ptr = std::shared_ptr<CommandTracked>;
-    CommandTracked() {};
-    CommandTracked(std::function<void(CmdData*)> func) : Command{func} {}
-    virtual ~CommandTracked() {};
+    CommandTracked() {}
+    CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
+    virtual ~CommandTracked() {}
     void actionComplete(CmdData*) override {
         setComplete();
     };

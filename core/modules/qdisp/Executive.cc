@@ -193,9 +193,12 @@ void Executive::waitForAllJobsToStart() {
 
 void Executive::_queueJobStart(JobQuery::Ptr const& job) {
     std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& runjob");
         job->runJob();
     };
-    auto cmd = std::make_shared<util::CommandTracked>(func);
+    LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& _queueJobStart");
+    auto cmd = std::make_shared<PriorityCommand>(func);
+    // cmd->setFunc(func); &&&
     _jobStartCmdList.push_back(cmd);
     _commonThreadPool->queCmdHigh(cmd);
 }
@@ -203,7 +206,10 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
 
 void Executive::waitForAllJobsToStart() {
     // Wait for each command to start.
-    for(auto& cmd : _jobStartCmdList) {
+
+    while (!_jobStartCmdList.empty()) {
+        auto cmd = std::move(_jobStartCmdList.front());
+        _jobStartCmdList.pop_front();
         cmd->waitComplete();
     }
 }

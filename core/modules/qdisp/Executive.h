@@ -160,7 +160,7 @@ private:
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
     std::shared_ptr<LargeResultMgr> _largeResultMgr;
     ResponsePool::Ptr _commonThreadPool;
-    std::vector<util::CommandTracked::Ptr> _jobStartCmdList;
+    std::deque<PriorityCommand::Ptr> _jobStartCmdList;
 
     /** Execution errors */
     util::MultiError _multiError;

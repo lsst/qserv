@@ -56,7 +56,7 @@ namespace qdisp {
 
 
 // Run action() when the system expects to have time to accept data.
-class QueryRequest::AskForResponseDataCmd : public util::Command {
+class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
 public:
     typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
@@ -279,7 +279,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
                          // &&& and use that value here, or always use high priority.
         _responsePool->queCmdLow(_askForResponseDataCmd);
     } else {
-        _responsePool->queCmdHigh(_askForResponseDataCmd);
+        _responsePool->queCmdNorm(_askForResponseDataCmd);
     }
     return true;
 }
@@ -395,7 +395,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             if (_largeResult) {
                 _responsePool->queCmdLow(_askForResponseDataCmd);
             } else {
-                _responsePool->queCmdLow(_askForResponseDataCmd);
+                _responsePool->queCmdNorm(_askForResponseDataCmd);
             }
         }
     } else {
