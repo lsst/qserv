@@ -43,14 +43,11 @@ public:
     MySqlListener() {}
     virtual ~MySqlListener() {}
 
-//    std::shared_ptr<QueryComponent> getRootComponent();
-
 protected:
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(MySqlParser::RootContext * /*ctx*/) override;
     virtual void enterDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
     virtual void exitDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
-
 
     // entering a SELECT statement
     virtual void enterSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
@@ -59,25 +56,8 @@ protected:
     virtual void enterSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
     virtual void exitSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
 
-//    virtual void enterParenthesisSelect(MySqlParser::ParenthesisSelectContext * /*ctx*/) override;
-//    virtual void enterUnionSelect(MySqlParser::UnionSelectContext * /*ctx*/) override;
-//    virtual void enterUnionParenthesisSelect(MySqlParser::UnionParenthesisSelectContext * /*ctx*/) override;
-    // SELECT spec
-//    virtual void enterSelectSpec(MySqlParser::SelectSpecContext * /*ctx*/) override;
-    // SELECT element types
-//    virtual void enterSelectStarElement(MySqlParser::SelectStarElementContext * /*ctx*/) override;
     virtual void enterSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
     virtual void exitSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
-//    virtual void enterSelectFunctionElement(MySqlParser::SelectFunctionElementContext * /*ctx*/) override;
-//    virtual void enterSelectExpressionElement(MySqlParser::SelectExpressionElementContext * /*ctx*/) override;
-
-
-    // Table name for many different contexts
-//    virtual void enterTableName(MySqlParser::TableNameContext * /*ctx*/) override;
-//    virtual void exitTableName(MySqlParser::TableNameContext * /*ctx*/) override;
-    // simpleId for many different contexts
-//    virtual void enterSimpleId(MySqlParser::SimpleIdContext * /*ctx*/) override;
-    // column name for different contexts
 
 private:
     // ListenContext is a base class for a stack of listener objects. Listeners implement appropriate API for
