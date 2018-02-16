@@ -26,8 +26,10 @@
 #include "lsst/log/Log.h"
 #include "query/SelectStmt.h"
 
+#include <cxxabi.h>
 #include <vector>
 
+using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -35,116 +37,135 @@ namespace parser {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 
-class ListenContext {
+class Listener {
 public:
-    virtual ~ListenContext() {}
-    typedef std::shared_ptr<ListenContext> Ptr;
+    virtual ~Listener() {}
+    typedef std::shared_ptr<Listener> Ptr;
 };
 
 namespace {
 
-class RootContext : public ListenContext {
+class RootListener : public Listener {
 public:
-    typedef std::shared_ptr<RootContext> Ptr;
     query::SelectStmt::Ptr selectStatement();
 private:
     query::SelectStmt::Ptr _selectStatement;
 };
 
 
-class DMLContext : public ListenContext {
-public:
-    typedef std::shared_ptr<DMLContext> Ptr;
+class DMLListener : public Listener {
 };
 
 
-class SelectContext : public ListenContext {
-public:
-    typedef std::shared_ptr<SelectContext> Ptr;
+class SelectListener : public Listener {
 };
 
 
-class SelectColumnContext : public ListenContext {
-public:
-    typedef std::shared_ptr<SelectColumnContext> Ptr;
+class SelectElementsListener : public Listener {
+};
 
-    void addColumnName(const std::string& columnName) { _columns.push_back(columnName); }
-private:
-    std::vector<std::string> _columns;
+
+class SelectColumnListener : public Listener {
 };
 
 
 } // end namespace
 
 
+template<typename ParentListener, typename ChildListener>
+std::shared_ptr<ChildListener> MySqlListener::pushListenerStack() {
+    auto p = std::dynamic_pointer_cast<ParentListener>(_listenerStack.top());
+    if (nullptr == p) {
+            int status;
+            LOGS(_log, LOG_LVL_ERROR, "can't acquire expected Listener " <<
+                    abi::__cxa_demangle(typeid(ParentListener).name(),0,0,&status) <<
+                    " from top of listenerStack."); // todo add some type names
+        // might want to throw here...?
+        return nullptr;
+    }
+    auto childListener = std::make_shared<ChildListener>();
+    _listenerStack.push(childListener);
+    return childListener;
+}
+
+
+template<typename ChildListener>
+void MySqlListener::popListenerStack() {
+    shared_ptr<Listener> listenerPtr = _listenerStack.top();
+    _listenerStack.pop();
+    shared_ptr<ChildListener> derivedPtr = dynamic_pointer_cast<ChildListener>(listenerPtr);
+    if (nullptr == derivedPtr) {
+        int status;
+        LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
+                "Expected: " << abi::__cxa_demangle(typeid(ChildListener).name(),0,0,&status) <<
+                " Actual: " << abi::__cxa_demangle(typeid(listenerPtr).name(),0,0,&status) <<
+                " Are there out of order or unhandled listener exits?"); // todo add some type names
+        // might want to throw here...?
+    }
+}
+
+
 void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
-    _rootContext = std::make_shared<RootContext>();
-    _contextStack.push(_rootContext);
+    // since there's no parent listener on the stack for a root listener, we don't use the template push
+    // function, we just push the first item onto the stack by hand like so:
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    _rootListener = std::make_shared<RootListener>();
+    _listenerStack.push(_rootListener);
 }
 
 
 void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
-    _contextStack.pop();
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popListenerStack<RootListener>();
 }
 
 
 void MySqlListener::enterDmlStatement(MySqlParser::DmlStatementContext * ctx) {
-    _contextStack.push(std::make_shared<DMLContext>());
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushListenerStack<RootListener, DMLListener>();
 }
 
 
 void MySqlListener::exitDmlStatement(MySqlParser::DmlStatementContext * ctx) {
-    _contextStack.pop();
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popListenerStack<DMLListener>();
 }
 
 
 void MySqlListener::enterSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
-    auto p = std::dynamic_pointer_cast<DMLContext>(_contextStack.top());
-    if (nullptr == p) {
-        LOGS(_log, LOG_LVL_ERROR, "enterSimpleSelect can't acquire a DMLContext.");
-        // might want to throw here...?
-        return;
-    }
-    _contextStack.push(std::make_shared<SelectContext>());
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushListenerStack<DMLListener, SelectListener>();
 }
 
 
 void MySqlListener::exitSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
-    _contextStack.pop();
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popListenerStack<SelectListener>();
+}
+
+
+void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushListenerStack<SelectListener, SelectElementsListener>();
+}
+
+
+void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popListenerStack<SelectElementsListener>();
 }
 
 
 void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
-    auto p = std::dynamic_pointer_cast<SelectContext>(_contextStack.top());
-    if (nullptr == p) {
-        LOGS(_log, LOG_LVL_ERROR, "enterSelectColumnElement can't acquire the SelectContext.");
-        // might want to throw here...?
-        return;
-    }
-    _contextStack.push(std::make_shared<SelectColumnContext>());
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushListenerStack<SelectElementsListener, SelectColumnListener>();
 }
 
 
 void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
-    _contextStack.pop();
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popListenerStack<SelectColumnListener>();
 }
-
-
-void MySqlListener::enterFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
-    auto p = std::dynamic_pointer_cast<SelectColumnContext>(_contextStack.top());
-    if (nullptr == p) {
-        LOGS(_log, LOG_LVL_ERROR, "enterSelectColumnElement can't acquire the SelectContext.");
-        // might want to throw here...?
-        return;
-    }
-    p->addColumnName(ctx->uid()->simpleId()->ID()->getText());
-}
-
-
-void MySqlListener::exitFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
-    // currently we don't add a context for FullColumnName
-}
-
 
 
 }}} // namespace lsst::qserv::parser
