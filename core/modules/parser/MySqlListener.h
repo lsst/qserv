@@ -26,11 +26,17 @@
 #include "parser/MySqlParser.h" // included for contexts. They *could* be forward declared.
 #include "parser/MySqlParserBaseListener.h"
 
+#include <memory>
 #include <stack>
 
 namespace lsst {
 namespace qserv {
+namespace query{
+    class SelectStmt;
+}
 namespace parser {
+
+class ListenContext;
 
 class MySqlListener : public MySqlParserBaseListener {
 public:
@@ -42,39 +48,42 @@ public:
 protected:
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(MySqlParser::RootContext * /*ctx*/) override;
+    virtual void enterDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
+    virtual void exitDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
 
-#if 0
 
     // entering a SELECT statement
     virtual void enterSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
     virtual void exitSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
+
 //    virtual void enterParenthesisSelect(MySqlParser::ParenthesisSelectContext * /*ctx*/) override;
 //    virtual void enterUnionSelect(MySqlParser::UnionSelectContext * /*ctx*/) override;
 //    virtual void enterUnionParenthesisSelect(MySqlParser::UnionParenthesisSelectContext * /*ctx*/) override;
     // SELECT spec
-    virtual void enterSelectSpec(MySqlParser::SelectSpecContext * /*ctx*/) override;
+//    virtual void enterSelectSpec(MySqlParser::SelectSpecContext * /*ctx*/) override;
     // SELECT element types
-    virtual void enterSelectStarElement(MySqlParser::SelectStarElementContext * /*ctx*/) override;
+//    virtual void enterSelectStarElement(MySqlParser::SelectStarElementContext * /*ctx*/) override;
     virtual void enterSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
     virtual void exitSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
-    virtual void enterSelectFunctionElement(MySqlParser::SelectFunctionElementContext * /*ctx*/) override;
-    virtual void enterSelectExpressionElement(MySqlParser::SelectExpressionElementContext * /*ctx*/) override;
+//    virtual void enterSelectFunctionElement(MySqlParser::SelectFunctionElementContext * /*ctx*/) override;
+//    virtual void enterSelectExpressionElement(MySqlParser::SelectExpressionElementContext * /*ctx*/) override;
 
 
     // Table name for many different contexts
-    virtual void enterTableName(MySqlParser::TableNameContext * /*ctx*/) override;
-    virtual void exitTableName(MySqlParser::TableNameContext * /*ctx*/) override;
+//    virtual void enterTableName(MySqlParser::TableNameContext * /*ctx*/) override;
+//    virtual void exitTableName(MySqlParser::TableNameContext * /*ctx*/) override;
     // simpleId for many different contexts
-    virtual void enterSimpleId(MySqlParser::SimpleIdContext * /*ctx*/) override;
+//    virtual void enterSimpleId(MySqlParser::SimpleIdContext * /*ctx*/) override;
     // column name for different contexts
     virtual void enterFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
-#endif // if 0
+    virtual void exitFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
 
 private:
-//    friend std::ostream& operator<<(std::ostream& os, QsMySqlListener const& listener);
-
-//    std::shared_ptr<QueryComponent> _rootComponent;
-//    std::stack<std::shared_ptr<QueryComponent>> _queryComponents;
+    // ListenContext is a base class for a stack of listener objects. Listeners implement appropriate API for
+    // the kinds of children that may be assigned to them. The stack represents execution state of the call
+    // to listen. The root object (separate from the stack) will end up owning the parsed query.
+    std::stack<std::shared_ptr<ListenContext>> _contextStack;
+    std::shared_ptr<ListenContext> _rootContext;
 };
 
 }}} // namespace lsst::qserv::parser
