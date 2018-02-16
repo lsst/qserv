@@ -289,15 +289,20 @@ for shlib, shopt in shlibs.items():
 state.log.debug('initialized build_data: ' + defEnv.Dump('build_data'))
 
 # call all modules' SConscripts or use standard method
+# and harvest locally defined build targets (if any) from each module.
+build_targets = []
 for mod in all_modules:
     scriptPath = os.path.join(mod, "SConscript")
-    if env.Glob(scriptPath):  # os.access is faulty with VariantDir
-        SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
+    if env.Glob(scriptPath): # os.access is faulty with VariantDir
+        module_build_targets = SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
+        if module_build_targets:
+            for t in module_build_targets:
+                build_targets.append(t)
+                build_data['install'] += env.Install("$prefix/bin", t)
     else:
         standardModule(env, module=mod)
 
 # define targets for shared libs
-build_targets = []
 for shlib, shopt in shlibs.items():
 
     state.log.debug('defining target for ' + shlib)

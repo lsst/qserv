@@ -2,4 +2,40 @@
 Import('env')
 Import('standardModule')
 
-standardModule(env, unit_tests="")
+import os.path
+
+# Harvest special binary products - files starting with the package's name
+# followed by underscore:
+#
+#   tests_<something>.cc
+#
+# Then make a Scons target for each of those to be returned by the calling
+# SConscript. Also add the source file into a list of sources to be excluded
+# from the shared library product.
+
+env.Append(LIBPATH=['$build_dir'] + env['LIBPATH'])
+
+module_build_targets = []
+exclude = []
+
+path = "."
+for f in env.Glob(os.path.join(path, "tests_*.cc"), source=True, strings=True):
+    source = os.path.basename(str(f))
+    target = source[:-3]
+    module_build_targets += env.Program(
+        target=target,
+        source=[source],
+        LIBS  =["qserv_common",
+                "util",
+                "protobuf",
+                "log",
+                "log4cxx"])
+    exclude.append(f)
+
+# Initiate the standard sequence of actions for this module by excluding
+# the above discovered bibary sources
+
+standardModule(env, exclude=exclude, unit_tests="")
+
+Return('module_build_targets')
+s
