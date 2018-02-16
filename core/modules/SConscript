@@ -122,7 +122,7 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
         for f in bin_cc_targets: exclude_cc_files.append(f)
 
     # find all *.cc files and split then in two groups: files for libraries
-    # and files for test apps.
+    # and files for test apps
     cc_files = set(env.Glob(os.path.join(path, "*.cc"), source=True, strings=True, exclude=exclude_cc_files))
     cc_tests = set(fname for fname in cc_files if os.path.basename(fname).startswith("test"))
     # In Python3 order of set iteration is undefined, do manual sorting
@@ -181,16 +181,16 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     py_installed = env.Install("$prefix/bin", py_scripts)
     build_data['install'] += py_installed
 
-    # inject binary targets build of the optionally provided C/C++ files
+    # inject binary targets built of the optionally provided C/C++ files
     if bin_cc_targets is not None:
         for f,dependencies in bin_cc_targets.items():
             source = os.path.basename(str(f))
             target = source[:-3]
             p = env.Program(
-            target=target,
-            source=[source],
-            LIBS=dependencies,
-            LIBPATH=['$build_dir'] + env['LIBPATH'])
+                target=target,
+                source=[source],
+                LIBS=dependencies,
+                LIBPATH=['$build_dir'] + env['LIBPATH'])
         build_data['build_targets'] += p
         build_data['install'] += env.Install("$prefix/bin", p)
 
@@ -320,10 +320,9 @@ for shlib, shopt in shlibs.items():
 state.log.debug('initialized build_data: ' + defEnv.Dump('build_data'))
 
 # call all modules' SConscripts or use standard method
-# and harvest locally defined build targets (if any) from each module.
 for mod in all_modules:
     scriptPath = os.path.join(mod, "SConscript")
-    if env.Glob(scriptPath): # os.access is faulty with VariantDir
+    if env.Glob(scriptPath):  # os.access is faulty with VariantDir
         SConscript(scriptPath, exports={'env': env, 'standardModule': standardModule})
     else:
         standardModule(env, module=mod)
