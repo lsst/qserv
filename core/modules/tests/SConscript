@@ -13,12 +13,12 @@ import os.path
 # SConscript. Also add the source file into a list of sources to be excluded
 # from the shared library product.
 
-bin_cc_targets = {}
+bin_cc_files = {}
 path = "."
-for f in env.Glob(os.path.join(path, "tests_*.cc"), source=True, strings=True):
-    bin_cc_targets[f] = ["qserv_common","util","protobuf","log","log4cxx"]
+for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
+    bin_cc_files[f] = ["qserv_common","util","protobuf","log","log4cxx"]
 
 # Initiate the standard sequence of actions for this module by excluding
 # the above discovered binary sources
 
-standardModule(env, bin_cc_targets=bin_cc_targets, unit_tests="")
+standardModule(env, bin_cc_files=bin_cc_files, unit_tests="")

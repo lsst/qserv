@@ -70,7 +70,7 @@ import state
 Import('env')
 
 
-def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=None, bin_cc_targets=None):
+def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=None, bin_cc_files=None):
     """
     Implementation of SConscript logic for "standard" module.
 
@@ -95,8 +95,8 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
                 then use this parameter to pass list (or space-separated
                 string) of application names. Can be empty string or list to
                 not run any unit tests.
-    @param bin_cc_targets: a dictionary defining whgich binary products (not
-                the unit tests should be built out of C/C++ files. Each key
+    @param bin_cc_files: a dictionary defining which binary products (not
+                the unit tests) should be built out of C/C++ files. Each key
                 of the dictionary is the name of a C/C++ file (with function
                 'main'). This file will be excluded from the unit tests and
                 from a list of *.cc files which are complied into a shared
@@ -117,9 +117,9 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     # library or unit tests
     exclude_cc_files = []
     if exclude is not None:
-        exclude_cc_files = exclude
-    if bin_cc_targets is not None:
-        for f in bin_cc_targets: exclude_cc_files.append(f)
+        if isinstance(exclude, str): exclude_cc_files += [exclude,]
+        else:                        exclude_cc_files += exclude
+    if bin_cc_files is not None: exclude_cc_files += bin_cc_files.keys()
 
     # find all *.cc files and split then in two groups: files for libraries
     # and files for test apps
@@ -182,17 +182,11 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     build_data['install'] += py_installed
 
     # inject binary targets built of the optionally provided C/C++ files
-    if bin_cc_targets is not None:
-        for f,dependencies in bin_cc_targets.items():
-            source = os.path.basename(str(f))
-            target = source[:-3]
-            p = env.Program(
-                target=target,
-                source=[source],
-                LIBS=dependencies,
-                LIBPATH=['$build_dir'] + env['LIBPATH'])
-        build_data['build_targets'] += p
-        build_data['install'] += env.Install("$prefix/bin", p)
+    if bin_cc_files is not None:
+        for f,dependencies in bin_cc_files.items():
+            p = env.Program(f, LIBS=dependencies, LIBPATH=['$build_dir'] + env['LIBPATH'])
+            build_data['build_targets'] += p
+            build_data['install'] += env.Install("$prefix/bin", p)
 
 # ================== SConscript logic start here ====================
 
