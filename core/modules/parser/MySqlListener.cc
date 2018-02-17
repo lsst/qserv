@@ -37,6 +37,16 @@ namespace parser {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 
+/// Callback Handler classes
+
+class UidCBH {
+public:
+    virtual ~UidCBH() {}
+    virtual void handleUidString(const std::string& string) = 0;
+};
+
+/// Listener classes
+
 class Listener {
 public:
     virtual ~Listener() {}
@@ -65,8 +75,14 @@ class SelectElementsListener : public Listener {
 };
 
 
-class SelectColumnListener : public Listener {
+class SelectColumnElementListener : public Listener, public UidCBH {
+    virtual void handleUidString(const std::string& string) {
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << string);
+    }
 };
+
+
+
 
 
 } // end namespace
@@ -102,6 +118,22 @@ void MySqlListener::popListenerStack() {
                 " Are there out of order or unhandled listener exits?"); // todo add some type names
         // might want to throw here...?
     }
+}
+
+
+// might want to use this in popListenerStack?
+template<typename ChildListener>
+std::shared_ptr<ChildListener> MySqlListener::listenerStackTop() const {
+    shared_ptr<Listener> listenerPtr = _listenerStack.top();
+    shared_ptr<ChildListener> derivedPtr = dynamic_pointer_cast<ChildListener>(listenerPtr);
+    if (nullptr == derivedPtr) {
+        int status;
+        LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
+                "Expected: " << abi::__cxa_demangle(typeid(ChildListener).name(),0,0,&status) <<
+                " Actual: " << abi::__cxa_demangle(typeid(listenerPtr).name(),0,0,&status));
+        // might want to throw here?
+    }
+    return derivedPtr;
 }
 
 
@@ -158,14 +190,28 @@ void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx)
 
 void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushListenerStack<SelectElementsListener, SelectColumnListener>();
+    pushListenerStack<SelectElementsListener, SelectColumnElementListener>();
 }
 
 
 void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popListenerStack<SelectColumnListener>();
+    popListenerStack<SelectColumnElementListener>();
 }
+
+
+void MySqlListener::enterUid(MySqlParser::UidContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    shared_ptr<UidCBH> handler = listenerStackTop<UidCBH>();
+//    shared_ptr<SelectColumnElementListener> handler = listenerStackTop<SelectColumnElementListener>();
+}
+
+
+void MySqlListener::exitUid(MySqlParser::UidContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+
+}
+
 
 
 }}} // namespace lsst::qserv::parser
