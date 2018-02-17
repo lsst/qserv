@@ -103,7 +103,7 @@ RemoveChunkGroupCommand::run() {
     // Make sure none of the chunks in the group is not being used
     // unless in the 'force' mode
     if (not _force) {
-        if (resourceMonitor->count(_chunk, _dbs)) {
+        if (_resourceMonitor->count(_chunk, _dbs)) {
             reportError(proto::WorkerCommandChunkGroupR::IN_USE,
                         "some chunks of the group are in use");
             return;
