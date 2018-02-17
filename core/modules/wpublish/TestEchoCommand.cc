@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "wcontrol/TestEchoCommand.h"
+#include "wpublish/TestEchoCommand.h"
 
 // Third-party headers
 
@@ -35,13 +35,13 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.TestEchoCommand");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
 
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
 
 TestEchoCommand::TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                                  std::string const& value)
@@ -65,4 +65,4 @@ TestEchoCommand::run() {
     _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
-}}} // namespace lsst::qserv::wcontrol
+}}} // namespace lsst::qserv::wpublish

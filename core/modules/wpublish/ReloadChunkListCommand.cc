@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "wcontrol/ReloadChunkListCommand.h"
+#include "wpublish/ReloadChunkListCommand.h"
 
 // System headers
 #include <sstream>
@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
+#include "wpublish/ChunkInventory.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
@@ -48,7 +49,7 @@ extern XrdSsiProvider* XrdSsiProviderLookup;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.ReloadChunkListCommand");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ReloadChunkListCommand");
 
 
 /// Print the inventory status onto the logging stream
@@ -64,11 +65,11 @@ void dumpInventory (lsst::qserv::wpublish::ChunkInventory const& inventory,
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
 
-ReloadChunkListCommand::ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel>       const& sendChannel,
-                                               std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                               mysql::MySqlConfig                        const& mySqlConfig)
+ReloadChunkListCommand::ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                               std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                               mysql::MySqlConfig const& mySqlConfig)
     :   wbase::WorkerCommand(sendChannel),
 
         _chunkInventory(chunkInventory),
@@ -98,7 +99,7 @@ ReloadChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "ReloadChunkListCommand::run");
 
     // Load the new map from the database into a local variable
-    wpublish::ChunkInventory newChunkInventory;
+    ChunkInventory newChunkInventory;
     try {
         xrdsvc::XrdName x;
         newChunkInventory.init(x.getName(), _mySqlConfig);
@@ -113,8 +114,8 @@ ReloadChunkListCommand::run() {
     // were added or removed. Then Update the current map and notify XRootD
     // accordingly.
 
-    wpublish::ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
-    wpublish::ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
+    ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
+    ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
 
     XrdSsiCluster* clusterManager =
         dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
@@ -176,4 +177,4 @@ ReloadChunkListCommand::run() {
     _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
-}}} // namespace lsst::qserv::wcontrol
+}}} // namespace lsst::qserv::wpublish

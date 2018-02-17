@@ -20,9 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// AddChunkGroupCommand.h
-#ifndef LSST_QSERV_WCONTROL_ADD_CHUNK_GROUP_COMMAND_H
-#define LSST_QSERV_WCONTROL_ADD_CHUNK_GROUP_COMMAND_H
+/// RemoveChunkGroupCommand.h
+#ifndef LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
+#define LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
 
 // System headers
 #include <memory>
@@ -32,43 +32,55 @@
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/WorkerCommand.h"
-#include "wpublish/ChunkInventory.h"
 
 // Forward declarations
-
+namespace lsst {
+namespace qserv {
+namespace wbase {
+class SendChannel;
+}}}
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
+
+// Forward declarations
+class ChunkInventory;
+class ResourceMonitor;
 
 /**
-  * Class AddChunkGroupCommand reloads a list of chunks from the database
+  * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
+  * and the worker's list of chunks.
   */
-class AddChunkGroupCommand
+class RemoveChunkGroupCommand
     :   public wbase::WorkerCommand {
 
 public:
 
     // The default construction and copy semantics are prohibited
-    AddChunkGroupCommand& operator=(const AddChunkGroupCommand&) = delete;
-    AddChunkGroupCommand(const AddChunkGroupCommand&) = delete;
-    AddChunkGroupCommand() = delete;
+    RemoveChunkGroupCommand& operator=(const RemoveChunkGroupCommand&) = delete;
+    RemoveChunkGroupCommand(const RemoveChunkGroupCommand&) = delete;
+    RemoveChunkGroupCommand() = delete;
 
     /**
      * The normal constructor of the class
      *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - chunks known to the application
-     * @param chunk          - chunk number
-     * @param dbs            - names of databases in the group
+     * @param sendChannel     - communication channel for reporting results
+     * @param chunkInventory  - chunks known to the application
+     * @param resourceMonitor - counters of resources which are being used
+     * @param chunk           - chunk number
+     * @param dbs             - names of databases in the group
+     * @param force           - force chunk removal even if this chunk is in use
      */
-    explicit AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                  std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                  int chunk,
-                                  std::vector<std::string> const& dbs);
+    explicit RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                     std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                     std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                     int chunk,
+                                     std::vector<std::string> const& dbs,
+                                     bool force);
 
     /// The destructor
-    virtual ~AddChunkGroupCommand();
+    virtual ~RemoveChunkGroupCommand();
 
     /**
      * Implement the corresponding method of the base class
@@ -91,11 +103,13 @@ private:
 
 private:
 
-    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+    std::shared_ptr<ChunkInventory> _chunkInventory;
+    std::shared_ptr<ResourceMonitor> _resourceMonitor;
     int _chunk;
     std::vector<std::string> _dbs;
+    bool _force;
 };
 
-}}} // namespace lsst::qserv::wbase
+}}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WCONTROL_ADD_CHUNK_GROUP_COMMAND_H
+#endif // LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H

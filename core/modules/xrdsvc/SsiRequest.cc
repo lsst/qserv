@@ -41,10 +41,11 @@
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
-#include "wcontrol/AddChunkGroupCommand.h"
-#include "wcontrol/ReloadChunkListCommand.h"
-#include "wcontrol/RemoveChunkGroupCommand.h"
-#include "wcontrol/TestEchoCommand.h"
+#include "wpublish/AddChunkGroupCommand.h"
+#include "wpublish/ReloadChunkListCommand.h"
+#include "wpublish/RemoveChunkGroupCommand.h"
+#include "wpublish/ResourceMonitor.h"
+#include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
 
 namespace {
@@ -54,6 +55,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
+
+std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
 
 SsiRequest::~SsiRequest () {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -101,6 +104,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
+
+            // Increment the counter of the database/chunk resources in use
+            _resourceMonitor->add(_resourceName);
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -190,7 +196,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 proto::WorkerCommandTestEchoM echo;
                 view.parse(echo);
     
-                command = std::make_shared<wcontrol::TestEchoCommand>(
+                command = std::make_shared<wpublish::TestEchoCommand>(
                                 sendChannel,
                                 echo.value());
                 break;
@@ -210,15 +216,16 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 bool const force = group.force();
 
                 if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
-                    command = std::make_shared<wcontrol::AddChunkGroupCommand>(
+                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     chunk,
                                     dbs);
                 else
-                    command = std::make_shared<wcontrol::RemoveChunkGroupCommand>(
+                    command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
                                     sendChannel,
                                     _chunkInventory,
+                                    _resourceMonitor,
                                     chunk,
                                     dbs,
                                     force);
@@ -227,7 +234,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
             }
             case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
-                command = std::make_shared<wcontrol::ReloadChunkListCommand>(
+                command = std::make_shared<wpublish::ReloadChunkListCommand>(
                                 sendChannel,
                                 _chunkInventory,
                                 _mySqlConfig);
@@ -272,6 +279,13 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     case XrdSsiRespInfo::isStream: type = "type=isStream"; break;
     case XrdSsiRespInfo::isHandle: type = "type=isHandle"; break;
     }
+
+    // Decrement the counter of the database/chunk resources in use
+    ResourceUnit ru(_resourceName);
+    if (ru.unitType() == ResourceUnit::DBCHUNK) {
+        _resourceMonitor->remove(_resourceName);
+    }
+
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);

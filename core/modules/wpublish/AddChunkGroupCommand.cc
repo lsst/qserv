@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "wcontrol/RemoveChunkGroupCommand.h"
+#include "wpublish/AddChunkGroupCommand.h"
 
 // System headers
 
@@ -32,6 +32,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 #include "wbase/SendChannel.h"
+#include "wpublish/ChunkInventory.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
@@ -46,35 +47,33 @@ extern XrdSsiProvider* XrdSsiProviderLookup;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.RemoveChunkGroupCommand");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.AddChunkGroupCommand");
 
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
 
-RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                                 int chunk,
-                                                 std::vector<std::string> const& dbs,
-                                                 bool force)
+AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                           std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                           int chunk,
+                                           std::vector<std::string> const& dbs)
     :   wbase::WorkerCommand(sendChannel),
 
         _chunkInventory(chunkInventory),
         _chunk(chunk),
-        _dbs(dbs),
-        _force(force) {
+        _dbs(dbs) {
 }
 
-RemoveChunkGroupCommand::~RemoveChunkGroupCommand() {
+AddChunkGroupCommand::~AddChunkGroupCommand() {
 }
 
 void
-RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                     std::string const& message) {
+AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                  std::string const& message) {
 
-    LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::reportError  " << message);
+    LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::reportError  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
@@ -86,18 +85,13 @@ RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status sta
 }
 
 void
-RemoveChunkGroupCommand::run() {
+AddChunkGroupCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run");
+    LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run");
 
     if (not _dbs.size()) {
         reportError(proto::WorkerCommandChunkGroupR::INVALID,
                     "the list of database names in the group was found empty");
-        return;
-    }
-    if (not _force) {
-        reportError(proto::WorkerCommandChunkGroupR::INVALID,
-                    "the current implementation only works in the 'force' mode");
         return;
     }
 
@@ -111,14 +105,14 @@ RemoveChunkGroupCommand::run() {
 
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing resource: " << resource);
+        LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding resource: " << resource);
 
         try {
-            clusterManager->Removed(resource.c_str());    // Notify XRootD/cmsd
-            _chunkInventory->remove(db, _chunk);          // Notify QServ
+            clusterManager->Added(resource.c_str());    // Notify XRootD/cmsd
+            _chunkInventory->add(db, _chunk);           // Notify QServ
         } catch (std::exception const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                        "failed to remove the chunk: " + std::string(ex.what()));
+                        "failed to add the chunk: " + std::string(ex.what()));
             return;
         }
     }
@@ -126,4 +120,4 @@ RemoveChunkGroupCommand::run() {
     _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
-}}} // namespace lsst::qserv::wcontrol
+}}} // namespace lsst::qserv::wpublish

@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "wcontrol/AddChunkGroupCommand.h"
+#include "wpublish/RemoveChunkGroupCommand.h"
 
 // System headers
 
@@ -32,6 +32,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 #include "wbase/SendChannel.h"
+#include "wpublish/ChunkInventory.h"
+#include "wpublish/ResourceMonitor.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
@@ -46,33 +48,37 @@ extern XrdSsiProvider* XrdSsiProviderLookup;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.AddChunkGroupCommand");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.RemoveChunkGroupCommand");
 
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
 
-AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                           std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                           int chunk,
-                                           std::vector<std::string> const& dbs)
+RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                                 std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                                 std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                                 int chunk,
+                                                 std::vector<std::string> const& dbs,
+                                                 bool force)
     :   wbase::WorkerCommand(sendChannel),
 
-        _chunkInventory(chunkInventory),
-        _chunk(chunk),
-        _dbs(dbs) {
+        _chunkInventory  (chunkInventory),
+        _resourceMonitor (resourceMonitor),
+        _chunk (chunk),
+        _dbs   (dbs),
+        _force (force) {
 }
 
-AddChunkGroupCommand::~AddChunkGroupCommand() {
+RemoveChunkGroupCommand::~RemoveChunkGroupCommand() {
 }
 
 void
-AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                  std::string const& message) {
+RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                     std::string const& message) {
 
-    LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::reportError  " << message);
+    LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::reportError  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
@@ -84,14 +90,24 @@ AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status
 }
 
 void
-AddChunkGroupCommand::run() {
+RemoveChunkGroupCommand::run() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run");
+    LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run");
 
     if (not _dbs.size()) {
         reportError(proto::WorkerCommandChunkGroupR::INVALID,
                     "the list of database names in the group was found empty");
         return;
+    }
+
+    // Make sure none of the chunks in the group is not being used
+    // unless in the 'force' mode
+    if (not _force) {
+        if (resourceMonitor->count(_chunk, _dbs)) {
+            reportError(proto::WorkerCommandChunkGroupR::IN_USE,
+                        "some chunks of the group are in use");
+            return;
+        }
     }
 
     XrdSsiCluster* clusterManager =
@@ -104,14 +120,14 @@ AddChunkGroupCommand::run() {
 
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding resource: " << resource);
+        LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing resource: " << resource);
 
         try {
-            clusterManager->Added(resource.c_str());    // Notify XRootD/cmsd
-            _chunkInventory->add(db, _chunk);           // Notify QServ
+            clusterManager->Removed(resource.c_str());    // Notify XRootD/cmsd
+            _chunkInventory->remove(db, _chunk);          // Notify QServ
         } catch (std::exception const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                        "failed to add the chunk: " + std::string(ex.what()));
+                        "failed to remove the chunk: " + std::string(ex.what()));
             return;
         }
     }
@@ -119,4 +135,4 @@ AddChunkGroupCommand::run() {
     _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
-}}} // namespace lsst::qserv::wcontrol
+}}} // namespace lsst::qserv::wpublish

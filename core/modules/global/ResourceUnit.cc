@@ -129,6 +129,10 @@ ResourceUnit::prefix(UnitType const& r) {
     }
 }
 
+std::string ResourceUnit::makePath(int chunk, std::string const& db) {
+    return "/" + prefix(UnitType::DBCHUNK) + "/" + db + "/" + std::to_string(chunk);
+}
+
 void
 ResourceUnit::setAsDbChunk(std::string const& db, int chunk) {
     _unitType = DBCHUNK;

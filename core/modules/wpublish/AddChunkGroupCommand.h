@@ -20,49 +20,61 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// ReloadChunkListCommand.h
-#ifndef LSST_QSERV_WCONTROL_RELOAD_CHUNK_LIST_COMMAND_H
-#define LSST_QSERV_WCONTROL_RELOAD_CHUNK_LIST_COMMAND_H
+/// AddChunkGroupCommand.h
+#ifndef LSST_QSERV_WPUBLISH_ADD_CHUNK_GROUP_COMMAND_H
+#define LSST_QSERV_WPUBLISH_ADD_CHUNK_GROUP_COMMAND_H
 
 // System headers
 #include <memory>
+#include <string>
+#include <vector>
 
 // Qserv headers
+#include "proto/worker.pb.h"
 #include "wbase/WorkerCommand.h"
-#include "mysql/MySqlConfig.h"
-#include "wpublish/ChunkInventory.h"
 
 // Forward declarations
-
+namespace lsst {
+namespace qserv {
+namespace wbase {
+class SendChannel;
+}}}
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
+
+// Forward declarations
+class ChunkInventory;
 
 /**
-  * Class ReloadChunkListCommand reloads a list of chunks from the database
+  * Class AddChunkGroupCommand reloads a list of chunks from the database
   */
-class ReloadChunkListCommand
+class AddChunkGroupCommand
     :   public wbase::WorkerCommand {
 
 public:
 
     // The default construction and copy semantics are prohibited
-    ReloadChunkListCommand& operator=(const ReloadChunkListCommand&) = delete;
-    ReloadChunkListCommand(const ReloadChunkListCommand&) = delete;
-    ReloadChunkListCommand() = delete;
+    AddChunkGroupCommand& operator=(const AddChunkGroupCommand&) = delete;
+    AddChunkGroupCommand(const AddChunkGroupCommand&) = delete;
+    AddChunkGroupCommand() = delete;
 
     /**
      * The normal constructor of the class
      *
-     * @param sendChannel - communication channel for reporting results
+     * @param sendChannel    - communication channel for reporting results
+     * @param chunkInventory - chunks known to the application
+     * @param chunk          - chunk number
+     * @param dbs            - names of databases in the group
      */
-    explicit ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel>       const& sendChannel,
-                                    std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                    mysql::MySqlConfig                        const& mySqlConfig);
+    explicit AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                  std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                  int chunk,
+                                  std::vector<std::string> const& dbs);
 
     /// The destructor
-    virtual ~ReloadChunkListCommand();
+    virtual ~AddChunkGroupCommand();
 
     /**
      * Implement the corresponding method of the base class
@@ -77,16 +89,19 @@ private:
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
+     * @param status  - error status
      * @param message - message to be reported
      */
-    void reportError(std::string const& message);
+    void reportError(proto::WorkerCommandChunkGroupR::Status status,
+                     std::string const& message);
 
 private:
 
-    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
-    mysql::MySqlConfig const _mySqlConfig;
+    std::shared_ptr<ChunkInventory> _chunkInventory;
+    int _chunk;
+    std::vector<std::string> _dbs;
 };
 
-}}} // namespace lsst::qserv::wbase
+}}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WCONTROL_RELOAD_CHUNK_LIST_COMMAND_H
+#endif // LSST_QSERV_WPUBLISH_ADD_CHUNK_GROUP_COMMAND_H

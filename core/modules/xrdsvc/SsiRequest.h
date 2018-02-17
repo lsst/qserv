@@ -46,6 +46,9 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 struct MsgProcessor;
+}
+namespace wpublish {
+class ResourceMonitor;
 }}}
 
 namespace lsst {
@@ -129,6 +132,10 @@ private:
     wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
 
 private:
+
+    /// Counters of the database/chunk requests which are being used
+    static std::shared_ptr<wpublish::ResourceMonitor> _resourceMonitor;
+
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
 
     ValidatorPtr                         _validator;    ///< validates request against what's available

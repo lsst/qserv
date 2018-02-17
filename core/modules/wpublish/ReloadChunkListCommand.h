@@ -20,47 +20,50 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TestEchoCommand.h
-#ifndef LSST_QSERV_WCONTROL_TEST_ECHO_COMMAND_H
-#define LSST_QSERV_WCONTROL_TEST_ECHO_COMMAND_H
+/// ReloadChunkListCommand.h
+#ifndef LSST_QSERV_WPUBLISH_RELOAD_CHUNK_LIST_COMMAND_H
+#define LSST_QSERV_WPUBLISH_RELOAD_CHUNK_LIST_COMMAND_H
 
 // System headers
-#include <string>
+#include <memory>
 
 // Qserv headers
 #include "wbase/WorkerCommand.h"
+#include "mysql/MySqlConfig.h"
 
 // Forward declarations
 
-
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wpublish {
+
+// Forward declarations
+class ChunkInventory;
 
 /**
-  * Class TestEchoCommand reloads a list of chunks from the database
+  * Class ReloadChunkListCommand reloads a list of chunks from the database
   */
-class TestEchoCommand
+class ReloadChunkListCommand
     :   public wbase::WorkerCommand {
 
 public:
 
     // The default construction and copy semantics are prohibited
-    TestEchoCommand& operator=(TestEchoCommand const&) = delete;
-    TestEchoCommand(TestEchoCommand const&) = delete;
-    TestEchoCommand() = delete;
+    ReloadChunkListCommand& operator=(const ReloadChunkListCommand&) = delete;
+    ReloadChunkListCommand(const ReloadChunkListCommand&) = delete;
+    ReloadChunkListCommand() = delete;
 
     /**
      * The normal constructor of the class
      *
      * @param sendChannel - communication channel for reporting results
-     * @param value       - value to be send back to a client
      */
-    explicit TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                             std::string const& value);
+    explicit ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                    std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                    mysql::MySqlConfig const& mySqlConfig);
 
     /// The destructor
-    virtual ~TestEchoCommand();
+    virtual ~ReloadChunkListCommand();
 
     /**
      * Implement the corresponding method of the base class
@@ -71,9 +74,20 @@ public:
 
 private:
 
-    std::string _value;
+    /**
+     * Report error condition to the logging stream and reply back to
+     * a service caller.
+     *
+     * @param message - message to be reported
+     */
+    void reportError(std::string const& message);
+
+private:
+
+    std::shared_ptr<ChunkInventory> _chunkInventory;
+    mysql::MySqlConfig const _mySqlConfig;
 };
 
-}}} // namespace lsst::qserv::wbase
+}}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WCONTROL_TEST_ECHO_COMMAND_H
+#endif // LSST_QSERV_WPUBLISH_RELOAD_CHUNK_LIST_COMMAND_H

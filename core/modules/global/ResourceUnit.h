@@ -67,6 +67,9 @@ public:
     /// @return the path prefix element for a given request type.
     static std::string prefix(UnitType const& r);
 
+    /// @return the path of the database/chunk resource
+    static std::string makePath(int chunk, std::string const& db);
+
     // Setup a path of a certain type.
     void setAsDbChunk(std::string const& db, int chunk=DUMMY_CHUNK);
 
