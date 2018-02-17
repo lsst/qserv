@@ -59,6 +59,10 @@ protected:
     virtual void enterSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
     virtual void exitSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
 
+    virtual void enterUid(MySqlParser::UidContext * /*ctx*/) override;
+    virtual void exitUid(MySqlParser::UidContext * /*ctx*/) override;
+
+
 private:
     // ListenContext is a base class for a stack of listener objects. Listeners implement appropriate API for
     // the kinds of children that may be assigned to them. The stack represents execution state of the call
@@ -71,6 +75,9 @@ private:
 
     template<typename ChildListener>
     void popListenerStack();
+
+    template<typename ChildListener>
+    std::shared_ptr<ChildListener> listenerStackTop() const;
 };
 
 }}} // namespace lsst::qserv::parser
