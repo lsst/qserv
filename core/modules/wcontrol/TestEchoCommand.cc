@@ -22,49 +22,26 @@
  */
 
 // Class header
-#include "wpublish/TestEchoCommand.h"
-
-// System headers
-#include <sstream>
+#include "wcontrol/TestEchoCommand.h"
 
 // Third-party headers
-#include "XrdSsi/XrdSsiCluster.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
-#include "xrdsvc/SsiProvider.h"
-#include "xrdsvc/XrdName.h"
-
-/******************************************************************************/
-/*                               G l o b a l s                                */
-/******************************************************************************/
-
-extern XrdSsiProvider* XrdSsiProviderLookup;
-
 
 // Qserv headers
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
-
-
-/// Print the inventory status onto the logging stream
-void dumpInventory (lsst::qserv::wpublish::ChunkInventory const& inventory,
-                    std::string                           const& context) {
-    std::ostringstream os;
-    inventory.dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, context << os.str());
-}
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.TestEchoCommand");
 
 } // annonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace wpublish {
+namespace wcontrol {
 
 TestEchoCommand::TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                                  std::string const& value)
@@ -88,4 +65,4 @@ TestEchoCommand::run() {
     _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}} // namespace lsst::qserv::wcontrol
