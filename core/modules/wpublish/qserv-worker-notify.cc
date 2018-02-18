@@ -2,12 +2,14 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "XrdSsi/XrdSsiProvider.hh"
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
+#include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdParser.h"
@@ -17,6 +19,7 @@
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
+namespace global   = lsst::qserv;
 namespace util     = lsst::qserv::util;
 namespace wpublish = lsst::qserv::wpublish;
 
@@ -24,8 +27,14 @@ namespace {
 
 // Command line parameters
 
-std::string serviceProviderLocation;
-std::string workerResourceName;
+std::string              operation;
+std::string              worker;
+unsigned int             chunk;
+std::vector<std::string> databases;
+std::string              value;
+std::string              serviceProviderLocation;
+bool                     printReport = false;
+
 
 int test () {
 
@@ -42,33 +51,41 @@ int test () {
     }
     std::cout << "connected to service provider at: " << serviceProviderLocation << std::endl;
 
-    XrdSsiResource resource (workerResourceName);
+    XrdSsiResource resource (global::ResourceUnit::makeWorkerPath(worker));
 
     util::BlockPost blockPost (1000, 2000);
     while (true) {
 
-        auto request1 =
-            new wpublish::ReloadChunkListQservRequest (
-                    [] (bool success,
-                        wpublish::ReloadChunkListQservRequest::ChunkCollection const& added,
-                        wpublish::ReloadChunkListQservRequest::ChunkCollection const& removed) {
-                        std::cout << "# chunks added:   " << added.size()   << std::endl;
-                        std::cout << "# chuks  removed: " << removed.size() << std::endl;
-                    });
-        serviceProvider->ProcessRequest(*request1, resource);
+        XrdSsiRequest* request = nullptr;
 
-        auto request2 =
-            new wpublish::TestEchoQservRequest (
-                    "12345678",
-                    [] (bool success,
-                        std::string const& sent,
-                        std::string const& received) {
-                        std::cout << "# value sent:     " << sent     << std::endl;
-                        std::cout << "# value received: " << received << std::endl;
-                    });
-        serviceProvider->ProcessRequest(*request2, resource);
+        if ("RELOAD_CHUNK_LIST"  == operation) {
+            request = new wpublish::ReloadChunkListQservRequest (
+                [] (bool success,
+                    wpublish::ReloadChunkListQservRequest::ChunkCollection const& added,
+                    wpublish::ReloadChunkListQservRequest::ChunkCollection const& removed) {
+                    std::cout << "# chunks added:   " << added.size()   << std::endl;
+                    std::cout << "# chuks  removed: " << removed.size() << std::endl;
+                });
 
-        blockPost.wait(500);
+        } else if ("ADD_CHUNK_GROUP"    == operation) {
+            ;
+        } else if ("REMOVE_CHUNK_GROUP" == operation) {
+            ;
+        } else if ("TEST_ECHO"          == operation) {
+            request = new wpublish::TestEchoQservRequest (
+                value,
+                [] (bool success,
+                    std::string const& sent,
+                    std::string const& received) {
+                    std::cout << "value sent:     " << sent     << std::endl;
+                    std::cout << "value received: " << received << std::endl;
+                });
+        }
+        if (not request) return 1;
+
+        serviceProvider->ProcessRequest(*request, resource);
+
+        blockPost.wait(1000);
 
         break;
     }
@@ -91,14 +108,46 @@ int main (int argc, const char* const argv[]) {
             argv,
             "\n"
             "Usage:\n"
-            "  <provider> <resource>\n"
+            "  <operation> [<parameter> [<parameter> [...]]]\n"
+            "              [--service=<provider>]\n"
+            "              [--print-report]\n"
+            "\n"
+            "Supported operations and mandatory parameters:\n"
+            "    RELOAD_CHUNK_LIST  <worker>\n"
+            "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
+            "    REMOVE_CHUNK_GROUP <worker> <chunk> <db> [<db> [<db> ... ]]\n"
+            "    TEST_ECHO          <worker> <value>\n"
+            "\n"
+            "Flags an options:\n"
+            "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
+            "  --print-report        - print \n"
             "\n"
             "Parameters:\n"
-            "  <provider>  - location of a service provider     (example: 'localhost:1094')\n"
-            "  <resource>  - path to a worker-specific resource (example: '/worker/worker-id-1')\n");
+            "  <worker> - unique identifier of a worker (example: 'worker-1')\n"
+            "  <chunk>  - chunk number\n"
+            "  <db>     - database name\n"
+            "  <value>  - arbitrary string\n");
 
-        ::serviceProviderLocation = parser.parameter<std::string> (1);
-        ::workerResourceName      = parser.parameter<std::string> (2);
+        ::operation = parser.parameterRestrictedBy (1, {
+            "RELOAD_CHUNK_LIST",
+            "ADD_CHUNK_GROUP",
+            "REMOVE_CHUNK_GROUP",
+            "TEST_ECHO"});
+
+        ::worker = parser.parameter<std::string>(2);
+
+        if (parser.found_in(::operation, {
+            "ADD_CHUNK_GROUP",
+            "REMOVE_CHUNK_GROUP"})) {
+            ::chunk     = parser.parameter <unsigned int>(3);
+            ::databases = parser.parameters<std::string> (4);
+
+        } else if (parser.found_in(::operation, {
+            "TEST_ECHO"})) {
+            ::value     = parser.parameter <std::string>(3);
+        }
+        ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
+        ::printReport             = parser.flag                ("print-report");
 
     } catch (std::exception const& ex) {
         return 1;

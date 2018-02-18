@@ -70,6 +70,9 @@ public:
     /// @return the path of the database/chunk resource
     static std::string makePath(int chunk, std::string const& db);
 
+    /// @return the path of the worker-specific resource
+    static std::string makeWorkerPath(std::string const& id);
+
     // Setup a path of a certain type.
     void setAsDbChunk(std::string const& db, int chunk=DUMMY_CHUNK);
 

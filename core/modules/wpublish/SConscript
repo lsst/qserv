@@ -12,6 +12,7 @@ bin_cc_files = {}
 path = "."
 for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
     bin_cc_files[f] = [
+        "qserv_common",
         "xrdsvc",
         "XrdCl",
         "XrdSsiLib",

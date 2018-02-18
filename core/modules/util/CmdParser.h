@@ -123,14 +123,29 @@ public:
      * Return a collection of positional parameters (except the command name itself)
      * translated into the specified type. Throw exception std::invalid_argument if
      * the type conversion is not possible.
+     *
+     * @param vals     - a collection of values
+     * @param posBegin - starting position (default: 1)
      */
     template <class V>
-    void parameters (std::vector<V>& vals) const {
+    void parameters (std::vector<V>& vals, unsigned int posBegin=1) const {
         // Skipping the command path
         size_t const size = _parameter.size();
-        vals.resize(size-1);
-        for (size_t pos=1; pos < size; ++pos)
+        if (posBegin >= size) {
+            vals.resize(0);
+            return;
+        }
+        vals.resize(size-posBegin);
+        for (size_t pos=posBegin; pos < size; ++pos)
             parameterImpl(pos, vals[pos-1]);
+    }
+
+    /// @return collection of positional parameters (except the command name itself)
+    template <class V>
+    std::vector<V> parameters (unsigned int posBegin=1) const {
+        std::vector<V> vals;
+        parameters(vals, posBegin);
+        return vals;
     }
 
     /**

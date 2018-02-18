@@ -50,16 +50,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
 
-
-/// Print the inventory status onto the logging stream
-void dumpInventory (lsst::qserv::wpublish::ChunkInventory const& inventory,
-                    std::string                           const& context) {
-    std::ostringstream os;
-    inventory.dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, context << os.str());
-}
-
-
 } // annonymous namespace
 
 namespace lsst {
