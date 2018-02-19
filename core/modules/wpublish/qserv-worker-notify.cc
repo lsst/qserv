@@ -13,6 +13,7 @@
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdParser.h"
+#include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ReloadChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
@@ -27,13 +28,14 @@ namespace {
 
 // Command line parameters
 
-std::string              operation;
-std::string              worker;
-unsigned int             chunk;
-std::vector<std::string> databases;
-std::string              value;
-std::string              serviceProviderLocation;
-bool                     printReport = false;
+std::string operation;
+std::string worker;
+unsigned int chunk;
+std::vector<std::string> dbs;
+std::string value;
+std::string serviceProviderLocation;
+bool force;
+bool printReport;
 
 
 int test () {
@@ -58,23 +60,38 @@ int test () {
 
         XrdSsiRequest* request = nullptr;
 
-        if ("RELOAD_CHUNK_LIST"  == operation) {
+        if ("RELOAD_CHUNK_LIST" == operation) {
             request = new wpublish::ReloadChunkListQservRequest (
-                [] (bool success,
+                [] (wpublish::ReloadChunkListQservRequest::Status status,
+                    std::string const& error,
                     wpublish::ReloadChunkListQservRequest::ChunkCollection const& added,
                     wpublish::ReloadChunkListQservRequest::ChunkCollection const& removed) {
                     std::cout << "# chunks added:   " << added.size()   << std::endl;
                     std::cout << "# chuks  removed: " << removed.size() << std::endl;
                 });
 
-        } else if ("ADD_CHUNK_GROUP"    == operation) {
-            ;
+        } else if ("ADD_CHUNK_GROUP" == operation) {
+            request = new wpublish::AddChunkGroupQservRequest (
+                chunk,
+                dbs,
+                [] (wpublish::ChunkGroupQservRequest::Status status,
+                    std::string const& error) {
+                });
+
         } else if ("REMOVE_CHUNK_GROUP" == operation) {
-            ;
-        } else if ("TEST_ECHO"          == operation) {
+            request = new wpublish::RemoveChunkGroupQservRequest (
+                chunk,
+                dbs,
+                force,
+                [] (wpublish::ChunkGroupQservRequest::Status status,
+                    std::string const& error) {
+                });
+
+        } else if ("TEST_ECHO" == operation) {
             request = new wpublish::TestEchoQservRequest (
                 value,
-                [] (bool success,
+                [] (wpublish::TestEchoQservRequest::Status status,
+                    std::string const& error,
                     std::string const& sent,
                     std::string const& received) {
                     std::cout << "value sent:     " << sent     << std::endl;
@@ -110,6 +127,7 @@ int main (int argc, const char* const argv[]) {
             "Usage:\n"
             "  <operation> [<parameter> [<parameter> [...]]]\n"
             "              [--service=<provider>]\n"
+            "              [--force>]\n"
             "              [--print-report]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
@@ -120,6 +138,7 @@ int main (int argc, const char* const argv[]) {
             "\n"
             "Flags an options:\n"
             "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
+            "  --force               - force operation in REMOVE_CHUNK_GROUP even for chunks in use\n"
             "  --print-report        - print \n"
             "\n"
             "Parameters:\n"
@@ -139,14 +158,15 @@ int main (int argc, const char* const argv[]) {
         if (parser.found_in(::operation, {
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP"})) {
-            ::chunk     = parser.parameter <unsigned int>(3);
-            ::databases = parser.parameters<std::string> (4);
+            ::chunk = parser.parameter <unsigned int>(3);
+            ::dbs   = parser.parameters<std::string> (4);
 
         } else if (parser.found_in(::operation, {
             "TEST_ECHO"})) {
             ::value     = parser.parameter <std::string>(3);
         }
         ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
+        ::force                   = parser.flag                ("force");
         ::printReport             = parser.flag                ("print-report");
 
     } catch (std::exception const& ex) {

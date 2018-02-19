@@ -193,9 +193,8 @@ message WorkerCommandTestEchoR {
 //
 message WorkerCommandChunkGroupM {
 
-   // There must be at least one database in the group
-   repeated string dbs = 1;
-   required uint32 chunk = 2;
+   required uint32 chunk = 1;
+   repeated string dbs   = 2;
 
    optional bool force = 3 [ default = false];
 }

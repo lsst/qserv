@@ -48,10 +48,20 @@ class TestEchoQservRequest
 
 public:
 
+    /// Completion status of the operation
+    enum Status {
+        SUCCESS,    // successful completion of a request
+        ERROR       // an error occured during command execution
+    };
+
+    /// @return string representation of a status
+    static std::string status2str (Status status);
+
     /// The callback function type to be used for notifications on
     /// the operation completion.
     using calback_type =
-        std::function<void(bool,                    // 'true' if success
+        std::function<void(Status,                  // completion status
+                           std::string const&,      // error message
                            std::string const&,      // value sent
                            std::string const&)>;    // value received (if success)
 
@@ -65,6 +75,7 @@ public:
                                    calback_type       onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
+    TestEchoQservRequest () = delete;
     TestEchoQservRequest (TestEchoQservRequest const&) = delete;
     TestEchoQservRequest& operator= (TestEchoQservRequest const&) = delete;
 

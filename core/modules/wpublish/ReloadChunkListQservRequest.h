@@ -40,13 +40,22 @@ namespace qserv {
 namespace wpublish {
 
 /**
-  * Class ReloadChunkListQservRequest is a base class for client-side requests to
+  * Class ReloadChunkListQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
 class ReloadChunkListQservRequest
     :    public QservRequest {
 
 public:
+
+    /// Completion status of the operation
+    enum Status {
+        SUCCESS,    // successful completion of a request
+        ERROR       // an error occured during command execution
+    };
+
+    /// @return string representation of a status
+    static std::string status2str (Status status);
 
     /// Struct Chunk a value type encapsulating a chunk number and the name
     /// of a database
@@ -61,7 +70,8 @@ public:
     /// The callback function type to be used for notifications on
     /// the operation completion.
     using calback_type =
-        std::function<void(bool,                        // 'true' if success
+        std::function<void(Status,                      // completion status
+                           std::string const&,          // error message
                            ChunkCollection const&,      // chunks added   (if success)
                            ChunkCollection const&)>;    // chunks removed (if success)
 
@@ -73,7 +83,7 @@ public:
      */
     explicit ReloadChunkListQservRequest (calback_type onFinish = nullptr);
 
-    // Default construction and copy semantics is prohibited
+    // Copy semantics is prohibited
     ReloadChunkListQservRequest (ReloadChunkListQservRequest const&) = delete;
     ReloadChunkListQservRequest& operator= (ReloadChunkListQservRequest const&) = delete;
 

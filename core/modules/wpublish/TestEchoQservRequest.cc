@@ -24,6 +24,7 @@
 #include "wpublish/TestEchoQservRequest.h"
 
 // System headers
+#include <stdexcept>
 #include <string>
 
 // Qserv headers
@@ -33,11 +34,34 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoQservRequest");
 
+using namespace lsst::qserv;
+
+wpublish::TestEchoQservRequest::Status
+translate (proto::WorkerCommandTestEchoR::Status status) {
+    switch (status) {
+        case proto::WorkerCommandTestEchoR::SUCCESS: return wpublish::TestEchoQservRequest::SUCCESS;
+        case proto::WorkerCommandTestEchoR::ERROR:   return wpublish::TestEchoQservRequest::ERROR;
+    }
+    throw std::domain_error (
+            "TestEchoQservRequest::translate  no match for Protobuf status: " +
+            proto::WorkerCommandTestEchoR_Status_Name(status));
+}
 }  // namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
+
+std::string
+TestEchoQservRequest::status2str (Status status) {
+    switch (status) {
+        case SUCCESS: return "SUCCESS";
+        case ERROR:   return "ERROR";
+    }
+    throw std::domain_error (
+            "TestEchoQservRequest::status2str  no match for status: " +
+            std::to_string(status));
+}
 
 TestEchoQservRequest::TestEchoQservRequest (std::string const& value,
                                             calback_type       onFinish)
@@ -66,17 +90,16 @@ TestEchoQservRequest::onRequest (proto::FrameBuffer& buf) {
 void
 TestEchoQservRequest::onResponse (proto::FrameBufferView& view) {
 
-    static std::string const context = "TestEchoQservRequest  ";
-
     proto::WorkerCommandTestEchoR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "** SERVICE REPLY **  status: "
+    LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** SERVICE REPLY **  status: "
          << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
 
     if (_onFinish)
         _onFinish (
-            reply.status() == proto::WorkerCommandTestEchoR::SUCCESS,
+            ::translate(reply.status()),
+            reply.error(),
             _value,
             reply.value());
 }

@@ -24,6 +24,7 @@
 #include "wpublish/ReloadChunkListQservRequest.h"
 
 // System headers
+#include <stdexcept>
 #include <string>
 
 // Qserv headers
@@ -33,11 +34,34 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ReloadChunkListQservRequest");
 
+using namespace lsst::qserv;
+
+wpublish::ReloadChunkListQservRequest::Status
+translate (proto::WorkerCommandReloadChunkListR::Status status) {
+    switch (status) {
+        case proto::WorkerCommandReloadChunkListR::SUCCESS: return wpublish::ReloadChunkListQservRequest::SUCCESS;
+        case proto::WorkerCommandReloadChunkListR::ERROR:   return wpublish::ReloadChunkListQservRequest::ERROR;
+    }
+    throw std::domain_error (
+            "ReloadChunkListQservRequest::translate  no match for Protobuf status: " +
+            proto::WorkerCommandReloadChunkListR_Status_Name(status));
+}
 }  // namespace
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
+
+std::string
+ReloadChunkListQservRequest::status2str (Status status) {
+    switch (status) {
+        case SUCCESS: return "SUCCESS";
+        case ERROR:   return "ERROR";
+    }
+    throw std::domain_error (
+            "ReloadChunkListQservRequest::status2str  no match for status: " +
+            std::to_string(status));
+}
 
 ReloadChunkListQservRequest::ReloadChunkListQservRequest (calback_type onFinish)
     :   _onFinish(onFinish){
@@ -93,7 +117,8 @@ ReloadChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
 
     if (_onFinish)
         _onFinish (
-            reply.status() == proto::WorkerCommandReloadChunkListR::SUCCESS,
+            ::translate(reply.status()),
+            reply.error(),
             added,
             removed);
 }

@@ -137,7 +137,7 @@ public:
         }
         vals.resize(size-posBegin);
         for (size_t pos=posBegin; pos < size; ++pos)
-            parameterImpl(pos, vals[pos-1]);
+            parameterImpl(pos, vals[pos-posBegin]);
     }
 
     /// @return collection of positional parameters (except the command name itself)
