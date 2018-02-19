@@ -308,21 +308,27 @@ void UserQuerySelect::submit() {
     // int msgCount = 0; &&&
     int sequence = 0;
 
-    /* &&&
-    auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
-            std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
-        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-        return diff.count();
-    };
-    */
-
+    auto queryTemplates = _qSession->makeQueryTemplates();
 
     std::atomic<int> addTimeSum; // TEMPORARY-timing
 
     // Writing query for each chunk, stop if query is cancelled.
     auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
 
-    auto queryTemplates = _qSession->makeQueryTemplates();
+    /// &&& attempt to change priority, requires root
+    sched_param sch;
+    int policy;
+    pthread_getschedparam(pthread_self(), &policy, &sch);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& thread begin set priority policy=" << policy << " sch=" << sch.sched_priority);
+    int originalPriority = sch.sched_priority;
+    sch.sched_priority = 10;
+    int result = pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch);
+    if (result) {
+        LOGS(_log, LOG_LVL_ERROR, "&&& failed to set priority a result=" << result << " EPERM=" << EPERM);
+    }
+    // &&& end priority change
+
+
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
@@ -360,11 +366,111 @@ void UserQuerySelect::submit() {
                 addTimeSum += timeDiff(startbuildQSJ, endChunkAddQSJ);
             }
         };
-        //_buildJob(sequence, chunkSpec, queryTemplates, chunks, chunksMtx, ttn, taskMsgFactory, addTimeSum);
+
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
         _executive->queueJobStart(cmd);
         ++sequence;
     }
+
+
+    /// &&& attempt to change priority, requires root
+    sch.sched_priority = originalPriority;
+    result = pthread_setschedparam(pthread_self(), policy, &sch);
+    if (result) {
+        LOGS(_log, LOG_LVL_ERROR, "&&& failed to set priority b result=" << result);
+    }
+    pthread_getschedparam(pthread_self(), &policy, &sch);
+    LOGS(_log, LOG_LVL_DEBUG, "&&& thread end set priority policy=" << policy << " sch=" << sch.sched_priority);
+    /// &&& end priority
+
+
+    /* &&& didn't work
+    // Make ChunkSpecVectors of up to 20,000 items from _qSession->cQueryBegin()
+    struct ChunkSpecPtrId {
+        ChunkSpecPtrId(qproc::ChunkSpec *chunkSpec_, int seq) : chunkSpec(chunkSpec_), sequence(seq) {}
+        qproc::ChunkSpec *chunkSpec;
+        int sequence;
+    };
+    typedef std::vector<ChunkSpecPtrId> ChunkSpecPtrIdVect;
+
+
+    // Function for the loop thread
+    auto funcOuterLoop = [this, &queryTemplates,
+            &chunks, &chunksMtx, &ttn,
+            &taskMsgFactory, &addTimeSum](std::shared_ptr<ChunkSpecPtrIdVect> chunkPtrIdVect){
+      for (auto const& chunkPtrId : *chunkPtrIdVect) {
+          if (_executive->getCancelled()) return;
+
+          qproc::ChunkSpec &chunkSpec = *(chunkPtrId.chunkSpec);
+          int sequence = chunkPtrId.sequence;
+
+          // Function for the command
+          std::function<void(util::CmdData*)> funcBuildJob =
+                 [this, sequence,
+                  &chunkSpec, &queryTemplates,
+                  &chunks, &chunksMtx, &ttn,
+                  &taskMsgFactory, &addTimeSum](util::CmdData*) {
+
+              auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+              qproc::ChunkQuerySpec::Ptr cs;
+              {
+                  std::lock_guard<std::mutex> lock(chunksMtx);
+                  cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec); // &&& does this need to be in mutex
+
+                  chunks.push_back(cs->chunkId);
+              }
+              std::string chunkResultName = ttn.make(cs->chunkId);
+              // ++msgCount; &&&
+              // auto endChunkPushQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing &&&
+
+              std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
+              ResourceUnit ru;
+              ru.setAsDbChunk(cs->db, cs->chunkId);
+              // auto endChunkResourceQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing &&&
+              qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+                      _executive->getId(), sequence, ru,
+                      std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
+                      taskMsgFactory, cs, chunkResultName);
+              // auto endChunkJobQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing &&&
+              _executive->add(jobDesc);
+              auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+              { // TEMPORARY-timing
+                  addTimeSum += timeDiff(startbuildQSJ, endChunkAddQSJ);
+              }
+          };
+
+          auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
+          _executive->queueJobStart(cmd);
+      }
+    };
+
+
+    // Create threads to loop through subsets of the chunks for the query.
+    std::vector<std::thread> loopThreads;
+    auto chunkVectP = std::make_shared<ChunkSpecPtrIdVect>();
+
+    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e; ++i) {
+        chunkVectP->emplace_back(&(*i), sequence++);
+
+        if (chunkVectP->size() >= 30000) {
+            // Start a new thread with this chunkVector
+            std::thread threadOuterLoop(funcOuterLoop, chunkVectP);
+            loopThreads.push_back(std::move(threadOuterLoop));
+            chunkVectP = std::make_shared<ChunkSpecPtrIdVect>();
+        }
+    }
+
+    if (chunkVectP->size() > 0) {
+        // Start a new thread with this chunkVector
+        std::thread threadOuterLoop(funcOuterLoop, chunkVectP);
+        loopThreads.push_back(std::move(threadOuterLoop));
+    }
+    chunkVectP.reset();
+
+    for (std::thread &t : loopThreads) {
+        t.join();
+    }
+    */
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();

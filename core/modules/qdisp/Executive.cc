@@ -128,15 +128,6 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                                                        addJobQSEA, trackQSEA; // TEMPORARY-timing
     JobQuery::Ptr jobQuery;
     {
-
-        std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
-        cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
-        if (_cancelled) {
-            LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
-                    << jobDesc->id() << ")");
-            return jobQuery;
-        }
-
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
         Ptr thisPtr = shared_from_this();
@@ -144,15 +135,25 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
         jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
-        if (!_addJobToMap(jobQuery)) {
-            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
-            return jobQuery;
-        }
-        addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+        {
+            std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
+            cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
+            if (_cancelled) {
+                LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
+                        << jobDesc->id() << ")");
+                return nullptr;
+            }
 
-        if (!_track(jobQuery->getIdInt(), jobQuery)) {
-            LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
-            return jobQuery;
+            if (!_addJobToMap(jobQuery)) {
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
+                return jobQuery;
+            }
+            addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+
+            if (!_track(jobQuery->getIdInt(), jobQuery)) {
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
+                return jobQuery;
+            }
         }
         trackQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 

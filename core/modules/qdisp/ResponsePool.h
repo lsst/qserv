@@ -118,8 +118,8 @@ public:
 
     ResponsePool() {
         _prQueue->addPriQueue(0,1); // Highest priority queue
-        _prQueue->addPriQueue(1,1); // Normal priority queue
-        _prQueue->addPriQueue(2,1); // Low priority queue
+        _prQueue->addPriQueue(1,3); // Normal priority queue
+        _prQueue->addPriQueue(2,3); // Low priority queue
         // default priority is the lowest priority.
     }
 
