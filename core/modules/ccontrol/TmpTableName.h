@@ -29,6 +29,7 @@
 #include <sstream>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "util/StringHash.h"
 
 namespace lsst {
@@ -36,17 +37,18 @@ namespace qserv {
 namespace ccontrol {
 
 /// TmpTableName : a generator for temporary table names for chunk results.
+/// All member variables must be immutable.
 class TmpTableName {
 public:
     TmpTableName(QueryId qId, std::string const& query) : _prefix(_makePrefix(qId, query)) {}
 
-    std::string make(int chunkId, int seq=0) {
+    std::string make(int chunkId, int seq=0) const {
         std::stringstream ss;
         ss << _prefix << chunkId << "_" << seq;
         return ss.str();
     }
 private:
-    std::string _makePrefix(QueryId qId, std::string const& query) {
+    std::string _makePrefix(QueryId qId, std::string const& query) const {
         std::stringstream ss;
         ss << "r_" << qId << "_" << util::StringHash::getMd5Hex(query.data(), query.size()) << "_";
         return ss.str();

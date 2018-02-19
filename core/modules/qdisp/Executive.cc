@@ -128,6 +128,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                                                        addJobQSEA, trackQSEA; // TEMPORARY-timing
     JobQuery::Ptr jobQuery;
     {
+
         std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
         cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
         if (_cancelled) {
@@ -135,11 +136,12 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                     << jobDesc->id() << ")");
             return jobQuery;
         }
+
         // Create the JobQuery and put it in the map.
         JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
         Ptr thisPtr = shared_from_this();
         MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
-        jobQuery = JobQuery::newJobQuery(thisPtr, jobDesc, jobStatus, mcf, _id);
+        jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
         jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (!_addJobToMap(jobQuery)) {
@@ -171,26 +173,12 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         trackQSEASum += timeDiff(addJobQSEA, trackQSEA);
         endQSEASum += timeDiff(trackQSEA, endQSEA);
     }
-    _queueJobStart(jobQuery);
+    //_queueJobStart(jobQuery);
+    jobQuery->runJob();
     return jobQuery;
 }
 
-/* &&& delete
-void Executive::_queueJobStart(JobQuery::Ptr const& job) {
-    std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
-        job->runJob();
-    };
-    auto cmd = std::make_shared<util::Command>(func);
-    _startJobsQueue->queCmd(cmd);
-}
-
-
-void Executive::waitForAllJobsToStart() {
-    _startJobsPool->shutdownPool(); // Wait forever
-}
-*/
-
-
+/* &&&
 void Executive::_queueJobStart(JobQuery::Ptr const& job) {
     std::function<void(util::CmdData*)> func = [job](util::CmdData*) {
         LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& runjob");
@@ -199,6 +187,14 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
     LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& _queueJobStart");
     auto cmd = std::make_shared<PriorityCommand>(func);
     // cmd->setFunc(func); &&&
+    _jobStartCmdList.push_back(cmd);
+    _commonThreadPool->queCmdHigh(cmd);
+}
+*/
+
+void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
+
+    LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& queueJobStart");
     _jobStartCmdList.push_back(cmd);
     _commonThreadPool->queCmdHigh(cmd);
 }
@@ -251,6 +247,7 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     auto entry = std::pair<int, JobQuery::Ptr>(job->getIdInt(), job);
+    std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
     return _jobMap.insert(entry).second;
 }
 
@@ -269,7 +266,8 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-        std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
+        //std::lock_guard<std::recursive_mutex> lock(_jobsMutex);  // &&&&&& ????
+        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
         sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
     }
     if (sCount == _requestCount) {
@@ -316,7 +314,8 @@ void Executive::markCompleted(int jobId, bool success) {
         LOGS(_log, LOG_LVL_ERROR, "Executive: error executing " << idStr
              << " " << err << " (status: " << err.getStatus() << ")");
         {
-            std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
+            //std::lock_guard<std::recursive_mutex> lock(_jobsMutex); // &&&&&& ????
+            std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             std::string id = job->getIdStr() + "<>" + idStr;
             job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
@@ -347,7 +346,8 @@ void Executive::squash() {
     LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash Trying to cancel all queries...");
     std::deque<JobQuery::Ptr> jobsToCancel;
     {
-        std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
+        //std::lock_guard<std::recursive_mutex> lock(_jobsMutex); // &&&&&& ????
+        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
         for(auto const& jobEntry : _jobMap) {
             jobsToCancel.push_back(jobEntry.second);
         }
@@ -377,7 +377,8 @@ int Executive::getNumInflight() {
 std::string Executive::getProgressDesc() const {
     std::ostringstream os;
     {
-        std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
+        //std::lock_guard<std::recursive_mutex> lock(_jobsMutex); // &&&&&& ????
+        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
@@ -483,7 +484,8 @@ std::string Executive::_getIncompleteJobsString(int maxToList) {
  */
 void Executive::_updateProxyMessages() {
     {
-        std::lock_guard<std::recursive_mutex> lock(_jobsMutex);
+        //std::lock_guard<std::recursive_mutex> lock(_jobsMutex); // &&&&&& ????
+        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;
             auto const& info = job->getStatus()->getInfo();
@@ -552,7 +554,9 @@ void Executive::_printState(std::ostream& os) {
     }
 }
 
+/* &&&
 JobQuery::Ptr Executive::getJobQuery(int jobId) {
+    std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
     qdisp::JobQuery::Ptr job;
     auto i = _jobMap.find(jobId);
     if (i != _jobMap.end()) {
@@ -560,5 +564,6 @@ JobQuery::Ptr Executive::getJobQuery(int jobId) {
     }
     return job;
 }
+*/
 
 }}} // namespace lsst::qserv::qdisp

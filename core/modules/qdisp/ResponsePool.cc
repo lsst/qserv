@@ -79,7 +79,7 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
             throw Bug("PriorityQueue default priority queue not found a!");
         }
         iter->second->queCmd(cmd);
-        LOGS (_log, LOG_LVL_DEBUG, "&&&priQueCmd" << *this);
+        LOGS (_log, LOG_LVL_DEBUG, "priQueCmd " << *this);
         _changed = true;
     }
     _cv.notify_all();
@@ -100,7 +100,7 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         }
         cmd->_priority = priority;
         iter->second->queCmd(cmd);
-        LOGS (_log, LOG_LVL_DEBUG, "&&&priQue p=" << priority << *this);
+        LOGS (_log, LOG_LVL_DEBUG, "priQue p=" << priority << *this);
         _changed = true;
     }
     _cv.notify_all();
@@ -112,7 +112,7 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
     std::unique_lock<std::mutex> uLock(_mtx);
     while (true) {
         _changed = false;
-        LOGS (_log, LOG_LVL_DEBUG, "&&&priQueGet" << *this);
+        LOGS (_log, LOG_LVL_DEBUG, "priQueGet " << *this);
 
         /// Make sure minimum number of jobs running per priority.
         auto iter = _queues.begin();

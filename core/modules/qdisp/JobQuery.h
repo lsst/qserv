@@ -53,7 +53,7 @@ public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
-    static JobQuery::Ptr newJobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
+    static JobQuery::Ptr create(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
             QueryId qid) {
         Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
@@ -91,7 +91,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
-    /// Do not call this directly, use newJobQuery.
+    /// Do not call this directly, use create.
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
