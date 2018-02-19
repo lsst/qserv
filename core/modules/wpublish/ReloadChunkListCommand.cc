@@ -84,9 +84,9 @@ ReloadChunkListCommand::reportError(std::string const& message) {
 
     LOGS(_log, LOG_LVL_ERROR, "ReloadChunkListCommand::run  " << message);
 
-    proto::WorkerCommandReloadChunkListR reply;
+    proto::WorkerCommandUpdateChunkListR reply;
 
-    reply.set_status(proto::WorkerCommandReloadChunkListR::ERROR);
+    reply.set_status(proto::WorkerCommandUpdateChunkListR::ERROR);
     reply.set_error (message);
 
     _frameBuf.serialize(reply);
@@ -120,8 +120,8 @@ ReloadChunkListCommand::run() {
     XrdSsiCluster* clusterManager =
         dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
 
-    proto::WorkerCommandReloadChunkListR reply;
-    reply.set_status(proto::WorkerCommandReloadChunkListR::SUCCESS);
+    proto::WorkerCommandUpdateChunkListR reply;
+    reply.set_status(proto::WorkerCommandUpdateChunkListR::SUCCESS);
 
     if (not removedChunks.empty()) {
 
@@ -142,7 +142,7 @@ ReloadChunkListCommand::run() {
                 }
 
                 // Notify the caller of this service
-                proto::WorkerCommandReloadChunkListR::Chunk* ptr = reply.add_removed();
+                proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_removed();
                 ptr->set_db(db);
                 ptr->set_chunk(chunk);
             }
@@ -167,7 +167,7 @@ ReloadChunkListCommand::run() {
                 }
 
                 // Notify the caller of this service
-                proto::WorkerCommandReloadChunkListR::Chunk* ptr = reply.add_added();
+                proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_added();
                 ptr->set_db(db);
                 ptr->set_chunk(chunk);
             }

@@ -233,13 +233,19 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 break;
 
             }
-            case proto::WorkerCommandH::RELOAD_CHUNK_LIST:
-                command = std::make_shared<wpublish::ReloadChunkListCommand>(
-                                sendChannel,
-                                _chunkInventory,
-                                _mySqlConfig);
-                break;
-    
+            case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandUpdateChunkListM");
+                proto::WorkerCommandUpdateChunkListM message;
+                view.parse(message);
+                if (message.reload()) {
+                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _mySqlConfig);
+                    break;
+                }
+            }
             default:
                 reportError("Unsupported command " +
                             proto::WorkerCommandH_Command_Name(header.command()) +

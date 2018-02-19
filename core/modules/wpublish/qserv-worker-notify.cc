@@ -14,7 +14,7 @@
 #include "util/BlockPost.h"
 #include "util/CmdParser.h"
 #include "wpublish/ChunkGroupQservRequest.h"
-#include "wpublish/ReloadChunkListQservRequest.h"
+#include "wpublish/ChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -34,17 +34,90 @@ unsigned int chunk;
 std::vector<std::string> dbs;
 std::string value;
 std::string serviceProviderLocation;
+bool reload;
 bool force;
 bool printReport;
 
 
 int test () {
 
+    // Instantiate a request object
+
+    std::atomic<bool> finished(false);
+
+    XrdSsiRequest* request = nullptr;
+
+    if ("REBUILD_CHUNK_LIST" == operation) {
+        request = new wpublish::RebuildChunkListQservRequest (
+            reload,
+            [&finished] (wpublish::ChunkListQservRequest::Status status,
+                         std::string const& error,
+                         wpublish::ChunkListQservRequest::ChunkCollection const& added,
+                         wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
+
+                std::cout << "# chunks added:   " << added.size()   << std::endl;
+                std::cout << "# chuks  removed: " << removed.size() << std::endl;
+
+                finished = true;
+            });
+
+    } else if ("RELOAD_CHUNK_LIST" == operation) {
+        request = new wpublish::ReloadChunkListQservRequest (
+            [&finished] (wpublish::ChunkListQservRequest::Status status,
+                         std::string const& error,
+                         wpublish::ChunkListQservRequest::ChunkCollection const& added,
+                         wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
+
+                std::cout << "# chunks added:   " << added.size()   << std::endl;
+                std::cout << "# chuks  removed: " << removed.size() << std::endl;
+
+                finished = true;
+            });
+
+    } else if ("ADD_CHUNK_GROUP" == operation) {
+        request = new wpublish::AddChunkGroupQservRequest (
+            chunk,
+            dbs,
+            [&finished] (wpublish::ChunkGroupQservRequest::Status status,
+                         std::string const& error) {
+
+                finished = true;
+            });
+
+    } else if ("REMOVE_CHUNK_GROUP" == operation) {
+        request = new wpublish::RemoveChunkGroupQservRequest (
+            chunk,
+            dbs,
+            force,
+            [&finished] (wpublish::ChunkGroupQservRequest::Status status,
+                         std::string const& error) {
+
+                finished = true;
+            });
+
+    } else if ("TEST_ECHO" == operation) {
+        request = new wpublish::TestEchoQservRequest (
+            value,
+            [&finished] (wpublish::TestEchoQservRequest::Status status,
+                         std::string const& error,
+                         std::string const& sent,
+                         std::string const& received) {
+
+                std::cout << "value sent:     " << sent     << std::endl;
+                std::cout << "value received: " << received << std::endl;
+
+                finished = true;
+            });
+
+    } else {
+        return 1;
+    }
+
+    // Connect to a service provider
     XrdSsiErrInfo errInfo;
     auto serviceProvider =
         XrdSsiProviderClient->GetService(errInfo,
                                          serviceProviderLocation);
-
     if (!serviceProvider) {
         std::cerr
             << "failed to contact service provider at: " << serviceProviderLocation
@@ -53,59 +126,13 @@ int test () {
     }
     std::cout << "connected to service provider at: " << serviceProviderLocation << std::endl;
 
+    // Submit the request
     XrdSsiResource resource (global::ResourceUnit::makeWorkerPath(worker));
+    serviceProvider->ProcessRequest (*request, resource);
 
+    // Block while the request is in progress 
     util::BlockPost blockPost (1000, 2000);
-    while (true) {
-
-        XrdSsiRequest* request = nullptr;
-
-        if ("RELOAD_CHUNK_LIST" == operation) {
-            request = new wpublish::ReloadChunkListQservRequest (
-                [] (wpublish::ReloadChunkListQservRequest::Status status,
-                    std::string const& error,
-                    wpublish::ReloadChunkListQservRequest::ChunkCollection const& added,
-                    wpublish::ReloadChunkListQservRequest::ChunkCollection const& removed) {
-                    std::cout << "# chunks added:   " << added.size()   << std::endl;
-                    std::cout << "# chuks  removed: " << removed.size() << std::endl;
-                });
-
-        } else if ("ADD_CHUNK_GROUP" == operation) {
-            request = new wpublish::AddChunkGroupQservRequest (
-                chunk,
-                dbs,
-                [] (wpublish::ChunkGroupQservRequest::Status status,
-                    std::string const& error) {
-                });
-
-        } else if ("REMOVE_CHUNK_GROUP" == operation) {
-            request = new wpublish::RemoveChunkGroupQservRequest (
-                chunk,
-                dbs,
-                force,
-                [] (wpublish::ChunkGroupQservRequest::Status status,
-                    std::string const& error) {
-                });
-
-        } else if ("TEST_ECHO" == operation) {
-            request = new wpublish::TestEchoQservRequest (
-                value,
-                [] (wpublish::TestEchoQservRequest::Status status,
-                    std::string const& error,
-                    std::string const& sent,
-                    std::string const& received) {
-                    std::cout << "value sent:     " << sent     << std::endl;
-                    std::cout << "value received: " << received << std::endl;
-                });
-        }
-        if (not request) return 1;
-
-        serviceProvider->ProcessRequest(*request, resource);
-
-        blockPost.wait(1000);
-
-        break;
-    }
+    while (not finished) blockPost.wait(1000);
 
     return 0;
 }
@@ -127,10 +154,12 @@ int main (int argc, const char* const argv[]) {
             "Usage:\n"
             "  <operation> [<parameter> [<parameter> [...]]]\n"
             "              [--service=<provider>]\n"
+            "              [--reload]\n"
             "              [--force>]\n"
             "              [--print-report]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
+            "    REBUILD_CHUNK_LIST <worker>\n"
             "    RELOAD_CHUNK_LIST  <worker>\n"
             "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
             "    REMOVE_CHUNK_GROUP <worker> <chunk> <db> [<db> [<db> ... ]]\n"
@@ -138,6 +167,7 @@ int main (int argc, const char* const argv[]) {
             "\n"
             "Flags an options:\n"
             "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
+            "  --reload              - used with REBUILD_CHUNK_LIST to also reload the list into a worker\n"
             "  --force               - force operation in REMOVE_CHUNK_GROUP even for chunks in use\n"
             "  --print-report        - print \n"
             "\n"
@@ -148,6 +178,7 @@ int main (int argc, const char* const argv[]) {
             "  <value>  - arbitrary string\n");
 
         ::operation = parser.parameterRestrictedBy (1, {
+            "REBUILD_CHUNK_LIST",
             "RELOAD_CHUNK_LIST",
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP",
@@ -166,6 +197,7 @@ int main (int argc, const char* const argv[]) {
             ::value     = parser.parameter <std::string>(3);
         }
         ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
+        ::reload                  = parser.flag                ("reload");
         ::force                   = parser.flag                ("force");
         ::printReport             = parser.flag                ("print-report");
 

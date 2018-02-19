@@ -153,8 +153,9 @@ message WorkerCommandH {
         // Remove a group of collocated chunks
         REMOVE_CHUNK_GROUP = 3;
 
-        // Reload the list of available chunks
-        RELOAD_CHUNK_LIST = 4;
+        // Update (rebuild and/or reload) the list of available chunks
+        UPDATE_CHUNK_LIST = 4;
+
     }
     required Command command = 1;
 }
@@ -217,10 +218,22 @@ message WorkerCommandChunkGroupR {
     optional string error = 2 [default = ""];
 }
 
-// The message to be sent back in response to the 'RELOAD_CHUNK_LIST'
+// This message must be sent after the command header for the 'UPDATE_CHUNK_LIST'
 // command
 //
-message WorkerCommandReloadChunkListR {
+message WorkerCommandUpdateChunkListM {
+
+    // Rebuild the list from actual tables existing in the database
+    required bool rebuild = 1;
+
+    // Reload the new list into a worker
+    required bool reload = 2;
+}
+
+// The message to be sent back in response to the 'UPDATE_CHUNK_LIST'
+// command.
+//
+message WorkerCommandUpdateChunkListR {
 
     // Completion status of the operation
     enum Status {
