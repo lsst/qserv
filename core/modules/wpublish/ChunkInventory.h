@@ -70,6 +70,9 @@ public:
 
     void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
+    /// @return 'true' if rebuilding the Chunks table was succeful
+    bool rebuild(std::string const& name, mysql::MySqlConfig const& mysqlConfig, std::string& error);
+
     /// Add the chunk to the inventory if it's not registered yet
     void add(std::string const& db, int chunk);
 
@@ -94,6 +97,7 @@ public:
 
 private:
     void _init(sql::SqlConnection& sc);
+    bool _rebuild(sql::SqlConnection& sc, std::string& error);
 
     /// @return a copy of the map in a thread-safe way
     ExistMap existMap() const;

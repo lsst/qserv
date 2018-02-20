@@ -42,7 +42,7 @@
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "wpublish/AddChunkGroupCommand.h"
-#include "wpublish/ReloadChunkListCommand.h"
+#include "wpublish/ChunkListCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
 #include "wpublish/ResourceMonitor.h"
 #include "wpublish/TestEchoCommand.h"
@@ -229,7 +229,6 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                                     chunk,
                                     dbs,
                                     force);
-
                 break;
 
             }
@@ -238,13 +237,19 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandUpdateChunkListM");
                 proto::WorkerCommandUpdateChunkListM message;
                 view.parse(message);
-                if (message.reload()) {
-                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
+
+                if (message.rebuild())
+                    command = std::make_shared<wpublish::RebuildChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _mySqlConfig,
+                                    message.reload());
+                else
+                    command = std::make_shared<wpublish::ReloadChunkListCommand> (
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig);
-                    break;
-                }
+                break;
             }
             default:
                 reportError("Unsupported command " +
