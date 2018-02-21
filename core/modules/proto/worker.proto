@@ -156,6 +156,8 @@ message WorkerCommandH {
         // Update (rebuild and/or reload) the list of available chunks
         UPDATE_CHUNK_LIST = 4;
 
+        // Return a list of chunks known to a worker
+        GET_CHUNK_LIST = 5;
     }
     required Command command = 1;
 }
@@ -246,10 +248,34 @@ message WorkerCommandUpdateChunkListR {
     optional string error = 2 [default = ""];
 
     message Chunk {
-        required string db = 1;
+        required string db    = 1;
         required uint32 chunk = 2;
     }
     repeated Chunk added   = 3;   // chunks which have been added
     repeated Chunk removed = 4;   // chunks which have been removed
+
+}
+
+// The message to be sent back in response to the 'GET_CHUNK_LIST'
+// command.
+//
+message WorkerCommandGetChunkListR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        ERROR   = 2;    // an error occured during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depenidng on the status)
+    optional string error = 2 [default = ""];
+
+    message Chunk {
+        required string db        = 1;
+        required uint32 chunk     = 2;
+        required uint32 use_count = 3;
+    }
+    repeated Chunk chunks = 3;
 
 }

@@ -1,5 +1,6 @@
 // System header
 #include <iostream>
+#include <iomanip>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -15,6 +16,7 @@
 #include "util/CmdParser.h"
 #include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ChunkListQservRequest.h"
+#include "wpublish/GetChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -34,6 +36,7 @@ unsigned int chunk;
 std::vector<std::string> dbs;
 std::string value;
 std::string serviceProviderLocation;
+bool inUseOnly;
 bool reload;
 bool force;
 bool printReport;
@@ -47,7 +50,34 @@ int test () {
 
     XrdSsiRequest* request = nullptr;
 
-    if ("REBUILD_CHUNK_LIST" == operation) {
+    if ("GET_CHUNK_LIST" == operation) {
+        request = new wpublish::GetChunkListQservRequest (
+            inUseOnly,
+            [&finished] (wpublish::GetChunkListQservRequest::Status status,
+                         std::string const& error,
+                         wpublish::GetChunkListQservRequest::ChunkCollection const& chunks) {
+
+                if (status != wpublish::GetChunkListQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::GetChunkListQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                } else {
+                    std::cout << "# total chunks: " << chunks.size() << "\n"
+                              << std::endl;
+                    if (chunks.size()) {
+                        std::cout << "      chunk |                         database | in use \n"
+                                  << "------------+----------------------------------+--------\n";
+                        for (auto const& entry: chunks) {
+                            std::cout << " " << std::setw(10) << entry.chunk << " |"
+                                      << " " << std::setw(32) << entry.database << " |"
+                                      << " " << std::setw (6) << entry.use_count << " \n";
+                        }
+                        std::cout << std::endl;
+                    }
+                }
+                finished = true;
+            });
+
+    } else if ("REBUILD_CHUNK_LIST" == operation) {
         request = new wpublish::RebuildChunkListQservRequest (
             reload,
             [&finished] (wpublish::ChunkListQservRequest::Status status,
@@ -55,9 +85,13 @@ int test () {
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
                          wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
 
-                std::cout << "# chunks added:   " << added.size()   << std::endl;
-                std::cout << "# chuks  removed: " << removed.size() << std::endl;
-
+                if (status != wpublish::ChunkListQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::ChunkListQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                } else {
+                    std::cout << "# chunks added:   " << added.size()   << "\n"
+                              << "# chuks  removed: " << removed.size() << std::endl;
+                }
                 finished = true;
             });
 
@@ -68,9 +102,13 @@ int test () {
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
                          wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
 
-                std::cout << "# chunks added:   " << added.size()   << std::endl;
-                std::cout << "# chuks  removed: " << removed.size() << std::endl;
-
+                if (status != wpublish::ChunkListQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::ChunkListQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                } else {
+                    std::cout << "# chunks added:   " << added.size()   << "\n"
+                              << "# chuks  removed: " << removed.size() << std::endl;
+                }
                 finished = true;
             });
 
@@ -81,6 +119,10 @@ int test () {
             [&finished] (wpublish::ChunkGroupQservRequest::Status status,
                          std::string const& error) {
 
+                if (status != wpublish::ChunkGroupQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::ChunkGroupQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                }
                 finished = true;
             });
 
@@ -92,6 +134,10 @@ int test () {
             [&finished] (wpublish::ChunkGroupQservRequest::Status status,
                          std::string const& error) {
 
+                if (status != wpublish::ChunkGroupQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::ChunkGroupQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                }
                 finished = true;
             });
 
@@ -103,9 +149,13 @@ int test () {
                          std::string const& sent,
                          std::string const& received) {
 
-                std::cout << "value sent:     " << sent     << std::endl;
-                std::cout << "value received: " << received << std::endl;
-
+                if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
+                    std::cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
+                              << "error:  " << error << std::endl;
+                } else {
+                    std::cout << "value sent:     " << sent     << "\n"
+                              << "value received: " << received << std::endl;
+                }
                 finished = true;
             });
 
@@ -132,7 +182,7 @@ int test () {
 
     // Block while the request is in progress 
     util::BlockPost blockPost (1000, 2000);
-    while (not finished) blockPost.wait(1000);
+    while (not finished) blockPost.wait(200);
 
     return 0;
 }
@@ -154,11 +204,13 @@ int main (int argc, const char* const argv[]) {
             "Usage:\n"
             "  <operation> [<parameter> [<parameter> [...]]]\n"
             "              [--service=<provider>]\n"
+            "              [--in-use-only]\n"
             "              [--reload]\n"
             "              [--force>]\n"
             "              [--print-report]\n"
             "\n"
             "Supported operations and mandatory parameters:\n"
+            "    GET_CHUNK_LIST     <worker>\n"
             "    REBUILD_CHUNK_LIST <worker>\n"
             "    RELOAD_CHUNK_LIST  <worker>\n"
             "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
@@ -167,6 +219,8 @@ int main (int argc, const char* const argv[]) {
             "\n"
             "Flags an options:\n"
             "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
+            "  --in-use-only         - used with GET_CHUNK_LIST to only report chunks which are in use.\n"
+            "                          Otherwise all chunks will be reported\n"
             "  --reload              - used with REBUILD_CHUNK_LIST to also reload the list into a worker\n"
             "  --force               - force operation in REMOVE_CHUNK_GROUP even for chunks in use\n"
             "  --print-report        - print \n"
@@ -178,6 +232,7 @@ int main (int argc, const char* const argv[]) {
             "  <value>  - arbitrary string\n");
 
         ::operation = parser.parameterRestrictedBy (1, {
+            "GET_CHUNK_LIST",
             "REBUILD_CHUNK_LIST",
             "RELOAD_CHUNK_LIST",
             "ADD_CHUNK_GROUP",
@@ -197,6 +252,7 @@ int main (int argc, const char* const argv[]) {
             ::value     = parser.parameter <std::string>(3);
         }
         ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
+        ::inUseOnly               = parser.flag                ("in-use-only");
         ::reload                  = parser.flag                ("reload");
         ::force                   = parser.flag                ("force");
         ::printReport             = parser.flag                ("print-report");

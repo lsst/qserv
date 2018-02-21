@@ -91,18 +91,20 @@ public:
     /// Construct a ResourceUnit::Checker backed by this instance
     std::shared_ptr<ResourceUnit::Checker> newValidator();
 
+    /// @return a copy of the map in a thread-safe way
+    ExistMap existMap() const;
+
     void dbgPrint(std::ostream& os) const;
 
     friend ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs);
 
 private:
+
     void _init(sql::SqlConnection& sc);
     bool _rebuild(sql::SqlConnection& sc, std::string& error);
 
-    /// @return a copy of the map in a thread-safe way
-    ExistMap existMap() const;
-
 private:
+
     ExistMap _existMap;
     std::string _name;
 

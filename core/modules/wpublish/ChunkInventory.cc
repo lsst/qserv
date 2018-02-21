@@ -278,43 +278,24 @@ bool ChunkInventory::_rebuild(SqlConnection& sc,
 
     LOCK_GUARD;
 
-    // Using the same algorithm which is used ast the database schema initialization
-    // TODO: consider a possibility of loding this script from a file.
-    std::string const query =
-        "USE qservw_" + _name + ";\n"
-        "DELIMITER $$\n"
-        "CREATE PROCEDURE PopulateChunks()\n"
-        "BEGIN\n"
-        "  DECLARE dbDone INT          DEFAULT 0;\n"
-        "  DECLARE db     CHAR(200)    DEFAULT "";\n"
-        "  DECLARE chunk  INT UNSIGNED DEFAULT 1;\n"
-        "  DECLARE curs CURSOR      FOR SELECT * FROM Dbs;\n"
-        "  DECLARE CONTINUE HANDLER FOR NOT FOUND SET dbDone = 1;\n"
-        "  OPEN curs;\n"
-        "  DELETE FROM Chunks;\n"
-        "  a: LOOP\n"
-        "    FETCH curs INTO db;\n"
-        "    IF dbDone = 1 THEN\n"
-        "      LEAVE a;\n"
-        "    END IF;\n"
-        "    INSERT INTO Chunks\n"
-        "      SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)\n"
-        "        FROM information_schema.tables\n"
-        "        WHERE TABLE_SCHEMA=db AND TABLE_NAME REGEXP '_[0-9]*$';\n"
-        "  END LOOP a;\n"
-        "  CLOSE curs;\n"
-        "END$$\n"
-        "DELIMITER;\n"
-        "CALL PopulateChunks();\n"
-        "DROP PROCEDURE PopulateChunks;";
-
-    LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
-
-    SqlErrorObject seo;
-    if (not sc.runQuery(query, seo)) {
-        error = "ChunkInventory failed to rebuild a list of published chunks, error: " + seo.printErrMsg();
-        LOGS(_log, LOG_LVL_ERROR, error);
-        return false;
+    std::vector<std::string> const queries = {
+        "DELETE FROM qservw_" + _name + ".Chunks",
+        "INSERT INTO qservw_" + _name + ".Chunks"
+        "  SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)"
+        "    FROM information_schema.tables"
+        "    WHERE TABLE_SCHEMA IN (SELECT db FROM qservw_" + _name + ".Dbs)"
+        "          AND TABLE_NAME REGEXP '_[0-9]*$'"
+    };
+    
+    for (auto const& query: queries) {
+        LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
+    
+        SqlErrorObject seo;
+        if (not sc.runQuery(query, seo)) {
+            error = "ChunkInventory failed to rebuild a list of published chunks, error: " + seo.printErrMsg();
+            LOGS(_log, LOG_LVL_ERROR, error);
+            return false;
+        }
     }
     return true;
 }

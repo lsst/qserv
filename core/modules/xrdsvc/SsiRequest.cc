@@ -43,6 +43,7 @@
 #include "wbase/SendChannel.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
+#include "wpublish/GetChunkListCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
 #include "wpublish/ResourceMonitor.h"
 #include "wpublish/TestEchoCommand.h"
@@ -249,6 +250,14 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig);
+                break;
+            }
+            case proto::WorkerCommandH::GET_CHUNK_LIST: {
+
+                command = std::make_shared<wpublish::GetChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _resourceMonitor);
                 break;
             }
             default:

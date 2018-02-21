@@ -190,9 +190,7 @@ def registerDb():
     xrootdRestart = _getArgFlag(request.form, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    # apparently for now we need to use privileged account
-    # as our regular account can only read from qservw_worker
-    dbConn = Config.instance().privDbEngine()
+    dbConn = Config.instance().dbEngine()
 
     # table is not indexed, to avoid multiple entries check that it's not defined yet
     try:
@@ -241,9 +239,7 @@ def unregisterDb(dbName):
     xrootdRestart = _getArgFlag(request.args, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    # apparently for now we need to use privileged account
-    # as our regular account can only read from qservw_worker
-    dbConn = Config.instance().privDbEngine().connect()
+    dbConn = Config.instance().dbEngine().connect()
 
     try:
         query = "DELETE FROM qservw_worker.Dbs WHERE db=%s;"

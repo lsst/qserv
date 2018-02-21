@@ -53,6 +53,11 @@ public:
     ChunkListCommand& operator= (ChunkListCommand const&) = delete;
     ChunkListCommand (ChunkListCommand const&) = delete;
 
+    /// The destructor
+    ~ChunkListCommand () override;
+
+protected:
+
     /**
      * The normal constructor of the class
      *
@@ -67,9 +72,6 @@ public:
                       mysql::MySqlConfig                  const& mySqlConfig,
                       bool rebuild,
                       bool reload);
-
-    /// The destructor
-    ~ChunkListCommand () override;
 
     /**
      * Implement the corresponding method of the base class
