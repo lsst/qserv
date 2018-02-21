@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/WorkerCommand.h"
 
@@ -65,13 +66,15 @@ public:
      *
      * @param sendChannel    - communication channel for reporting results
      * @param chunkInventory - chunks known to the application
+     * @param mySqlConfig    - database connection parameters
      * @param chunk          - chunk number
      * @param dbs            - names of databases in the group
      */
-    explicit AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                  std::shared_ptr<ChunkInventory> const& chunkInventory,
-                                  int chunk,
-                                  std::vector<std::string> const& dbs);
+    AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                         std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                         mysql::MySqlConfig                  const& mySqlConfig,
+                         int chunk,
+                         std::vector<std::string> const& dbs);
 
     /// The destructor
     virtual ~AddChunkGroupCommand();
@@ -98,6 +101,7 @@ private:
 private:
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
+    mysql::MySqlConfig _mySqlConfig;
     int _chunk;
     std::vector<std::string> _dbs;
 };

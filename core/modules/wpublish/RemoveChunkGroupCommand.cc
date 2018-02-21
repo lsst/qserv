@@ -57,8 +57,9 @@ namespace qserv {
 namespace wpublish {
 
 RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 std::shared_ptr<ChunkInventory> const& chunkInventory,
-                                                 std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                                 std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                                                 std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
+                                                 mysql::MySqlConfig                  const& mySqlConfig,
                                                  int chunk,
                                                  std::vector<std::string> const& dbs,
                                                  bool force)
@@ -66,6 +67,7 @@ RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChan
 
         _chunkInventory  (chunkInventory),
         _resourceMonitor (resourceMonitor),
+        _mySqlConfig     (mySqlConfig),
         _chunk (chunk),
         _dbs   (dbs),
         _force (force) {
@@ -120,11 +122,20 @@ RemoveChunkGroupCommand::run() {
 
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing resource: " << resource);
+        LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing the chunk resource: "
+             << resource);
 
         try {
-            clusterManager->Removed(resource.c_str());    // Notify XRootD/cmsd
-            _chunkInventory->remove(db, _chunk);          // Notify QServ
+            // Notify XRootD/cmsd
+            clusterManager->Removed(resource.c_str());
+
+            // Notify QServ and update the database
+            std::string error;
+            if (not _chunkInventory->remove(db, _chunk, _mySqlConfig, error)) {
+                reportError(proto::WorkerCommandChunkGroupR::ERROR,
+                            "failed to remove the chunk: " + error);
+                return;
+            }
         } catch (std::exception const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::ERROR,
                         "failed to remove the chunk: " + std::string(ex.what()));

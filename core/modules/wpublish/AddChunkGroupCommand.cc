@@ -56,12 +56,14 @@ namespace qserv {
 namespace wpublish {
 
 AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                           std::shared_ptr<ChunkInventory> const& chunkInventory,
+                                           std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                                           mysql::MySqlConfig                  const& mySqlConfig,
                                            int chunk,
                                            std::vector<std::string> const& dbs)
     :   wbase::WorkerCommand(sendChannel),
 
         _chunkInventory(chunkInventory),
+        _mySqlConfig   (mySqlConfig),
         _chunk(chunk),
         _dbs(dbs) {
 }
@@ -105,11 +107,20 @@ AddChunkGroupCommand::run() {
 
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding resource: " << resource);
+        LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding the chunk resource: "
+             << resource);
 
         try {
-            clusterManager->Added(resource.c_str());    // Notify XRootD/cmsd
-            _chunkInventory->add(db, _chunk);           // Notify QServ
+            // Notify XRootD/cmsd
+            clusterManager->Added(resource.c_str());
+
+            // Notify QServ and update the database
+            std::string error;
+            if (not _chunkInventory->add(db, _chunk, _mySqlConfig, error)) {
+                reportError(proto::WorkerCommandChunkGroupR::ERROR,
+                            "failed to add the chunk: " + error);
+                return;
+            }
         } catch (std::exception const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::ERROR,
                         "failed to add the chunk: " + std::string(ex.what()));

@@ -74,10 +74,10 @@ public:
     bool rebuild(std::string const& name, mysql::MySqlConfig const& mysqlConfig, std::string& error);
 
     /// Add the chunk to the inventory if it's not registered yet
-    void add(std::string const& db, int chunk);
+    bool add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error);
 
     /// Remove chunk from the inventory if it's still registered
-    void remove(std::string const& db, int chunk);
+    bool remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error);
 
     /// @return true if the specified db and chunk are in the inventory
     bool has(std::string const& db, int chunk) const;

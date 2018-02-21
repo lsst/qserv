@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/WorkerCommand.h"
 
@@ -58,9 +59,9 @@ class RemoveChunkGroupCommand
 public:
 
     // The default construction and copy semantics are prohibited
+    RemoveChunkGroupCommand() = delete;
     RemoveChunkGroupCommand& operator=(const RemoveChunkGroupCommand&) = delete;
     RemoveChunkGroupCommand(const RemoveChunkGroupCommand&) = delete;
-    RemoveChunkGroupCommand() = delete;
 
     /**
      * The normal constructor of the class
@@ -68,16 +69,18 @@ public:
      * @param sendChannel     - communication channel for reporting results
      * @param chunkInventory  - chunks known to the application
      * @param resourceMonitor - counters of resources which are being used
+     * @param mySqlConfig    - database connection parameters
      * @param chunk           - chunk number
      * @param dbs             - names of databases in the group
      * @param force           - force chunk removal even if this chunk is in use
      */
-    explicit RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                     std::shared_ptr<ChunkInventory> const& chunkInventory,
-                                     std::shared_ptr<ResourceMonitor> const& resourceMonitor,
-                                     int chunk,
-                                     std::vector<std::string> const& dbs,
-                                     bool force);
+    RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                            std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
+                            mysql::MySqlConfig                  const& mySqlConfig,
+                            int chunk,
+                            std::vector<std::string> const& dbs,
+                            bool force);
 
     /// The destructor
     virtual ~RemoveChunkGroupCommand();
@@ -105,6 +108,7 @@ private:
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
+    mysql::MySqlConfig _mySqlConfig;
     int _chunk;
     std::vector<std::string> _dbs;
     bool _force;
