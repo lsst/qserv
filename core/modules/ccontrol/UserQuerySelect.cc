@@ -315,6 +315,7 @@ void UserQuerySelect::submit() {
     // Writing query for each chunk, stop if query is cancelled.
     auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
 
+#if 0
     /// &&& attempt to change priority, requires root
     sched_param sch;
     int policy;
@@ -368,7 +369,7 @@ void UserQuerySelect::submit() {
         };
 
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        _executive->queueJobStart(cmd);
+        _executive->queueJobStart(cmd, _qSession->getScanInteractive());
         ++sequence;
     }
 
@@ -383,8 +384,8 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "&&& thread end set priority policy=" << policy << " sch=" << sch.sched_priority);
     /// &&& end priority
 
-
-    /* &&& didn't work
+#else
+    // &&& Crashed the czar when _executive->queueJobStart(cmd); put commands on high priority.
     // Make ChunkSpecVectors of up to 20,000 items from _qSession->cQueryBegin()
     struct ChunkSpecPtrId {
         ChunkSpecPtrId(qproc::ChunkSpec *chunkSpec_, int seq) : chunkSpec(chunkSpec_), sequence(seq) {}
@@ -399,10 +400,12 @@ void UserQuerySelect::submit() {
             &chunks, &chunksMtx, &ttn,
             &taskMsgFactory, &addTimeSum](std::shared_ptr<ChunkSpecPtrIdVect> chunkPtrIdVect){
       for (auto const& chunkPtrId : *chunkPtrIdVect) {
+          util::InstanceCount("&&&funcOuterLoop");
           if (_executive->getCancelled()) return;
 
           qproc::ChunkSpec &chunkSpec = *(chunkPtrId.chunkSpec);
           int sequence = chunkPtrId.sequence;
+
 
           // Function for the command
           std::function<void(util::CmdData*)> funcBuildJob =
@@ -410,7 +413,7 @@ void UserQuerySelect::submit() {
                   &chunkSpec, &queryTemplates,
                   &chunks, &chunksMtx, &ttn,
                   &taskMsgFactory, &addTimeSum](util::CmdData*) {
-
+              util::InstanceCount("&&&funbuildJob");
               auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
               qproc::ChunkQuerySpec::Ptr cs;
               {
@@ -440,7 +443,7 @@ void UserQuerySelect::submit() {
           };
 
           auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-          _executive->queueJobStart(cmd);
+          _executive->queueJobStart(cmd, _qSession->getScanInteractive());
       }
     };
 
@@ -448,11 +451,14 @@ void UserQuerySelect::submit() {
     // Create threads to loop through subsets of the chunks for the query.
     std::vector<std::thread> loopThreads;
     auto chunkVectP = std::make_shared<ChunkSpecPtrIdVect>();
+    _executive->setJobCount(_qSession->getChunksSize());
+    LOGS(_log, LOG_LVL_DEBUG, "&&& priQ jobCount=" << _qSession->getChunksSize());
 
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e; ++i) {
         chunkVectP->emplace_back(&(*i), sequence++);
 
-        if (chunkVectP->size() >= 30000) {
+        if (chunkVectP->size() >= 10000) {
+            LOGS(_log, LOG_LVL_DEBUG, "&&& priQ creating loop sz=" << chunkVectP->size());
             // Start a new thread with this chunkVector
             std::thread threadOuterLoop(funcOuterLoop, chunkVectP);
             loopThreads.push_back(std::move(threadOuterLoop));
@@ -467,10 +473,15 @@ void UserQuerySelect::submit() {
     }
     chunkVectP.reset();
 
+    LOGS(_log, LOG_LVL_DEBUG, "&&& priQJoin a");
+
     for (std::thread &t : loopThreads) {
         t.join();
     }
-    */
+
+    LOGS(_log, LOG_LVL_DEBUG, "&&& priQJoin b");
+
+#endif
 
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
     _largeResultMgr->incrOutGoingQueries();

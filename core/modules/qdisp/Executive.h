@@ -88,7 +88,7 @@ public:
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
 
-    void queueJobStart(PriorityCommand::Ptr const& cmd);
+    void queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive);
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
     void waitForAllJobsToStart();
@@ -134,6 +134,11 @@ public:
     int trackQSEASum{0}; // TEMPORARY-timing
     int endQSEASum{0}; // TEMPORARY-timing
 
+    void setJobCount(int count) {
+        std::lock_guard<std::mutex> lock(_jobStartMtx);
+        _jobCount = count;
+    }
+
 private:
     Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<LargeResultMgr> const& largeResultMgr);
@@ -161,7 +166,11 @@ private:
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
     std::shared_ptr<LargeResultMgr> _largeResultMgr;
     ResponsePool::Ptr _commonThreadPool;
+
     std::deque<PriorityCommand::Ptr> _jobStartCmdList;
+    int _jobCount{0};
+    std::mutex _jobStartMtx; ///< protects _jobStartCmdList, _jobCount.
+    std::condition_variable _jobStartCv;
 
     /** Execution errors */
     util::MultiError _multiError;

@@ -309,7 +309,6 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
          << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
-        util::InstanceCount ic("&&&qr::_transmit send");
         //bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last); &&&
         // StreamBuffer::create invalidates resultString
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::create(resultString));
@@ -319,7 +318,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
         }
         // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
         auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        if (_largeResult || totalBytes > 10000000000) {
+        if (_largeResult || totalBytes > 10000000000) {  // &&& replace with configurable value.
             LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
                                       << " totalBytes=" << totalBytes);
             util::Timer t;

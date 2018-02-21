@@ -193,18 +193,38 @@ void Executive::_queueJobStart(JobQuery::Ptr const& job) {
 }
 */
 
-void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
-
+void Executive::queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive) {
     LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& queueJobStart");
-    _jobStartCmdList.push_back(cmd);
-    _commonThreadPool->queCmdHigh(cmd);
+    {
+        std::lock_guard<std::mutex> lock(_jobStartMtx);
+        _jobStartCmdList.push_back(cmd);
+        --_jobCount;
+        LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& priQ queueJobStart jobCount=" << _jobCount);
+    }
+    if (scanInteractive) {
+        _commonThreadPool->queCmdVeryHigh(cmd);
+    } else {
+        _commonThreadPool->queCmdHigh(cmd);
+    }
+    _jobStartCv.notify_one();
 }
 
 
 void Executive::waitForAllJobsToStart() {
+    {
+        // Wait for all jobs to be created.
+        std::unique_lock<std::mutex> uLock(_jobStartMtx);
+        _jobStartCv.wait(uLock, [this](){ return _jobCount == 0; });
+        LOGS(_log, LOG_LVL_DEBUG, "&&&&&&&&&&&&&&&&&&&&&&&&&&& priQ waitForAllJobsToStart jobCount=" << _jobCount);
+    }
     // Wait for each command to start.
-
-    while (!_jobStartCmdList.empty()) {
+    while (true) {
+        bool empty;
+        {
+            std::lock_guard<std::mutex> lock(_jobStartMtx);
+            empty = _jobStartCmdList.empty();
+        }
+        if (empty) break;
         auto cmd = std::move(_jobStartCmdList.front());
         _jobStartCmdList.pop_front();
         cmd->waitComplete();

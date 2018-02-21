@@ -117,22 +117,28 @@ public:
     typedef std::shared_ptr<ResponsePool> Ptr;
 
     ResponsePool() {
-        _prQueue->addPriQueue(0,1); // Highest priority queue
-        _prQueue->addPriQueue(1,3); // Normal priority queue
-        _prQueue->addPriQueue(2,3); // Low priority queue
+        _prQueue->addPriQueue(0,1);  // Highest priority queue
+        _prQueue->addPriQueue(1,1);  // High priority queue
+        _prQueue->addPriQueue(2,9); // Normal priority queue
+        _prQueue->addPriQueue(3,3);  // Low priority queue
         // default priority is the lowest priority.
     }
 
+
+    void queCmdVeryHigh(PriorityCommand::Ptr const& cmd) {
+            _prQueue->queCmd(cmd, 0);
+        }
+
     void queCmdHigh(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 0);
+        _prQueue->queCmd(cmd, 1);
     }
 
     void queCmdLow(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 2);
+        _prQueue->queCmd(cmd, 3);
     }
 
     void queCmdNorm(PriorityCommand::Ptr const& cmd) {
-        _prQueue->queCmd(cmd, 1);
+        _prQueue->queCmd(cmd, 2);
     }
 
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
@@ -147,7 +153,7 @@ public:
 
 private:
     /// The default priority queue is meant for pool control commands.
-    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100,0); // default (lowest) priority.
+    PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100,1); // default (lowest) priority.
     util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(30, _prQueue)};
 };
 

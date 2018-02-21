@@ -64,7 +64,7 @@ public:
         : _qRequest(qr), _jQuery(jq), _idStr(jq->getIdStr()) {}
 
     void action(util::CmdData *data) override {
-        util::InstanceCount ic1("&&&AskForResponseDataCmd:action 1");
+        //util::InstanceCount ic1("&&&AskForResponseDataCmd:action 1");
 
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         {
@@ -162,7 +162,7 @@ private:
 
     int _blen{-1};
     bool _last{true};
-    util::InstanceCount _ic{"&&&AskForResponseDataCmd"};
+    //util::InstanceCount _ic{"&&&AskForResponseDataCmd"};
 };
 
 
@@ -276,29 +276,20 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
     _queueAskForResponse(_askForResponseDataCmd, jq);
-    /*  &&&&
-    if (_largeResult) {  // &&& Note: _largeResult always false. Consider having largeResut in Executive
-        // &&& and use that value here, or always use high priority.
-        _responsePool->queCmdLow(_askForResponseDataCmd);
-    } else {
-        if (jq->getDescription()->getScanInteractive()) {
-            _responsePool->queCmdHigh(_askForResponseDataCmd);
-        } else {
-            _responsePool->queCmdNorm(_askForResponseDataCmd);
-        }
-    }
-    */
     return true;
 }
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
     if (_largeResult) {
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority low");
         _responsePool->queCmdLow(_askForResponseDataCmd);
     } else {
         if (jq->getDescription()->getScanInteractive()) {
-            _responsePool->queCmdHigh(_askForResponseDataCmd);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority vhigh");
+            _responsePool->queCmdVeryHigh(_askForResponseDataCmd);
         } else {
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority norm");
             _responsePool->queCmdNorm(_askForResponseDataCmd);
         }
     }
@@ -333,9 +324,9 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
                                                          char *buff, int blen, bool last) { // Step 7
     // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
-    util::InstanceCount instC("QueryRequest::ProcessResponseData");
+    // util::InstanceCount instC("&&& QueryRequest::ProcessResponseData");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
-                              << " " << (last ? "(last)" : "(more)") << " instC=" << instC.getCount());
+                              << " " << (last ? "(last)" : "(more)"));
     if (_askForResponseDataCmd == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr <<
              " ProcessResponseData called with invalid _askForResponseDataCmd!!!");
@@ -413,13 +404,6 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
             LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "queuing askForResponseDataCmd");
             _queueAskForResponse(_askForResponseDataCmd, jq);
-            /* &&&
-            if (_largeResult) {
-                _responsePool->queCmdLow(_askForResponseDataCmd);
-            } else {
-                _responsePool->queCmdNorm(_askForResponseDataCmd);
-            }
-            */
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");

@@ -36,8 +36,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.ResponsePool");
 }
 
 
-
-
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -64,7 +62,7 @@ bool PriorityQueue::addPriQueue(int priority, int minRunning) {
     std::pair<int, PriQ::Ptr> item(priority, q);
     auto ret = _queues.insert(item);
     if (!ret.second) {
-        ; /// &&& add log message
+        ; /// &&& add log error message
     }
     return ret.second;
 }
@@ -131,18 +129,17 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
             }
         }
 
-        LOGS (_log, LOG_LVL_DEBUG, "&&&get");
         // Since all the minimums are met, just run the first command found.
         iter = _queues.begin();
         for (;iter != end; ++iter) {
             PriQ::Ptr const& que = iter->second;
+            // &&& add check for max running.
             ptr = que->getCmd(false); // no wait
             if (ptr != nullptr) {
                 return ptr;
             }
         }
 
-        LOGS (_log, LOG_LVL_DEBUG, "&&&get");
         // If nothing was found, wait or return nullptr.
         if (wait) {
             LOGS (_log, LOG_LVL_DEBUG, "&&&get wait " << *this);
@@ -150,7 +147,6 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         } else {
             return ptr;
         }
-        LOGS (_log, LOG_LVL_DEBUG, "&&&get wait_end " << *this);
     }
 }
 
