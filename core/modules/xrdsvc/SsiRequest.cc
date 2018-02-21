@@ -220,6 +220,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                     command = std::make_shared<wpublish::AddChunkGroupCommand>(
                                     sendChannel,
                                     _chunkInventory,
+                                    _mySqlConfig,
                                     chunk,
                                     dbs);
                 else
@@ -227,6 +228,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor,
+                                    _mySqlConfig,
                                     chunk,
                                     dbs,
                                     force);

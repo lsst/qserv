@@ -110,11 +110,7 @@ ChunkListCommand::run() {
         ChunkInventory newChunkInventory;
         try {
             xrdsvc::XrdName x;
-            std::string error;
-            if (not newChunkInventory.rebuild(x.getName(), _mySqlConfig, error)) {
-                reportError("database operation failed: " + error);
-                return;
-            }
+            newChunkInventory.rebuild(x.getName(), _mySqlConfig);
         } catch (std::exception const& ex) {
             reportError("database operation failed: " + std::string(ex.what()));
             return;
@@ -157,8 +153,12 @@ ChunkListCommand::run() {
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource);
     
                     try {
-                        clusterManager->Removed(resource.c_str());  // Notify XRootD/cmsd
-                        _chunkInventory->remove(db, chunk);         // Notify QServ
+                        // Notify XRootD/cmsd
+                        clusterManager->Removed(resource.c_str());
+
+                        // Notify QServ
+                        _chunkInventory->remove(db, chunk);
+
                     } catch (std::exception const& ex) {
                         reportError("failed to remove the chunk: " + std::string(ex.what()));
                         return;
@@ -182,8 +182,12 @@ ChunkListCommand::run() {
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource);
     
                     try {
-                        clusterManager->Added(resource.c_str());    // Notify XRootD/cmsd
-                        _chunkInventory->add(db, chunk);            // Notify QServ
+                        // Notify XRootD/cmsd
+                        clusterManager->Added(resource.c_str());
+
+                        // Notify QServ
+                        _chunkInventory->add(db, chunk);
+
                     } catch (std::exception const& ex) {
                         reportError("failed to add the chunk: " + std::string(ex.what()));
                         return;

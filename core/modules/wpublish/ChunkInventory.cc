@@ -26,6 +26,7 @@
 #include "wpublish/ChunkInventory.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
 #include <deque>
 #include <iostream>
@@ -170,47 +171,84 @@ void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& myS
     _init(sc);
 }
 
-bool ChunkInventory::rebuild(std::string const& name, mysql::MySqlConfig const& mySqlConfig, std::string& error) {
+void ChunkInventory::rebuild(std::string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
     SqlConnection sc(mySqlConfig, true);
-    if (not _rebuild(sc, error)) return false;
+    _rebuild(sc);
     _init(sc);
-    return true;
 }
 
-bool ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error) {
+void ChunkInventory::add(std::string const& db, int chunk) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
-    std::vector<std::string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + std::to_string(chunk),
-        "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "',"+ std::to_string(chunk)
-    };
+    // Adding unconditionally. if the database key doesn't exist then it will
+    // be automatically added by this operation.
+    _existMap[db].insert(chunk);
+
+}
+
+void ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
+
+    LOCK_GUARD;
+
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
     SqlConnection sc(mySqlConfig, true);
 
+    // Validate parameters of the request
+
+    std::deque<std::string> dbs;
+    ::fetchDbs(_name, sc, dbs);
+
+    if (std::find(dbs.begin(), dbs.end(), db) == dbs.end()) {
+        std::string const error = "ChunkInventory::add()  invalid database: " + db;
+        LOGS(_log, LOG_LVL_ERROR, error);
+        throw InvalidParamError(error);
+    }
+
+    std::vector<std::string> const queries = {
+        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + std::to_string(chunk),
+        "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + std::to_string(chunk) +")"
+    };
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
     
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
+            std::string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
-            return false;
+            throw QueryError(error);
         }
     }
 
     // Adding unconditionally. if the database key doesn't exist then it will
     // be automatically added by this operation.
     _existMap[db].insert(chunk);
-
-    return true;
-
 }
 
-bool ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error) {
+void ChunkInventory::remove(std::string const& db, int chunk) {
+
+    LOCK_GUARD;
+
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
+
+    // If no such database or a chunk exsist in the map then simply
+    // quite and make no fuss about it.
+
+    auto dbItr = _existMap.find(db);
+    if (dbItr == _existMap.end()) return;
+
+    auto chunks   = dbItr->second;
+    auto chunkItr = chunks.find(chunk);
+    if (chunkItr == chunks.end()) return;
+
+    _existMap[db].erase(chunk);
+}
+
+void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
 
     LOCK_GUARD;
 
@@ -227,9 +265,9 @@ bool ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
     
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
+            std::string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
-            return false;
+            throw QueryError(error);
         }
     }
     
@@ -237,15 +275,13 @@ bool ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
     // quite and make no fuss about it.
 
     auto dbItr = _existMap.find(db);
-    if (dbItr == _existMap.end()) return true;
+    if (dbItr == _existMap.end()) return;
 
     auto chunks   = dbItr->second;
     auto chunkItr = chunks.find(chunk);
-    if (chunkItr == chunks.end()) return true;
+    if (chunkItr == chunks.end()) return;
 
-    _existMap[db].erase(chunk);
-    
-    return true;
+    _existMap[db].erase(chunk);    
 }
 
 bool ChunkInventory::has(std::string const& db, int chunk) const {
@@ -313,8 +349,7 @@ void ChunkInventory::_init(SqlConnection& sc) {
     ::fetchId(_name, sc, _id);
 }
 
-bool ChunkInventory::_rebuild(SqlConnection& sc,
-                              std::string& error) {
+void ChunkInventory::_rebuild(SqlConnection& sc) {
 
     LOCK_GUARD;
 
@@ -332,12 +367,13 @@ bool ChunkInventory::_rebuild(SqlConnection& sc,
     
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            error = "ChunkInventory failed to rebuild a list of published chunks, error: " + seo.printErrMsg();
+            std::string const error =
+                "ChunkInventory failed to rebuild a list of published chunks, error: " +
+                seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
-            return false;
+            throw QueryError(error);
         }
     }
-    return true;
 }
 
 ChunkInventory::ExistMap ChunkInventory::existMap() const {

@@ -115,12 +115,14 @@ AddChunkGroupCommand::run() {
             clusterManager->Added(resource.c_str());
 
             // Notify QServ and update the database
-            std::string error;
-            if (not _chunkInventory->add(db, _chunk, _mySqlConfig, error)) {
-                reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                            "failed to add the chunk: " + error);
-                return;
-            }
+            _chunkInventory->add(db, _chunk, _mySqlConfig);
+
+        } catch (InvalidParamError const& ex) {
+            reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
+            return;
+        } catch (QueryError const& ex) {
+            reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
+            return;
         } catch (std::exception const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::ERROR,
                         "failed to add the chunk: " + std::string(ex.what()));

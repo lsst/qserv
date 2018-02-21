@@ -34,6 +34,7 @@
 #include <mutex>
 #include <ostream>
 #include <set>
+#include <stdexcept>
 #include <string>
 
 // Qserv headers
@@ -51,6 +52,21 @@ namespace sql {
 namespace lsst {
 namespace qserv {
 namespace wpublish {
+
+struct InvalidParamError
+    :   std::runtime_error {
+
+    InvalidParamError (std::string const& msg)
+        :   std::runtime_error(msg) {
+    }
+};
+struct QueryError
+    :   std::runtime_error {
+
+    QueryError (std::string const& msg)
+        :   std::runtime_error(msg) {
+    }
+};
 
 /// ChunkInventory contains a record of what chunks are available for execution
 /// on a worker node.
@@ -70,14 +86,22 @@ public:
 
     void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
-    /// @return 'true' if rebuilding the Chunks table was succeful
-    bool rebuild(std::string const& name, mysql::MySqlConfig const& mysqlConfig, std::string& error);
+    /// Rebuilding the Chunks table
+    void rebuild(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
     /// Add the chunk to the inventory if it's not registered yet
-    bool add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error);
+    void add(std::string const& db, int chunk);
+
+    /// Add the chunk to the inventory if it's not registered yet,
+    /// also add a new entry to the database table
+    void add(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig);
 
     /// Remove chunk from the inventory if it's still registered
-    bool remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig, std::string& error);
+    void remove(std::string const& db, int chunk);
+
+    /// Remove chunk from the inventory if it's still registered
+    /// also remove an entry from the database table
+    void remove(std::string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig);
 
     /// @return true if the specified db and chunk are in the inventory
     bool has(std::string const& db, int chunk) const;
@@ -101,7 +125,7 @@ public:
 private:
 
     void _init(sql::SqlConnection& sc);
-    bool _rebuild(sql::SqlConnection& sc, std::string& error);
+    void _rebuild(sql::SqlConnection& sc);
 
 private:
 
