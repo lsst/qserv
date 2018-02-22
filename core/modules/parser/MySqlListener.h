@@ -36,7 +36,7 @@ namespace query{
 }
 namespace parser {
 
-class Listener;
+class Adapter;
 
 class MySqlListener : public MySqlParserBaseListener {
 public:
@@ -64,20 +64,20 @@ protected:
 
 
 private:
-    // ListenContext is a base class for a stack of listener objects. Listeners implement appropriate API for
+    // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for
     // the kinds of children that may be assigned to them. The stack represents execution state of the call
     // to listen. The root object (separate from the stack) will end up owning the parsed query.
-    std::stack<std::shared_ptr<Listener>> _listenerStack;
-    std::shared_ptr<Listener> _rootListener;
+    std::stack<std::shared_ptr<Adapter>> _adapterStack;
+    std::shared_ptr<Adapter> _rootAdapter;
 
-    template<typename ParentListener, typename ChildListener>
-    std::shared_ptr<ChildListener> pushListenerStack();
+    template<typename ParentAdapter, typename ChildAdapter>
+    std::shared_ptr<ChildAdapter> pushAdapterStack();
 
-    template<typename ChildListener>
-    void popListenerStack();
+    template<typename ChildAdapter>
+    void popAdapterStack();
 
-    template<typename ChildListener>
-    std::shared_ptr<ChildListener> listenerStackTop() const;
+    template<typename ChildAdapter>
+    std::shared_ptr<ChildAdapter> adapterStackTop() const;
 };
 
 }}} // namespace lsst::qserv::parser
