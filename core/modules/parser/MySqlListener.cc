@@ -72,33 +72,14 @@ public:
 
 class Adapter {
 public:
-    Adapter(shared_ptr<Adapter> parent) : _parent(parent) {}
     virtual ~Adapter() {}
-
-    template <typename parent>
-    shared_ptr<parent> getParent() {
-        shared_ptr<Adapter> p = _parent.lock();
-        if (nullptr == p) {
-            return nullptr;
-        }
-        shared_ptr<parent> derivedP = dynamic_pointer_cast<parent>(p);
-        if (nullptr == derivedP) {
-            int status;
-            LOGS(_log, LOG_LVL_ERROR, "Parent of Adapter was not of expected type. " <<
-                    "Expected: " << abi::__cxa_demangle(typeid(p).name(),0,0,&status));
-        }
-        return derivedP;
-    }
-
-protected:
-    weak_ptr<Adapter> _parent;
 };
 
 namespace {
 
 class RootAdapter : public Adapter {
 public:
-    RootAdapter() : Adapter(nullptr) {}
+    RootAdapter() {}
     // todo add virtual dtors to all the Adapter subclasses.
     query::SelectStmt::Ptr selectStatement();
 private:
@@ -108,91 +89,111 @@ private:
 
 class DMLAdapter : public Adapter {
 public:
-    DMLAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    DMLAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class SelectAdapter : public Adapter {
 public:
-    SelectAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    SelectAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class SelectElementsAdapter : public Adapter {
 public:
-    SelectElementsAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    SelectElementsAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class FromClauseAdapter : public Adapter {
 public:
-    FromClauseAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    FromClauseAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
     virtual ~FromClauseAdapter() {}
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class TableSourcesAdapter : public Adapter {
 public:
-    TableSourcesAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    TableSourcesAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class TableSourceAdapter : public Adapter, public TableSourceItemCBH{
 public:
-    TableSourceAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    TableSourceAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
     virtual void handleTableSourceItem(const std::string& tableSourceItem) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableSourceItem <<
                 " todo this is where the table source would get added to the list of table sources in the qyery");
 
     }
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
 class TableSourceItemAdapter : public Adapter, public TableNameCBH {
 public:
-    TableSourceItemAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    TableSourceItemAdapter(shared_ptr<TableSourceItemCBH> parent) : _parent(parent) {}
     virtual void handleTableName(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        auto parent = getParent<TableSourceItemCBH>();
+        auto parent = _parent.lock();
         if (parent) {
             parent->handleTableSourceItem(string);
         }
     }
+private:
+    weak_ptr<TableSourceItemCBH> _parent;
 };
 
 
 class TableNameAdapter : public Adapter , public FullIdCBH {
 public:
-    TableNameAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    TableNameAdapter(shared_ptr<TableNameCBH> parent) : _parent(parent) {}
     virtual void handleFullIdString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        auto parent = getParent<TableNameCBH>();
+        auto parent = _parent.lock();
         if (parent) {
             parent->handleTableName(string);
         }
     }
+private:
+    weak_ptr<TableNameCBH> _parent;
 };
 
 
 class FullIdAdapter : public Adapter, public UidCBH {
 public:
-    FullIdAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    FullIdAdapter(shared_ptr<FullIdCBH> parent) : _parent(parent) {}
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        auto parent = getParent<FullIdCBH>();
+        auto parent = _parent.lock();
         if (parent) {
             parent->handleFullIdString(string);
         }
     }
+private:
+    weak_ptr<FullIdCBH> _parent;
 };
 
 
 class SelectColumnElementAdapter : public Adapter, public UidCBH {
 public:
-    SelectColumnElementAdapter(shared_ptr<Adapter> parent) : Adapter(parent) {}
+    SelectColumnElementAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
     }
+private:
+    weak_ptr<Adapter> _parent;
 };
 
 
