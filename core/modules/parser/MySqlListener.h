@@ -46,12 +46,15 @@ public:
 protected:
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(MySqlParser::RootContext * /*ctx*/) override;
+
     virtual void enterDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
     virtual void exitDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
 
-    // entering a SELECT statement
     virtual void enterSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
     virtual void exitSimpleSelect(MySqlParser::SimpleSelectContext * /*ctx*/) override;
+
+    virtual void enterQuerySpecification(MySqlParser::QuerySpecificationContext * /*ctx*/) override;
+    virtual void exitQuerySpecification(MySqlParser::QuerySpecificationContext * /*ctx*/) override;
 
     virtual void enterSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
     virtual void exitSelectElements(MySqlParser::SelectElementsContext * /*ctx*/) override;
@@ -89,6 +92,9 @@ private:
     std::shared_ptr<Adapter> _rootAdapter;
 
     template<typename ParentAdapter, typename ChildAdapter>
+    std::shared_ptr<ChildAdapter> pushAdapterStack();
+
+    template<typename ChildAdapter>
     std::shared_ptr<ChildAdapter> pushAdapterStack();
 
     template<typename ChildAdapter>
