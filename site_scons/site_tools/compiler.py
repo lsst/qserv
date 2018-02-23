@@ -85,7 +85,7 @@ def generate(env):
 
         # Increase compiler strictness
         env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
-        env.Append(CXXFLAGS=['-std=c++11'])
+        env.Append(CXXFLAGS=['-std=c++14'])
 
         # Required for XCode 7.3 @rpath linker issues
         env['LIBDIRSUFFIX'] = "/"
@@ -102,14 +102,10 @@ def generate(env):
 
         # Increase compiler strictness
         env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-variadic-macros'])
+        env.Append(CXXFLAGS=['-std=c++14'])
+
         if toolchain == 'gcc':
             env.Append(CCFLAGS=['-Wno-unused-local-typedefs'])
-        if comp_version in ['gcc44']:
-            # gcc44 only supports c++0x
-            env.Append(CXXFLAGS=['-std=c++0x'])
-        else:
-            # newer compilers are expected to be c++11
-            env.Append(CXXFLAGS=['-std=c++11'])
 
         # to make shared libraries link correctly we need -rpath-link option, for now add everything
         # that is in LD_LIBRARY_PATH
