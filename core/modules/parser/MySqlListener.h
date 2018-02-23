@@ -59,6 +59,24 @@ protected:
     virtual void enterSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
     virtual void exitSelectColumnElement(MySqlParser::SelectColumnElementContext * /*ctx*/) override;
 
+    virtual void enterFromClause(MySqlParser::FromClauseContext * /*ctx*/) override;
+    virtual void exitFromClause(MySqlParser::FromClauseContext * /*ctx*/) override;
+
+    virtual void enterTableSources(MySqlParser::TableSourcesContext * /*ctx*/) override;
+    virtual void exitTableSources(MySqlParser::TableSourcesContext * /*ctx*/) override;
+
+    virtual void enterTableSourceBase(MySqlParser::TableSourceBaseContext * /*ctx*/) override;
+    virtual void exitTableSourceBase(MySqlParser::TableSourceBaseContext * /*ctx*/) override;
+
+    virtual void enterAtomTableItem(MySqlParser::AtomTableItemContext * /*ctx*/) override;
+    virtual void exitAtomTableItem(MySqlParser::AtomTableItemContext * /*ctx*/) override;
+
+    virtual void enterTableName(MySqlParser::TableNameContext * /*ctx*/) override;
+    virtual void exitTableName(MySqlParser::TableNameContext * /*ctx*/) override;
+
+    virtual void enterFullId(MySqlParser::FullIdContext * /*ctx*/) override;
+    virtual void exitFullId(MySqlParser::FullIdContext * /*ctx*/) override;
+
     virtual void enterUid(MySqlParser::UidContext * /*ctx*/) override;
     virtual void exitUid(MySqlParser::UidContext * /*ctx*/) override;
 
