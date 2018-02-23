@@ -401,7 +401,6 @@ void MySqlListener::exitAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
 
 void MySqlListener::enterTableName(MySqlParser::TableNameContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    // wait, how are the low level ones always going to know their parent type? (answer: they're not, and it won't always be the same!)
     pushAdapterStack<TableNameCBH, TableNameAdapter>();
 }
 
