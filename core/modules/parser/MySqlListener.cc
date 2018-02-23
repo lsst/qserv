@@ -39,6 +39,20 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 
 /// Callback Handler classes
 
+// NullCBH is a class that can't be instantiated, it exists as a placeholder for
+// Adapters that don't use their _parent, so that they may have a weak_ptr to a CBH that is a nullptr.
+class NullCBH {
+private:
+    NullCBH() {}
+};
+
+
+class FullColumnNameCBH {
+public:
+    virtual ~FullColumnNameCBH() {}
+    virtual void handleFullColumnName(const std::string& string) = 0;
+};
+
 
 class TableNameCBH {
 public:
@@ -52,6 +66,7 @@ public:
     virtual ~TableSourceItemCBH() {}
     virtual void handleTableSourceItem(const std::string& string) = 0;
 };
+
 
 class UidCBH {
 public:
@@ -73,6 +88,8 @@ public:
 class Adapter {
 public:
     virtual ~Adapter() {}
+protected:
+    weak_ptr<NullCBH> _parent;
 };
 
 namespace {
@@ -89,55 +106,51 @@ private:
 
 class DMLAdapter : public Adapter {
 public:
-    DMLAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
-private:
-    weak_ptr<Adapter> _parent;
+    DMLAdapter() {}
 };
 
 
-class SelectAdapter : public Adapter {
+class SelectStatmentAdapter : public Adapter {
 public:
-    SelectAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
-private:
-    weak_ptr<Adapter> _parent;
+    SelectStatmentAdapter() {}
 };
 
 
-class SelectElementsAdapter : public Adapter {
+class QuerySpecificationAdapter : public Adapter {
 public:
-    SelectElementsAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
-private:
-    weak_ptr<Adapter> _parent;
+    QuerySpecificationAdapter() {}
+};
+
+
+class SelectElementsAdapter : public Adapter, public FullColumnNameCBH {
+public:
+    SelectElementsAdapter() {}
+    virtual void handleFullColumnName(const std::string& string) {
+        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "TODO here is where the column name gets pushed into query");
+    }
 };
 
 
 class FromClauseAdapter : public Adapter {
 public:
-    FromClauseAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+    FromClauseAdapter() {}
     virtual ~FromClauseAdapter() {}
-private:
-    weak_ptr<Adapter> _parent;
 };
 
 
 class TableSourcesAdapter : public Adapter {
 public:
-    TableSourcesAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
-private:
-    weak_ptr<Adapter> _parent;
+    TableSourcesAdapter() {}
 };
 
 
 class TableSourceAdapter : public Adapter, public TableSourceItemCBH{
 public:
-    TableSourceAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+    TableSourceAdapter() {}
     virtual void handleTableSourceItem(const std::string& tableSourceItem) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableSourceItem <<
                 " todo this is where the table source would get added to the list of table sources in the qyery");
-
     }
-private:
-    weak_ptr<Adapter> _parent;
 };
 
 
@@ -151,7 +164,7 @@ public:
             parent->handleTableSourceItem(string);
         }
     }
-private:
+protected:
     weak_ptr<TableSourceItemCBH> _parent;
 };
 
@@ -166,7 +179,7 @@ public:
             parent->handleTableName(string);
         }
     }
-private:
+protected:
     weak_ptr<TableNameCBH> _parent;
 };
 
@@ -181,37 +194,52 @@ public:
             parent->handleFullIdString(string);
         }
     }
-private:
+protected:
     weak_ptr<FullIdCBH> _parent;
 };
 
 
-class SelectColumnElementAdapter : public Adapter, public UidCBH {
+class FullColumnNameAdapter : public Adapter, public UidCBH {
 public:
-    SelectColumnElementAdapter(shared_ptr<Adapter> parent) : _parent(parent) {}
+    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent) : _parent(parent) {}
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleFullColumnName(string);
+        }
     }
-private:
-    weak_ptr<Adapter> _parent;
+protected:
+    weak_ptr<FullColumnNameCBH> _parent;
 };
 
 
 } // end namespace
 
 
-template<typename ParentAdapter, typename ChildAdapter>
+// Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
+// for the new Adapter. Returns the new Adapter.
+template<typename ParentCBH, typename ChildAdapter>
 std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
-    auto p = std::dynamic_pointer_cast<ParentAdapter>(_adapterStack.top());
+    auto p = std::dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
             int status;
             LOGS(_log, LOG_LVL_ERROR, "can't acquire expected Adapter " <<
-                    abi::__cxa_demangle(typeid(ParentAdapter).name(),0,0,&status) <<
+                    abi::__cxa_demangle(typeid(ParentCBH).name(),0,0,&status) <<
                     " from top of listenerStack."); // todo add some type names
         // might want to throw here...?
         return nullptr;
     }
     auto childAdapter = std::make_shared<ChildAdapter>(p);
+    _adapterStack.push(childAdapter);
+    return childAdapter;
+}
+
+
+// Create and push an Adapter onto the context stack. Does not install a callback handler into the Adapter.
+template<typename ChildAdapter>
+std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
+    auto childAdapter = std::make_shared<ChildAdapter>();
     _adapterStack.push(childAdapter);
     return childAdapter;
 }
@@ -253,8 +281,7 @@ void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
     // since there's no parent listener on the stack for a root listener, we don't use the template push
     // function, we just push the first item onto the stack by hand like so:
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    _rootAdapter = std::make_shared<RootAdapter>();
-    _adapterStack.push(_rootAdapter);
+    _rootAdapter = pushAdapterStack<RootAdapter>();
 }
 
 
@@ -266,7 +293,7 @@ void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
 
 void MySqlListener::enterDmlStatement(MySqlParser::DmlStatementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<RootAdapter, DMLAdapter>();
+    pushAdapterStack<DMLAdapter>();
 }
 
 
@@ -278,19 +305,31 @@ void MySqlListener::exitDmlStatement(MySqlParser::DmlStatementContext * ctx) {
 
 void MySqlListener::enterSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DMLAdapter, SelectAdapter>();
+    pushAdapterStack<SelectStatmentAdapter>();
 }
 
 
 void MySqlListener::exitSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<SelectAdapter>();
+    popAdapterStack<SelectStatmentAdapter>();
+}
+
+
+void MySqlListener::enterQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<QuerySpecificationAdapter>();
+}
+
+
+void MySqlListener::exitQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<QuerySpecificationAdapter>();
 }
 
 
 void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectAdapter, SelectElementsAdapter>();
+    pushAdapterStack<SelectElementsAdapter>();
 }
 
 
@@ -302,19 +341,19 @@ void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx)
 
 void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectElementsAdapter, SelectColumnElementAdapter>();
+    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>();
 }
 
 
 void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<SelectColumnElementAdapter>();
+    popAdapterStack<FullColumnNameCBH>();
 }
 
 
 void MySqlListener::enterFromClause(MySqlParser::FromClauseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectAdapter, FromClauseAdapter>();
+    pushAdapterStack<FromClauseAdapter>();
 }
 
 
@@ -324,18 +363,9 @@ void MySqlListener::exitFromClause(MySqlParser::FromClauseContext * ctx) {
 }
 
 
-
-
-
-
-
-
-
-
-
 void MySqlListener::enterTableSources(MySqlParser::TableSourcesContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FromClauseAdapter, TableSourcesAdapter>();
+    pushAdapterStack<TableSourcesAdapter>();
 }
 
 
@@ -347,7 +377,7 @@ void MySqlListener::exitTableSources(MySqlParser::TableSourcesContext * ctx) {
 
 void MySqlListener::enterTableSourceBase(MySqlParser::TableSourceBaseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourcesAdapter, TableSourceAdapter>();
+    pushAdapterStack<TableSourceAdapter>();
 }
 
 
@@ -359,7 +389,7 @@ void MySqlListener::exitTableSourceBase(MySqlParser::TableSourceBaseContext * ct
 
 void MySqlListener::enterAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceAdapter, TableSourceItemAdapter>();
+    pushAdapterStack<TableSourceItemCBH, TableSourceItemAdapter>();
 }
 
 
@@ -372,7 +402,7 @@ void MySqlListener::exitAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
 void MySqlListener::enterTableName(MySqlParser::TableNameContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     // wait, how are the low level ones always going to know their parent type? (answer: they're not, and it won't always be the same!)
-    pushAdapterStack<TableSourceItemAdapter, TableNameAdapter>();
+    pushAdapterStack<TableNameCBH, TableNameAdapter>();
 }
 
 
@@ -384,7 +414,7 @@ void MySqlListener::exitTableName(MySqlParser::TableNameContext * ctx) {
 
 void MySqlListener::enterFullId(MySqlParser::FullIdContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableNameAdapter, FullIdAdapter>();
+    pushAdapterStack<FullIdCBH, FullIdAdapter>();
 }
 
 
