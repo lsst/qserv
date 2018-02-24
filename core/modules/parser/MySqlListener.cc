@@ -53,6 +53,20 @@ private:
 };
 
 
+class QuerySpecificationCBH {
+public:
+    virtual ~QuerySpecificationCBH() {}
+    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) = 0;
+};
+
+
+class SelectElementsCBH {
+public:
+    virtual ~SelectElementsCBH() {}
+    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) = 0;
+};
+
+
 class FullColumnNameCBH {
 public:
     virtual ~FullColumnNameCBH() {}
@@ -94,6 +108,9 @@ public:
 class Adapter {
 public:
     virtual ~Adapter() {}
+
+    // onExit is called when the Adapter is being popped from the context stack
+    virtual void onExit() {}
 protected:
     weak_ptr<NullCBH> _parent;
 };
@@ -103,10 +120,8 @@ namespace {
 class RootAdapter : public Adapter {
 public:
     RootAdapter() {}
-    // todo add virtual dtors to all the Adapter subclasses.
-    query::SelectStmt::Ptr selectStatement();
+    ~RootAdapter() {}
 private:
-    query::SelectStmt::Ptr _selectStatement;
 };
 
 
@@ -116,28 +131,58 @@ public:
 };
 
 
-class SelectStatmentAdapter : public Adapter {
+class SelectStatmentAdapter : public Adapter, public QuerySpecificationCBH {
 public:
-    SelectStatmentAdapter() {}
+    SelectStatmentAdapter() : _selectStatement(make_shared<query::SelectStmt>()) {}
+
+    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
+        _selectStatement->setSelectList(selectList);
+    }
+
+    virtual void onExit() {
+        LOGS(_log, LOG_LVL_DEBUG, "SelectStatement: " << *_selectStatement);
+    }
+
+private:
+    shared_ptr<query::SelectStmt> _selectStatement;
 };
 
 
-class QuerySpecificationAdapter : public Adapter {
+class QuerySpecificationAdapter : public Adapter, public SelectElementsCBH {
 public:
-    QuerySpecificationAdapter() {}
+    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent) : _parent(parent) {}
+
+    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleSelectList(selectList);
+        }
+    }
+
+private:
+    weak_ptr<QuerySpecificationCBH> _parent;
 };
 
 
 class SelectElementsAdapter : public Adapter, public FullColumnNameCBH {
 public:
-    SelectElementsAdapter() {}
+    SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent) : _parent(parent) {}
+
     virtual void handleFullColumnName(shared_ptr<query::ValueExpr> column) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << column);
         SelectListFactory::addValueExpr(_selectList, column);
     }
-    std::shared_ptr<query::SelectList> selectList() const { return _selectList; };
+
+    virtual void onExit() {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleSelectList(_selectList);
+        }
+    }
+
 private:
     std::shared_ptr<query::SelectList> _selectList{std::make_shared<query::SelectList>()};
+    weak_ptr<SelectElementsCBH> _parent;
 };
 
 
@@ -262,14 +307,15 @@ std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
 
 template<typename ChildAdapter>
 void MySqlListener::popAdapterStack() {
-    shared_ptr<Adapter> listenerPtr = _adapterStack.top();
+    shared_ptr<Adapter> adapterPtr = _adapterStack.top();
+    adapterPtr->onExit();
     _adapterStack.pop();
-    shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(listenerPtr);
+    shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     if (nullptr == derivedPtr) {
         int status;
         LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
                 "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
-                " Actual: " << abi::__cxa_demangle(typeid(listenerPtr).name(),0,0,&status) <<
+                " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status) <<
                 " Are there out of order or unhandled listener exits?"); // todo add some type names
         // might want to throw here...?
     }
@@ -279,13 +325,13 @@ void MySqlListener::popAdapterStack() {
 // might want to use this in popAdapterStack?
 template<typename ChildAdapter>
 std::shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
-    shared_ptr<Adapter> listenerPtr = _adapterStack.top();
-    shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(listenerPtr);
+    shared_ptr<Adapter> adapterPtr = _adapterStack.top();
+    shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     if (nullptr == derivedPtr) {
         int status;
         LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
                 "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
-                " Actual: " << abi::__cxa_demangle(typeid(listenerPtr).name(),0,0,&status));
+                " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status));
         // might want to throw here?
     }
     return derivedPtr;
@@ -335,7 +381,7 @@ void MySqlListener::exitSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
 
 void MySqlListener::enterQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<QuerySpecificationAdapter>();
+    pushAdapterStack<QuerySpecificationCBH, QuerySpecificationAdapter>();
 }
 
 
@@ -347,17 +393,12 @@ void MySqlListener::exitQuerySpecification(MySqlParser::QuerySpecificationContex
 
 void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectElementsAdapter>();
+    pushAdapterStack<SelectElementsCBH, SelectElementsAdapter>();
 }
 
 
 void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx) {
-    auto adapter = adapterStackTop<SelectElementsAdapter>();
-    if (adapter) {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << ' ' << *adapter->selectList());
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    }
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     popAdapterStack<SelectElementsAdapter>();
 }
 
