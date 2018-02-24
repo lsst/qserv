@@ -43,6 +43,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class ValueExpr;
+    class ValueFactor;
 }
 namespace parser {
     class ColumnRefNodeMap;
@@ -57,6 +58,9 @@ namespace parser {
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
+    static void addValueFactor(std::shared_ptr<query::ValueExpr> valueExpr,
+                               std::shared_ptr<query::ValueFactor> valueFactor);
+
     ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap);
     std::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
 
