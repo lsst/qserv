@@ -61,6 +61,8 @@ typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
 class SelectListFactory {
 public:
+    static void addValueExpr(std::shared_ptr<query::SelectList> selectList, ValueExprPtr valueExpr);
+
     std::shared_ptr<query::SelectList> getProduct();
     void import(antlr::RefAST selectRoot);
     void importStar(antlr::RefAST asterisk);
