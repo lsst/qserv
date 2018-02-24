@@ -49,6 +49,12 @@ namespace lsst {
 namespace qserv {
 namespace parser {
 
+void SelectListFactory::addValueExpr(std::shared_ptr<query::SelectList> selectList,
+                                     ValueExprPtr valueExpr) {
+    selectList->_valueExprList->push_back(valueExpr);
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // SelectListFactory::SelectStarH
 ////////////////////////////////////////////////////////////////////////
