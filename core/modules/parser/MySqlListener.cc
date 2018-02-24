@@ -262,7 +262,7 @@ public:
         auto parent = _parent.lock();
         if (parent) {
 
-            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("todo_database", "todo_table", string);
+            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
             auto valueExpr = std::make_shared<query::ValueExpr>();
             ValueExprFactory::addValueFactor(valueExpr, valueFactor);
 
