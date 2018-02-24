@@ -194,6 +194,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
 
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();
         if (tblRefList.size() == 1) {
