@@ -24,7 +24,13 @@
 #include "MySqlListener.h"
 
 #include "lsst/log/Log.h"
+#include "parser/ValueExprFactory.h"
+#include "parser/ValueFactorFactory.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
+#include "SelectListFactory.h"
 
 #include <cxxabi.h>
 #include <vector>
@@ -50,7 +56,7 @@ private:
 class FullColumnNameCBH {
 public:
     virtual ~FullColumnNameCBH() {}
-    virtual void handleFullColumnName(const std::string& string) = 0;
+    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> column) = 0;
 };
 
 
@@ -125,9 +131,13 @@ public:
 class SelectElementsAdapter : public Adapter, public FullColumnNameCBH {
 public:
     SelectElementsAdapter() {}
-    virtual void handleFullColumnName(const std::string& string) {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "TODO here is where the column name gets pushed into query");
+    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> column) {
+        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << column);
+        SelectListFactory::addValueExpr(_selectList, column);
     }
+    std::shared_ptr<query::SelectList> selectList() const { return _selectList; };
+private:
+    std::shared_ptr<query::SelectList> _selectList{std::make_shared<query::SelectList>()};
 };
 
 
@@ -206,7 +216,12 @@ public:
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleFullColumnName(string);
+
+            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("todo_database", "todo_table", string);
+            auto valueExpr = std::make_shared<query::ValueExpr>();
+            ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+
+            parent->handleFullColumnName(valueExpr);
         }
     }
 protected:
@@ -277,6 +292,9 @@ std::shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
 }
 
 
+// MySqlListener class methods
+
+
 void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
     // since there's no parent listener on the stack for a root listener, we don't use the template push
     // function, we just push the first item onto the stack by hand like so:
@@ -334,7 +352,12 @@ void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx
 
 
 void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    auto adapter = adapterStackTop<SelectElementsAdapter>();
+    if (adapter) {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << ' ' << *adapter->selectList());
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    }
     popAdapterStack<SelectElementsAdapter>();
 }
 
@@ -347,7 +370,7 @@ void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementCon
 
 void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<FullColumnNameCBH>();
+    popAdapterStack<FullColumnNameAdapter>();
 }
 
 
