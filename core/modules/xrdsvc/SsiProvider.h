@@ -56,12 +56,24 @@ public:
          return _service.get();
     }
 
+    wpublish::ChunkInventory &GetChunkInventory() {
+        return _chunkInventory;
+    }
+
+    XrdSsiCluster *GetClusterManager() {
+        return _cmsSsi;
+    }
+
     bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
                std::string   cfgFn, std::string    parms,
                int           argc,  char**         argv) override;
 
     rStat QueryResource(char const* rName,
                         char const* contact=0) override;
+
+    void ResourceAdded(const char *rName) override;
+
+    void ResourceRemoved(const char *rName) override;
 
                   SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
     virtual      ~SsiProviderServer();

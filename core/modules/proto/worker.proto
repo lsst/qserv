@@ -124,30 +124,158 @@ message Result {
 // Byte N+1, extent = ProtoHeader.size, Result msg
 // (successive Result msgs indicated by size markers in previous Result msgs)
 
-// Requests sent to worker resources
-message WorkerCmdMsg {
+
+////////////////////////////////////////////////////////////////
+// Protocol definition for the worker management commands
+//
+// ATTENTION: each message sent or received must be preceeded by
+// an int32 size (network-byte-ordered) word carrying a size
+// of the message.
+////////////////////////////////////////////////////////////////
+
+// All requests sent to worker management resources should start with
+// sending this message carrying an identifier of a command. Specific
+// commands may require additional parameters which should be sent as
+// separate messages (of the correspoding types).
+//
+message WorkerCommandH {
 
     // Types of commands
-    enum Cmd {
-        RELOAD_CHUNK_LIST = 1;  // reload the list of available chunks
-    }
-    required Cmd cmd = 1; // the type of a command
+    enum Command {
 
-    // Variable parameters of a command depending on the type of
-    // the command
+        // Return back a value passed as an input parameters
+        // The command is meant for testing the protocol
+        TEST_ECHO = 1;
+
+        // Add a group of collocated chunks
+        ADD_CHUNK_GROUP = 2;
+
+        // Remove a group of collocated chunks
+        REMOVE_CHUNK_GROUP = 3;
+
+        // Update (rebuild and/or reload) the list of available chunks
+        UPDATE_CHUNK_LIST = 4;
+
+        // Return a list of chunks known to a worker
+        GET_CHUNK_LIST = 5;
+    }
+    required Command command = 1;
 }
 
-// Replies received back on worker requests
-message WorkerCmdReply {
+// This message must be sent after the command header to provide
+// a service with a value to be echoed back in response to
+// the 'TEST_ECHO' command.
+//
+message WorkerCommandTestEchoM {
+
+    // An input string to be returned back by the service
+    required string value = 1;
+}
+
+// The message to be sent back in response to the 'TEST_ECHO' command
+//
+message WorkerCommandTestEchoR {
 
     // Completion status of the operation
     enum Status {
         SUCCESS = 1;    // successful completion of a request
-        INVALID = 2;    // invalid or unsupported command
-        ERROR   = 3;    // an error occured during command execution
+        ERROR   = 2;    // an error occured during command execution
     }
     required Status status = 1;
 
     // Optional error message (depenidng on the status)
     optional string error = 2 [default = ""];
+    
+    // The original value returned by the operation
+    required string value = 3;
+}
+
+// This message must be sent after the command header for the 'ADD_CHUNK_GROUP'
+// or 'REMOVE_CHUNK_GROUP' command to tell the service which chunks needs to be
+// added or removed.
+//
+message WorkerCommandChunkGroupM {
+
+   required uint32 chunk = 1;
+   repeated string dbs   = 2;
+
+   optional bool force = 3 [ default = false];
+}
+
+// The message to be sent back in response to the 'ADD_CHUNK_GROUP'
+// or 'REMOVE_CHUNK_GROUP' commands.
+//
+message WorkerCommandChunkGroupR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        INVALID = 2;    // invalid parameters of the request
+        IN_USE  = 3;    // request is rejected because one of the chunks is in use
+        ERROR   = 4;    // an error occured during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depenidng on the status)
+    optional string error = 2 [default = ""];
+}
+
+// This message must be sent after the command header for the 'UPDATE_CHUNK_LIST'
+// command
+//
+message WorkerCommandUpdateChunkListM {
+
+    // Rebuild the list from actual tables existing in the database
+    required bool rebuild = 1;
+
+    // Reload the new list into a worker
+    required bool reload = 2;
+}
+
+// The message to be sent back in response to the 'UPDATE_CHUNK_LIST'
+// command.
+//
+message WorkerCommandUpdateChunkListR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        ERROR   = 2;    // an error occured during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depenidng on the status)
+    optional string error = 2 [default = ""];
+
+    message Chunk {
+        required string db    = 1;
+        required uint32 chunk = 2;
+    }
+    repeated Chunk added   = 3;   // chunks which have been added
+    repeated Chunk removed = 4;   // chunks which have been removed
+
+}
+
+// The message to be sent back in response to the 'GET_CHUNK_LIST'
+// command.
+//
+message WorkerCommandGetChunkListR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        ERROR   = 2;    // an error occured during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depenidng on the status)
+    optional string error = 2 [default = ""];
+
+    message Chunk {
+        required string db        = 1;
+        required uint32 chunk     = 2;
+        required uint32 use_count = 3;
+    }
+    repeated Chunk chunks = 3;
+
 }

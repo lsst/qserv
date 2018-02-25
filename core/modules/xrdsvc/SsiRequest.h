@@ -26,6 +26,7 @@
 // System headers
 #include <atomic>
 #include <mutex>
+#include <string>
 #include <vector>
 
 // Third-party headers
@@ -33,7 +34,10 @@
 
 // Local headers
 #include "global/ResourceUnit.h"
+#include "mysql/MySqlConfig.h"
 #include "wbase/Task.h"
+#include "wbase/WorkerCommand.h"
+#include "wpublish/ChunkInventory.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -42,6 +46,9 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 struct MsgProcessor;
+}
+namespace wpublish {
+class ResourceMonitor;
 }}}
 
 namespace lsst {
@@ -67,13 +74,15 @@ public:
 
     /// Use factory to ensure proper construction for enable_shared_from_this.
     static SsiRequest::Ptr newSsiRequest (
-            std::string const&                          rname,
-            ValidatorPtr                                validator,
-            std::shared_ptr<wbase::MsgProcessor> const& processor) {
+            std::string const&                               rname,
+            std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+            std::shared_ptr<wbase::MsgProcessor> const&      processor,
+            mysql::MySqlConfig const&                        mySqlConfig) {
 
         return SsiRequest::Ptr(new SsiRequest(rname,
-                                              validator,
-                                              processor));
+                                              chunkInventory,
+                                              processor,
+                                              mySqlConfig));
     }
 
     virtual ~SsiRequest();
@@ -97,24 +106,47 @@ public:
 private:
 
     /// Constructor (called by SsiService)
-    SsiRequest(std::string const&                          rname,
-               ValidatorPtr                                validator,
-               std::shared_ptr<wbase::MsgProcessor> const& processor)
-        :   _validator(validator),
+    SsiRequest(std::string const&                               rname,
+               std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+               std::shared_ptr<wbase::MsgProcessor> const&      processor,
+               mysql::MySqlConfig const&                        mySqlConfig)
+        :   _chunkInventory(chunkInventory),
+            _validator(_chunkInventory->newValidator()),
             _processor(processor),
             _resourceName(rname),
-            _stream(0) {
+            _stream(0),
+            _mySqlConfig(mySqlConfig) {
     }
     
     /// For internal error reporting
     void reportError (std::string const& errStr);
+
+    /**
+     * Parse a Protobuf request into the corresponding command
+     * 
+     * @param reqData - pointer to the Protobuf data buffer
+     * @param reqSize - size of the data buffer
+     * 
+     * @return smart pointer to the corresponding command object or nullptr if failed
+     */
+    wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
+
+private:
+
+    /// Counters of the database/chunk requests which are being used
+    static std::shared_ptr<wpublish::ResourceMonitor> _resourceMonitor;
+
+    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
 
     ValidatorPtr                         _validator;    ///< validates request against what's available
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
     std::mutex  _finMutex;      ///< Protects execute() from Finish()
     std::string _resourceName;
+
     ChannelStream* _stream;
+
+    mysql::MySqlConfig const _mySqlConfig;
 };
 
 }}} // namespace

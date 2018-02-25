@@ -26,7 +26,7 @@ else
     # Use XrdSsi plugin
     xrootd.fslib libXrdSsi.so
     ssi.svclib libxrdsvc.so
-    oss.statlib -2 libXrdSsi.so
+    oss.statlib -2 -arevents libXrdSsi.so
 
     # Force disable asyncronous access
     # because of XrdSsi

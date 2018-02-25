@@ -155,7 +155,7 @@ SsiService::~SsiService() {
 
 void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory->newValidator(), _foreman);
+    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman, _mySqlConfig);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.

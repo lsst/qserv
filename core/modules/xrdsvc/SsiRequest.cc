@@ -36,11 +36,17 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
-#include "wcontrol/ReloadChunkListCommand.h"
+#include "wpublish/AddChunkGroupCommand.h"
+#include "wpublish/ChunkListCommand.h"
+#include "wpublish/GetChunkListCommand.h"
+#include "wpublish/RemoveChunkGroupCommand.h"
+#include "wpublish/ResourceMonitor.h"
+#include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
 
 namespace {
@@ -50,6 +56,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
+
+std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
 
 SsiRequest::~SsiRequest () {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -90,13 +98,16 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Make sure the requested resource belongs to this worker
     if (!(*_validator)(ru)) {
-        reportError("WARNING: request to the unowned resource detected:" + ru.path());
+        reportError("WARNING: request to the unowned resource detected:" + _resourceName);
         return;
     }
     
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
+
+            // Increment the counter of the database/chunk resources in use
+            _resourceMonitor->increment(_resourceName);
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -122,8 +133,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto task = std::make_shared<wbase::Task>(taskMsg, sC);
+            auto task = std::make_shared<wbase::Task>(
+                                taskMsg,
+                                std::make_shared<wbase::SendChannel>(shared_from_this()));
             ReleaseRequestBuffer();
             t.start();
             _processor->processTask(task); // Queues task to be run later.
@@ -134,40 +146,18 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             break;
         }
         case ResourceUnit::WORKER: {
-
-            // reqData has the entire request, so we can unpack it without waiting for
-            // more data.
-            LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCmdMsg of size " << reqSize);
-            proto::WorkerCmdMsg workerCmdMsg;
-            if (!workerCmdMsg.ParseFromArray(reqData, reqSize) ||
-                !workerCmdMsg.IsInitialized()) {
-                reportError("Failed to decode WorkerCmdMsg on worker=" + ru.hashName());
-                return;
-            }
-            LOGS(_log, LOG_LVL_INFO, "WorkerCmdMsg: cmd=" << proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()));
-
-            // Now that the request is decoded (successfully or not), release the
-            // xrootd request buffer. To avoid data races, this must happen before
-            // the command is handed off to another thread for processing, as there is a
-            // reference to this SsiRequest inside the reply channel for the task,
-            // and after the call to BindRequest.
-            wbase::WorkerCommand::Ptr command;
-            switch (workerCmdMsg.cmd()) {
-                case proto::WorkerCmdMsg::RELOAD_CHUNK_LIST: {
-                    auto sC = std::make_shared<wbase::SendChannel>(shared_from_this());
-                    command = std::make_shared<wcontrol::ReloadChunkListCommand>(sC);
-                    break;
-                }
-                default:
-                    reportError("Unsupported command " + proto::WorkerCmdMsg_Cmd_Name(workerCmdMsg.cmd()) +
-                                " found in WorkerCmdMsg on worker=" + ru.hashName());
-                    return;
-            }
+        
+            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
+            if (not command) return;
+            
+            // The buffer must be released before submitting commands for
+            // further processing.
             ReleaseRequestBuffer();
             _processor->processCommand(command);    // Queues the command to be run later.
 
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
                  " in " << t.getElapsed() << " seconds");
+
             break;
         }
         default:
@@ -178,6 +168,112 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
+}
+
+wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
+
+    wbase::SendChannel::Ptr const sendChannel =
+        std::make_shared<wbase::SendChannel>(shared_from_this());
+
+    wbase::WorkerCommand::Ptr command;
+
+    try {
+
+        // reqData has the entire request, so we can unpack it without waiting for
+        // more data.
+        proto::FrameBufferView view(reqData, reqSize);
+    
+        LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
+        proto::WorkerCommandH header;
+        view.parse(header);
+    
+        LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
+             proto::WorkerCommandH_Command_Name(header.command()));
+    
+        switch (header.command()) {
+            case proto::WorkerCommandH::TEST_ECHO: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
+                proto::WorkerCommandTestEchoM echo;
+                view.parse(echo);
+    
+                command = std::make_shared<wpublish::TestEchoCommand>(
+                                sendChannel,
+                                echo.value());
+                break;
+            }
+            case proto::WorkerCommandH::ADD_CHUNK_GROUP:
+            case proto::WorkerCommandH::REMOVE_CHUNK_GROUP: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandChunkGroupM");
+                proto::WorkerCommandChunkGroupM group;
+                view.parse(group);
+
+                std::vector<std::string> dbs;
+                for (int i = 0, num = group.dbs_size(); i < num; ++i)
+                    dbs.push_back(group.dbs(i));
+
+                int  const chunk = group.chunk();
+                bool const force = group.force();
+
+                if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
+                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _mySqlConfig,
+                                    chunk,
+                                    dbs);
+                else
+                    command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _resourceMonitor,
+                                    _mySqlConfig,
+                                    chunk,
+                                    dbs,
+                                    force);
+                break;
+
+            }
+            case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandUpdateChunkListM");
+                proto::WorkerCommandUpdateChunkListM message;
+                view.parse(message);
+
+                if (message.rebuild())
+                    command = std::make_shared<wpublish::RebuildChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _mySqlConfig,
+                                    message.reload());
+                else
+                    command = std::make_shared<wpublish::ReloadChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _mySqlConfig);
+                break;
+            }
+            case proto::WorkerCommandH::GET_CHUNK_LIST: {
+
+                command = std::make_shared<wpublish::GetChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _resourceMonitor);
+                break;
+            }
+            default:
+                reportError("Unsupported command " +
+                            proto::WorkerCommandH_Command_Name(header.command()) +
+                            " found in WorkerCommandH on worker resource=" + _resourceName);
+                break;
+        }
+
+    } catch (proto::FrameBufferError const& ex) {
+        reportError("Failed to decode a worker management command, error: " +
+                    std::string(ex.what()));
+    }
+    return command;
 }
 
 /// Called by SSI to free resources.
@@ -205,6 +301,13 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     case XrdSsiRespInfo::isStream: type = "type=isStream"; break;
     case XrdSsiRespInfo::isHandle: type = "type=isHandle"; break;
     }
+
+    // Decrement the counter of the database/chunk resources in use
+    ResourceUnit ru(_resourceName);
+    if (ru.unitType() == ResourceUnit::DBCHUNK) {
+        _resourceMonitor->decrement(_resourceName);
+    }
+
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);

@@ -30,6 +30,7 @@
 #include <string>
 
 // Qserv headers
+#include "proto/FrameBuffer.h"
 #include "util/Command.h"
 
 // Forward declarations
@@ -77,6 +78,8 @@ public:
 protected:
 
     std::shared_ptr<SendChannel> _sendChannel;  ///< For result reporting
+    proto::FrameBuffer           _frameBuf;     ///< Buffer for serializing a response
+
 };
 
 }}} // namespace lsst::qserv::wbase

@@ -188,4 +188,51 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
     return notPresent;
 }
 
+void SsiProviderServer::ResourceAdded(const char *rName) {
+
+    // Handle resource based on its proposed type
+
+    ResourceUnit ru(rName);
+    if (ru.unitType() == ResourceUnit::DBCHUNK) {
+
+        // Extract db and chunk from path and add the resource to the chunk
+        // inventory
+        _chunkInventory.add(ru.db(), ru.chunk());
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
+        return;
+
+    } else if (ru.unitType() == ResourceUnit::WORKER) {
+
+        // Replace the unique identifier of the worker with the new one
+        _chunkInventory.resetId(ru.hashName());
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
+        return;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName << " invalid");
+}
+
+void SsiProviderServer::ResourceRemoved(const char *rName) {
+
+    // Handle resource based on its proposed type
+
+    ResourceUnit ru(rName);
+    if (ru.unitType() == ResourceUnit::DBCHUNK) {
+
+        // Extract db and chunk from path and add the resource to the chunk
+        // inventory
+        _chunkInventory.remove(ru.db(), ru.chunk());
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName);
+        return;
+
+    } else if (ru.unitType() == ResourceUnit::WORKER) {
+
+        // Clear the unique identifier of the worker to prevent any incoming
+        // requests to the worker
+        _chunkInventory.resetId("");
+        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName);
+        return;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName << " invalid");
+}
+
 }}} // namespace lsst::qserv::xrdsvc
