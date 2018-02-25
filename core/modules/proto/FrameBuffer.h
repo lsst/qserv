@@ -32,7 +32,6 @@
 /// (see individual class documentation for more information)
 
 // System headers
-
 #include <arpa/inet.h>  // ntohl
 #include <cstdint>      // uint32_t
 #include <stdexcept>
@@ -49,15 +48,15 @@ namespace qserv {
 namespace proto {
 
 /**
- * Class FrameBufferError is used fr throwing exceptions on various
- * upnormal conditions seen in the implementations of the buffer
+ * Class FrameBufferError is used for throwing exceptions on various
+ * ubnormal conditions seen in the implementations of the buffer
  * classes.
  */
 struct FrameBufferError
     :   std::runtime_error {
 
     /// Normal constructor of the exception class
-    FrameBufferError (std::string const& msg)
+    FrameBufferError(std::string const& msg)
         :   std::runtime_error(msg) {
     }
 };
@@ -83,23 +82,23 @@ public:
      * @param data - pointer to the data blob to be parsed
      * @param size - the length (bytes) in the data blob
      */
-    explicit FrameBufferView (char const* data,
-                              size_t      size);
+    explicit FrameBufferView(char const* data,
+                             size_t      size);
 
     // Default construction and copy semantics are proxibited
 
-    FrameBufferView () = delete;
-    FrameBufferView (FrameBufferView const&) = delete;
-    FrameBufferView& operator= (FrameBufferView const&) = delete;
+    FrameBufferView() = delete;
+    FrameBufferView(FrameBufferView const&) = delete;
+    FrameBufferView& operator=(FrameBufferView const&) = delete;
 
     /// Destructor
-    virtual ~FrameBufferView ();
+    ~FrameBufferView() = default;
 
     /*
      * Parse and deserialize the message given the specified size of
-     * the message as informed by a prior frame header.i
-     * If succeeded the method will also advance the current pointer witin
-     * the data blob past the parsed message thus allowing to parse the next
+     * the message as informed by a prior frame header.
+     * If successful the method will also advance the current pointer within
+     * the data blob past the parsed message thus allowing it to parse the next
      * message.
      *
      * The method will throw exception FrameBufferError if:
@@ -111,19 +110,20 @@ public:
      *                  completion of the operation
      */
     template <class T>
-    void parse (T& message) {
+    void parse(T& message) {
 
         uint32_t const messageLength = parseLength();
 
         if (_size - (_next - _data) < messageLength)
-            throw FrameBufferError (
+            throw FrameBufferError(
                     "FrameBufferView::parse() ** not enough data (" + std::to_string(_size - (_next - _data)) +
                     " bytes instead of " + std::to_string(messageLength) + " to be interpreted as the message");
 
-        if (!message.ParseFromArray(_next, messageLength) ||
-            !message.IsInitialized())
-            throw FrameBufferError (
+        if (not message.ParseFromArray(_next, messageLength) ||
+            not message.IsInitialized()) {
+            throw FrameBufferError(
                     "FrameBufferView::parse() ** message deserialization failed **");
+         }
 
         // Move the pointer to the next message (if any)
         _next += messageLength;
@@ -146,7 +146,7 @@ private:
      *
      * @return the length (bytes) of of the next message
      */
-    uint32_t parseLength ();
+    uint32_t parseLength();
 
 private:
 
@@ -166,7 +166,7 @@ class FrameBuffer {
 public:
 
     /// The default capacity of teh buffer
-    static const size_t DEAFULT_SIZE;
+    static const size_t DEFAULT_SIZE;
 
     /// Google protobuffers are more efficient below this size (bytes)
     static const size_t DESIRED_LIMIT;
@@ -177,30 +177,30 @@ public:
     /**
      * Construct the buffer of the specified initial capacity (bytes).
      */
-    explicit FrameBuffer (size_t capacity=DEAFULT_SIZE);
+    explicit FrameBuffer(size_t capacity=DEFAULT_SIZE);
 
     // Copy semantics are proxibited
 
-    FrameBuffer (FrameBuffer const&) = delete;
-    FrameBuffer& operator= (FrameBuffer const&) = delete;
+    FrameBuffer(FrameBuffer const&) = delete;
+    FrameBuffer& operator=(FrameBuffer const&) = delete;
 
     /// Destructor
-    virtual ~FrameBuffer ();
+    ~FrameBuffer();
 
     /**
      * @return pointer to the data blob
      */
-    char* data () { return _data; }
+    char* data() { return _data; }
 
     /**
      * @return maximum capacity (bytes) of the buffer
      */
-    size_t capacity () const { return _capacity; }
+    size_t capacity() const { return _capacity; }
 
     /**
      * @return meaninful size (bytes) of the buffer
      */
-    size_t size () const { return _size; }
+    size_t size() const { return _size; }
 
     /**
      * Set the size of the meaningful content of the buffer. If the buffer
@@ -215,7 +215,7 @@ public:
      *
      * @param newSizeBytes - new size (bytes) of the buffer
      */
-    void resize (size_t newSizeBytes=0);
+    void resize(size_t newSizeBytes=0);
 
     /**
      * Add a message into the buffer. The message will be preceeed
@@ -232,7 +232,7 @@ public:
      * @param message - protobuf message to be serialized into the buffer
      */
     template <class T>
-    void serialize (T const& message) {
+    void serialize(T const& message) {
         
         uint32_t const headerLength  = sizeof(uint32_t);
         uint32_t const messageLength = message.ByteSize();
@@ -259,7 +259,7 @@ private:
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
      * as well as its size will be preserved.
      */
-    void extend (size_t newCapacityBytes);
+    void extend(size_t newCapacityBytes);
 
 private:
 

@@ -32,11 +32,8 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 
-
 // This macro to appear witin each block which requires thread safety
-
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -48,16 +45,14 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-void
-ResourceMonitor::add (std::string const& resource) {
+void ResourceMonitor::increment(std::string const& resource) {
 
     LOCK_GUARD;
 
     _resourceCounter[resource]++;
 }
 
-void
-ResourceMonitor::remove (std::string const& resource) {
+void ResourceMonitor::decrement(std::string const& resource) {
 
     LOCK_GUARD;
 
@@ -65,30 +60,26 @@ ResourceMonitor::remove (std::string const& resource) {
     if (not --(_resourceCounter[resource])) _resourceCounter.erase(resource);
 }
 
-unsigned int
-ResourceMonitor::count (std::string const& resource) const {
+unsigned int ResourceMonitor::count(std::string const& resource) const {
 
     LOCK_GUARD;
 
     return _resourceCounter.count(resource) ? _resourceCounter.at(resource) : 0;
 }
 
-unsigned int
-ResourceMonitor::count (int chunk,
-                        std::string const& db) const {
+unsigned int ResourceMonitor::count(int chunk,
+                                    std::string const& db) const {
     return count(ResourceUnit::makePath(chunk, db));
 }
 
-unsigned int
-ResourceMonitor::count (int chunk,
-                        std::vector<std::string> const& dbs) const {
+unsigned int ResourceMonitor::count(int chunk,
+                                    std::vector<std::string> const& dbs) const {
     unsigned int result = 0;
     for (std::string const& db: dbs) result += count(chunk, db);
     return result;
 }
 
-ResourceMonitor::ResourceCounter
-ResourceMonitor::resourceCounter () const {
+ResourceMonitor::ResourceCounter ResourceMonitor::resourceCounter() const {
 
     // Make a copy of the map while under protection of the lock guard.
 

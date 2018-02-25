@@ -21,11 +21,9 @@
  */
 
 // Class header
-
 #include "proto/FrameBuffer.h"
 
 // System headers
-
 #include <algorithm>
 
 // Qserv headers
@@ -39,23 +37,18 @@ namespace proto {
 // Class FrameBufferView //
 ///////////////////////////
 
-FrameBufferView::FrameBufferView (char const* data,
-                                  size_t      size)
+FrameBufferView::FrameBufferView(char const* data,
+                                 size_t      size)
     :   _data (data),
         _next (data),
-        _size (size)
-{ }
-
-FrameBufferView::~FrameBufferView () {
+        _size (size) {
 }
 
-
-uint32_t
-FrameBufferView::parseLength () {
+uint32_t FrameBufferView::parseLength() {
 
     uint32_t const headerLength = sizeof(uint32_t);
     if (_size - (_next - _data) < headerLength)
-        FrameBufferError (
+        FrameBufferError(
             "FrameBufferView::parseLength()  ** not enough data to be interpreted as the frame header **");
 
     uint32_t const messageLength = ntohl(*(reinterpret_cast<const uint32_t*>(_next)));
@@ -66,36 +59,34 @@ FrameBufferView::parseLength () {
     return messageLength;
 }
 
-
 ///////////////////////
 // Class FrameBuffer //
 ///////////////////////
 
-const size_t FrameBuffer::DEAFULT_SIZE  = 1024;
+const size_t FrameBuffer::DEFAULT_SIZE  = 1024;
 const size_t FrameBuffer::DESIRED_LIMIT = 2000000;
 const size_t FrameBuffer::HARD_LIMIT    = 64000000;
 
-FrameBuffer::FrameBuffer (size_t capacity)
+FrameBuffer::FrameBuffer(size_t capacity)
     :   _data    (new char[capacity]),
         _capacity(capacity),
-        _size    (0)
-{
+        _size    (0) {
+
     if (_capacity > HARD_LIMIT)
-        throw FrameBufferError (
+        throw FrameBufferError(
                 "FrameBuffer::FrameBuffer()  ** requested capacity " + std::to_string(capacity) +
                 " exceeds the hard limit of Google protobuf: " + std::to_string(HARD_LIMIT) +
                 " **");
 }
 
-FrameBuffer::~FrameBuffer () {
+FrameBuffer::~FrameBuffer() {
     delete [] _data;
     _data = 0;
     _capacity = 0;
     _size = 0;
 }
 
-void
-FrameBuffer::resize (size_t newSizeBytes) {
+void FrameBuffer::resize(size_t newSizeBytes) {
 
     // Make sure there is enough space in the buffer to accomodate
     // the request.
@@ -105,22 +96,21 @@ FrameBuffer::resize (size_t newSizeBytes) {
     _size = newSizeBytes;
 }
 
-void
-FrameBuffer::extend (size_t newCapacityBytes) {
+void FrameBuffer::extend(size_t newCapacityBytes) {
 
     if (newCapacityBytes <= _capacity) return;
 
     // Allocate a larger buffer
 
     if (newCapacityBytes > HARD_LIMIT)
-        throw FrameBufferError (
+        throw FrameBufferError(
                 "FrameBuffer::extend()  ** requested capacity " + std::to_string(newCapacityBytes) +
                 " exceeds the hard limit of Google protobuf " + std::to_string(HARD_LIMIT) +
                 " **");
 
     char* ptr = new char[newCapacityBytes];
     if (!ptr)
-        throw FrameBufferError (
+        throw FrameBufferError(
                 "FrameBuffer::extend()  ** failed to allocate a buffer of requested size " +
                 std::to_string(newCapacityBytes) +
                 " **");

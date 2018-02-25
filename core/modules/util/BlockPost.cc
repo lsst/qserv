@@ -21,11 +21,9 @@
  */
 
 // Class header
-
 #include "util/BlockPost.h"
 
 // System headers
-
 #include <chrono>
 #include <ratio>        // std::milli
 #include <stdexcept>
@@ -37,31 +35,31 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-BlockPost::BlockPost (int minMilliseconds, int maxMilliseconds)
+BlockPost::BlockPost(int minMilliseconds, int maxMilliseconds)
     :   _rd(),
         _gen(_rd()),
-        _distr (minMilliseconds, maxMilliseconds)
-{
-    if (minMilliseconds < 0 || minMilliseconds >= maxMilliseconds)
-        throw std::invalid_argument("BlockPost::BlockPost() - invalid range of milliseconds");
+        _distr(minMilliseconds, maxMilliseconds) {
+
+    if ((minMilliseconds < 0) || (minMilliseconds >= maxMilliseconds))
+        throw std::invalid_argument(
+                    "BlockPost::BlockPost() - invalid range of milliseconds provided: [" +
+                    std::to_string(minMilliseconds) + ".." + std::to_string(maxMilliseconds) + "]");
 }
 
-int
-BlockPost::wait () {
+int BlockPost::wait() {
     const int ival = next();
     wait(ival);
     return ival;
 }
 
-int
-BlockPost::wait (int milliseconds) {
+int BlockPost::wait(int milliseconds) {
 
     if (milliseconds < 0)
         throw std::invalid_argument("BlockPost::wait(milliseconds) - invalid number of milliseconds");
 
-    std::this_thread::sleep_for (
-        std::chrono::duration<long, std::milli> (
-            std::chrono::milliseconds (
+    std::this_thread::sleep_for(
+        std::chrono::duration<long, std::milli>(
+            std::chrono::milliseconds(
                 milliseconds
             )
         )
@@ -69,8 +67,7 @@ BlockPost::wait (int milliseconds) {
     return milliseconds;
 }
 
-int
-BlockPost::next () {
+int BlockPost::next() {
     std::lock_guard<std::mutex> lock(_generatorMtx);
     return _distr(_gen);
 }

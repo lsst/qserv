@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_UTIL_BLOCKPOST_H
-#define LSST_QSERV_UTIL_BLOCKPOST_H
+#ifndef LSST_QSERV_UTIL_BLOCK_POST_H
+#define LSST_QSERV_UTIL_BLOCK_POST_H
 
 /// BlockPost.h declares:
 ///
@@ -28,12 +28,10 @@
 /// (see individual class documentation for more information)
 
 // System headers
-
 #include <mutex>
 #include <random>
 
 // Qserv headers
-
 
 // This header declarations
 
@@ -45,7 +43,7 @@ namespace util {
  * The BlockPost provides a facility for blocking a calling thread
  * for a random number of milliseconds. The numbers are generated
  * by a built-in generator producing a series of uniformally
- * distributed numbers of mislliseconds within a range specified upon
+ * distributed numbers of milliseconds within a range specified upon
  * an object construction.
  *
  * THREAD SAFETY NOTE: this class implementation is thread-safe.
@@ -56,9 +54,9 @@ public:
     
     // Default construction and copy semantics are proxibited
 
-    BlockPost () = delete;
-    BlockPost (BlockPost const&) = delete;
-    BlockPost & operator= (BlockPost const&) = delete;
+    BlockPost() = delete;
+    BlockPost(BlockPost const&) = delete;
+    BlockPost & operator=(BlockPost const&) = delete;
 
     /**
      * Normal constructor
@@ -70,7 +68,10 @@ public:
      * @param minMilliseconds - the lower limit of the series
      * @param maxMilliseconds - the upper limit of the series
     */
-    BlockPost (int minMilliseconds, int maxMilliseconds);
+    BlockPost(int minMilliseconds, int maxMilliseconds);
+
+    /// Destructor
+    ~BlockPost() = default;
 
     /**
      * Block a calling thread for a randomly generated number
@@ -78,7 +79,7 @@ public:
      *
      * @return the number of milliseconds the thread was blocked for
      */
-    int wait ();
+    int wait();
 
     /**
      * Block a calling thread for the specified number
@@ -89,12 +90,12 @@ public:
      *                       integer number.
      * @return the number of milliseconds the thread was blocked for
      */
-    int wait (int milliseconds);
+    int wait(int milliseconds);
 
 private:
     
     /// Return the next random number of milliseconds
-    int next ();
+    int next();
 
 private:
 
@@ -107,4 +108,4 @@ private:
 
 }}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_BLOCKPOST_H
+#endif // LSST_QSERV_UTIL_BLOCK_POST_H

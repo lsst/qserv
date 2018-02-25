@@ -39,7 +39,7 @@ namespace qserv {
 namespace wpublish {
 
 /**
-  * Class ResourceMonitor is a thread-safe implementation fr a counter of resources
+  * Class ResourceMonitor is a thread-safe implementation for a counter of resources
   * which are in use at any givem moment by the application.
   */
 class ResourceMonitor {
@@ -51,36 +51,36 @@ public:
     using ResourceCounter = std::map<std::string, unsigned int>;
 
     // The copy semantics is prohibited
-    ResourceMonitor& operator= (ResourceMonitor const&) = delete;
-    ResourceMonitor (ResourceMonitor const&) = delete;
+    ResourceMonitor& operator=(ResourceMonitor const&) = delete;
+    ResourceMonitor(ResourceMonitor const&) = delete;
 
 
     // Default constructor
-    ResourceMonitor() {}
+    ResourceMonitor() = default;
 
     /// The destructor
-    virtual ~ResourceMonitor() {}
+    ~ResourceMonitor() = default;
 
     /**
      * Increment resource usage counter by 1
      *
      * @param resource - name of a resource affected by the operation
      */
-    void add (std::string const& resource);
+    void increment(std::string const& resource);
 
     /**
      * Decrement resource usage counter by 1
      *
      * @param resource - name of a resource affected by the operation
      */
-    void remove (std::string const& resource);
+    void decrement(std::string const& resource);
 
     /**
      * Return the counter of resource uses (by resource name)
      *
      * @param resource - name of a resource
      */
-    unsigned int count (std::string const& resource) const;
+    unsigned int count(std::string const& resource) const;
 
     /**
      * Return the counter of resource uses (by database name and chunk number)
@@ -88,8 +88,8 @@ public:
      * @param chunk - chunk number
      * @param db    - name of a database
      */
-    unsigned int count (int chunk,
-                        std::string const& db) const;
+    unsigned int count(int chunk,
+                       std::string const& db) const;
 
     /**
      * Return the counter of a group of related resources uses
@@ -100,13 +100,13 @@ public:
      * @param chunk - chunk number
      * @param dbs   - names of database
      */
-    unsigned int count (int chunk,
-                        std::vector<std::string> const& dbs) const;
+    unsigned int count(int chunk,
+                       std::vector<std::string> const& dbs) const;
 
     /**
      * @return resource usage counter
      */
-    ResourceCounter resourceCounter () const;
+    ResourceCounter resourceCounter() const;
 
 private:
 

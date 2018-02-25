@@ -107,7 +107,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         case ResourceUnit::DBCHUNK: {
 
             // Increment the counter of the database/chunk resources in use
-            _resourceMonitor->add(_resourceName);
+            _resourceMonitor->increment(_resourceName);
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -305,7 +305,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // Decrement the counter of the database/chunk resources in use
     ResourceUnit ru(_resourceName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
-        _resourceMonitor->remove(_resourceName);
+        _resourceMonitor->decrement(_resourceName);
     }
 
     // We can't do much other than close the file.
