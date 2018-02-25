@@ -49,12 +49,12 @@ class ChunkListCommand
 public:
 
     // The default construction and copy semantics are prohibited
-    ChunkListCommand () = delete;
-    ChunkListCommand& operator= (ChunkListCommand const&) = delete;
-    ChunkListCommand (ChunkListCommand const&) = delete;
+    ChunkListCommand() = delete;
+    ChunkListCommand& operator=(ChunkListCommand const&) = delete;
+    ChunkListCommand(ChunkListCommand const&) = delete;
 
     /// The destructor
-    ~ChunkListCommand () override;
+    ~ChunkListCommand() override = default;
 
 protected:
 
@@ -67,18 +67,18 @@ protected:
      * @param rebuild        - rebuild the list from actual database tables
      * @param reload         - reload the list in worker's memory
      */
-    ChunkListCommand (std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                      std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                      mysql::MySqlConfig                  const& mySqlConfig,
-                      bool rebuild,
-                      bool reload);
+    ChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                     std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                     mysql::MySqlConfig                  const& mySqlConfig,
+                     bool rebuild,
+                     bool reload);
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 
@@ -108,9 +108,9 @@ class ReloadChunkListCommand
 public:
 
     // The default construction and copy semantics are prohibited
-    ReloadChunkListCommand () = delete;
-    ReloadChunkListCommand& operator= (ReloadChunkListCommand const&) = delete;
-    ReloadChunkListCommand (ReloadChunkListCommand const&) = delete;
+    ReloadChunkListCommand() = delete;
+    ReloadChunkListCommand& operator=(ReloadChunkListCommand const&) = delete;
+    ReloadChunkListCommand(ReloadChunkListCommand const&) = delete;
 
     /**
      * The normal constructor of the class
@@ -119,18 +119,18 @@ public:
      * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
      * @param mySqlConfig    - database connection parameters
      */
-    ReloadChunkListCommand (std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                            mysql::MySqlConfig                  const& mySqlConfig)
-        :   ChunkListCommand (sendChannel,
-                              chunkInventory,
-                              mySqlConfig,
-                              false,
-                              true) {
+    ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                           std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                           mysql::MySqlConfig                  const& mySqlConfig)
+        :   ChunkListCommand(sendChannel,
+                             chunkInventory,
+                             mySqlConfig,
+                             false,
+                             true) {
         }
 
     /// The destructor
-    ~ReloadChunkListCommand() override {}
+    ~ReloadChunkListCommand() override = default;
 };
 
 /**
@@ -144,9 +144,9 @@ class RebuildChunkListCommand
 public:
 
     // The default construction and copy semantics are prohibited
-    RebuildChunkListCommand () = delete;
-    RebuildChunkListCommand& operator= ( RebuildChunkListCommand const&) = delete;
-    RebuildChunkListCommand (RebuildChunkListCommand const&) = delete;
+    RebuildChunkListCommand() = delete;
+    RebuildChunkListCommand& operator=( RebuildChunkListCommand const&) = delete;
+    RebuildChunkListCommand(RebuildChunkListCommand const&) = delete;
 
     /**
      * The normal constructor of the class
@@ -156,15 +156,15 @@ public:
      * @param mySqlConfig    - database connection parameters
      * @param reload         - reload the list in worker's memory
      */
-    RebuildChunkListCommand (std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                             std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                             mysql::MySqlConfig                  const& mySqlConfig,
-                             bool reload)
-        :   ChunkListCommand (sendChannel,
-                              chunkInventory,
-                              mySqlConfig,
-                              true,
-                              reload) {
+    RebuildChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                            mysql::MySqlConfig                  const& mySqlConfig,
+                            bool reload)
+        :   ChunkListCommand(sendChannel,
+                             chunkInventory,
+                             mySqlConfig,
+                             true,
+                             reload) {
         }
 
     /// The destructor

@@ -53,16 +53,19 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-struct InvalidParamError
-    :   std::runtime_error {
-
+/// Excepion class for reporting problems with parameters' values
+class InvalidParamError
+    :   public std::runtime_error {
+public:
     InvalidParamError (std::string const& msg)
         :   std::runtime_error(msg) {
     }
 };
-struct QueryError
-    :   std::runtime_error {
 
+/// Exception class for reporting problems during query processing
+class QueryError
+    :   public std::runtime_error {
+public:
     QueryError (std::string const& msg)
         :   std::runtime_error(msg) {
     }

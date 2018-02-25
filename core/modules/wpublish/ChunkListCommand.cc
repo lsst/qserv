@@ -44,22 +44,19 @@
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-
 // Qserv headers
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListCommand");
 
-
 /// Print the inventory status onto the logging stream
-void dumpInventory (lsst::qserv::wpublish::ChunkInventory const& inventory,
-                    std::string                           const& context) {
+void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory,
+                   std::string                           const& context) {
     std::ostringstream os;
     inventory.dbgPrint(os);
     LOGS(_log, LOG_LVL_DEBUG, context << os.str());
 }
-
 
 } // annonymous namespace
 
@@ -73,14 +70,10 @@ ChunkListCommand::ChunkListCommand(std::shared_ptr<wbase::SendChannel> const& se
                                    bool rebuild,
                                    bool reload)
     :   wbase::WorkerCommand(sendChannel),
-
         _chunkInventory(chunkInventory),
         _mySqlConfig   (mySqlConfig),
         _rebuild       (rebuild),
         _reload        (reload) {
-}
-
-ChunkListCommand::~ChunkListCommand() {
 }
 
 void
@@ -145,10 +138,10 @@ ChunkListCommand::run() {
         if (not removedChunks.empty()) {
     
             for (auto const& entry: removedChunks) {
-                std::string const& db = entry.first;
+                std::string const& database = entry.first;
     
                 for (int chunk: entry.second) {
-                    std::string const resource = "/chk/" + db + "/" + std::to_string(chunk);
+                    std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
     
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource);
     
@@ -157,7 +150,7 @@ ChunkListCommand::run() {
                         clusterManager->Removed(resource.c_str());
 
                         // Notify QServ
-                        _chunkInventory->remove(db, chunk);
+                        _chunkInventory->remove(database, chunk);
 
                     } catch (std::exception const& ex) {
                         reportError("failed to remove the chunk: " + std::string(ex.what()));
@@ -166,7 +159,7 @@ ChunkListCommand::run() {
     
                     // Notify the caller of this service
                     proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_removed();
-                    ptr->set_db(db);
+                    ptr->set_db(database);
                     ptr->set_chunk(chunk);
                 }
             }
@@ -174,10 +167,10 @@ ChunkListCommand::run() {
         if (not addedChunks.empty()) {
     
             for (auto const& entry: addedChunks) {
-                std::string const& db = entry.first;
+                std::string const& database = entry.first;
     
                 for (int chunk: entry.second) {
-                    std::string const resource = "/chk/" + db + "/" + std::to_string(chunk);
+                    std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
     
                     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource);
     
@@ -186,7 +179,7 @@ ChunkListCommand::run() {
                         clusterManager->Added(resource.c_str());
 
                         // Notify QServ
-                        _chunkInventory->add(db, chunk);
+                        _chunkInventory->add(database, chunk);
 
                     } catch (std::exception const& ex) {
                         reportError("failed to add the chunk: " + std::string(ex.what()));
@@ -195,7 +188,7 @@ ChunkListCommand::run() {
     
                     // Notify the caller of this service
                     proto::WorkerCommandUpdateChunkListR::Chunk* ptr = reply.add_added();
-                    ptr->set_db(db);
+                    ptr->set_db(database);
                     ptr->set_chunk(chunk);
                 }
             }

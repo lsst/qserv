@@ -13,7 +13,7 @@
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
-#include "util/CmdParser.h"
+#include "util/CmdLineParser.h"
 #include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ChunkListQservRequest.h"
 #include "wpublish/GetChunkListQservRequest.h"
@@ -42,7 +42,7 @@ bool force;
 bool printReport;
 
 
-int test () {
+int test() {
 
     // Instantiate a request object
 
@@ -51,7 +51,7 @@ int test () {
     XrdSsiRequest* request = nullptr;
 
     if ("GET_CHUNK_LIST" == operation) {
-        request = new wpublish::GetChunkListQservRequest (
+        request = new wpublish::GetChunkListQservRequest(
             inUseOnly,
             [&finished] (wpublish::GetChunkListQservRequest::Status status,
                          std::string const& error,
@@ -69,7 +69,7 @@ int test () {
                         for (auto const& entry: chunks) {
                             std::cout << " " << std::setw(10) << entry.chunk << " |"
                                       << " " << std::setw(32) << entry.database << " |"
-                                      << " " << std::setw (6) << entry.use_count << " \n";
+                                      << " " << std::setw(6)  << entry.use_count << " \n";
                         }
                         std::cout << std::endl;
                     }
@@ -78,7 +78,7 @@ int test () {
             });
 
     } else if ("REBUILD_CHUNK_LIST" == operation) {
-        request = new wpublish::RebuildChunkListQservRequest (
+        request = new wpublish::RebuildChunkListQservRequest(
             reload,
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
@@ -96,7 +96,7 @@ int test () {
             });
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
-        request = new wpublish::ReloadChunkListQservRequest (
+        request = new wpublish::ReloadChunkListQservRequest(
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
@@ -113,7 +113,7 @@ int test () {
             });
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
-        request = new wpublish::AddChunkGroupQservRequest (
+        request = new wpublish::AddChunkGroupQservRequest(
             chunk,
             dbs,
             [&finished] (wpublish::ChunkGroupQservRequest::Status status,
@@ -127,7 +127,7 @@ int test () {
             });
 
     } else if ("REMOVE_CHUNK_GROUP" == operation) {
-        request = new wpublish::RemoveChunkGroupQservRequest (
+        request = new wpublish::RemoveChunkGroupQservRequest(
             chunk,
             dbs,
             force,
@@ -142,7 +142,7 @@ int test () {
             });
 
     } else if ("TEST_ECHO" == operation) {
-        request = new wpublish::TestEchoQservRequest (
+        request = new wpublish::TestEchoQservRequest(
             value,
             [&finished] (wpublish::TestEchoQservRequest::Status status,
                          std::string const& error,
@@ -177,18 +177,18 @@ int test () {
     std::cout << "connected to service provider at: " << serviceProviderLocation << std::endl;
 
     // Submit the request
-    XrdSsiResource resource (global::ResourceUnit::makeWorkerPath(worker));
-    serviceProvider->ProcessRequest (*request, resource);
+    XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
+    serviceProvider->ProcessRequest(*request, resource);
 
     // Block while the request is in progress 
-    util::BlockPost blockPost (1000, 2000);
+    util::BlockPost blockPost(1000, 2000);
     while (not finished) blockPost.wait(200);
 
     return 0;
 }
 } // namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -197,7 +197,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -231,7 +231,7 @@ int main (int argc, const char* const argv[]) {
             "  <db>     - database name\n"
             "  <value>  - arbitrary string\n");
 
-        ::operation = parser.parameterRestrictedBy (1, {
+        ::operation = parser.parameterRestrictedBy(1, {
             "GET_CHUNK_LIST",
             "REBUILD_CHUNK_LIST",
             "RELOAD_CHUNK_LIST",
@@ -241,24 +241,24 @@ int main (int argc, const char* const argv[]) {
 
         ::worker = parser.parameter<std::string>(2);
 
-        if (parser.found_in(::operation, {
+        if (parser.in(::operation, {
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP"})) {
-            ::chunk = parser.parameter <unsigned int>(3);
-            ::dbs   = parser.parameters<std::string> (4);
+            ::chunk = parser.parameter<unsigned int>(3);
+            ::dbs   = parser.parameters<std::string>(4);
 
-        } else if (parser.found_in(::operation, {
+        } else if (parser.in(::operation, {
             "TEST_ECHO"})) {
-            ::value     = parser.parameter <std::string>(3);
+            ::value = parser.parameter<std::string>(3);
         }
-        ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
-        ::inUseOnly               = parser.flag                ("in-use-only");
-        ::reload                  = parser.flag                ("reload");
-        ::force                   = parser.flag                ("force");
-        ::printReport             = parser.flag                ("print-report");
+        ::serviceProviderLocation = parser.option<std::string>("service", "localhost:1094");
+        ::inUseOnly               = parser.flag("in-use-only");
+        ::reload                  = parser.flag("reload");
+        ::force                   = parser.flag("force");
+        ::printReport             = parser.flag("print-report");
 
     } catch (std::exception const& ex) {
         return 1;
     } 
-    return ::test ();
+    return ::test();
 }

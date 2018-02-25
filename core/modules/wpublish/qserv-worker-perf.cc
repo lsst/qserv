@@ -14,7 +14,7 @@
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
-#include "util/CmdParser.h"
+#include "util/CmdLineParser.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -38,7 +38,7 @@ bool workerFirst;
 
 std::vector<std::string> workers;
 
-bool readWorkersFile () {
+bool readWorkersFile() {
     std::ifstream file(workersFileName);
     if (not file.good()) {
         std::cerr << "error: failed to open a file with worker identifiers: "
@@ -58,7 +58,7 @@ bool readWorkersFile () {
 }
 
 
-int test () {
+int test() {
 
     if (not readWorkersFile()) return 1;
     if (not numWorkers or (workers.size() < numWorkers)) {
@@ -92,7 +92,7 @@ int test () {
     
             for (unsigned int i = 0; i < numRequests; ++i) {
     
-                XrdSsiRequest* request = new wpublish::TestEchoQservRequest (
+                XrdSsiRequest* request = new wpublish::TestEchoQservRequest(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
                                  std::string const& error,
@@ -111,8 +111,8 @@ int test () {
         
                 // Submit the request
                 finished++;
-                XrdSsiResource resource (global::ResourceUnit::makeWorkerPath(worker));
-                serviceProvider->ProcessRequest (*request, resource);
+                XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
+                serviceProvider->ProcessRequest(*request, resource);
             }
         }
 
@@ -124,7 +124,7 @@ int test () {
                 std::string const& worker = workers[j];
     
     
-                XrdSsiRequest* request = new wpublish::TestEchoQservRequest (
+                XrdSsiRequest* request = new wpublish::TestEchoQservRequest(
                     value,
                     [&finished] (wpublish::TestEchoQservRequest::Status status,
                                  std::string const& error,
@@ -143,21 +143,21 @@ int test () {
         
                 // Submit the request
                 finished++;
-                XrdSsiResource resource (global::ResourceUnit::makeWorkerPath(worker));
-                serviceProvider->ProcessRequest (*request, resource);
+                XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
+                serviceProvider->ProcessRequest(*request, resource);
             }
         }
     }
 
     // Block while at least one request is in progress 
-    util::BlockPost blockPost (1000, 2000);
+    util::BlockPost blockPost(1000, 2000);
     while (finished) blockPost.wait(200);
 
     return 0;
 }
 } // namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -166,7 +166,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -186,16 +186,16 @@ int main (int argc, const char* const argv[]) {
             "  <num-requests>       - chunk number\n"
             "  <value>              - arbitrary string\n");
 
-        ::workersFileName = parser.parameter <std::string> (1);
-        ::numRequests     = parser.parameter <unsigned int>(2);
-        ::value           = parser.parameter <std::string> (3);
+        ::workersFileName = parser.parameter<std::string>(1);
+        ::numRequests     = parser.parameter<unsigned int>(2);
+        ::value           = parser.parameter<std::string>(3);
 
-        ::serviceProviderLocation = parser.option<std::string> ("service", "localhost:1094");
+        ::serviceProviderLocation = parser.option<std::string>("service", "localhost:1094");
         ::numWorkers              = parser.option<unsigned int>("num-workers", 1);
-        ::workerFirst             = parser.flag                ("worker-first");
+        ::workerFirst             = parser.flag("worker-first");
 
     } catch (std::exception const& ex) {
         return 1;
     } 
-    return ::test ();
+    return ::test();
 }

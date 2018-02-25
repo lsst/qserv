@@ -68,13 +68,13 @@ public:
      * @param chunkInventory - chunks known to the application
      * @param mySqlConfig    - database connection parameters
      * @param chunk          - chunk number
-     * @param dbs            - names of databases in the group
+     * @param databases      - names of databases in the group
      */
     AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                          std::shared_ptr<ChunkInventory>     const& chunkInventory,
                          mysql::MySqlConfig                  const& mySqlConfig,
                          int chunk,
-                         std::vector<std::string> const& dbs);
+                         std::vector<std::string> const& databases);
 
     /// The destructor
     virtual ~AddChunkGroupCommand();
@@ -103,7 +103,7 @@ private:
     std::shared_ptr<ChunkInventory> _chunkInventory;
     mysql::MySqlConfig _mySqlConfig;
     int _chunk;
-    std::vector<std::string> _dbs;
+    std::vector<std::string> _databases;
 };
 
 }}} // namespace lsst::qserv::wpublish

@@ -59,13 +59,12 @@ AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> c
                                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
                                            mysql::MySqlConfig                  const& mySqlConfig,
                                            int chunk,
-                                           std::vector<std::string> const& dbs)
+                                           std::vector<std::string> const& databases)
     :   wbase::WorkerCommand(sendChannel),
-
         _chunkInventory(chunkInventory),
         _mySqlConfig   (mySqlConfig),
         _chunk(chunk),
-        _dbs(dbs) {
+        _databases(databases) {
 }
 
 AddChunkGroupCommand::~AddChunkGroupCommand() {
@@ -91,7 +90,7 @@ AddChunkGroupCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run");
 
-    if (not _dbs.size()) {
+    if (not _databases.size()) {
         reportError(proto::WorkerCommandChunkGroupR::INVALID,
                     "the list of database names in the group was found empty");
         return;
@@ -103,9 +102,9 @@ AddChunkGroupCommand::run() {
     proto::WorkerCommandChunkGroupR reply;
     reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
 
-    for (std::string const& db: _dbs) {
+    for (std::string const& database: _databases) {
 
-        std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
+        std::string const resource = "/chk/" + database + "/" + std::to_string(_chunk);
 
         LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding the chunk resource: "
              << resource);
@@ -115,7 +114,7 @@ AddChunkGroupCommand::run() {
             clusterManager->Added(resource.c_str());
 
             // Notify QServ and update the database
-            _chunkInventory->add(db, _chunk, _mySqlConfig);
+            _chunkInventory->add(database, _chunk, _mySqlConfig);
 
         } catch (InvalidParamError const& ex) {
             reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
