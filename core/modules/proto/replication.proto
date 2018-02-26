@@ -1,0 +1,514 @@
+/*
+ * LSST Data Management System
+ * Copyright 2011-2017 LSST Corporation.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+/// replication.proto
+/// This defines the wire-messages sent between replication master and workers.
+
+package lsst.qserv.proto;
+
+
+
+/////////////////////////////////////////////////////////
+//                  Response messages                  //
+/////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////
+// Replication header sent to a worker. Any communication begins with
+// sending this header and specifying a type of the request.
+//
+// Chunk replication requests must be followed by another message of
+// the corresponding type to provide a scope of the request.
+//
+// Requests affecting the overall status of the service do not require
+// any additional messages.
+
+// Request types related to operations with replicas
+//
+enum ReplicationReplicaRequestType {
+
+    REPLICA_CREATE   = 0;    // replicate a chunk
+    REPLICA_DELETE   = 1;    // delete an existing replica of a chunk
+    REPLICA_FIND     = 2;    // find out if a replica is present, and report its state
+    REPLICA_FIND_ALL = 3;    // find all replicas and report their states
+}
+
+// Request types for managing above defined requests
+//
+enum ReplicationManagementRequestType {
+
+    REQUEST_STATUS   = 0;    // check a status of a request
+    REQUEST_STOP     = 1;    // stop a previously requested request
+}
+
+// Request types affecting the overall state of the worker replication service
+//
+enum ReplicationServiceRequestType {
+
+    SERVICE_SUSPEND  = 0;
+    SERVICE_RESUME   = 1;
+    SERVICE_STATUS   = 2;
+    SERVICE_REQUESTS = 3;
+    SERVICE_DRAIN    = 4;  
+}
+
+// Message header is sent next after the frame size request. A sender must
+// indicate a class of a request by choosing one of a few options defined
+// in 'Type', and then set the specific request in the corresponding
+// optional field.
+//
+message ReplicationRequestHeader {
+
+    /// The unique identifier of a request
+    required string id = 1;
+
+    // The request type selector determines which class of the below specified
+    // optional subtypes to use
+    enum RequestType {
+        REPLICA = 0;
+        REQUEST = 1;
+        SERVICE = 2;
+    }
+    required RequestType type = 2;
+
+    // Subtypes of requests
+
+    optional ReplicationReplicaRequestType    replica_type    = 3;
+    optional ReplicationManagementRequestType management_type = 4;
+    optional ReplicationServiceRequestType    service_type    = 5;
+}
+
+//
+// The type of the next message (if any) to be sent depends on  specific type of
+// the operation. It should provide additional parameters of the operation.
+//
+
+// This is a replication request. The message defines a scope of the request and
+// its unique identity. This message is sent once after the header.
+//
+message ReplicationRequestReplicate {
+
+    required int32  priority = 1;
+    required string database = 2;
+    required uint32 chunk    = 3;
+    required string worker   = 4;
+}
+
+// This is a replica deletion request. The message defines a scope of the request
+// and its unique identity. This message is sent once after the header.
+//
+message ReplicationRequestDelete {
+
+    required int32  priority = 1;
+    required string database = 2;
+    required uint32 chunk    = 3;
+}
+
+// This is a replica lookup request. The message defines a scope of the request
+// and its unique identity. This message is sent once after the header.
+//
+message ReplicationRequestFind {
+
+    required int32  priority = 1;
+    required string database = 2;
+    required uint32 chunk    = 3;
+    
+    /// Compute a check/control sum for each file
+    required bool compute_cs = 4;
+}
+
+// This is a replica lookup request for multiple replicas. The message defines
+// a scope of the request and its unique identity. This message is sent once
+// after the header.
+//
+message ReplicationRequestFindAll {
+
+    required int32  priority = 1;
+    required string database = 2;
+}
+
+// This request is sent to stop an on-going replication (if any is still in progress).
+// This message is sent once after the header.
+//
+message ReplicationRequestStop {
+
+    /// an identifier of a request to be stopped
+    required string id = 1;
+
+    /// A specific type of the request will affect a choice
+    /// of the status object returned in response
+    required ReplicationReplicaRequestType type = 2;
+}
+
+// This request is sent to request a status of an on-going replication (if any
+// is still in progress). This message is sent once after the header.
+//
+message ReplicationRequestStatus {
+
+    /// an identifier of a request to be inspected
+    required string id = 1;
+
+    /// A specific type of the request will affect a choice
+    /// of the status object returned in response
+    required ReplicationReplicaRequestType type = 2;
+}
+
+
+/////////////////////////////////////////////////////////
+//                  Response messages                  //
+/////////////////////////////////////////////////////////
+
+
+
+////////////////////////////////////////////////////////////////
+// All response sequences begin with sending the response
+// header message containing a unique identifier of the original
+// request.
+//
+// The header must be followed by one or more messages which are
+// expected by the Controller in response to a preceeding
+// request associated with the original request.
+//
+message ReplicationResponseHeader {
+
+    /// The unique identifier of the original request to which this
+    /// response is being sent.
+    required string id = 1;
+}
+
+/////////////////////////////////////////////////////////////
+// These messages are expected by master upon a completion of
+// the corresponding replication operations.
+
+// Performance counters (timers) of the requests.
+// This message must be present in the relevant replies.
+//
+message ReplicationPerformance {
+
+    /// When a request was received by a worker service
+    required uint64 receive_time = 1;
+
+    /// When request execution started by a worker service
+    required uint64 start_time = 2;
+
+    /// When request execution fiished by a worker service
+    required uint64 finish_time = 3;
+}
+
+// Status values returned by all request related to operations with
+// replicas. Request management operations always return messages whose types
+// match the return types of the corresponding (original) replica-related reqiests.
+// Service management requests have their own set of status values.
+//
+enum ReplicationStatus {
+    SUCCESS       = 0;
+    QUEUED        = 1;
+    IN_PROGRESS   = 2;
+    IS_CANCELLING = 3;
+    BAD           = 4;
+    FAILED        = 5;
+    CANCELLED     = 6;
+}
+enum ReplicationStatusExt {
+    NONE          = 0;
+    INVALID_PARAM = 1;
+    INVALID_ID    = 2;
+    DUPLICATE     = 3;
+    FOLDER_STAT   = 4;
+    FILE_STAT     = 5;
+    FILE_SIZE     = 6;
+    FOLDER_READ   = 7;
+    FILE_READ     = 8;
+    FILE_ROPEN    = 9;
+    FILE_CREATE   = 10;
+    FILE_OPEN     = 11;
+    FILE_RESIZE   = 12;
+    FILE_WRITE    = 13;
+    FILE_COPY     = 14;
+    FILE_DELETE   = 15;
+    FILE_RENAME   = 16;
+    FILE_EXISTS   = 17;
+    SPACE_REQ     = 18;
+    NO_FOLDER     = 19;
+    NO_FILE       = 20;
+    NO_ACCESS     = 21;
+    NO_SPACE      = 22;
+    FILE_MTIME    = 23;
+}
+
+message ReplicationFileInfo {
+
+    /// The name of a file
+    required string name = 1;
+
+    /// Size in bytes
+    required uint64 size = 2;
+
+    /// Control sum (if available)
+    required string cs = 3;
+
+    /// The file content modification time in seconds (since UNIX Epoch)
+    required uint32 mtime = 4;
+
+    // The following parameters are set in the relevant contexts only.
+    // Otherwise they'll be set to some default value)
+  
+    /// When the file migration started (where applies)
+    optional uint64 begin_transfer_time = 5 [default = 0];
+
+    /// When the file migration finished (where applies)
+    optional uint64 end_transfer_time = 6 [default = 0];
+
+    /// The size of an input file (where applies)
+    optional uint64 in_size = 7 [default = 0] ;
+}
+
+message ReplicationReplicaInfo {
+    enum ReplicaStatus {
+        NOT_FOUND  = 0;
+        CORRUPT    = 1;
+        INCOMPLETE = 2;
+        COMPLETE   = 3;
+    }
+    required ReplicaStatus status   = 1;
+    required string        worker   = 2;
+    required string        database = 3;
+    required uint32        chunk    = 4;
+
+    /// File-specific information (if available)
+    repeated ReplicationFileInfo file_info_many = 5;
+
+    /// When the replica status was obtained by a worker
+    required uint64 verify_time = 6;
+}
+
+message ReplicationResponseReplicate {
+
+    /// The completion status of the operation
+    required ReplicationStatus status = 1;
+
+    /// Extended status of this operation
+    optional ReplicationStatusExt status_ext = 2 [default = NONE];
+
+    /// The field is set for duplicate requests only
+    optional string duplicate_request_id = 3 [default = ""];
+
+    /// The performance of this operation
+    required ReplicationPerformance performance = 4;
+
+    // --------------------------------------------------------------
+    // The following optional fields et upon a successfull completion
+    // of the request
+    // --------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents
+    /// stats of the replica creation request obtained by the request
+    /// management operations.
+    optional ReplicationPerformance target_performance = 5;
+
+    /// Extended information on the replica
+    optional ReplicationReplicaInfo replica_info = 6;
+
+    /// Parameters of the original request to which this response
+    /// is related.
+    optional ReplicationRequestReplicate request = 7;
+}
+
+message ReplicationResponseDelete {
+
+    /// The completion status of the operation
+    required ReplicationStatus status = 1;
+
+    /// Extended status of this operation
+    optional ReplicationStatusExt status_ext = 2 [default = NONE];
+
+    /// The field is set for duplicate requests only
+    optional string duplicate_request_id = 3 [default = ""];
+
+    /// The performance of this operation
+    required ReplicationPerformance performance = 4;
+
+    // --------------------------------------------------------------
+    // The following optional fields et upon a successfull completion
+    // of the request
+    // --------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents
+    /// stats of the replica deletion request obtained by the request
+    /// management operations
+    optional ReplicationPerformance target_performance = 5;
+    
+    /// Extended information on the request
+    optional ReplicationReplicaInfo replica_info = 6;
+
+    /// Parameters of the original request to which this response
+    /// is related
+    optional ReplicationRequestDelete request = 7;
+
+}
+
+message ReplicationResponseFind {
+
+    /// The completion status of the operation
+    required ReplicationStatus status = 1;
+
+    /// Extended status of this operation
+    optional ReplicationStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ReplicationPerformance performance = 3;
+
+    // --------------------------------------------------------------
+    // The following optional fields et upon a successfull completion
+    // of the request
+    // --------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents
+    /// stats of the replica deletion request obtained by the request
+    /// management operations
+    optional ReplicationPerformance target_performance = 4;
+
+    /// Extended information on the request
+    optional ReplicationReplicaInfo replica_info = 5;
+    
+    /// Parameters of the original request to which this response
+    /// is related
+    optional ReplicationRequestFind request = 6;
+}
+
+message ReplicationResponseFindAll {
+
+    /// The completion status of the operation
+    required ReplicationStatus status = 1;
+
+    /// Extended status of this operation
+    optional ReplicationStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ReplicationPerformance performance = 3;
+
+    /// The performance of the target operation. This field represents
+    /// stats of the replicas lookup request obtained by the request
+    /// management operations
+    optional ReplicationPerformance target_performance = 4;
+
+    /// Extended information on the request
+    repeated ReplicationReplicaInfo replica_info_many = 5;
+
+    // --------------------------------------------------------------
+    // The following optional fields et upon a successfull completion
+    // of the request
+    // --------------------------------------------------------------
+
+    /// Parameters of the original request to which this response
+    /// is related
+    optional ReplicationRequestFindAll request = 6;
+}
+
+/////////////////////////////////////////////////////////////////////////
+// The message returned in response to requests related to (or affecting)
+// the overall state of the server-side replication service.
+
+message ReplicationServiceResponseInfo {
+
+    /// Replication related requests only
+    required ReplicationReplicaRequestType replica_type = 1;
+
+    // Common parameters of all requests
+
+    required string id       = 2;
+    required int32  priority = 3;
+    required string database = 4;
+ 
+    // These parameters vary depending on a request type
+
+    optional uint32 chunk    = 5;
+    optional string worker   = 6;
+}
+
+message ReplicationServiceResponse {
+
+    /// Completion status of the operation
+    enum Status {
+        SUCCESS = 0;
+        FAILED  = 1;
+    }
+    required Status status = 1;
+    required ReplicationPerformance performance = 2;
+
+    enum ServiceState {
+        SUSPEND_IN_PROGRESS = 0;
+        SUSPENDED           = 1;
+        RUNNING             = 2;
+    }
+    required ServiceState service_state = 3;
+    required string       technology    = 4;
+
+    /// When the service started (milliseconds since UNIX Epoch)
+    required uint64 start_time = 5;
+
+    // Counters for requests known to the service since its last start
+
+    required uint32 num_new_requests         = 6;
+    required uint32 num_in_progress_requests = 7;
+    required uint32 num_finished_requests    = 8;
+
+    // Optional (depending on a request) collections of requests in each queue
+    
+    repeated ReplicationServiceResponseInfo new_requests         =  9;
+    repeated ReplicationServiceResponseInfo in_progress_requests = 10;
+    repeated ReplicationServiceResponseInfo finished_requests    = 11;
+}
+
+
+
+
+////////////////////////////////////////////
+//         The FileServer protocol        //
+////////////////////////////////////////////
+
+message ReplicationFileRequest {
+
+    /// The name of a database
+    required string database = 1;
+
+    /// The name of a file (including its extention and excluding any path)
+    required string file = 2;
+    
+    /// Tell the server to begin sending file content immediatelly
+    /// after sending the response message. Otherwise the server will just
+    /// close a connection.
+    required bool send_content = 3;
+}
+
+message ReplicationFileResponse {
+
+    /// The flag indicating if the earlier requested file is available,
+    /// and it can be read by the server.
+    required bool available = 1;
+
+    /// The file size (bytes)
+    required uint64 size = 2;
+
+    /// The file content modification time in seconds (since UNIX Epoch)
+    required uint32 mtime = 3;
+
+}
