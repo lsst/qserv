@@ -63,7 +63,6 @@ class FromFactory {
 public:
     class TableRefListH;
     class TableRefAuxH;
-    friend class TableRefListH;
     class RefGenerator;
 
     FromFactory(std::shared_ptr<ValueExprFactory> vf);
