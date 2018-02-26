@@ -67,8 +67,7 @@ public:
     friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(std::shared_ptr<ParseAliasMap> aliases,
-                std::shared_ptr<ValueExprFactory> vf);
+    FromFactory(std::shared_ptr<ValueExprFactory> vf);
 
     std::shared_ptr<query::FromList> getProduct();
 private:

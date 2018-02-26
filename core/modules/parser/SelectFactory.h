@@ -84,7 +84,6 @@ private:
 
     // parse-domain state
     std::shared_ptr<ParseAliasMap> _columnAliases;
-    std::shared_ptr<ParseAliasMap> _tableAliases;
     std::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 
     // delegates

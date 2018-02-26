@@ -524,11 +524,11 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // FromFactory (impl)
 ////////////////////////////////////////////////////////////////////////
-FromFactory::FromFactory(std::shared_ptr<ParseAliasMap> aliases,
-                         std::shared_ptr<ValueExprFactory> vf)
-    : _aliases(aliases),
+FromFactory::FromFactory(std::shared_ptr<ValueExprFactory> vf)
+    : _aliases(std::make_shared<ParseAliasMap>()),
       _bFactory(std::make_shared<BoolTermFactory>(vf)) {
 }
+
 
 std::shared_ptr<query::FromList>
 FromFactory::getProduct() {
