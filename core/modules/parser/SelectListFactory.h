@@ -74,8 +74,7 @@ private:
     class ColumnAliasH;
 
     // For "friends"
-    SelectListFactory(std::shared_ptr<ParseAliasMap> aliasMap,
-                      std::shared_ptr<ValueExprFactory> vf);
+    SelectListFactory(std::shared_ptr<ValueExprFactory> vf);
     void attachTo(SqlSQL2Parser& p); ///< For column alias handling
 
     // Really private
@@ -88,7 +87,7 @@ private:
     std::shared_ptr<ColumnAliasH> _columnAliasH;
 
     // data
-    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _columnAliases;
     std::shared_ptr<ValueExprFactory> _vFactory;
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 
