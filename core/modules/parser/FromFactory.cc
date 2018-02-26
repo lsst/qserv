@@ -226,12 +226,12 @@ public:
 class FromFactory::RefGenerator {
 public:
     RefGenerator(antlr::RefAST firstRef,
-                 std::shared_ptr<ParseAliasMap> aliases,
+                 std::shared_ptr<ParseAliasMap> tableAliases,
                  BoolTermFactory& bFactory)
         : _cursor(firstRef),
-          _aliases(aliases),
+          _tableAliases(tableAliases),
           _bFactory(bFactory) {
-        //std::cout << *_aliases << "\n";
+        //std::cout << *_tableAliases << "\n";
     }
     query::TableRef::Ptr get() const {
         if (_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
@@ -501,7 +501,7 @@ private:
     }
     query::TableRef::Ptr _processQualifiedName(RefAST n) const {
         RefAST qnStub = n;
-        RefAST aliasN = _aliases->getAlias(qnStub);
+        RefAST aliasN = _tableAliases->getAlias(qnStub);
         std::string alias;
         if (aliasN.get()) alias = aliasN->getText();
         QualifiedName qn(n->getFirstChild());
@@ -518,14 +518,14 @@ private:
 
     // Fields
     antlr::RefAST _cursor;
-    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _tableAliases;
     BoolTermFactory& _bFactory;
 };
 ////////////////////////////////////////////////////////////////////////
 // FromFactory (impl)
 ////////////////////////////////////////////////////////////////////////
 FromFactory::FromFactory(std::shared_ptr<ValueExprFactory> vf)
-    : _aliases(std::make_shared<ParseAliasMap>()),
+    : _tableAliases(std::make_shared<ParseAliasMap>()),
       _bFactory(std::make_shared<BoolTermFactory>(vf)) {
 }
 
@@ -539,7 +539,7 @@ void
 FromFactory::attachTo(SqlSQL2Parser& p) {
     std::shared_ptr<TableRefListH> lh(new TableRefListH(*this));
     p._tableListHandler = lh;
-    std::shared_ptr<TableRefAuxH> ah = std::make_shared<TableRefAuxH>(_aliases);
+    std::shared_ptr<TableRefAuxH> ah = std::make_shared<TableRefAuxH>(_tableAliases);
     p._tableAliasHandler = ah;
 }
 
@@ -549,7 +549,7 @@ FromFactory::_import(antlr::RefAST a) {
     _list = std::make_shared<query::FromList>(r);
 
     assert(_bFactory);
-    for(RefGenerator refGen(a, _aliases, *_bFactory);
+    for(RefGenerator refGen(a, _tableAliases, *_bFactory);
         !refGen.isDone();
         refGen.next()) {
         query::TableRef::Ptr p = refGen.get();
