@@ -74,7 +74,7 @@ private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
 
-    std::shared_ptr<ParseAliasMap> _aliases;
+    std::shared_ptr<ParseAliasMap> _tableAliases;
     std::shared_ptr<BoolTermFactory> _bFactory;
     std::shared_ptr<query::FromList> _list;
 };
