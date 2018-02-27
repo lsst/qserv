@@ -38,8 +38,7 @@
 // Local headers
 #include "czar/Czar.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/LargeResultMgr.h"
-#include "qdisp/ResponsePool.h"
+#include "QdispPool.h"
 
 namespace lsst {
 namespace qserv {
@@ -73,30 +72,6 @@ public:
 };
 
 
-/// It is extremely important that _largeResultMgr->finishBlock() is called exactly once
-/// for every time _largeResultMgr->startBlock() is called, otherwise the semaphore would
-/// vary in value, disastrous if it gets used up or grows large. This class is meant to
-/// ensure that it doesn't happen.
-class LargeResultSafety {
-public:
-    LargeResultSafety(qdisp::LargeResultMgr::Ptr const& largeResultMgr,
-                      std::string const& jobId) :
-        _largeResultMgr(largeResultMgr), _jobIdStr(jobId) {}
-    ~LargeResultSafety();
-    LargeResultSafety(LargeResultSafety const&) = delete;
-    LargeResultSafety& operator=(LargeResultSafety const&) = delete;
-
-    void startBlock();
-    bool finishBlock();
-
-private:
-    qdisp::LargeResultMgr::Ptr _largeResultMgr;
-    bool _startBlockCalled{false}; ///< True if _largeResultMgr->startBlock() called.
-    std::mutex _blockMtx; ///< Protects _startBlockCalled.
-    std::string _jobIdStr;
-};
-
-
 /// A client implementation of an XrdSsiRequest that adapts qserv's executing
 /// queries to the XrdSsi API.
 ///
@@ -120,7 +95,11 @@ private:
 class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<QueryRequest> {
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
-    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery); // &&& make private with factory function
+
+    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
+        Ptr newQueryRequest{new QueryRequest(jobQuery)};
+        return newQueryRequest;
+    }
 
     virtual ~QueryRequest();
 
@@ -149,14 +128,13 @@ public:
     std::string getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode);
     void cleanup(); ///< Must be called when this object is no longer needed.
 
-    /// If this job has incremented the large result semaphore, decrement it now.
-    /// @return true if the semaphore was decremented.
-    bool releaseLargeResultSafety() { return _largeResultSafety.finishBlock(); }
-
     class AskForResponseDataCmd;
 
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
+    // Private constructor to safeguard enable_shared_from_this construction.
+    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
+
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
@@ -192,9 +170,8 @@ private:
 
     std::atomic<bool> _finishedCalled{false};
 
-    LargeResultSafety _largeResultSafety;
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
-    ResponsePool::Ptr _responsePool;
+    QdispPool::Ptr _qdispPool;
     std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
 };
 

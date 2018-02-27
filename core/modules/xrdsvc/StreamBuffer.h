@@ -31,7 +31,7 @@
 #include <string>
 
 // qserv headers
-#include "util/InstanceCount.h" // &&&
+#include "util/InstanceCount.h"
 
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
@@ -55,8 +55,9 @@ public:
     StreamBuffer(StreamBuffer const&) = delete;
     StreamBuffer& operator=(StreamBuffer const&) = delete;
 
-    // Factory function, because this should be able to delete itself when Recycle() is called.
-    static StreamBuffer::Ptr create(std::string &input);
+    /// Factory function, because this should be able to delete itself when Recycle() is called.
+    //  The constructor uses move to avoid copying the string.
+    static StreamBuffer::Ptr createWithMove(std::string &input);
 
     size_t getSize() const { return _dataStr.size(); }
 
@@ -84,7 +85,7 @@ private:
     std::condition_variable _cv;
     bool doneWithThis{false};
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
-    util::InstanceCount _ic{"&&&StreamBuffer"};
+    util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 
     static std::atomic<size_t> _totalBytes;
 };

@@ -167,14 +167,11 @@ ThreadPool::~ThreadPool() {
 /// Wait for all threads to complete. The ThreadPool should not be used after this function is called.
 /// This includes threads that were removed from the pool and not detached.
 void ThreadPool::shutdownPool() {
+    LOGS(_log, LOG_LVL_DEBUG,"shutdownPool begin" << this);
     _shutdown = true;
-    LOGS(_log, LOG_LVL_DEBUG,"&&& shutdownPool 1 " << this);
     endAll();
-    LOGS(_log, LOG_LVL_DEBUG,"&&& shutdownPool 2 " << this);
     waitForResize(0);
-    LOGS(_log, LOG_LVL_DEBUG,"&&& shutdownPool 3 " << this);
     _joinerThread->shutdownJoin();
-    LOGS(_log, LOG_LVL_DEBUG,"&&& shutdownPool 4 " << this);
 }
 
 /// Release the thread from the thread pool and return a shared pointer to the
@@ -199,7 +196,6 @@ bool ThreadPool::release(PoolEventThread *thrd) {
         }
         _joinerThread->addThread(thrdPtr); // Add to list of threads to join.
     }
-    // _joinerThread->addThread(thrdPtr); // Add to list of threads to join. &&&
     _resize(); // Check if more threads need to be released.
     return true;
 }

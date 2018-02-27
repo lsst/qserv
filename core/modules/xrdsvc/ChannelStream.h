@@ -40,72 +40,6 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-/* &&&
-/// SimpleBuffer is a buffer for transferring data packets to XrdSsi.
-class SimpleBuffer : public XrdSsiStream::Buffer {
-public:
-    using Ptr = std::shared_ptr<SimpleBuffer>;
-
-    SimpleBuffer() = delete;
-       SimpleBuffer(SimpleBuffer const&) = delete;
-       SimpleBuffer& operator=(SimpleBuffer const&) = delete;
-
-    // Factory function, because this should be able to delete itself when Recycle() is called.
-    static SimpleBuffer::Ptr create(std::string &input) {
-        Ptr ptr(new SimpleBuffer(input));
-        ptr->_selfKeepAlive = ptr;
-        return ptr;
-    }
-
-
-    size_t getSize() const {return _size;}
-
-
-    //!> Call to recycle the buffer when finished
-    void Recycle() override {
-        {
-            std::lock_guard<std::mutex> lg(_mtx);
-            doneWithThis = true;
-        }
-        _cv.notify_all();
-
-        // delete this;
-        // Effectively reset _selfPointer, and if nobody else was
-        // referencing this, it will delete itself when this call is done.
-        Ptr keepAlive = std::move(_selfKeepAlive);
-    }
-
-    // Wait until recycle is called.
-    void waitForDoneWithThis() {
-        std::unique_lock<std::mutex> uLock(_mtx);
-        _cv.wait(uLock, [this](){ return doneWithThis == true; });
-    }
-
-    // Inherited from XrdSsiStream:
-    // char  *data; //!> -> Buffer containing the data
-    // Buffer *next; //!> For chaining by buffer receiver
-
-    virtual ~SimpleBuffer() {
-        delete[] data;
-    }
-
-private:
-    SimpleBuffer(std::string const& input) : _size(input.size()) {
-        data = new char[_size];
-        memcpy(data, input.data(), _size);
-        next = 0;
-    }
-
-
-    size_t const  _size; ///< Size of *data, needs to be immutable.
-    std::mutex _mtx;
-    std::condition_variable _cv;
-    bool doneWithThis{false};
-    Ptr _selfKeepAlive; // keep this object alive
-    util::InstanceCount _ic{"&&&SimpleBuffer"};
-};
-*/
-
 
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
 /// SendChannel streamed data.
@@ -115,7 +49,6 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    //void append(char const* buf, int bufLen, bool last); // &&& delete
     void append(StreamBuffer::Ptr const& StreamBuffer, bool last);
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)

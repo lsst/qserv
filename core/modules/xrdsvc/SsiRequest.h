@@ -103,7 +103,6 @@ public:
     bool reply(char const* buf, int bufLen);
     bool replyError(std::string const& msg, int code);
     bool replyFile(int fd, long long fSize);
-    // bool replyStream(char const* buf, int bufLen, bool last); // &&& delete
     bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
 private:

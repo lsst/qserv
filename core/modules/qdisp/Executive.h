@@ -40,7 +40,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
-#include "qdisp/ResponsePool.h"
+#include "QdispPool.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
@@ -79,8 +79,8 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr newExecutive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-            std::shared_ptr<LargeResultMgr> const& largeResultMgr);
+    static Executive::Ptr create(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
+                std::shared_ptr<QdispPool> const& qdispPool);
 
     ~Executive();
 
@@ -110,8 +110,6 @@ public:
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
 
-    // std::shared_ptr<JobQuery> getJobQuery(int id); &&&
-
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
 
@@ -123,7 +121,7 @@ public:
 
     XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
 
-    std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
+    std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
@@ -141,11 +139,10 @@ public:
 
 private:
     Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<LargeResultMgr> const& largeResultMgr);
+              std::shared_ptr<QdispPool> const& qdispPool);
 
     void _setup();
 
-    // void _queueJobStart(std::shared_ptr<JobQuery> const& job);  // &&&
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
@@ -164,8 +161,7 @@ private:
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
-    std::shared_ptr<LargeResultMgr> _largeResultMgr;
-    ResponsePool::Ptr _commonThreadPool;
+    QdispPool::Ptr _qdispPool;
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList;
     int _jobCount{0};
@@ -185,17 +181,11 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    //mutable std::recursive_mutex _jobsMutex;  &&&
     mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id{0}; ///< Unique identifier for this query.
     std::string    _idStr{QueryIdHelper::makeIdStr(0, true)};
     util::InstanceCount _instC{"Executive"};
-
-    /* &&&
-    util::CommandQueue::Ptr _startJobsQueue{std::make_shared<util::CommandQueue>()};
-    util::ThreadPool::Ptr _startJobsPool{util::ThreadPool::newThreadPool(10, _startJobsQueue)};
-    */
 };
 
 class MarkCompleteFunc {

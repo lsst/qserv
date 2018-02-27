@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2017 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -69,7 +69,7 @@ namespace lsst {
 namespace qserv {
 
 namespace qdisp {
-class LargeResultMgr;
+class QdispPool;
 }
 
 namespace qproc {
@@ -89,7 +89,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     qmeta::CzarId czarId,
-                    std::shared_ptr<qdisp::LargeResultMgr> const& largeResultMgr,
+                    std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
                     bool async);
 
@@ -162,7 +162,7 @@ private:
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database
-    std::shared_ptr<qdisp::LargeResultMgr> _largeResultMgr;
+    std::shared_ptr<qdisp::QdispPool> _qdispPool;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};

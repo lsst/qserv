@@ -36,7 +36,6 @@
 
 // Qserv headers
 #include "util/EventThread.h"
-#include "util/InstanceCount.h" // &&&
 
 
 namespace lsst {
@@ -67,8 +66,6 @@ protected:
 
 private:
     PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
-
-    InstanceCount _ic{"&&& PoolEventThread"};
 };
 
 
@@ -79,7 +76,7 @@ public:
     using Ptr = std::shared_ptr<CommandThreadPool>;
 
     CommandThreadPool() {}
-    CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
+    CommandThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
 
     PoolEventThread::Ptr getAndNullPoolEventThread();
 
@@ -137,8 +134,6 @@ private:
 
     EventThreadJoiner::Ptr _joinerThread; ///< Tracks and joins threads removed from the pool.
     std::atomic<bool> _shutdown{false}; ///< True after shutdownPool has been called.
-
-    InstanceCount _ic{"&&& ThreadPool"};
 };
 
 

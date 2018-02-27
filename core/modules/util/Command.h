@@ -66,9 +66,9 @@ struct CmdData {
 class Command {
 public:
     using Ptr = std::shared_ptr<Command>;
-    Command() {}
-    Command(std::function<void(CmdData*)> func) : _func(func) {}
-    virtual ~Command() {}
+    Command() = default;
+    explicit Command(std::function<void(CmdData*)> func) : _func(func) {}
+    virtual ~Command() = default;
     virtual void action(CmdData *data) {
         _func(data);
     };
@@ -85,12 +85,12 @@ protected:
 
 /// Extension of Command that can notify other threads when its
 /// action is complete.
-class CommandTracked : public virtual Command, public virtual Tracker {
+class CommandTracked : public Command, public Tracker {
 public:
     using Ptr = std::shared_ptr<CommandTracked>;
-    CommandTracked() {}
-    CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
-    virtual ~CommandTracked() {}
+    CommandTracked() = default;
+    explicit CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
+    ~CommandTracked() override  = default;
     void actionComplete(CmdData*) override {
         setComplete();
     };

@@ -22,17 +22,14 @@
  */
 
 // Class header
-#include "qdisp/ResponsePool.h"
+#include "QdispPool.h"
 
-// System headers
-
-// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.ResponsePool");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QdispPool");
 }
 
 
@@ -62,7 +59,8 @@ bool PriorityQueue::addPriQueue(int priority, int minRunning) {
     std::pair<int, PriQ::Ptr> item(priority, q);
     auto ret = _queues.insert(item);
     if (!ret.second) {
-        ; /// &&& add log error message
+        LOGS(_log, LOG_LVL_ERROR, "Failed addPriQueue priority=" << priority <<
+                                  " minRunning=" << minRunning);
     }
     return ret.second;
 }
@@ -71,13 +69,11 @@ bool PriorityQueue::addPriQueue(int priority, int minRunning) {
 void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
     {
         std::lock_guard<std::mutex> lock(_mtx);
-        LOGS (_log, LOG_LVL_DEBUG, "&&&&&&& PriorityQueue::queCmd");
         auto iter = _queues.find(_defaultPriority);
         if (iter == _queues.end()) {
             throw Bug("PriorityQueue default priority queue not found a!");
         }
         iter->second->queCmd(cmd);
-        LOGS (_log, LOG_LVL_DEBUG, "priQueCmd " << *this);
         _changed = true;
     }
     _cv.notify_all();
@@ -90,7 +86,8 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         auto iter = _queues.find(priority);
         if (iter == _queues.end()) {
             // give it the default priority
-            // &&& add log message
+            LOGS(_log, LOG_LVL_WARN, "queCmd invalid priority=" << priority <<
+                                     " using default priority=" << _defaultPriority);
             iter = _queues.find(_defaultPriority);
             if (iter == _queues.end()) {
                 throw Bug("PriorityQueue default priority queue not found b!");
@@ -133,7 +130,7 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         iter = _queues.begin();
         for (;iter != end; ++iter) {
             PriQ::Ptr const& que = iter->second;
-            // &&& add check for max running.
+            //  TODO: Maybe add a check for max running.
             ptr = que->getCmd(false); // no wait
             if (ptr != nullptr) {
                 return ptr;
@@ -142,7 +139,7 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
 
         // If nothing was found, wait or return nullptr.
         if (wait) {
-            LOGS (_log, LOG_LVL_DEBUG, "&&&get wait " << *this);
+            LOGS (_log, LOG_LVL_DEBUG, "getCmd wait " << *this);
             _cv.wait(uLock, [this](){ return _changed; });
         } else {
             return ptr;
@@ -158,7 +155,6 @@ void PriorityQueue::prepareShutdown() {
 
 
 void PriorityQueue::_incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr) {
-    LOGS (_log, LOG_LVL_DEBUG, "&&& _incrDecrRunningCount " <<  incrDecr);
     std::lock_guard<std::mutex> lock(_mtx);
     PriorityCommand::Ptr priCmd = std::dynamic_pointer_cast<PriorityCommand>(cmd);
     if (priCmd != nullptr) {

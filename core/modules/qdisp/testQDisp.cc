@@ -38,7 +38,6 @@
 #include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/LargeResultMgr.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/XrdSsiMocks.h"
@@ -124,7 +123,6 @@ std::shared_ptr<qdisp::JobQuery> addMockRequests(
                                              ex, sequence.incr(), ru,
                                              msg, rv[j]);
         jobQuery = ex->add(job);
-        LOGS_DEBUG("&&& added mockRequest job " << jobQuery->getIdStr() << " " << jobQuery.get());
     }
     return jobQuery;
 }
@@ -148,7 +146,6 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(
     for (int j=0; j < copies; ++j) {
         rv.push_back(mh);
     }
-    LOGS_DEBUG("&&& executiveTest copies=" << copies << " rv.size=" << rv.size());
     return addMockRequests(ex, sequence, chunkId, msg, rv);
 }
 
@@ -179,7 +176,7 @@ class SetupTest {
     std::string str;
     qdisp::Executive::Config::Ptr conf;
     std::shared_ptr<qdisp::MessageStore> ms;
-    qdisp::LargeResultMgr::Ptr lgResMgr;
+    qdisp::QdispPool::Ptr qdispPool;
     qdisp::Executive::Ptr ex;
     std::shared_ptr<qdisp::JobQuery> jqTest; // used only when needed
 
@@ -189,8 +186,8 @@ class SetupTest {
          str = qdisp::Executive::Config::getMockStr();
          conf = std::make_shared<qdisp::Executive::Config>(str);
          ms = std::make_shared<qdisp::MessageStore>();
-         lgResMgr = std::make_shared<qdisp::LargeResultMgr>();
-         ex = qdisp::Executive::newExecutive(conf, ms, lgResMgr);
+         qdispPool = std::make_shared<qdisp::QdispPool>();
+         ex = qdisp::Executive::create(conf, ms, qdispPool);
     }
     ~SetupTest() {}
 };
@@ -201,7 +198,6 @@ BOOST_AUTO_TEST_SUITE(Suite)
     // resource object for all chuncks has been properly constructed. We use
     // the same chunkID for all tests (see setRName() below).
     //
-    //SequentialInt sequence(0); &&&
     int chunkId = 1234;
     int millisInt = 20000;
 
@@ -265,11 +261,8 @@ BOOST_AUTO_TEST_CASE(Executive) {
         LOGS_DEBUG("ex->join() joined");
         BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
-    LOGS_DEBUG("&&& setting done to true");
     done.exchange(true);
-    LOGS_DEBUG("&&& timeoutT.join()");
     timeoutT.join();
-    LOGS_DEBUG("&&& timeoutT.join() after");
     LOGS_DEBUG("Executive test end");
 }
 
@@ -323,8 +316,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
         tEnv.ex->join();
-        LOGS_DEBUG("&&& tEnv.jqTest->...state = " << tEnv.jqTest->getStatus()->getInfo().state);
-        // &&& There's more than 1 JobQuery object, and if this is examining one from a cancelled thread, it's going to fail.
+        LOGS_DEBUG("tEnv.jqTest->...state = " << tEnv.jqTest->getStatus()->getInfo().state);
         BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESULT_ERROR);
         BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1); // No retries!
     }

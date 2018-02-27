@@ -48,12 +48,11 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
                    JobStatus::Ptr const& jobStatus,
                    std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
                    QueryId qid) :
-  _executive(executive), _jobDescription(jobDescription),
-  _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
-  _qid(qid),
-  _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
-      _largeResultMgr = executive->getLargeResultMgr();
-      _responsePool = _largeResultMgr->responsePool;
+          _executive(executive), _jobDescription(jobDescription),
+          _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
+          _qid(qid),
+          _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
+    _qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << _idStr << " desc=" << _jobDescription);
 }
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_RESPONSEPOOL_H
-#define LSST_QSERV_QDISP_RESPONSEPOOL_H
+#ifndef LSST_QSERV_QDISP_QDISPPOOL_H
+#define LSST_QSERV_QDISP_QDISPPOOL_H
 
 // System headers
+#include <map>
 
 // Third-party headers
 
@@ -40,13 +41,12 @@ class PriorityQueue;
 class PriorityCommand : public util::CommandTracked {
 public:
     using Ptr = std::shared_ptr<PriorityCommand>;
-    PriorityCommand() {}
-    PriorityCommand(std::function<void(util::CmdData*)> func) : CommandTracked(func) {
-        setFunc(func); // &&& If I comment this out, Command::_func doesn't get set?? Despite " : CommandTracked(func) above!!!!!
-    }
+    PriorityCommand() = default;
+    explicit PriorityCommand(std::function<void(util::CmdData*)> func) : CommandTracked(func) {}
+    ~PriorityCommand() override = default;
     friend PriorityQueue;
 private:
-    int _priority; // Need to know what queue this was placed on.
+    int _priority{0}; // Need to know what queue this was placed on.
 };
 
 
@@ -61,6 +61,7 @@ public:
     public:
         using Ptr = std::shared_ptr<PriQ>;
         explicit PriQ(int priority, int minRunning) : _priority(priority), _minRunning(minRunning) {}
+        ~PriQ() override = default;
         int getPriority() { return _priority; }
         int getMinRunning() { return _minRunning; }
 
@@ -112,11 +113,11 @@ private:
 };
 
 
-class ResponsePool {
+class QdispPool {
 public:
-    typedef std::shared_ptr<ResponsePool> Ptr;
+    typedef std::shared_ptr<QdispPool> Ptr;
 
-    ResponsePool() {
+    QdispPool() {
         _prQueue->addPriQueue(0,1);  // Highest priority queue
         _prQueue->addPriQueue(1,1);  // High priority queue
         _prQueue->addPriQueue(2,9); // Normal priority queue
@@ -162,4 +163,4 @@ private:
 
 }}} // namespace lsst::qserv::disp
 
-#endif /* LSST_QSERV_QDISP_RESPONSEPOOL_H_ */
+#endif /* LSST_QSERV_QDISP_QDISPPOOL_H_ */

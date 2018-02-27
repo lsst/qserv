@@ -226,7 +226,6 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 /// continues in later messages.
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
-    util::InstanceCount ic("&&& qr::_fillRows");
 
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
@@ -286,7 +285,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
-    util::InstanceCount ic("&&&qr::_transmit");
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -309,16 +307,15 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
          << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
-        //bool sent = _task->sendChannel->sendStream(resultString.data(), resultString.size(), last); &&&
-        // StreamBuffer::create invalidates resultString
-        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::create(resultString));
+        // StreamBuffer::create invalidates resultString by using std::move()
+        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
         bool sent = _task->sendChannel->sendStream(streamBuf, last);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit message!");
         }
         // Block on the buffer actually being sent if 10GB are already waiting or this is a largeResult.
         auto totalBytes = xrdsvc::StreamBuffer::getTotalBytes();
-        if (_largeResult || totalBytes > 10000000000) {  // &&& replace with configurable value.
+        if (_largeResult || totalBytes > 10000000000) {  // TODO:DM-10273 add to configuration
             LOGS(_log, LOG_LVL_INFO, _task->getIdStr() << " waiting for buffer largeResult=" << _largeResult
                                       << " totalBytes=" << totalBytes);
             util::Timer t;
@@ -350,8 +347,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     assert(protoHeaderString.size() < 255);
     if (!_cancelled) {
         auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
-        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::create(msgBuf)); // invalidates msgBuf
-        //bool sent = _task->sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false); &&&
+        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
         bool sent = _task->sendChannel->sendStream(streamBuf, false);
         if (!sent) {
             LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit header!");

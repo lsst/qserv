@@ -30,6 +30,7 @@
   */
 
 // Class header
+#include <qdisp/QdispPool.h>
 #include "qdisp/QueryRequest.h"
 
 // System headers
@@ -42,7 +43,6 @@
 // Qserv headers
 #include "czar/Czar.h"
 #include "qdisp/JobStatus.h"
-#include "qdisp/LargeResultMgr.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
 
@@ -64,8 +64,6 @@ public:
         : _qRequest(qr), _jQuery(jq), _idStr(jq->getIdStr()) {}
 
     void action(util::CmdData *data) override {
-        //util::InstanceCount ic1("&&&AskForResponseDataCmd:action 1");
-
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         {
             auto jq = _jQuery.lock();
@@ -92,7 +90,8 @@ public:
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
             std::unique_lock<std::mutex> uLock(_mtx);
-            _cv.wait(uLock, [this](){ return _state != State::STARTED0; }); // &&& make timed wait, check for wedged
+            // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
+            _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             // _mtx is locked at this point.
             LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
@@ -125,20 +124,19 @@ public:
     }
 
     void notifyDataSuccess(int blen, bool last) {
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& notifyDataSuccess");
         {
             std::lock_guard<std::mutex> lg(_mtx);
             _blen = blen;
             _last = last;
             _state = State::DATAREADY1;
         }
-        _cv.notify_one();
+        _cv.notify_all();
     }
 
     void notifyFailed() {
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " &&& notifyFailed");
+        LOGS(_log, LOG_LVL_INFO, _idStr << "notifyFailed");
         _setState(State::DONE2);
-        _cv.notify_one();
+        _cv.notify_all();
     }
 
     State getState() {
@@ -162,7 +160,7 @@ private:
 
     int _blen{-1};
     bool _last{true};
-    //util::InstanceCount _ic{"&&&AskForResponseDataCmd"};
+    util::InstanceCount _ic{"AskForResponseDataCmd"};
 };
 
 
@@ -172,8 +170,7 @@ private:
 QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
   _jobQuery(jobQuery),
   _jobIdStr(jobQuery->getIdStr()),
-  _largeResultSafety(_jobQuery->getLargeResultMgr(), _jobIdStr),
-  _responsePool(_jobQuery->getResponsePool()){
+  _qdispPool(_jobQuery->getQdispPool()){
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
 }
 
@@ -282,15 +279,15 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
     if (_largeResult) {
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority low");
-        _responsePool->queCmdLow(_askForResponseDataCmd);
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority low");
+        _qdispPool->queCmdLow(_askForResponseDataCmd);
     } else {
         if (jq->getDescription()->getScanInteractive()) {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority vhigh");
-            _responsePool->queCmdVeryHigh(_askForResponseDataCmd);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority vhigh");
+            _qdispPool->queCmdVeryHigh(_askForResponseDataCmd);
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " &&& queueing priority norm");
-            _responsePool->queCmdNorm(_askForResponseDataCmd);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority norm");
+            _qdispPool->queCmdNorm(_askForResponseDataCmd);
         }
     }
 }
@@ -324,7 +321,6 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
                                                          char *buff, int blen, bool last) { // Step 7
     // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
-    // util::InstanceCount instC("&&& QueryRequest::ProcessResponseData");
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
                               << " " << (last ? "(last)" : "(more)"));
     if (_askForResponseDataCmd == nullptr) {
@@ -340,7 +336,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
             // Something must have killed this job.
-            // &&& should _errorFinish be called??? Should we tell xrootd to stop bothering????
+            _errorFinish();
             return XrdSsiRequest::PRD_Normal;
         }
     }
@@ -376,7 +372,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, this->_jobIdStr << "QueryRequest::_processData job was cancelled.");
-        // &&& should _errorFinish be called???
+        _errorFinish(true);
         return;
     }
 
@@ -468,11 +464,6 @@ void QueryRequest::cleanup() {
             LOGS_ERROR(_jobIdStr << " QueryRequest::cleanup called before _finish or _errorFinish");
             return;
         }
-    }
-
-    // Release this in the off chance it has not been released already.
-    if (_largeResultSafety.finishBlock()) {
-        LOGS_ERROR(_jobIdStr << " QueryRequest::cleanup had to call finishBlock()");
     }
 
     // These need to be outside the mutex lock, or you could delete
@@ -584,31 +575,6 @@ std::string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
     std::ostringstream os;
     os << "SSI_Error(" << errNum << ":" << errText << ")";
     return os.str();
-}
-
-
-LargeResultSafety::~LargeResultSafety() {
-    if (finishBlock()) {
-        LOGS(_log, LOG_LVL_INFO, _jobIdStr << " ~LargeResultSafety had to call finishBlock");
-    }
-}
-
-void LargeResultSafety::startBlock() {
-    std::lock_guard<std::mutex> lg(_blockMtx);
-    _startBlockCalled = true;
-    _largeResultMgr->startBlock(_jobIdStr);
-}
-
-
-/// @return true if finishBlock() was called.
-bool LargeResultSafety::finishBlock() {
-    std::lock_guard<std::mutex> lg(_blockMtx);
-    if (_startBlockCalled) {
-        _startBlockCalled = false;
-        _largeResultMgr->finishBlock(_jobIdStr);
-        return true;
-    }
-    return false;
 }
 
 }}} // lsst::qserv::qdisp

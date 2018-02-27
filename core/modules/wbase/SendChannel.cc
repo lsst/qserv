@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -77,6 +77,7 @@ public:
     }
 };
 
+
 SendChannel::Ptr SendChannel::newNopChannel() {
     return std::make_shared<NopChannel>();
 }
@@ -132,10 +133,12 @@ private:
     std::string& _dest;
 };
 
+
 SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
     return std::make_shared<StringChannel>(d);
 
 }
+
 
 /// This is the standard definition of SendChannel which acually does something!
 /// We vector responses posted to SendChannel via the tightly bound SsiRequest
@@ -145,9 +148,11 @@ bool SendChannel::send(char const* buf, int bufLen) {
     return _ssiRequest->reply(buf, bufLen);
 }
 
+
 bool SendChannel::sendError(std::string const& msg, int code) {
     return _ssiRequest->replyError(msg.c_str(), code);
 }
+
 
 bool SendChannel::sendFile(int fd, Size fSize) {
     if (_ssiRequest->replyFile(fSize, fd)) return true;
@@ -155,11 +160,6 @@ bool SendChannel::sendFile(int fd, Size fSize) {
     return false;
 }
 
-/* &&&
-bool SendChannel::sendStream(char const* buf, int bufLen, bool last) {
-    return _ssiRequest->replyStream(buf, bufLen, last);
-}
-*/
 
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     return _ssiRequest->replyStream(sBuf, last);

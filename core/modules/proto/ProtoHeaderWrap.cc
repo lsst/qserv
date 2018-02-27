@@ -41,7 +41,7 @@ namespace proto {
 // 255 is the maximum size of the proto header and we need 1 byte for message size.
 const size_t ProtoHeaderWrap::PROTO_HEADER_SIZE = 256;
 // Google protobuffers are more efficient below this size.
-const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 4000000;  // &&& 2000000;
+const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 2000000;
 // A single Google protobuffer can't be larger than this.
 const size_t ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT = 64000000;
 

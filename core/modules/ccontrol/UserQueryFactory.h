@@ -38,10 +38,10 @@
 // Third-party headers
 #include "boost/utility.hpp"
 
+#include "../qdisp/QdispPool.h"
 // Local headers
 #include "ccontrol/UserQuery.h"
 #include "global/stringTypes.h"
-#include "qdisp/LargeResultMgr.h"
 
 namespace lsst {
 namespace qserv {
@@ -62,15 +62,15 @@ public:
     UserQueryFactory(czar::CzarConfig const& czarConfig,
                      std::string const& czarName);
 
-    /// @param query:       Query text
-    /// @param defaultDb:   Default database name, may be empty
-    /// @param largeResultMgr: Manager instance for large results
-    /// @param userQueryId: Unique string identifying query
+    /// @param query:        Query text
+    /// @param defaultDb:    Default database name, may be empty
+    /// @param qdispPool:    Thread pool handling qdisp jobs.
+    /// @param userQueryId:  Unique string identifying query
     /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
     UserQuery::Ptr newUserQuery(std::string const& query,
                                 std::string const& defaultDb,
-                                qdisp::LargeResultMgr::Ptr const& largeResultMgr,
+                                qdisp::QdispPool::Ptr const& qdispPool,
                                 std::string const& userQueryId,
                                 std::string const& msgTableName);
 

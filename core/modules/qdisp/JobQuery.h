@@ -41,8 +41,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-class LargeResultMgr; /// &&& delete, probably
-class ResponsePool;
+class QdispPool;
 class QueryRequest;
 
 /** This class is used to describe, monitor, and control a single query to a worker.
@@ -85,8 +84,7 @@ public:
 
     Executive::Ptr getExecutive() { return _executive.lock(); }
 
-    std::shared_ptr<LargeResultMgr> getLargeResultMgr() { return _largeResultMgr; }
-    std::shared_ptr<ResponsePool> getResponsePool() { return _responsePool; }
+    std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
@@ -132,8 +130,7 @@ protected:
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
     util::InstanceCount _instC{"JobQuery"};
 
-    std::shared_ptr<LargeResultMgr> _largeResultMgr;
-    std::shared_ptr<ResponsePool> _responsePool;
+    std::shared_ptr<QdispPool> _qdispPool;
 };
 
 }}} // end namespace

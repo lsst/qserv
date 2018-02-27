@@ -45,7 +45,7 @@ namespace xrdsvc {
 std::atomic<size_t> StreamBuffer::_totalBytes(0);
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
-StreamBuffer::Ptr StreamBuffer::create(std::string &input) {
+StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input) {
      Ptr ptr(new StreamBuffer(input));
      ptr->_selfKeepAlive = ptr;
      return ptr;
@@ -61,13 +61,13 @@ StreamBuffer::StreamBuffer(std::string &input) {
     next = 0;
 
     _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& StreamBuffer::_totalBytes=" << _totalBytes);
+    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
 
 StreamBuffer::~StreamBuffer() {
     _totalBytes -= _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "&&& ~StreamBuffer::_totalBytes=" << _totalBytes);
+    LOGS(_log, LOG_LVL_DEBUG, "~StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
 

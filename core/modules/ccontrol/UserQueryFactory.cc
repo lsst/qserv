@@ -108,7 +108,7 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
-                               qdisp::LargeResultMgr::Ptr const& largeResultMgr,
+                               qdisp::QdispPool::Ptr const& qdispPool,
                                std::string const& userQueryId,
                                std::string const& msgTableName) {
 
@@ -192,13 +192,13 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::newExecutive(_impl->executiveConfig, messageStore,
-                                                       largeResultMgr);
+            executive = qdisp::Executive::create(_impl->executiveConfig, messageStore,
+                                                       qdispPool);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->qMetaCzarId, largeResultMgr,
+                                                    _impl->qMetaCzarId, qdispPool,
                                                     errorExtra, async);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
