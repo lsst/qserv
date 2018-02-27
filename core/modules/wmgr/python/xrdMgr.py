@@ -44,6 +44,8 @@ from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
 from sqlalchemy.exc import SQLAlchemyError
 
+from lsst.db import utils
+
 # ----------------------------------
 # Local non-exported definitions --
 # ----------------------------------
@@ -120,6 +122,46 @@ def _restartService(sName):
 def _restartXrootd():
     _restartService('xrootd')
 
+
+def _workerId():
+    """ Fetch and return a unique identifier of the worker. """
+
+    _log.debug('fetching a unique identifier of the worker')
+
+    dbName = 'qservw_worker'
+    tblName = 'Id'
+
+    # check the db exists (listTables() does not fail on non-existing databases)
+    with Config.instance().dbEngine().begin() as dbConn:
+        if not utils.tableExists(dbConn, tblName, dbName):
+            raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+
+        query = "SELECT id FROM `%s`.`%s`" % (dbName, tblName)
+        rows = dbConn.execute(query)
+
+        row = rows.first()
+        if row is None:
+            raise ExceptionResponse(404, "NowWorkerIdFound",
+                                    "Table %s.%s does not have any worker identifier" % (dbName, tblName))
+        return row[0]
+
+
+def _rebuildChunkTable():
+    """ Rebuild and reload a list of databases and chunks w/o restarting a service """
+
+    workerId = _workerId()
+
+    _log.info('rebuilding a list database and chunks known to worker %s', workerId)
+
+    try:
+        cmd = ['qserv-worker-notify','REBUILD_CHUNK_LIST',workerId,'--reload']
+        _runCmd(cmd, False)
+    except subprocess.CalledProcessError as exc:
+        raise ExceptionResponse(409, "CommandFailure",
+                                "Failed to rebuildlist database and chunks known to worker %s" % workerId,
+                                str(exc))
+
+
 # ------------------------
 # Exported definitions --
 # ------------------------
@@ -190,32 +232,37 @@ def registerDb():
     xrootdRestart = _getArgFlag(request.form, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    dbConn = Config.instance().dbEngine()
+    # Make sure the transaction is commited after the block. Otherwise
+    # a subsequent attempt to rebuild the chunk table will fail.
+    with Config.instance().dbEngine().begin() as dbConn:
 
-    # table is not indexed, to avoid multiple entries check that it's not defined yet
-    try:
-        query = "SELECT db FROM qservw_worker.Dbs WHERE db='{0}';".format(dbName)
-        dbs = dbConn.execute(query)
-        if dbs.first():
-            raise ExceptionResponse(409, "DatabaseExists", "Database %s is already defined" % dbName)
-    except SQLAlchemyError as exc:
-        _log.error('exception when checking qservw_worker.Dbs: %s', exc)
-        raise
-
-    # now add it
-    try:
-        query = "INSERT INTO qservw_worker.Dbs (db) VALUES ('{0}')".format(dbName)
-        dbConn.execute(query)
-    except SQLAlchemyError as exc:
-        _log.error('exception when adding database %s: %s', dbName, exc)
-        raise
-
-    _log.debug('database %s added', dbName)
+        # table is not indexed, to avoid multiple entries check that it's not defined yet
+        try:
+            query = "SELECT db FROM qservw_worker.Dbs WHERE db='{0}';".format(dbName)
+            dbs = dbConn.execute(query)
+            if dbs.first():
+                raise ExceptionResponse(409, "DatabaseExists", "Database %s is already defined" % dbName)
+        except SQLAlchemyError as exc:
+            _log.error('exception when checking qservw_worker.Dbs: %s', exc)
+            raise
+    
+        # now add it
+        try:
+            query = "INSERT INTO qservw_worker.Dbs (db) VALUES ('{0}')".format(dbName)
+            dbConn.execute(query)
+        except SQLAlchemyError as exc:
+            _log.error('exception when adding database %s: %s', dbName, exc)
+            raise
+    
+        _log.debug('database %s added', dbName)
 
     # presently we have to restart xrootd to update ChunkInventory
     if xrootdRestart:
         _log.info('restarting xrootd after adding database %s', dbName)
         _restartXrootd()
+    else:
+        _log.info('rebuilding a list of databases and tables after adding database %s', dbName)
+        _rebuildChunkTable()
 
     # return representation for new database
     response = json.jsonify(result=_dbDict(dbName))
@@ -239,25 +286,30 @@ def unregisterDb(dbName):
     xrootdRestart = _getArgFlag(request.args, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    dbConn = Config.instance().dbEngine().connect()
+    # Make sure the transaction is commited after the block. Otherwise
+    # a subsequent attempt to rebuild the chunk table will fail.
+    with Config.instance().dbEngine().begin() as dbConn:
 
-    try:
-        query = "DELETE FROM qservw_worker.Dbs WHERE db=%s;"
-        _log.debug('executing: %s for %s', query, dbName)
-        results = dbConn.execute(query, [dbName])
-        if results.rowcount == 0:
-            _log.error('no rows have been removed')
-            raise ExceptionResponse(409, "DatabaseMissing", "Database %s is not defined" % dbName)
-    except SQLAlchemyError as exc:
-        _log.error('exception when executing query: %s', exc)
-        raise
-
-    _log.debug('database %s removed', dbName)
+        try:
+            query = "DELETE FROM qservw_worker.Dbs WHERE db=%s;"
+            _log.debug('executing: %s for %s', query, dbName)
+            results = dbConn.execute(query, [dbName])
+            if results.rowcount == 0:
+                _log.error('no rows have been removed')
+                raise ExceptionResponse(409, "DatabaseMissing", "Database %s is not defined" % dbName)
+        except SQLAlchemyError as exc:
+            _log.error('exception when executing query: %s', exc)
+            raise
+    
+        _log.debug('database %s removed', dbName)
 
     if xrootdRestart:
         # presently we have to restart xrootd to update ChunkInventory
         _log.info('restarting xrootd after removing database %s', dbName)
         _restartXrootd()
+    else:
+        _log.info('rebuilding a list of databases and tables after removing database %s', dbName)
+        _rebuildChunkTable()
 
     # return representation for new database
     return json.jsonify(result=_dbDict(dbName))
