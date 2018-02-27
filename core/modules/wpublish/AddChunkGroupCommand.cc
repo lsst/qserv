@@ -96,8 +96,8 @@ AddChunkGroupCommand::run() {
         return;
     }
 
-    XrdSsiCluster* clusterManager =
-        dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
+    xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+    XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
 
     proto::WorkerCommandChunkGroupR reply;
     reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
@@ -107,11 +107,14 @@ AddChunkGroupCommand::run() {
         std::string const resource = "/chk/" + database + "/" + std::to_string(_chunk);
 
         LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run  adding the chunk resource: "
-             << resource);
+             << resource << " in DataContext=" << clusterManager->DataContext());
 
         try {
-            // Notify XRootD/cmsd
+            // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+            // of the inventory.
             clusterManager->Added(resource.c_str());
+            if (clusterManager->DataContext())
+                providerServer->GetChunkInventory().add(database, _chunk);
 
             // Notify QServ and update the database
             _chunkInventory->add(database, _chunk, _mySqlConfig);

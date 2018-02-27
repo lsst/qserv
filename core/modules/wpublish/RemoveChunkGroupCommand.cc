@@ -112,8 +112,8 @@ RemoveChunkGroupCommand::run() {
         }
     }
 
-    XrdSsiCluster* clusterManager =
-        dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
+    xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+    XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
 
     proto::WorkerCommandChunkGroupR reply;
     reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
@@ -123,11 +123,14 @@ RemoveChunkGroupCommand::run() {
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
 
         LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run  removing the chunk resource: "
-             << resource);
+             << resource << " in DataContext=" << clusterManager->DataContext());
 
         try {
-            // Notify XRootD/cmsd
+            // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+            // of the inventory.
             clusterManager->Removed(resource.c_str());
+            if (clusterManager->DataContext())
+                providerServer->GetChunkInventory().remove(db, _chunk);
 
             // Notify QServ and update the database
             _chunkInventory->remove(db, _chunk, _mySqlConfig);

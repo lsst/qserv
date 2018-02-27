@@ -132,8 +132,8 @@ ChunkListCommand::run() {
         ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
         ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
     
-        XrdSsiCluster* clusterManager =
-            dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)->GetClusterManager();
+        xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+        XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
     
         if (not removedChunks.empty()) {
     
@@ -143,11 +143,15 @@ ChunkListCommand::run() {
                 for (int chunk: entry.second) {
                     std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
     
-                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource);
+                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  removing resource: " << resource <<
+                         " in DataContext=" << clusterManager->DataContext());
     
                     try {
-                        // Notify XRootD/cmsd
+                        // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+                        // of the inventory.
                         clusterManager->Removed(resource.c_str());
+                        if (clusterManager->DataContext())
+                            providerServer->GetChunkInventory().remove(database, chunk);
 
                         // Notify QServ
                         _chunkInventory->remove(database, chunk);
@@ -172,11 +176,15 @@ ChunkListCommand::run() {
                 for (int chunk: entry.second) {
                     std::string const resource = "/chk/" + database + "/" + std::to_string(chunk);
     
-                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource);
+                    LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run  adding resource: " << resource <<
+                         " in DataContext=" << clusterManager->DataContext());
     
                     try {
-                        // Notify XRootD/cmsd
+                        // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+                        // of the inventory.
                         clusterManager->Added(resource.c_str());
+                        if (clusterManager->DataContext())
+                            providerServer->GetChunkInventory().add(database, chunk);
 
                         // Notify QServ
                         _chunkInventory->add(database, chunk);
