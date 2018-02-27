@@ -158,7 +158,7 @@ def _rebuildChunkTable():
         _runCmd(cmd, False)
     except subprocess.CalledProcessError as exc:
         raise ExceptionResponse(409, "CommandFailure",
-                                "Failed to rebuildlist database and chunks known to worker %s" % workerId,
+                                "Failed to rebuild a list database and chunks known to worker %s" % workerId,
                                 str(exc))
 
 
