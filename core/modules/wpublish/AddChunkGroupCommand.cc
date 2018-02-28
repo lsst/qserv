@@ -113,8 +113,9 @@ AddChunkGroupCommand::run() {
             // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
             // of the inventory.
             clusterManager->Added(resource.c_str());
-            if (clusterManager->DataContext())
+            if (clusterManager->DataContext()) {
                 providerServer->GetChunkInventory().add(database, _chunk);
+            }
 
             // Notify QServ and update the database
             _chunkInventory->add(database, _chunk, _mySqlConfig);

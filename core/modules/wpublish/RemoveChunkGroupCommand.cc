@@ -129,8 +129,9 @@ RemoveChunkGroupCommand::run() {
             // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
             // of the inventory.
             clusterManager->Removed(resource.c_str());
-            if (clusterManager->DataContext())
+            if (clusterManager->DataContext()) {
                 providerServer->GetChunkInventory().remove(db, _chunk);
+            }
 
             // Notify QServ and update the database
             _chunkInventory->remove(db, _chunk, _mySqlConfig);

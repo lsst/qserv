@@ -150,8 +150,9 @@ ChunkListCommand::run() {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
                         // of the inventory.
                         clusterManager->Removed(resource.c_str());
-                        if (clusterManager->DataContext())
+                        if (clusterManager->DataContext()) {
                             providerServer->GetChunkInventory().remove(database, chunk);
+                        }
 
                         // Notify QServ
                         _chunkInventory->remove(database, chunk);

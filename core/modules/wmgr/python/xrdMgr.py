@@ -136,12 +136,12 @@ def _workerId():
         if not utils.tableExists(dbConn, tblName, dbName):
             raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
 
-        query = "SELECT id FROM `%s`.`%s`" % (dbName, tblName)
+        query = "SELECT id FROM %s.%s" % (dbName, tblName)
         rows = dbConn.execute(query)
 
         row = rows.first()
         if row is None:
-            raise ExceptionResponse(404, "NowWorkerIdFound",
+            raise ExceptionResponse(404, "NoWorkerIdFound",
                                     "Table %s.%s does not have any worker identifier" % (dbName, tblName))
         return row[0]
 
@@ -151,14 +151,14 @@ def _rebuildChunkTable():
 
     workerId = _workerId()
 
-    _log.info('rebuilding a list database and chunks known to worker %s', workerId)
+    _log.info('rebuilding a list of databases and chunks known to worker %s', workerId)
 
     try:
-        cmd = ['qserv-worker-notify','REBUILD_CHUNK_LIST',workerId,'--reload']
+        cmd = ['qserv-worker-notify', 'REBUILD_CHUNK_LIST', workerId, '--reload']
         _runCmd(cmd, False)
     except subprocess.CalledProcessError as exc:
         raise ExceptionResponse(409, "CommandFailure",
-                                "Failed to rebuild a list database and chunks known to worker %s" % workerId,
+                                "Failed to rebuild a list of databases and chunks known to worker %s" % workerId,
                                 str(exc))
 
 
@@ -232,7 +232,7 @@ def registerDb():
     xrootdRestart = _getArgFlag(request.form, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    # Make sure the transaction is commited after the block. Otherwise
+    # Make sure the transaction is committed after the block. Otherwise
     # a subsequent attempt to rebuild the chunk table will fail.
     with Config.instance().dbEngine().begin() as dbConn:
 
@@ -286,7 +286,7 @@ def unregisterDb(dbName):
     xrootdRestart = _getArgFlag(request.args, 'xrootdRestart', True)
     _log.debug('xrootdRestart: %s', xrootdRestart)
 
-    # Make sure the transaction is commited after the block. Otherwise
+    # Make sure the transaction is committed after the block. Otherwise
     # a subsequent attempt to rebuild the chunk table will fail.
     with Config.instance().dbEngine().begin() as dbConn:
 
