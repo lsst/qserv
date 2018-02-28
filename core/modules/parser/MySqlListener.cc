@@ -141,6 +141,32 @@ public:
 };
 
 
+class DecimalLiteralCBH {
+public:
+    virtual ~DecimalLiteralCBH() {}
+    virtual void handleDecimalLiteral(const string& text) = 0;
+};
+
+
+class StringLiteralCBH {
+public:
+    virtual ~StringLiteralCBH() {}
+};
+
+
+class ConstantExpressionAtomCBH {
+public:
+    virtual ~ConstantExpressionAtomCBH() {}
+    virtual void handleDecimalLiteral(const string& text) = 0;
+};
+
+
+class ExpressionAtomPredicateCBH {
+public:
+    virtual ~ExpressionAtomPredicateCBH() {}
+    virtual void handleDecimalLiteral(const string& text) = 0;
+};
+
 /// Adapter classes
 
 
@@ -367,6 +393,7 @@ protected:
 class TableNameAdapter : public Adapter , public FullIdCBH {
 public:
     TableNameAdapter(shared_ptr<TableNameCBH> parent) : _parent(parent) {}
+
     virtual void handleFullIdString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
@@ -374,14 +401,42 @@ public:
             parent->handleTableName(string);
         }
     }
+
 protected:
     weak_ptr<TableNameCBH> _parent;
+};
+
+
+class DecimalLiteralAdapter : public Adapter {
+public:
+    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent) : _parent(parent) {}
+
+    void onEnter(MySqlParser::DecimalLiteralContext * ctx) {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleDecimalLiteral(ctx->DECIMAL_LITERAL()->getText());
+        }
+    }
+
+private:
+    weak_ptr<DecimalLiteralCBH> _parent;
+};
+
+
+class StringLiteralAdapter : public Adapter {
+public:
+    StringLiteralAdapter(shared_ptr<StringLiteralCBH> parent) : _parent(parent) {}
+private:
+    weak_ptr<StringLiteralCBH> _parent;
 };
 
 
 class FullIdAdapter : public Adapter, public UidCBH {
 public:
     FullIdAdapter(shared_ptr<FullIdCBH> parent) : _parent(parent) {}
+
+    virtual ~FullIdAdapter() {}
+
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
@@ -389,6 +444,7 @@ public:
             parent->handleFullIdString(string);
         }
     }
+
 protected:
     weak_ptr<FullIdCBH> _parent;
 };
@@ -397,6 +453,7 @@ protected:
 class FullColumnNameAdapter : public Adapter, public UidCBH {
 public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent) : _parent(parent) {}
+
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
@@ -409,10 +466,51 @@ public:
             parent->handleFullColumnName(valueExpr);
         }
     }
+
 protected:
     weak_ptr<FullColumnNameCBH> _parent;
 };
 
+
+class ConstantExpressionAtomAdapter : public Adapter, public DecimalLiteralCBH {
+public:
+    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent) : _parent(parent) {}
+
+    virtual void handleDecimalLiteral(const string& text) override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleDecimalLiteral(text);
+        }
+    }
+
+private:
+    weak_ptr<ConstantExpressionAtomCBH> _parent;
+};
+
+
+class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpressionAtomCBH {
+public:
+    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent) : _parent(parent) {}
+
+    virtual void handleDecimalLiteral(const string& text) override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleDecimalLiteral(text);
+        }
+    }
+
+private:
+    weak_ptr<ExpressionAtomPredicateCBH> _parent;
+};
+
+
+class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomPredicateCBH {
+public:
+    BinaryComparasionPredicateAdapter() {}
+    virtual void handleDecimalLiteral(const string& text) override {
+
+    }
+};
 
 } // end namespace
 
@@ -643,6 +741,70 @@ void MySqlListener::enterUid(MySqlParser::UidContext * ctx) {
 
 void MySqlListener::exitUid(MySqlParser::UidContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+}
+
+
+void MySqlListener::enterDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<DecimalLiteralCBH, DecimalLiteralAdapter>();
+    auto adapter = adapterStackTop<DecimalLiteralAdapter>();
+    if (adapter) {
+        adapter->onEnter(ctx);
+    }
+}
+
+
+void MySqlListener::exitDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<DecimalLiteralAdapter>();
+}
+
+
+void MySqlListener::enterStringLiteral(MySqlParser::StringLiteralContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<StringLiteralCBH, StringLiteralAdapter>();
+}
+
+
+void MySqlListener::exitStringLiteral(MySqlParser::StringLiteralContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<StringLiteralAdapter>();
+}
+
+
+void MySqlListener::enterExpressionAtomPredicate(MySqlParser::ExpressionAtomPredicateContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<ExpressionAtomPredicateCBH, ExpressionAtomPredicateAdapter>();
+}
+
+
+void MySqlListener::exitExpressionAtomPredicate(MySqlParser::ExpressionAtomPredicateContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<ExpressionAtomPredicateAdapter>();
+}
+
+
+void MySqlListener::enterBinaryComparasionPredicate(MySqlParser::BinaryComparasionPredicateContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<BinaryComparasionPredicateAdapter>();
+}
+
+
+void MySqlListener::exitBinaryComparasionPredicate(MySqlParser::BinaryComparasionPredicateContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<BinaryComparasionPredicateAdapter>();
+}
+
+
+void MySqlListener::enterConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<ConstantExpressionAtomCBH, ConstantExpressionAtomAdapter>();
+}
+
+
+void MySqlListener::exitConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<ConstantExpressionAtomAdapter>();
 }
 
 
