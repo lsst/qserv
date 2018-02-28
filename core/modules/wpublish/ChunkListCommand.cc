@@ -184,8 +184,9 @@ ChunkListCommand::run() {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
                         // of the inventory.
                         clusterManager->Added(resource.c_str());
-                        if (clusterManager->DataContext())
+                        if (clusterManager->DataContext()) {
                             providerServer->GetChunkInventory().add(database, chunk);
+                        }
 
                         // Notify QServ
                         _chunkInventory->add(database, chunk);
