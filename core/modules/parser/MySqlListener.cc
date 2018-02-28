@@ -26,8 +26,10 @@
 #include "lsst/log/Log.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
+#include "query/FromList.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/TableRef.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "SelectListFactory.h"
@@ -43,6 +45,7 @@ namespace parser {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 
+
 /// Callback Handler classes
 
 // NullCBH is a class that can't be instantiated, it exists as a placeholder for
@@ -53,10 +56,25 @@ private:
 };
 
 
+class DMLStatementCBH {
+public:
+    virtual ~DMLStatementCBH() {}
+    virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
+};
+
+
+class SelectStatementCBH {
+public:
+    virtual ~SelectStatementCBH() {}
+    virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
+};
+
+
 class QuerySpecificationCBH {
 public:
     virtual ~QuerySpecificationCBH() {}
-    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) = 0;
+    virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
+                                          shared_ptr<query::FromList> fromList) = 0;
 };
 
 
@@ -64,6 +82,7 @@ class SelectElementsCBH {
 public:
     virtual ~SelectElementsCBH() {}
     virtual void handleSelectList(shared_ptr<query::SelectList> selectList) = 0;
+    virtual void handleFromList(shared_ptr<query::FromList> fromList) = 0;
 };
 
 
@@ -81,10 +100,30 @@ public:
 };
 
 
+class FromClauseCBH {
+public:
+    virtual ~FromClauseCBH() {}
+    virtual void handleFromList(shared_ptr<query::FromList> fromList) = 0;
+};
+
+
+class TableSourcesCBH {
+public:
+    virtual ~TableSourcesCBH() {}
+    virtual void handleTableSources(query::TableRefListPtr tableRefList) = 0;
+};
+
+class TableSourceCBH {
+public:
+    virtual ~TableSourceCBH() {}
+    virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) = 0;
+};
+
+
 class TableSourceItemCBH {
 public:
     virtual ~TableSourceItemCBH() {}
-    virtual void handleTableSourceItem(const std::string& string) = 0;
+    virtual void handleTableSourceItem(shared_ptr<query::TableRef> tableRef) = 0;
 };
 
 
@@ -117,30 +156,16 @@ protected:
 
 namespace {
 
-class RootAdapter : public Adapter {
+
+class RootAdapter : public Adapter, public DMLStatementCBH {
 public:
     RootAdapter() {}
     ~RootAdapter() {}
-private:
-};
 
+    shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
-class DMLAdapter : public Adapter {
-public:
-    DMLAdapter() {}
-};
-
-
-class SelectStatmentAdapter : public Adapter, public QuerySpecificationCBH {
-public:
-    SelectStatmentAdapter() : _selectStatement(make_shared<query::SelectStmt>()) {}
-
-    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
-        _selectStatement->setSelectList(selectList);
-    }
-
-    virtual void onExit() {
-        LOGS(_log, LOG_LVL_DEBUG, "SelectStatement: " << *_selectStatement);
+    virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) {
+        _selectStatement = selectStatement;
     }
 
 private:
@@ -148,18 +173,80 @@ private:
 };
 
 
-class QuerySpecificationAdapter : public Adapter, public SelectElementsCBH {
-public:
-    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent) : _parent(parent) {}
+// Between Root and DMLStatement, there are skipped statements: `sqlStatements` and `sqlStatement`.
+// Adapters and enter/exit handlers for these may need to be implemented, TBD.
 
-    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
+
+class DMLStatementAdapter : public Adapter, public SelectStatementCBH {
+public:
+    DMLStatementAdapter(shared_ptr<DMLStatementCBH> parent) : _parent(parent) {}
+
+    virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) {
+        _selectStatement = selectStatement;
+    }
+
+    virtual void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleSelectList(selectList);
+            parent->handleDMLStatement(_selectStatement);
         }
     }
 
 private:
+    shared_ptr<query::SelectStmt> _selectStatement;
+    weak_ptr<DMLStatementCBH> _parent;
+};
+
+
+class SelectStatmentAdapter : public Adapter, public QuerySpecificationCBH {
+public:
+    SelectStatmentAdapter(shared_ptr<SelectStatementCBH> parent) : _parent(parent) {}
+
+    virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
+                                          shared_ptr<query::FromList> fromList) {
+        _selectList = selectList;
+        _fromList = fromList;
+    }
+
+    virtual void onExit() override {
+        auto parent = _parent.lock();
+        if (parent) {
+            shared_ptr<query::SelectStmt> selectStatement = make_shared<query::SelectStmt>();
+            selectStatement->setSelectList(_selectList);
+            selectStatement->setFromList(_fromList);
+            parent->handleSelectStatement(selectStatement);
+        }
+    }
+
+private:
+    shared_ptr<query::SelectList> _selectList;
+    shared_ptr<query::FromList> _fromList;
+    weak_ptr<SelectStatementCBH> _parent;
+};
+
+
+class QuerySpecificationAdapter : public Adapter, public SelectElementsCBH, public FromClauseCBH{
+public:
+    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent) : _parent(parent) {}
+
+    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
+        _selectList = selectList;
+    }
+
+    virtual void handleFromList(shared_ptr<query::FromList> fromList) {
+        _fromList = fromList;
+    }
+
+    virtual void onExit() override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleQuerySpecification(_selectList, _fromList);
+        }
+    }
+
+private:
+    shared_ptr<query::FromList> _fromList;
+    shared_ptr<query::SelectList> _selectList;
     weak_ptr<QuerySpecificationCBH> _parent;
 };
 
@@ -173,7 +260,7 @@ public:
         SelectListFactory::addValueExpr(_selectList, column);
     }
 
-    virtual void onExit() {
+    virtual void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleSelectList(_selectList);
@@ -186,41 +273,94 @@ private:
 };
 
 
-class FromClauseAdapter : public Adapter {
+class FromClauseAdapter : public Adapter, public TableSourcesCBH {
 public:
-    FromClauseAdapter() {}
+    FromClauseAdapter(shared_ptr<FromClauseCBH> parent) : _parent(parent) {}
     virtual ~FromClauseAdapter() {}
+
+    virtual void handleTableSources(query::TableRefListPtr tableRefList) {
+        _tableRefList = tableRefList;
+    }
+
+    virtual void onExit() override {
+        auto parent = _parent.lock();
+        if (parent) {
+            shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
+            parent->handleFromList(fromList);
+        }
+    }
+
+private:
+    weak_ptr<FromClauseCBH> _parent;
+    query::TableRefListPtr _tableRefList;
 };
 
 
-class TableSourcesAdapter : public Adapter {
+class TableSourcesAdapter : public Adapter, public TableSourceCBH {
 public:
-    TableSourcesAdapter() {}
+    TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent) : _parent(parent) {}
+
+    virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) {
+        _tableRefList->push_back(tableRef);
+    }
+
+    virtual void onExit() override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleTableSources(_tableRefList);
+        }
+    }
+
+private:
+    query::TableRefListPtr _tableRefList{make_shared<query::TableRefList>()};
+    weak_ptr<TableSourcesCBH> _parent;
 };
 
 
 class TableSourceAdapter : public Adapter, public TableSourceItemCBH{
 public:
-    TableSourceAdapter() {}
-    virtual void handleTableSourceItem(const std::string& tableSourceItem) {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableSourceItem <<
-                " todo this is where the table source would get added to the list of table sources in the qyery");
+    TableSourceAdapter(shared_ptr<TableSourceCBH> parent) : _parent(parent) {}
+
+    virtual void handleTableSourceItem(shared_ptr<query::TableRef> tableRef) {
+        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
+        _tableRef = tableRef;
     }
+
+    virtual void onExit() override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleTableSource(_tableRef);
+        }
+    }
+
+private:
+    shared_ptr<query::TableRef> _tableRef;
+    weak_ptr<TableSourceCBH> _parent;
 };
 
 
 class TableSourceItemAdapter : public Adapter, public TableNameCBH {
 public:
     TableSourceItemAdapter(shared_ptr<TableSourceItemCBH> parent) : _parent(parent) {}
+
     virtual void handleTableName(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
+        _table = string;
+    }
+
+    virtual void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleTableSourceItem(string);
+            shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
+            parent->handleTableSourceItem(tableRef);
         }
     }
+
 protected:
     weak_ptr<TableSourceItemCBH> _parent;
+    std::string _db;
+    std::string _table;
+    std::string _alias;
 };
 
 
@@ -283,12 +423,13 @@ template<typename ParentCBH, typename ChildAdapter>
 std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
     auto p = std::dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
-            int status;
-            LOGS(_log, LOG_LVL_ERROR, "can't acquire expected Adapter " <<
-                    abi::__cxa_demangle(typeid(ParentCBH).name(),0,0,&status) <<
-                    " from top of listenerStack."); // todo add some type names
-        // might want to throw here...?
-        return nullptr;
+        int status;
+        std::ostringstream msg;
+        msg << "can't acquire expected Adapter " <<
+                abi::__cxa_demangle(typeid(ParentCBH).name(),0,0,&status) <<
+                " from top of listenerStack.";
+        LOGS(_log, LOG_LVL_ERROR, msg.str());
+        throw adapter_order_error(msg.str());
     }
     auto childAdapter = std::make_shared<ChildAdapter>(p);
     _adapterStack.push(childAdapter);
@@ -351,25 +492,27 @@ void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
 
 void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    auto rootAdapter = adapterStackTop<RootAdapter>();
     popAdapterStack<RootAdapter>();
+    _selectStatement = rootAdapter->getSelectStatement();
 }
 
 
 void MySqlListener::enterDmlStatement(MySqlParser::DmlStatementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DMLAdapter>();
+    pushAdapterStack<DMLStatementCBH, DMLStatementAdapter>();
 }
 
 
 void MySqlListener::exitDmlStatement(MySqlParser::DmlStatementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<DMLAdapter>();
+    popAdapterStack<DMLStatementAdapter>();
 }
 
 
 void MySqlListener::enterSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectStatmentAdapter>();
+    pushAdapterStack<SelectStatementCBH, SelectStatmentAdapter>();
 }
 
 
@@ -417,7 +560,7 @@ void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementCont
 
 void MySqlListener::enterFromClause(MySqlParser::FromClauseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FromClauseAdapter>();
+    pushAdapterStack<FromClauseCBH, FromClauseAdapter>();
 }
 
 
@@ -429,7 +572,7 @@ void MySqlListener::exitFromClause(MySqlParser::FromClauseContext * ctx) {
 
 void MySqlListener::enterTableSources(MySqlParser::TableSourcesContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourcesAdapter>();
+    pushAdapterStack<TableSourcesCBH, TableSourcesAdapter>();
 }
 
 
@@ -441,7 +584,7 @@ void MySqlListener::exitTableSources(MySqlParser::TableSourcesContext * ctx) {
 
 void MySqlListener::enterTableSourceBase(MySqlParser::TableSourceBaseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceAdapter>();
+    pushAdapterStack<TableSourceCBH, TableSourceAdapter>();
 }
 
 

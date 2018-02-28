@@ -68,8 +68,7 @@ SelectFactory::SelectFactory()
       _vFactory(std::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
 
     _fFactory = std::make_shared<FromFactory>(_vFactory);
-    _slFactory = std::shared_ptr<SelectListFactory>(
-            new SelectListFactory(_vFactory));
+    _slFactory = std::shared_ptr<SelectListFactory>(new SelectListFactory(_vFactory));
     _mFactory = std::make_shared<ModFactory>(_vFactory);
     _wFactory = std::make_shared<WhereFactory>(_vFactory);
 }
