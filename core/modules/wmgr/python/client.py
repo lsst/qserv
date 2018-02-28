@@ -596,7 +596,7 @@ class WmgrClient(object):
         result = self._requestJSON('xrootd', 'dbs')
         return self._getKey(result, 'name')
 
-    def xrootdRegisterDb(self, dbName, restart=True, allowDuplicate=False):
+    def xrootdRegisterDb(self, dbName, restart=False, allowDuplicate=False):
         """
         Register new database with xrootd.
 
@@ -614,7 +614,7 @@ class WmgrClient(object):
             if exc.code != 409 or not allowDuplicate:
                 raise
 
-    def xrootdUnregisterDb(self, dbName, restart=True):
+    def xrootdUnregisterDb(self, dbName, restart=False):
         """
         Remove database from xrootd registration.
 
