@@ -137,10 +137,19 @@ UserQuery::Ptr UserQueryFactory::a4NewUserQuery(const std::string& userQuery) {
 
     tree::ParseTreeWalker walker;
     parser::MySqlListener listener;
-    walker.walk(&listener, tree);
-    std::cout << std::endl;
-    //std::cout << *listener.getRootComponent() << std::endl;
+    try {
+        walker.walk(&listener, tree);
+    } catch (parser::MySqlListener::adapter_order_error& e) {
+        LOGS(_log, LOG_LVL_ERROR, "Adapter order error: " << e.what());
+    }
 
+    //std::cout << *listener.getRootComponent() << std::endl;
+    auto selectStatement = listener.getSelectStatement();
+    if (selectStatement) {
+        LOGS(_log, LOG_LVL_DEBUG, "antlr4 select statment: " << *selectStatement);
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, "antlr4 did not generate a statment.");
+    }
     return nullptr; //temp
 }
 
