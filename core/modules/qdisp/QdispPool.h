@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2018 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,7 +52,6 @@ private:
 
 // FIFO priority queue. Elements with the same priority are handled in
 // a FIFO manner. Lower integer values are higher priority.
-// Low values are higher priority.
 class PriorityQueue : public util::CommandQueue {
 public:
     using Ptr = std::shared_ptr<PriorityQueue>;
@@ -97,8 +96,6 @@ public:
 
     std::string statsStr();
 
-    friend std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq);
-
 private:
     void _incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr);
 
@@ -110,6 +107,7 @@ private:
     std::map<int, PriQ::Ptr> _queues;
     int _defaultPriority{1};
 
+    friend std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq);
 };
 
 
@@ -157,8 +155,6 @@ private:
     PriorityQueue::Ptr _prQueue = std::make_shared<PriorityQueue>(100,1); // default (lowest) priority.
     util::ThreadPool::Ptr _pool{util::ThreadPool::newThreadPool(30, _prQueue)};
 };
-
-
 
 
 }}} // namespace lsst::qserv::disp

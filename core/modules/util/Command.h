@@ -69,6 +69,10 @@ public:
     Command() = default;
     explicit Command(std::function<void(CmdData*)> func) : _func(func) {}
     virtual ~Command() = default;
+
+    Command(Command const&) = delete;
+    Command& operator=(Command const&) = delete;
+
     virtual void action(CmdData *data) {
         _func(data);
     };
@@ -91,6 +95,10 @@ public:
     CommandTracked() = default;
     explicit CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
     ~CommandTracked() override  = default;
+
+    CommandTracked(CommandTracked const&) = delete;
+    CommandTracked& operator=(CommandTracked const&) = delete;
+
     void actionComplete(CmdData*) override {
         setComplete();
     };

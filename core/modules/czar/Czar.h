@@ -31,7 +31,7 @@
 #include <string>
 #include <vector>
 
-#include "../qdisp/QdispPool.h"
+#include "qdisp/QdispPool.h"
 // Third-party headers
 
 // Qserv headers

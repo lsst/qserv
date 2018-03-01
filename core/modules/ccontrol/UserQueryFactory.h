@@ -38,7 +38,7 @@
 // Third-party headers
 #include "boost/utility.hpp"
 
-#include "../qdisp/QdispPool.h"
+#include "qdisp/QdispPool.h"
 // Local headers
 #include "ccontrol/UserQuery.h"
 #include "global/stringTypes.h"

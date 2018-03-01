@@ -90,7 +90,7 @@ RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status sta
     _frameBuf.serialize(reply);
     // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
     std::string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
+    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
     _sendChannel->sendStream(streamBuffer, true);
 }
 
@@ -152,10 +152,8 @@ RemoveChunkGroupCommand::run() {
         }
     }
     _frameBuf.serialize(reply);
-    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
     std::string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
-    _sendChannel->sendStream(streamBuffer, true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
 }}} // namespace lsst::qserv::wpublish

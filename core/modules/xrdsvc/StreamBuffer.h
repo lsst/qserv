@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2018LSST Corporation.
+ * Copyright 2014-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -83,7 +83,7 @@ private:
     std::string _dataStr;
     std::mutex _mtx;
     std::condition_variable _cv;
-    bool doneWithThis{false};
+    bool _doneWithThis{false};
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
     util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 

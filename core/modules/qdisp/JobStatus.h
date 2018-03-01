@@ -93,11 +93,13 @@ public:
         return _info;
     }
 
-private:
+
+    static std::string stateStr(JobStatus::State const& state);
+
     friend std::ostream& operator<<(std::ostream& os, JobStatus const& es);
-    Info _info;
 
 private:
+    Info _info;
     mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
 };
 std::ostream& operator<<(std::ostream& os, JobStatus const& es);

@@ -40,7 +40,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
-#include "QdispPool.h"
+#include "qdisp/QdispPool.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
@@ -87,8 +87,9 @@ public:
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-
+    /// Queue a job to be sent to a worker so it can be started.
     void queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive);
+
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
     void waitForAllJobsToStart();
@@ -132,11 +133,6 @@ public:
     int trackQSEASum{0}; // TEMPORARY-timing
     int endQSEASum{0}; // TEMPORARY-timing
 
-    void setJobCount(int count) {
-        std::lock_guard<std::mutex> lock(_jobStartMtx);
-        _jobCount = count;
-    }
-
 private:
     Executive(Config::Ptr const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<QdispPool> const& qdispPool);
@@ -161,12 +157,9 @@ private:
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.
-    QdispPool::Ptr _qdispPool;
+    QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
 
-    std::deque<PriorityCommand::Ptr> _jobStartCmdList;
-    int _jobCount{0};
-    std::mutex _jobStartMtx; ///< protects _jobStartCmdList, _jobCount.
-    std::condition_variable _jobStartCv;
+    std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
 
     /** Execution errors */
     util::MultiError _multiError;

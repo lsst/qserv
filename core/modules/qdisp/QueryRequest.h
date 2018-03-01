@@ -38,7 +38,7 @@
 // Local headers
 #include "czar/Czar.h"
 #include "qdisp/JobQuery.h"
-#include "QdispPool.h"
+#include "qdisp/QdispPool.h"
 
 namespace lsst {
 namespace qserv {
@@ -97,7 +97,7 @@ public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
     static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
-        Ptr newQueryRequest{new QueryRequest(jobQuery)};
+        Ptr newQueryRequest(new QueryRequest(jobQuery));
         return newQueryRequest;
     }
 

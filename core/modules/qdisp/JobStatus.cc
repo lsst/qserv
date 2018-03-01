@@ -65,7 +65,8 @@ void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int cod
     _info.stateDesc = desc;
 }
 
-std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
+
+std::string JobStatus::stateStr(JobStatus::State const& state) {
     std::string msg("?");
     switch(state)
     {
@@ -105,7 +106,11 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
     default:
         msg = "(unrecognized) state=" + std::to_string((int)state);
     }
-    os << msg;
+    return msg;
+}
+
+std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
+    os << JobStatus::stateStr(state);
     return os;
 }
 

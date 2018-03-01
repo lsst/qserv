@@ -182,44 +182,26 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
 
 
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd, bool scanInteractive) {
-    int count;
-    {
-        // This mutex and jobCount logic is only needed when UserQuerySelect::submit
-        // uses multiple threads to create jobs to put on queues.
-        std::lock_guard<std::mutex> lock(_jobStartMtx);
-        _jobStartCmdList.push_back(cmd);
-        count = --_jobCount;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "queueJobStart jobCount=" << count);
+    _jobStartCmdList.push_back(cmd);
     if (scanInteractive) {
         _qdispPool->queCmdVeryHigh(cmd);
     } else {
         _qdispPool->queCmdHigh(cmd);
     }
-    _jobStartCv.notify_all();
 }
 
 
 void Executive::waitForAllJobsToStart() {
-    {
-        // Wait for all jobs to be created.
-        std::unique_lock<std::mutex> uLock(_jobStartMtx);
-        LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart waiting jobCount=" << _jobCount);
-        _jobStartCv.wait(uLock, [this](){ return _jobCount == 0; });
-    }
-    LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart waiting for jobStartCmdList.empty");
+    LOGS(_log, LOG_LVL_INFO, _idStr << " waitForAllJobsToStart");
     // Wait for each command to start.
     while (true) {
-        {
-            std::lock_guard<std::mutex> lock(_jobStartMtx);
-            bool empty = _jobStartCmdList.empty();
-            if (empty) break;
-        }
+        bool empty = _jobStartCmdList.empty();
+        if (empty) break;
         auto cmd = std::move(_jobStartCmdList.front());
         _jobStartCmdList.pop_front();
         cmd->waitComplete();
     }
-    LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
+    LOGS(_log, LOG_LVL_INFO, _idStr << " waitForAllJobsToStart done");
 }
 
 

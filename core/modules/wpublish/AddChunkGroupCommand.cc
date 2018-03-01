@@ -81,9 +81,7 @@ void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status s
 
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
-    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
-    _sendChannel->sendStream(streamBuffer, true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
 void
@@ -135,9 +133,7 @@ AddChunkGroupCommand::run() {
     }
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::create(str);
-    _sendChannel->sendStream(streamBuffer, true);
-    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true); &&&
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
 }}} // namespace lsst::qserv::wpublish

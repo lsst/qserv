@@ -46,7 +46,7 @@ namespace wsched {
 
 // Class to pass control commands to the pool thread.
 // The scheduler doesn't know what to do with commands that aren't associated with
-// a Task, such commands to stop a thread. Those commands are put on this
+// a Task, such as commands to stop a thread. Those commands are put on this
 // queue and run when the Task scheduler has nothing to run.
 class ControlCommandQueue {
 public:

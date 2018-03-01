@@ -71,24 +71,26 @@ StreamBuffer::~StreamBuffer() {
 }
 
 
- //!> Call to recycle the buffer when finished
+ /// xrdssi calls this to recycle the buffer when finished.
  void StreamBuffer::Recycle() {
      {
          std::lock_guard<std::mutex> lg(_mtx);
-         doneWithThis = true;
+         _doneWithThis = true;
      }
      _cv.notify_all();
 
      // delete this;
-     // Effectively reset _selfPointer, and if nobody else was
+     // Effectively reset _selfKeepAlive, and if nobody else was
      // referencing this, this object will delete itself when
      // this function is done.
+     // std::move is used instead of reset() as reset() could
+     // result in _keepalive deleting itself while still in use.
      Ptr keepAlive = std::move(_selfKeepAlive);
  }
 
  // Wait until recycle is called.
  void StreamBuffer::waitForDoneWithThis() {
      std::unique_lock<std::mutex> uLock(_mtx);
-     _cv.wait(uLock, [this](){ return doneWithThis == true; });
+     _cv.wait(uLock, [this](){ return _doneWithThis == true; });
  }
 }}} // namespace lsst::qserv::xrdsvc

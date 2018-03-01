@@ -30,7 +30,7 @@
   */
 
 // Class header
-#include <qdisp/QdispPool.h>
+#include "qdisp/QdispPool.h"
 #include "qdisp/QueryRequest.h"
 
 // System headers

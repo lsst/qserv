@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "QdispPool.h"
+#include "qdisp/QdispPool.h"
 
 #include "lsst/log/Log.h"
 
@@ -32,7 +32,6 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QdispPool");
 }
 
-
 namespace lsst {
 namespace qserv {
 namespace qdisp {
@@ -40,10 +39,8 @@ namespace qdisp {
 
 // must hold pq._mtx before calling
 std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
-    auto iter = pq._queues.begin();
-    auto end = pq._queues.end();
-    for (;iter != end; ++iter) {
-        PriorityQueue::PriQ::Ptr const& que = iter->second;
+    for (auto const& elem : pq._queues)   {
+        PriorityQueue::PriQ::Ptr const& que = elem.second;
         os << "(pri=" << que->getPriority()
            << ":sz="  << que->size()
            << ":r="   << que->running << ")";
@@ -56,7 +53,8 @@ std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
 bool PriorityQueue::addPriQueue(int priority, int minRunning) {
     std::lock_guard<std::mutex> lock(_mtx);
     auto q = std::make_shared<PriQ>(priority, minRunning);
-    std::pair<int, PriQ::Ptr> item(priority, q);
+    //std::pair<int, PriQ::Ptr> item(priority, q);
+    auto item = std::make_pair(priority, q);
     auto ret = _queues.insert(item);
     if (!ret.second) {
         LOGS(_log, LOG_LVL_ERROR, "Failed addPriQueue priority=" << priority <<
@@ -64,6 +62,7 @@ bool PriorityQueue::addPriQueue(int priority, int minRunning) {
     }
     return ret.second;
 }
+
 
 /// The pool needs to be able to place commands in this queue for shutdown.
 void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
@@ -110,13 +109,11 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         LOGS (_log, LOG_LVL_DEBUG, "priQueGet " << *this);
 
         /// Make sure minimum number of jobs running per priority.
-        auto iter = _queues.begin();
-        auto end = _queues.end();
         if (!_shuttingDown) {
             // If shutting down, this could prevent all jobs from completing.
             // Goes from highest to lowest priority queue
-            for (;iter != end; ++iter) {
-                PriQ::Ptr const& que = iter->second;
+            for (auto const& elem : _queues) {
+                PriQ::Ptr const& que = elem.second;
                 if (que->running < que->getMinRunning()) {
                     ptr = que->getCmd(false); // no wait
                     if (ptr != nullptr) {
@@ -127,9 +124,8 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         }
 
         // Since all the minimums are met, just run the first command found.
-        iter = _queues.begin();
-        for (;iter != end; ++iter) {
-            PriQ::Ptr const& que = iter->second;
+        for (auto const& elem : _queues) {
+            PriQ::Ptr const& que = elem.second;
             //  TODO: Maybe add a check for max running.
             ptr = que->getCmd(false); // no wait
             if (ptr != nullptr) {
