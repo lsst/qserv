@@ -37,8 +37,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -71,17 +70,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MoveReplicaJob::pointer
-MoveReplicaJob::create (std::string const&         databaseFamily,
-                        unsigned int               chunk,
-                        std::string const&         sourceWorker,
-                        std::string const&         destinationWorker,
-                        bool                       purge,
-                        Controller::pointer const& controller,
-                        callback_type              onFinish,
-                        int                        priority,
-                        bool                       exclusive,
-                        bool                       preemptable) {
+MoveReplicaJob::pointer MoveReplicaJob::create (std::string const&         databaseFamily,
+                                                unsigned int               chunk,
+                                                std::string const&         sourceWorker,
+                                                std::string const&         destinationWorker,
+                                                bool                       purge,
+                                                Controller::pointer const& controller,
+                                                callback_type              onFinish,
+                                                int                        priority,
+                                                bool                       exclusive,
+                                                bool                       preemptable) {
     return MoveReplicaJob::pointer (
         new MoveReplicaJob (databaseFamily,
                             chunk,
@@ -105,21 +103,16 @@ MoveReplicaJob::MoveReplicaJob (std::string const&         databaseFamily,
                                 int                        priority,
                                 bool                       exclusive,
                                 bool                       preemptable)
-
     :   Job (controller,
              "MOVE_REPLICA",
              priority,
              exclusive,
              preemptable),
-
         _databaseFamily (databaseFamily),
         _chunk          (chunk),
-
         _sourceWorker      (sourceWorker),
         _destinationWorker (destinationWorker),
-
         _purge (purge),
-
         _onFinish (onFinish) {
 
     if (not _controller->serviceProvider().config()->isKnownDatabaseFamily (_databaseFamily))
@@ -129,11 +122,7 @@ MoveReplicaJob::MoveReplicaJob (std::string const&         databaseFamily,
     _controller->serviceProvider().assertWorkerIsValid (_destinationWorker);
 }
 
-MoveReplicaJob::~MoveReplicaJob () {
-}
-
-MoveReplicaJobResult const&
-MoveReplicaJob::getReplicaData () const {
+MoveReplicaJobResult const& MoveReplicaJob::getReplicaData () const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
@@ -143,11 +132,10 @@ MoveReplicaJob::getReplicaData () const {
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void
-MoveReplicaJob::track (bool          progressReport,
-                       bool          errorReport,
-                       bool          chunkLocksReport,
-                       std::ostream& os) const {
+void MoveReplicaJob::track (bool progressReport,
+                            bool errorReport,
+                            bool chunkLocksReport,
+                            std::ostream& os) const {
 
     if (_state == State::FINISHED) return;
     
@@ -195,8 +183,7 @@ MoveReplicaJob::track (bool          progressReport,
     }
 }
 
-void
-MoveReplicaJob::startImpl () {
+void MoveReplicaJob::startImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -284,8 +271,7 @@ MoveReplicaJob::startImpl () {
     setState(State::IN_PROGRESS);
 }
 
-void
-MoveReplicaJob::cancelImpl () {
+void MoveReplicaJob::cancelImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -324,8 +310,7 @@ MoveReplicaJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-MoveReplicaJob::notify () {
+void MoveReplicaJob::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -335,8 +320,7 @@ MoveReplicaJob::notify () {
     }
 }
 
-void
-MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
+void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
 
     std::string  const database          = request->database(); 
     std::string  const destinationWorker = request->worker();
@@ -414,8 +398,7 @@ MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
         notify ();
 }
 
-void
-MoveReplicaJob::onRequestFinish (DeleteRequest::pointer request) {
+void MoveReplicaJob::onRequestFinish (DeleteRequest::pointer request) {
 
     std::string  const database = request->database(); 
     std::string  const worker   = request->worker(); 

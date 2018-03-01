@@ -72,7 +72,7 @@ struct JobWrapper {
     typedef std::shared_ptr<JobWrapper> pointer;
 
     /// Destructor
-    virtual ~JobWrapper() {}
+    virtual ~JobWrapper() = default;
 
     /// This method will be called upon a completion of a request
     /// to notify a subscriber on the event.
@@ -170,7 +170,7 @@ public:
     JobController &operator= (JobController const&) = delete;
 
     /// Destructor
-    virtual ~JobController ();
+    virtual ~JobController () = default;
 
     /**
      * Run the scheduler in a dedicated thread unless it's already running.

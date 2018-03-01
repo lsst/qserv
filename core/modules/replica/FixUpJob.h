@@ -125,7 +125,7 @@ public:
     FixUpJob (FixUpJob const&) = delete;
     FixUpJob& operator= (FixUpJob const&) = delete;
 
-    /// Destructor
+    /// Destructor (non-trivial)
     ~FixUpJob () override;
 
     /// Return the name of a database family defining a scope of the operation
@@ -155,9 +155,9 @@ public:
       *
       * @see Job::track()
       */
-    void track (bool          progressReport,
-                bool          errorReport,
-                bool          chunkLocksReport,
+    void track (bool progressReport,
+                bool errorReport,
+                bool chunkLocksReport,
                 std::ostream& os) const override;
 
 protected:

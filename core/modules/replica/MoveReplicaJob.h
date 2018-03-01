@@ -133,7 +133,7 @@ public:
     MoveReplicaJob& operator= (MoveReplicaJob const&) = delete;
 
     /// Destructor
-    ~MoveReplicaJob () override;
+    ~MoveReplicaJob () override = default;
 
     /// The name of a database family
     std::string const& databaseFamily () const { return _databaseFamily; }

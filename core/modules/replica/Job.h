@@ -109,7 +109,7 @@ public:
     Job& operator= (Job const&) = delete;
 
     /// Destructor
-    virtual ~Job ();
+    virtual ~Job () = default;
 
     /// Return a reference to the Controller,
     Controller::pointer controller () { return _controller; }
@@ -177,9 +177,9 @@ public:
      * @chunkLocksReport     - print a report on chunks which are still allocated by
      *                         the job as the operation progresses.
      */
-    virtual void track (bool          progressReport,
-                        bool          errorReport,
-                        bool          chunkLocksReport,
+    virtual void track (bool progressReport,
+                        bool errorReport,
+                        bool chunkLocksReport,
                         std::ostream& os) const=0;
 
     /// Return the context string for debugging and diagnostic printouts
@@ -259,7 +259,7 @@ protected:
      * @param state         - the new primary state
      * @param extendedState - the new extended state
      */
-    void setState (State         state,
+    void setState (State state,
                    ExtendedState extendedState=ExtendedState::NONE);
     
 protected:

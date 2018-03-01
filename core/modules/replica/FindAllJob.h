@@ -164,7 +164,7 @@ public:
     FindAllJob& operator= (FindAllJob const&) = delete;
 
     /// Destructor
-    ~FindAllJob () override;
+    ~FindAllJob () override = default;
 
     /// Return the name of a database family defining a scope of the operation
     std::string const& databaseFamily () const { return _databaseFamily; }

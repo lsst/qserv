@@ -40,10 +40,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Messenger::pointer
-Messenger::create (ServiceProvider&         serviceProvider,
-                   boost::asio::io_service& io_service) {
-
+Messenger::pointer Messenger::create (ServiceProvider&         serviceProvider,
+                                      boost::asio::io_service& io_service) {
     return Messenger::pointer (
         new Messenger (serviceProvider,
                        io_service));
@@ -58,33 +56,27 @@ Messenger::Messenger (ServiceProvider&         serviceProvider,
                                                         worker);
 }
 
-Messenger::~Messenger () {
-}
-
-void
-Messenger::stop () {
+void Messenger::stop () {
     for (auto const& entry: _connector)
         entry.second->stop();
 }
 
-void
-Messenger::cancel (std::string const& worker,
-                   std::string const& id) {
+void Messenger::cancel (std::string const& worker,
+                        std::string const& id) {
 
     // Forward the request to the corresponidng worker
     connector(worker)->cancel(id);
 }
 
-bool
-Messenger::exists (std::string const& worker,
-                   std::string const& id) const {
+bool Messenger::exists (std::string const& worker,
+                        std::string const& id) const {
 
     // Forward the request to the corresponidng worker
     return connector(worker)->exists(id);
 }
     
-MessengerConnector::pointer const&
-Messenger::connector (std::string const& worker)  const {
+MessengerConnector::pointer const& Messenger::connector (std::string const& worker)  const {
+
     if (!_connector.count(worker))
         throw std::invalid_argument (
             "Messenger::connector(): unknown worker: " + worker);

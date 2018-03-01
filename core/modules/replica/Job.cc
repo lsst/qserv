@@ -32,10 +32,8 @@
 #include "replica/Performance.h"       // PerformanceUtils::now()
 #include "replica/ServiceProvider.h"
 
-
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -47,8 +45,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string
-Job::state2string (State state) {
+std::string Job::state2string (State state) {
     switch (state) {
         case CREATED:     return "CREATED";
         case IN_PROGRESS: return "IN_PROGRESS";
@@ -76,31 +73,24 @@ Job::Job (Controller::pointer const& controller,
           int                        priority,
           bool                       exclusive,
           bool                       preemptable)
-
     :   _id          (Generators::uniqueId()),
         _controller  (controller),
         _type        (type),
         _priority    (priority),
         _exclusive   (exclusive),
         _preemptable (preemptable),
-
         _state         (State::CREATED),
         _extendedState (ExtendedState::NONE),
-
         _beginTime (0),
         _endTime   (0) {
 }
 
-Job::~Job () {
+std::string Job::context () const {
+    return  "JOB [id=" + _id + ", type=" + _type +
+            ", state=" + state2string(_state, _extendedState) + "]  ";
 }
 
-std::string
-Job::context () const {
-    return "JOB [id=" + _id + ", type=" + _type + ", state=" + state2string(_state, _extendedState) + "]  ";
-}
-
-void
-Job::start () {
+void Job::start () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "start");
 
@@ -126,8 +116,7 @@ Job::start () {
         notify();
 }
 
-void
-Job::cancel () {
+void Job::cancel () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
@@ -149,16 +138,14 @@ Job::cancel () {
     _controller->serviceProvider().databaseServices()->saveState (shared_from_this());
 }
 
-void
-Job::assertState (State state) const {
+void Job::assertState (State state) const {
     if (state != _state)
         throw std::logic_error (
             "wrong state " + state2string(state) + " instead of " + state2string(_state));
 }
 
-void
-Job::setState (State         state,
-               ExtendedState extendedState) {
+void Job::setState (State         state,
+                    ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  state=" << state2string(state, extendedState));
 

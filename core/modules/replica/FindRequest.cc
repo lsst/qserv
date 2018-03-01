@@ -52,7 +52,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-
 ///////////////////////////////////
 //         FindRequestC          //
 ///////////////////////////////////
@@ -67,7 +66,6 @@ FindRequestC::create (ServiceProvider&         serviceProvider,
                       int                      priority,
                       bool                     computeCheckSum,
                       bool                     keepTracking) {
-
     return FindRequestC::pointer (
         new FindRequestC (
             serviceProvider,
@@ -97,7 +95,6 @@ FindRequestC::FindRequestC (ServiceProvider&         serviceProvider,
                            priority,
                            keepTracking,
                            false /* allowDuplicate */),
- 
         _database        (database),
         _chunk           (chunk),
         _computeCheckSum (computeCheckSum),
@@ -107,15 +104,11 @@ FindRequestC::FindRequestC (ServiceProvider&         serviceProvider,
     _serviceProvider.assertDatabaseIsValid (database);
 }
 
-FindRequestC::~FindRequestC () {
-}
-
 ReplicaInfo const&
 FindRequestC::responseData () const {
     return _replicaInfo;
 }
-
-    
+   
 void
 FindRequestC::beginProtocol () {
 
@@ -164,7 +157,7 @@ FindRequestC::beginProtocol () {
 
 void
 FindRequestC::requestSent (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred) {
+                           size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
 
@@ -211,7 +204,7 @@ FindRequestC::receiveResponse () {
 
 void
 FindRequestC::responseReceived (boost::system::error_code const& ec,
-                                size_t                           bytes_transferred) {
+                                size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
 
@@ -312,7 +305,7 @@ FindRequestC::sendStatus () {
 
 void
 FindRequestC::statusSent (boost::system::error_code const& ec,
-                          size_t                           bytes_transferred) {
+                          size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusSent");
 
@@ -359,7 +352,7 @@ FindRequestC::receiveStatus () {
 
 void
 FindRequestC::statusReceived (boost::system::error_code const& ec,
-                              size_t                           bytes_transferred) {
+                              size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusReceived");
 
@@ -389,7 +382,8 @@ FindRequestC::statusReceived (boost::system::error_code const& ec,
 void
 FindRequestC::analyze (proto::ReplicationResponseFind const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: " << proto::ReplicationStatus_Name(message.status()));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: " <<
+         proto::ReplicationStatus_Name(message.status()));
 
     // Always get the latest status reported by the remote server
     _extendedServerStatus = replica::translate(message.status_ext());
@@ -448,9 +442,8 @@ FindRequestC::analyze (proto::ReplicationResponseFind const& message) {
 
         default:
             throw std::logic_error (
-                    "FindRequestC::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
-                   "' received from server");
-
+                    "FindRequestC::analyze() unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
@@ -463,7 +456,6 @@ FindRequestC::notify () {
         _onFinish(shared_from_base<FindRequestC>());
     }
 }
-
 
 ///////////////////////////////////
 //         FindRequestM          //
@@ -480,7 +472,6 @@ FindRequestM::create (ServiceProvider&                  serviceProvider,
                       bool                              computeCheckSum,
                       bool                              keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
-
     return FindRequestM::pointer (
         new FindRequestM (
             serviceProvider,
@@ -522,9 +513,6 @@ FindRequestM::FindRequestM (ServiceProvider&                  serviceProvider,
         _replicaInfo     () {
 
     _serviceProvider.assertDatabaseIsValid (database);
-}
-
-FindRequestM::~FindRequestM () {
 }
 
 ReplicaInfo const&
@@ -633,7 +621,7 @@ FindRequestM::send () {
 }
 
 void
-FindRequestM::analyze (bool                                  success,
+FindRequestM::analyze (bool success,
                        proto::ReplicationResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze");
@@ -703,8 +691,8 @@ FindRequestM::analyze (bool                                  success,
     
             default:
                 throw std::logic_error (
-                        "FindRequestM::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
-                       "' received from server");
+                        "FindRequestM::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
         }
 
     } else {

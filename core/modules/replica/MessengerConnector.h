@@ -90,8 +90,7 @@ public:
         WrapperBase& operator= (WrapperBase const&) = delete;
     
         /// Destructor
-        virtual ~WrapperBase () {
-        }
+        virtual ~WrapperBase () = default;
 
         /**
          * Parse the content of the buffer and notify a subscriber
@@ -109,10 +108,9 @@ public:
          * @param requestBufferPtr_           - an input buffer with seriealized request
          * @param responseBufferCapacityBytes - the initial size of the response buffer
          */
-        WrapperBase (std::string const&                                   id_,
+        WrapperBase (std::string const& id_,
                      std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr_,
-                     size_t                                               responseBufferCapacityBytes)
-
+                     size_t responseBufferCapacityBytes)
             :   success          (false),
                 id               (id_),
                 requestBufferPtr (requestBufferPtr_),
@@ -151,8 +149,7 @@ public:
         Wrapper& operator= (Wrapper const&) = delete;
     
         /// Destructor
-        ~Wrapper () override {
-        }
+        ~Wrapper () override = default;
 
         /**
          * The constructor
@@ -163,11 +160,10 @@ public:
          * @param onFinish                    - an asynchronious callback function called upon
          *                                      a completion or failure of the operation
          */
-        Wrapper (std::string const&                                   id,
+        Wrapper (std::string const& id,
                  std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
-                 size_t                                               responseBufferCapacityBytes,
-                 callback_type                                        onFinish)
-
+                 size_t responseBufferCapacityBytes,
+                 callback_type onFinish)
             :   WrapperBase (id,
                              requestBufferPtr,
                              responseBufferCapacityBytes),
@@ -202,7 +198,7 @@ public:
     MessengerConnector& operator= (MessengerConnector const&) = delete;
 
     /// Destructor
-    virtual ~MessengerConnector ();
+    ~MessengerConnector () = default;
 
     /**
      * Create a new connector with specified parameters.
@@ -239,9 +235,9 @@ public:
      *                            or failure of the operation
      */
     template <class RESPONSE_TYPE>
-    void send (std::string const&                                   id,
+    void send (std::string const& id,
                std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
-               typename Wrapper<RESPONSE_TYPE>::callback_type       onFinish) {
+               typename Wrapper<RESPONSE_TYPE>::callback_type onFinish) {
 
         sendImpl (
             id,
@@ -319,7 +315,7 @@ private:
     void resolve ();
 
     /// Callback handler for the asynchronious operation
-    void resolved (boost::system::error_code const&         ec,
+    void resolved (boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::iterator iter);
 
     /// Start resolving the destination worker host & port
@@ -330,7 +326,7 @@ private:
      * successfull completion will trigger a request-specific
      * protocol sequence.
      */
-    void connected (boost::system::error_code const&         ec,
+    void connected (boost::system::error_code const& ec,
                     boost::asio::ip::tcp::resolver::iterator iter);
 
     /// Start a timeout before attempting to restart the connection
@@ -347,14 +343,14 @@ private:
 
     /// Callback handler fired upon a completion of the request sending
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Begin receiving a response
     void receiveResponse ();
 
     /// Callback handler fired upon a completion of the response receiving
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /**
      * Synchroniously read a protocol frame which carries the length
@@ -367,7 +363,7 @@ private:
      * @return the completion code of the operation
      */
     boost::system::error_code syncReadFrame (replica::ProtocolBuffer& buf,
-                                             size_t&                       bytes);
+                                             size_t& bytes);
 
    /**
      * Synchriniously read a response header of a known size. Then parse it
@@ -385,8 +381,8 @@ private:
      * @return the completion code of the operation
      */
     boost::system::error_code syncReadVerifyHeader (replica::ProtocolBuffer& buf,
-                                                    size_t                        bytes,
-                                                    std::string const&            id);
+                                                    size_t bytes,
+                                                    std::string const& id);
 
     /**
      * Synchriniously read a message of a known size into the specified buffer.
@@ -400,7 +396,7 @@ private:
      * @return the completion code of the operation
      */
     boost::system::error_code syncReadMessageImpl (replica::ProtocolBuffer& buf,
-                                                   size_t                        bytes);
+                                                   size_t bytes);
 
     /**
      * Return 'true' if the operation was aborted.

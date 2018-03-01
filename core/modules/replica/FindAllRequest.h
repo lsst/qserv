@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FINDALLREQUEST_H
-#define LSST_QSERV_REPLICA_FINDALLREQUEST_H
+#ifndef LSST_QSERV_REPLICA_FIND_ALL_REQUEST_H
+#define LSST_QSERV_REPLICA_FIND_ALL_REQUEST_H
 
 /// FindAllRequest.h declares:
 ///
@@ -59,9 +59,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-
 class Messenger;
-
 
 // =============================================
 //   Classes based on the dedicated connectors
@@ -89,7 +87,7 @@ public:
     FindAllRequestC& operator= (FindAllRequestC const&) = delete;
 
     /// Destructor
-    ~FindAllRequestC () final;
+    ~FindAllRequestC () final = default;
 
     // Trivial acccessors
  
@@ -154,14 +152,14 @@ private:
     
     /// Callback handler for the asynchronious operation
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
     void receiveResponse ();
 
     /// Callback handler for the asynchronious operation
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
@@ -175,17 +173,17 @@ private:
 
     /// Callback handler for the asynchronious operation
     void statusSent (boost::system::error_code const& ec,
-                     size_t                           bytes_transferred);
+                     size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
     void receiveStatus ();
 
     /// Callback handler for the asynchronious operation
     void statusReceived (boost::system::error_code const& ec,
-                         size_t                           bytes_transferred);
+                         size_t bytes_transferred);
 
     /// Process the completion of the requested operation
-    void analyze (lsst::qserv::proto::ReplicationResponseFindAll const& message);
+    void analyze (proto::ReplicationResponseFindAll const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -238,7 +236,7 @@ public:
     FindAllRequestM& operator= (FindAllRequestM const&) = delete;
 
     /// Destructor
-    ~FindAllRequestM () final;
+    ~FindAllRequestM () final = default;
 
     // Trivial acccessors
  
@@ -314,8 +312,8 @@ private:
     void send ();
 
     /// Process the completion of the requested operation
-    void analyze (bool                                                  success,
-                  lsst::qserv::proto::ReplicationResponseFindAll const& message);
+    void analyze (bool success,
+                  proto::ReplicationResponseFindAll const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -341,7 +339,6 @@ private:
     ReplicaInfoCollection _replicaInfoCollection;
 };
 
-
 // =================================================================
 //   Type switch as per the macro defined in replica/Common.h
 // =================================================================
@@ -354,4 +351,4 @@ typedef FindAllRequestM FindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FINDALLREQUEST_H
+#endif // LSST_QSERV_REPLICA_FIND_ALL_REQUEST_H
