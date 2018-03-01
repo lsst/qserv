@@ -67,7 +67,7 @@ public:
     Messenger& operator= (Messenger const&) = delete;
 
     /// Destructor
-    virtual ~Messenger ();
+    ~Messenger () = default;
 
     /**
      * Create a new messenger with specified parameters.

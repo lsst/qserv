@@ -39,9 +39,7 @@
 #include "replica/VerifyJob.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
-
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -49,11 +47,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.JobController");
 
 } /// namespace
 
-
 namespace lsst {
 namespace qserv {
 namespace replica {
-
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////  JobWrapperImpl  //////////////////////////
@@ -74,17 +70,15 @@ struct JobWrapperImpl
 
     JobWrapperImpl (typename T::pointer const& job,
                     typename T::callback_type  onFinish)
-
         :   JobWrapper(),
-
             _job      (job),
             _onFinish (onFinish) {
     }
 
     /// Destructor
-    virtual ~JobWrapperImpl() {}
+    ~JobWrapperImpl() override = default;
 
-    virtual Job::pointer job () const { return _job; }
+    Job::pointer job () const override { return _job; }
 
 private:
 
@@ -98,24 +92,18 @@ private:
 //////////////////////////  JobController  //////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-JobController::pointer
-JobController::create (ServiceProvider& serviceProvider) {
+JobController::pointer JobController::create (ServiceProvider& serviceProvider) {
     return JobController::pointer (
         new JobController (serviceProvider));
 }
 
 JobController::JobController (ServiceProvider& serviceProvider)
-
     :   _serviceProvider (serviceProvider),
         _controller      (Controller::create (serviceProvider)),
         _stop            (false) {
 }
 
-JobController::~JobController () {
-}
-
-void
-JobController::run () {
+void JobController::run () {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  run");
 
@@ -167,13 +155,11 @@ JobController::run () {
     }
 }
 
-bool
-JobController::isRunning () const {
+bool JobController::isRunning () const {
     return _thread.get() != nullptr;
 }
 
-void
-JobController::stop () {
+void JobController::stop () {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  stop");
 
@@ -199,18 +185,16 @@ JobController::stop () {
     _stop = false;
 }
 
-void
-JobController::join () {
+void JobController::join () {
     LOGS(_log, LOG_LVL_DEBUG, "JobController  join");
     if (_thread) _thread->join();
 }
 
-FindAllJob::pointer
-JobController::findAll (std::string const&        databaseFamily,
-                        FindAllJob::callback_type onFinish,
-                        int                       priority,
-                        bool                      exclusive,
-                        bool                      preemptable) {
+FindAllJob::pointer JobController::findAll (std::string const&        databaseFamily,
+                                            FindAllJob::callback_type onFinish,
+                                            int                       priority,
+                                            bool                      exclusive,
+                                            bool                      preemptable) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  findAll");
 
@@ -222,7 +206,9 @@ JobController::findAll (std::string const&        databaseFamily,
         FindAllJob::create (
             databaseFamily,
             _controller,
-            [self] (FindAllJob::pointer job) { self->onFinish (job); },
+            [self] (FindAllJob::pointer job) {
+                self->onFinish (job);
+            },
             priority,
             exclusive,
             preemptable
@@ -246,12 +232,11 @@ JobController::findAll (std::string const&        databaseFamily,
     return job;
 }
 
-FixUpJob::pointer
-JobController::fixUp (std::string const&      databaseFamily,
-                      FixUpJob::callback_type onFinish,
-                      int                     priority,
-                      bool                    exclusive,
-                      bool                    preemptable) {
+FixUpJob::pointer JobController::fixUp (std::string const&      databaseFamily,
+                                        FixUpJob::callback_type onFinish,
+                                        int                     priority,
+                                        bool                    exclusive,
+                                        bool                    preemptable) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  fixUp");
 
@@ -263,7 +248,9 @@ JobController::fixUp (std::string const&      databaseFamily,
         FixUpJob::create (
             databaseFamily,
             _controller,
-            [self] (FixUpJob::pointer job) { self->onFinish (job); },
+            [self] (FixUpJob::pointer job) {
+                self->onFinish (job);
+            },
             priority,
             exclusive,
             preemptable
@@ -287,13 +274,12 @@ JobController::fixUp (std::string const&      databaseFamily,
     return job;
 }
 
-PurgeJob::pointer
-JobController::purge (std::string const&      databaseFamily,
-                      unsigned int            numReplicas,
-                      PurgeJob::callback_type onFinish,
-                      int                     priority,
-                      bool                    exclusive,
-                      bool                    preemptable) {
+PurgeJob::pointer JobController::purge (std::string const&      databaseFamily,
+                                        unsigned int            numReplicas,
+                                        PurgeJob::callback_type onFinish,
+                                        int                     priority,
+                                        bool                    exclusive,
+                                        bool                    preemptable) {
     
     LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
 
@@ -304,7 +290,9 @@ JobController::purge (std::string const&      databaseFamily,
             databaseFamily,
             numReplicas,
             _controller,
-            [self] (PurgeJob::pointer job) { self->onFinish (job); },
+            [self] (PurgeJob::pointer job) {
+                self->onFinish (job);
+            },
             priority,
             exclusive,
             preemptable
@@ -328,13 +316,12 @@ JobController::purge (std::string const&      databaseFamily,
     return job;
 }
 
-ReplicateJob::pointer
-JobController::replicate (std::string const&          databaseFamily,
-                          unsigned int                numReplicas,
-                          ReplicateJob::callback_type onFinish,
-                          int                         priority,
-                          bool                        exclusive,
-                          bool                        preemptable) {
+ReplicateJob::pointer JobController::replicate (std::string const&          databaseFamily,
+                                                unsigned int                numReplicas,
+                                                ReplicateJob::callback_type onFinish,
+                                                int                         priority,
+                                                bool                        exclusive,
+                                                bool                        preemptable) {
     
     LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
 
@@ -347,7 +334,9 @@ JobController::replicate (std::string const&          databaseFamily,
             databaseFamily,
             numReplicas,
             _controller,
-            [self] (ReplicateJob::pointer job) { self->onFinish (job); },
+            [self] (ReplicateJob::pointer job) {
+                self->onFinish (job);
+            },
             priority,
             exclusive,
             preemptable
@@ -371,12 +360,11 @@ JobController::replicate (std::string const&          databaseFamily,
     return job;
 }
 
-VerifyJob::pointer
-JobController::verify (VerifyJob::callback_type         onFinish,
-                       VerifyJob::callback_type_on_diff onReplicaDifference,
-                       int                              priority,
-                       bool                             exclusive,
-                       bool                             preemptable) {
+VerifyJob::pointer JobController::verify (VerifyJob::callback_type         onFinish,
+                                          VerifyJob::callback_type_on_diff onReplicaDifference,
+                                          int                              priority,
+                                          bool                             exclusive,
+                                          bool                             preemptable) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  verify");
 
@@ -387,7 +375,9 @@ JobController::verify (VerifyJob::callback_type         onFinish,
     VerifyJob::pointer job =
         VerifyJob::create (
             _controller,
-            [self] (VerifyJob::pointer job) { self->onFinish (job); },
+            [self] (VerifyJob::pointer job) {
+                self->onFinish (job);
+            },
             onReplicaDifference,
             priority,
             exclusive,
@@ -412,13 +402,14 @@ JobController::verify (VerifyJob::callback_type         onFinish,
     return job;
 }
 
-DeleteWorkerJob::pointer
-JobController::deleteWorker (std::string const&             worker,
-                             bool                           permanentDelete,
-                             DeleteWorkerJob::callback_type onFinish,
-                             int                            priority,
-                             bool                           exclusive,
-                             bool                           preemptable) {
+DeleteWorkerJob::pointer JobController::deleteWorker (
+                                            std::string const&             worker,
+                                            bool                           permanentDelete,
+                                            DeleteWorkerJob::callback_type onFinish,
+                                            int                            priority,
+                                            bool                           exclusive,
+                                            bool                           preemptable) {
+
     LOGS(_log, LOG_LVL_DEBUG, "JobController  deleteWorker");
 
     LOCK_GUARD;
@@ -430,7 +421,9 @@ JobController::deleteWorker (std::string const&             worker,
             worker,
             permanentDelete,
             _controller,
-            [self] (DeleteWorkerJob::pointer job) { self->onFinish (job); },
+            [self] (DeleteWorkerJob::pointer job) {
+                self->onFinish (job);
+            },
             priority,
             exclusive,
             preemptable
@@ -454,8 +447,7 @@ JobController::deleteWorker (std::string const&             worker,
     return job;
 }
 
-void
-JobController::runQueued () {
+void JobController::runQueued () {
 
     if (!isRunning()) return;
 
@@ -468,8 +460,7 @@ JobController::runQueued () {
     // the in-progres jobs (if any).
 }
 
-void
-JobController::runScheduled () {
+void JobController::runScheduled () {
 
     if (!isRunning()) return;
 
@@ -492,8 +483,7 @@ JobController::runScheduled () {
     runQueued ();
 }
 
-void
-JobController::cancelAll () {
+void JobController::cancelAll () {
 
     if (!isRunning()) return;
 
@@ -502,8 +492,7 @@ JobController::cancelAll () {
     LOCK_GUARD;
 }
 
-void
-JobController::onFinish (Job::pointer const& job) {
+void JobController::onFinish (Job::pointer const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  onFinish  jobId=" << job->id());
 

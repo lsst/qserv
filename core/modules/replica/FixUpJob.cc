@@ -33,11 +33,8 @@
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 
-
 // This macro to appear witin each block which requires thread safety
-
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -74,20 +71,16 @@ FixUpJob::FixUpJob (std::string const&         databaseFamily,
                     int                        priority,
                     bool                       exclusive,
                     bool                       preemptable)
-
     :   Job (controller,
              "FIXUP",
              priority,
              exclusive,
              preemptable),
-
         _databaseFamily (databaseFamily),
-        _onFinish       (onFinish),
-        _bestEffort     (bestEffort),
-
+        _onFinish   (onFinish),
+        _bestEffort (bestEffort),
         _numIterations  (0),
         _numFailedLocks (0),
-
         _numLaunched (0),
         _numFinished (0),
         _numSuccess  (0) {
@@ -110,9 +103,9 @@ FixUpJob::getReplicaData () const {
 }
 
 void
-FixUpJob::track (bool          progressReport,
-                 bool          errorReport,
-                 bool          chunkLocksReport,
+FixUpJob::track (bool progressReport,
+                 bool errorReport,
+                 bool chunkLocksReport,
                  std::ostream& os) const {
 
     if (_state == State::FINISHED) return;

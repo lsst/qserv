@@ -36,8 +36,8 @@
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+// This macro to appear witin each block which requires thread safety
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace proto = lsst::qserv::proto;
 
@@ -90,7 +90,6 @@ FindAllRequestC::FindAllRequestC (ServiceProvider&         serviceProvider,
                            priority,
                            keepTracking,
                            false /* allowDuplicate */),
-
         _database              (database),
         _onFinish              (onFinish),
         _replicaInfoCollection () {
@@ -98,10 +97,7 @@ FindAllRequestC::FindAllRequestC (ServiceProvider&         serviceProvider,
     _serviceProvider.assertDatabaseIsValid (database);
 }
 
-FindAllRequestC::~FindAllRequestC () {
-}
-
-const ReplicaInfoCollection&
+ReplicaInfoCollection const&
 FindAllRequestC::responseData () const {
     return _replicaInfoCollection;
 }
@@ -148,7 +144,7 @@ FindAllRequestC::beginProtocol () {
 
 void
 FindAllRequestC::requestSent (boost::system::error_code const& ec,
-                              size_t                           bytes_transferred) {
+                              size_t bytes_transferred) {
 
     LOCK_GUARD;
 
@@ -195,7 +191,7 @@ FindAllRequestC::receiveResponse () {
 
 void
 FindAllRequestC::responseReceived (boost::system::error_code const& ec,
-                                   size_t                           bytes_transferred) {
+                                   size_t bytes_transferred) {
 
     LOCK_GUARD;
 
@@ -296,7 +292,7 @@ FindAllRequestC::sendStatus () {
 
 void
 FindAllRequestC::statusSent (boost::system::error_code const& ec,
-                             size_t                           bytes_transferred) {
+                             size_t bytes_transferred) {
 
     LOCK_GUARD;
 
@@ -343,7 +339,7 @@ FindAllRequestC::receiveStatus () {
 
 void
 FindAllRequestC::statusReceived (boost::system::error_code const& ec,
-                                 size_t                           bytes_transferred) {
+                                 size_t bytes_transferred) {
 
     LOCK_GUARD;
 
@@ -434,8 +430,8 @@ FindAllRequestC::analyze (proto::ReplicationResponseFindAll const& message) {
 
         default:
             throw std::logic_error (
-                    "FindAllRequestC::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
-                   "' received from server");
+                    "FindAllRequestC::analyze() unknown status '" +
+                    proto::ReplicationStatus_Name(message.status()) + "' received from server");
 
     }
 }
@@ -450,7 +446,6 @@ FindAllRequestC::notify () {
     }
 }
 
-
 //////////////////////////////////////
 //         FindAllRequestM          //
 //////////////////////////////////////
@@ -464,7 +459,6 @@ FindAllRequestM::create (ServiceProvider&                  serviceProvider,
                          int                               priority,
                          bool                              keepTracking,
                          std::shared_ptr<Messenger> const& messenger) {
-
     return FindAllRequestM::pointer (
         new FindAllRequestM (
             serviceProvider,
@@ -493,15 +487,11 @@ FindAllRequestM::FindAllRequestM (ServiceProvider&                  serviceProvi
                           keepTracking,
                           false, /* allowDuplicate */
                           messenger),
-
-        _database              (database),
-        _onFinish              (onFinish),
-        _replicaInfoCollection () {
+        _database(database),
+        _onFinish(onFinish),
+        _replicaInfoCollection() {
 
     _serviceProvider.assertDatabaseIsValid (database);
-}
-
-FindAllRequestM::~FindAllRequestM () {
 }
 
 const ReplicaInfoCollection&
@@ -605,7 +595,7 @@ FindAllRequestM::send () {
 }
 
 void
-FindAllRequestM::analyze (bool                                     success,
+FindAllRequestM::analyze (bool success,
                           proto::ReplicationResponseFindAll const& message) {
 
     // This guard is made on behalf of an asynchronious callback fired
@@ -675,8 +665,8 @@ FindAllRequestM::analyze (bool                                     success,
     
             default:
                 throw std::logic_error (
-                        "FindAllRequestM::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
-                       "' received from server");
+                        "FindAllRequestM::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) + "' received from server");
         }
 
     } else {

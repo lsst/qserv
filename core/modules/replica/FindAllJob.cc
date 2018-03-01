@@ -33,9 +33,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -47,13 +45,12 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindAllJob::pointer
-FindAllJob::create (std::string const&         databaseFamily,
-                    Controller::pointer const& controller,
-                    callback_type              onFinish,
-                    int                        priority,
-                    bool                       exclusive,
-                    bool                       preemptable) {
+FindAllJob::pointer FindAllJob::create (std::string const&         databaseFamily,
+                                        Controller::pointer const& controller,
+                                        callback_type              onFinish,
+                                        int                        priority,
+                                        bool                       exclusive,
+                                        bool                       preemptable) {
     return FindAllJob::pointer (
         new FindAllJob (databaseFamily,
                         controller,
@@ -75,21 +72,15 @@ FindAllJob::FindAllJob (std::string const&         databaseFamily,
              priority,
              exclusive,
              preemptable),
-
         _databaseFamily (databaseFamily),
         _databases      (controller->serviceProvider().config()->databases(databaseFamily)),
         _onFinish       (onFinish),
-
         _numLaunched (0),
         _numFinished (0),
         _numSuccess  (0) {
 }
 
-FindAllJob::~FindAllJob () {
-}
-
-FindAllJobResult const&
-FindAllJob::getReplicaData () const {
+FindAllJobResult const& FindAllJob::getReplicaData () const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
@@ -99,11 +90,10 @@ FindAllJob::getReplicaData () const {
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void
-FindAllJob::track (bool          progressReport,
-                   bool          errorReport,
-                   bool          chunkLocksReport,
-                   std::ostream& os) const {
+void FindAllJob::track (bool          progressReport,
+                        bool          errorReport,
+                        bool          chunkLocksReport,
+                        std::ostream& os) const {
 
     if (_state == State::FINISHED) return;
     
@@ -139,8 +129,7 @@ FindAllJob::track (bool          progressReport,
 
 }
 
-void
-FindAllJob::startImpl () {
+void FindAllJob::startImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -170,8 +159,7 @@ FindAllJob::startImpl () {
     else                  setState(State::IN_PROGRESS);
 }
 
-void
-FindAllJob::cancelImpl () {
+void FindAllJob::cancelImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -198,8 +186,7 @@ FindAllJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-FindAllJob::notify () {
+void FindAllJob::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -209,8 +196,7 @@ FindAllJob::notify () {
     }
 }
 
-void
-FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
+void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()

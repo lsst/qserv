@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_FINDREQUEST_H
-#define LSST_QSERV_REPLICA_FINDREQUEST_H
+#ifndef LSST_QSERV_REPLICA_FIND_REQUEST_H
+#define LSST_QSERV_REPLICA_FIND_REQUEST_H
 
 /// FindRequest.h declares:
 ///
@@ -89,7 +89,7 @@ public:
     FindRequestC& operator= (FindRequestC const&) = delete;
 
     /// Destructor
-    ~FindRequestC () final;
+    ~FindRequestC () final = default;
 
     // Trivial acccessors
  
@@ -163,14 +163,14 @@ private:
     
     /// Callback handler for the asynchronious operation
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
     void receiveResponse ();
 
     /// Callback handler for the asynchronious operation
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
@@ -184,14 +184,14 @@ private:
 
     /// Callback handler for the asynchronious operation
     void statusSent (boost::system::error_code const& ec,
-                     size_t                           bytes_transferred);
+                     size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
     void receiveStatus ();
 
     /// Callback handler for the asynchronious operation
     void statusReceived (boost::system::error_code const& ec,
-                         size_t                           bytes_transferred);
+                         size_t bytes_transferred);
 
     /// Process the completion of the requested operation
     void analyze (proto::ReplicationResponseFind const& message);
@@ -249,7 +249,7 @@ public:
     FindRequestM& operator= (FindRequestM const&) = delete;
 
     /// Destructor
-    ~FindRequestM () final;
+    ~FindRequestM () final = default;
 
     // Trivial acccessors
  
@@ -332,7 +332,7 @@ private:
     void send ();
 
     /// Process the completion of the requested operation
-    void analyze (bool                                               success,
+    void analyze (bool success,
                   lsst::qserv::proto::ReplicationResponseFind const& message);
 
     /**
@@ -361,7 +361,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-
 // =================================================================
 //   Type switch as per the macro defined in replica/Common.h
 // =================================================================
@@ -375,4 +374,4 @@ typedef FindRequestM FindRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FINDREQUEST_H
+#endif // LSST_QSERV_REPLICA_FIND_REQUEST_H
