@@ -89,7 +89,7 @@ public:
 class FullColumnNameCBH {
 public:
     virtual ~FullColumnNameCBH() {}
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> column) = 0;
+    virtual void handleFullColumnName(const string& columnName) = 0;
 };
 
 
@@ -165,6 +165,21 @@ class ExpressionAtomPredicateCBH {
 public:
     virtual ~ExpressionAtomPredicateCBH() {}
     virtual void handleDecimalLiteral(const string& text) = 0;
+    virtual void handleColumnName(const string& columnName) = 0;
+};
+
+
+class ComparisonOperatorCBH {
+public:
+    virtual ~ComparisonOperatorCBH() {}
+    virtual void handleComparisonOperator(const string& text) = 0;
+};
+
+
+class SelectColumnElementCBH {
+public:
+    virtual ~SelectColumnElementCBH() {}
+    virtual void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) = 0;
 };
 
 /// Adapter classes
@@ -185,9 +200,6 @@ namespace {
 
 class RootAdapter : public Adapter, public DMLStatementCBH {
 public:
-    RootAdapter() {}
-    ~RootAdapter() {}
-
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
     virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) {
@@ -277,13 +289,13 @@ private:
 };
 
 
-class SelectElementsAdapter : public Adapter, public FullColumnNameCBH {
+class SelectElementsAdapter : public Adapter, public SelectColumnElementCBH {
 public:
     SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent) : _parent(parent) {}
 
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> column) {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << column);
-        SelectListFactory::addValueExpr(_selectList, column);
+    virtual void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) {
+        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << columnElement);
+        SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
     virtual void onExit() override {
@@ -455,15 +467,9 @@ public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent) : _parent(parent) {}
 
     virtual void handleUidString(const std::string& string) {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
         if (parent) {
-
-            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
-            auto valueExpr = std::make_shared<query::ValueExpr>();
-            ValueExprFactory::addValueFactor(valueExpr, valueFactor);
-
-            parent->handleFullColumnName(valueExpr);
+            parent->handleFullColumnName(string);
         }
     }
 
@@ -488,28 +494,114 @@ private:
 };
 
 
-class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpressionAtomCBH {
+class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpressionAtomCBH,
+        public FullColumnNameCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent) : _parent(parent) {}
 
-    virtual void handleDecimalLiteral(const string& text) override {
+    void handleDecimalLiteral(const string& text) override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleDecimalLiteral(text);
         }
     }
 
+    void handleFullColumnName(const string& columnName) override {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleColumnName(columnName);
+        }
+    }
+
+
 private:
     weak_ptr<ExpressionAtomPredicateCBH> _parent;
 };
 
 
-class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomPredicateCBH {
+class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomPredicateCBH,
+        public ComparisonOperatorCBH {
 public:
     BinaryComparasionPredicateAdapter() {}
     virtual void handleDecimalLiteral(const string& text) override {
-
+        _setLR(text);
     }
+
+    void handleComparisonOperator(const string& text) override {
+        if (_comparison.empty()) {
+            _comparison = text;
+        } else {
+            std::ostringstream msg;
+            msg << "unexpected call to " << __FUNCTION__ <<
+                    " when comparison value is already populated:" << _comparison;
+            LOGS(_log, LOG_LVL_ERROR, msg.str());
+            throw MySqlListener::adapter_execution_error(msg.str());
+        }
+    }
+
+    void handleColumnName(const string& columnName) override {
+        _setLR(columnName);
+    }
+
+    virtual void onExit() {
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " " << _left << " " << _comparison << " " << _right);
+    }
+
+private:
+    void _setLR(const string& text) {
+        if (_left.empty()) {
+            _left = text;
+        } else if (_right.empty()) {
+            _right = text;
+        } else {
+            std::ostringstream msg;
+            msg << "unexpected call to " << __FUNCTION__ <<
+                    " when left and right values are already populated:" << _left << ", " << _right;
+            LOGS(_log, LOG_LVL_ERROR, msg.str());
+            throw MySqlListener::adapter_execution_error(msg.str());
+        }
+    }
+
+    string _left;
+    string _comparison;
+    string _right;
+};
+
+
+class ComparisonOperatorAdapter : public Adapter {
+public:
+    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent) : _parent(parent) {}
+
+    void onEnter(MySqlParser::ComparisonOperatorContext * ctx) {
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleComparisonOperator(ctx->getText());
+        }
+    }
+
+private:
+    weak_ptr<ComparisonOperatorCBH> _parent;
+};
+
+
+class SelectColumnElementAdapter : public Adapter, public FullColumnNameCBH {
+public:
+    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> parent) : _parent(parent) {}
+
+    virtual void handleFullColumnName(const string& columnName) {
+        auto parent = _parent.lock();
+        if (parent) {
+
+            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", columnName);
+            auto valueExpr = std::make_shared<query::ValueExpr>();
+            ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+
+            parent->handleColumnElement(valueExpr);
+        }
+    }
+
+private:
+    weak_ptr<SelectColumnElementCBH> _parent;
 };
 
 } // end namespace
@@ -646,13 +738,13 @@ void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx)
 
 void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>();
+    pushAdapterStack<SelectColumnElementCBH, SelectColumnElementAdapter>();
 }
 
 
 void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<FullColumnNameAdapter>();
+    popAdapterStack<SelectColumnElementAdapter>();
 }
 
 
@@ -714,6 +806,19 @@ void MySqlListener::exitTableName(MySqlParser::TableNameContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     popAdapterStack<TableNameAdapter>();
 }
+
+
+void MySqlListener::enterFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>();
+}
+
+
+void MySqlListener::exitFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<FullColumnNameAdapter>();
+}
+
 
 
 void MySqlListener::enterFullId(MySqlParser::FullIdContext * ctx) {
@@ -805,6 +910,23 @@ void MySqlListener::enterConstantExpressionAtom(MySqlParser::ConstantExpressionA
 void MySqlListener::exitConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     popAdapterStack<ConstantExpressionAtomAdapter>();
+}
+
+
+void MySqlListener::enterComparisonOperator(MySqlParser::ComparisonOperatorContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    pushAdapterStack<ComparisonOperatorCBH, ComparisonOperatorAdapter>();
+    auto adapter = adapterStackTop<ComparisonOperatorAdapter>();
+    if (adapter) {
+        adapter->onEnter(ctx);
+    }
+
+}
+
+
+void MySqlListener::exitComparisonOperator(MySqlParser::ComparisonOperatorContext * ctx) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    popAdapterStack<ComparisonOperatorAdapter>();
 }
 
 

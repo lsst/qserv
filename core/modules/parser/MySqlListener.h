@@ -64,6 +64,21 @@ public:
         std::string _msg;
     };
 
+    // Thrown in the case of unexpected events during the parse. (might want to inherit from runtime error?)
+    class adapter_execution_error : public std::exception {
+    public:
+        explicit adapter_execution_error(std::string msg)
+        : _msg(msg) {}
+
+        virtual const char * what() const noexcept override {
+            return _msg.c_str();
+        }
+
+    private:
+        std::string _msg;
+    };
+
+
 protected:
 
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
@@ -1317,8 +1332,8 @@ protected:
     virtual void enterTableName(MySqlParser::TableNameContext * /*ctx*/) override;
     virtual void exitTableName(MySqlParser::TableNameContext * /*ctx*/) override;
 
-//    virtual void enterFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
-//    virtual void exitFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
+    virtual void enterFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
+    virtual void exitFullColumnName(MySqlParser::FullColumnNameContext * /*ctx*/) override;
 
 //    virtual void enterIndexColumnName(MySqlParser::IndexColumnNameContext * /*ctx*/) override;
 //    virtual void exitIndexColumnName(MySqlParser::IndexColumnNameContext * /*ctx*/) override;
@@ -1602,8 +1617,8 @@ protected:
 //    virtual void enterUnaryOperator(MySqlParser::UnaryOperatorContext * /*ctx*/) override;
 //    virtual void exitUnaryOperator(MySqlParser::UnaryOperatorContext * /*ctx*/) override;
 
-//    virtual void enterComparisonOperator(MySqlParser::ComparisonOperatorContext * /*ctx*/) override;
-//    virtual void exitComparisonOperator(MySqlParser::ComparisonOperatorContext * /*ctx*/) override;
+    virtual void enterComparisonOperator(MySqlParser::ComparisonOperatorContext * /*ctx*/) override;
+    virtual void exitComparisonOperator(MySqlParser::ComparisonOperatorContext * /*ctx*/) override;
 
 //    virtual void enterLogicalOperator(MySqlParser::LogicalOperatorContext * /*ctx*/) override;
 //    virtual void exitLogicalOperator(MySqlParser::LogicalOperatorContext * /*ctx*/) override;
