@@ -29,6 +29,10 @@
 #include <memory>
 #include <stack>
 
+namespace antlr4 {
+    class ParserRuleContext;
+}
+
 namespace lsst {
 namespace qserv {
 namespace query{
@@ -1542,8 +1546,8 @@ protected:
 //    virtual void enterLogicalExpression(MySqlParser::LogicalExpressionContext * /*ctx*/) override;
 //    virtual void exitLogicalExpression(MySqlParser::LogicalExpressionContext * /*ctx*/) override;
 
-//    virtual void enterPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
-//    virtual void exitPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
+    virtual void enterPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
+    virtual void exitPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
 
 //    virtual void enterSoundsLikePredicate(MySqlParser::SoundsLikePredicateContext * /*ctx*/) override;
 //    virtual void exitSoundsLikePredicate(MySqlParser::SoundsLikePredicateContext * /*ctx*/) override;
@@ -1608,8 +1612,8 @@ protected:
 //    virtual void enterBinaryExpressionAtom(MySqlParser::BinaryExpressionAtomContext * /*ctx*/) override;
 //    virtual void exitBinaryExpressionAtom(MySqlParser::BinaryExpressionAtomContext * /*ctx*/) override;
 
-//    virtual void enterFullColumnNameExpressionAtom(MySqlParser::FullColumnNameExpressionAtomContext * /*ctx*/) override;
-//    virtual void exitFullColumnNameExpressionAtom(MySqlParser::FullColumnNameExpressionAtomContext * /*ctx*/) override;
+    virtual void enterFullColumnNameExpressionAtom(MySqlParser::FullColumnNameExpressionAtomContext * /*ctx*/) override;
+    virtual void exitFullColumnNameExpressionAtom(MySqlParser::FullColumnNameExpressionAtomContext * /*ctx*/) override;
 
 //    virtual void enterBitExpressionAtom(MySqlParser::BitExpressionAtomContext * /*ctx*/) override;
 //    virtual void exitBitExpressionAtom(MySqlParser::BitExpressionAtomContext * /*ctx*/) override;
@@ -1675,7 +1679,7 @@ private:
     std::shared_ptr<ChildAdapter> pushAdapterStack();
 
     template<typename ChildAdapter>
-    void popAdapterStack();
+    void popAdapterStack(antlr4::ParserRuleContext* ctx=nullptr);
 
     template<typename ChildAdapter>
     std::shared_ptr<ChildAdapter> adapterStackTop() const;
