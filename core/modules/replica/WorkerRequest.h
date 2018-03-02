@@ -84,44 +84,45 @@ public:
     };
 
     /// Return the string representation of the status
-    static std::string status2string (CompletionStatus status);
+    static std::string status2string(CompletionStatus status);
 
     /// Return the string representation of the full status
-    static std::string status2string (CompletionStatus status,
-                                      ExtendedCompletionStatus extendedStatus);
+    static std::string status2string(CompletionStatus status,
+                                     ExtendedCompletionStatus extendedStatus);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerRequest () = delete;
-    WorkerRequest (WorkerRequest const&) = delete;
-    WorkerRequest& operator= (WorkerRequest const&) = delete;
+    WorkerRequest() = delete;
+    WorkerRequest(WorkerRequest const&) = delete;
+    WorkerRequest& operator=(WorkerRequest const&) = delete;
 
     /// Destructor (can't say 'override' because the base class's one is not virtual)
-    virtual ~WorkerRequest () = default;
+    virtual ~WorkerRequest() = default;
 
     // Trivial accessors
 
-    ServiceProvider& serviceProvider () { return _serviceProvider; }
+    ServiceProvider& serviceProvider() { return _serviceProvider; }
 
-    std::string const& worker () const { return _worker; }
-    std::string const& type   () const { return _type; }
-    std::string const& id     () const { return _id; }
+    std::string const& worker() const { return _worker; }
+    std::string const& type() const   { return _type; }
+    std::string const& id() const     { return _id; }
 
-    int priority () const { return _priority; }
+    int priority() const { return _priority; }
 
-    CompletionStatus         status         () const { return _status; }
-    ExtendedCompletionStatus extendedStatus () const { return _extendedStatus; }
+    CompletionStatus         status() const         { return _status; }
+    ExtendedCompletionStatus extendedStatus() const { return _extendedStatus; }
 
     /// Return the performance info
-    const WorkerPerformance& performance () const { return _performance; }
+    const WorkerPerformance& performance() const { return _performance; }
 
     /** Set the status
      *
      * ATTENTION: this method needs to be called witin a thread-safe context
      * when moving requests between different queues.
      */
-    void setStatus (CompletionStatus status,
-                    ExtendedCompletionStatus extendedStatus=ExtendedCompletionStatus::EXT_STATUS_NONE);
+    void setStatus(CompletionStatus status,
+                   ExtendedCompletionStatus extendedStatus =
+                        ExtendedCompletionStatus::EXT_STATUS_NONE);
 
     /**
      * This method should be invoked (repeatedly) to execute the request until
@@ -136,7 +137,7 @@ public:
      * processing. This can be serve as a foundation for various tests
      * of this framework.
      */
-    virtual bool execute ();
+    virtual bool execute();
 
     /**
      * Cancel execution of the request.
@@ -150,7 +151,7 @@ public:
      *   other                                       - throwing std::logic_error
 
      */
-    virtual void cancel ();
+    virtual void cancel();
 
     /**
      * Roll back the request into its initial state and cleanup partial results
@@ -164,10 +165,10 @@ public:
      *   STATUS_IS_CANCELLING              - transition to STATUS_CANCELLED and throwing WorkerRequestCancelled
      *   other                             - throwing std::logic_error
      */
-    virtual void rollback ();
+    virtual void rollback();
 
     /// Return the context string
-    std::string context () const {
+    std::string context() const {
         return id() + "  " + type() + "  " + status2string(status()) + "  ";
     }
 
@@ -176,11 +177,11 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerRequest (ServiceProvider& serviceProvider,
-                   std::string const& worker,
-                   std::string const& type,
-                   std::string const& id,
-                   int priority);
+    WorkerRequest(ServiceProvider& serviceProvider,
+                  std::string const& worker,
+                  std::string const& type,
+                  std::string const& id,
+                  int priority);
     /**
      * This structure is used for tracking errors reported by method 'reportErrorIf
      */
@@ -191,7 +192,7 @@ protected:
         bool failed;
         ExtendedCompletionStatus extendedStatus;
 
-        ErrorContext ()
+        ErrorContext()
             :   failed(false),
                 extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE) {
         }
@@ -206,7 +207,7 @@ protected:
          */
         ErrorContext& operator|| (const ErrorContext &rhs) {
             if (&rhs != this) {
-                if (rhs.failed && !failed) {
+                if (rhs.failed and not failed) {
                     failed = true;
                     extendedStatus = rhs.extendedStatus;
                 }
@@ -228,9 +229,9 @@ protected:
      * @return the context object encapculating values passed in parameters
      * 'condition' and 'extendedStatus'
      */
-    ErrorContext reportErrorIf (bool condition,
-                                ExtendedCompletionStatus extendedStatus,
-                                std::string const& errorMsg);
+    ErrorContext reportErrorIf(bool condition,
+                               ExtendedCompletionStatus extendedStatus,
+                               std::string const& errorMsg);
 
 protected:
 
@@ -265,8 +266,8 @@ protected:
 struct WorkerRequestCompare {
 
     /// Order requests by their priorities
-    bool operator() (WorkerRequest::pointer const& lhs,
-                     WorkerRequest::pointer const& rhs) const {
+    bool operator()(WorkerRequest::pointer const& lhs,
+                    WorkerRequest::pointer const& rhs) const {
 
         return lhs->priority() < rhs->priority();
     }

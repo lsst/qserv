@@ -38,8 +38,6 @@
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
 
-namespace proto = lsst::qserv::proto;
-
 // Forward declarations
 
 // This header declarations
@@ -82,25 +80,23 @@ public:
      * @param processor       - processor of long requests
      * @param io_service      - enpoint for network I/O
      */
-    static pointer create (ServiceProvider& serviceProvider,
-                           WorkerProcessor& processor,
-                           boost::asio::io_service& io_service);
+    static pointer create(ServiceProvider& serviceProvider,
+                          WorkerProcessor& processor,
+                          boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerServerConnection () = delete;
-    WorkerServerConnection (WorkerServerConnection const&) = delete;
-    WorkerServerConnection & operator= (WorkerServerConnection const&) = delete;
+    WorkerServerConnection() = delete;
+    WorkerServerConnection(WorkerServerConnection const&) = delete;
+    WorkerServerConnection& operator=(WorkerServerConnection const&) = delete;
 
     /// Destructor (can't say 'override' because the base class's one is not virtual)
-    virtual ~WorkerServerConnection () = default;
+    ~WorkerServerConnection() = default;
 
     /**
      * Return a network socket associated with the connection.
      */
-    boost::asio::ip::tcp::socket& socket () {
-        return _socket;
-    }
+    boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
      * Begin communicating asynchroniously with a client. This is essentially
@@ -127,16 +123,16 @@ public:
      * The chain ends when a client disconnects or when an error condition
      * is met.
      */
-    void beginProtocol ();
+    void beginProtocol();
 
 private:
 
     /**
      * The constructor of the class.
      */
-    WorkerServerConnection (ServiceProvider& serviceProvider,
-                            WorkerProcessor& processor,
-                            boost::asio::io_service& io_service);
+    WorkerServerConnection(ServiceProvider& serviceProvider,
+                           WorkerProcessor& processor,
+                           boost::asio::io_service& io_service);
 
     /**
      * Begin reading (asynchronosly) the frame header of a new request
@@ -144,22 +140,22 @@ private:
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
      */
-    void receive ();
+    void receive();
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious reads.
      */
-    void received (boost::system::error_code const& ec,
-                   size_t bytes_transferred);
+    void received(boost::system::error_code const& ec,
+                  size_t bytes_transferred);
 
     /// Process replication requests (REPLICATE, DELETE, FIND, FIND-ALL)
-    void processReplicaRequest (proto::ReplicationRequestHeader& hdr);
+    void processReplicaRequest(proto::ReplicationRequestHeader& hdr);
 
     /// Process requests about replication requests (STOP, STATUS)
-    void processManagementRequest (proto::ReplicationRequestHeader& hdr);
+    void processManagementRequest(proto::ReplicationRequestHeader& hdr);
 
     /// Process requests affecting the service
-    void processServiceRequest (proto::ReplicationRequestHeader& hdr);
+    void processServiceRequest(proto::ReplicationRequestHeader& hdr);
 
     /**
      * Serialize an identifier of a request into response header
@@ -170,8 +166,8 @@ private:
      * @param body - a body of the response
      */
     template <class T>
-    void reply (std::string const& id,
-                T&& body) {
+    void reply(std::string const& id,
+               T&& body) {
 
         _bufferPtr->resize();
 
@@ -187,13 +183,13 @@ private:
     /**
      * Begin sending (asynchronosly) a result back to a client
      */
-    void send ();
+    void send();
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
      */
-    void sent (boost::system::error_code const& ec,
-               size_t bytes_transferred);
+    void sent(boost::system::error_code const& ec,
+              size_t bytes_transferred);
 
 private:
 

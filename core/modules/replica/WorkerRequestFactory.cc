@@ -48,8 +48,9 @@ namespace replica {
 ///////////////////// WorkerRequestFactoryBase ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerRequestFactoryBase::WorkerRequestFactoryBase (ServiceProvider &serviceProvider)
-    :   _serviceProvider (serviceProvider) {}
+WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider &serviceProvider)
+    :   _serviceProvider(serviceProvider) {
+}
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactoryTest ////////////////////
@@ -66,38 +67,38 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    WorkerRequestFactoryTest () = delete;
-    WorkerRequestFactoryTest (WorkerRequestFactoryTest const&) = delete;
-    WorkerRequestFactoryTest& operator= (WorkerRequestFactoryTest const&) = delete;
+    WorkerRequestFactoryTest() = delete;
+    WorkerRequestFactoryTest(WorkerRequestFactoryTest const&) = delete;
+    WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryTest (ServiceProvider& serviceProvider)
-        :   WorkerRequestFactoryBase (serviceProvider) {}
+    WorkerRequestFactoryTest(ServiceProvider& serviceProvider)
+        :   WorkerRequestFactoryBase(serviceProvider) {
+    }
     
     /// Destructor
-    ~WorkerRequestFactoryTest () override = default;
+    ~WorkerRequestFactoryTest() override = default;
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology () const { return "TEST"; }
+    std::string technology() const { return "TEST"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk,
-            std::string const& sourceWorker) override {
-
-        return WorkerReplicationRequest::create (
+    WorkerReplicationRequest_pointer createReplicationRequest(
+                                            std::string const& worker,
+                                            std::string const& id,
+                                            int                priority,
+                                            std::string const& database,
+                                            unsigned int       chunk,
+                                            std::string const& sourceWorker) override {
+        return WorkerReplicationRequest::create(
             _serviceProvider,
             worker,
             id,
@@ -112,14 +113,13 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk) override {
-
-        return WorkerDeleteRequest::create (
+    WorkerDeleteRequest_pointer createDeleteRequest(
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk) override {
+        return WorkerDeleteRequest::create(
             _serviceProvider,
             worker,
             id,
@@ -133,15 +133,14 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest (
-             std::string const& worker,
-             std::string const& id,
-             int                priority,
-             std::string const& database,
-             unsigned int       chunk,
-             bool               computeCheckSum) override {
-
-        return WorkerFindRequest::create (
+    WorkerFindRequest_pointer createFindRequest(
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    bool               computeCheckSum) override {
+        return WorkerFindRequest::create(
             _serviceProvider,
             worker,
             id,
@@ -156,13 +155,12 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database) override {
-
-        return WorkerFindAllRequest::create (
+    WorkerFindAllRequest_pointer createFindAllRequest(
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database) override {
+        return WorkerFindAllRequest::create(
             _serviceProvider,
             worker,
             id,
@@ -186,38 +184,38 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    WorkerRequestFactoryPOSIX () = delete;
-    WorkerRequestFactoryPOSIX (WorkerRequestFactoryPOSIX const&) = delete;
-    WorkerRequestFactoryPOSIX& operator= (WorkerRequestFactoryPOSIX const&) = delete;
+    WorkerRequestFactoryPOSIX() = delete;
+    WorkerRequestFactoryPOSIX(WorkerRequestFactoryPOSIX const&) = delete;
+    WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryPOSIX (ServiceProvider& serviceProvider)
-        :   WorkerRequestFactoryBase (serviceProvider) {}
+    WorkerRequestFactoryPOSIX(ServiceProvider& serviceProvider)
+        :   WorkerRequestFactoryBase(serviceProvider) {
+    }
     
     /// Destructor
-    ~WorkerRequestFactoryPOSIX () override = default;
+    ~WorkerRequestFactoryPOSIX() override = default;
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology () const { return "POSIX"; }
+    std::string technology() const { return "POSIX"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk,
-            std::string const& sourceWorker) override {
-
-        return WorkerReplicationRequestPOSIX::create (
+    WorkerReplicationRequest_pointer createReplicationRequest(
+                                            std::string const& worker,
+                                            std::string const& id,
+                                            int                priority,
+                                            std::string const& database,
+                                            unsigned int       chunk,
+                                            std::string const& sourceWorker) override {
+        return WorkerReplicationRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
@@ -232,14 +230,13 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk) override {
-
-        return WorkerDeleteRequestPOSIX::create (
+    WorkerDeleteRequest_pointer createDeleteRequest(
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database,
+                                        unsigned int       chunk) override {
+        return WorkerDeleteRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
@@ -253,15 +250,14 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk,
-            bool               computeCheckSum) override {
-
-        return WorkerFindRequestPOSIX::create (
+    WorkerFindRequest_pointer createFindRequest(
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    bool               computeCheckSum) override {
+        return WorkerFindRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
@@ -276,13 +272,12 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database) override {
-
-        return WorkerFindAllRequestPOSIX::create (
+    WorkerFindAllRequest_pointer createFindAllRequest(
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database) override {
+        return WorkerFindAllRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
@@ -307,38 +302,38 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    WorkerRequestFactoryFS () = delete;
-    WorkerRequestFactoryFS (WorkerRequestFactoryFS const&) = delete;
-    WorkerRequestFactoryFS& operator= (WorkerRequestFactoryFS const&) = delete;
+    WorkerRequestFactoryFS() = delete;
+    WorkerRequestFactoryFS(WorkerRequestFactoryFS const&) = delete;
+    WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryFS (ServiceProvider& serviceProvider)
-        :   WorkerRequestFactoryBase (serviceProvider) {}
+    WorkerRequestFactoryFS(ServiceProvider& serviceProvider)
+        :   WorkerRequestFactoryBase(serviceProvider) {
+    }
     
     /// Destructor
-    ~WorkerRequestFactoryFS () override = default;
+    ~WorkerRequestFactoryFS() override = default;
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::technology
      */
-    std::string technology () const { return "FS"; }
+    std::string technology() const { return "FS"; }
 
     /**
      * Implements the corresponding method of the base class
      *
      * @see WorkerReplicationRequestBase::createReplicationRequest
      */
-    WorkerReplicationRequest_pointer createReplicationRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk,
-            std::string const& sourceWorker) override {
-
-        return WorkerReplicationRequestFS::create (
+    WorkerReplicationRequest_pointer createReplicationRequest(
+                                            std::string const& worker,
+                                            std::string const& id,
+                                            int                priority,
+                                            std::string const& database,
+                                            unsigned int       chunk,
+                                            std::string const& sourceWorker) override {
+        return WorkerReplicationRequestFS::create(
             _serviceProvider,
             worker,
             id,
@@ -353,14 +348,13 @@ public:
      *
      * @see WorkerReplicationRequestBase::createDeleteRequest
      */
-    WorkerDeleteRequest_pointer createDeleteRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database,
-            unsigned int       chunk) override {
-
-        return WorkerDeleteRequestFS::create (
+    WorkerDeleteRequest_pointer createDeleteRequest(
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database,
+                                        unsigned int       chunk) override {
+        return WorkerDeleteRequestFS::create(
             _serviceProvider,
             worker,
             id,
@@ -374,15 +368,14 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindRequest
      */
-    WorkerFindRequest_pointer createFindRequest (
-             std::string const& worker,
-             std::string const& id,
-             int                priority,
-             std::string const& database,
-             unsigned int       chunk,
-             bool               computeCheckSum) override {
-
-        return WorkerFindRequestFS::create (
+    WorkerFindRequest_pointer createFindRequest(
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    bool               computeCheckSum) override {
+        return WorkerFindRequestFS::create(
             _serviceProvider,
             worker,
             id,
@@ -397,13 +390,12 @@ public:
      *
      * @see WorkerReplicationRequestBase::createFindAllRequest
      */
-    WorkerFindAllRequest_pointer createFindAllRequest (
-            std::string const& worker,
-            std::string const& id,
-            int                priority,
-            std::string const& database) override {
-
-        return WorkerFindAllRequestFS::create (
+    WorkerFindAllRequest_pointer createFindAllRequest(
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database) override {
+        return WorkerFindAllRequestFS::create(
             _serviceProvider,
             worker,
             id,
@@ -416,19 +408,21 @@ public:
 ///////////////////// WorkerRequestFactory ////////////////////
 ///////////////////////////////////////////////////////////////
 
-WorkerRequestFactory::WorkerRequestFactory (ServiceProvider&   serviceProvider,
-                                            std::string const& technology)
-    :   WorkerRequestFactoryBase (serviceProvider) {
+WorkerRequestFactory::WorkerRequestFactory(ServiceProvider&   serviceProvider,
+                                           std::string const& technology)
+    :   WorkerRequestFactoryBase(serviceProvider) {
         
     std::string const finalTechnology =
         technology.empty() ? serviceProvider.config()->workerTechnology() : technology;
 
-    if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest  (serviceProvider);
-    else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX (serviceProvider);
-    else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS    (serviceProvider);
-    else
-        throw std::invalid_argument("WorkerRequestFactory::WorkerRequestFactory() unknown technology: '" +
-                                    finalTechnology);
+    if      (finalTechnology == "TEST")  { _ptr = new WorkerRequestFactoryTest( serviceProvider); }
+    else if (finalTechnology == "POSIX") { _ptr = new WorkerRequestFactoryPOSIX(serviceProvider); }
+    else if (finalTechnology == "FS")    { _ptr = new WorkerRequestFactoryFS(   serviceProvider); }
+    else {
+        throw std::invalid_argument(
+                        "WorkerRequestFactory::WorkerRequestFactory() unknown technology: '" +
+                        finalTechnology);
+    }
 }
 
 }}} // namespace lsst::qserv::replica

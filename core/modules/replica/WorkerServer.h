@@ -73,30 +73,30 @@ public:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create (ServiceProvider&      serviceProvider,
-                           WorkerRequestFactory& requestFactory,
-                           std::string const&    workerName);
+    static pointer create(ServiceProvider&      serviceProvider,
+                          WorkerRequestFactory& requestFactory,
+                          std::string const&    workerName);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerServer () = delete;
-    WorkerServer (WorkerServer const&) = delete;
-    WorkerServer & operator= (WorkerServer const&) = delete;
+    WorkerServer() = delete;
+    WorkerServer(WorkerServer const&) = delete;
+    WorkerServer& operator=(WorkerServer const&) = delete;
 
-    /// Destructor (can't say 'override' because the base class's one is not virtual)
-    virtual ~WorkerServer () = default;
+    /// Destructor
+    ~WorkerServer() = default;
 
     /// Return the name of a worker this server runs for
-    std::string const& worker () const { return _workerName; }
+    std::string const& worker() const { return _workerName; }
 
     /// The processor API can be used for detailed monitoring of
     /// the on-going activities and statistics collection if needed.
-    WorkerProcessor const& processor () const { return _processor; }
+    WorkerProcessor const& processor() const { return _processor; }
 
     /**
      * Begin listening for and processing incoming connections
      */
-    void run ();
+    void run();
 
 private:
 
@@ -107,31 +107,31 @@ private:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    WorkerServer (ServiceProvider&      serviceProvider,
-                  WorkerRequestFactory& requestFactory,
-                  std::string const&    workerName);
+    WorkerServer(ServiceProvider&      serviceProvider,
+                 WorkerRequestFactory& requestFactory,
+                 std::string const&    workerName);
 
     /**
      * Begin (asynchrnonously) accepting connection requests.
      */
-    void beginAccept ();
+    void beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the comunication will be forewarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept (WorkerServerConnection::pointer const& connection,
-                       boost::system::error_code       const& ec);
+    void handleAccept(WorkerServerConnection::pointer const& connection,
+                      boost::system::error_code       const& ec);
 
     /// Return the context string
-    std::string context () const { return "SERVER  "; }
+    std::string context() const { return "SERVER  "; }
 
 private:
 
     // Parameters of the object
 
-    ServiceProvider &_serviceProvider;
+    ServiceProvider& _serviceProvider;
     std::string      _workerName;
 
     // Cached parameters of the worker

@@ -43,30 +43,27 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerServer::pointer
-WorkerServer::create (ServiceProvider&      serviceProvider,
-                      WorkerRequestFactory& requestFactory,
-                      std::string const&    workerName) {
-
-    return WorkerServer::pointer (
-        new WorkerServer (
+WorkerServer::pointer WorkerServer::create(ServiceProvider&      serviceProvider,
+                                           WorkerRequestFactory& requestFactory,
+                                           std::string const&    workerName) {
+    return WorkerServer::pointer(
+        new WorkerServer(
             serviceProvider,
             requestFactory,
             workerName));
 }
 
-WorkerServer::WorkerServer (ServiceProvider&      serviceProvider,
-                            WorkerRequestFactory& requestFactory,
-                            std::string const&    workerName)
-
-    :   _serviceProvider {serviceProvider},
-        _workerName      {workerName},
-        _processor       {serviceProvider, requestFactory, workerName},
-        _workerInfo      {serviceProvider.config()->workerInfo(workerName)},
-        _io_service (),
-        _acceptor (
+WorkerServer::WorkerServer(ServiceProvider&      serviceProvider,
+                           WorkerRequestFactory& requestFactory,
+                           std::string const&    workerName)
+    :   _serviceProvider(serviceProvider),
+        _workerName(     workerName),
+        _processor(      serviceProvider, requestFactory, workerName),
+        _workerInfo(     serviceProvider.config()->workerInfo(workerName)),
+        _io_service(),
+        _acceptor(
             _io_service,
-            boost::asio::ip::tcp::endpoint (
+            boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
                 _workerInfo.svcPort)) {
 
@@ -76,8 +73,7 @@ WorkerServer::WorkerServer (ServiceProvider&      serviceProvider,
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
-void
-WorkerServer::run () {
+void WorkerServer::run() {
 
     // Start the processor to allow processing requests.
 
@@ -92,17 +88,16 @@ WorkerServer::run () {
     _io_service.run();
 }
 
-void
-WorkerServer::beginAccept () {
+void WorkerServer::beginAccept() {
 
     WorkerServerConnection::pointer connection =
-        WorkerServerConnection::create (
+        WorkerServerConnection::create(
             _serviceProvider,
             _processor,
             _io_service
         );
         
-    _acceptor.async_accept (
+    _acceptor.async_accept(
         connection->socket(),
         boost::bind (
             &WorkerServer::handleAccept,
@@ -113,11 +108,10 @@ WorkerServer::beginAccept () {
     );
 }
 
-void
-WorkerServer::handleAccept (WorkerServerConnection::pointer const& connection,
-                            boost::system::error_code       const& err) {
+void WorkerServer::handleAccept(WorkerServerConnection::pointer const& connection,
+                                boost::system::error_code const& ec) {
 
-    if (!err) {
+    if (not ec) {
         connection->beginProtocol();
     } else {
 
@@ -126,7 +120,7 @@ WorkerServer::handleAccept (WorkerServerConnection::pointer const& connection,
         //       mechanism since its' safe to ignore problems with
         //       incoming connections due a lack of side effects.
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  err:" << err);
+        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
     }
     beginAccept();
 }
