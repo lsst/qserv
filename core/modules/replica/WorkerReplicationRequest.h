@@ -76,53 +76,53 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider&   serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int                priority,
-                           std::string const& database,
-                           unsigned int       chunk,
-                           std::string const& sourceWorker);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk,
+                          std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerReplicationRequest () = delete;
-    WorkerReplicationRequest (WorkerReplicationRequest const&) = delete;
-    WorkerReplicationRequest& operator= (WorkerReplicationRequest const&) = delete;
+    WorkerReplicationRequest() = delete;
+    WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
+    WorkerReplicationRequest& operator=(WorkerReplicationRequest const&) = delete;
 
     /// Destructor
-    ~WorkerReplicationRequest () override = default;
+    ~WorkerReplicationRequest() override = default;
 
     // Trivial accessors
 
-    std::string const& database     () const { return _database; }
-    unsigned int       chunk        () const { return _chunk; }
-    std::string const& sourceWorker () const { return _sourceWorker; }
+    std::string const& database() const     { return _database; }
+    unsigned int       chunk() const        { return _chunk; }
+    std::string const& sourceWorker() const { return _sourceWorker; }
 
    /**
      * Return a refernce to a result of the completed request.
      */
-    ReplicaInfo replicaInfo () const;
+    ReplicaInfo replicaInfo() const;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequest (ServiceProvider&   serviceProvider,
-                              std::string const& worker,
-                              std::string const& id,
-                              int                priority,
-                              std::string const& database,
-                              unsigned int       chunk,
-                              std::string const& sourceWorker);
+    WorkerReplicationRequest(ServiceProvider&   serviceProvider,
+                             std::string const& worker,
+                             std::string const& id,
+                             int                priority,
+                             std::string const& database,
+                             unsigned int       chunk,
+                             std::string const& sourceWorker);
 
 protected:
 
@@ -135,7 +135,6 @@ protected:
     /// Result of the operation
     ReplicaInfo _replicaInfo;
 };
-
 
 /**
   * Class WorkerReplicationRequestPOSIX provides an actual implementation for
@@ -155,42 +154,42 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider&   serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int                priority,
-                           std::string const& database,
-                           unsigned int       chunk,
-                           std::string const& sourceWorker);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk,
+                          std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerReplicationRequestPOSIX () = delete;
-    WorkerReplicationRequestPOSIX (WorkerReplicationRequestPOSIX const&) = delete;
-    WorkerReplicationRequestPOSIX& operator= (WorkerReplicationRequestPOSIX const&) = delete;
+    WorkerReplicationRequestPOSIX() = delete;
+    WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
+    WorkerReplicationRequestPOSIX& operator=(WorkerReplicationRequestPOSIX const&) = delete;
 
     /// Destructor
-    ~WorkerReplicationRequestPOSIX () override = default;
+    ~WorkerReplicationRequestPOSIX() override = default;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerReplicationRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestPOSIX (ServiceProvider&   serviceProvider,
-                                   std::string const& worker,
-                                   std::string const& id,
-                                   int                priority,
-                                   std::string const& database,
-                                   unsigned int       chunk,
-                                   std::string const& sourceWorker);
+    WorkerReplicationRequestPOSIX(ServiceProvider&   serviceProvider,
+                                  std::string const& worker,
+                                  std::string const& id,
+                                  int                priority,
+                                  std::string const& database,
+                                  unsigned int       chunk,
+                                  std::string const& sourceWorker);
 };
 
 /**
@@ -212,42 +211,42 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider&   serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int                priority,
-                           std::string const& database,
-                           unsigned int       chunk,
-                           std::string const& sourceWorker);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk,
+                          std::string const& sourceWorker);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerReplicationRequestFS () = delete;
-    WorkerReplicationRequestFS (WorkerReplicationRequestFS const&) = delete;
-    WorkerReplicationRequestFS& operator= (WorkerReplicationRequestFS const&) = delete;
+    WorkerReplicationRequestFS() = delete;
+    WorkerReplicationRequestFS(WorkerReplicationRequestFS const&) = delete;
+    WorkerReplicationRequestFS& operator=(WorkerReplicationRequestFS const&) = delete;
 
     /// Destructor (non trivial one is needed to release resources)
-    ~WorkerReplicationRequestFS () override;
+    ~WorkerReplicationRequestFS() override;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerReplicationRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestFS (ServiceProvider&   serviceProvider,
-                                std::string const& worker,
-                                std::string const& id,
-                                int                priority,
-                                std::string const& database,
-                                unsigned int       chunk,
-                                std::string const& sourceWorker);
+    WorkerReplicationRequestFS(ServiceProvider&   serviceProvider,
+                               std::string const& worker,
+                               std::string const& id,
+                               int                priority,
+                               std::string const& database,
+                               unsigned int       chunk,
+                               std::string const& sourceWorker);
 
 private:
     
@@ -256,7 +255,7 @@ private:
      *
      * @return 'true' in case of any error
      */
-    bool openFiles ();
+    bool openFiles();
 
     /**
      * The final stage to be executed just once after copying the content
@@ -267,7 +266,7 @@ private:
      *
      * @return always 'true'
      */
-    bool finalize ();
+    bool finalize();
 
     /**
      * Close connections, deallocate resources, etc.
@@ -277,12 +276,12 @@ private:
      * request objects can stay in the server's memory for an extended
      * period of time.
      */
-    void releaseResources ();
+    void releaseResources();
 
     /**
      * Update file migration statistics
      */
-    void updateInfo ();
+    void updateInfo();
 
 private:
 

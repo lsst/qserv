@@ -212,13 +212,13 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StopRequestBaseC (ServiceProvider&         serviceProvider,
-                      boost::asio::io_service& io_service,
-                      char const*              requestTypeName,
-                      std::string const&       worker,
-                      std::string const&       targetRequestId,
-                      proto::ReplicationReplicaRequestType requestType,
-                      bool                     keepTracking);
+    StopRequestBaseC(ServiceProvider&         serviceProvider,
+                     boost::asio::io_service& io_service,
+                     char const*              requestTypeName,
+                     std::string const&       worker,
+                     std::string const&       targetRequestId,
+                     proto::ReplicationReplicaRequestType requestType,
+                     bool                     keepTracking);
 
     /**
       * This method is called when a connection is established and
@@ -338,15 +338,14 @@ public:
      *                           the request.
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const&       worker,
-                           std::string const&       targetRequestId,
-                           callback_type            onFinish,
-                           bool                     keepTracking) {
-
-        return StopRequestC<POLICY>::pointer (
-            new StopRequestC<POLICY> (
+    static pointer create(ServiceProvider&         serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const&       worker,
+                          std::string const&       targetRequestId,
+                          callback_type            onFinish,
+                          bool                     keepTracking) {
+        return StopRequestC<POLICY>::pointer(
+            new StopRequestC<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -362,22 +361,22 @@ private:
     /**
      * Construct the request
      */
-    StopRequestC (ServiceProvider&          serviceProvider,
-                  boost::asio::io_service&  io_service,
-                  char const*           requestTypeName,
-                  std::string const&    worker,
-                  std::string const&    targetRequestId,
-                  proto::ReplicationReplicaRequestType  requestType,
-                  callback_type onFinish,
-                  bool          keepTracking)
-        :   StopRequestBaseC (serviceProvider,
-                              io_service,
-                              requestTypeName,
-                              worker,
-                              targetRequestId,
-                              requestType,
-                              keepTracking),
-            _onFinish (onFinish) {
+    StopRequestC(ServiceProvider&         serviceProvider,
+                 boost::asio::io_service& io_service,
+                 char const*              requestTypeName,
+                 std::string const&       worker,
+                 std::string const&       targetRequestId,
+                 proto::ReplicationReplicaRequestType requestType,
+                 callback_type onFinish,
+                 bool          keepTracking)
+        :   StopRequestBaseC(serviceProvider,
+                             io_service,
+                             requestTypeName,
+                             worker,
+                             targetRequestId,
+                             requestType,
+                            keepTracking),
+            _onFinish(onFinish) {
     }
 
     /**
@@ -476,14 +475,14 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StopRequestBaseM (ServiceProvider&         serviceProvider,
-                      boost::asio::io_service& io_service,
-                      char const*              requestTypeName,
-                      std::string const&       worker,
-                      std::string const&       targetRequestId,
-                      proto::ReplicationReplicaRequestType requestType,
-                      bool                     keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    StopRequestBaseM(ServiceProvider&         serviceProvider,
+                     boost::asio::io_service& io_service,
+                     char const*              requestTypeName,
+                     std::string const&       worker,
+                     std::string const&       targetRequestId,
+                     proto::ReplicationReplicaRequestType requestType,
+                     bool                     keepTracking,
+                     std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -584,16 +583,15 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const&       worker,
-                           std::string const&       targetRequestId,
-                           callback_type            onFinish,
-                           bool                     keepTracking,
-                           std::shared_ptr<Messenger> const& messenger) {
-
-        return StopRequestM<POLICY>::pointer (
-            new StopRequestM<POLICY> (
+    static pointer create(ServiceProvider&         serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const&       worker,
+                          std::string const&       targetRequestId,
+                          callback_type            onFinish,
+                          bool                     keepTracking,
+                          std::shared_ptr<Messenger> const& messenger) {
+        return StopRequestM<POLICY>::pointer(
+            new StopRequestM<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -610,24 +608,24 @@ private:
     /**
      * Construct the request
      */
-    StopRequestM (ServiceProvider&         serviceProvider,
-                  boost::asio::io_service& io_service,
-                  char const*              requestTypeName,
-                  std::string const&       worker,
-                  std::string const&       targetRequestId,
-                  proto::ReplicationReplicaRequestType requestType,
-                  callback_type            onFinish,
-                  bool                     keepTracking,
-                  std::shared_ptr<Messenger> const& messenger)
-        :   StopRequestBaseM (serviceProvider,
-                              io_service,
-                              requestTypeName,
-                              worker,
-                              targetRequestId,
-                              requestType,
-                              keepTracking,
-                              messenger),
-            _onFinish (onFinish) {
+    StopRequestM(ServiceProvider&         serviceProvider,
+                 boost::asio::io_service& io_service,
+                 char const*              requestTypeName,
+                 std::string const&       worker,
+                 std::string const&       targetRequestId,
+                 proto::ReplicationReplicaRequestType requestType,
+                 callback_type            onFinish,
+                 bool                     keepTracking,
+                 std::shared_ptr<Messenger> const& messenger)
+        :   StopRequestBaseM(serviceProvider,
+                             io_service,
+                             requestTypeName,
+                             worker,
+                             targetRequestId,
+                             requestType,
+                             keepTracking,
+                             messenger),
+            _onFinish(onFinish) {
     }
 
     /**

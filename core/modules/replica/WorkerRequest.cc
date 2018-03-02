@@ -37,13 +37,13 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequest");
 
 /// Maximum duration for the request execution
-const unsigned int maxDurationMillisec = 10000;
+unsigned int const maxDurationMillisec = 10000;
 
 /// Random interval for the incremental execution
-lsst::qserv::replica::BlockPost incrementIvalMillisec (1000, 2000);
+replica::BlockPost incrementIvalMillisec (1000, 2000);
 
 /// Random generator of success/failure rates
-lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);
+replica::SuccessRateGenerator successRateGenerator(0.9);
 
 } /// namespace
 
@@ -51,14 +51,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::mutex
-WorkerRequest::_mtxDataFolderOperations;
-
-std::mutex
-WorkerRequest::_mtx;
+std::mutex WorkerRequest::_mtxDataFolderOperations;
+std::mutex WorkerRequest::_mtx;
     
-std::string
-WorkerRequest::status2string (CompletionStatus status) {
+std::string WorkerRequest::status2string(CompletionStatus status) {
     switch (status) {
         case STATUS_NONE:          return "STATUS_NONE";
         case STATUS_IN_PROGRESS:   return "STATUS_IN_PROGRESS";
@@ -67,37 +63,38 @@ WorkerRequest::status2string (CompletionStatus status) {
         case STATUS_SUCCEEDED:     return "STATUS_SUCCEEDED";
         case STATUS_FAILED:        return "STATUS_FAILED";
     }
-    throw std::logic_error("WorkerRequest::status2string - unhandled status: " + std::to_string(status));
+    throw std::logic_error(
+                    "WorkerRequest::status2string - unhandled status: " +
+                    std::to_string(status));
 }
 
-std::string
-WorkerRequest::status2string (CompletionStatus         status,
-                              ExtendedCompletionStatus extendedStatus) {
+std::string WorkerRequest::status2string(CompletionStatus         status,
+                                         ExtendedCompletionStatus extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
-WorkerRequest::WorkerRequest (ServiceProvider   &serviceProvider,
-                              const std::string &worker,
-                              const std::string &type,
-                              const std::string &id,
-                              int                priority)
-    :   _serviceProvider  (serviceProvider),
-        _worker           (worker),
-        _type             (type),
-        _id               (id),
-        _priority         (priority),
-        _status           (STATUS_NONE),
-        _extendedStatus   (ExtendedCompletionStatus::EXT_STATUS_NONE),
-        _performance      (),
-        _durationMillisec (0) {
+WorkerRequest::WorkerRequest(ServiceProvider&   serviceProvider,
+                             std::string const& worker,
+                             std::string const& type,
+                             std::string const& id,
+                             int                priority)
+    :   _serviceProvider(serviceProvider),
+        _worker(worker),
+        _type(type),
+        _id(id),
+        _priority(priority),
+        _status(STATUS_NONE),
+        _extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
+        _performance(),
+        _durationMillisec(0) {
 
-    serviceProvider.assertWorkerIsValid (worker);
+    serviceProvider.assertWorkerIsValid(worker);
 }
 
-WorkerRequest::ErrorContext
-WorkerRequest::reportErrorIf (bool                      errorCondition,
-                              ExtendedCompletionStatus  extendedStatus,
-                              const std::string        &errorMsg) {
+WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
+                                                bool errorCondition,
+                                                ExtendedCompletionStatus extendedStatus,
+                                                std::string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
         errorContext.failed = true;
@@ -107,9 +104,8 @@ WorkerRequest::reportErrorIf (bool                      errorCondition,
     return errorContext;
 }
 
-void
-WorkerRequest::setStatus (CompletionStatus         status,
-                          ExtendedCompletionStatus extendedStatus) {
+void WorkerRequest::setStatus(CompletionStatus status,
+                              ExtendedCompletionStatus extendedStatus) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "setStatus  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
@@ -135,7 +131,7 @@ WorkerRequest::setStatus (CompletionStatus         status,
             // meaninful value in case if the request was cancelled while it was sitting
             // in the input queue before any attempt to execute the one was undertaken
 
-            if (!_performance.start_time) _performance.setUpdateStart();
+            if (!_performance.start_time) { _performance.setUpdateStart(); }
 
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
@@ -143,14 +139,15 @@ WorkerRequest::setStatus (CompletionStatus         status,
             break;
         
         default:
-            throw std::logic_error("WorkerRequest::setStatus - unhandled status: " + std::to_string(status));
+            throw std::logic_error(
+                            "WorkerRequest::setStatus - unhandled status: " +
+                            std::to_string(status));
     }
     _status         = status;
     _extendedStatus = extendedStatus;
 }
 
-bool
-WorkerRequest::execute () {
+bool WorkerRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute");
 
@@ -176,13 +173,13 @@ WorkerRequest::execute () {
 
     if (_durationMillisec < ::maxDurationMillisec) return false;
 
-    setStatus (::successRateGenerator.success() ? STATUS_SUCCEEDED :
-                                                  STATUS_FAILED);
+    setStatus(::successRateGenerator.success() ?
+                    STATUS_SUCCEEDED :
+                    STATUS_FAILED);
     return true;
 }
 
-void
-WorkerRequest::cancel () {
+void WorkerRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
@@ -205,8 +202,7 @@ WorkerRequest::cancel () {
     }
 }
 
-void
-WorkerRequest::rollback () {
+void WorkerRequest::rollback() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "rollback");
 
@@ -223,8 +219,9 @@ WorkerRequest::rollback () {
             break;
 
         default:
-            throw std::logic_error("WorkerRequest::rollback not allowed while in status: " +
-                                    WorkerRequest::status2string(status()));
+            throw std::logic_error(
+                            "WorkerRequest::rollback not allowed while in status: " +
+                            WorkerRequest::status2string(status()));
     }
 }
 
