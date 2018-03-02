@@ -68,28 +68,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider   &serviceProvider,
-                           const std::string &worker,
-                           const std::string &id,
-                           int                priority,
-                           const std::string &database,
-                           unsigned int       chunk,
-                           bool               computeCheckSum);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk,
+                          bool               computeCheckSum);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerFindRequest () = delete;
-    WorkerFindRequest (WorkerFindRequest const&) = delete;
-    WorkerFindRequest & operator= (WorkerFindRequest const&) = delete;
+    WorkerFindRequest() = delete;
+    WorkerFindRequest(WorkerFindRequest const&) = delete;
+    WorkerFindRequest& operator=(WorkerFindRequest const&) = delete;
 
     /// Destructor
-    ~WorkerFindRequest () override = default;
+    ~WorkerFindRequest() override = default;
 
     // Trivial accessors
 
-    const std::string& database        () const { return _database; }
-    unsigned int       chunk           () const { return _chunk; }
-    bool               computeCheckSum () const { return _computeCheckSum; }
+    std::string const& database()        const { return _database; }
+    unsigned int       chunk()           const { return _chunk; }
+    bool               computeCheckSum() const { return _computeCheckSum; }
 
    /**
      * Return a refernce to a result of the completed request.
@@ -97,27 +97,27 @@ public:
      * Note that this operation returns a meanigful result only when a request
      * is completed with status STATUS_SUCCEEDED.
      */
-    const ReplicaInfo& replicaInfo () const { return _replicaInfo; }
+    ReplicaInfo const& replicaInfo() const { return _replicaInfo; }
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerFindRequest (ServiceProvider   &serviceProvider,
-                       const std::string &worker,
-                       const std::string &id,
-                       int                priority,
-                       const std::string &database,
-                       unsigned int       chunk,
-                       bool               computeCheckSum);
+    WorkerFindRequest(ServiceProvider&   serviceProvider,
+                      std::string const& worker,
+                      std::string const& id,
+                      int                priority,
+                      std::string const& database,
+                      unsigned int       chunk,
+                      bool               computeCheckSum);
 protected:
 
     // Parameters of the request
@@ -129,7 +129,6 @@ protected:
     /// Result of the operation
     ReplicaInfo _replicaInfo;
 };
-
 
 /**
   * Class WorkerFindRequestPOSIX provides an actual implementation for
@@ -149,42 +148,42 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider   &serviceProvider,
-                           const std::string &worker,
-                           const std::string &id,
-                           int                priority,
-                           const std::string &database,
-                           unsigned int       chunk,
-                           bool               computeCheckSum);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk,
+                          bool               computeCheckSum);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerFindRequestPOSIX () = delete;
-    WorkerFindRequestPOSIX (WorkerFindRequestPOSIX const&) = delete;
-    WorkerFindRequestPOSIX & operator= (WorkerFindRequestPOSIX const&) = delete;
+    WorkerFindRequestPOSIX() = delete;
+    WorkerFindRequestPOSIX(WorkerFindRequestPOSIX const&) = delete;
+    WorkerFindRequestPOSIX& operator=(WorkerFindRequestPOSIX const&) = delete;
 
     /// Destructor
-    ~WorkerFindRequestPOSIX () override = default;
+    ~WorkerFindRequestPOSIX() override = default;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerFindRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 private:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerFindRequestPOSIX (ServiceProvider   &serviceProvider,
-                            const std::string &worker,
-                            const std::string &id,
-                            int                priority,
-                            const std::string &database,
-                            unsigned int       chunk,
-                            bool               computeCheckSum);
+    WorkerFindRequestPOSIX(ServiceProvider&   serviceProvider,
+                           std::string const& worker,
+                           std::string const& id,
+                           int                priority,
+                           std::string const& database,
+                           unsigned int       chunk,
+                           bool               computeCheckSum);
 
 private:
     

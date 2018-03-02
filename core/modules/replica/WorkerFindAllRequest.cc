@@ -36,8 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_DATA_FOLDER \
-std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
+#define LOCK_DATA_FOLDER std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
 
 namespace fs = boost::filesystem;
 
@@ -55,16 +54,14 @@ namespace replica {
 ///////////////////// WorkerFindAllRequest ////////////////////
 ///////////////////////////////////////////////////////////////
 
-WorkerFindAllRequest::pointer
-WorkerFindAllRequest::create (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database) {
-
-    return WorkerFindAllRequest::pointer (
-        new WorkerFindAllRequest (
+WorkerFindAllRequest::pointer WorkerFindAllRequest::create(
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database) {
+    return WorkerFindAllRequest::pointer(
+        new WorkerFindAllRequest(
                 serviceProvider,
                 worker,
                 id,
@@ -72,35 +69,29 @@ WorkerFindAllRequest::create (
                 database));
 }
 
-WorkerFindAllRequest::WorkerFindAllRequest (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database)
-
-    :   WorkerRequest (
+WorkerFindAllRequest::WorkerFindAllRequest(
+                            ServiceProvider&   serviceProvider,
+                            std::string const& worker,
+                            std::string const& id,
+                            int                priority,
+                            std::string const& database)
+    :   WorkerRequest(
             serviceProvider,
             worker,
             "FIND-ALL",
             id,
             priority),
-
-        _database              (database),
-        _replicaInfoCollection () {
+        _database(database),
+        _replicaInfoCollection() {
 }
 
-ReplicaInfoCollection const&
-WorkerFindAllRequest::replicaInfoCollection () const {
+ReplicaInfoCollection const& WorkerFindAllRequest::replicaInfoCollection() const {
     return _replicaInfoCollection;
 }
 
+bool WorkerFindAllRequest::execute() {
 
-bool
-WorkerFindAllRequest::execute () {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
-         << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
 
     // Set up the result if the operation is over
 
@@ -110,14 +101,15 @@ WorkerFindAllRequest::execute () {
         // Simulate the request processing by making an arbitrary number of
         // datasets.
 
-        for (unsigned int chunk=0; chunk<8; ++chunk)
-            _replicaInfoCollection.emplace_back (
+        for (unsigned int chunk=0; chunk<8; ++chunk) {
+            _replicaInfoCollection.emplace_back(
                 ReplicaInfo::COMPLETE,
                 _worker,
                 database(),
                 chunk,
                 PerformanceUtils::now(),
                 ReplicaInfo::FileInfoCollection());
+        }
     }
     return completed;
 }
@@ -126,16 +118,14 @@ WorkerFindAllRequest::execute () {
 ///////////////////// WorkerFindAllRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////
 
-WorkerFindAllRequestPOSIX::pointer
-WorkerFindAllRequestPOSIX::create (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database) {
-
-    return WorkerFindAllRequestPOSIX::pointer (
-        new WorkerFindAllRequestPOSIX (
+WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create (
+                                        ServiceProvider&   serviceProvider,
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database) {
+    return WorkerFindAllRequestPOSIX::pointer(
+        new WorkerFindAllRequestPOSIX(
                 serviceProvider,
                 worker,
                 id,
@@ -143,14 +133,13 @@ WorkerFindAllRequestPOSIX::create (
                 database));
 }
 
-WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database)
-
-    :   WorkerFindAllRequest (
+WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
+                                ServiceProvider&   serviceProvider,
+                                std::string const& worker,
+                                std::string const& id,
+                                int                priority,
+                                std::string const& database)
+    :   WorkerFindAllRequest(
             serviceProvider,
             worker,
             id,
@@ -158,13 +147,11 @@ WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX (
             database) {
 }
 
-bool
-WorkerFindAllRequestPOSIX::execute () {
+bool WorkerFindAllRequestPOSIX::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
-        << "  database: " << database());
+    LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
 
-    WorkerInfo   const& workerInfo    = _serviceProvider.config()->workerInfo  (worker());
+    WorkerInfo   const& workerInfo    = _serviceProvider.config()->workerInfo(worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
 
     // Scan the data directory to find all files which match the expected pattern(s)
@@ -180,18 +167,18 @@ WorkerFindAllRequestPOSIX::execute () {
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     stat.type() == fs::status_error,
                     ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                     "failed to check the status of directory: " + dataDir.string())
-            || reportErrorIf (
-                    !fs::exists(stat),
+            or reportErrorIf(
+                    not fs::exists(stat),
                     ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
         try {
             for (fs::directory_entry &entry: fs::directory_iterator(dataDir)) {
                 std::tuple<std::string, unsigned int, std::string> parsed;
-                if (FileUtils::parsePartitionedFile (
+                if (FileUtils::parsePartitionedFile(
                         parsed,
                         entry.path().filename().string(),
                         databaseInfo)) {
@@ -205,22 +192,22 @@ WorkerFindAllRequestPOSIX::execute () {
 
                     uint64_t const size = fs::file_size(entry.path(), ec);
                     errorContext = errorContext
-                        || reportErrorIf (
+                        or reportErrorIf(
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                                 "failed to read file size: " + entry.path().string());
 
                     std::time_t const mtime = fs::last_write_time(entry.path(), ec);
                     errorContext = errorContext
-                        || reportErrorIf (
+                        or reportErrorIf(
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                                 "failed to read file mtime: " + entry.path().string());
 
                     unsigned const chunk = std::get<1>(parsed);
 
-                    chunk2fileInfoCollection[chunk].emplace_back (
-                        ReplicaInfo::FileInfo ({
+                    chunk2fileInfoCollection[chunk].emplace_back(
+                        ReplicaInfo::FileInfo({
                             entry.path().filename().string(),
                             size,
                             mtime,
@@ -234,10 +221,11 @@ WorkerFindAllRequestPOSIX::execute () {
             }
         } catch (fs::filesystem_error const& ex) {
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         true,
                         ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ,
-                        "failed to read the directory: " + dataDir.string() + ", error: " + std::string(ex.what()));
+                        "failed to read the directory: " + dataDir.string() +
+                        ", error: " + std::string(ex.what()));
         }
     }
     if (errorContext.failed) {
@@ -249,12 +237,12 @@ WorkerFindAllRequestPOSIX::execute () {
     // of the total number of files which are normally associated with each chunk.
 
     size_t const numFilesPerChunkRequired =
-        FileUtils::partitionedFiles (databaseInfo, 0).size();
+        FileUtils::partitionedFiles(databaseInfo, 0).size();
 
     for (auto &entry: chunk2fileInfoCollection) {
         unsigned int const chunk    = entry.first;
         size_t       const numFiles = entry.second.size();
-        _replicaInfoCollection.emplace_back (
+        _replicaInfoCollection.emplace_back(
                 numFiles < numFilesPerChunkRequired ? ReplicaInfo::INCOMPLETE : ReplicaInfo::COMPLETE,
                 worker(),
                 database(),

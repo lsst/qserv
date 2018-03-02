@@ -51,7 +51,6 @@ RequestConnection::RequestConnection (ServiceProvider&         serviceProvider,
                                       int                      priority,
                                       bool                     keepTracking,
                                       bool                     allowDuplicate)
-
     :   Request (serviceProvider,
                  io_service,
                  type,
@@ -59,22 +58,16 @@ RequestConnection::RequestConnection (ServiceProvider&         serviceProvider,
                  priority,
                  keepTracking,
                  allowDuplicate),
-
         _resolver (io_service),
         _socket   (io_service) {
 }
 
-RequestConnection::~RequestConnection () { 
-}
-
-void
-RequestConnection::startImpl () {
+void RequestConnection::startImpl () {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
     resolve();
 }
 
-void
-RequestConnection::finishImpl () {
+void RequestConnection::finishImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finishImpl");
 
@@ -86,8 +79,7 @@ RequestConnection::finishImpl () {
     _timer.cancel();
 }
 
-void
-RequestConnection::restart () {
+void RequestConnection::restart () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
 
@@ -114,8 +106,7 @@ RequestConnection::restart () {
     resolve();
 }
 
-void
-RequestConnection::resolve () {
+void RequestConnection::resolve () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolve");
 
@@ -135,20 +126,18 @@ RequestConnection::resolve () {
     setState(IN_PROGRESS, NONE);
 }
 
-void
-RequestConnection::resolved (const boost::system::error_code          &ec,
-                             boost::asio::ip::tcp::resolver::iterator  iter) {
+void RequestConnection::resolved (boost::system::error_code const& ec,
+                                  boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) waitBeforeRestart();
-    else    connect(iter);
+    if (ec) { waitBeforeRestart(); }
+    else    { connect(iter); }
 }
 
-void
-RequestConnection::connect (boost::asio::ip::tcp::resolver::iterator iter) {
+void RequestConnection::connect (boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connect");
 
@@ -164,20 +153,18 @@ RequestConnection::connect (boost::asio::ip::tcp::resolver::iterator iter) {
     );
 }
 
-void
-RequestConnection::connected (const boost::system::error_code          &ec,
-                              boost::asio::ip::tcp::resolver::iterator  iter) {
+void RequestConnection::connected (boost::system::error_code const& ec,
+                                   boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) waitBeforeRestart();
-    else    beginProtocol();
+    if (ec) { waitBeforeRestart(); }
+    else    { beginProtocol(); }
 }
 
-void
-RequestConnection::waitBeforeRestart () {
+void RequestConnection::waitBeforeRestart () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "waitBeforeRestart");
 
@@ -193,23 +180,21 @@ RequestConnection::waitBeforeRestart () {
     );
 }
 
-void
-RequestConnection::awakenForRestart (const boost::system::error_code &ec) {
+void RequestConnection::awakenForRestart (boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     restart();
 }
 
-boost::system::error_code
-RequestConnection::syncReadFrame (size_t &bytes) {
+boost::system::error_code RequestConnection::syncReadFrame (size_t& bytes) {
 
-    const size_t frameLength = sizeof(uint32_t);
+    size_t const frameLength = sizeof(uint32_t);
     _bufferPtr->resize(frameLength);
 
     boost::system::error_code ec;
@@ -222,14 +207,13 @@ RequestConnection::syncReadFrame (size_t &bytes) {
         boost::asio::transfer_at_least(frameLength),
         ec
     );
-    if (!ec)
+    if (!ec) {
         bytes = _bufferPtr->parseLength();
-
+    }
     return ec;
 }
 
-boost::system::error_code
-RequestConnection::syncReadMessageImpl (const size_t bytes) {
+boost::system::error_code RequestConnection::syncReadMessageImpl (size_t const bytes) {
 
     _bufferPtr->resize(bytes);
 
@@ -246,16 +230,17 @@ RequestConnection::syncReadMessageImpl (const size_t bytes) {
     return ec;
 }
     
-boost::system::error_code
-RequestConnection::syncReadVerifyHeader (const size_t bytes) {
+boost::system::error_code RequestConnection::syncReadVerifyHeader (size_t const bytes) {
 
     proto::ReplicationResponseHeader hdr;
     boost::system::error_code ec = syncReadMessage (bytes, hdr);
-    if (!ec)
-        if (remoteId() != hdr.id())
+    if (!ec) {
+        if (remoteId() != hdr.id()) {
             throw std::logic_error (
                     "RequestConnection::syncReadVerifyHeader()  got unexpected id: " + hdr.id() +
                     " instead of: " + remoteId());
+        }
+    }
     return ec;
 }
 

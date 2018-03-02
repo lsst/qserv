@@ -28,7 +28,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
-#include <memory>       // shared_ptr
+#include <memory>
 #include <string>
 
 // Third party headers

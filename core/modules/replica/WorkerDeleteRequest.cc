@@ -36,8 +36,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_DATA_FOLDER \
-std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
+#define LOCK_DATA_FOLDER std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
 
 namespace fs = boost::filesystem;
 
@@ -55,49 +54,45 @@ namespace replica {
 ///////////////////// WorkerDeleteRequest ////////////////////
 //////////////////////////////////////////////////////////////
 
-WorkerDeleteRequest::pointer
-WorkerDeleteRequest::create (ServiceProvider   &serviceProvider,
-                             const std::string &worker,
-                             const std::string &id,
-                             int                priority,
-                             const std::string &database,
-                             unsigned int       chunk) {
-
-    return WorkerDeleteRequest::pointer (
-        new WorkerDeleteRequest (serviceProvider,
-                                 worker,
-                                 id,
-                                 priority,
-                                 database,
-                                 chunk));
+WorkerDeleteRequest::pointer WorkerDeleteRequest::create(
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk) {
+    return WorkerDeleteRequest::pointer(
+        new WorkerDeleteRequest(serviceProvider,
+                                worker,
+                                id,
+                                priority,
+                                database,
+                                chunk));
 }
 
-WorkerDeleteRequest::WorkerDeleteRequest (ServiceProvider   &serviceProvider,
-                                          const std::string &worker,
-                                          const std::string &id,
-                                          int                priority,
-                                          const std::string &database,
-                                          unsigned int       chunk)
+WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider&   serviceProvider,
+                                         std::string const& worker,
+                                         std::string const& id,
+                                         int                priority,
+                                         std::string const& database,
+                                         unsigned int       chunk)
     :   WorkerRequest (serviceProvider,
                        worker,
                        "DELETE",
                        id,
                        priority),
-
-        _database (database),
-        _chunk    (chunk),
-
+        _database(database),
+        _chunk(chunk),
         // This status will be returned in all contexts
-        _replicaInfo (ReplicaInfo::Status::NOT_FOUND,
-                      worker,
-                      database,
-                      chunk,
-                      PerformanceUtils::now(),
-                      ReplicaInfo::FileInfoCollection{}) {
+        _replicaInfo(ReplicaInfo::Status::NOT_FOUND,
+                     worker,
+                     database,
+                     chunk,
+                     PerformanceUtils::now(),
+                     ReplicaInfo::FileInfoCollection{}) {
 }
 
-bool
-WorkerDeleteRequest::execute () {
+bool WorkerDeleteRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
         << "  db: "    << database()
@@ -106,22 +101,20 @@ WorkerDeleteRequest::execute () {
     return WorkerRequest::execute();
 }
 
-
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerDeleteRequestPOSIX ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerDeleteRequestPOSIX::pointer
-WorkerDeleteRequestPOSIX::create (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk) {
+WorkerDeleteRequestPOSIX::pointer WorkerDeleteRequestPOSIX::create(
+                                        ServiceProvider&   serviceProvider,
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database,
+                                        unsigned int       chunk) {
 
-    return WorkerDeleteRequestPOSIX::pointer (
-        new WorkerDeleteRequestPOSIX (
+    return WorkerDeleteRequestPOSIX::pointer(
+        new WorkerDeleteRequestPOSIX(
                 serviceProvider,
                 worker,
                 id,
@@ -130,15 +123,14 @@ WorkerDeleteRequestPOSIX::create (
                 chunk));
 }
 
-WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk)
-
-    :   WorkerDeleteRequest (
+WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
+                                ServiceProvider&   serviceProvider,
+                                std::string const& worker,
+                                std::string const& id,
+                                int                priority,
+                                std::string const& database,
+                                unsigned int       chunk)
+    :   WorkerDeleteRequest(
             serviceProvider,
             worker,
             id,
@@ -147,18 +139,17 @@ WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX (
             chunk) {
 }
 
-bool
-WorkerDeleteRequestPOSIX::execute () {
+bool WorkerDeleteRequestPOSIX::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  db: "    << database()
          << "  chunk: " << chunk());
 
-    const WorkerInfo   &workerInfo    = _serviceProvider.config()->workerInfo  (worker());
-    const DatabaseInfo &databaseInfo  = _serviceProvider.config()->databaseInfo(database());
+    WorkerInfo   const& workerInfo    = _serviceProvider.config()->workerInfo(worker());
+    DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
     
-    const std::vector<std::string> files =
-        FileUtils::partitionedFiles (databaseInfo, chunk());
+    std::vector<std::string> const files =
+        FileUtils::partitionedFiles(databaseInfo, chunk());
 
     // The data folder will be locked while performing the operation
 
@@ -169,23 +160,23 @@ WorkerDeleteRequestPOSIX::execute () {
     {
         LOCK_DATA_FOLDER;
 
-        const fs::path dataDir = fs::path(workerInfo.dataDir) / database();
-        const fs::file_status stat = fs::status(dataDir, ec);
+        fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
+        fs::file_status const stat    = fs::status(dataDir, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     stat.type() == fs::status_error,
                     ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                     "failed to check the status of directory: " + dataDir.string())
-            || reportErrorIf (
+            or reportErrorIf(
                     !fs::exists(stat),
                     ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
 
         for (const auto &name: files) {
             const fs::path file = dataDir / fs::path(name);
-            if (fs::remove(file, ec)) ++numFilesDeleted;
+            if (fs::remove(file, ec)) { ++numFilesDeleted; }
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                         "failed to delete file: " + file.string());
@@ -201,4 +192,3 @@ WorkerDeleteRequestPOSIX::execute () {
 }
 
 }}} // namespace lsst::qserv::replica
-

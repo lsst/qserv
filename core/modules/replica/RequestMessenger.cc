@@ -47,7 +47,6 @@ RequestMessenger::RequestMessenger (ServiceProvider&                  servicePro
                                     bool                              keepTracking,
                                     bool                              allowDuplicate,
                                     std::shared_ptr<Messenger> const& messenger)
-
     :   Request (serviceProvider,
                  io_service,
                  type,
@@ -55,18 +54,17 @@ RequestMessenger::RequestMessenger (ServiceProvider&                  servicePro
                  priority,
                  keepTracking,
                  allowDuplicate),
-
         _messenger (messenger) {
 }
 
-void
-RequestMessenger::finishImpl () {
+void RequestMessenger::finishImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finishImpl");
 
     // Make sure the request (if any) has been eliminated from the messenger
-    if (_messenger->exists(worker(), id()))
+    if (_messenger->exists(worker(), id())) {
         _messenger->cancel(worker(), id());
+    }
 }
 
 }}} // namespace lsst::qserv::replica

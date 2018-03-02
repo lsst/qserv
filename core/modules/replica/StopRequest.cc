@@ -36,10 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
-
-namespace proto = lsst::qserv::proto;
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -55,13 +52,13 @@ namespace replica {
 //         StopRequestBaseC          //
 ////////////////////////////////////////
 
-StopRequestBaseC::StopRequestBaseC (ServiceProvider&                                  serviceProvider,
-                                    boost::asio::io_service&                          io_service,
-                                    char const*                                       requestTypeName,
-                                    std::string const&                                worker,
-                                    std::string const&                                targetRequestId,
-                                    lsst::qserv::proto::ReplicationReplicaRequestType requestType,
-                                    bool                                              keepTracking)
+StopRequestBaseC::StopRequestBaseC (ServiceProvider&         serviceProvider,
+                                    boost::asio::io_service& io_service,
+                                    char const*              requestTypeName,
+                                    std::string const&       worker,
+                                    std::string const&       targetRequestId,
+                                    proto::ReplicationReplicaRequestType requestType,
+                                    bool                     keepTracking)
 
     :   RequestConnection (serviceProvider,
                            io_service,
@@ -70,13 +67,11 @@ StopRequestBaseC::StopRequestBaseC (ServiceProvider&                            
                            0,
                            keepTracking,
                            false /* allowDuplicate */),
-
         _targetRequestId (targetRequestId),
         _requestType     (requestType) {
 }
 
-void
-StopRequestBaseC::beginProtocol () {
+void StopRequestBaseC::beginProtocol() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol");
 
@@ -115,22 +110,20 @@ StopRequestBaseC::beginProtocol () {
     );
 }
 
-void
-StopRequestBaseC::requestSent (boost::system::error_code const& ec,
-                               size_t                           bytes_transferred) {
+void StopRequestBaseC::requestSent(boost::system::error_code const& ec,
+                                   size_t bytes_transferred) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveResponse();
+    if (ec) { restart(); }
+    else    { receiveResponse(); }
 }
 
-void
-StopRequestBaseC::receiveResponse () {
+void StopRequestBaseC::receiveResponse () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -146,14 +139,14 @@ StopRequestBaseC::receiveResponse () {
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &StopRequestBaseC::responseReceived,
             shared_from_base<StopRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -162,15 +155,13 @@ StopRequestBaseC::receiveResponse () {
     );
 }
 
-void
-StopRequestBaseC::responseReceived (boost::system::error_code const& ec,
-                                    size_t                           bytes_transferred) {
-
+void StopRequestBaseC::responseReceived(boost::system::error_code const& ec,
+                                        size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -181,25 +172,24 @@ StopRequestBaseC::responseReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart ();
-           
-    if (syncReadMessageImpl (bytes)) restart();
-    else                             analyze(parseResponse());
+    if (syncReadFrame(bytes)) { restart (); }
+ 
+    if (syncReadMessageImpl(bytes)) { restart(); }
+    else                            { analyze(parseResponse()); }
 }
 
-void
-StopRequestBaseC::wait () {
+void StopRequestBaseC::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &StopRequestBaseC::awaken,
             shared_from_base<StopRequestBaseC>(),
             boost::asio::placeholders::error
@@ -207,23 +197,21 @@ StopRequestBaseC::wait () {
     );
 }
 
-void
-StopRequestBaseC::awaken (boost::system::error_code const& ec) {
+void StopRequestBaseC::awaken(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     sendStatus();
 }
 
-void
-StopRequestBaseC::sendStatus () {
+void StopRequestBaseC::sendStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendStatus");
 
@@ -247,13 +235,13 @@ StopRequestBaseC::sendStatus () {
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &StopRequestBaseC::statusSent,
             shared_from_base<StopRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -262,22 +250,20 @@ StopRequestBaseC::sendStatus () {
     );
 }
 
-void
-StopRequestBaseC::statusSent (boost::system::error_code const& ec,
-                              size_t                           bytes_transferred) {
+void StopRequestBaseC::statusSent(boost::system::error_code const& ec,
+                                  size_t bytes_transferred) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusSent");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveStatus();
+    if (ec) { restart(); }
+    else    { receiveStatus(); }
 }
 
-void
-StopRequestBaseC::receiveStatus () {
+void StopRequestBaseC::receiveStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveStatus");
 
@@ -293,14 +279,14 @@ StopRequestBaseC::receiveStatus () {
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &StopRequestBaseC::statusReceived,
             shared_from_base<StopRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -309,15 +295,13 @@ StopRequestBaseC::receiveStatus () {
     );
 }
 
-void
-StopRequestBaseC::statusReceived (boost::system::error_code const& ec,
-                                  size_t                           bytes_transferred) {
-
+void StopRequestBaseC::statusReceived(boost::system::error_code const& ec,
+                                      size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusReceived");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -328,39 +312,39 @@ StopRequestBaseC::statusReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart ();
+    if (syncReadFrame(bytes)) { restart(); }
            
-    if (syncReadMessageImpl (bytes)) restart();
-    else                             analyze(parseResponse());
+    if (syncReadMessageImpl(bytes)) { restart(); }
+    else                            { analyze(parseResponse()); }
 }
 
-void
-StopRequestBaseC::analyze (proto::ReplicationStatus status) {
+void StopRequestBaseC::analyze(proto::ReplicationStatus status) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: " << proto::ReplicationStatus_Name(status));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: "
+         << proto::ReplicationStatus_Name(status));
 
     switch (status) {
  
         case proto::ReplicationStatus::SUCCESS:
-            finish (SUCCESS);
+            finish(SUCCESS);
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (_keepTracking) wait();
-            else               finish (SERVER_QUEUED);
+            if (_keepTracking) { wait(); }
+            else               { finish (SERVER_QUEUED); }
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IN_PROGRESS);
+            if (_keepTracking) { wait(); }
+            else               { finish (SERVER_IN_PROGRESS); }
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IS_CANCELLING);
+            if (_keepTracking) { wait(); }
+            else               { finish (SERVER_IS_CANCELLING); }
             break;
 
         case proto::ReplicationStatus::BAD:
@@ -377,7 +361,8 @@ StopRequestBaseC::analyze (proto::ReplicationStatus status) {
 
         default:
             throw std::logic_error (
-                    "StopRequestBaseC::analyze() unknown status '" + proto::ReplicationStatus_Name(status) +
+                    "StopRequestBaseC::analyze() unknown status '" +
+                    proto::ReplicationStatus_Name(status) +
                     "' received from server");
     }
 }
@@ -386,15 +371,14 @@ StopRequestBaseC::analyze (proto::ReplicationStatus status) {
 //         StopRequestBaseM          //
 ///////////////////////////////////////
 
-StopRequestBaseM::StopRequestBaseM (ServiceProvider&                                  serviceProvider,
-                                    boost::asio::io_service&                          io_service,
-                                    char const*                                       requestTypeName,
-                                    std::string const&                                worker,
-                                    std::string const&                                targetRequestId,
-                                    lsst::qserv::proto::ReplicationReplicaRequestType requestType,
-                                    bool                                              keepTracking,
-                                    std::shared_ptr<Messenger> const&                 messenger)
-
+StopRequestBaseM::StopRequestBaseM (ServiceProvider&         serviceProvider,
+                                    boost::asio::io_service& io_service,
+                                    char const*              requestTypeName,
+                                    std::string const&       worker,
+                                    std::string const&       targetRequestId,
+                                    proto::ReplicationReplicaRequestType requestType,
+                                    bool                     keepTracking,
+                                    std::shared_ptr<Messenger> const&  messenger)
     :   RequestMessenger (serviceProvider,
                           io_service,
                           requestTypeName,
@@ -403,13 +387,11 @@ StopRequestBaseM::StopRequestBaseM (ServiceProvider&                            
                           keepTracking,
                           false /* allowDuplicate */,
                           messenger),
-
         _targetRequestId (targetRequestId),
         _requestType     (requestType) {
 }
 
-void
-StopRequestBaseM::startImpl () {
+void StopRequestBaseM::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -434,16 +416,15 @@ StopRequestBaseM::startImpl () {
     send();
 }
 
-void
-StopRequestBaseM::wait () {
+void StopRequestBaseM::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &StopRequestBaseM::awaken,
             shared_from_base<StopRequestBaseM>(),
             boost::asio::placeholders::error
@@ -451,17 +432,16 @@ StopRequestBaseM::wait () {
     );
 }
 
-void
-StopRequestBaseM::awaken (boost::system::error_code const& ec) {
+void StopRequestBaseM::awaken(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -484,9 +464,8 @@ StopRequestBaseM::awaken (boost::system::error_code const& ec) {
     send();
 }
 
-void
-StopRequestBaseM::analyze (bool                     success,
-                           proto::ReplicationStatus status) {
+void StopRequestBaseM::analyze (bool success,
+                                proto::ReplicationStatus status) {
 
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
@@ -504,18 +483,18 @@ StopRequestBaseM::analyze (bool                     success,
                 break;
     
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait();
-                else               finish (SERVER_QUEUED);
+                if (_keepTracking) { wait(); }
+                else               { finish (SERVER_QUEUED); }
                 break;
     
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IN_PROGRESS);
+                if (_keepTracking) { wait(); }
+                else               { finish (SERVER_IN_PROGRESS); }
                 break;
     
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IS_CANCELLING);
+                if (_keepTracking) { wait(); }
+                else               { finish (SERVER_IS_CANCELLING); }
                 break;
     
             case proto::ReplicationStatus::BAD:
@@ -532,7 +511,8 @@ StopRequestBaseM::analyze (bool                     success,
     
             default:
                 throw std::logic_error (
-                        "StopRequestBaseM::analyze() unknown status '" + proto::ReplicationStatus_Name(status) +
+                        "StopRequestBaseM::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(status) +
                         "' received from server");
         }
 

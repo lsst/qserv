@@ -32,8 +32,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -49,12 +48,12 @@ namespace replica {
 ///                ReplicaDiff                  ///
 ///////////////////////////////////////////////////
 
-ReplicaDiff::ReplicaDiff ()
+ReplicaDiff::ReplicaDiff()
     :   _notEqual(false) {
 }
 
-ReplicaDiff::ReplicaDiff (ReplicaInfo const& replica1,
-                          ReplicaInfo const& replica2)
+ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
+                         ReplicaInfo const& replica2)
     :   _replica1          (replica1),
         _replica2          (replica2),
         _notEqual          (false),
@@ -65,9 +64,11 @@ ReplicaDiff::ReplicaDiff (ReplicaInfo const& replica1,
         _fileCsMismatch    (false),
         _fileMtimeMismatch (false) {
 
-    if ((replica1.database() != replica2.database()) ||
-        (replica1.chunk   () != replica2.chunk   ()))
-        throw std::invalid_argument ("ReplicaDiff::ReplicaDiff(r1,r2)  incompatible aruments");
+    if ((replica1.database() != replica2.database()) or
+        (replica1.chunk   () != replica2.chunk   ())) {
+        throw std::invalid_argument(
+                        "ReplicaDiff::ReplicaDiff(r1,r2)  incompatible aruments");
+    }
 
     // Status and the number of files are expeted to match
 
@@ -93,60 +94,28 @@ ReplicaDiff::ReplicaDiff (ReplicaInfo const& replica1,
         ReplicaInfo::FileInfo const& file1 = file2info1[name];
         ReplicaInfo::FileInfo const& file2 = file2info2[name];
 
-        _fileSizeMismatch = _fileSizeMismatch ||
-            (file1.size != file2.size);
+        _fileSizeMismatch = _fileSizeMismatch or (file1.size != file2.size);
 
         // Control sums are considered only if they're both defined
-        _fileCsMismatch = _fileCsMismatch ||
-            ((not file1.cs.empty() and not file2.cs.empty()) && (file1.cs != file2.cs));
+        _fileCsMismatch = _fileCsMismatch or
+            ((not file1.cs.empty() and not file2.cs.empty()) and (file1.cs != file2.cs));
 
-        _fileMtimeMismatch = _fileMtimeMismatch ||
-            (file1.mtime != file2.mtime);
+        _fileMtimeMismatch = _fileMtimeMismatch or (file1.mtime != file2.mtime);
     }
     _notEqual =
-        _statusMismatch ||
-        _numFilesMismatch ||
-        _fileNamesMismatch ||
-        _fileSizeMismatch ||
-        _fileCsMismatch ||
+        _statusMismatch    or
+        _numFilesMismatch  or
+        _fileNamesMismatch or
+        _fileSizeMismatch  or
+        _fileCsMismatch    or
         _fileMtimeMismatch;
 }
 
-ReplicaDiff::ReplicaDiff (ReplicaDiff const& rhs)
-    :   _replica1          (rhs._replica1),
-        _replica2          (rhs._replica2),
-        _notEqual          (rhs._notEqual),
-        _statusMismatch    (rhs._statusMismatch),
-        _numFilesMismatch  (rhs._numFilesMismatch),
-        _fileNamesMismatch (rhs._fileNamesMismatch),
-        _fileSizeMismatch  (rhs._fileSizeMismatch),
-        _fileCsMismatch    (rhs._fileCsMismatch),
-        _fileMtimeMismatch (rhs._fileMtimeMismatch) {
-}
-
-ReplicaDiff&
-ReplicaDiff::operator= (ReplicaDiff const& rhs) {
-    if (&rhs != this) {
-        _replica1           = rhs._replica1;
-        _replica2           = rhs._replica2;
-        _notEqual           = rhs._notEqual;
-        _statusMismatch     = rhs._statusMismatch;
-        _numFilesMismatch   = rhs._numFilesMismatch;
-        _fileNamesMismatch  = rhs._fileNamesMismatch;
-        _fileSizeMismatch   = rhs._fileSizeMismatch;
-        _fileCsMismatch     = rhs._fileCsMismatch;
-        _fileMtimeMismatch  = rhs._fileMtimeMismatch;
-    }
-    return *this;
-}
-
-bool
-ReplicaDiff::isSelf () const {
+bool ReplicaDiff::isSelf() const {
     return _replica1.worker() == _replica2.worker();
 }
 
-std::string const&
-ReplicaDiff::flags2string () const {
+std::string const& ReplicaDiff::flags2string () const {
     if (_flags.empty()) {
         if (_notEqual) {
             _flags = "DIFF ";
@@ -163,9 +132,11 @@ ReplicaDiff::flags2string () const {
     return _flags;
 }
 
-std::ostream& operator<< (std::ostream& os, ReplicaDiff const& ri) {
+std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
+
     ReplicaInfo const& r1 = ri.replica1();
     ReplicaInfo const& r2 = ri.replica2();
+
     os  << "ReplicaDiff\n"
         << "  <replica1>\n"
         << "    worker:   " << r1.worker  () << "\n"
@@ -191,57 +162,53 @@ std::ostream& operator<< (std::ostream& os, ReplicaDiff const& ri) {
 ///                VerifyJob                  ///
 /////////////////////////////////////////////////
 
-
-VerifyJob::pointer
-VerifyJob::create (Controller::pointer const& controller,
-                   callback_type              onFinish,
-                   callback_type_on_diff      onReplicaDifference,
-                   size_t                     maxReplicas,
-                   bool                       computeCheckSum,
-                   int                        priority,
-                   bool                       exclusive,
-                   bool                       preemptable) {
-    return VerifyJob::pointer (
-        new VerifyJob (controller,
-                       onFinish,
-                       onReplicaDifference,
-                       maxReplicas,
-                       computeCheckSum,
-                       priority,
-                       exclusive,
-                       preemptable));
+VerifyJob::pointer VerifyJob::create(
+                        Controller::pointer const& controller,
+                        callback_type         onFinish,
+                        callback_type_on_diff onReplicaDifference,
+                        size_t maxReplicas,
+                        bool   computeCheckSum,
+                        int    priority,
+                        bool   exclusive,
+                        bool   preemptable) {
+    return VerifyJob::pointer(
+        new VerifyJob(controller,
+                      onFinish,
+                      onReplicaDifference,
+                      maxReplicas,
+                      computeCheckSum,
+                      priority,
+                      exclusive,
+                      preemptable));
 }
 
 VerifyJob::VerifyJob (Controller::pointer const& controller,
-                      callback_type              onFinish,
-                      callback_type_on_diff      onReplicaDifference,
-                      size_t                     maxReplicas,
-                      bool                       computeCheckSum,
-                      int                        priority,
-                      bool                       exclusive,
-                      bool                       preemptable)
-
-    :   Job (controller,
-             "VERIFY",
-             priority,
-             exclusive,
-             preemptable),
-
+                      callback_type onFinish,
+                      callback_type_on_diff onReplicaDifference,
+                      size_t maxReplicas,
+                      bool   computeCheckSum,
+                      int    priority,
+                      bool   exclusive,
+                      bool   preemptable)
+    :   Job(controller,
+            "VERIFY",
+            priority,
+            exclusive,
+            preemptable),
         _onFinish            (onFinish),
         _onReplicaDifference (onReplicaDifference),
         _maxReplicas         (maxReplicas),
         _computeCheckSum     (computeCheckSum) {
 }
 
-void
-VerifyJob::track (bool          progressReport,
-                  bool          errorReport,
-                  bool          chunkLocksReport,
-                  std::ostream& os) const {
+void VerifyJob::track(bool progressReport,
+                      bool errorReport,
+                      bool chunkLocksReport,
+                      std::ostream& os) const {
 
-    if (_state == State::FINISHED) return;
-    
-    BlockPost blockPost (1000, 2000);
+    if (_state == State::FINISHED) { return; }
+ 
+    BlockPost blockPost(1000, 2000);
 
     while (_state != State::FINISHED) {
 
@@ -263,8 +230,7 @@ VerifyJob::track (bool          progressReport,
     }
 }
 
-void
-VerifyJob::startImpl () {
+void VerifyJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -275,11 +241,13 @@ VerifyJob::startImpl () {
     std::vector<ReplicaInfo> replicas;
     if (nextReplicas (replicas, _maxReplicas)) {
         for (ReplicaInfo const& replica: replicas) {
-            auto request = _controller->findReplica (
+            auto request = _controller->findReplica(
                 replica.worker   (),
                 replica.database (),
                 replica.chunk    (),
-                [self] (FindRequest::pointer request) { self->onRequestFinish (request); },
+                [self] (FindRequest::pointer request) {
+                    self->onRequestFinish (request);
+                },
                 _priority,          /* inherited from the one of the current job */
                 _computeCheckSum,
                 true,               /* keepTracking*/
@@ -296,8 +264,7 @@ VerifyJob::startImpl () {
     }
 }
 
-void
-VerifyJob::cancelImpl () {
+void VerifyJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -308,13 +275,14 @@ VerifyJob::cancelImpl () {
     for (auto const& entry: _requests) {
         auto const& request = entry.second;
         request->cancel();
-        if (request->state() != Request::State::FINISHED)
+        if (request->state() != Request::State::FINISHED) {
             _controller->stopReplicaFind (
                 request->worker(),
                 request->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
                 _id         /* jobId */);
+        }
     }
     _replicas.clear();
     _requests.clear();
@@ -322,8 +290,7 @@ VerifyJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-VerifyJob::notify () {
+void VerifyJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -333,8 +300,7 @@ VerifyJob::notify () {
     }
 }
 
-void
-VerifyJob::onRequestFinish (FindRequest::pointer request) {
+void VerifyJob::onRequestFinish(FindRequest::pointer request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()
@@ -377,20 +343,23 @@ VerifyJob::onRequestFinish (FindRequest::pointer request) {
 
             ReplicaInfo const& oldReplica = _replicas[request->id()];
             selfReplicaDiff = ReplicaDiff (oldReplica, request->responseData());
-            if (selfReplicaDiff() and not _onReplicaDifference)
-                LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n" << selfReplicaDiff);
+            if (selfReplicaDiff() and not _onReplicaDifference) {
+                LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
+                     << selfReplicaDiff);
+            }
 
-            
             std::vector<ReplicaInfo> otherReplicas;
-            _controller->serviceProvider().databaseServices()->findReplicas (otherReplicas,
-                                                                             oldReplica.chunk(),
-                                                                             oldReplica.database());
+            _controller->serviceProvider().databaseServices()->findReplicas(
+                                                                    otherReplicas,
+                                                                    oldReplica.chunk(),
+                                                                    oldReplica.database());
             for (auto const& replica: otherReplicas) {
                 ReplicaDiff diff (request->responseData(), replica);
                 if (not diff.isSelf()) {
                     otherReplicaDiff.emplace_back (diff);
                     if (diff() and not _onReplicaDifference)
-                        LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n" << diff);
+                        LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
+                             << diff);
                 }
             }
             
@@ -409,14 +378,16 @@ VerifyJob::onRequestFinish (FindRequest::pointer request) {
         _requests.erase(request->id());
 
         std::vector<ReplicaInfo> replicas;
-        if (nextReplicas (replicas, 1)) {
+        if (nextReplicas(replicas, 1)) {
 
             for (ReplicaInfo const& replica: replicas) {
-                auto request = _controller->findReplica (
-                    replica.worker   (),
-                    replica.database (),
-                    replica.chunk    (),
-                    [self] (FindRequest::pointer request) { self->onRequestFinish (request); },
+                auto request = _controller->findReplica(
+                    replica.worker(),
+                    replica.database(),
+                    replica.chunk(),
+                    [self] (FindRequest::pointer request) {
+                        self->onRequestFinish (request);
+                    },
                     _priority,          /* inherited from the one of the current job */
                     _computeCheckSum,
                     true,               /* keepTracking*/
@@ -434,8 +405,7 @@ VerifyJob::onRequestFinish (FindRequest::pointer request) {
             // In any case check if no requests are in flight and finish if that's
             // the case.
 
-            if (not _replicas.size())
-                setState (State::FINISHED);
+            if (not _replicas.size()) { setState (State::FINISHED); }
         }
     
     } while (false);
@@ -443,19 +413,18 @@ VerifyJob::onRequestFinish (FindRequest::pointer request) {
     // NOTE: The callbacks are called w/o keeping a lock on the object API
     // to prevent potential deadlocks.
 
-    if (_onReplicaDifference)
-        _onReplicaDifference (self, selfReplicaDiff, otherReplicaDiff);
-    
-    if (_state == State::FINISHED)
-        notify ();
+    if (_onReplicaDifference) {
+        _onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
+    }
+    if (_state == State::FINISHED) { notify(); }
 }
 
-bool
-VerifyJob::nextReplicas (std::vector<ReplicaInfo>& replicas,
-                         size_t                    numReplicas) {
-    return _controller->serviceProvider().databaseServices()->findOldestReplicas (
-                replicas,
-                numReplicas);
+bool VerifyJob::nextReplicas(std::vector<ReplicaInfo>& replicas,
+                             size_t numReplicas) {
+
+    return _controller->serviceProvider().databaseServices()->findOldestReplicas(
+                                                                    replicas,
+                                                                    numReplicas);
 }
 
 }}} // namespace lsst::qserv::replica

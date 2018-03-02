@@ -32,21 +32,19 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-const size_t
-ProtocolBuffer::DESIRED_LIMIT = 2000000;
-
-const size_t
-ProtocolBuffer::HARD_LIMIT = 64000000;
-
+size_t const ProtocolBuffer::DESIRED_LIMIT =  2000000;
+size_t const ProtocolBuffer::HARD_LIMIT    = 64000000;
 
 ProtocolBuffer::ProtocolBuffer (size_t capacity)
     :   _data    (new char[capacity]),
         _capacity(capacity),
-        _size    (0)
-{
-    if (_capacity > HARD_LIMIT)
-        throw std::overflow_error("ProtocolBuffer::ProtocolBuffer() requested capacity " + std::to_string(capacity) +
-                                  " exceeds the hard limit of Google protobuf: " + std::to_string(HARD_LIMIT));
+        _size    (0) {
+
+    if (_capacity > HARD_LIMIT) {
+        throw std::overflow_error(
+                        "ProtocolBuffer::ProtocolBuffer() requested capacity " + std::to_string(capacity) +
+                        " exceeds the hard limit of Google protobuf: " + std::to_string(HARD_LIMIT));
+    }
 }
 
 ProtocolBuffer::~ProtocolBuffer () {
@@ -56,8 +54,7 @@ ProtocolBuffer::~ProtocolBuffer () {
     _size = 0;
 }
 
-void
-ProtocolBuffer::resize (size_t newSizeBytes) {
+void ProtocolBuffer::resize (size_t newSizeBytes) {
 
     // Make sure there is enough space in the buffer to accomodate
     // the request.
@@ -67,21 +64,24 @@ ProtocolBuffer::resize (size_t newSizeBytes) {
     _size = newSizeBytes;
 }
 
-void
-ProtocolBuffer::extend (size_t newCapacityBytes) {
+void ProtocolBuffer::extend (size_t newCapacityBytes) {
 
     if (newCapacityBytes <= _capacity) return;
 
     // Allocate a larger buffer
 
-    if (newCapacityBytes > HARD_LIMIT)
-        throw std::overflow_error("ProtocolBuffer::extend() requested capacity " + std::to_string(newCapacityBytes) +
-                                  " exceeds the hard limit of Google protobuf " + std::to_string(HARD_LIMIT));
+    if (newCapacityBytes > HARD_LIMIT) {
+        throw std::overflow_error(
+                    "ProtocolBuffer::extend() requested capacity " + std::to_string(newCapacityBytes) +
+                    " exceeds the hard limit of Google protobuf " + std::to_string(HARD_LIMIT));
+    }
 
     char* ptr = new char[newCapacityBytes];
-    if (!ptr)
-        throw std::overflow_error("ProtocolBuffer::extend() failed to allocate a buffer of requested size " +
-                                  std::to_string(newCapacityBytes));
+    if (not ptr) {
+        throw std::overflow_error(
+                    "ProtocolBuffer::extend() failed to allocate a buffer of requested size " +
+                    std::to_string(newCapacityBytes));
+    }
 
     // Carry over the meaningful content of the older buffer into the new one
     // before disposing the old buffer.
@@ -94,13 +94,12 @@ ProtocolBuffer::extend (size_t newCapacityBytes) {
     _capacity = newCapacityBytes;
 }
 
-uint32_t
-ProtocolBuffer::parseLength () const {
+uint32_t ProtocolBuffer::parseLength () const {
 
-    if (_size != sizeof(uint32_t))
+    if (_size != sizeof(uint32_t)) {
         std::overflow_error("not enough data to be interpreted as the frame header");
-
-    return ntohl(*(reinterpret_cast<const uint32_t*>(_data)));
+    }
+    return ntohl(*(reinterpret_cast<uint32_t const*>(_data)));
 }
 
 }}} // namespace lsst::qserv::replica

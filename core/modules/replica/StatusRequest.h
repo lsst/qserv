@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_STATUSREQUEST_H
-#define LSST_QSERV_REPLICA_STATUSREQUEST_H
+#ifndef LSST_QSERV_REPLICA_STATUS_REQUEST_H
+#define LSST_QSERV_REPLICA_STATUS_REQUEST_H
 
 /// StatusRequest.h declares:
 ///
@@ -81,39 +81,46 @@ namespace replica {
 
 struct StatusReplicationRequestPolicy {
 
-    static const char* requestTypeName () { return "REQUEST_STATUS:REPLICA_CREATE"; } 
+    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_CREATE"; } 
 
-    static lsst::qserv::proto::ReplicationReplicaRequestType requestType () {
-        return lsst::qserv::proto::ReplicationReplicaRequestType::REPLICA_CREATE; }
+    static proto::ReplicationReplicaRequestType requestType () {
+        return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
+    }
 
-    using responseMessageType     = lsst::qserv::proto::ReplicationResponseReplicate;
+    using responseMessageType     = proto::ReplicationResponseReplicate;
     using responseDataType        = ReplicaInfo;
     using targetRequestParamsType = ReplicationRequestParams;
 
-    static void extractResponseData (const responseMessageType& msg, responseDataType& data) {
+    static void extractResponseData (responseMessageType const& msg,
+                                     responseDataType& data) {
         data = responseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams (const responseMessageType& msg, targetRequestParamsType& params) {
-        if (msg.has_request())
+    static void extractTargetRequestParams (responseMessageType const& msg,
+                                            targetRequestParamsType& params) {
+        if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
+        }
     }
 };
 
 struct StatusDeleteRequestPolicy {
 
-    static const char* requestTypeName () { return "REQUEST_STATUS:REPLICA_DELETE"; }
+    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_DELETE"; }
 
-    static lsst::qserv::proto::ReplicationReplicaRequestType requestType () {
-        return lsst::qserv::proto::ReplicationReplicaRequestType::REPLICA_DELETE; }
+    static proto::ReplicationReplicaRequestType requestType () {
+        return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
+    }
 
-    using responseMessageType     = lsst::qserv::proto::ReplicationResponseDelete;
+    using responseMessageType     = proto::ReplicationResponseDelete;
     using responseDataType        = ReplicaInfo;
     using targetRequestParamsType = DeleteRequestParams;
 
-    static void extractResponseData (const responseMessageType& msg, responseDataType& data) {
+    static void extractResponseData (responseMessageType const& msg,
+                                     responseDataType& data) {
         data = responseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams (const responseMessageType& msg, targetRequestParamsType& params) {
+    static void extractTargetRequestParams (responseMessageType const& msg,
+                                            targetRequestParamsType& params) {
         if (msg.has_request())
             params = targetRequestParamsType(msg.request());
     }
@@ -121,42 +128,52 @@ struct StatusDeleteRequestPolicy {
 
 struct StatusFindRequestPolicy {
 
-    static const char* requestTypeName () { return "REQUEST_STATUS:REPLICA_FIND"; }
+    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_FIND"; }
 
-    static lsst::qserv::proto::ReplicationReplicaRequestType requestType () {
-        return lsst::qserv::proto::ReplicationReplicaRequestType::REPLICA_FIND; }
+    static proto::ReplicationReplicaRequestType requestType () {
+        return proto::ReplicationReplicaRequestType::REPLICA_FIND;
+    }
 
-    using responseMessageType     = lsst::qserv::proto::ReplicationResponseFind;
+    using responseMessageType     = proto::ReplicationResponseFind;
     using responseDataType        = ReplicaInfo;
     using targetRequestParamsType = FindRequestParams;
 
-    static void extractResponseData (const responseMessageType& msg, responseDataType& data) {
+    static void extractResponseData(responseMessageType const& msg,
+                                    responseDataType& data) {
         data = ReplicaInfo(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams (const responseMessageType& msg, targetRequestParamsType& params) {
-        if (msg.has_request())
+    static void extractTargetRequestParams(responseMessageType const& msg,
+                                           targetRequestParamsType& params) {
+        if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
+        }
     }
 };
 
 struct StatusFindAllRequestPolicy {
 
-    static const char* requestTypeName () { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
+    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
 
-    static lsst::qserv::proto::ReplicationReplicaRequestType requestType () {
-        return lsst::qserv::proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL; }
+    static proto::ReplicationReplicaRequestType requestType() {
+        return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
+    }
 
-    using responseMessageType     = lsst::qserv::proto::ReplicationResponseFindAll;
+    using responseMessageType     = proto::ReplicationResponseFindAll;
     using responseDataType        = ReplicaInfoCollection;
     using targetRequestParamsType = FindAllRequestParams;
 
-    static void extractResponseData (const responseMessageType& msg, responseDataType& data) {
-        for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx)
+    static void extractResponseData (responseMessageType const& msg,
+                                     responseDataType& data) {
+
+        for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
             data.emplace_back(&(msg.replica_info_many(idx)));
+        }
     }
-    static void extractTargetRequestParams (const responseMessageType& msg, targetRequestParamsType& params) {
-        if (msg.has_request())
+    static void extractTargetRequestParams (responseMessageType const& msg,
+                                            targetRequestParamsType& params) {
+        if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
+        }
     }
 };
 
@@ -178,9 +195,9 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    StatusRequestBaseC () = delete;
-    StatusRequestBaseC (StatusRequestBaseC const&) = delete;
-    StatusRequestBaseC& operator= (StatusRequestBaseC const&) = delete;
+    StatusRequestBaseC() = delete;
+    StatusRequestBaseC(StatusRequestBaseC const&) = delete;
+    StatusRequestBaseC& operator=(StatusRequestBaseC const&) = delete;
 
     /// Destructor
     ~StatusRequestBaseC () override = default;
@@ -196,13 +213,13 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StatusRequestBaseC (ServiceProvider&                                  serviceProvider,
-                        boost::asio::io_service&                          io_service,
-                        char const*                                       requestTypeName,
-                        std::string const&                                worker,
-                        std::string const&                                targetRequestId,
-                        lsst::qserv::proto::ReplicationReplicaRequestType requestType,
-                        bool                                              keepTracking);
+    StatusRequestBaseC (ServiceProvider&         serviceProvider,
+                        boost::asio::io_service& io_service,
+                        char const*              requestTypeName,
+                        std::string const&       worker,
+                        std::string const&       targetRequestId,
+                        proto::ReplicationReplicaRequestType requestType,
+                        bool                     keepTracking);
 
     /**
       * This method is called when a connection is established and
@@ -216,14 +233,14 @@ protected:
     
     /// Callback handler for the asynchronious operation
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
     void receiveResponse ();
 
     /// Callback handler for the asynchronious operation
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
@@ -237,24 +254,24 @@ protected:
 
     /// Callback handler for the asynchronious operation
     void statusSent (boost::system::error_code const& ec,
-                     size_t                           bytes_transferred);
+                     size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
     void receiveStatus ();
 
     /// Callback handler for the asynchronious operation
     void statusReceived (boost::system::error_code const& ec,
-                         size_t                           bytes_transferred);
+                         size_t bytes_transferred);
 
     /**
      * Parse request-specific reply
      *
      * This method must be implemented by subclasses.
      */
-    virtual lsst::qserv::proto::ReplicationStatus parseResponse ()=0;
+    virtual proto::ReplicationStatus parseResponse ()=0;
 
     /// Process the completion of the requested operation
-    void analyze (lsst::qserv::proto::ReplicationStatus status);
+    void analyze (proto::ReplicationStatus status);
 
 private:
 
@@ -262,14 +279,13 @@ private:
     std::string _targetRequestId;
 
     /// The type of the targer request (must match the identifier)
-    lsst::qserv::proto::ReplicationReplicaRequestType  _requestType;
+    proto::ReplicationReplicaRequestType  _requestType;
 
 protected:
 
     /// The performance of the target operation
     Performance _targetPerformance;
 };
-
 
 /**
   * Generic class StatusRequestC extends its base class
@@ -289,19 +305,21 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    StatusRequestC () = delete;
-    StatusRequestC (StatusRequestC const&) = delete;
-    StatusRequestC &operator= (StatusRequestC const&) = delete;
+    StatusRequestC() = delete;
+    StatusRequestC(StatusRequestC const&) = delete;
+    StatusRequestC& operator=(StatusRequestC const&) = delete;
 
     /// Destructor
-    ~StatusRequestC () final = default;
+    ~StatusRequestC() final = default;
 
     /// Return target request specific parameters
-    typename POLICY::targetRequestParamsType const& targetRequestParams () const { return _targetRequestParams; }
+    typename POLICY::targetRequestParamsType const& targetRequestParams() const {
+        return _targetRequestParams;
+    }
 
     /// Return request-specific extended data reported upon asuccessfull completion
     /// of the request
-    typename POLICY::responseDataType const& responseData () const { return _responseData; }
+    typename POLICY::responseDataType const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -319,15 +337,15 @@ public:
      *                           the request.
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create (ServiceProvider         &serviceProvider,
-                           boost::asio::io_service &io_service,
-                           const std::string       &worker,
-                           const std::string       &targetRequestId,
+    static pointer create (ServiceProvider&         serviceProvider,
+                           boost::asio::io_service& io_service,
+                           std::string const&       worker,
+                           std::string const&       targetRequestId,
                            callback_type            onFinish,
                            bool                     keepTracking) {
 
-        return StatusRequestC<POLICY>::pointer (
-            new StatusRequestC<POLICY> (
+        return StatusRequestC<POLICY>::pointer(
+            new StatusRequestC<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -343,15 +361,14 @@ private:
     /**
      * Construct the request
      */
-    StatusRequestC (ServiceProvider                                   &serviceProvider,
-                    boost::asio::io_service                           &io_service,
-                    const char                                        *requestTypeName,
-                    const std::string                                 &worker,
-                    const std::string                                 &targetRequestId,
-                    lsst::qserv::proto::ReplicationReplicaRequestType  requestType,
-                    callback_type                                      onFinish,
-                    bool                                               keepTracking)
-
+    StatusRequestC (ServiceProvider&         serviceProvider,
+                    boost::asio::io_service& io_service,
+                    char const*              requestTypeName,
+                    std::string const&       worker,
+                    std::string const&       targetRequestId,
+                    proto::ReplicationReplicaRequestType requestType,
+                    callback_type            onFinish,
+                    bool                     keepTracking)
         :   StatusRequestBaseC (serviceProvider,
                                 io_service,
                                 requestTypeName,
@@ -359,8 +376,8 @@ private:
                                 targetRequestId,
                                 requestType,
                                 keepTracking),
-            _onFinish (onFinish)
-    {}
+            _onFinish(onFinish) {
+    }
 
     /**
      * Notifying a party which initiated the request.
@@ -368,7 +385,7 @@ private:
      * This method implements the corresponing virtual method defined
      * by the base class.
      */
-    void notify () final {
+    void notify() final {
         if (_onFinish != nullptr) {
             StatusRequestC<POLICY>::pointer self = shared_from_base<StatusRequestC<POLICY>>();
             _onFinish(self);
@@ -381,7 +398,7 @@ private:
      * This method implements the corresponing virtual method defined
      * by the base class.
      */
-    lsst::qserv::proto::ReplicationStatus parseResponse () final {
+    proto::ReplicationStatus parseResponse() final {
 
         typename POLICY::responseMessageType message;
         _bufferPtr->parse(message, _bufferPtr->size());
@@ -400,8 +417,9 @@ private:
         _performance.update(message.performance());
 
         // Set the optional performance of the target operation
-        if (message.has_target_performance())
+        if (message.has_target_performance()) {
             _targetPerformance.update(message.target_performance());
+        }
 
         // Field 'status' of a type returned by the current method always
         // be defined in all types of request-specific responses.
@@ -421,7 +439,6 @@ private:
     typename POLICY::responseDataType _responseData;
 };
 
-
 // ===============================================
 //   Classes based on the multiplexed connectors
 // ===============================================
@@ -440,32 +457,32 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    StatusRequestBaseM () = delete;
-    StatusRequestBaseM (StatusRequestBaseM const&) = delete;
-    StatusRequestBaseM& operator= (StatusRequestBaseM const&) = delete;
+    StatusRequestBaseM() = delete;
+    StatusRequestBaseM(StatusRequestBaseM const&) = delete;
+    StatusRequestBaseM& operator=(StatusRequestBaseM const&) = delete;
 
     /// Destructor
-    ~StatusRequestBaseM () override = default;
+    ~StatusRequestBaseM() override = default;
 
     /// Return an identifier of the target request
-    std::string const& targetRequestId () const { return _targetRequestId; }
+    std::string const& targetRequestId() const { return _targetRequestId; }
 
     /// Return the performance info of the target operation (if available)
-    Performance const& targetPerformance () const { return _targetPerformance; }
+    Performance const& targetPerformance() const { return _targetPerformance; }
 
 protected:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StatusRequestBaseM (ServiceProvider&                                  serviceProvider,
-                        boost::asio::io_service&                          io_service,
-                        char const*                                       requestTypeName,
-                        std::string const&                                worker,
-                        std::string const&                                targetRequestId,
-                        lsst::qserv::proto::ReplicationReplicaRequestType requestType,
-                        bool                                              keepTracking,
-                        std::shared_ptr<Messenger> const&                 messenger);
+    StatusRequestBaseM (ServiceProvider&         serviceProvider,
+                        boost::asio::io_service& io_service,
+                        char const*              requestTypeName,
+                        std::string const&       worker,
+                        std::string const&       targetRequestId,
+                        proto::ReplicationReplicaRequestType requestType,
+                        bool                     keepTracking,
+                        std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
@@ -481,7 +498,6 @@ protected:
     /// Callback handler for the asynchronious operation
     void awaken (boost::system::error_code const& ec);
 
-
     /**
      * Initiate request-specific send
      *
@@ -495,8 +511,8 @@ protected:
      * @param success - the flag indicating if the operation was successfull
      * @param status  - a response from the worker service (only valid if success is 'true')
      */
-    void analyze (bool                                  success,
-                  lsst::qserv::proto::ReplicationStatus status=lsst::qserv::proto::ReplicationStatus::FAILED);
+    void analyze (bool success,
+                  proto::ReplicationStatus status=proto::ReplicationStatus::FAILED);
 
 private:
 
@@ -504,14 +520,13 @@ private:
     std::string _targetRequestId;
 
     /// The type of the targer request (must match the identifier)
-    lsst::qserv::proto::ReplicationReplicaRequestType  _requestType;
+    proto::ReplicationReplicaRequestType  _requestType;
 
 protected:
 
     /// The performance of the target operation
     Performance _targetPerformance;
 };
-
 
 /**
   * Generic class StatusRequestM extends its base class
@@ -533,13 +548,15 @@ public:
 
     StatusRequestM () = delete;
     StatusRequestM (StatusRequestM const&) = delete;
-    StatusRequestM &operator= (StatusRequestM const&) = delete;
+    StatusRequestM& operator= (StatusRequestM const&) = delete;
 
     /// Destructor
     ~StatusRequestM () final = default;
 
     /// Return target request specific parameters
-    typename POLICY::targetRequestParamsType const& targetRequestParams () const { return _targetRequestParams; }
+    typename POLICY::targetRequestParamsType const& targetRequestParams () const {
+        return _targetRequestParams;
+    }
 
     /// Return request-specific extended data reported upon asuccessfull completion
     /// of the request
@@ -562,13 +579,13 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create (ServiceProvider&                                  serviceProvider,
-                           boost::asio::io_service&                          io_service,
-                           std::string const&                                worker,
-                           std::string const&                                targetRequestId,
-                           callback_type                                     onFinish,
-                           bool                                              keepTracking,
-                           std::shared_ptr<Messenger> const&                 messenger) {
+    static pointer create (ServiceProvider&         serviceProvider,
+                           boost::asio::io_service& io_service,
+                           std::string const&       worker,
+                           std::string const&       targetRequestId,
+                           callback_type            onFinish,
+                           bool                     keepTracking,
+                           std::shared_ptr<Messenger> const& messenger) {
 
         return StatusRequestM<POLICY>::pointer (
             new StatusRequestM<POLICY> (
@@ -588,16 +605,15 @@ private:
     /**
      * Construct the request
      */
-    StatusRequestM (ServiceProvider&                                  serviceProvider,
-                    boost::asio::io_service&                          io_service,
-                    char const*                                       requestTypeName,
-                    std::string const&                                worker,
-                    std::string const&                                targetRequestId,
-                    lsst::qserv::proto::ReplicationReplicaRequestType requestType,
-                    callback_type                                     onFinish,
-                    bool                                              keepTracking,
-                    std::shared_ptr<Messenger> const&                 messenger)
-
+    StatusRequestM (ServiceProvider&         serviceProvider,
+                    boost::asio::io_service& io_service,
+                    char const*              requestTypeName,
+                    std::string const&       worker,
+                    std::string const&       targetRequestId,
+                    proto::ReplicationReplicaRequestType requestType,
+                    callback_type            onFinish,
+                    bool                     keepTracking,
+                    std::shared_ptr<Messenger> const& messenger)
         :   StatusRequestBaseM (serviceProvider,
                                io_service,
                                requestTypeName,
@@ -606,8 +622,8 @@ private:
                                requestType,
                                keepTracking,
                                messenger),
-            _onFinish (onFinish)
-    {}
+            _onFinish (onFinish) {
+    }
 
     /**
      * Notifying a party which initiated the request.
@@ -636,12 +652,12 @@ private:
             worker(),
             id(),
             _bufferPtr,
-            [self] (std::string const&                          id,
-                    bool                                        success,
+            [self] (std::string const& id,
+                    bool success,
                     typename POLICY::responseMessageType const& response) {
 
-                if (success) self->analyze (true, self->parseResponse(response));
-                else         self->analyze (false);
+                if (success) { self->analyze (true, self->parseResponse(response)); }
+                else         { self->analyze (false); }
             }
         );
     }
@@ -652,7 +668,7 @@ private:
      * @param message - message to parse
      * @return status of the operation reported by a server
      */
-    lsst::qserv::proto::ReplicationStatus parseResponse (
+    proto::ReplicationStatus parseResponse (
             typename POLICY::responseMessageType const& message) {
 
         // Extract target request-specific parameters from the response if available
@@ -669,8 +685,9 @@ private:
         _performance.update(message.performance());
 
         // Set the optional performance of the target operation
-        if (message.has_target_performance())
+        if (message.has_target_performance()) {
             _targetPerformance.update(message.target_performance());
+        }
 
         // Field 'status' of a type returned by the current method always
         // be defined in all types of request-specific responses.
@@ -689,7 +706,6 @@ private:
     /// Request-specific data
     typename POLICY::responseDataType _responseData;
 };
-
 
 // =================================================================
 //   Type switch as per the macro defined in replica/Common.h
@@ -717,4 +733,4 @@ typedef StatusRequestM<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STATUSREQUEST_H
+#endif // LSST_QSERV_REPLICA_STATUS_REQUEST_H

@@ -186,7 +186,7 @@ public:
     RebalanceJob (RebalanceJob const&) = delete;
     RebalanceJob& operator= (RebalanceJob const&) = delete;
 
-    /// Destructor
+    /// Destructor (non-trivial)
     ~RebalanceJob () override;
 
     /// Return the name of a database defining a scope of the operation
@@ -216,9 +216,9 @@ public:
       *
       * @see Job::track()
       */
-    void track (bool          progressReport,
-                bool          errorReport,
-                bool          chunkLocksReport,
+    void track (bool progressReport,
+                bool errorReport,
+                bool chunkLocksReport,
                 std::ostream& os) const override;
 
 protected:

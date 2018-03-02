@@ -39,9 +39,9 @@ ReplicaFinder::ReplicaFinder (Controller::pointer const& controller,
                               bool                       progressReport,
                               bool                       errorReport)
     :   CommonRequestTracker<FindAllRequest> (
-        os,
-        progressReport,
-        errorReport) {
+            os,
+            progressReport,
+            errorReport) {
 
     // Launch requests against all workers
     for (const auto &worker: controller->serviceProvider().config()->workers())

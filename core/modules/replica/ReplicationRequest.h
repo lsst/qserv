@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
-#define LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#ifndef LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
+#define LSST_QSERV_REPLICA_REPLICATION_REQUEST_H
 
 /// ReplicationRequest.h declares:
 ///
@@ -44,6 +44,9 @@
 #include <functional>
 #include <memory>
 #include <string>
+
+// Third party headers
+#include <boost/asio.hpp>
 
 // Qserv headers
 #include "proto/replication.pb.h"
@@ -87,7 +90,7 @@ public:
     ReplicationRequestC& operator= (ReplicationRequestC const&) = delete;
 
     /// Destructor
-    ~ReplicationRequestC () final;
+    ~ReplicationRequestC () final = default;
 
     // Trivial acccessors
 
@@ -159,14 +162,14 @@ private:
     
     /// Callback handler for the asynchronious operation
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
     void receiveResponse ();
 
     /// Callback handler for the asynchronious operation
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
@@ -180,17 +183,17 @@ private:
 
     /// Callback handler for the asynchronious operation
     void statusSent (boost::system::error_code const& ec,
-                     size_t                           bytes_transferred);
+                     size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
     void receiveStatus ();
 
     /// Callback handler for the asynchronious operation
     void statusReceived (boost::system::error_code const& ec,
-                         size_t                           bytes_transferred);
+                         size_t bytes_transferred);
 
     /// Process the completion of the requested operation
-    void analyze (lsst::qserv::proto::ReplicationResponseReplicate const& message);
+    void analyze (proto::ReplicationResponseReplicate const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -218,7 +221,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-
 // ===============================================
 //   Classes based on the multiplexed connectors
 // ===============================================
@@ -245,7 +247,7 @@ public:
     ReplicationRequestM& operator= (ReplicationRequestM const&) = delete;
 
     /// Destructor
-    ~ReplicationRequestM () final;
+    ~ReplicationRequestM () final = default;
 
     // Trivial acccessors
 
@@ -328,8 +330,8 @@ private:
     void send ();
 
     /// Process the completion of the requested operation
-    void analyze (bool                                                    success,
-                  lsst::qserv::proto::ReplicationResponseReplicate const& message);
+    void analyze (bool success,
+                  proto::ReplicationResponseReplicate const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -357,7 +359,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-
 // =================================================================
 //   Type switch as per the macro defined in replica/Common.h
 // =================================================================
@@ -370,4 +371,4 @@ typedef ReplicationRequestM ReplicationRequest;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#endif // LSST_QSERV_REPLICA_REPLICATION_REQUEST_H

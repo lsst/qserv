@@ -73,10 +73,10 @@ public:
                  ReplicaInfo const& replica2);
     
     /// Copy constructor
-    ReplicaDiff (ReplicaDiff const&);
+    ReplicaDiff (ReplicaDiff const&) = default;
 
     /// Assignment operator
-    ReplicaDiff& operator= (ReplicaDiff const&);
+    ReplicaDiff& operator= (ReplicaDiff const&) = default;
 
     /// Destructor
     ~ReplicaDiff () = default;
@@ -102,12 +102,12 @@ public:
 
     // Specific tests
 
-    bool statusMismatch    () const { return _statusMismatch; }
-    bool numFilesMismatch  () const { return _numFilesMismatch; }
-    bool fileNamesMismatch () const { return _fileNamesMismatch; }
-    bool fileSizeMismatch  () const { return _fileSizeMismatch; }
-    bool fileCsMismatch    () const { return _fileCsMismatch; }
-    bool fileMtimeMismatch () const { return _fileMtimeMismatch; }
+    bool statusMismatch()    const { return _statusMismatch; }
+    bool numFilesMismatch()  const { return _numFilesMismatch; }
+    bool fileNamesMismatch() const { return _fileNamesMismatch; }
+    bool fileSizeMismatch()  const { return _fileSizeMismatch; }
+    bool fileCsMismatch()    const { return _fileCsMismatch; }
+    bool fileMtimeMismatch() const { return _fileMtimeMismatch; }
 
     /**
      * Return a compact string representation of the failed tests
@@ -131,7 +131,7 @@ private:
 };
 
 /// Overloaded streaming operator for type ReplicaDiff
-std::ostream& operator<< (std::ostream& os, ReplicaDiff const& ri);
+std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
 
 /**
   * Class VerifyJob represents a tool which will find go over all replicas
@@ -194,12 +194,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    VerifyJob () = delete;
-    VerifyJob (VerifyJob const&) = delete;
-    VerifyJob& operator= (VerifyJob const&) = delete;
+    VerifyJob() = delete;
+    VerifyJob(VerifyJob const&) = delete;
+    VerifyJob& operator=(VerifyJob const&) = delete;
 
     /// Destructor
-    ~VerifyJob () override = default;
+    ~VerifyJob() override = default;
 
     /**
       * Implement the corresponding method of the base class.
@@ -209,9 +209,9 @@ public:
       *
       * @see Job::track()
       */
-    void track (bool          progressReport,
-                bool          errorReport,
-                bool          chunkLocksReport,
+    void track (bool progressReport,
+                bool errorReport,
+                bool chunkLocksReport,
                 std::ostream& os) const override;
 
 protected:
@@ -222,41 +222,41 @@ protected:
      * @see VerifyJob::create()
      */
     VerifyJob (Controller::pointer const& controller,
-               callback_type              onFinish,
-               callback_type_on_diff      onReplicaDifference,
-               size_t                     maxReplicas,
-               bool                       computeCheckSum,
-               int                        priority,
-               bool                       exclusive,
-               bool                       preemptable);
+               callback_type         onFinish,
+               callback_type_on_diff onReplicaDifference,
+               size_t maxReplicas,
+               bool   computeCheckSum,
+               int    priority,
+               bool   exclusive,
+               bool   preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * The calback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (FindRequest::pointer request);
+    void onRequestFinish(FindRequest::pointer request);
 
     /**
      * Find the next replicas to be inspected and return 'true' if no suitable
@@ -267,8 +267,8 @@ protected:
      * @param replicas    - a collection of replicas returned from the database
      * @param numReplicas - a desired number of replicas to be pulled from the database
      */
-    bool nextReplicas (std::vector<ReplicaInfo>& replicas,
-                       size_t                    numReplicas);
+    bool nextReplicas(std::vector<ReplicaInfo>& replicas,
+                      size_t numReplicas);
     
 protected:
 

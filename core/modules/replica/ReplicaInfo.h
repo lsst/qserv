@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REPLICAINFO_H
-#define LSST_QSERV_REPLICA_REPLICAINFO_H
+#ifndef LSST_QSERV_REPLICA_REPLICA_INFO_H
+#define LSST_QSERV_REPLICA_REPLICA_INFO_H
 
 /// ReplicaInfo.h declares:
 ///
@@ -128,7 +128,7 @@ public:
                  FileInfoCollection const& fileInfo);
 
     /// Construct from a protobuf object
-    explicit ReplicaInfo (lsst::qserv::proto::ReplicationReplicaInfo const* info);
+    explicit ReplicaInfo (proto::ReplicationReplicaInfo const* info);
 
     /// Copy constructor
     ReplicaInfo (ReplicaInfo const& ri) = default;
@@ -192,7 +192,7 @@ public:
     /**
      * Initialize a protobuf object from the object's state
      */
-    void setInfo (lsst::qserv::proto::ReplicationReplicaInfo* info) const;
+    void setInfo (proto::ReplicationReplicaInfo* info) const;
 
 private:
 
@@ -210,19 +210,15 @@ private:
     FileInfoCollection _fileInfo;
 };
 
-
 /// Overloaded streaming operator for type ReplicaInfo
 std::ostream& operator<< (std::ostream& os, ReplicaInfo const& ri);
-
 
 /// The collection type for transient representations
 typedef std::vector<ReplicaInfo> ReplicaInfoCollection;
 
-
 /// Overloaded streaming operator for type ReplicaInfoCollection
 std::ostream& operator<< (std::ostream& os, ReplicaInfoCollection const& ric);
 
-
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICAINFO_H
+#endif // LSST_QSERV_REPLICA_REPLICA_INFO_H

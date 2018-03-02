@@ -35,17 +35,16 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RebalanceJob");
 
 template <class COLLECTION>
-void countJobStates (size_t&           numLaunched,
-                     size_t&           numFinished,
-                     size_t&           numSuccess,
+void countJobStates (size_t& numLaunched,
+                     size_t& numFinished,
+                     size_t&  numSuccess,
                      COLLECTION const& collection) {
 
     using namespace lsst::qserv::replica;
@@ -69,15 +68,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RebalanceJob::pointer
-RebalanceJob::create (std::string const&         databaseFamily,
-                      bool                       estimateOnly,
-                      Controller::pointer const& controller,
-                      callback_type              onFinish,
-                      bool                       bestEffort,
-                      int                        priority,
-                      bool                       exclusive,
-                      bool                       preemptable) {
+RebalanceJob::pointer RebalanceJob::create (
+                            std::string const&         databaseFamily,
+                            bool                       estimateOnly,
+                            Controller::pointer const& controller,
+                            callback_type              onFinish,
+                            bool                       bestEffort,
+                            int                        priority,
+                            bool                       exclusive,
+                            bool                       preemptable) {
     return RebalanceJob::pointer (
         new RebalanceJob (databaseFamily,
                           estimateOnly,
@@ -103,10 +102,8 @@ RebalanceJob::RebalanceJob (std::string const&         databaseFamily,
              priority,
              exclusive,
              preemptable),
-
         _databaseFamily (databaseFamily),
         _estimateOnly   (estimateOnly),
-
         _onFinish   (onFinish),
         _bestEffort (bestEffort) {
 }
@@ -116,33 +113,32 @@ RebalanceJob::~RebalanceJob () {
     _controller->serviceProvider().chunkLocker().release(_id);
 }
 
-RebalanceJobResult const&
-RebalanceJob::getReplicaData () const {
+RebalanceJobResult const& RebalanceJob::getReplicaData () const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  return _replicaData;
-
+    if (_state == State::FINISHED)  {
+        return _replicaData;
+    }
     throw std::logic_error (
         "RebalanceJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void
-RebalanceJob::track (bool          progressReport,
-                     bool          errorReport,
-                     bool          chunkLocksReport,
-                     std::ostream& os) const {
+void RebalanceJob::track (bool progressReport,
+                          bool errorReport,
+                          bool chunkLocksReport,
+                          std::ostream& os) const {
 
     BlockPost blockPost (1000, 2000);
 
     while (_state != State::FINISHED) {
 
-        if (_findAllJob and _findAllJob->state() != State::FINISHED)
+        if (_findAllJob and (_findAllJob->state() != State::FINISHED)) {
             _findAllJob->track (progressReport,
                                 errorReport,
                                 chunkLocksReport,
                                 os);
-
+        }
         if (progressReport) {
 
             // Need this to guarantee a consisent view onto the collection of
@@ -162,16 +158,15 @@ RebalanceJob::track (bool          progressReport,
                 << " ok:"      << numSuccess
                 << std::endl;
         }
-        if (chunkLocksReport)
+        if (chunkLocksReport) {
             os  << "RebalanceJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
                 << _controller->serviceProvider().chunkLocker().locked (_id);
-
-         blockPost.wait();
+        }
+        blockPost.wait();
    }
 }
 
-void
-RebalanceJob::startImpl () {
+void RebalanceJob::startImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  numIterations=" << _replicaData.numIterations);
 
@@ -184,24 +179,25 @@ RebalanceJob::startImpl () {
     _findAllJob = FindAllJob::create (
         _databaseFamily,
         _controller,
-        [self] (FindAllJob::pointer job) { self->onPrecursorJobFinish(); }
+        [self] (FindAllJob::pointer job) {
+            self->onPrecursorJobFinish();
+        }
     );
     _findAllJob->start();
 
     setState(State::IN_PROGRESS);
 }
 
-void
-RebalanceJob::cancelImpl () {
+void RebalanceJob::cancelImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
-    if (_findAllJob && (_findAllJob->state() != State::FINISHED))
+    if (_findAllJob && (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
-
+    }
     _findAllJob = nullptr;
 
     for (auto const& ptr: _moveReplicaJobs) {
@@ -212,8 +208,7 @@ RebalanceJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-RebalanceJob::restart () {
+void RebalanceJob::restart () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
 
@@ -221,11 +216,17 @@ RebalanceJob::restart () {
     size_t numFinished;
     size_t numSuccess;
 
-    ::countJobStates (numLaunched, numFinished, numSuccess,
+    ::countJobStates (numLaunched,
+                      numFinished,
+                      numSuccess,
                       _moveReplicaJobs);
 
-    if ((_findAllJob && (_findAllJob->state() != State::FINISHED)) or (numLaunched != numFinished))
-        throw std::logic_error ("RebalanceJob::restart ()  not allowed in this object state");
+    if ((_findAllJob && (_findAllJob->state() != State::FINISHED)) or
+        (numLaunched != numFinished)) {
+
+        throw std::logic_error (
+                        "RebalanceJob::restart ()  not allowed in this object state");
+    }
 
     _moveReplicaJobs.clear();
 
@@ -240,13 +241,14 @@ RebalanceJob::restart () {
     _findAllJob = FindAllJob::create (
         _databaseFamily,
         _controller,
-        [self] (FindAllJob::pointer job) { self->onPrecursorJobFinish(); }
+        [self] (FindAllJob::pointer job) {
+            self->onPrecursorJobFinish();
+        }
     );
     _findAllJob->start();
 }
 
-void
-RebalanceJob::notify () {
+void RebalanceJob::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -256,8 +258,7 @@ RebalanceJob::notify () {
     }
 }
 
-void
-RebalanceJob::onPrecursorJobFinish () {
+void RebalanceJob::onPrecursorJobFinish () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
@@ -267,14 +268,20 @@ RebalanceJob::onPrecursorJobFinish () {
         LOCK_GUARD;
     
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
-    
+        if (_state == State::FINISHED) {
+            return;
+        }
+
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
         // under relaxed condition.
     
-        if (not _bestEffort && (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
-            LOGS(_log, LOG_LVL_ERROR, context() << "onPrecursorJobFinish  failed due to the precurson job failure");
+        if (not _bestEffort and
+            (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
+
+            LOGS(_log, LOG_LVL_ERROR, context()
+                 << "onPrecursorJobFinish  failed due to the precurson job failure");
+
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
@@ -292,27 +299,34 @@ RebalanceJob::onPrecursorJobFinish () {
 
         for (auto const& entry: replicaData.workers) {
             bool const  reported = entry.second;
-            if (reported)
+            if (reported) {
                 _replicaData.totalWorkers++;
+            }
         }
         for (auto const& chunkEntry: replicaData.isGood) {
             for (auto const& workerEntry: chunkEntry.second) {
                 bool const  isGood = workerEntry.second;
-                if (isGood)
+                if (isGood) {
                     _replicaData.totalGoodChunks++;
+                }
             }
         }       
         if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
+
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no eligible 'good' chunks found");
+
             setState (State::FINISHED, ExtendedState::SUCCESS);
             break;
         }
 
         _replicaData.avgChunks = _replicaData.totalGoodChunks / _replicaData.totalWorkers;
         if (not _replicaData.avgChunks) {
+
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
-                 << "the average number of 'good' chunks per worker is 0. This won't trigger the operation");
+                 << "the average number of 'good' chunks per worker is 0. "
+                 << "This won't trigger the operation");
+
             setState (State::FINISHED, ExtendedState::SUCCESS);
             break;
         }
@@ -332,8 +346,9 @@ RebalanceJob::onPrecursorJobFinish () {
         for (auto const& entry: replicaData.workers) {
             std::string const& worker   = entry.first;
             bool        const  reported = entry.second;
-            if (reported)
+            if (reported) {
                 worker2chunks[worker] = std::map<unsigned int,bool>();
+            }
         }
         for (auto const& chunkEntry: replicaData.chunks) {
             unsigned int const chunk = chunkEntry.first;
@@ -359,16 +374,18 @@ RebalanceJob::onPrecursorJobFinish () {
         for (auto const& entry: replicaData.workers) {
             std::string const& worker   = entry.first;
             bool        const  reported = entry.second;
-            if (reported)
+            if (reported) {
                 worker2goodChunks[worker] = std::vector<unsigned int>();
+            }
         }
         for (auto const& chunkEntry: replicaData.isGood) {
             unsigned int const chunk = chunkEntry.first;
             for (auto const& workerEntry: chunkEntry.second) {
                 std::string const& worker = workerEntry.first;
                 bool        const  isGood = workerEntry.second;
-                if (isGood)
+                if (isGood) {
                     worker2goodChunks[worker].push_back(chunk);
+                }
             }
         }
 
@@ -384,12 +401,15 @@ RebalanceJob::onPrecursorJobFinish () {
 
         for (auto const& entry: worker2goodChunks) {
             size_t const numChunks = entry.second.size();
-            if (numChunks > _replicaData.avgChunks)
+            if (numChunks > _replicaData.avgChunks) {
                 sourceWorkers.push_back(entry);
+            }
         }
         if (not sourceWorkers.size()) {
+
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no overloaded 'source' workers found");
+
             setState (State::FINISHED, ExtendedState::SUCCESS);
             break;
         }
@@ -401,7 +421,6 @@ RebalanceJob::onPrecursorJobFinish () {
                 return b.second.size() < a.second.size();
             }
         );
-
 
         // Get a disposition of the destination workers along with the number
         // of available slots for chunks which can be hosted by the workers
@@ -415,18 +434,22 @@ RebalanceJob::onPrecursorJobFinish () {
         for (auto const& entry: worker2goodChunks) {
             std::string const worker    = entry.first;
             size_t      const numChunks = entry.second.size();
-            if (numChunks < _replicaData.avgChunks)
-                destinationWorkers.push_back(std::make_pair(worker,
-                                                            _replicaData.avgChunks - numChunks));
+
+            if (numChunks < _replicaData.avgChunks) {
+                destinationWorkers.push_back(
+                    std::make_pair(worker,
+                                   _replicaData.avgChunks - numChunks));
+            }
         }
         if (not destinationWorkers.size()) {
+
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no underloaded 'destination' workers found");
+
             setState (State::FINISHED, ExtendedState::SUCCESS);
             break;
         }
 
-    
         // Prepare the rebalance plan based on the following considerations:
         //
         // - use the above formed map 'worker2chunks' to avoid chunk collisions
@@ -468,7 +491,9 @@ RebalanceJob::onPrecursorJobFinish () {
 
             for (unsigned int chunk: chunks) {
 
-                if (not numExtraChunks) break;
+                if (not numExtraChunks) {
+                    break;
+                }
 
                 // Always sort the collection in the descending order to make sure
                 // least populated workers are considered first
@@ -491,10 +516,14 @@ RebalanceJob::onPrecursorJobFinish () {
                     size_t&            numSlots          = destinationWorkerEntry.second;
 
                     // Are there any awailable slots on the worker?
-                    if (not numSlots) continue;
+                    if (not numSlots) {
+                        continue;
+                    }
 
                     // Skip this worker if it already has this chunk
-                    if (worker2chunks[destinationWorker].count(chunk)) continue;
+                    if (worker2chunks[destinationWorker].count(chunk)) {
+                        continue;
+                    }
 
                     // Found the one. Update 
 
@@ -548,7 +577,9 @@ RebalanceJob::onPrecursorJobFinish () {
                     destinationWorker,
                     true,   /* purge */
                     _controller,
-                    [self](MoveReplicaJob::pointer job) { self->onJobFinish(job); }
+                    [self](MoveReplicaJob::pointer job) {
+                        self->onJobFinish(job);
+                    }
                 );
                 _moveReplicaJobs.push_back(job);
                 _chunk2jobs[chunk][sourceWorker] = job;
@@ -573,12 +604,12 @@ RebalanceJob::onPrecursorJobFinish () {
     
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
+    if (_state == State::FINISHED) {
         notify();
+    }
 }
 
-void
-RebalanceJob::onJobFinish (MoveReplicaJob::pointer job) {
+void RebalanceJob::onJobFinish (MoveReplicaJob::pointer job) {
 
     std::string  const databaseFamily    = job->databaseFamily(); 
     unsigned int const chunk             = job->chunk();
@@ -608,7 +639,9 @@ RebalanceJob::onJobFinish (MoveReplicaJob::pointer job) {
         }
 
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
+        if (_state == State::FINISHED) {
+            return;
+        }
 
         // Update counters and object state if needed.
 
@@ -645,7 +678,9 @@ RebalanceJob::onJobFinish (MoveReplicaJob::pointer job) {
         size_t numFinished;
         size_t numSuccess;
     
-        ::countJobStates (numLaunched, numFinished, numSuccess,
+        ::countJobStates (numLaunched,
+                          numFinished,
+                          numSuccess,
                           _moveReplicaJobs);
 
         if (numFinished == numLaunched) {
@@ -665,8 +700,9 @@ RebalanceJob::onJobFinish (MoveReplicaJob::pointer job) {
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
+    if (_state == State::FINISHED) {
         notify ();
+    }
 }
 
 }}} // namespace lsst::qserv::replica

@@ -80,10 +80,10 @@ public:
     Performance ();
     
     /// Copy c-tor
-    Performance (const Performance &p) = default;
+    Performance (Performance const&) = default;
 
     /// Assignment operator
-    Performance & operator= (const Performance &p) = default;
+    Performance& operator= (Performance const&) = default;
 
     /// Destructor
     ~Performance () = default;
@@ -91,7 +91,7 @@ public:
     /**
      * Update object state with counters from the protocol buffer object
      */
-    void update (const lsst::qserv::proto::ReplicationPerformance &workerPerformanceInfo);
+    void update (proto::ReplicationPerformance const& workerPerformanceInfo);
 
     /// Update the Controller's 'start' time and return the previous state
     uint64_t setUpdateStart ();
@@ -121,7 +121,7 @@ public:
 };
 
 /// Overloaded streaming operator for class Performance
-std::ostream& operator<< (std::ostream& os, const Performance &p);
+std::ostream& operator<< (std::ostream& os, Performance const& p);
 
 
 /**
@@ -142,10 +142,10 @@ public:
     WorkerPerformance ();
     
     /// Copy c-tor
-    WorkerPerformance (const WorkerPerformance &p) = default;
+    WorkerPerformance (WorkerPerformance const&) = default;
 
     /// Assignment operator
-    WorkerPerformance & operator= (const WorkerPerformance &p) = default;
+    WorkerPerformance& operator= (WorkerPerformance const&) = default;
 
     /// Destructor
     ~WorkerPerformance () = default;
@@ -162,7 +162,7 @@ public:
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
      */
-    lsst::qserv::proto::ReplicationPerformance* info () const;
+    proto::ReplicationPerformance* info () const;
 
 public:
 
@@ -177,7 +177,7 @@ public:
 };
 
 /// Overloaded streaming operator for class WorkerPerformance
-std::ostream& operator<< (std::ostream& os, const WorkerPerformance &p);
+std::ostream& operator<< (std::ostream& os, WorkerPerformance const&p);
 
 }}} // namespace lsst::qserv::replica
 

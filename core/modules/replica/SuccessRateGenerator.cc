@@ -31,14 +31,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-SuccessRateGenerator::SuccessRateGenerator (double successRate)
-    :   _rd    (),
-        _gen   (_rd()),
-        _distr (successRate) {
+SuccessRateGenerator::SuccessRateGenerator(double successRate)
+    :   _rd(),
+        _gen(_rd()),
+        _distr(successRate) {
 }
 
-bool
-SuccessRateGenerator::success () {
+bool SuccessRateGenerator::success () {
     std::lock_guard<std::mutex> lock(_generatorMtx);
     return _distr(_gen);
 }

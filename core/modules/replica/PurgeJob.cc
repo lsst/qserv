@@ -35,8 +35,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -82,25 +81,22 @@ PurgeJob::PurgeJob (std::string const&         databaseFamily,
              priority,
              exclusive,
              preemptable),
-
         _databaseFamily (databaseFamily),
-
         _numReplicas (numReplicas ?
                       numReplicas :
                       controller->serviceProvider().config()->replicationLevel(databaseFamily)),
-
         _onFinish   (onFinish),
         _bestEffort (bestEffort),
-
         _numIterations  (0),
         _numFailedLocks (0),
-
         _numLaunched (0),
         _numFinished (0),
         _numSuccess  (0) {
 
-    if (!_numReplicas)
-        throw std::invalid_argument ("PurgeJob::PurgeJob ()  0 is not allowed for the number of replias");
+    if (not _numReplicas) {
+        throw std::invalid_argument(
+                        "PurgeJob::PurgeJob ()  0 is not allowed for the number of replias");
+    }
 }
 
 PurgeJob::~PurgeJob () {
@@ -108,63 +104,64 @@ PurgeJob::~PurgeJob () {
     _controller->serviceProvider().chunkLocker().release(_id);
 }
 
-PurgeJobResult const&
-PurgeJob::getReplicaData () const {
+PurgeJobResult const& PurgeJob::getReplicaData () const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  return _replicaData;
-
+    if (_state == State::FINISHED) {
+        return _replicaData;
+    }
     throw std::logic_error (
         "PurgeJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void
-PurgeJob::track (bool          progressReport,
-                 bool          errorReport,
-                 bool          chunkLocksReport,
-                 std::ostream& os) const {
+void PurgeJob::track (bool progressReport,
+                      bool errorReport,
+                      bool chunkLocksReport,
+                      std::ostream& os) const {
 
-    if (_state == State::FINISHED) return;
-
-    if (_findAllJob)
+    if (_state == State::FINISHED) {
+        return;
+    }
+    if (_findAllJob) {
         _findAllJob->track (progressReport,
                             errorReport,
                             chunkLocksReport,
                             os);
-    
+    }
     BlockPost blockPost (1000, 2000);
 
     while (_numFinished < _numLaunched) {
         blockPost.wait();
-        if (progressReport)
+        if (progressReport) {
             os  << "PurgeJob::track()  "
                 << "launched: " << _numLaunched << ", "
                 << "finished: " << _numFinished << ", "
                 << "success: "  << _numSuccess
                 << std::endl;
-
-        if (chunkLocksReport)
+        }
+        if (chunkLocksReport) {
             os  << "PurgeJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
                 << _controller->serviceProvider().chunkLocker().locked (_id);
+        }
     }
-    if (progressReport)
+    if (progressReport) {
         os  << "PurgeJob::track()  "
             << "launched: " << _numLaunched << ", "
             << "finished: " << _numFinished << ", "
             << "success: "  << _numSuccess
             << std::endl;
-
-    if (chunkLocksReport)
+    }
+    if (chunkLocksReport) {
         os  << "PurgeJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
             << _controller->serviceProvider().chunkLocker().locked (_id);
-
-    if (errorReport && _numLaunched - _numSuccess)
+    }
+    if (errorReport && (_numLaunched - _numSuccess)) {
         replica::reportRequestState (_requests, os);
+    }
 }
 
-void
-PurgeJob::startImpl () {
+void PurgeJob::startImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
 
@@ -186,17 +183,16 @@ PurgeJob::startImpl () {
     setState(State::IN_PROGRESS);
 }
 
-void
-PurgeJob::cancelImpl () {
+void PurgeJob::cancelImpl () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
-    if (_findAllJob && (_findAllJob->state() != State::FINISHED))
+    if (_findAllJob && (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
-
+    }
     _findAllJob = nullptr;
 
     // To ensure no lingering "side effects" will be left after cancelling this
@@ -205,13 +201,14 @@ PurgeJob::cancelImpl () {
 
     for (auto const& ptr: _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
+        if (ptr->state() != Request::State::FINISHED) {
             _controller->stopReplicaDelete (
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
                 _id         /* jobId */);
+        }
     }
     _chunk2requests.clear();
     _requests.clear();
@@ -225,14 +222,13 @@ PurgeJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-PurgeJob::restart () {
+void PurgeJob::restart () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
     
-    if (_findAllJob or (_numLaunched != _numFinished))
+    if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error ("PurgeJob::restart ()  not allowed in this object state");
-
+    }
     _requests.clear();
 
     _numFailedLocks = 0;
@@ -241,8 +237,7 @@ PurgeJob::restart () {
     _numFinished = 0;
 }
 
-void
-PurgeJob::notify () {
+void PurgeJob::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -252,19 +247,20 @@ PurgeJob::notify () {
     }
 }
 
-void
-PurgeJob::onPrecursorJobFinish () {
+void PurgeJob::onPrecursorJobFinish () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
     do {
         // This lock will be automatically release beyon this scope
-        // to allow client notifications (see the end of the method)
+        // to allow deadlock-free client notifications (see the end of the method)
         LOCK_GUARD;
     
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
-    
+        if (_state == State::FINISHED) {
+            return;
+        }
+
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
         // under relaxed condition.
@@ -308,8 +304,9 @@ PurgeJob::onPrecursorJobFinish () {
             auto         const& replicas = chunk2workers.second;
     
             size_t const numReplicas = replicas.size();
-            if (numReplicas > _numReplicas)
+            if (numReplicas > _numReplicas) {
                 chunk2numReplicas2delete[chunk] = numReplicas - _numReplicas;
+            }
         }
 
         // The 'occupancy' map or workers which will be used by the replica
@@ -415,9 +412,13 @@ PurgeJob::onPrecursorJobFinish () {
                     worker2occupancy[targetWorker]--;
                 }
             }
-            if (_state == State::FINISHED) break;
+            if (_state == State::FINISHED) {
+                break;
+            }
         }
-        if (_state == State::FINISHED) break;
+        if (_state == State::FINISHED) {
+            break;
+        }
 
         // Finish right away if no problematic chunks found
         if (not _requests.size()) {
@@ -437,12 +438,12 @@ PurgeJob::onPrecursorJobFinish () {
     
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
+    if (_state == State::FINISHED) {
         notify();
+    }
 }
 
-void
-PurgeJob::onRequestFinish (DeleteRequest::pointer request) {
+void PurgeJob::onRequestFinish (DeleteRequest::pointer request) {
 
     std::string  const database = request->database(); 
     std::string  const worker   = request->worker(); 
@@ -513,12 +514,12 @@ PurgeJob::onRequestFinish (DeleteRequest::pointer request) {
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
+    if (_state == State::FINISHED) {
         notify ();
+    }
 }
 
-void
-PurgeJob::release (unsigned int chunk) {
+void PurgeJob::release (unsigned int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
     Chunk chunkObj {_databaseFamily, chunk};
     _controller->serviceProvider().chunkLocker().release(chunkObj);

@@ -64,48 +64,48 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider   &serviceProvider,
-                           const std::string &worker,
-                           const std::string &id,
-                           int                priority,
-                           const std::string &database,
-                           unsigned int       chunk);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerDeleteRequest () = delete;
-    WorkerDeleteRequest (WorkerDeleteRequest const&) = delete;
-    WorkerDeleteRequest & operator= (WorkerDeleteRequest const&) = delete;
+    WorkerDeleteRequest() = delete;
+    WorkerDeleteRequest(WorkerDeleteRequest const&) = delete;
+    WorkerDeleteRequest& operator=(WorkerDeleteRequest const&) = delete;
 
     /// Destructor
-    ~WorkerDeleteRequest () override = default;
+    ~WorkerDeleteRequest() override = default;
 
     // Trivial accessors
 
-    const std::string& database () const { return _database; }
-    unsigned int       chunk    () const { return _chunk; }
+    std::string const& database() const { return _database; }
+    unsigned int       chunk()    const { return _chunk; }
 
     /// Return extended status of the request
-    const ReplicaInfo& replicaInfo () const { return _replicaInfo; }
+    ReplicaInfo const& replicaInfo() const { return _replicaInfo; }
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerDeleteRequest (ServiceProvider   &serviceProvider,
-                         const std::string &worker,
-                         const std::string &id,
-                         int                priority,
-                         const std::string &database,
-                         unsigned int       chunk);
+    WorkerDeleteRequest(ServiceProvider&   serviceProvider,
+                        std::string const& worker,
+                        std::string const& id,
+                        int                priority,
+                        std::string const& database,
+                        unsigned int       chunk);
 protected:
 
     // Parameters of the object
@@ -116,7 +116,6 @@ protected:
     /// Extended status of the replica deletion request
     ReplicaInfo _replicaInfo;
 };
-
 
 /**
   * Class WorkerDeleteRequestPOSIX provides an actual implementation for
@@ -136,42 +135,41 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider   &serviceProvider,
-                           const std::string &worker,
-                           const std::string &id,
-                           int                priority,
-                           const std::string &database,
-                           unsigned int       chunk);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database,
+                          unsigned int       chunk);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerDeleteRequestPOSIX () = delete;
-    WorkerDeleteRequestPOSIX (WorkerDeleteRequestPOSIX const&) = delete;
-    WorkerDeleteRequestPOSIX & operator= (WorkerDeleteRequestPOSIX const&) = delete;
+    WorkerDeleteRequestPOSIX() = delete;
+    WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
+    WorkerDeleteRequestPOSIX& operator=(WorkerDeleteRequestPOSIX const&) = delete;
 
     /// Destructor
-    ~WorkerDeleteRequestPOSIX () override = default;
+    ~WorkerDeleteRequestPOSIX() override = default;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerDeleteRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 private:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerDeleteRequestPOSIX (ServiceProvider   &serviceProvider,
-                              const std::string &worker,
-                              const std::string &id,
-                              int                priority,
-                              const std::string &database,
-                              unsigned int       chunk);
+    WorkerDeleteRequestPOSIX(ServiceProvider&  serviceProvider,
+                             std::string const& worker,
+                             std::string const& id,
+                             int                priority,
+                             std::string const& database,
+                             unsigned int       chunk);
 };
-
 
 /**
   * Class WorkerDeleteRequestFS provides an actual implementation for

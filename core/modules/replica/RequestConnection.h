@@ -67,7 +67,7 @@ public:
     RequestConnection& operator= (RequestConnection const&) = delete;
 
     /// Destructor
-    ~RequestConnection () override;
+    ~RequestConnection () override = default;
 
 protected:
 

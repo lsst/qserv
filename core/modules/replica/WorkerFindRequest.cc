@@ -35,8 +35,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_DATA_FOLDER \
-std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
+#define LOCK_DATA_FOLDER std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
 
 namespace fs = boost::filesystem;
 
@@ -54,18 +53,16 @@ namespace replica {
 ///////////////////// WorkerFindRequest ////////////////////
 ////////////////////////////////////////////////////////////
 
-WorkerFindRequest::pointer
-WorkerFindRequest::create (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk,
-        bool               computeCheckSum) {
-
-    return WorkerFindRequest::pointer (
-        new WorkerFindRequest (
+WorkerFindRequest::pointer WorkerFindRequest::create(
+                                ServiceProvider&   serviceProvider,
+                                std::string const& worker,
+                                std::string const& id,
+                                int                priority,
+                                std::string const& database,
+                                unsigned int       chunk,
+                                bool               computeCheckSum) {
+    return WorkerFindRequest::pointer(
+        new WorkerFindRequest(
                 serviceProvider,
                 worker,
                 id,
@@ -75,32 +72,29 @@ WorkerFindRequest::create (
                 computeCheckSum));
 }
 
-WorkerFindRequest::WorkerFindRequest (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk,
-        bool               computeCheckSum)
-
+WorkerFindRequest::WorkerFindRequest(
+                        ServiceProvider&   serviceProvider,
+                        std::string const& worker,
+                        std::string const& id,
+                        int                priority,
+                        std::string const& database,
+                        unsigned int       chunk,
+                        bool               computeCheckSum)
     :   WorkerRequest (
             serviceProvider,
             worker,
             "FIND",
             id,
             priority),
-
         _database        (database),
         _chunk           (chunk),
         _computeCheckSum (computeCheckSum),
         _replicaInfo     () {
 
-    serviceProvider.assertDatabaseIsValid (database);
+    serviceProvider.assertDatabaseIsValid(database);
 }
 
-bool
-WorkerFindRequest::execute () {
+bool WorkerFindRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  database: " << database()
@@ -109,13 +103,14 @@ WorkerFindRequest::execute () {
     // Set up the result if the operation is over
 
     bool completed = WorkerRequest::execute();
-    if (completed) _replicaInfo =
-        ReplicaInfo (ReplicaInfo::COMPLETE,
-                     worker(),
-                     database(),
-                     chunk(),
-                     PerformanceUtils::now(),
-                     ReplicaInfo::FileInfoCollection());
+    if (completed) {
+        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE,
+                                   worker(),
+                                   database(),
+                                   chunk(),
+                                   PerformanceUtils::now(),
+                                   ReplicaInfo::FileInfoCollection());
+    }
     return completed;
 }
 
@@ -123,18 +118,16 @@ WorkerFindRequest::execute () {
 ///////////////////// WorkerFindRequestPOSIX ////////////////////
 /////////////////////////////////////////////////////////////////
 
-WorkerFindRequestPOSIX::pointer
-WorkerFindRequestPOSIX::create (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk,
-        bool               computeCheckSum) {
-
-    return WorkerFindRequestPOSIX::pointer (
-        new WorkerFindRequestPOSIX (
+WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create (
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    bool               computeCheckSum) {
+    return WorkerFindRequestPOSIX::pointer(
+        new WorkerFindRequestPOSIX(
                 serviceProvider,
                 worker,
                 id,
@@ -144,16 +137,15 @@ WorkerFindRequestPOSIX::create (
                 computeCheckSum));
 }
 
-WorkerFindRequestPOSIX::WorkerFindRequestPOSIX (
-        ServiceProvider   &serviceProvider,
-        const std::string &worker,
-        const std::string &id,
-        int                priority,
-        const std::string &database,
-        unsigned int       chunk,
-        bool               computeCheckSum)
-
-    :   WorkerFindRequest (
+WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
+                            ServiceProvider&   serviceProvider,
+                            std::string const& worker,
+                            std::string const& id,
+                            int                priority,
+                            std::string const& database,
+                            unsigned int       chunk,
+                            bool               computeCheckSum)
+    :   WorkerFindRequest(
             serviceProvider,
             worker,
             id,
@@ -163,8 +155,7 @@ WorkerFindRequestPOSIX::WorkerFindRequestPOSIX (
             computeCheckSum) {
 }
 
-bool
-WorkerFindRequestPOSIX::execute () {
+bool WorkerFindRequestPOSIX::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  database: " << database()
@@ -193,25 +184,25 @@ WorkerFindRequestPOSIX::execute () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
 
-    if (!_computeCheckSum || !_csComputeEnginePtr) {
+    if (not _computeCheckSum or not _csComputeEnginePtr) {
 
-        const WorkerInfo   &workerInfo   = _serviceProvider.config()->workerInfo  (worker  ());
-        const DatabaseInfo &databaseInfo = _serviceProvider.config()->databaseInfo(database());
+        WorkerInfo   const& workerInfo   = _serviceProvider.config()->workerInfo(worker());
+        DatabaseInfo const& databaseInfo = _serviceProvider.config()->databaseInfo(database());
     
         // Check if the data directory exists and it can be read
     
         LOCK_DATA_FOLDER;
     
-        const fs::path        dataDir = fs::path(workerInfo.dataDir) / database();
-        const fs::file_status stat    = fs::status(dataDir, ec);
+        fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
+        fs::file_status const stat    = fs::status(dataDir, ec);
     
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     stat.type() == fs::status_error,
                     ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                     "failed to check the status of directory: " + dataDir.string())
-            || reportErrorIf (
-                    !fs::exists(stat),
+            or reportErrorIf(
+                    not fs::exists(stat),
                     ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
     
@@ -235,39 +226,39 @@ WorkerFindRequestPOSIX::execute () {
         ReplicaInfo::FileInfoCollection fileInfoCollection; // file info if not using the incremental processing
         std::vector<std::string>        files;              // file paths registered for the incremental processing
 
-        for (const auto &file: FileUtils::partitionedFiles (databaseInfo, chunk())) {
+        for (auto const& file: FileUtils::partitionedFiles(databaseInfo, chunk())) {
     
-            const fs::path        path = dataDir / file;
-            const fs::file_status stat = fs::status(path, ec);
+            fs::path        const path = dataDir / file;
+            fs::file_status const stat = fs::status(path, ec);
     
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         stat.type() == fs::status_error,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                         "failed to check the status of file: " + path.string());
     
             if (fs::exists(stat)) {
 
-                if (!_computeCheckSum) {
+                if (not _computeCheckSum) {
 
                     // Get file size & mtime right away
 
-                    const uint64_t size = fs::file_size(path, ec);
+                    uint64_t const size = fs::file_size(path, ec);
                     errorContext = errorContext
-                        || reportErrorIf (
+                        or reportErrorIf(
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                                 "failed to read file size: " + path.string());
 
                     const std::time_t mtime = fs::last_write_time(path, ec);
                     errorContext = errorContext
-                        || reportErrorIf (
+                        or reportErrorIf(
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                                 "failed to read file mtime: " + path.string());
                         
-                    fileInfoCollection.emplace_back (
-                        ReplicaInfo::FileInfo ({
+                    fileInfoCollection.emplace_back(
+                        ReplicaInfo::FileInfo({
                             file,
                             size,
                             mtime,
@@ -290,16 +281,18 @@ WorkerFindRequestPOSIX::execute () {
         }
 
         // If that's so then finalize the operation right away
-        if (!_computeCheckSum) {
+        if (not _computeCheckSum) {
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
-                status = FileUtils::partitionedFiles (databaseInfo, chunk()).size() == fileInfoCollection.size() ?
-                    ReplicaInfo::Status::COMPLETE :
-                    ReplicaInfo::Status::INCOMPLETE;
+                status = FileUtils::partitionedFiles(
+                                        databaseInfo,
+                                        chunk()).size() == fileInfoCollection.size() ?
+                                            ReplicaInfo::Status::COMPLETE :
+                                            ReplicaInfo::Status::INCOMPLETE;
           
             // Fill in the info on the chunk before finishing the operation
-            _replicaInfo = ReplicaInfo (
+            _replicaInfo = ReplicaInfo(
                 status,
                 worker(),
                 database(),
@@ -331,17 +324,17 @@ WorkerFindRequestPOSIX::execute () {
 
                 const fs::path path(file); 
 
-                const uint64_t size = _csComputeEnginePtr->bytes(file);
+                uint64_t const size = _csComputeEnginePtr->bytes(file);
 
-                const std::time_t mtime = fs::last_write_time(path, ec);
+                std::time_t const mtime = fs::last_write_time(path, ec);
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                             ec,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                             "failed to read file mtime: " + path.string());
                         
-                fileInfoCollection.emplace_back (
-                    ReplicaInfo::FileInfo ({
+                fileInfoCollection.emplace_back(
+                    ReplicaInfo::FileInfo({
                         path.filename().string(),
                         size,
                         mtime,
@@ -359,16 +352,19 @@ WorkerFindRequestPOSIX::execute () {
 
             // Fnalize the operation
 
-            const DatabaseInfo &databaseInfo = _serviceProvider.config()->databaseInfo(database());
+            DatabaseInfo const& databaseInfo =
+                _serviceProvider.config()->databaseInfo(database());
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
-                status = FileUtils::partitionedFiles (databaseInfo, chunk()).size() == fileNames.size() ?
-                    ReplicaInfo::Status::COMPLETE :
-                    ReplicaInfo::Status::INCOMPLETE;
+                status = FileUtils::partitionedFiles(
+                                        databaseInfo,
+                                        chunk()).size() == fileNames.size() ?
+                                            ReplicaInfo::Status::COMPLETE :
+                                            ReplicaInfo::Status::INCOMPLETE;
           
             // Fill in the info on the chunk before finishing the operation    
-            _replicaInfo = ReplicaInfo (
+            _replicaInfo = ReplicaInfo(
                 status,
                 worker(),
                 database(),
@@ -382,7 +378,7 @@ WorkerFindRequestPOSIX::execute () {
     } catch (std::exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     true,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
                     ex.what());
@@ -392,7 +388,7 @@ WorkerFindRequestPOSIX::execute () {
     
     // If done (either way) then get rid of the engine right away because
     // it may still have allocated buffers
-    if (finished) _csComputeEnginePtr.reset();
+    if (finished) { _csComputeEnginePtr.reset(); }
 
     return finished;
 }
