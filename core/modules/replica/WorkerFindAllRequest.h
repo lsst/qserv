@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKER_FIND_ALLREQUEST_H
-#define LSST_QSERV_REPLICA_WORKER_FIND_ALLREQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H
+#define LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H
 
 /// WorkerFindAllRequest.h declares:
 ///
@@ -65,24 +65,24 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider&   serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int                priority,
-                           std::string const& database);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerFindAllRequest () = delete;
-    WorkerFindAllRequest (WorkerFindAllRequest const&) = delete;
-    WorkerFindAllRequest& operator= (WorkerFindAllRequest const&) = delete;
+    WorkerFindAllRequest() = delete;
+    WorkerFindAllRequest(WorkerFindAllRequest const&) = delete;
+    WorkerFindAllRequest& operator=(WorkerFindAllRequest const&) = delete;
 
     /// Destructor
-    ~WorkerFindAllRequest () override = default;
+    ~WorkerFindAllRequest() override = default;
 
     // Trivial accessors
 
-    std::string const& database () const { return _database; }
+    std::string const& database() const { return _database; }
 
    /**
      * Return a refernce to a result of the completed request.
@@ -90,25 +90,25 @@ public:
      * Note that this operation returns a meanigful result only when a request
      * is completed with status STATUS_SUCCEEDED.
      */
-    ReplicaInfoCollection const& replicaInfoCollection () const;
+    ReplicaInfoCollection const& replicaInfoCollection() const;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 protected:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequest (ServiceProvider   &serviceProvider,
-                          std::string const& worker,
-                          std::string const& id,
-                          int                priority,
-                          std::string const& database);
+    WorkerFindAllRequest(ServiceProvider&   serviceProvider,
+                         std::string const& worker,
+                         std::string const& id,
+                         int                priority,
+                         std::string const& database);
 protected:
 
     // Parameters of the request
@@ -137,38 +137,38 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider   &serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int                priority,
-                           std::string const& database);
+    static pointer create(ServiceProvider&   serviceProvider,
+                          std::string const& worker,
+                          std::string const& id,
+                          int                priority,
+                          std::string const& database);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerFindAllRequestPOSIX () = delete;
-    WorkerFindAllRequestPOSIX (WorkerFindAllRequestPOSIX const&) = delete;
-    WorkerFindAllRequestPOSIX& operator= (WorkerFindAllRequestPOSIX const&) = delete;
+    WorkerFindAllRequestPOSIX() = delete;
+    WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
+    WorkerFindAllRequestPOSIX& operator=(WorkerFindAllRequestPOSIX const&) = delete;
 
     /// Destructor
-    ~WorkerFindAllRequestPOSIX () override = default;
+    ~WorkerFindAllRequestPOSIX() override = default;
 
     /**
      * This method implements the virtual method of the base class
      *
      * @see WorkerRequest::execute
      */
-    bool execute () override;
+    bool execute() override;
 
 private:
 
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequestPOSIX (ServiceProvider   &serviceProvider,
-                               std::string const& worker,
-                               std::string const& id,
-                               int                priority,
-                               std::string const& database);
+    WorkerFindAllRequestPOSIX(ServiceProvider&   serviceProvider,
+                              std::string const& worker,
+                              std::string const& id,
+                              int                priority,
+                              std::string const& database);
 };
 
 /**
@@ -182,4 +182,4 @@ typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKER_FIND_ALLREQUEST_H
+#endif // LSST_QSERV_REPLICA_WORKER_FIND_ALL_REQUEST_H

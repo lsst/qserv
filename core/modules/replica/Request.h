@@ -49,7 +49,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-
 class Controller;
 class ServiceProvider;
 class WorkerInfo;
@@ -139,7 +138,7 @@ public:
     Request& operator= (Request const&) = delete;
 
     /// Destructor
-    virtual ~Request ();
+    virtual ~Request () = default;
 
     /// Return a reference to the service provider,
     ServiceProvider& serviceProvider() { return _serviceProvider; }

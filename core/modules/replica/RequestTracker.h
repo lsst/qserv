@@ -108,8 +108,8 @@ protected:
      *                         of the operation
      */
     explicit RequestTrackerBase (std::ostream& os,
-                                 bool          progressReport=true,
-                                 bool          errorReport=false);
+                                 bool progressReport=true,
+                                 bool errorReport=false);
 
     /**
      * The method to be implemented by a subclass in order to print
@@ -181,8 +181,8 @@ public:
      *                         of the operation
      */
     explicit CommonRequestTracker (std::ostream& os,
-                                   bool          progressReport=true,
-                                   bool          errorReport=false)
+                                   bool progressReport=true,
+                                   bool errorReport=false)
         :   RequestTrackerBase (os,
                                 progressReport,
                                 errorReport) {
@@ -197,8 +197,9 @@ public:
      */
     void onFinish (typename T::pointer ptr) {
         RequestTrackerBase::_numFinished++;
-        if (ptr->extendedState() == Request::ExtendedState::SUCCESS)
+        if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
             RequestTrackerBase::_numSuccess++;
+        }
     }
 
     /**
@@ -228,7 +229,7 @@ protected:
      */
     std::list<Request::pointer> getRequests () const override {
         std::list<Request::pointer> result;
-        for (auto const& ptr: requests) result.push_back(ptr);
+        for (auto const& ptr: requests) { result.push_back(ptr); }
         return result;
     }
 
@@ -273,8 +274,8 @@ public:
      *                         of the operation
      */
     explicit AnyRequestTracker (std::ostream& os,
-                                bool          progressReport=true,
-                                bool          errorReport=false);
+                                bool progressReport=true,
+                                bool errorReport=false);
 
     /// Destructor
     ~AnyRequestTracker () override = default;

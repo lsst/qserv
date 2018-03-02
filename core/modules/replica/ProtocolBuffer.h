@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
-#define LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
+#ifndef LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H
+#define LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H
 
 /// ProtocolBuffer.h declares:
 ///
@@ -52,10 +52,10 @@ class ProtocolBuffer {
 public:
 
     /// Google protobuffers are more efficient below this size (bytes)
-    static const size_t DESIRED_LIMIT;
+    static size_t const DESIRED_LIMIT;
 
     /// The hard limit (bytes) for a single Google protobuffer
-    static const size_t HARD_LIMIT;
+    static size_t const HARD_LIMIT;
 
     /**
      * Construct the buffer of the specified initial capacity (bytes).
@@ -66,10 +66,10 @@ public:
 
     ProtocolBuffer () = delete;
     ProtocolBuffer (ProtocolBuffer const&) = delete;
-    ProtocolBuffer & operator= (ProtocolBuffer const&) = delete;
+    ProtocolBuffer& operator= (ProtocolBuffer const&) = delete;
 
-    /// Destructor
-    virtual ~ProtocolBuffer ();
+    /// Destructor (non-trivial)
+    ~ProtocolBuffer ();
 
     /**
      * Pointer to the data blob
@@ -115,9 +115,9 @@ public:
      *      if the serialization failed
      */
     template <class T>
-    void serialize (const T &message) {
+    void serialize (T const& message) {
 
-        const uint32_t bytes = message.ByteSize();
+        uint32_t const bytes = message.ByteSize();
 
         // Make sure we have enough space to accomodate the frame length
         // and the message body.
@@ -131,9 +131,9 @@ public:
 
         // Serialize the message itself
 
-        if (!message.SerializeToArray(_data + _size, _capacity - _size))
+        if (not message.SerializeToArray(_data + _size, _capacity - _size)) {
             throw std::runtime_error("message serialization failed");
-
+        }
         _size += bytes;
     } 
 
@@ -164,14 +164,13 @@ public:
      *      if the deserialization failed
      */
     template <class T>
-    void parse (T       &message,
-                uint32_t bytes) {
-
-        if (_size != bytes)
+    void parse (T& message, uint32_t bytes) {
+        if (_size != bytes) {
             throw std::underflow_error("not enough data to be interpreted as the message");
-
-        if (!message.ParseFromArray(_data, bytes))
+        }
+        if (not message.ParseFromArray(_data, bytes)) {
             throw std::runtime_error("message deserialization failed");
+        }
     }
 
 private:
@@ -193,4 +192,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
+#endif // LSST_QSERV_REPLICA_PROTOCOL_BUFFER_H

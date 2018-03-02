@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
-#define LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
+#ifndef LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H
+#define LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H
 
 /// RequestTypesFwd.h declares:
 ///
@@ -225,4 +225,4 @@ namespace replica {
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUESTTYPESFWD_H
+#endif // LSST_QSERV_REPLICA_REQUEST_TYPES_FWD_H

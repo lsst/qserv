@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SERVICEPROVIDER_H
-#define LSST_QSERV_REPLICA_SERVICEPROVIDER_H
+#ifndef LSST_QSERV_REPLICA_SERVICE_PROVIDER_H
+#define LSST_QSERV_REPLICA_SERVICE_PROVIDER_H
 
 /// ServiceProvider.h declares:
 ///
@@ -117,4 +117,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEPROVIDER_H
+#endif // LSST_QSERV_REPLICA_SERVICE_PROVIDER_H

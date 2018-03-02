@@ -298,8 +298,8 @@ protected:
 struct JobCompare {
 
     /// Order requests by their priorities
-    bool operator() (const Job::pointer& lhs,
-                     const Job::pointer& rhs) const {
+    bool operator() (Job::pointer const& lhs,
+                     Job::pointer const& rhs) const {
 
         return lhs->priority() < rhs->priority();
     }

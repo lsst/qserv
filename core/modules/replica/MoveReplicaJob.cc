@@ -44,9 +44,9 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MoveReplicaJob");
 
 template <class COLLECTION>
-void countRequestStates (size_t&           numLaunched,
-                         size_t&           numFinished,
-                         size_t&           numSuccess,
+void countRequestStates (size_t& numLaunched,
+                         size_t& numFinished,
+                         size_t& numSuccess,
                          COLLECTION const& collection) {
 
     using namespace lsst::qserv::replica;

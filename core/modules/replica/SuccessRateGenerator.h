@@ -55,9 +55,9 @@ public:
     
     // Default construction and copy semantics are prohibited
 
-    SuccessRateGenerator () = delete;
-    SuccessRateGenerator (SuccessRateGenerator const&) = delete;
-    SuccessRateGenerator & operator= (SuccessRateGenerator const&) = delete;
+    SuccessRateGenerator() = delete;
+    SuccessRateGenerator(SuccessRateGenerator const&) = delete;
+    SuccessRateGenerator& operator=(SuccessRateGenerator const&) = delete;
 
     /**
      * Normal constructor
@@ -69,17 +69,17 @@ public:
      *
      * @param successRate - probability density for 'success'
     */
-    explicit SuccessRateGenerator (double successRate=0.5);
+    explicit SuccessRateGenerator(double successRate=0.5);
 
     /// Destructor
-    ~SuccessRateGenerator () = default;
+    ~SuccessRateGenerator() = default;
 
     /**
      * Generate the next random value.
      *
      * @return 'true' for 'success'
      */
-    bool success ();
+    bool success();
 
 private:
 

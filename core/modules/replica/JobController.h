@@ -167,7 +167,7 @@ public:
 
     JobController () = delete;
     JobController (JobController const&) = delete;
-    JobController &operator= (JobController const&) = delete;
+    JobController& operator= (JobController const&) = delete;
 
     /// Destructor
     virtual ~JobController () = default;

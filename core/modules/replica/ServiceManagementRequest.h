@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
-#define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
+#ifndef LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_H
+#define LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_H
 
 /// ServiceManagementRequest.h declares:
 ///
@@ -113,12 +113,12 @@ struct ServiceState {
     uint32_t numInProgressRequests;
     uint32_t numFinishedRequests;
     
-    std::vector<lsst::qserv::proto::ReplicationServiceResponseInfo> newRequests;
-    std::vector<lsst::qserv::proto::ReplicationServiceResponseInfo> inProgressRequests;
-    std::vector<lsst::qserv::proto::ReplicationServiceResponseInfo> finishedRequests;
+    std::vector<proto::ReplicationServiceResponseInfo> newRequests;
+    std::vector<proto::ReplicationServiceResponseInfo> inProgressRequests;
+    std::vector<proto::ReplicationServiceResponseInfo> finishedRequests;
     
     /// Set parameter values from a protobuf object
-    void set (const lsst::qserv::proto::ReplicationServiceResponse &message);
+    void set (const proto::ReplicationServiceResponse &message);
 };
 
 /// Overloaded streaming operator for type ServiceState
@@ -130,43 +130,43 @@ std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
 // ========================================================================
 
 struct ServiceSuspendRequestPolicy {
-    static const char* requestTypeName () {
+    static char const* requestTypeName () {
         return "SERVICE_SUSPEND";
     } 
-    static lsst::qserv::proto::ReplicationServiceRequestType requestType () {
-        return lsst::qserv::proto::ReplicationServiceRequestType::SERVICE_SUSPEND;
+    static proto::ReplicationServiceRequestType requestType () {
+        return proto::ReplicationServiceRequestType::SERVICE_SUSPEND;
     }
 };
 struct ServiceResumeRequestPolicy {
-    static const char* requestTypeName () {
+    static char const* requestTypeName () {
         return "SERVICE_RESUME";
     }   
-    static lsst::qserv::proto::ReplicationServiceRequestType requestType () {
-        return lsst::qserv::proto::ReplicationServiceRequestType::SERVICE_RESUME;
+    static proto::ReplicationServiceRequestType requestType () {
+        return proto::ReplicationServiceRequestType::SERVICE_RESUME;
     }
 };
 struct ServiceStatusRequestPolicy {
-    static const char* requestTypeName () {
+    static char const* requestTypeName () {
         return "SERVICE_STATUS";
     } 
-    static lsst::qserv::proto::ReplicationServiceRequestType requestType () {
-        return lsst::qserv::proto::ReplicationServiceRequestType::SERVICE_STATUS;
+    static proto::ReplicationServiceRequestType requestType () {
+        return proto::ReplicationServiceRequestType::SERVICE_STATUS;
     }
 };
 struct ServiceRequestsRequestPolicy {
-    static const char* requestTypeName () {
+    static char const* requestTypeName () {
         return "SERVICE_REQUESTS";
     } 
-    static lsst::qserv::proto::ReplicationServiceRequestType requestType () {
-        return lsst::qserv::proto::ReplicationServiceRequestType::SERVICE_REQUESTS;
+    static proto::ReplicationServiceRequestType requestType () {
+        return proto::ReplicationServiceRequestType::SERVICE_REQUESTS;
     }
 };
 struct ServiceDrainRequestPolicy {
-    static const char* requestTypeName () {
+    static char const* requestTypeName () {
         return "SERVICE_DRAIN";
     } 
-    static lsst::qserv::proto::ReplicationServiceRequestType requestType () {
-        return lsst::qserv::proto::ReplicationServiceRequestType::SERVICE_DRAIN;
+    static proto::ReplicationServiceRequestType requestType () {
+        return proto::ReplicationServiceRequestType::SERVICE_DRAIN;
     }
 };
 
@@ -206,17 +206,17 @@ public:
      * This method will throw exception std::logic_error if the request's primary state
      * is not 'FINISHED' and its extended state is neither 'SUCCESS" or 'SERVER_ERROR'.
      */
-    const ServiceState& getServiceState () const;
+    ServiceState const& getServiceState () const;
 
 protected:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ServiceManagementRequestBaseC (ServiceProvider&                                 serviceProvider,
-                                  boost::asio::io_service&                          io_service,
-                                  char const*                                       requestTypeName,
-                                  std::string const&                                worker,
+    ServiceManagementRequestBaseC (ServiceProvider&        serviceProvider,
+                                  boost::asio::io_service& io_service,
+                                  char const*              requestTypeName,
+                                  std::string const&       worker,
                                   lsst::qserv::proto::ReplicationServiceRequestType requestType);
 private:
 
@@ -231,28 +231,27 @@ private:
     
     /// Callback handler for the asynchronious operation
     void requestSent (boost::system::error_code const& ec,
-                      size_t                           bytes_transferred);
+                      size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
     void receiveResponse ();
 
     /// Callback handler for the asynchronious operation
     void responseReceived (boost::system::error_code const& ec,
-                           size_t                           bytes_transferred);
+                           size_t bytes_transferred);
 
     /// Process the worker response to the requested operation
-    void analyze (const lsst::qserv::proto::ReplicationServiceResponse &message);
+    void analyze (proto::ReplicationServiceResponse const& message);
 
 private:
 
     /// Request type
-    lsst::qserv::proto::ReplicationServiceRequestType _requestType;
+    proto::ReplicationServiceRequestType _requestType;
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.
     ServiceState _serviceState;
 };
-
 
 /**
   * Generic class ServiceManagementRequest extends its base class
@@ -312,20 +311,19 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestC (ServiceProvider&                                  serviceProvider,
-                               boost::asio::io_service&                          io_service,
-                               char const*                                       requestTypeName,
-                               std::string const&                                worker,
+    ServiceManagementRequestC (ServiceProvider&         serviceProvider,
+                               boost::asio::io_service& io_service,
+                               char const*              requestTypeName,
+                               std::string const&       worker,
                                lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                               callback_type                                     onFinish)
-
+                               callback_type            onFinish)
         :   ServiceManagementRequestBaseC (serviceProvider,
                                            io_service,
                                            requestTypeName,
                                            worker,
                                            requestType),
-            _onFinish (onFinish)
-    {}
+            _onFinish (onFinish) {
+    }
 
     /**
      * Notifying a party which initiated the request.
@@ -335,7 +333,8 @@ private:
      */
     void notify () final {
         if (_onFinish != nullptr) {
-            ServiceManagementRequestC<POLICY>::pointer self = shared_from_base<ServiceManagementRequestC<POLICY>>();
+            ServiceManagementRequestC<POLICY>::pointer self =
+                shared_from_base<ServiceManagementRequestC<POLICY>>();
             _onFinish(self);
         }
     }
@@ -345,7 +344,6 @@ private:
     /// Registered callback to be called when the operation finishes
     callback_type _onFinish;
 };
-
 
 // ===============================================
 //   Classes based on the multiplexed connectors
@@ -383,19 +381,19 @@ public:
      * This method will throw exception std::logic_error if the request's primary state
      * is not 'FINISHED' and its extended state is neither 'SUCCESS" or 'SERVER_ERROR'.
      */
-    const ServiceState& getServiceState () const;
+    ServiceState const& getServiceState () const;
 
 protected:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ServiceManagementRequestBaseM (ServiceProvider&                                  serviceProvider,
-                                   boost::asio::io_service&                          io_service,
-                                   char const*                                       requestTypeName,
-                                   std::string const&                                worker,
+    ServiceManagementRequestBaseM (ServiceProvider&         serviceProvider,
+                                   boost::asio::io_service& io_service,
+                                   char const*              requestTypeName,
+                                   std::string const&       worker,
                                    lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                                   std::shared_ptr<Messenger> const&                 messenger);
+                                   std::shared_ptr<Messenger> const& messenger);
 private:
 
     /**
@@ -411,13 +409,13 @@ private:
      * @param success - the flag indicating if the operation was successfull
      * @param message - a response from the worker service (if success is 'true')
      */
-    void analyze (bool                                                  success,
-                  lsst::qserv::proto::ReplicationServiceResponse const& message);
+    void analyze (bool success,
+                  proto::ReplicationServiceResponse const& message);
 
 private:
 
     /// Request type
-    lsst::qserv::proto::ReplicationServiceRequestType _requestType;
+    proto::ReplicationServiceRequestType _requestType;
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.
@@ -486,22 +484,21 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestM (ServiceProvider&                                  serviceProvider,
-                               boost::asio::io_service&                          io_service,
-                               char const*                                       requestTypeName,
-                               std::string const&                                worker,
+    ServiceManagementRequestM (ServiceProvider&         serviceProvider,
+                               boost::asio::io_service& io_service,
+                               char const*              requestTypeName,
+                               std::string const&       worker,
                                lsst::qserv::proto::ReplicationServiceRequestType requestType,
-                               callback_type                                     onFinish,
-                               std::shared_ptr<Messenger> const&                 messenger)
-
+                               callback_type            onFinish,
+                               std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBaseM (serviceProvider,
                                            io_service,
                                            requestTypeName,
                                            worker,
                                            requestType,
                                            messenger),
-            _onFinish (onFinish)
-    {}
+            _onFinish (onFinish) {
+    }
 
     /**
      * Notifying a party which initiated the request.
@@ -511,7 +508,8 @@ private:
      */
     void notify () final {
         if (_onFinish != nullptr) {
-            ServiceManagementRequestM<POLICY>::pointer self = shared_from_base<ServiceManagementRequestM<POLICY>>();
+            ServiceManagementRequestM<POLICY>::pointer self =
+                shared_from_base<ServiceManagementRequestM<POLICY>>();
             _onFinish(self);
         }
     }
@@ -521,7 +519,6 @@ private:
     /// Registered callback to be called when the operation finishes
     callback_type _onFinish;
 };
-
 
 // =================================================================
 //   Type switch as per the macro defined in replica/Common.h
@@ -551,4 +548,4 @@ typedef ServiceManagementRequestM<ServiceDrainRequestPolicy>    ServiceDrainRequ
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
+#endif // LSST_QSERV_REPLICA_SERVICE_MANAGEMENT_REQUEST_H

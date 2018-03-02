@@ -125,7 +125,7 @@ public:
     ReplicateJob (ReplicateJob const&) = delete;
     ReplicateJob& operator= (ReplicateJob const&) = delete;
 
-    /// Destructor
+    /// Destructor (non-trivial)
     ~ReplicateJob () override;
 
     /// Return the minimum number of each chunk's replicas to be reached when
@@ -159,9 +159,9 @@ public:
       *
       * @see Job::track()
       */
-    void track (bool          progressReport,
-                bool          errorReport,
-                bool          chunkLocksReport,
+    void track (bool progressReport,
+                bool errorReport,
+                bool chunkLocksReport,
                 std::ostream& os) const override;
 
 protected:
