@@ -36,6 +36,8 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequest");
 
+namespace replica = lsst::qserv::replica;
+
 /// Maximum duration for the request execution
 unsigned int const maxDurationMillisec = 10000;
 

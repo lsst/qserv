@@ -40,8 +40,7 @@
 #define LOCK_DATA_FOLDER \
 std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
 
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace fs = boost::filesystem;
 
@@ -59,18 +58,16 @@ namespace replica {
 ///////////////////// WorkerReplicationRequest ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequest::pointer
-WorkerReplicationRequest::create (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker) {
-
-    return WorkerReplicationRequest::pointer (
-        new WorkerReplicationRequest (
+WorkerReplicationRequest::pointer WorkerReplicationRequest::create(
+                                        ServiceProvider&   serviceProvider,
+                                        std::string const& worker,
+                                        std::string const& id,
+                                        int                priority,
+                                        std::string const& database,
+                                        unsigned int       chunk,
+                                        std::string const& sourceWorker) {
+    return WorkerReplicationRequest::pointer(
+        new WorkerReplicationRequest(
                 serviceProvider,
                 worker,
                 id,
@@ -80,33 +77,30 @@ WorkerReplicationRequest::create (
                 sourceWorker));
 }
 
-WorkerReplicationRequest::WorkerReplicationRequest (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker)
-
+WorkerReplicationRequest::WorkerReplicationRequest(
+                                ServiceProvider&   serviceProvider,
+                                std::string const& worker,
+                                std::string const& id,
+                                int                priority,
+                                std::string const& database,
+                                unsigned int       chunk,
+                                std::string const& sourceWorker)
     :   WorkerRequest (
             serviceProvider,
             worker,
             "REPLICATE",
             id,
             priority),
+        _database(database),
+        _chunk(chunk),
+        _sourceWorker(sourceWorker),
+        _replicaInfo() {
 
-        _database     (database),
-        _chunk        (chunk),
-        _sourceWorker (sourceWorker),
-        _replicaInfo  () {
-
-    _serviceProvider.assertWorkerIsValid       (sourceWorker);
-    _serviceProvider.assertWorkersAreDifferent (worker, sourceWorker);
+    _serviceProvider.assertWorkerIsValid(sourceWorker);
+    _serviceProvider.assertWorkersAreDifferent(worker, sourceWorker);
 }
 
-ReplicaInfo
-WorkerReplicationRequest::replicaInfo () const {
+ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
 
     // This implementation guarantees that a consistent snapshot of
     // the object will be returned to a calling thread while
@@ -120,8 +114,7 @@ WorkerReplicationRequest::replicaInfo () const {
 }
     
 
-bool
-WorkerReplicationRequest::execute () {
+bool WorkerReplicationRequest::execute() {
 
    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  sourceWorker: " << sourceWorker()
@@ -132,12 +125,12 @@ WorkerReplicationRequest::execute () {
 
     bool const complete = WorkerRequest::execute();
     if (complete) {
-        _replicaInfo = ReplicaInfo (ReplicaInfo::COMPLETE,
-                                    worker(),
-                                    database(),
-                                    chunk(),
-                                    PerformanceUtils::now(),
-                                    ReplicaInfo::FileInfoCollection());
+        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE,
+                                   worker(),
+                                   database(),
+                                   chunk(),
+                                   PerformanceUtils::now(),
+                                   ReplicaInfo::FileInfoCollection());
     }
     return complete;
 }
@@ -146,18 +139,16 @@ WorkerReplicationRequest::execute () {
 ///////////////////// WorkerReplicationRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequestPOSIX::pointer
-WorkerReplicationRequestPOSIX::create (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker) {
-
-    return WorkerReplicationRequestPOSIX::pointer (
-        new WorkerReplicationRequestPOSIX (
+WorkerReplicationRequestPOSIX::pointer WorkerReplicationRequestPOSIX::create (
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    std::string const& sourceWorker) {
+    return WorkerReplicationRequestPOSIX::pointer(
+        new WorkerReplicationRequestPOSIX(
                 serviceProvider,
                 worker,
                 id,
@@ -167,16 +158,15 @@ WorkerReplicationRequestPOSIX::create (
                 sourceWorker));
 }
 
-WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker)
-
-    :   WorkerReplicationRequest (
+WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    std::string const& sourceWorker)
+    :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
                 id,
@@ -186,8 +176,7 @@ WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX (
                 sourceWorker) {
 }
 
-bool
-WorkerReplicationRequestPOSIX::execute () {
+bool WorkerReplicationRequestPOSIX::execute () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  sourceWorker: " << sourceWorker()
@@ -211,15 +200,15 @@ WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquering LOCK_DATA_FOLDER where it's needed.
 
-    WorkerInfo   const& inWorkerInfo  = _serviceProvider.config()->workerInfo  (sourceWorker());
-    WorkerInfo   const& outWorkerInfo = _serviceProvider.config()->workerInfo  (worker());
+    WorkerInfo   const& inWorkerInfo  = _serviceProvider.config()->workerInfo(  sourceWorker());
+    WorkerInfo   const& outWorkerInfo = _serviceProvider.config()->workerInfo(  worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
 
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
 
     std::vector<std::string> const files =
-        FileUtils::partitionedFiles (databaseInfo, chunk());
+        FileUtils::partitionedFiles(databaseInfo, chunk());
 
     std::vector<fs::path> inFiles;
     std::vector<fs::path> tmpFiles;
@@ -260,25 +249,25 @@ WorkerReplicationRequestPOSIX::execute () {
         for (auto const& file: inFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         stat.type() == fs::status_error,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                         "failed to check the status of input file: " + file.string())
-                || reportErrorIf (
-                        !fs::exists(stat),
+                or reportErrorIf(
+                        not fs::exists(stat),
                         ExtendedCompletionStatus::EXT_STATUS_NO_FILE,
                         "the input file does not exist: " + file.string());
 
             totalBytes += fs::file_size(file, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
                         "failed to get the size of input file: " + file.string());
 
             inFile2mtime[file] = fs::last_write_time(file, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                         "failed to get the mtime of input file: " + file.string());
@@ -288,12 +277,12 @@ WorkerReplicationRequestPOSIX::execute () {
 
         bool const outDirExists = fs::exists(outDir, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     ec,
                     ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                     "failed to check the status of output directory: " + outDir.string())
-            || reportErrorIf (
-                    !outDirExists,
+            or reportErrorIf(
+                    not outDirExists,
                     ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                     "the output directory doesn't exist: " + outDir.string());
 
@@ -303,11 +292,11 @@ WorkerReplicationRequestPOSIX::execute () {
         for (auto const& file: outFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         stat.type() == fs::status_error,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                         "failed to check the status of output file: " + file.string())
-                || reportErrorIf (
+                or reportErrorIf(
                         fs::exists(stat),
                         ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS,
                         "the output file already exists: " + file.string());
@@ -319,7 +308,7 @@ WorkerReplicationRequestPOSIX::execute () {
         for (auto const& file: tmpFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         stat.type() == fs::status_error,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                         "failed to check the status of temporary file: " + file.string());
@@ -327,7 +316,7 @@ WorkerReplicationRequestPOSIX::execute () {
             if (fs::exists(stat)) {
                 fs::remove(file, ec);
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                             ec,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                             "failed to remove temporary file: " + file.string());
@@ -341,11 +330,11 @@ WorkerReplicationRequestPOSIX::execute () {
 
         fs::space_info const space = fs::space(outDir, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     ec,
                     ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
                     "failed to obtaine space information at output folder: " + outDir.string())
-            || reportErrorIf (
+            or reportErrorIf(
                     space.available < totalBytes,
                     ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
                     "not enough free space availble at output folder: " + outDir.string());
@@ -365,7 +354,7 @@ WorkerReplicationRequestPOSIX::execute () {
 
         fs::copy_file(inFile, tmpFile, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                     ec,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_COPY,
                     "failed to copy file: " + inFile.string() + " into: " + tmpFile.string());
@@ -395,14 +384,14 @@ WorkerReplicationRequestPOSIX::execute () {
 
             fs::rename(tmpFile, outFile, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
                         "failed to rename file: " + tmpFile.string());
 
             fs::last_write_time(outFile, inFile2mtime[inFile], ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                         "failed to set the mtime of output file: " + outFile.string());
@@ -420,23 +409,20 @@ WorkerReplicationRequestPOSIX::execute () {
     return true;
 }
 
-
 /////////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequestFS ////////////////////
 /////////////////////////////////////////////////////////////////////
 
-WorkerReplicationRequestFS::pointer
-WorkerReplicationRequestFS::create (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker) {
-
-    return WorkerReplicationRequestFS::pointer (
-        new WorkerReplicationRequestFS (
+WorkerReplicationRequestFS::pointer WorkerReplicationRequestFS::create (
+                                            ServiceProvider&   serviceProvider,
+                                            std::string const& worker,
+                                            std::string const& id,
+                                            int                priority,
+                                            std::string const& database,
+                                            unsigned int       chunk,
+                                            std::string const& sourceWorker) {
+    return WorkerReplicationRequestFS::pointer(
+        new WorkerReplicationRequestFS(
                 serviceProvider,
                 worker,
                 id,
@@ -446,16 +432,15 @@ WorkerReplicationRequestFS::create (
                 sourceWorker));
 }
 
-WorkerReplicationRequestFS::WorkerReplicationRequestFS (
-        ServiceProvider&   serviceProvider,
-        std::string const& worker,
-        std::string const& id,
-        int                priority,
-        std::string const& database,
-        unsigned int       chunk,
-        std::string const& sourceWorker)
-
-    :   WorkerReplicationRequest (
+WorkerReplicationRequestFS::WorkerReplicationRequestFS(
+                                    ServiceProvider&   serviceProvider,
+                                    std::string const& worker,
+                                    std::string const& id,
+                                    int                priority,
+                                    std::string const& database,
+                                    unsigned int       chunk,
+                                    std::string const& sourceWorker)
+    :   WorkerReplicationRequest(
                 serviceProvider,
                 worker,
                 id,
@@ -463,25 +448,21 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS (
                 database,
                 chunk,
                 sourceWorker),
-
-        _inWorkerInfo  (_serviceProvider.config()->workerInfo  (sourceWorker)),
-        _outWorkerInfo (_serviceProvider.config()->workerInfo  (worker)),
-        _databaseInfo  (_serviceProvider.config()->databaseInfo(database)),
-
-        _initialized   (false),
-        _files         (FileUtils::partitionedFiles (_databaseInfo, chunk)),
-
-        _tmpFilePtr    (nullptr),
-        _buf           (0),
-        _bufSize       (serviceProvider.config()->workerFsBufferSizeBytes()) {
+        _inWorkerInfo( _serviceProvider.config()->workerInfo(  sourceWorker)),
+        _outWorkerInfo(_serviceProvider.config()->workerInfo(  worker)),
+        _databaseInfo( _serviceProvider.config()->databaseInfo(database)),
+        _initialized(false),
+        _files(FileUtils::partitionedFiles(_databaseInfo, chunk)),
+        _tmpFilePtr(nullptr),
+        _buf(0),
+        _bufSize(serviceProvider.config()->workerFsBufferSizeBytes()) {
 }
 
-WorkerReplicationRequestFS::~WorkerReplicationRequestFS () {
+WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
     releaseResources();
 }
 
-bool
-WorkerReplicationRequestFS::execute () {
+bool WorkerReplicationRequestFS::execute () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
          << "  sourceWorker: " << sourceWorker()
@@ -518,7 +499,7 @@ WorkerReplicationRequestFS::execute () {
     //       Initialization phase (runs only once)       //
     ///////////////////////////////////////////////////////
  
-    if (!_initialized) {
+    if (not _initialized) {
         _initialized = true;
 
         fs::path const outDir = fs::path(_outWorkerInfo.dataDir) / database();
@@ -559,13 +540,13 @@ WorkerReplicationRequestFS::execute () {
     
                 // Open the file on the remote server in the no-content-read mode
                 FileClient::pointer inFilePtr =
-                    FileClient::stat (_serviceProvider,
-                                      _inWorkerInfo.name,
-                                      _databaseInfo.name,
-                                      file);
+                    FileClient::stat(_serviceProvider,
+                                     _inWorkerInfo.name,
+                                     _databaseInfo.name,
+                                    file);
                 errorContext = errorContext
-                    || reportErrorIf (
-                        !inFilePtr,
+                    or reportErrorIf(
+                        not inFilePtr,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
                         "failed to open input file on remote worker: " + _inWorkerInfo.name +
                         ", database: " + _databaseInfo.name +
@@ -586,12 +567,12 @@ WorkerReplicationRequestFS::execute () {
     
             bool const outDirExists = fs::exists(outDir, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
                         "failed to check the status of output directory: " + outDir.string())
-                || reportErrorIf (
-                        !outDirExists,
+                or reportErrorIf(
+                        not outDirExists,
                         ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                         "the output directory doesn't exist: " + outDir.string());
     
@@ -601,11 +582,11 @@ WorkerReplicationRequestFS::execute () {
             for (auto const& file: outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                             stat.type() == fs::status_error,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                             "failed to check the status of output file: " + file.string())
-                    || reportErrorIf (
+                    or reportErrorIf(
                             fs::exists(stat),
                             ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS,
                             "the output file already exists: " + file.string());
@@ -617,7 +598,7 @@ WorkerReplicationRequestFS::execute () {
             for (auto const& file: tmpFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                             stat.type() == fs::status_error,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                             "failed to check the status of temporary file: " + file.string());
@@ -625,7 +606,7 @@ WorkerReplicationRequestFS::execute () {
                 if (fs::exists(stat)) {
                     fs::remove(file, ec);
                     errorContext = errorContext
-                        || reportErrorIf (
+                        or reportErrorIf(
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
                                 "failed to remove temporary file: " + file.string());
@@ -639,11 +620,11 @@ WorkerReplicationRequestFS::execute () {
     
             fs::space_info const space = fs::space(outDir, ec);
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                         ec,
                         ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
                         "failed to obtaine space information at output folder: " + outDir.string())
-                || reportErrorIf (
+                or reportErrorIf(
                         space.available < totalBytes,
                         ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
                         "not enough free space availble at output folder: " + outDir.string());
@@ -659,8 +640,8 @@ WorkerReplicationRequestFS::execute () {
     
                 std::FILE* tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
                 errorContext = errorContext
-                    || reportErrorIf (
-                            !tmpFilePtr,
+                    or reportErrorIf(
+                            not tmpFilePtr,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE,
                             "failed to open/create temporary file: " + tmpFile.string() +
                             ", error: " + std::strerror(errno));
@@ -673,7 +654,7 @@ WorkerReplicationRequestFS::execute () {
     
                 fs::resize_file(tmpFile, file2size[file], ec);
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                             ec,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE,
                             "failed to resize the temporary file: " + tmpFile.string());
@@ -686,13 +667,15 @@ WorkerReplicationRequestFS::execute () {
         
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
-        if (!_buf)
-            throw std::runtime_error("WorkerReplicationRequestFS::execute()  buffer allocation failed");
+        if (not _buf) {
+            throw std::runtime_error(
+                            "WorkerReplicationRequestFS::execute()  buffer allocation failed");
+        }
 
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
 
-        if (openFiles()) return true;
+        if (openFiles()) { return true; }
     }
 
     // Copy the next record from the currently open remote file
@@ -716,17 +699,17 @@ WorkerReplicationRequestFS::execute () {
                     _file2descr[*_fileItr].outSizeBytes += num;
                     uint64_t& cs = _file2descr[*_fileItr].cs;
                     for (uint8_t *ptr = _buf, *end = _buf + num;
-                         ptr != end; ++ptr) cs += *ptr;
+                         ptr != end; ++ptr) { cs += *ptr; }
 
                     // Keep updating this stats while copying the files
                     _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
-                    updateInfo ();
+                    updateInfo();
 
                     // Keep copying the same file
                     return false;
                 }
                 errorContext = errorContext
-                    || reportErrorIf (
+                    or reportErrorIf(
                         true,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE,
                         "failed to write into temporary file: " + _file2descr[*_fileItr].tmpFile.string() +
@@ -735,7 +718,7 @@ WorkerReplicationRequestFS::execute () {
                 
         } catch (FileClientError const& ex) {
             errorContext = errorContext
-                || reportErrorIf (
+                or reportErrorIf(
                     true,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
                     "failed to read input file from remote worker: " + _inWorkerInfo.name +
@@ -746,7 +729,7 @@ WorkerReplicationRequestFS::execute () {
         // Make sure the number of bytes copied from the remote server
         // matches expectations.
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf(
                 _file2descr[*_fileItr].inSizeBytes != _file2descr[*_fileItr].outSizeBytes,
                 ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
                 "short read of the input file from remote worker: " + _inWorkerInfo.name +
@@ -782,8 +765,7 @@ WorkerReplicationRequestFS::execute () {
     return finalize();
 }
 
-bool
-WorkerReplicationRequestFS::openFiles () {
+bool WorkerReplicationRequestFS::openFiles () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "openFiles"
          << "  sourceWorker: " << sourceWorker()
@@ -795,13 +777,13 @@ WorkerReplicationRequestFS::openFiles () {
 
     // Open the input file on the remote server
     _inFilePtr =
-        FileClient::open (_serviceProvider,
-                          _inWorkerInfo.name,
-                          _databaseInfo.name,
-                          *_fileItr);
+        FileClient::open(_serviceProvider,
+                         _inWorkerInfo.name,
+                         _databaseInfo.name,
+                         *_fileItr);
     errorContext = errorContext
-        || reportErrorIf (
-            !_inFilePtr,
+        or reportErrorIf(
+            not _inFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
             "failed to open input file on remote worker: " + _inWorkerInfo.name +
             ", database: " + _databaseInfo.name +
@@ -819,8 +801,8 @@ WorkerReplicationRequestFS::openFiles () {
 
     _tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
     errorContext = errorContext
-        || reportErrorIf (
-            !_tmpFilePtr,
+        or reportErrorIf(
+        not !_tmpFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN,
             "failed to open temporary file: " + tmpFile.string() +
             ", error: " + std::strerror(errno));
@@ -835,8 +817,7 @@ WorkerReplicationRequestFS::openFiles () {
     return false;
 }
 
-bool
-WorkerReplicationRequestFS::finalize () {
+bool WorkerReplicationRequestFS::finalize () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finalize"
          << "  sourceWorker: " << sourceWorker()
@@ -867,14 +848,14 @@ WorkerReplicationRequestFS::finalize () {
 
         fs::rename(tmpFile, outFile, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf (
                     ec,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
                     "failed to rename file: " + tmpFile.string());
 
         fs::last_write_time(outFile, _file2descr[file].mtime, ec);
         errorContext = errorContext
-            || reportErrorIf (
+            or reportErrorIf (
                     ec,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                     "failed to change 'mtime' of file: " + tmpFile.string());
@@ -884,21 +865,19 @@ WorkerReplicationRequestFS::finalize () {
         setStatus(STATUS_FAILED, errorContext.extendedStatus);
         return true;
     }
-    
     setStatus(STATUS_SUCCEEDED);
     return true;
 }
 
-void
-WorkerReplicationRequestFS::updateInfo () {
+void WorkerReplicationRequestFS::updateInfo() {
 
     size_t totalInSizeBytes  = 0;
     size_t totalOutSizeBytes = 0;
 
     ReplicaInfo::FileInfoCollection fileInfoCollection;
     for (auto const& file: _files) {
-        fileInfoCollection.emplace_back (
-            ReplicaInfo::FileInfo ({
+        fileInfoCollection.emplace_back(
+            ReplicaInfo::FileInfo({
                 file,
                 _file2descr[file].outSizeBytes,
                 _file2descr[file].mtime,
@@ -912,7 +891,7 @@ WorkerReplicationRequestFS::updateInfo () {
         totalOutSizeBytes += _file2descr[file].outSizeBytes;
     }
     ReplicaInfo::Status const status =
-        (_files.size()    == fileInfoCollection.size()) &&
+        (_files.size()    == fileInfoCollection.size()) and
         (totalInSizeBytes == totalOutSizeBytes) ?
             ReplicaInfo::Status::COMPLETE :
             ReplicaInfo::Status::INCOMPLETE;
@@ -923,7 +902,7 @@ WorkerReplicationRequestFS::updateInfo () {
                     // if other threads will be requesting its copy while it'll be being
                     // updated below.
 
-    _replicaInfo = ReplicaInfo (
+    _replicaInfo = ReplicaInfo(
         status,
         worker(),
         database(),
