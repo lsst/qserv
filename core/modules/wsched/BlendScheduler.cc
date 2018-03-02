@@ -288,10 +288,13 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             break;
         }
         // adjMax = _getAdjustedMaxThreads(adjMax, sched->getInFlight()); // DM-4943 possible alternate method
-        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName() << " avail=" << availableThreads);
+        LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() nothing from " << sched->getName()
+             << " avail=" << availableThreads);
     }
     if (cmd == nullptr) {
-       cmd = _ctrlCmdQueue.getCmd();
+        // The scheduler didn't have anything, see if there's anything on the control queue,
+        // which could change the size of the pool.
+        cmd = _ctrlCmdQueue.getCmd();
     }
     if (cmd != nullptr) {
         _infoChanged = true;

@@ -79,6 +79,8 @@ public:
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
 
+    bool getScanInteractive() const;
+
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     /// If the starting value of _attemptCount was greater than or equal to zero, that
     /// attempt is scrubbed from the result table.

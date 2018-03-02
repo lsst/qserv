@@ -75,8 +75,8 @@ class CommandThreadPool : public CommandTracked {
 public:
     using Ptr = std::shared_ptr<CommandThreadPool>;
 
-    CommandThreadPool() {}
-    CommandThreadPool(std::function<void(CmdData*)> func) : Command{func} {}
+    CommandThreadPool() = default;
+    explicit CommandThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
 
     PoolEventThread::Ptr getAndNullPoolEventThread();
 

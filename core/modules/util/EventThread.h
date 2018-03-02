@@ -103,6 +103,11 @@ public:
         return cmd;
     };
 
+    virtual size_t size() {
+        std::lock_guard<std::mutex> lock(_mx);
+        return _qu.size();
+    }
+
     /// Notify all threads waiting on this queue, or just 1 if all is false.
     virtual void notify(bool all=true) {
         if (all) {

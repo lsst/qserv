@@ -55,70 +55,62 @@ JobStatus::Info::Info()
     stateTime = ::time(NULL);
 }
 
-void JobStatus::updateInfo(JobStatus::State s, int code, std::string const& desc) {
+void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int code, std::string const& desc) {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    LOGS(_log, LOG_LVL_TRACE, "Updating " << (void*) this << " state to: " << s);
+    LOGS(_log, LOG_LVL_INFO, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
     _info.stateTime = ::time(NULL);
     _info.state = s;
     _info.stateCode = code;
     _info.stateDesc = desc;
 }
 
-std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
-    char const* msg = "State error (unrecognized)";
+
+std::string JobStatus::stateStr(JobStatus::State const& state) {
+    std::string msg("?");
     switch(state)
     {
     case JobStatus::UNKNOWN:
-        msg = "Unknown";
-        break;
-    case JobStatus::PROVISION:
-        msg = "Accessing resource";
-        break;
-    case JobStatus::PROVISION_NACK:
-        msg = "Error accessing resource (delayed)";
+        msg = "UNKNOWN";
         break;
     case JobStatus::REQUEST:
-        msg = "Sending request to resource";
-        break;
-    case JobStatus::REQUEST_ERROR:
-        msg = "Error sending request";
+        msg = "REQUEST";
         break;
     case JobStatus::RESPONSE_READY:
-        msg = "Response ready";
+        msg = "RESPONSE_READY";
         break;
     case JobStatus::RESPONSE_ERROR:
-        msg = "Response error";
+        msg = "RESPONSE_ERROR";
         break;
     case JobStatus::RESPONSE_DATA:
-        msg = "Retrieving response data";
-        break;
-    case JobStatus::RESPONSE_DATA_ERROR:
-        msg = "Error retrieving response data";
+        msg = "RESPONSE_DATA";
         break;
     case JobStatus::RESPONSE_DATA_NACK:
-        msg = "Error in response data";
+        msg = "RESPONSE_DATA_NACK";
         break;
     case JobStatus::RESPONSE_DONE:
-        msg = "Finished retrieving result";
+        msg = "RESPONSE_DONE";
         break;
     case JobStatus::RESULT_ERROR:
-        msg = "Error in worker result data";
-        break;
-    case JobStatus::MERGE_OK:
-        msg = "Merge complete";
+        msg = "RESULT_ERROR";
         break;
     case JobStatus::MERGE_ERROR:
-        msg = "Error merging result";
+        msg = "MERGE_ERROR";
         break;
     case JobStatus::COMPLETE:
-        msg = "Complete (success)";
+        msg = "COMPLETE (success)";
         break;
     case JobStatus::CANCEL:
         msg = "CANCEL";
         break;
+    default:
+        msg = "(unrecognized) state=" + std::to_string((int)state);
     }
-    os << msg;
+    return msg;
+}
+
+std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
+    os << JobStatus::stateStr(state);
     return os;
 }
 

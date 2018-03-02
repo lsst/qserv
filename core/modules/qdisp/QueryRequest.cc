@@ -30,6 +30,7 @@
   */
 
 // Class header
+#include "qdisp/QdispPool.h"
 #include "qdisp/QueryRequest.h"
 
 // System headers
@@ -42,7 +43,6 @@
 // Qserv headers
 #include "czar/Czar.h"
 #include "qdisp/JobStatus.h"
-#include "qdisp/LargeResultMgr.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
 
@@ -54,18 +54,137 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+
+// Run action() when the system expects to have time to accept data.
+class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
+public:
+    typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
+    enum class State { STARTED0, DATAREADY1, DONE2 };
+    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq)
+        : _qRequest(qr), _jQuery(jq), _idStr(jq->getIdStr()) {}
+
+    void action(util::CmdData *data) override {
+        // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
+        {
+            auto jq = _jQuery.lock();
+            auto qr = _qRequest.lock();
+            if (jq == nullptr || qr == nullptr) {
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before GetResponseData");
+                // No way to call _errorFinish().
+                _setState(State::DONE2);
+                return;
+            }
+
+            if (qr->isQueryCancelled()) {
+                LOGS(_log, LOG_LVL_DEBUG, _idStr << " AskForResponseData query was cancelled");
+                qr->_errorFinish(true);
+                _setState(State::DONE2);
+                return;
+            }
+            std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Asking for GetResponseData size=" << buffer.size());
+            qr->GetResponseData(&buffer[0], buffer.size());
+        }
+
+        // Wait for XrdSsi to call ProcessResponseData with the data,
+        // which will notify this wait with a call to receivedProcessResponseDataParameters.
+        {
+            std::unique_lock<std::mutex> uLock(_mtx);
+            // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
+            _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            // _mtx is locked at this point.
+            LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data should be DATAREADY1 " << (int)_state);
+            if (_state == State::DONE2) {
+                // There was a problem. End the stream associated
+                auto qr = _qRequest.lock();
+                if (qr != nullptr) {
+                    qr->_errorFinish();
+                }
+                LOGS(_log, LOG_LVL_INFO, _idStr << " AskForResponseDataCmd returning early");
+                return;
+            }
+        }
+
+        // Actually process the data.
+        // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
+        // object and queue it.
+        {
+            auto jq = _jQuery.lock();
+            auto qr = _qRequest.lock();
+            if (jq == nullptr || qr == nullptr) {
+                _setState(State::DONE2);
+                LOGS(_log, LOG_LVL_WARN, _idStr << " AskForResponseData null before processData");
+                return;
+            }
+            qr->_processData(jq, _blen, _last);
+            // _processData will have created another AskForResponseDataCmd object if needed.
+        }
+        _setState(State::DONE2);
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Ask data is done.");
+    }
+
+    void notifyDataSuccess(int blen, bool last) {
+        {
+            std::lock_guard<std::mutex> lg(_mtx);
+            _blen = blen;
+            _last = last;
+            _state = State::DATAREADY1;
+        }
+        _cv.notify_all();
+    }
+
+    void notifyFailed() {
+        LOGS(_log, LOG_LVL_INFO, _idStr << "notifyFailed");
+        _setState(State::DONE2);
+        _cv.notify_all();
+    }
+
+    State getState() {
+        std::lock_guard<std::mutex> lg(_mtx);
+        return _state;
+    }
+
+private:
+    void _setState(State const state) {
+        std::lock_guard<std::mutex> lg(_mtx);
+        _state = State::DONE2;
+    }
+
+
+    std::weak_ptr<QueryRequest> _qRequest;
+    std::weak_ptr<JobQuery> _jQuery;
+    std::string _idStr;
+    std::mutex _mtx;
+    std::condition_variable _cv;
+    State _state = State::STARTED0;
+
+    int _blen{-1};
+    bool _last{true};
+    util::InstanceCount _ic{"AskForResponseDataCmd"};
+};
+
+
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
   _jobQuery(jobQuery),
   _jobIdStr(jobQuery->getIdStr()),
-  _largeResultSafety(_jobQuery->getLargeResultMgr(), _jobIdStr){
+  _qdispPool(_jobQuery->getQdispPool()){
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
 }
 
 QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
+    if (_askForResponseDataCmd != nullptr) {
+        // This shouldn't really happen, but we really don't want to leave this blocking the pool.
+        LOGS(_log, LOG_LVL_WARN, _jobIdStr << " ~QueryRequest cleaning up _askForResponseDataCmd");
+        _askForResponseDataCmd->notifyFailed();
+    }
+    if (!_finishedCalled) {
+        LOGS(_log, LOG_LVL_WARN, _jobIdStr << " ~QueryRequest cleaning up calling Finished");
+        Finished(true);
+    }
 }
 
 // content of request data
@@ -87,9 +206,8 @@ char* QueryRequest::GetRequest(int& requestLength) {
 // Must not throw exceptions: calling thread cannot trap them.
 // Callback function for XrdSsiRequest.
 //
-bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
-                                   XrdSsiRespInfo const& rInfo) {
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse");
+bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo const& rInfo) {
+    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "workerName=" << GetEndPoint() << " ProcessResponse");
     std::string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, _jobIdStr << " QueryRequest::ProcessResponse job already cancelled");
@@ -112,7 +230,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         os << _jobIdStr << "ProcessResponse request failed "
            << getSsiErr(eInfo, nullptr);
         jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
     }
@@ -122,20 +240,21 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
         break;
     case XrdSsiRespInfo::isData: // Local-only for Mock tests!
         if (std::string(rInfo.buff, rInfo.blen) == "MockResponse") {
-           jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+           jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
            _finish();
            return true;
         }
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isData";
         break;
     case XrdSsiRespInfo::isError:
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_ERROR, rInfo.eNum, std::string(rInfo.eMsg));
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR,
+                                    rInfo.eNum, std::string(rInfo.eMsg));
         return _importError(std::string(rInfo.eMsg), rInfo.eNum);
     case XrdSsiRespInfo::isFile: // Local-only
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
         break;
     case XrdSsiRespInfo::isStream: // All remote requests
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_READY);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY);
         return _importStream(jq);
     default:
         errorDesc += "Out of range XrdSsiRespInfo.rType";
@@ -143,18 +262,34 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo,
     return _importError(errorDesc, -1);
 }
 
+
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
-
-    // Pass ResponseHandler's buffer directly.
-    std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream buffer.size=" << buffer.size());
-    const void* pbuf = (void*)(&buffer[0]);
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " _importStream->GetResponseData size="
-         << buffer.size() << " " << pbuf << " " << util::prettyCharList(buffer, 5));
-    GetResponseData(&buffer[0], buffer.size());
+    if (_askForResponseDataCmd != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
+        // Keep the previous object from wedging the pool.
+        _askForResponseDataCmd->notifyFailed();
+    }
+    _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+    _queueAskForResponse(_askForResponseDataCmd, jq);
     return true;
+}
+
+
+void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
+    if (_largeResult) {
+        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority low");
+        _qdispPool->queCmdLow(_askForResponseDataCmd);
+    } else {
+        if (jq->getDescription()->getScanInteractive()) {
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority vhigh");
+            _qdispPool->queCmdVeryHigh(_askForResponseDataCmd);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " queueing priority norm");
+            _qdispPool->queCmdNorm(_askForResponseDataCmd);
+        }
+    }
 }
 
 /// Process an incoming error.
@@ -183,34 +318,16 @@ void QueryRequest::_setHoldState(HoldState state) {
 
 
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
-                                     char *buff, int blen, bool last) { // Step 7
-    util::InstanceCount instC("instC QueryRequest::ProcessResponseData");
+                                                         char *buff, int blen, bool last) { // Step 7
+    // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
+    // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen
-         << " " << (last ? "(last)" : "(more)"));
-
-    // Class to make certain that the LargeResultMgr semaphore gets decremented.
-    class CallOnFuncExit {
-    public:
-        CallOnFuncExit(bool callLargeResult, std::function<void()> resetHState)
-          : _callLargeResult(callLargeResult), _resetHState(resetHState) {}
-
-        ~CallOnFuncExit() { callNow(); }
-        void callNow() {
-            if (_callLargeResult) _resetHState();
-            _callLargeResult = false; // only reset _holdState once
-        }
-        void setCallLargeResult() { _callLargeResult = true; }
-    private:
-        bool _callLargeResult{false};
-        std::function<void()> _resetHState;
-    };
-
-    // If the _holdState is MERGE2, _largeResultMgr->finishBlock must be called at the end of this function.
-    std::function<void()> resetHoldState = [this]() {
-        _setHoldState(NO_HOLD0);
-        _largeResultSafety.finishBlock();
-    };
-    CallOnFuncExit callOnExit(_holdState == MERGE2, resetHoldState);
+                              << " " << (last ? "(last)" : "(more)"));
+    if (_askForResponseDataCmd == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, _jobIdStr <<
+             " ProcessResponseData called with invalid _askForResponseDataCmd!!!");
+        return XrdSsiRequest::PRD_Normal;
+    }
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
     JobQuery::Ptr jq = _jobQuery;
@@ -219,56 +336,53 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         if (_finishStatus != ACTIVE || jq == nullptr || jq->isQueryCancelled()) {
             LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData job is inactive.");
             // Something must have killed this job.
-            if (_holdState != NO_HOLD0) {
-                LOGS(_log, LOG_LVL_INFO, _jobIdStr << "ProcessResponseData clearing heldData");
-                // Must call largeResultMgr->finishBlock to free the semaphore.
-                callOnExit.setCallLargeResult();
-            }
+            _errorFinish();
             return XrdSsiRequest::PRD_Normal;
         }
     }
 
-    auto getResponseDataFunc = [this, &jq]() {
-        std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-        const void* pbuf = (void*)(&buffer[0]);
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState
-                << " DataFunc->GetResponseData size=" << buffer.size() << " "
-                << pbuf << " " << util::prettyCharList(buffer, 5));
-        GetResponseData(&buffer[0], buffer.size());
-    };
-
-    // Get data for large response and prepare for merge on next ProcessResponseData call.
-    if (_holdState == GET_DATA1) {
-        _setHoldState(MERGE2);
-        LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState << " held getResponseDataFunc()");
-        getResponseDataFunc();
-        return XrdSsiRequest::PRD_Normal;
-    }
-
+    // If there's an error, it makes sense to handle it immediately.
     if (blen < 0) { // error, check errinfo object.
         int eCode;
         auto reason = getSsiErr(eInfo, &eCode);
-        jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA_NACK, eCode, reason);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
         jq->getDescription()->respHandler()->errorFlush(
             "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
         _errorFinish();
+
+        // Let the ask for response command end.
+        _askForResponseDataCmd->notifyFailed();
         // An error occurred, let processing continue so it can be cleaned up soon.
         return XrdSsiRequest::PRD_Normal;
     }
-    jq->getStatus()->updateInfo(JobStatus::RESPONSE_DATA);
+
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA);
+
+    // Handle the response in a separate thread so we can give this one back to XrdSsi.
+    // _askForResponseDataCmd should call QueryRequest::_processData() next.
+    _askForResponseDataCmd->notifyDataSuccess(blen, last);
+
+    return XrdSsiRequest::PRD_Normal;
+}
+
+
+void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
+    // It's possible jq and _jobQuery differ, so need to use jq.
+    if (jq->isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, this->_jobIdStr << "QueryRequest::_processData job was cancelled.");
+        _errorFinish(true);
+        return;
+    }
+
+    _askForResponseDataCmd.reset(); // No longer need it, and don't want our destructor calling _errorFinish().
     bool largeResult = false;
     bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
-
-    // If _holdState was MERGE2 when callOnExit was created, the data should have been merged with the result
-    // table in the above flush() call. The merge is the expensive part of handling large results, and since
-    // it is finished, the LargeResultMgr semaphore needs to freed now so the next header can be read below.
-    callOnExit.callNow();
 
     if (flushOk) {
         if (last) {
@@ -277,42 +391,26 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
                 LOGS(_log, LOG_LVL_WARN,
                      _jobIdStr << " Connection closed when more information expected sz=" << sz);
             }
-            jq->getStatus()->updateInfo(JobStatus::COMPLETE);
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
-            return XrdSsiRequest::PRD_Normal;
+            return;
         } else {
-            if (_largeResult) {
-                LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " being held");
-                if (_holdState == NO_HOLD0) {
-                    _setHoldState(GET_DATA1);
-                    _largeResultSafety.startBlock();
-                    return XrdSsiRequest::PRD_Hold; // semaphore locked.
-                }
-                return XrdSsiRequest::PRD_Normal;
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " holdState=" << _holdState
-                     << " not held getResponseDataFunc()");
-                getResponseDataFunc();
-            }
+            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
+            LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "queuing askForResponseDataCmd");
+            _queueAskForResponse(_askForResponseDataCmd, jq);
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponse data flush failed");
         ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-        jq->getStatus()->updateInfo(JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
         // @todo DM-2378 Take a closer look at what causes this error and take
         // appropriate action. There could be cases where this is recoverable.
         _retried.store(true); // Do not retry
         _errorFinish(true);
-        if (_holdState != NO_HOLD0) {
-            // Must call largeResultMgr->finishBlock to free the semaphore since it was locked.
-            callOnExit.setCallLargeResult();
-        }
-        return XrdSsiRequest::PRD_Normal;
     }
-    LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " QueryRequest::ProcessResponseData " << instC.getCount());
-    return XrdSsiRequest::PRD_Normal;
+    return;
 }
 
 
@@ -330,7 +428,7 @@ bool QueryRequest::cancel() {
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _jobQuery;
-            if (jq != nullptr) jq->getStatus()->updateInfo(JobStatus::CANCEL);
+            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL);
         }
     }
     return _errorFinish(true); // return true if errorFinish cancelled
@@ -368,11 +466,6 @@ void QueryRequest::cleanup() {
         }
     }
 
-    // Release this in the off chance it has not been released already.
-    if (_largeResultSafety.finishBlock()) {
-        LOGS_ERROR(_jobIdStr << " QueryRequest::cleanup had to call finishBlock()");
-    }
-
     // These need to be outside the mutex lock, or you could delete
     // _finishStatusMutex before it is unlocked.
     // This should reset _jobquery and _keepAlive without risk of either being deleted
@@ -404,6 +497,7 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     // Make the calls outside of the mutex lock.
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " calling Finished(shouldCancel=" << shouldCancel << ")");
     bool ok = Finished(shouldCancel);
+    _finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " QueryRequest::_errorFinish !ok ");
     } else {
@@ -442,7 +536,9 @@ void QueryRequest::_finish() {
         }
         _finishStatus = FINISHED;
     }
+
     bool ok = Finished();
+    _finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, _jobIdStr << " QueryRequest::finish Finished() !ok ");
     } else {
@@ -479,31 +575,6 @@ std::string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
     std::ostringstream os;
     os << "SSI_Error(" << errNum << ":" << errText << ")";
     return os.str();
-}
-
-
-LargeResultSafety::~LargeResultSafety() {
-    if (finishBlock()) {
-        LOGS(_log, LOG_LVL_INFO, _jobIdStr << " ~LargeResultSafety had to call finishBlock");
-    }
-}
-
-void LargeResultSafety::startBlock() {
-    std::lock_guard<std::mutex> lg(_blockMtx);
-    _startBlockCalled = true;
-    _largeResultMgr->startBlock(_jobIdStr);
-}
-
-
-/// @return true if finishBlock() was called.
-bool LargeResultSafety::finishBlock() {
-    std::lock_guard<std::mutex> lg(_blockMtx);
-    if (_startBlockCalled) {
-        _startBlockCalled = false;
-        _largeResultMgr->finishBlock(_jobIdStr);
-        return true;
-    }
-    return false;
 }
 
 }}} // lsst::qserv::qdisp

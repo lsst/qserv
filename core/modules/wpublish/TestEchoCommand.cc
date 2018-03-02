@@ -75,7 +75,8 @@ TestEchoCommand::run() {
     reply.set_value (_value);
 
     _frameBuf.serialize(reply);
-    _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
 }}} // namespace lsst::qserv::wpublish

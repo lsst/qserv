@@ -141,6 +141,7 @@ public:
     // Iteration
     ChunkSpecVector::iterator cQueryBegin() { return _chunks.begin(); }
     ChunkSpecVector::iterator cQueryEnd() { return _chunks.end(); }
+    int getChunksSize() const { return _chunks.size(); }
 
     // For test harnesses.
     struct Test {
@@ -154,6 +155,7 @@ public:
     query::QueryTemplate::Vect makeQueryTemplates();
 
     void setScanInteractive();
+    bool getScanInteractive() const { return _scanInteractive; }
 
     /**
      *  Print query session to stream.

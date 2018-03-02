@@ -160,13 +160,14 @@ ThreadPool::~ThreadPool() {
     if (!_shutdown) {
         LOGS(_log, LOG_LVL_WARN, "~ThreadPool called without shutdownPool being called first.");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "~ThreadPool");
+    LOGS(_log, LOG_LVL_DEBUG, "~ThreadPool " << this);
 }
 
 
 /// Wait for all threads to complete. The ThreadPool should not be used after this function is called.
 /// This includes threads that were removed from the pool and not detached.
 void ThreadPool::shutdownPool() {
+    LOGS(_log, LOG_LVL_DEBUG,"shutdownPool begin" << this);
     _shutdown = true;
     endAll();
     waitForResize(0);
@@ -193,8 +194,8 @@ bool ThreadPool::release(PoolEventThread *thrd) {
             LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
             _pool.erase(iter);
         }
+        _joinerThread->addThread(thrdPtr); // Add to list of threads to join.
     }
-    _joinerThread->addThread(thrdPtr); // Add to list of threads to join.
     _resize(); // Check if more threads need to be released.
     return true;
 }

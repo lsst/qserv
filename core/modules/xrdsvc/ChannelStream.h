@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 LSST Corporation.
+ * Copyright 2014-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,6 +29,9 @@
 #include <mutex>
 #include <string>
 
+// qserv headers
+#include "xrdsvc/StreamBuffer.h"
+
 // Third-party headers
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
@@ -36,6 +39,8 @@
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
+
+
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
 /// SendChannel streamed data.
 class ChannelStream : public XrdSsiStream {
@@ -44,7 +49,7 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    void append(char const* buf, int bufLen, bool last);
+    void append(StreamBuffer::Ptr const& StreamBuffer, bool last);
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
     virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
@@ -54,7 +59,7 @@ public:
 private:
     bool _closed; ///< Closed to new append() calls?
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
-    std::deque<std::string> _msgs; ///< Message queue
+    std::deque<StreamBuffer::Ptr> _msgs; ///< Message queue
     std::mutex _mutex; ///< _msgs protection
     std::condition_variable _hasDataCondition; ///< _msgs condition
 };

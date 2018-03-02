@@ -89,8 +89,9 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     }
 
     int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
+    // TODO:DM-10273 - remove largeResults from configuration
     LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
-    _largeResultMgr = std::make_shared<qdisp::LargeResultMgr>(largeResultConcurrent);
+    _qdispPool = std::make_shared<qdisp::QdispPool>(); // TODO:configuration add to configuration
 
     int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
@@ -148,7 +149,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getLargeResultMgr(), userQueryId, msgTableName);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName);
     }
     auto queryIdStr = uq->getQueryIdString();
 
