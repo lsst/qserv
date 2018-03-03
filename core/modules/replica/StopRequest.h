@@ -129,7 +129,7 @@ struct StopDeleteRequestPolicy {
 
 struct StopFindRequestPolicy {
 
-    static char const* requestTypeName () { return "REQUEST_STOP:REPLICA_FIND"; }
+    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_FIND"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND;
@@ -153,7 +153,7 @@ struct StopFindRequestPolicy {
 
 struct StopFindAllRequestPolicy {
 
-    static char const* requestTypeName () { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
+    static char const* requestTypeName() { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
 
     static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND_ALL;
@@ -318,7 +318,7 @@ public:
 
     /// Return request-specific extended data reported upon a successfull completion
     /// of the request
-    typename POLICY::responseDataType const& responseData () const {
+    typename POLICY::responseDataType const& responseData() const {
         return _responseData;
     }
 
@@ -465,10 +465,10 @@ public:
     ~StopRequestBaseM() override = default;
 
     /// Return an identifier of the target request
-    std::string const& targetRequestId () const { return _targetRequestId; }
+    std::string const& targetRequestId() const { return _targetRequestId; }
 
     /// Return the performance info of the target operation (if available)
-    Performance const& targetPerformance () const { return _targetPerformance; }
+    Performance const& targetPerformance() const { return _targetPerformance; }
 
 protected:
 

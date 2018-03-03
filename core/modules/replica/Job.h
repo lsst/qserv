@@ -72,7 +72,7 @@ public:
     };
 
     /// Return the string representation of the primary state
-    static std::string state2string (State state) ;
+    static std::string state2string(State state) ;
 
     /// Refined public sub-state of the job once it's FINISHED as per
     /// the above defined primary state.
@@ -95,70 +95,70 @@ public:
     };
 
     /// Return the string representation of the extended state
-    static std::string state2string (ExtendedState state) ;
+    static std::string state2string(ExtendedState state) ;
 
     /// Return the string representation of the combined state
-    static std::string state2string (State state, ExtendedState extendedState) {
+    static std::string state2string(State state, ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
     }
 
     // Default construction and copy semantics are prohibited
 
-    Job () = delete;
-    Job (Job const&) = delete;
-    Job& operator= (Job const&) = delete;
+    Job() = delete;
+    Job(Job const&) = delete;
+    Job& operator=(Job const&) = delete;
 
     /// Destructor
-    virtual ~Job () = default;
+    virtual ~Job() = default;
 
     /// Return a reference to the Controller,
-    Controller::pointer controller () { return _controller; }
+    Controller::pointer controller() { return _controller; }
 
     /// Return a string representing a type of a job.
-    std::string const& type () const { return _type; }
+    std::string const& type() const { return _type; }
 
     /// Return a unique identifier of the job
-    std::string const& id () const { return _id; }
+    std::string const& id() const { return _id; }
 
     /// Return the priority of the job
-    int priority () const { return _priority; }
+    int priority() const { return _priority; }
 
     /// Return the flag indicating of this job can't be run simultaneously
     /// along with other jobs.
-    bool exclusive () const { return _exclusive; }
+    bool exclusive() const { return _exclusive; }
 
     /// Retun 'true' if the job is allowed to be interrupted by some
     /// by other jobs.
-    bool preemptable () const { return _preemptable; }
+    bool preemptable() const { return _preemptable; }
 
     /// Return the primary status of the job
-    State state () const { return _state; }
+    State state() const { return _state; }
 
     /// Return the extended state of the job when it's finished
-    ExtendedState extendedState () const { return _extendedState; }
+    ExtendedState extendedState() const { return _extendedState; }
 
     /**
      * Return a start time (milliseconds since UNIX Epoch) or 0 before method start()
      * is called to actually begin wexecuting the job.
      */
-    uint64_t beginTime () const { return _beginTime; }
+    uint64_t beginTime() const { return _beginTime; }
 
     /**
      * Return the end time (milliseconds since UNIX Epoch) or 0 before job
      * is finished.
      */
-    uint64_t endTime () const { return _endTime; }
+    uint64_t endTime() const { return _endTime; }
 
     /**
      * Reset the state (if needed) and begin processing the job.
      */
-    void start ();
+    void start();
 
     /**
      * Explicitly cancel the job and all relevant requests which may be still
      * in flight.
      */
-    void cancel ();
+    void cancel();
 
     /**
      * Block the calling thread while the job is being executed. Make periodic
@@ -177,19 +177,19 @@ public:
      * @chunkLocksReport     - print a report on chunks which are still allocated by
      *                         the job as the operation progresses.
      */
-    virtual void track (bool progressReport,
-                        bool errorReport,
-                        bool chunkLocksReport,
-                        std::ostream& os) const=0;
+    virtual void track(bool progressReport,
+                       bool errorReport,
+                       bool chunkLocksReport,
+                       std::ostream& os) const=0;
 
     /// Return the context string for debugging and diagnostic printouts
-    std::string context () const;
+    std::string context() const;
 
 protected:
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
-    std::shared_ptr<T> shared_from_base () {
+    std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
@@ -208,30 +208,30 @@ protected:
      *                      interrupted to give a way to some other job of
      *                      high importancy.
      */
-    Job (Controller::pointer const& controller,
-         std::string const&         type,
-         int                        priority,
-         bool                       exclusive,
-         bool                       preemptable);
+    Job(Controller::pointer const& controller,
+        std::string const& type,
+        int  priority,
+        bool exclusive,
+        bool preemptable);
 
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       */
-    virtual void startImpl ()=0;
+    virtual void startImpl()=0;
 
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       */
-    virtual void cancelImpl ()=0;
+    virtual void cancelImpl()=0;
 
     /**
       * This method is supposed to be provided by subclasses
       * to notify a caller by invoking a subclass-specific callback
       * function registered for the completion of the job.
       */
-    virtual void notify ()=0;
+    virtual void notify()=0;
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -245,7 +245,7 @@ protected:
      *
      * @throws std::logic_error
      */
-    void assertState (State desiredState) const;
+    void assertState(State desiredState) const;
 
     /**
      * Set the desired primary and extended state.
@@ -259,8 +259,8 @@ protected:
      * @param state         - the new primary state
      * @param extendedState - the new extended state
      */
-    void setState (State state,
-                   ExtendedState extendedState=ExtendedState::NONE);
+    void setState(State state,
+                  ExtendedState extendedState=ExtendedState::NONE);
     
 protected:
 
@@ -298,8 +298,8 @@ protected:
 struct JobCompare {
 
     /// Order requests by their priorities
-    bool operator() (Job::pointer const& lhs,
-                     Job::pointer const& rhs) const {
+    bool operator()(Job::pointer const& lhs,
+                    Job::pointer const& rhs) const {
 
         return lhs->priority() < rhs->priority();
     }

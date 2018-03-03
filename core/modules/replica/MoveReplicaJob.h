@@ -115,40 +115,40 @@ public:
      *                            interrupted to give a way to some other job of
      *                            high importancy.
      */
-    static pointer create (std::string const&         databaseFamily,
-                           unsigned int               chunk,
-                           std::string const&         sourceWorker,
-                           std::string const&         destinationWorker,
-                           bool                       purge,
-                           Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           int                        priority    = -2,
-                           bool                       exclusive   = false,
-                           bool                       preemptable = true);
+    static pointer create(std::string const&         databaseFamily,
+                          unsigned int               chunk,
+                          std::string const&         sourceWorker,
+                          std::string const&         destinationWorker,
+                          bool                       purge,
+                          Controller::pointer const& controller,
+                          callback_type              onFinish,
+                          int                        priority    = -2,
+                          bool                       exclusive   = false,
+                          bool                       preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
-    MoveReplicaJob () = delete;
-    MoveReplicaJob (MoveReplicaJob const&) = delete;
-    MoveReplicaJob& operator= (MoveReplicaJob const&) = delete;
+    MoveReplicaJob() = delete;
+    MoveReplicaJob(MoveReplicaJob const&) = delete;
+    MoveReplicaJob& operator=(MoveReplicaJob const&) = delete;
 
     /// Destructor
-    ~MoveReplicaJob () override = default;
+    ~MoveReplicaJob() override = default;
 
     /// The name of a database family
-    std::string const& databaseFamily () const { return _databaseFamily; }
+    std::string const& databaseFamily() const { return _databaseFamily; }
 
     /// Return the name of a source worker where the input replica is residing
-    std::string const& sourceWorker () const { return _sourceWorker; }
+    std::string const& sourceWorker() const { return _sourceWorker; }
 
     /// Return the name of a destination worker where the output replica will be placed
-    std::string const& destinationWorker () const { return _destinationWorker; }
+    std::string const& destinationWorker() const { return _destinationWorker; }
 
     /// The chunk number
-    unsigned int chunk () const { return _chunk; }
+    unsigned int chunk() const { return _chunk; }
 
     /// Return the flag indicating if the input replica should be purged
-    bool purge () const { return _purge; }
+    bool purge() const { return _purge; }
 
     /**
      * Return the result of the operation.
@@ -167,17 +167,17 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    MoveReplicaJobResult const& getReplicaData () const;
+    MoveReplicaJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::track()
       */
-    void track (bool progressReport,
-                bool errorReport,
-                bool chunkLocksReport,
-                std::ostream& os) const override;
+    void track(bool progressReport,
+               bool errorReport,
+               bool chunkLocksReport,
+               std::ostream& os) const override;
 
 protected:
 
@@ -186,37 +186,37 @@ protected:
      *
      * @see MoveReplicaJob::create()
      */
-    MoveReplicaJob (std::string const&         databaseFamily,
-                    unsigned int               chunk,
-                    std::string const&         sourceWorker,
-                    std::string const&         destinationWorker,
-                    bool                       purge,
-                    Controller::pointer const& controller,
-                    callback_type              onFinish,
-                    int                        priority,
-                    bool                       exclusive,
-                    bool                       preemptable);
+    MoveReplicaJob(std::string const&         databaseFamily,
+                   unsigned int               chunk,
+                   std::string const&         sourceWorker,
+                   std::string const&         destinationWorker,
+                   bool                       purge,
+                   Controller::pointer const& controller,
+                   callback_type              onFinish,
+                   int                        priority,
+                   bool                       exclusive,
+                   bool                       preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * The calback function to be invoked on a completion of each replica
@@ -224,7 +224,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (ReplicationRequest::pointer request);
+    void onRequestFinish(ReplicationRequest::pointer const& request);
 
     /**
      * The calback function to be invoked on a completion of each replica
@@ -232,7 +232,7 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (DeleteRequest::pointer request);
+    void onRequestFinish(DeleteRequest::pointer const& request);
 
 protected:
 

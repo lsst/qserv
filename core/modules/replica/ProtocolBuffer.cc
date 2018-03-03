@@ -35,10 +35,10 @@ namespace replica {
 size_t const ProtocolBuffer::DESIRED_LIMIT =  2000000;
 size_t const ProtocolBuffer::HARD_LIMIT    = 64000000;
 
-ProtocolBuffer::ProtocolBuffer (size_t capacity)
-    :   _data    (new char[capacity]),
+ProtocolBuffer::ProtocolBuffer(size_t capacity)
+    :   _data(new char[capacity]),
         _capacity(capacity),
-        _size    (0) {
+        _size(0) {
 
     if (_capacity > HARD_LIMIT) {
         throw std::overflow_error(
@@ -47,14 +47,14 @@ ProtocolBuffer::ProtocolBuffer (size_t capacity)
     }
 }
 
-ProtocolBuffer::~ProtocolBuffer () {
+ProtocolBuffer::~ProtocolBuffer() {
     delete [] _data;
     _data = 0;
     _capacity = 0;
     _size = 0;
 }
 
-void ProtocolBuffer::resize (size_t newSizeBytes) {
+void ProtocolBuffer::resize(size_t newSizeBytes) {
 
     // Make sure there is enough space in the buffer to accomodate
     // the request.
@@ -64,7 +64,7 @@ void ProtocolBuffer::resize (size_t newSizeBytes) {
     _size = newSizeBytes;
 }
 
-void ProtocolBuffer::extend (size_t newCapacityBytes) {
+void ProtocolBuffer::extend(size_t newCapacityBytes) {
 
     if (newCapacityBytes <= _capacity) return;
 
@@ -94,7 +94,7 @@ void ProtocolBuffer::extend (size_t newCapacityBytes) {
     _capacity = newCapacityBytes;
 }
 
-uint32_t ProtocolBuffer::parseLength () const {
+uint32_t ProtocolBuffer::parseLength() const {
 
     if (_size != sizeof(uint32_t)) {
         std::overflow_error("not enough data to be interpreted as the frame header");

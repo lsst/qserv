@@ -41,33 +41,29 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     
-WorkerProcessorThread::pointer
-WorkerProcessorThread::create (WorkerProcessor &processor) {
+WorkerProcessorThread::pointer WorkerProcessorThread::create(WorkerProcessor &processor) {
     static unsigned int id = 0;
-    return WorkerProcessorThread::pointer (
-        new WorkerProcessorThread (processor, id++)
-    );
+    return WorkerProcessorThread::pointer(
+        new WorkerProcessorThread(processor, id++));
 }
 
-WorkerProcessorThread::WorkerProcessorThread (WorkerProcessor& processor,
-                                              unsigned int id)
-    :   _processor (processor),
-        _id   (id),
-        _stop (false) {
+WorkerProcessorThread::WorkerProcessorThread(WorkerProcessor& processor,
+                                             unsigned int id)
+    :   _processor(processor),
+        _id(id),
+        _stop(false) {
 }
 
-bool
-WorkerProcessorThread::isRunning () const {
+bool WorkerProcessorThread::isRunning() const {
     return _thread.get() != nullptr;
 }
 
-void
-WorkerProcessorThread::run () {
+void WorkerProcessorThread::run() {
 
-    if (isRunning()) return;
+    if (isRunning()) { return; }
 
     WorkerProcessorThread::pointer self = shared_from_this();
-    _thread = std::make_shared<std::thread> ( [self] () {
+    _thread = std::make_shared<std::thread>( [self] () {
 
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
 
@@ -81,7 +77,7 @@ WorkerProcessorThread::run () {
             WorkerRequest::pointer request = self->_processor.fetchNextForProcessing(self, 1000);
 
             if (self->_stop) {
-                if (request) self->_processor.processingRefused(request);
+                if (request) { self->_processor.processingRefused(request); }
                 continue;
             }
             if (request) {
@@ -130,14 +126,12 @@ WorkerProcessorThread::run () {
     });
 }
 
-void
-WorkerProcessorThread::stop () {
-    if (!isRunning()) return;
+void WorkerProcessorThread::stop() {
+    if (!isRunning()) { return; }
     _stop = true;
 }
 
-void
-WorkerProcessorThread::stopped () {
+void WorkerProcessorThread::stopped () {
     _stop = false;
     _thread->detach();
     _thread = nullptr;

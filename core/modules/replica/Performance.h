@@ -58,7 +58,7 @@ namespace replica {
 struct PerformanceUtils {
 
     /// Return the current time in milliseconds since Epoch
-    static uint64_t now ();    
+    static uint64_t now();    
 };
 
 /**
@@ -77,27 +77,27 @@ public:
      *
      * All (but the request creation one) timestamps will be initialized wih 0.
      */
-    Performance ();
+    Performance();
     
     /// Copy c-tor
-    Performance (Performance const&) = default;
+    Performance(Performance const&) = default;
 
     /// Assignment operator
-    Performance& operator= (Performance const&) = default;
+    Performance& operator=(Performance const&) = default;
 
     /// Destructor
-    ~Performance () = default;
+    ~Performance() = default;
 
     /**
      * Update object state with counters from the protocol buffer object
      */
-    void update (proto::ReplicationPerformance const& workerPerformanceInfo);
+    void update(proto::ReplicationPerformance const& workerPerformanceInfo);
 
     /// Update the Controller's 'start' time and return the previous state
-    uint64_t setUpdateStart ();
+    uint64_t setUpdateStart();
 
     /// Update the Controller's 'finish' time
-    uint64_t setUpdateFinish ();
+    uint64_t setUpdateFinish();
 
 public:
 
@@ -121,7 +121,7 @@ public:
 };
 
 /// Overloaded streaming operator for class Performance
-std::ostream& operator<< (std::ostream& os, Performance const& p);
+std::ostream& operator<<(std::ostream& os, Performance const& p);
 
 
 /**
@@ -139,22 +139,22 @@ public:
      *
      * All (but the request 'receive' one) timestamps will be initialized wih 0.
      */
-    WorkerPerformance ();
+    WorkerPerformance();
     
     /// Copy c-tor
-    WorkerPerformance (WorkerPerformance const&) = default;
+    WorkerPerformance(WorkerPerformance const&) = default;
 
     /// Assignment operator
-    WorkerPerformance& operator= (WorkerPerformance const&) = default;
+    WorkerPerformance& operator=(WorkerPerformance const&) = default;
 
     /// Destructor
-    ~WorkerPerformance () = default;
+    ~WorkerPerformance() = default;
 
     /// Update the 'start' time and return the previous state
-    uint64_t setUpdateStart ();
+    uint64_t setUpdateStart();
 
     /// Update the 'finish' time
-    uint64_t setUpdateFinish ();
+    uint64_t setUpdateFinish();
 
     /**
      * Return a protobuf object
@@ -162,7 +162,7 @@ public:
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
      */
-    proto::ReplicationPerformance* info () const;
+    proto::ReplicationPerformance* info() const;
 
 public:
 
@@ -177,7 +177,7 @@ public:
 };
 
 /// Overloaded streaming operator for class WorkerPerformance
-std::ostream& operator<< (std::ostream& os, WorkerPerformance const&p);
+std::ostream& operator<<(std::ostream& os, WorkerPerformance const&p);
 
 }}} // namespace lsst::qserv::replica
 

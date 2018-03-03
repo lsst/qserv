@@ -62,12 +62,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    Messenger () = delete;
-    Messenger (Messenger const&) = delete;
-    Messenger& operator= (Messenger const&) = delete;
+    Messenger() = delete;
+    Messenger(Messenger const&) = delete;
+    Messenger& operator=(Messenger const&) = delete;
 
     /// Destructor
-    ~Messenger () = default;
+    ~Messenger() = default;
 
     /**
      * Create a new messenger with specified parameters.
@@ -81,13 +81,13 @@ public:
      *                           the object must exceed the one of this instance
      *                           of the Messenger.
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           boost::asio::io_service& io_service);
+    static pointer create(ServiceProvider& serviceProvider,
+                          boost::asio::io_service& io_service);
 
     /**
      * Stop operations
      */
-    void stop ();
+    void stop();
 
     /**
      * Initiate sending a message
@@ -104,17 +104,17 @@ public:
      *                            or failure of the operation
      */
     template <class RESPONSE_TYPE>
-    void send (std::string  const& worker,
-               std::string  const& id,
-               std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
-               std::function<void(std::string const&,
-                                  bool,
-                                  RESPONSE_TYPE const&)> onFinish) {
+    void send(std::string  const& worker,
+              std::string  const& id,
+              std::shared_ptr<replica::ProtocolBuffer> const& requestBufferPtr,
+              std::function<void(std::string const&,
+                                 bool,
+                                 RESPONSE_TYPE const&)> onFinish) {
 
         // Forward the request to the corresponidng worker
-        connector(worker)->send<RESPONSE_TYPE> (id,
-                                                requestBufferPtr,
-                                                onFinish);
+        connector(worker)->send<RESPONSE_TYPE>(id,
+                                               requestBufferPtr,
+                                               onFinish);
     }
 
     /**
@@ -132,8 +132,8 @@ public:
      *
      * @return the completion status of the operation
      */
-    void cancel (std::string const& worker,
-                 std::string const& id);
+    void cancel(std::string const& worker,
+                std::string const& id);
 
     /**
      * Return 'true' if the specified requst is known to the Messenger
@@ -141,16 +141,16 @@ public:
      * @param worker - the name of a worker
      * @param id     - a unique identifier of a request
      */
-    bool exists (std::string const& worker,
-                 std::string const& id) const;
+    bool exists(std::string const& worker,
+                std::string const& id) const;
 
 private:
 
     /**
      * The constructor
      */
-    Messenger (ServiceProvider         &serviceProvider,
-               boost::asio::io_service &io_service);
+    Messenger(ServiceProvider& serviceProvider,
+              boost::asio::io_service& io_service);
 
     /**
      * Locate and return a connector for the specified worker. Throw exception
@@ -160,7 +160,7 @@ private:
      *
      * @return a pointer to the connector
      */
-    MessengerConnector::pointer const& connector (std::string const& worker) const;
+    MessengerConnector::pointer const& connector(std::string const& worker) const;
 
 private:
 

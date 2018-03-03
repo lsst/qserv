@@ -44,10 +44,10 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MoveReplicaJob");
 
 template <class COLLECTION>
-void countRequestStates (size_t& numLaunched,
-                         size_t& numFinished,
-                         size_t& numSuccess,
-                         COLLECTION const& collection) {
+void countRequestStates(size_t& numLaunched,
+                        size_t& numFinished,
+                        size_t& numSuccess,
+                        COLLECTION const& collection) {
 
     using namespace lsst::qserv::replica;
 
@@ -58,8 +58,9 @@ void countRequestStates (size_t& numLaunched,
     for (auto const& ptr: collection) {
         if (ptr->state() == Request::State::FINISHED) {
             numFinished++;
-            if (ptr->extendedState() == Request::ExtendedState::SUCCESS)
+            if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                 numSuccess++;
+            }
         }
     }
 }
@@ -70,76 +71,78 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MoveReplicaJob::pointer MoveReplicaJob::create (std::string const&         databaseFamily,
-                                                unsigned int               chunk,
-                                                std::string const&         sourceWorker,
-                                                std::string const&         destinationWorker,
-                                                bool                       purge,
-                                                Controller::pointer const& controller,
-                                                callback_type              onFinish,
-                                                int                        priority,
-                                                bool                       exclusive,
-                                                bool                       preemptable) {
-    return MoveReplicaJob::pointer (
-        new MoveReplicaJob (databaseFamily,
-                            chunk,
-                            sourceWorker,
-                            destinationWorker,
-                            purge,
-                            controller,
-                            onFinish,
-                            priority,
-                            exclusive,
-                            preemptable));
+MoveReplicaJob::pointer MoveReplicaJob::create(std::string const&         databaseFamily,
+                                               unsigned int               chunk,
+                                               std::string const&         sourceWorker,
+                                               std::string const&         destinationWorker,
+                                               bool                       purge,
+                                               Controller::pointer const& controller,
+                                               callback_type              onFinish,
+                                               int                        priority,
+                                               bool                       exclusive,
+                                               bool                       preemptable) {
+    return MoveReplicaJob::pointer(
+        new MoveReplicaJob(databaseFamily,
+                           chunk,
+                           sourceWorker,
+                           destinationWorker,
+                           purge,
+                           controller,
+                           onFinish,
+                           priority,
+                           exclusive,
+                           preemptable));
 }
 
-MoveReplicaJob::MoveReplicaJob (std::string const&         databaseFamily,
-                                unsigned int               chunk,
-                                std::string const&         sourceWorker,
-                                std::string const&         destinationWorker,
-                                bool                       purge,
-                                Controller::pointer const& controller,
-                                callback_type              onFinish,
-                                int                        priority,
-                                bool                       exclusive,
-                                bool                       preemptable)
-    :   Job (controller,
-             "MOVE_REPLICA",
-             priority,
-             exclusive,
-             preemptable),
-        _databaseFamily (databaseFamily),
-        _chunk          (chunk),
-        _sourceWorker      (sourceWorker),
-        _destinationWorker (destinationWorker),
-        _purge (purge),
-        _onFinish (onFinish) {
+MoveReplicaJob::MoveReplicaJob(std::string const&         databaseFamily,
+                               unsigned int               chunk,
+                               std::string const&         sourceWorker,
+                               std::string const&         destinationWorker,
+                               bool                       purge,
+                               Controller::pointer const& controller,
+                               callback_type              onFinish,
+                               int                        priority,
+                               bool                       exclusive,
+                               bool                       preemptable)
+    :   Job(controller,
+            "MOVE_REPLICA",
+            priority,
+            exclusive,
+            preemptable),
+        _databaseFamily(databaseFamily),
+        _chunk(chunk),
+        _sourceWorker(sourceWorker),
+        _destinationWorker(destinationWorker),
+        _purge(purge),
+        _onFinish(onFinish) {
 
-    if (not _controller->serviceProvider().config()->isKnownDatabaseFamily (_databaseFamily))
-        throw std::invalid_argument ("MoveReplicaJob::MoveReplicaJob ()  the database family is unknown: " + _databaseFamily);
-
-    _controller->serviceProvider().assertWorkerIsValid (_sourceWorker);
-    _controller->serviceProvider().assertWorkerIsValid (_destinationWorker);
+    if (not _controller->serviceProvider().config()->isKnownDatabaseFamily(_databaseFamily)) {
+        throw std::invalid_argument(
+                        "MoveReplicaJob::MoveReplicaJob ()  the database family is unknown: " +
+                        _databaseFamily);
+    }
+    _controller->serviceProvider().assertWorkerIsValid(_sourceWorker);
+    _controller->serviceProvider().assertWorkerIsValid(_destinationWorker);
 }
 
-MoveReplicaJobResult const& MoveReplicaJob::getReplicaData () const {
+MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  return _replicaData;
+    if (_state == State::FINISHED) { return _replicaData; }
 
-    throw std::logic_error (
+    throw std::logic_error(
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void MoveReplicaJob::track (bool progressReport,
-                            bool errorReport,
-                            bool chunkLocksReport,
-                            std::ostream& os) const {
+void MoveReplicaJob::track(bool progressReport,
+                           bool errorReport,
+                           bool chunkLocksReport,
+                           std::ostream& os) const {
 
-    if (_state == State::FINISHED) return;
-    
-    BlockPost blockPost (1000, 2000);
+    if (_state == State::FINISHED) { return; }
+ 
+    BlockPost blockPost(1000, 2000);
 
     size_t numLaunched;
     size_t numFinished;
@@ -148,49 +151,51 @@ void MoveReplicaJob::track (bool progressReport,
     while (true) {
         blockPost.wait();
 
-        ::countRequestStates (numLaunched, numFinished, numSuccess,
-                              _replicationRequests);
-        if (progressReport)
+        ::countRequestStates(numLaunched, numFinished, numSuccess,
+                             _replicationRequests);
+        if (progressReport) {
             os  << "MoveReplicaJob::track(replicateRequest)  "
                 << "launched: " << numLaunched << ", "
                 << "finished: " << numFinished << ", "
                 << "success: "  << numSuccess
                 << std::endl;
-
+        }
         if (numLaunched == numFinished) {
-            if (errorReport && numLaunched - numSuccess)
-                replica::reportRequestState (_replicationRequests, os);
+            if (errorReport and (numLaunched - numSuccess)) {
+                replica::reportRequestState(_replicationRequests, os);
+            }
             break;
         }
     }
     while (true) {
         blockPost.wait();
 
-        ::countRequestStates (numLaunched, numFinished, numSuccess,
-                              _deleteRequests);
-        if (progressReport)
+        ::countRequestStates(numLaunched, numFinished, numSuccess,
+                             _deleteRequests);
+        if (progressReport) {
             os  << "MoveReplicaJob::track(deleteRequest)  "
                 << "launched: " << numLaunched << ", "
                 << "finished: " << numFinished << ", "
                 << "success: "  << numSuccess
                 << std::endl;
-
+        }
         if (numLaunched == numFinished) {
-            if (errorReport && numLaunched - numSuccess)
-                replica::reportRequestState (_deleteRequests, os);
+            if (errorReport and (numLaunched - numSuccess)) {
+                replica::reportRequestState(_deleteRequests, os);
+            }
             break;
         }
     }
 }
 
-void MoveReplicaJob::startImpl () {
+void MoveReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
-    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas (
+    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas(
                 destinationReplicas,
                 _chunk,
                 _destinationWorker,
@@ -225,7 +230,7 @@ void MoveReplicaJob::startImpl () {
     //    see if the chunk is available on a source node.
 
     std::vector<ReplicaInfo> sourceReplicas;
-    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas (
+    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas(
                 sourceReplicas,
                 _chunk,
                 _sourceWorker,
@@ -256,12 +261,14 @@ void MoveReplicaJob::startImpl () {
 
     for (auto const& replica: sourceReplicas) {
         ReplicationRequest::pointer const ptr =
-            _controller->replicate (
+            _controller->replicate(
                 _destinationWorker,
                 replica.worker(),
                 replica.database(),
                 replica.chunk(),
-                [self] (ReplicationRequest::pointer ptr) { self->onRequestFinish(ptr); },
+                [self] (ReplicationRequest::pointer ptr) {
+                    self->onRequestFinish(ptr);
+                },
                 _priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
@@ -271,13 +278,12 @@ void MoveReplicaJob::startImpl () {
     setState(State::IN_PROGRESS);
 }
 
-void MoveReplicaJob::cancelImpl () {
+void MoveReplicaJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
-
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
@@ -286,7 +292,7 @@ void MoveReplicaJob::cancelImpl () {
     for (auto const& ptr: _replicationRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplication (
+            _controller->stopReplication(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
@@ -298,7 +304,7 @@ void MoveReplicaJob::cancelImpl () {
     for (auto const& ptr: _deleteRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplicaDelete (
+            _controller->stopReplicaDelete(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
@@ -310,7 +316,7 @@ void MoveReplicaJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void MoveReplicaJob::notify () {
+void MoveReplicaJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -320,7 +326,7 @@ void MoveReplicaJob::notify () {
     }
 }
 
-void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
+void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request) {
 
     std::string  const database          = request->database(); 
     std::string  const destinationWorker = request->worker();
@@ -340,7 +346,7 @@ void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
         LOCK_GUARD;
 
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
+        if (_state == State::FINISHED) { return; }
 
         // Update stats
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -355,9 +361,9 @@ void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
         size_t numFinished;
         size_t numSuccess;
 
-        ::countRequestStates (numLaunched, numFinished, numSuccess,
-                              _replicationRequests);
- 
+        ::countRequestStates(numLaunched, numFinished, numSuccess,
+                             _replicationRequests);
+
         if (numFinished == numLaunched) {
             if (numSuccess == numLaunched) {
                 if (_purge) {
@@ -369,11 +375,13 @@ void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
 
                     for (auto const& replicatePtr: _replicationRequests) {
                         DeleteRequest::pointer ptr =
-                            _controller->deleteReplica (
+                            _controller->deleteReplica(
                                 replicatePtr->sourceWorker(),
                                 replicatePtr->database(),
                                 replicatePtr->chunk(),
-                                [self] (DeleteRequest::pointer ptr) { self->onRequestFinish(ptr); },
+                                [self] (DeleteRequest::pointer ptr) {
+                                    self->onRequestFinish(ptr);
+                                },
                                 _priority,
                                 true,   /* keepTracking */
                                 true,   /* allowDuplicate */
@@ -383,10 +391,10 @@ void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
                     }
                 } else {
                     // Otherwise, we're done.
-                    setState (State::FINISHED, ExtendedState::SUCCESS);
+                    setState(State::FINISHED, ExtendedState::SUCCESS);
                 }
             } else {
-                setState (State::FINISHED, ExtendedState::FAILED);
+                setState(State::FINISHED, ExtendedState::FAILED);
             }
         }
 
@@ -394,11 +402,10 @@ void MoveReplicaJob::onRequestFinish (ReplicationRequest::pointer request) {
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
-        notify ();
+    if (_state == State::FINISHED) { notify(); }
 }
 
-void MoveReplicaJob::onRequestFinish (DeleteRequest::pointer request) {
+void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
 
     std::string  const database = request->database(); 
     std::string  const worker   = request->worker(); 
@@ -416,7 +423,7 @@ void MoveReplicaJob::onRequestFinish (DeleteRequest::pointer request) {
         LOCK_GUARD;
 
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
+        if (_state == State::FINISHED) { return; }
 
         // Update stats
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -431,19 +438,18 @@ void MoveReplicaJob::onRequestFinish (DeleteRequest::pointer request) {
         size_t numFinished;
         size_t numSuccess;
 
-        ::countRequestStates (numLaunched, numFinished, numSuccess,
-                              _deleteRequests);
+        ::countRequestStates(numLaunched, numFinished, numSuccess,
+                             _deleteRequests);
 
         if (numFinished == numLaunched)
-            setState (State::FINISHED,
-                      numSuccess == numLaunched ? ExtendedState::SUCCESS :
-                                                  ExtendedState::FAILED);
+            setState(State::FINISHED,
+                     numSuccess == numLaunched ? ExtendedState::SUCCESS :
+                                                 ExtendedState::FAILED);
     } while (false);
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED)
-        notify ();
+    if (_state == State::FINISHED) { notify (); }
 }
 
 }}} // namespace lsst::qserv::replica

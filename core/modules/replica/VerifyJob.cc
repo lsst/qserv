@@ -54,18 +54,18 @@ ReplicaDiff::ReplicaDiff()
 
 ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
                          ReplicaInfo const& replica2)
-    :   _replica1          (replica1),
-        _replica2          (replica2),
-        _notEqual          (false),
-        _statusMismatch    (false),
-        _numFilesMismatch  (false),
-        _fileNamesMismatch (false),
-        _fileSizeMismatch  (false),
-        _fileCsMismatch    (false),
-        _fileMtimeMismatch (false) {
+    :   _replica1(replica1),
+        _replica2(replica2),
+        _notEqual(false),
+        _statusMismatch(false),
+        _numFilesMismatch(false),
+        _fileNamesMismatch(false),
+        _fileSizeMismatch(false),
+        _fileCsMismatch(false),
+        _fileMtimeMismatch(false) {
 
     if ((replica1.database() != replica2.database()) or
-        (replica1.chunk   () != replica2.chunk   ())) {
+        (replica1.chunk()    != replica2.chunk())) {
         throw std::invalid_argument(
                         "ReplicaDiff::ReplicaDiff(r1,r2)  incompatible aruments");
     }
@@ -115,7 +115,7 @@ bool ReplicaDiff::isSelf() const {
     return _replica1.worker() == _replica2.worker();
 }
 
-std::string const& ReplicaDiff::flags2string () const {
+std::string const& ReplicaDiff::flags2string() const {
     if (_flags.empty()) {
         if (_notEqual) {
             _flags = "DIFF ";
@@ -139,22 +139,22 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
 
     os  << "ReplicaDiff\n"
         << "  <replica1>\n"
-        << "    worker:   " << r1.worker  () << "\n"
+        << "    worker:   " << r1.worker()   << "\n"
         << "    database: " << r1.database() << "\n"
-        << "    chunk:    " << r1.chunk   () << "\n"
-        << "    status:   " << ReplicaInfo::status2string (r1.status()) << "\n"
+        << "    chunk:    " << r1.chunk()    << "\n"
+        << "    status:   " << ReplicaInfo::status2string(r1.status()) << "\n"
         << "  <replica2>\n"
-        << "    worker:   " << r2.worker  () << "\n"
+        << "    worker:   " << r2.worker()   << "\n"
         << "    database: " << r2.database() << "\n"
-        << "    chunk:    " << r2.chunk   () << "\n"
-        << "    status:   " << ReplicaInfo::status2string (r2.status()) << "\n"
+        << "    chunk:    " << r2.chunk()    << "\n"
+        << "    status:   " << ReplicaInfo::status2string(r2.status()) << "\n"
         << "  notEqual:            " << (ri()                    ? "true" : "false") << "\n"
-        << "    statusMismatch:    " << (ri.statusMismatch    () ? "true" : "false") << "\n"
-        << "    numFilesMismatch:  " << (ri.numFilesMismatch  () ? "true" : "false") << "\n"
-        << "    fileNamesMismatch: " << (ri.fileNamesMismatch () ? "true" : "false") << "\n"
-        << "    fileSizeMismatch:  " << (ri.fileSizeMismatch  () ? "true" : "false") << "\n"
-        << "    fileCsMismatch:    " << (ri.fileCsMismatch    () ? "true" : "false") << "\n"
-        << "    fileMtimeMismatch: " << (ri.fileMtimeMismatch () ? "true" : "false") << "\n";
+        << "    statusMismatch:    " << (ri.statusMismatch()     ? "true" : "false") << "\n"
+        << "    numFilesMismatch:  " << (ri.numFilesMismatch()   ? "true" : "false") << "\n"
+        << "    fileNamesMismatch: " << (ri.fileNamesMismatch()  ? "true" : "false") << "\n"
+        << "    fileSizeMismatch:  " << (ri.fileSizeMismatch()   ? "true" : "false") << "\n"
+        << "    fileCsMismatch:    " << (ri.fileCsMismatch()     ? "true" : "false") << "\n"
+        << "    fileMtimeMismatch: " << (ri.fileMtimeMismatch()  ? "true" : "false") << "\n";
     return os;
 }
 
@@ -182,23 +182,23 @@ VerifyJob::pointer VerifyJob::create(
                       preemptable));
 }
 
-VerifyJob::VerifyJob (Controller::pointer const& controller,
-                      callback_type onFinish,
-                      callback_type_on_diff onReplicaDifference,
-                      size_t maxReplicas,
-                      bool   computeCheckSum,
-                      int    priority,
-                      bool   exclusive,
-                      bool   preemptable)
+VerifyJob::VerifyJob(Controller::pointer const& controller,
+                     callback_type onFinish,
+                     callback_type_on_diff onReplicaDifference,
+                     size_t maxReplicas,
+                     bool   computeCheckSum,
+                     int    priority,
+                     bool   exclusive,
+                     bool   preemptable)
     :   Job(controller,
             "VERIFY",
             priority,
             exclusive,
             preemptable),
-        _onFinish            (onFinish),
-        _onReplicaDifference (onReplicaDifference),
-        _maxReplicas         (maxReplicas),
-        _computeCheckSum     (computeCheckSum) {
+        _onFinish(onFinish),
+        _onReplicaDifference(onReplicaDifference),
+        _maxReplicas(maxReplicas),
+        _computeCheckSum(computeCheckSum) {
 }
 
 void VerifyJob::track(bool progressReport,
@@ -239,14 +239,14 @@ void VerifyJob::startImpl() {
     // Launch the first batch of requests
 
     std::vector<ReplicaInfo> replicas;
-    if (nextReplicas (replicas, _maxReplicas)) {
+    if (nextReplicas(replicas, _maxReplicas)) {
         for (ReplicaInfo const& replica: replicas) {
             auto request = _controller->findReplica(
-                replica.worker   (),
-                replica.database (),
-                replica.chunk    (),
+                replica.worker(),
+                replica.database(),
+                replica.chunk(),
                 [self] (FindRequest::pointer request) {
-                    self->onRequestFinish (request);
+                    self->onRequestFinish(request);
                 },
                 _priority,          /* inherited from the one of the current job */
                 _computeCheckSum,
@@ -276,7 +276,7 @@ void VerifyJob::cancelImpl() {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
-            _controller->stopReplicaFind (
+            _controller->stopReplicaFind(
                 request->worker(),
                 request->id(),
                 nullptr,    /* onFinish */
@@ -342,7 +342,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
             //             expressed by a caller (no callback provided).
 
             ReplicaInfo const& oldReplica = _replicas[request->id()];
-            selfReplicaDiff = ReplicaDiff (oldReplica, request->responseData());
+            selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
             if (selfReplicaDiff() and not _onReplicaDifference) {
                 LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for self\n"
                      << selfReplicaDiff);
@@ -354,9 +354,9 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                                                                     oldReplica.chunk(),
                                                                     oldReplica.database());
             for (auto const& replica: otherReplicas) {
-                ReplicaDiff diff (request->responseData(), replica);
+                ReplicaDiff diff(request->responseData(), replica);
                 if (not diff.isSelf()) {
-                    otherReplicaDiff.emplace_back (diff);
+                    otherReplicaDiff.emplace_back(diff);
                     if (diff() and not _onReplicaDifference)
                         LOGS(_log, LOG_LVL_INFO, context() << "replica missmatch for other\n"
                              << diff);
@@ -386,7 +386,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                     replica.database(),
                     replica.chunk(),
                     [self] (FindRequest::pointer request) {
-                        self->onRequestFinish (request);
+                        self->onRequestFinish(request);
                     },
                     _priority,          /* inherited from the one of the current job */
                     _computeCheckSum,
@@ -405,7 +405,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
             // In any case check if no requests are in flight and finish if that's
             // the case.
 
-            if (not _replicas.size()) { setState (State::FINISHED); }
+            if (not _replicas.size()) { setState(State::FINISHED); }
         }
     
     } while (false);

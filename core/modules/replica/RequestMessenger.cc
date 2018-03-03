@@ -39,25 +39,25 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RequestMessenger::RequestMessenger (ServiceProvider&                  serviceProvider,
-                                    boost::asio::io_service&          io_service,
-                                    const std::string&                type,
-                                    const std::string&                worker,
-                                    int                               priority,
-                                    bool                              keepTracking,
-                                    bool                              allowDuplicate,
-                                    std::shared_ptr<Messenger> const& messenger)
-    :   Request (serviceProvider,
-                 io_service,
-                 type,
-                 worker,
-                 priority,
-                 keepTracking,
-                 allowDuplicate),
-        _messenger (messenger) {
+RequestMessenger::RequestMessenger(ServiceProvider& serviceProvider,
+                                   boost::asio::io_service& io_service,
+                                   std::string const& type,
+                                   std::string const& worker,
+                                   int  priority,
+                                   bool keepTracking,
+                                   bool allowDuplicate,
+                                   std::shared_ptr<Messenger> const& messenger)
+    :   Request(serviceProvider,
+                io_service,
+                type,
+                worker,
+                priority,
+                keepTracking,
+                allowDuplicate),
+        _messenger(messenger) {
 }
 
-void RequestMessenger::finishImpl () {
+void RequestMessenger::finishImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finishImpl");
 

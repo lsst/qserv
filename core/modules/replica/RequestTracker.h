@@ -58,12 +58,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    RequestTrackerBase () = delete;
-    RequestTrackerBase (RequestTrackerBase const&) = delete;
-    RequestTrackerBase& operator= (RequestTrackerBase const&) = delete;
+    RequestTrackerBase() = delete;
+    RequestTrackerBase(RequestTrackerBase const&) = delete;
+    RequestTrackerBase& operator=(RequestTrackerBase const&) = delete;
 
     /// Destructor
-    virtual ~RequestTrackerBase () = default;
+    virtual ~RequestTrackerBase() = default;
 
     /**
      * Block the calling thread until all request are finished. Then post
@@ -72,7 +72,7 @@ public:
      * the request execution will also be reported if the optional flag
      * 'progressReport' is passed into the constructor.
      */
-    void track () const;
+    void track() const;
 
     /**
      * Cancel all outstanding requests
@@ -85,7 +85,7 @@ public:
      *                             on a request type as not all requests
      *                             can be canceled)
      */
-    void cancel (bool propagateToServers=false);
+    void cancel(bool propagateToServers=false);
 
     /**
      * The method will reset the tracket to the initial (empty) state. Please,
@@ -94,7 +94,7 @@ public:
      * @throws std::logic_error - if there is at least one outstanding
      *                            requests.
      */
-    void reset ();
+    void reset();
 
 protected:
 
@@ -107,9 +107,9 @@ protected:
      * @param errorReport    - trigger detailed error reporting after the completion
      *                         of the operation
      */
-    explicit RequestTrackerBase (std::ostream& os,
-                                 bool progressReport=true,
-                                 bool errorReport=false);
+    explicit RequestTrackerBase(std::ostream& os,
+                                bool progressReport=true,
+                                bool errorReport=false);
 
     /**
      * The method to be implemented by a subclass in order to print
@@ -117,13 +117,13 @@ protected:
      * 
      * @param os - an output stream for the printout
      */
-    virtual void printErrorReport (std::ostream& os) const=0;
+    virtual void printErrorReport(std::ostream& os) const=0;
 
     /**
      * The method to be implemented by a subclass is supposed to return all
      * requests which are known to the subclass.
      */
-    virtual std::list<Request::pointer> getRequests () const=0;
+    virtual std::list<Request::pointer> getRequests() const=0;
 
     /**
      * The method to be implemented by a subclass is supposed to clear
@@ -132,7 +132,7 @@ protected:
      * NOTE: It's guaranteed that the base class's counters will stay
      * intact when this method is called.
      */
-    virtual void resetImpl ()=0;
+    virtual void resetImpl()=0;
 
 protected:
 
@@ -167,9 +167,9 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    CommonRequestTracker () = delete;
-    CommonRequestTracker (CommonRequestTracker const&) = delete;
-    CommonRequestTracker& operator= (CommonRequestTracker const&) = delete;
+    CommonRequestTracker() = delete;
+    CommonRequestTracker(CommonRequestTracker const&) = delete;
+    CommonRequestTracker& operator=(CommonRequestTracker const&) = delete;
 
     /**
      * The constructor sets up tracking options.
@@ -180,22 +180,22 @@ public:
      * @param errorReport    - trigger detailed error reporting after the completion
      *                         of the operation
      */
-    explicit CommonRequestTracker (std::ostream& os,
-                                   bool progressReport=true,
-                                   bool errorReport=false)
-        :   RequestTrackerBase (os,
-                                progressReport,
-                                errorReport) {
+    explicit CommonRequestTracker(std::ostream& os,
+                                  bool progressReport=true,
+                                  bool errorReport=false)
+        :   RequestTrackerBase(os,
+                               progressReport,
+                               errorReport) {
     }
 
     /// Destructor
-    ~CommonRequestTracker () override = default;
+    ~CommonRequestTracker() override = default;
 
     /**
      * The callback function to be registered with each request
      * injected into the tracker.
      */
-    void onFinish (typename T::pointer ptr) {
+    void onFinish(typename T::pointer ptr) {
         RequestTrackerBase::_numFinished++;
         if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
             RequestTrackerBase::_numSuccess++;
@@ -206,7 +206,7 @@ public:
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      */
-    void add (typename T::pointer const& ptr) {
+    void add(typename T::pointer const& ptr) {
         RequestTrackerBase::_numLaunched++;
         requests.push_back(ptr);
     }
@@ -218,8 +218,8 @@ protected:
      *
      * @see RequestTrackerBase::printErrorReport
      */
-    void printErrorReport (std::ostream& os) const override {
-        replica::reportRequestState (requests, os);
+    void printErrorReport(std::ostream& os) const override {
+        replica::reportRequestState(requests, os);
     }
 
     /**
@@ -227,7 +227,7 @@ protected:
      *
      * @see RequestTrackerBase::getRequests
      */
-    std::list<Request::pointer> getRequests () const override {
+    std::list<Request::pointer> getRequests() const override {
         std::list<Request::pointer> result;
         for (auto const& ptr: requests) { result.push_back(ptr); }
         return result;
@@ -238,7 +238,7 @@ protected:
      *
      * @see RequestTrackerBase::resetImpl
      */
-    void resetImpl () override {
+    void resetImpl() override {
         requests.clear();
     }
 
@@ -260,9 +260,9 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    AnyRequestTracker () = delete;
-    AnyRequestTracker (AnyRequestTracker const&) = delete;
-    AnyRequestTracker& operator= (AnyRequestTracker const&) = delete;
+    AnyRequestTracker() = delete;
+    AnyRequestTracker(AnyRequestTracker const&) = delete;
+    AnyRequestTracker& operator=(AnyRequestTracker const&) = delete;
 
     /**
      * The constructor sets up tracking options.
@@ -273,22 +273,22 @@ public:
      * @param errorReport    - trigger detailed error reporting after the completion
      *                         of the operation
      */
-    explicit AnyRequestTracker (std::ostream& os,
-                                bool progressReport=true,
-                                bool errorReport=false);
+    explicit AnyRequestTracker(std::ostream& os,
+                               bool progressReport=true,
+                               bool errorReport=false);
 
     /// Destructor
-    ~AnyRequestTracker () override = default;
+    ~AnyRequestTracker() override = default;
 
     /// The callback function to be registered with each request
     /// injected into the tracker.
-    void onFinish (Request::pointer const& ptr);
+    void onFinish(Request::pointer const& ptr);
 
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
      */
-    void add (Request::pointer const& ptr);
+    void add(Request::pointer const& ptr);
 
 protected:
     
@@ -297,21 +297,21 @@ protected:
      *
      * @see RequestTrackerBase::printErrorReport
      */
-    void printErrorReport (std::ostream& os) const override;
+    void printErrorReport(std::ostream& os) const override;
 
     /**
      * Implement the corresponding method defined in the base class.
      *
      * @see RequestTrackerBase::getRequests
      */
-    std::list<Request::pointer> getRequests () const override;
+    std::list<Request::pointer> getRequests() const override;
 
     /**
      * Implement the corresponding method defined in the base class.
      *
      * @see RequestTrackerBase::resetImpl
      */
-    void resetImpl () override;
+    void resetImpl() override;
 
 public:
     

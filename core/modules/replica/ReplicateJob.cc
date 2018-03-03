@@ -36,8 +36,7 @@
 
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -49,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicateJob::pointer ReplicateJob::create (
+ReplicateJob::pointer ReplicateJob::create(
                             std::string const&         databaseFamily,
                             unsigned int               numReplicas,
                             Controller::pointer const& controller,
@@ -58,75 +57,71 @@ ReplicateJob::pointer ReplicateJob::create (
                             int                        priority,
                             bool                       exclusive,
                             bool                       preemptable) {
-    return ReplicateJob::pointer (
-        new ReplicateJob (databaseFamily,
-                          numReplicas,
-                          controller,
-                          onFinish,
-                          bestEffort,
-                          priority,
-                          exclusive,
-                          preemptable));
+    return ReplicateJob::pointer(
+        new ReplicateJob(databaseFamily,
+                         numReplicas,
+                         controller,
+                         onFinish,
+                         bestEffort,
+                         priority,
+                         exclusive,
+                         preemptable));
 }
 
-ReplicateJob::ReplicateJob (std::string const&         databaseFamily,
-                            unsigned int               numReplicas,
-                            Controller::pointer const& controller,
-                            callback_type              onFinish,
-                            bool                       bestEffort,
-                            int                        priority,
-                            bool                       exclusive,
-                            bool                       preemptable)
+ReplicateJob::ReplicateJob(std::string const&         databaseFamily,
+                           unsigned int               numReplicas,
+                           Controller::pointer const& controller,
+                           callback_type              onFinish,
+                           bool                       bestEffort,
+                           int                        priority,
+                           bool                       exclusive,
+                          bool                       preemptable)
 
-    :   Job (controller,
-             "REPLICATE",
-             priority,
-             exclusive,
-             preemptable),
-        _databaseFamily (databaseFamily),
-        _numReplicas (numReplicas ?
-                      numReplicas :
-                      controller->serviceProvider().config()->replicationLevel(databaseFamily)),
-        _onFinish    (onFinish),
-        _bestEffort  (bestEffort),
-        _numIterations  (0),
-        _numFailedLocks (0),
-        _numLaunched (0),
-        _numFinished (0),
-        _numSuccess  (0) {
+    :   Job(controller,
+            "REPLICATE",
+            priority,
+            exclusive,
+            preemptable),
+        _databaseFamily(databaseFamily),
+        _numReplicas(numReplicas ?
+                     numReplicas :
+                     controller->serviceProvider().config()->replicationLevel(databaseFamily)),
+        _onFinish(onFinish),
+        _bestEffort(bestEffort),
+        _numIterations(0),
+        _numFailedLocks(0),
+        _numLaunched(0),
+        _numFinished(0),
+        _numSuccess(0) {
 }
 
-ReplicateJob::~ReplicateJob () {
+ReplicateJob::~ReplicateJob() {
     // Make sure all chuks locked by this job are released
     _controller->serviceProvider().chunkLocker().release(_id);
 }
 
-ReplicateJobResult const& ReplicateJob::getReplicaData () const {
+ReplicateJobResult const& ReplicateJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
     if (_state == State::FINISHED) {
         return _replicaData;
     }
-    throw std::logic_error (
+    throw std::logic_error(
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void ReplicateJob::track (bool progressReport,
-                          bool errorReport,
-                          bool chunkLocksReport,
-                          std::ostream& os) const {
+void ReplicateJob::track(bool progressReport,
+                         bool errorReport,
+                         bool chunkLocksReport,
+                         std::ostream& os) const {
 
-    if (_state == State::FINISHED) {
-        return;
-    }
+    if (_state == State::FINISHED) { return; }
+
     if (_findAllJob) {
-        _findAllJob->track (progressReport,
-                            errorReport,
-                            chunkLocksReport,
-                            os);
+        _findAllJob->track(progressReport, errorReport, chunkLocksReport, os);
     }
-    BlockPost blockPost (1000, 2000);
+    BlockPost blockPost(1000, 2000);
 
     while (_numFinished < _numLaunched) {
 
@@ -141,7 +136,7 @@ void ReplicateJob::track (bool progressReport,
         }
         if (chunkLocksReport) {
             os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked (_id);
+                << _controller->serviceProvider().chunkLocker().locked(_id);
         }
     }
     if (progressReport) {
@@ -153,14 +148,14 @@ void ReplicateJob::track (bool progressReport,
     }
     if (chunkLocksReport) {
         os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked (_id);
+            << _controller->serviceProvider().chunkLocker().locked(_id);
     }
     if (errorReport && (_numLaunched - _numSuccess)) {
-        replica::reportRequestState (_requests, os);
+        replica::reportRequestState(_requests, os);
     }
 }
 
-void ReplicateJob::startImpl () {
+void ReplicateJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);
 
@@ -170,7 +165,7 @@ void ReplicateJob::startImpl () {
 
     auto self = shared_from_base<ReplicateJob>();
 
-    _findAllJob = FindAllJob::create (
+    _findAllJob = FindAllJob::create(
         _databaseFamily,
         _controller,
         [self] (FindAllJob::pointer job) {
@@ -182,7 +177,7 @@ void ReplicateJob::startImpl () {
     setState(State::IN_PROGRESS);
 }
 
-void ReplicateJob::cancelImpl () {
+void ReplicateJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -201,7 +196,7 @@ void ReplicateJob::cancelImpl () {
     for (auto const& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            _controller->stopReplication (
+            _controller->stopReplication(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
@@ -221,12 +216,12 @@ void ReplicateJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void ReplicateJob::restart () {
+void ReplicateJob::restart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
     
     if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw std::logic_error ("ReplicateJob::restart ()  not allowed in this object state");
+        throw std::logic_error("ReplicateJob::restart()  not allowed in this object state");
     }
     _requests.clear();
 
@@ -237,7 +232,7 @@ void ReplicateJob::restart () {
     _numSuccess  = 0;
 }
 
-void ReplicateJob::notify () {
+void ReplicateJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -247,7 +242,7 @@ void ReplicateJob::notify () {
     }
 }
 
-void ReplicateJob::onPrecursorJobFinish () {
+void ReplicateJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
@@ -256,9 +251,7 @@ void ReplicateJob::onPrecursorJobFinish () {
         LOCK_GUARD;
 
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) {
-            return;
-        }
+        if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
@@ -300,7 +293,7 @@ void ReplicateJob::onPrecursorJobFinish () {
         //            the algorithm. Those workers are used by different kinds
         //            of jobs.
     
-        FindAllJobResult const& replicaData = _findAllJob->getReplicaData ();
+        FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
     
         // The number of replicas to be created for eligible chunks
         //
@@ -402,14 +395,12 @@ void ReplicateJob::onPrecursorJobFinish () {
                          << "onPrecursorJobFinish  no suitable soure worker found for chunk: "
                          << chunk);
     
-                    release (chunk);
+                    release(chunk);
                     setState(State::FINISHED, ExtendedState::FAILED);
                     break;
                 }
             }
-            if (state() == State::FINISHED) {
-                break;
-            }
+            if (state() == State::FINISHED) { break; }
 
             // Iterate over the number of replicas to be created and create
             // a new one (for all participating databases) on each step
@@ -441,7 +432,7 @@ void ReplicateJob::onPrecursorJobFinish () {
                          << "onPrecursorJobFinish  no suitable destination worker found for chunk: "
                          << chunk);
     
-                    release (chunk);
+                    release(chunk);
                     setState(State::FINISHED, ExtendedState::FAILED);
                     break;
                 }
@@ -458,7 +449,7 @@ void ReplicateJob::onPrecursorJobFinish () {
                     std::string const& sourceWorker = database2worker.second;
     
                     ReplicationRequest::pointer ptr =
-                        _controller->replicate (
+                        _controller->replicate(
                             destinationWorker,
                             sourceWorker,
                             database,
@@ -473,7 +464,7 @@ void ReplicateJob::onPrecursorJobFinish () {
                         );
     
                     _chunk2requests[chunk][destinationWorker][database] = ptr;
-                    _requests.push_back (ptr);
+                    _requests.push_back(ptr);
     
                     _numLaunched++;
     
@@ -483,24 +474,20 @@ void ReplicateJob::onPrecursorJobFinish () {
                     worker2occupancy[destinationWorker]++;
                 }
             }
-            if (state() == State::FINISHED) {
-                break;
-            }
+            if (state() == State::FINISHED) { break; }
         }
-        if (state() == State::FINISHED) {
-            break;
-        }
+        if (state() == State::FINISHED) { break; }
 
         // Finish right away if no problematic chunks found
         if (not _requests.size()) {
             if (not _numFailedLocks) {
-                setState (State::FINISHED, ExtendedState::SUCCESS);
+                setState(State::FINISHED, ExtendedState::SUCCESS);
                 break;
             } else {
                 // Some of the chuks were locked and yet, no sigle request was
                 // lunched. Hence we should start another iteration by requesting
                 // the fresh state of the chunks within the family.
-                restart ();
+                restart();
                 return;
             }
         }
@@ -509,12 +496,10 @@ void ReplicateJob::onPrecursorJobFinish () {
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED) {
-        notify ();
-    }
+    if (_state == State::FINISHED) { notify(); }
 }
 
-void ReplicateJob::onRequestFinish (ReplicationRequest::pointer request) {
+void ReplicateJob::onRequestFinish(ReplicationRequest::pointer const& request) {
 
     std::string  const database = request->database(); 
     std::string  const worker   = request->worker(); 
@@ -532,7 +517,7 @@ void ReplicateJob::onRequestFinish (ReplicationRequest::pointer request) {
 
         // Ignore the callback if the job was cancelled   
         if (_state == State::FINISHED) {
-            release (chunk);
+            release(chunk);
             return;
         }
 
@@ -567,14 +552,14 @@ void ReplicateJob::onRequestFinish (ReplicationRequest::pointer request) {
                 if (_numFailedLocks) {
                     // Make another iteration (and another one, etc. as many as needed)
                     // before it succeeds or fails.
-                    restart ();
+                    restart();
                     return;
                 } else {
-                    setState (State::FINISHED, ExtendedState::SUCCESS);
+                    setState(State::FINISHED, ExtendedState::SUCCESS);
                     break;
                 }
             } else {
-                setState (State::FINISHED, ExtendedState::FAILED);
+                setState(State::FINISHED, ExtendedState::FAILED);
                 break;
             }
         }
@@ -583,12 +568,10 @@ void ReplicateJob::onRequestFinish (ReplicationRequest::pointer request) {
 
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
-    if (_state == State::FINISHED) {
-        notify ();
-    }
+    if (_state == State::FINISHED) { notify(); }
 }
 
-void ReplicateJob::release (unsigned int chunk) {
+void ReplicateJob::release(unsigned int chunk) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
 

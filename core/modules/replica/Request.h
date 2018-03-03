@@ -81,7 +81,7 @@ public:
     };
 
     /// Return the string representation of the primary state
-    static std::string state2string (State state) ;
+    static std::string state2string(State state) ;
 
     /// Refined public sub-state of the requiest once it's FINISHED as per
     /// the above defined primary state.
@@ -124,30 +124,31 @@ public:
     };
 
     /// Return the string representation of the extended state
-    static std::string state2string (ExtendedState state) ;
+    static std::string state2string(ExtendedState state) ;
 
     /// Return the string representation of the compbined state
-    static std::string state2string (State state, ExtendedState extendedState) {
+    static std::string state2string(State state,
+                                    ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
     }
 
     // Default construction and copy semantics are prohibited
 
-    Request () = delete;
-    Request (Request const&) = delete;
-    Request& operator= (Request const&) = delete;
+    Request() = delete;
+    Request(Request const&) = delete;
+    Request& operator=(Request const&) = delete;
 
     /// Destructor
-    virtual ~Request () = default;
+    virtual ~Request() = default;
 
     /// Return a reference to the service provider,
     ServiceProvider& serviceProvider() { return _serviceProvider; }
 
     /// Return a string representing a type of a request.
-    std::string const& type () const { return _type; }
+    std::string const& type() const { return _type; }
 
     /// Return a unique identifier of the request
-    std::string const& id () const { return _id; }
+    std::string const& id() const { return _id; }
 
     /**
      * An effective identifier of a remote (worker-side) requst. Normally this is
@@ -155,28 +156,28 @@ public:
      * to track duplicate requests (see constructor'x options: 'keepTracking' and
      * 'allowDuplicate') and after the one is found.
      */
-    std::string const& remoteId () const;
+    std::string const& remoteId() const;
 
     /// Return the priority level of the request
-    int priority () const { return _priority; }
+    int priority() const { return _priority; }
 
     /// Return a unique identifier of the request
-    std::string const& worker () const { return _worker; }
+    std::string const& worker() const { return _worker; }
 
     /// Return the primary status of the request
-    State state () const { return _state; }
+    State state() const { return _state; }
     
     /// Return the extended state of the request when it finished.
-    ExtendedState extendedState () const { return _extendedState; }
+    ExtendedState extendedState() const { return _extendedState; }
 
     /// Return a status code received from a worker server
-    ExtendedCompletionStatus extendedServerStatus () const { return _extendedServerStatus; }
+    ExtendedCompletionStatus extendedServerStatus() const { return _extendedServerStatus; }
 
     /// Return the performance info
-    Performance const& performance () const { return _performance; }
+    Performance const& performance() const { return _performance; }
 
     /// Return the Controller (if set)
-    std::shared_ptr<Controller> const& controller () const { return _controller; }
+    std::shared_ptr<Controller> const& controller() const { return _controller; }
 
     /**
      * Reset the state (if needed) and begin processing the request.
@@ -197,16 +198,16 @@ public:
      *                     allowing to override the default value of the corresponding
      *                     parameter from the Configuration.
      */
-    void start (std::shared_ptr<Controller> const& controller=nullptr,
-                std::string const&                 jobId="",
-                unsigned int                       requestExpirationIvalSec=0);
+    void start(std::shared_ptr<Controller> const& controller=nullptr,
+               std::string const& jobId="",
+               unsigned int requestExpirationIvalSec=0);
 
     /**
      * Return an identifier if the owning job (if the request has started)
      *
      * @throws std::logic_error - if the request hasn't started
      */
-    std::string const& jobId () const;
+    std::string const& jobId() const;
 
     /**
      * Explicitly cancel any asynchronous operation(s) and put the object into
@@ -216,10 +217,10 @@ public:
      * ATTENTION: this operation won't affect the remote (server-side) state
      * of the operation in case if the request was queued.
      */
-    void cancel ();
+    void cancel();
 
     /// Return the context string for debugging and diagnostic printouts
-    std::string context () const {
+    std::string context() const {
         return id() +
             "  " + type() +
             "  " + state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus()) +
@@ -230,7 +231,7 @@ protected:
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
-    std::shared_ptr<T> shared_from_base () {
+    std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
@@ -250,26 +251,26 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    Request (ServiceProvider&         serviceProvider,
-             boost::asio::io_service& io_service,
-             std::string const&       type,
-             std::string const&       worker,
-             int                      priority,
-             bool                     keepTracking,
-             bool                     allowDuplicate);
+    Request(ServiceProvider& serviceProvider,
+            boost::asio::io_service& io_service,
+            std::string const& type,
+            std::string const& worker,
+            int  priority,
+            bool keepTracking,
+            bool allowDuplicate);
 
     /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       */
-    virtual void startImpl ()=0;
+    virtual void startImpl()=0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuraton service. When the request expires
      * it finishes with completion status FINISHED::EXPIRED.
      */
-    void expired (boost::system::error_code const& ec);
+    void expired(boost::system::error_code const& ec);
 
     /**
      * Finalize request processing (as reported by subclasses)
@@ -277,20 +278,20 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      */
-    void finish (ExtendedState extendedState);
+    void finish(ExtendedState extendedState);
 
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       */
-    virtual void finishImpl ()=0;
+    virtual void finishImpl()=0;
 
     /**
      * This method is supposed to be provided by subclasses to handle
      * request completion steps, such as notifying a party which initiated
      * the request, etc.
      */
-    virtual void notify ()=0;
+    virtual void notify()=0;
 
     /**
      * Return 'true' if the operation was aborted.
@@ -304,7 +305,7 @@ protected:
      *    which initiated the abort to take care of putting the object into
      *    a proper state.
      */
-    bool isAborted (boost::system::error_code const& ec) const;
+    bool isAborted(boost::system::error_code const& ec) const;
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -316,7 +317,7 @@ protected:
      * 
      * @throws std::logic_error
      */
-    void assertState (State desiredState) const;
+    void assertState(State desiredState) const;
 
     /**
      * Set the desired primary and extended state.
@@ -327,8 +328,8 @@ protected:
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      */
-    void setState (State         state,
-                   ExtendedState extendedStat);
+    void setState(State state,
+                  ExtendedState extendedStat);
     
 protected:
 

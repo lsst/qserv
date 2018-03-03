@@ -171,26 +171,26 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    static pointer create (std::string const&         databaseFamily,
-                           bool                       estimateOnly,
-                           Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           bool                       bestEffort  = true,
-                           int                        priority    = -2,
-                           bool                       exclusive   = false,
-                           bool                       preemptable = true);
+    static pointer create(std::string const& databaseFamily,
+                          bool estimateOnly,
+                          Controller::pointer const& controller,
+                          callback_type onFinish,
+                          bool bestEffort  = true,
+                          int  priority    = -2,
+                          bool exclusive   = false,
+                          bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
-    RebalanceJob () = delete;
-    RebalanceJob (RebalanceJob const&) = delete;
-    RebalanceJob& operator= (RebalanceJob const&) = delete;
+    RebalanceJob() = delete;
+    RebalanceJob(RebalanceJob const&) = delete;
+    RebalanceJob& operator=(RebalanceJob const&) = delete;
 
     /// Destructor (non-trivial)
-    ~RebalanceJob () override;
+    ~RebalanceJob() override;
 
     /// Return the name of a database defining a scope of the operation
-    std::string const& databaseFamily () const { return _databaseFamily; }
+    std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
      * Return the result of the operation.
@@ -209,17 +209,17 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    RebalanceJobResult const& getReplicaData () const;
+    RebalanceJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::track()
       */
-    void track (bool progressReport,
-                bool errorReport,
-                bool chunkLocksReport,
-                std::ostream& os) const override;
+    void track(bool progressReport,
+               bool errorReport,
+               bool chunkLocksReport,
+               std::ostream& os) const override;
 
 protected:
 
@@ -228,41 +228,41 @@ protected:
      *
      * @see RebalanceJob::create()
      */
-    RebalanceJob (std::string const&         databaseFamily,
-                  bool                       estimateOnly,
-                  Controller::pointer const& controller,
-                  callback_type              onFinish,
-                  bool                       bestEffort,
-                  int                        priority,
-                  bool                       exclusive,
-                  bool                       preemptable);
+    RebalanceJob(std::string const& databaseFamily,
+                 bool estimateOnly,
+                 Controller::pointer const& controller,
+                 callback_type onFinish,
+                 bool bestEffort,
+                 int  priority,
+                 bool exclusive,
+                 bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition accross relevant worker nodes.
      */
-    void onPrecursorJobFinish ();
+    void onPrecursorJobFinish();
 
     /**
      * The calback function to be invoked on a completion of each replica
@@ -270,14 +270,14 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onJobFinish (MoveReplicaJob::pointer job);
+    void onJobFinish(MoveReplicaJob::pointer const& job);
 
     /**
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
      */
-    void restart ();
+    void restart();
 
 protected:
 

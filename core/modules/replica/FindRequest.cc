@@ -37,10 +37,8 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
-
-namespace proto = lsst::qserv::proto;
+// This macro to appear witin each block which requires thread safety
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -56,61 +54,57 @@ namespace replica {
 //         FindRequestC          //
 ///////////////////////////////////
 
-FindRequestC::pointer
-FindRequestC::create (ServiceProvider&         serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const&       worker,
-                      std::string const&       database,
-                      unsigned int             chunk,
-                      callback_type            onFinish,
-                      int                      priority,
-                      bool                     computeCheckSum,
-                      bool                     keepTracking) {
-    return FindRequestC::pointer (
-        new FindRequestC (
-            serviceProvider,
-            io_service,
-            worker,
-            database,
-            chunk,
-            onFinish,
-            priority,
-            computeCheckSum,
-            keepTracking));
+FindRequestC::pointer FindRequestC::create(ServiceProvider& serviceProvider,
+                                           boost::asio::io_service& io_service,
+                                           std::string const& worker,
+                                           std::string const& database,
+                                           unsigned int  chunk,
+                                           callback_type onFinish,
+                                           int  priority,
+                                           bool computeCheckSum,
+                                           bool keepTracking) {
+    return FindRequestC::pointer(
+        new FindRequestC(serviceProvider,
+                         io_service,
+                         worker,
+                         database,
+                         chunk,
+                         onFinish,
+                         priority,
+                         computeCheckSum,
+                         keepTracking));
 }
 
-FindRequestC::FindRequestC (ServiceProvider&         serviceProvider,
-                            boost::asio::io_service& io_service,
-                            std::string const&       worker,
-                            std::string const&       database,
-                            unsigned int             chunk,
-                            callback_type            onFinish,
-                            int                      priority,
-                            bool                     computeCheckSum,
-                            bool                     keepTracking)
-    :   RequestConnection (serviceProvider,
-                           io_service,
-                           "REPLICA_FIND",
-                           worker,
-                           priority,
-                           keepTracking,
-                           false /* allowDuplicate */),
-        _database        (database),
-        _chunk           (chunk),
-        _computeCheckSum (computeCheckSum),
-        _onFinish        (onFinish),
-        _replicaInfo     () {
+FindRequestC::FindRequestC(ServiceProvider& serviceProvider,
+                           boost::asio::io_service& io_service,
+                           std::string const& worker,
+                           std::string const& database,
+                           unsigned int  chunk,
+                           callback_type onFinish,
+                           int  priority,
+                           bool computeCheckSum,
+                           bool keepTracking)
+    :   RequestConnection(serviceProvider,
+                          io_service,
+                          "REPLICA_FIND",
+                          worker,
+                          priority,
+                          keepTracking,
+                          false /* allowDuplicate */),
+        _database(database),
+        _chunk(chunk),
+        _computeCheckSum(computeCheckSum),
+        _onFinish(onFinish),
+        _replicaInfo() {
 
-    _serviceProvider.assertDatabaseIsValid (database);
+    _serviceProvider.assertDatabaseIsValid(database);
 }
 
-ReplicaInfo const&
-FindRequestC::responseData () const {
+ReplicaInfo const& FindRequestC::responseData() const {
     return _replicaInfo;
 }
    
-void
-FindRequestC::beginProtocol () {
+void FindRequestC::beginProtocol() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol "
          << " worker: "          << worker()
@@ -124,29 +118,29 @@ FindRequestC::beginProtocol () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestFind message;
-    message.set_priority  (priority());
-    message.set_database  (database());
-    message.set_chunk     (chunk());
+    message.set_priority(priority());
+    message.set_database(database());
+    message.set_chunk(chunk());
     message.set_compute_cs(computeCheckSum());
 
     _bufferPtr->serialize(message);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &FindRequestC::requestSent,
             shared_from_base<FindRequestC>(),
             boost::asio::placeholders::error,
@@ -155,22 +149,20 @@ FindRequestC::beginProtocol () {
     );
 }
 
-void
-FindRequestC::requestSent (boost::system::error_code const& ec,
-                           size_t bytes_transferred) {
+void FindRequestC::requestSent(boost::system::error_code const& ec,
+                               size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveResponse();
+    if (ec) { restart(); }
+    else    { receiveResponse(); }
 }
 
-void
-FindRequestC::receiveResponse () {
+void FindRequestC::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -186,14 +178,14 @@ FindRequestC::receiveResponse () {
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &FindRequestC::responseReceived,
             shared_from_base<FindRequestC>(),
             boost::asio::placeholders::error,
@@ -202,15 +194,14 @@ FindRequestC::receiveResponse () {
     );
 }
 
-void
-FindRequestC::responseReceived (boost::system::error_code const& ec,
-                                size_t bytes_transferred) {
+void FindRequestC::responseReceived(boost::system::error_code const& ec,
+                                    size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -221,26 +212,25 @@ FindRequestC::responseReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart ();
+    if (syncReadFrame(bytes)) { restart(); }
            
     proto::ReplicationResponseFind message;
-    if (syncReadMessage (bytes, message)) restart();
-    else                                  analyze(message);
+    if (syncReadMessage(bytes, message)) { restart(); }
+    else                                 { analyze(message); }
 }
 
-void
-FindRequestC::wait () {
+void FindRequestC::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &FindRequestC::awaken,
             shared_from_base<FindRequestC>(),
             boost::asio::placeholders::error
@@ -248,23 +238,21 @@ FindRequestC::wait () {
     );
 }
 
-void
-FindRequestC::awaken (boost::system::error_code const& ec) {
+void FindRequestC::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     sendStatus();
 }
 
-void
-FindRequestC::sendStatus () {
+void FindRequestC::sendStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendStatus");
 
@@ -274,27 +262,27 @@ FindRequestC::sendStatus () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (id());
+    message.set_id(id());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
 
     _bufferPtr->serialize(message);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &FindRequestC::statusSent,
             shared_from_base<FindRequestC>(),
             boost::asio::placeholders::error,
@@ -303,22 +291,20 @@ FindRequestC::sendStatus () {
     );
 }
 
-void
-FindRequestC::statusSent (boost::system::error_code const& ec,
-                          size_t bytes_transferred) {
+void FindRequestC::statusSent(boost::system::error_code const& ec,
+                              size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusSent");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveStatus();
+    if (ec) { restart(); }
+    else    { receiveStatus(); }
 }
 
-void
-FindRequestC::receiveStatus () {
+void FindRequestC::receiveStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveStatus");
 
@@ -334,14 +320,14 @@ FindRequestC::receiveStatus () {
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &FindRequestC::statusReceived,
             shared_from_base<FindRequestC>(),
             boost::asio::placeholders::error,
@@ -350,15 +336,14 @@ FindRequestC::receiveStatus () {
     );
 }
 
-void
-FindRequestC::statusReceived (boost::system::error_code const& ec,
-                              size_t bytes_transferred) {
+void FindRequestC::statusReceived(boost::system::error_code const& ec,
+                                  size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusReceived");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -369,18 +354,17 @@ FindRequestC::statusReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart ();
+    if (syncReadFrame(bytes)) { restart (); }
            
     proto::ReplicationResponseFind message;
-    if (syncReadMessage (bytes, message)) restart();
-    else                                  analyze(message);
+    if (syncReadMessage(bytes, message)) { restart(); }
+    else                                 { analyze(message); }
 }
 
-void
-FindRequestC::analyze (proto::ReplicationResponseFind const& message) {
+void FindRequestC::analyze(proto::ReplicationResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: " <<
          proto::ReplicationStatus_Name(message.status()));
@@ -393,10 +377,11 @@ FindRequestC::analyze (proto::ReplicationResponseFind const& message) {
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
 
-    if (message.has_target_performance())
+    if (message.has_target_performance()) {
         _performance.update(message.target_performance());
-    else
+    } else {
         _performance.update(message.performance());
+    }
  
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
@@ -404,51 +389,50 @@ FindRequestC::analyze (proto::ReplicationResponseFind const& message) {
     _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
     // Extract target request type-specific parameters from the response
-    if (message.has_request())
+    if (message.has_request()) {
         _targetRequestParams = FindRequestParams(message.request());
-
+    }
     switch (message.status()) {
  
         case proto::ReplicationStatus::SUCCESS:
-            finish (SUCCESS);
+            finish(SUCCESS);
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (_keepTracking) wait();
-            else               finish (SERVER_QUEUED);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_QUEUED); }
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IN_PROGRESS);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_IN_PROGRESS); }
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IS_CANCELLING);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_IS_CANCELLING); }
             break;
 
         case proto::ReplicationStatus::BAD:
-            finish (SERVER_BAD);
+            finish(SERVER_BAD);
             break;
 
         case proto::ReplicationStatus::FAILED:
-            finish (SERVER_ERROR);
+            finish(SERVER_ERROR);
             break;
 
         case proto::ReplicationStatus::CANCELLED:
-            finish (SERVER_CANCELLED);
+            finish(SERVER_CANCELLED);
             break;
 
         default:
-            throw std::logic_error (
+            throw std::logic_error(
                     "FindRequestC::analyze() unknown status '" +
                     proto::ReplicationStatus_Name(message.status()) + "' received from server");
     }
 }
 
-void
-FindRequestC::notify () {
+void FindRequestC::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -461,68 +445,63 @@ FindRequestC::notify () {
 //         FindRequestM          //
 ///////////////////////////////////
 
-FindRequestM::pointer
-FindRequestM::create (ServiceProvider&                  serviceProvider,
-                      boost::asio::io_service&          io_service,
-                      std::string const&                worker,
-                      std::string const&                database,
-                      unsigned int                      chunk,
-                      callback_type                     onFinish,
-                      int                               priority,
-                      bool                              computeCheckSum,
-                      bool                              keepTracking,
-                      std::shared_ptr<Messenger> const& messenger) {
-    return FindRequestM::pointer (
-        new FindRequestM (
-            serviceProvider,
-            io_service,
-            worker,
-            database,
-            chunk,
-            onFinish,
-            priority,
-            computeCheckSum,
-            keepTracking,
-            messenger));
+FindRequestM::pointer FindRequestM::create(ServiceProvider& serviceProvider,
+                                           boost::asio::io_service& io_service,
+                                           std::string const& worker,
+                                           std::string const& database,
+                                           unsigned int  chunk,
+                                           callback_type onFinish,
+                                           int  priority,
+                                           bool computeCheckSum,
+                                           bool keepTracking,
+                                           std::shared_ptr<Messenger> const& messenger) {
+    return FindRequestM::pointer(
+        new FindRequestM(serviceProvider,
+                         io_service,
+                         worker,
+                         database,
+                         chunk,
+                         onFinish,
+                         priority,
+                         computeCheckSum,
+                         keepTracking,
+                         messenger));
 }
 
-FindRequestM::FindRequestM (ServiceProvider&                  serviceProvider,
-                            boost::asio::io_service&          io_service,
-                            std::string const&                worker,
-                            std::string const&                database,
-                            unsigned int                      chunk,
-                            callback_type                     onFinish,
-                            int                               priority,
-                            bool                              computeCheckSum,
-                            bool                              keepTracking,
-                            std::shared_ptr<Messenger> const& messenger)
+FindRequestM::FindRequestM(ServiceProvider& serviceProvider,
+                           boost::asio::io_service& io_service,
+                           std::string const& worker,
+                           std::string const& database,
+                           unsigned int  chunk,
+                           callback_type onFinish,
+                           int  priority,
+                           bool computeCheckSum,
+                           bool keepTracking,
+                           std::shared_ptr<Messenger> const& messenger)
+    :   RequestMessenger(serviceProvider,
+                         io_service,
+                         "REPLICA_FIND",
+                         worker,
+                         priority,
+                         keepTracking,
+                         false /* allowDuplicate */,
+                         messenger),
 
-    :   RequestMessenger (serviceProvider,
-                          io_service,
-                          "REPLICA_FIND",
-                          worker,
-                          priority,
-                          keepTracking,
-                          false /* allowDuplicate */,
-                          messenger),
- 
-        _database        (database),
-        _chunk           (chunk),
-        _computeCheckSum (computeCheckSum),
-        _onFinish        (onFinish),
-        _replicaInfo     () {
+        _database(database),
+        _chunk(chunk),
+        _computeCheckSum(computeCheckSum),
+        _onFinish(onFinish),
+        _replicaInfo() {
 
-    _serviceProvider.assertDatabaseIsValid (database);
+    _serviceProvider.assertDatabaseIsValid(database);
 }
 
-ReplicaInfo const&
-FindRequestM::responseData () const {
+ReplicaInfo const& FindRequestM::responseData() const {
     return _replicaInfo;
 }
 
     
-void
-FindRequestM::startImpl () {
+void FindRequestM::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
          << " worker: "          << worker()
@@ -536,16 +515,16 @@ FindRequestM::startImpl () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestFind message;
-    message.set_priority  (priority());
-    message.set_database  (database());
-    message.set_chunk     (chunk());
+    message.set_priority(priority());
+    message.set_database(database());
+    message.set_chunk(chunk());
     message.set_compute_cs(computeCheckSum());
 
     _bufferPtr->serialize(message);
@@ -553,16 +532,15 @@ FindRequestM::startImpl () {
     send();
 }
 
-void
-FindRequestM::wait () {
+void FindRequestM::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &FindRequestM::awaken,
             shared_from_base<FindRequestM>(),
             boost::asio::placeholders::error
@@ -570,17 +548,16 @@ FindRequestM::wait () {
     );
 }
 
-void
-FindRequestM::awaken (boost::system::error_code const& ec) {
+void FindRequestM::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
     LOCK_GUARD;
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED){ return; }
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -588,14 +565,14 @@ FindRequestM::awaken (boost::system::error_code const& ec) {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (id());
+    message.set_id(id());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_FIND);
 
     _bufferPtr->serialize(message);
@@ -603,26 +580,24 @@ FindRequestM::awaken (boost::system::error_code const& ec) {
     send();
 }
 
-void
-FindRequestM::send () {
+void FindRequestM::send() {
 
     auto self = shared_from_base<FindRequestM>();
 
-    _messenger->send<proto::ReplicationResponseFind> (
+    _messenger->send<proto::ReplicationResponseFind>(
         worker(),
         id(),
         _bufferPtr,
-        [self] (std::string const&                    id,
-                bool                                  success,
+        [self] (std::string const& id,
+                bool success,
                 proto::ReplicationResponseFind const& response) {
             self->analyze (success, response);
         }
     );
 }
 
-void
-FindRequestM::analyze (bool success,
-                       proto::ReplicationResponseFind const& message) {
+void FindRequestM::analyze(bool success,
+                           proto::ReplicationResponseFind const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "analyze");
 
@@ -642,10 +617,11 @@ FindRequestM::analyze (bool success,
         // filled in by the 'STATUS' queries. If the later is not available
         // then fallback to the one of the current request.
     
-        if (message.has_target_performance())
+        if (message.has_target_performance()) {
             _performance.update(message.target_performance());
-        else
+        } else {
             _performance.update(message.performance());
+        }
      
         // Always extract extended data regardless of the completion status
         // reported by the worker service.
@@ -653,55 +629,54 @@ FindRequestM::analyze (bool success,
         _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
         // Extract target request type-specific parameters from the response
-        if (message.has_request())
+        if (message.has_request()) {
             _targetRequestParams = FindRequestParams(message.request());
-
+        }
         switch (message.status()) {
      
             case proto::ReplicationStatus::SUCCESS:
-                finish (SUCCESS);
+                finish(SUCCESS);
                 break;
     
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait();
-                else               finish (SERVER_QUEUED);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_QUEUED); }
                 break;
     
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IN_PROGRESS);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_IN_PROGRESS); }
                 break;
     
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IS_CANCELLING);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_IS_CANCELLING); }
                 break;
     
             case proto::ReplicationStatus::BAD:
-                finish (SERVER_BAD);
+                finish(SERVER_BAD);
                 break;
     
             case proto::ReplicationStatus::FAILED:
-                finish (SERVER_ERROR);
+                finish(SERVER_ERROR);
                 break;
     
             case proto::ReplicationStatus::CANCELLED:
-                finish (SERVER_CANCELLED);
+                finish(SERVER_CANCELLED);
                 break;
     
             default:
-                throw std::logic_error (
+                throw std::logic_error(
                         "FindRequestM::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(message.status()) + "' received from server");
         }
 
     } else {
-        finish (CLIENT_ERROR);
+        finish(CLIENT_ERROR);
     }
 }
 
-void
-FindRequestM::notify () {
+void FindRequestM::notify () {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 

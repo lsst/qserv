@@ -37,23 +37,23 @@ namespace replica {
 //          RequestTrackerBase           //
 ///////////////////////////////////////////
 
-RequestTrackerBase::RequestTrackerBase (std::ostream& os,
-                                        bool          progressReport,
-                                        bool          errorReport)
-    :   _numLaunched (0),
-        _numFinished (0),
-        _numSuccess  (0),
+RequestTrackerBase::RequestTrackerBase(std::ostream& os,
+                                       bool progressReport,
+                                       bool errorReport)
+    :   _numLaunched(0),
+        _numFinished(0),
+        _numSuccess(0),
         _os(os),
         _progressReport(progressReport),
-        _errorReport   (errorReport) {
+        _errorReport(errorReport) {
 }
 
-void RequestTrackerBase::track () const {
+void RequestTrackerBase::track() const {
 
     // Wait before all request are finished. Then analyze results
     // and print a report on failed requests (if any)
 
-    replica::BlockPost blockPost (100, 200);
+    replica::BlockPost blockPost(100, 200);
     while (_numFinished < _numLaunched) {
         blockPost.wait();
         if (_progressReport) {
@@ -72,11 +72,11 @@ void RequestTrackerBase::track () const {
             << std::endl;
     }
     if (_errorReport and (_numLaunched - _numSuccess)) {
-        printErrorReport (_os);
+        printErrorReport(_os);
     }
 }
 
-void RequestTrackerBase::cancel (bool propagateToServers) {
+void RequestTrackerBase::cancel(bool propagateToServers) {
     
     auto onFinish     = nullptr;
     bool keepTracking = false;
@@ -90,28 +90,28 @@ void RequestTrackerBase::cancel (bool propagateToServers) {
                 if (auto controller = ptr->controller()) {
 
                     if (ptr->type()  == "REPLICA_CREATE") {
-                        controller->stopReplication (
+                        controller->stopReplication(
                             ptr->worker(),
                             ptr->id(),
                             onFinish,
                             keepTracking
                         );
                     } else if (ptr->type()  == "REPLICA_DELETE") {
-                        controller->stopReplicaDelete (
+                        controller->stopReplicaDelete(
                             ptr->worker(),
                             ptr->id(),
                             onFinish,
                             keepTracking
                         );
                     } else if (ptr->type()  == "REPLICA_FIND") {
-                        controller->stopReplicaFind (
+                        controller->stopReplicaFind(
                             ptr->worker(),
                             ptr->id(),
                             onFinish,
                             keepTracking
                         );
                     } else if (ptr->type()  == "REPLICA_FIND_ALL") {
-                        controller->stopReplicaFindAll (
+                        controller->stopReplicaFindAll(
                             ptr->worker(),
                             ptr->id(),
                             onFinish,
@@ -128,7 +128,7 @@ void RequestTrackerBase::reset () {
     size_t const numOutstanding = RequestTrackerBase::_numLaunched -
                                   RequestTrackerBase::_numFinished;
     if (numOutstanding) {
-        throw std::logic_error (
+        throw std::logic_error(
                 "RequestTrackerBase::reset  the operation is not allowed due to " +
                 std::to_string(numOutstanding) + " outstanding requests");
     }
@@ -143,35 +143,35 @@ void RequestTrackerBase::reset () {
 //          AnyRequestTracker           //
 //////////////////////////////////////////
 
-AnyRequestTracker::AnyRequestTracker (std::ostream& os,
-                                      bool progressReport,
-                                      bool errorReport)
-    :   RequestTrackerBase (os,
-                            progressReport,
-                            errorReport) {
+AnyRequestTracker::AnyRequestTracker(std::ostream& os,
+                                     bool progressReport,
+                                    bool errorReport)
+    :   RequestTrackerBase(os,
+                           progressReport,
+                           errorReport) {
 }
 
-void AnyRequestTracker::onFinish (Request::pointer const& ptr) {
+void AnyRequestTracker::onFinish(Request::pointer const& ptr) {
     RequestTrackerBase::_numFinished++;
     if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
         RequestTrackerBase::_numSuccess++;
     }
 }
 
-void AnyRequestTracker::add (Request::pointer const& ptr) {
+void AnyRequestTracker::add(Request::pointer const& ptr) {
     RequestTrackerBase::_numLaunched++;
     requests.push_back(ptr);
 }
 
-void AnyRequestTracker::printErrorReport (std::ostream& os) const {
-    replica::reportRequestState (requests, os);
+void AnyRequestTracker::printErrorReport(std::ostream& os) const {
+    replica::reportRequestState(requests, os);
 }
 
-std::list<Request::pointer> AnyRequestTracker::getRequests () const {
+std::list<Request::pointer> AnyRequestTracker::getRequests() const {
     return requests;
 }
 
-void AnyRequestTracker::resetImpl () {
+void AnyRequestTracker::resetImpl() {
     requests.clear();
 }
 

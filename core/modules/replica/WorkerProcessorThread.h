@@ -69,28 +69,28 @@ public:
      * 
      * @param processor - a reference to the repository of requests to be processed
      */
-    static pointer create (WorkerProcessor &processor);
+    static pointer create(WorkerProcessor &processor);
 
     // Default construction and copy semantics are prohibited
 
-    WorkerProcessorThread () = delete;
-    WorkerProcessorThread (WorkerProcessorThread const&) = delete;
-    WorkerProcessorThread & operator= (WorkerProcessorThread const&) = delete;
+    WorkerProcessorThread() = delete;
+    WorkerProcessorThread(WorkerProcessorThread const&) = delete;
+    WorkerProcessorThread& operator=(WorkerProcessorThread const&) = delete;
 
     /// Destructor (can't say 'override' because the base class's one is not virtual)
-    virtual ~WorkerProcessorThread () = default;
+    virtual ~WorkerProcessorThread() = default;
 
     /// Return an ientifier of this thread object
-    unsigned int id () const { return _id; }
+    unsigned int id() const { return _id; }
 
     /// Return true if the processing thread is still running
-    bool isRunning () const;
+    bool isRunning() const;
 
     /**
      * Create and run the thread (if none is still running) fetching
      * and processing requests until method stop() is called.
      */
-    void run ();
+    void run();
 
     /**
      * Tell the running thread to abort proccessing the current
@@ -100,7 +100,7 @@ public:
      *
      * NOTE: This is an asynchronous operation.
      */
-    void stop ();
+    void stop();
 
     /// Return the context string
     std::string context () const { return "THREAD: " + std::to_string(_id) + "  "; }
@@ -113,18 +113,18 @@ private:
      * @param processor - a reference to the repository of requests to be processed
      * @param id        - a unique identifier of this object
      */
-    WorkerProcessorThread (WorkerProcessor& processor,
-                           unsigned int id);
+    WorkerProcessorThread(WorkerProcessor& processor,
+                          unsigned int id);
 
     /**
      * Event handler called by the thread when it's about to stop
      */
-    void stopped ();
+    void stopped();
 
     /**
      * Event handler called by the thread when a request is cancelled
      */
-    void cancelled (const WorkerRequest_pointer &request);
+    void cancelled(const WorkerRequest_pointer &request);
  
 private:
 

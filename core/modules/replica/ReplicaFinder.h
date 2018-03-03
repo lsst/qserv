@@ -59,9 +59,9 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    ReplicaFinder () = delete;
-    ReplicaFinder (ReplicaFinder const&) = delete;
-    ReplicaFinder& operator= (ReplicaFinder const&) = delete;
+    ReplicaFinder() = delete;
+    ReplicaFinder(ReplicaFinder const&) = delete;
+    ReplicaFinder& operator=(ReplicaFinder const&) = delete;
 
     /**
      * The constructor is a blocking operation which will launch the requests
@@ -77,14 +77,14 @@ public:
      * @param errorReport    - trigger detailed error reporting after the completion
      *                         of the operation
      */
-    ReplicaFinder (Controller::pointer const& controller,
-                   std::string const&         database,
-                   std::ostream&              os,
-                   bool                       progressReport=true,
-                   bool                       errorReport=false);
+    ReplicaFinder(Controller::pointer const& controller,
+                  std::string const& database,
+                  std::ostream& os,
+                  bool progressReport=true,
+                  bool errorReport=false);
 
     /// Destructor
-    ~ReplicaFinder () override = default;
+    ~ReplicaFinder() override = default;
 };
 
 }}} // namespace lsst::qserv::replica

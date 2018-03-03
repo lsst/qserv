@@ -33,27 +33,25 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ReplicaFinder::ReplicaFinder (Controller::pointer const& controller,
-                              std::string const&         database,
-                              std::ostream&              os,
-                              bool                       progressReport,
-                              bool                       errorReport)
-    :   CommonRequestTracker<FindAllRequest> (
+ReplicaFinder::ReplicaFinder(Controller::pointer const& controller,
+                             std::string const& database,
+                             std::ostream& os,
+                             bool progressReport,
+                             bool errorReport)
+    :   CommonRequestTracker<FindAllRequest>(
             os,
             progressReport,
             errorReport) {
 
     // Launch requests against all workers
-    for (const auto &worker: controller->serviceProvider().config()->workers())
-        add (
-            controller->findAllReplicas (
-                worker,
-                database,
-                [this] (FindAllRequest::pointer ptr) {
-                    this->onFinish(ptr);
-                }
-            )
-        );
+    for (const auto &worker: controller->serviceProvider().config()->workers()) {
+        add(controller->findAllReplicas(
+                            worker,
+                            database,
+                            [this] (FindAllRequest::pointer ptr) {
+                                this->onFinish(ptr);
+                            }));
+    }
 
     // Wait before all request are finished. Then analyze results
     // and print a report on failed requests (if any)
