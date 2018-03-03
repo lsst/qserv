@@ -46,20 +46,20 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
  * @return   - the stream object
  */
 template <typename T>
-void vector2stream (std::ostream&         os,
-                    std::vector<T> const& v) {
-    for (size_t i = 0, num = v.size(); i < num; ++i)
+void vector2stream(std::ostream&         os,
+                   std::vector<T> const& v) {
+    for (size_t i = 0, num = v.size(); i < num; ++i) {
         os  << (i ? "," : "") << v[i];
+    }
 }
 
 } // namespace
-
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::ostream& operator << (std::ostream& os, WorkerInfo const& info) {
+std::ostream& operator <<(std::ostream& os, WorkerInfo const& info) {
     os  << "WorkerInfo ("
         << "name:'"      <<      info.name       << "',"
         << "isEnabled:"  << (int)info.isEnabled  << ","
@@ -72,43 +72,43 @@ std::ostream& operator << (std::ostream& os, WorkerInfo const& info) {
     return os;
 }
 
-std::ostream& operator << (std::ostream& os, DatabaseInfo const& info) {
+std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
     os  << "DatabaseInfo ("
         << "name:'" << info.name << "',"
         << "family:'" << info.family << "',"
         << "partitionedTables:[";
-    ::vector2stream (os, info.partitionedTables);
+    ::vector2stream(os, info.partitionedTables);
     os  << "],"
         << "regularTables:[";
-    ::vector2stream (os, info.regularTables);
+    ::vector2stream(os, info.regularTables);
     os  << "])";
     return os;
 }
 
-Configuration::pointer
-Configuration::load (std::string const& configUrl) {
+Configuration::pointer Configuration::load(std::string const& configUrl) {
  
     for (auto const& proposedPrefix: std::vector<std::string>{"file:","mysql:"}) {
  
         std::string::size_type const prefixSize = proposedPrefix.size();
-        std::string const            prefix = configUrl.substr (0, prefixSize);
-        std::string const            suffix = configUrl.substr (prefixSize);
+        std::string const            prefix = configUrl.substr(0, prefixSize);
+        std::string const            suffix = configUrl.substr(prefixSize);
  
-        if ("file:"  == prefix)
-            return Configuration::pointer (
-                new ConfigurationFile  (suffix));
+        if ("file:"  == prefix) {
+            return Configuration::pointer(
+                new ConfigurationFile(suffix));
 
-        if ("mysql:" == prefix)
-            return Configuration::pointer (
-                new ConfigurationMySQL (
-                    database::mysql::ConnectionParams::parse (
+        } else if ("mysql:" == prefix) {
+            return Configuration::pointer(
+                new ConfigurationMySQL(
+                    database::mysql::ConnectionParams::parse(
                         suffix,
                         Configuration::defaultDatabaseHost,
                         Configuration::defaultDatabasePort,
                         Configuration::defaultDatabaseUser,
                         Configuration::defaultDatabasePassword)));
+        }
     }
-    throw std::invalid_argument (
+    throw std::invalid_argument(
             "Configuration::load:  unsupported configUrl: " + configUrl);
 }
 
@@ -138,21 +138,21 @@ std::string  const Configuration::defaultDatabaseName                {"replica"}
 unsigned int const Configuration::defaultJobSchedulerIvalSec         {1};
 size_t       const Configuration::defaultReplicationLevel            {1};
 
-void
-Configuration::translateDataDir (std::string&       dataDir,
-                                 std::string const& workerName) {
+void Configuration::translateDataDir(std::string&       dataDir,
+                                     std::string const& workerName) {
 
     std::string::size_type const leftPos = dataDir.find('{');
-    if (leftPos == std::string::npos) return;
+    if (leftPos == std::string::npos) { return; }
 
-    std::string::size_type const  rightPos = dataDir.find('}');
-    if (rightPos == std::string::npos) return;
+    std::string::size_type const rightPos = dataDir.find('}');
+    if (rightPos == std::string::npos) { return; }
 
-    if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}")
+    if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
         dataDir.replace(leftPos, rightPos - leftPos + 1, workerName);
+    }
 }
 
-Configuration::Configuration ()
+Configuration::Configuration()
     :   _requestBufferSizeBytes       (defaultRequestBufferSizeBytes),
         _retryTimeoutSec              (defaultRetryTimeoutSec),
         _controllerHttpPort           (defaultControllerHttpPort),
@@ -171,141 +171,142 @@ Configuration::Configuration ()
         _jobSchedulerIvalSec          (defaultJobSchedulerIvalSec) {
 }
 
-std::vector<std::string>
-Configuration::workers (bool isEnabled,
-                        bool isReadOnly) const {
+std::vector<std::string> Configuration::workers(bool isEnabled,
+                                                bool isReadOnly) const {
     std::vector<std::string> names;
     for (auto const& entry: _workerInfo) {
         auto const& name = entry.first;
         auto const& info = entry.second;
         if (isEnabled) {
-            if (info.isEnabled && (isReadOnly == info.isReadOnly))
+            if (info.isEnabled and (isReadOnly == info.isReadOnly)) {
                 names.push_back (name);
+            }
         } else {
-            if (!info.isEnabled)
+            if (not info.isEnabled) {
                 names.push_back (name);
+            }
         }
     }
     return names;
 }
 
-std::vector<std::string>
-Configuration::databaseFamilies () const {
+std::vector<std::string> Configuration::databaseFamilies() const {
 
     std::map<std::string, size_t> family2num;
-    for (auto const& elem: _databaseInfo)
+    for (auto const& elem: _databaseInfo) {
         family2num[elem.second.family]++;
-
+    }
     std::vector<std::string> families;
-    for (auto const& elem: family2num)
+    for (auto const& elem: family2num) {
         families.emplace_back (elem.first);
-
+    }
     return families;
 }
 
-bool
-Configuration::isKnownDatabaseFamily (std::string const& name) const {
-    return _replicationLevel.count (name);
+bool Configuration::isKnownDatabaseFamily(std::string const& name) const {
+    return _replicationLevel.count(name);
 }
 
-size_t
-Configuration::replicationLevel (std::string const& family) const {
-    if (!_replicationLevel.count (family))
-        throw std::invalid_argument (
+size_t Configuration::replicationLevel(std::string const& family) const {
+    if (not _replicationLevel.count(family)) {
+        throw std::invalid_argument(
                 "Configuration::replicationLevel  unknown database family name: '" +
                 family + "'");
-    return _replicationLevel.at (family);
+    }
+    return _replicationLevel.at(family);
 }
 
-std::vector<std::string>
-Configuration::databases (std::string const& family) const {
+std::vector<std::string> Configuration::databases(std::string const& family) const {
 
-    if (!family.empty() && !_replicationLevel.count (family))
-        throw std::invalid_argument (
+    if (not family.empty() and not _replicationLevel.count(family)) {
+        throw std::invalid_argument(
                 "Configuration::databases  unknown database family name: '" +
                 family + "'");
-
+    }
     std::vector<std::string> names;
     for (auto const& entry: _databaseInfo) {
-        if (!family.empty() && (family != entry.second.family)) continue;
-        names.push_back (entry.first);
+        if (not family.empty() and (family != entry.second.family)) { continue; }
+        names.push_back(entry.first);
     }        
     return names;
 }
 
-bool
-Configuration::isKnownWorker (std::string const& name) const {
+bool Configuration::isKnownWorker(std::string const& name) const {
     return _workerInfo.count(name) > 0;
 }
 
-WorkerInfo const&
-Configuration::workerInfo (std::string const& name) const {
-    if (!isKnownWorker(name)) 
-        throw std::invalid_argument (
+WorkerInfo const& Configuration::workerInfo(std::string const& name) const {
+    if (not isKnownWorker(name)) {
+        throw std::invalid_argument(
                 "Configuration::workerInfo() uknown worker name '" + name + "'");
+    }
     return _workerInfo.at(name);
 }
 
-bool
-Configuration::isKnownDatabase (std::string const& name) const {
+bool Configuration::isKnownDatabase(std::string const& name) const {
     return _databaseInfo.count(name) > 0;
 }
 
-DatabaseInfo const&
-Configuration::databaseInfo (std::string const& name) const {
-    if (!isKnownDatabase(name)) 
-        throw std::invalid_argument (
+DatabaseInfo const& Configuration::databaseInfo(std::string const& name) const {
+    if (not isKnownDatabase(name)) {
+        throw std::invalid_argument(
                 "Configuration::databaseInfo() uknown database name '" + name + "'");
+    }
     return _databaseInfo.at(name);
 }
 
-
-void
-Configuration::dumpIntoLogger () {
+void Configuration::dumpIntoLogger() {
 
     static char const* context = "Configuration::";
 
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultRequestBufferSizeBytes:       " << defaultRequestBufferSizeBytes);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultRetryTimeoutSec:              " << defaultRetryTimeoutSec);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerTechnology:             " << defaultWorkerTechnology);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerNumProcessingThreads:   " << defaultWorkerNumProcessingThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerNumFsProcessingThreads: " << defaultWorkerNumFsProcessingThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerFsBufferSizeBytes:      " << defaultWorkerFsBufferSizeBytes);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerSvcHost:                " << defaultWorkerSvcHost);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerSvcPort:                " << defaultWorkerSvcPort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerFsHost:                 " << defaultWorkerFsHost);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultWorkerFsPort:                 " << defaultWorkerFsPort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDataDir:                      " << defaultDataDir);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabaseTechnology:           " << defaultDatabaseTechnology);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabaseHost:                 " << defaultDatabaseHost);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabasePort:                 " << defaultDatabasePort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabaseUser:                 " << defaultDatabaseUser);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabasePassword:             " << "*****");
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultDatabaseName:                 " << defaultDatabaseName);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultJobSchedulerIvalSec:          " << defaultJobSchedulerIvalSec);
-    LOGS (_log, LOG_LVL_DEBUG, context << "defaultReplicationLevel:             " << defaultReplicationLevel);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_requestBufferSizeBytes:             " << _requestBufferSizeBytes);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_retryTimeoutSec:                    " << _retryTimeoutSec);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_controllerHttpPort:                 " << _controllerHttpPort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_controllerHttpThreads:              " << _controllerHttpThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_workerTechnology:                   " << _workerTechnology);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_workerNumProcessingThreads:         " << _workerNumProcessingThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_workerNumFsProcessingThreads:       " << _workerNumFsProcessingThreads);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_workerFsBufferSizeBytes:            " << _workerFsBufferSizeBytes);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databaseTechnology:                 " << _databaseTechnology);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databaseHost:                       " << _databaseHost);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databasePort:                       " << _databasePort);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databaseUser:                       " << _databaseUser);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databasePassword:                   " << "*****");
-    LOGS (_log, LOG_LVL_DEBUG, context << "_databaseName:                       " << _databaseName);
-    LOGS (_log, LOG_LVL_DEBUG, context << "_jobSchedulerIvalSec:                " << _jobSchedulerIvalSec);
-    for (auto const& elem: _workerInfo)       LOGS (_log, LOG_LVL_DEBUG, context << elem.second);
-    for (auto const& elem: _databaseInfo)     LOGS (_log, LOG_LVL_DEBUG, context << elem.second);
-    for (auto const& elem: _replicationLevel) LOGS (_log, LOG_LVL_DEBUG, context << "replicationLevel["<< elem.first << "]: " << elem.second);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultRequestBufferSizeBytes:       " << defaultRequestBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultRetryTimeoutSec:              " << defaultRetryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerTechnology:             " << defaultWorkerTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerNumProcessingThreads:   " << defaultWorkerNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerNumFsProcessingThreads: " << defaultWorkerNumFsProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerFsBufferSizeBytes:      " << defaultWorkerFsBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerSvcHost:                " << defaultWorkerSvcHost);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerSvcPort:                " << defaultWorkerSvcPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerFsHost:                 " << defaultWorkerFsHost);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerFsPort:                 " << defaultWorkerFsPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDataDir:                      " << defaultDataDir);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabaseTechnology:           " << defaultDatabaseTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabaseHost:                 " << defaultDatabaseHost);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabasePort:                 " << defaultDatabasePort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabaseUser:                 " << defaultDatabaseUser);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabasePassword:             " << "*****");
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultDatabaseName:                 " << defaultDatabaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultJobSchedulerIvalSec:          " << defaultJobSchedulerIvalSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultReplicationLevel:             " << defaultReplicationLevel);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_requestBufferSizeBytes:             " << _requestBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_retryTimeoutSec:                    " << _retryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpPort:                 " << _controllerHttpPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpThreads:              " << _controllerHttpThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_workerTechnology:                   " << _workerTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_workerNumProcessingThreads:         " << _workerNumProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_workerNumFsProcessingThreads:       " << _workerNumFsProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_workerFsBufferSizeBytes:            " << _workerFsBufferSizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databaseTechnology:                 " << _databaseTechnology);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databaseHost:                       " << _databaseHost);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databasePort:                       " << _databasePort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databaseUser:                       " << _databaseUser);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databasePassword:                   " << "*****");
+    LOGS(_log, LOG_LVL_DEBUG, context << "_databaseName:                       " << _databaseName);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_jobSchedulerIvalSec:                " << _jobSchedulerIvalSec);
+    for (auto const& elem: _workerInfo) {
+        LOGS(_log, LOG_LVL_DEBUG, context << elem.second);
+    }
+    for (auto const& elem: _databaseInfo) {
+        LOGS(_log, LOG_LVL_DEBUG, context << elem.second);
+    }
+    for (auto const& elem: _replicationLevel) {
+        LOGS(_log, LOG_LVL_DEBUG, context
+             << "replicationLevel["<< elem.first << "]: " << elem.second);
+    }
 }
 
 }}} // namespace lsst::qserv::replica

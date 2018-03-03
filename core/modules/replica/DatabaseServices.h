@@ -78,16 +78,16 @@ public:
      *
      * @param configuration - the configuration service
      */
-    static pointer create (Configuration::pointer const& configuration);
+    static pointer create(Configuration::pointer const& configuration);
 
     // Default construction and copy semantics are prohibited
 
-    DatabaseServices () = delete;
-    DatabaseServices (DatabaseServices const&) = delete;
-    DatabaseServices& operator= (DatabaseServices const&) = delete;
+    DatabaseServices() = delete;
+    DatabaseServices(DatabaseServices const&) = delete;
+    DatabaseServices& operator=(DatabaseServices const&) = delete;
 
     /// Destructor
-    virtual ~DatabaseServices () = default;
+    virtual ~DatabaseServices() = default;
 
     /**
      * Save the state of the Controller. Note this operation can be called
@@ -100,8 +100,8 @@ public:
      *
      * @throws std::logic_error - if this Contoller's state is already found in a database
      */
-    virtual void saveState (ControllerIdentity const& identity,
-                            uint64_t                  startTime);
+    virtual void saveState(ControllerIdentity const& identity,
+                           uint64_t                  startTime) = 0;
 
     /**
      * Save the state of the Job. This operation can be called many times for
@@ -114,7 +114,7 @@ public:
      *
      * @throw std::invalid_argument - if the actual job type won't match the expected one
      */
-    virtual void saveState (Job_pointer const& job);
+    virtual void saveState(Job_pointer const& job) = 0;
 
     /**
      * Save the state of the Request. This operation can be called many times for
@@ -127,7 +127,7 @@ public:
      *
      * @throw std::invalid_argument - if the actual request type won't match the expected one
      */
-    virtual void saveState (Request_pointer const& request);
+    virtual void saveState(Request_pointer const& request) = 0;
 
     /**
      * Locate replicas which have the oldest verification timestamps.
@@ -143,9 +143,9 @@ public:
      * @param enabledWorkersOnly - if set to 'true' then only consider known
      *                             workers which are enabled in the Configuration
      */
-    virtual bool findOldestReplicas (std::vector<ReplicaInfo>& replicas,
-                                     size_t                    maxReplicas=1,
-                                     bool                      enabledWorkersOnly=true) const;
+    virtual bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+                                    size_t maxReplicas=1,
+                                    bool   enabledWorkersOnly=true) const = 0;
     
     /**
      * Find all replicas for the specified chunk and the database.
@@ -164,10 +164,10 @@ public:
      *
      * @throw std::invalid_argument - if the database is unknown or empty
      */
-    virtual bool findReplicas (std::vector<ReplicaInfo>& replicas,
-                               unsigned int              chunk,
-                               std::string const&        database,
-                               bool                      enabledWorkersOnly=true) const;
+    virtual bool findReplicas(std::vector<ReplicaInfo>& replicas,
+                              unsigned int chunk,
+                              std::string const& database,
+                              bool enabledWorkersOnly=true) const = 0;
 
     /**
      * Find all replicas for the specified worker and a database (or all
@@ -187,9 +187,9 @@ public:
      *                                is empty, or if the database family is
      *                                unknown (if provided)
      */
-    virtual bool findWorkerReplicas (std::vector<ReplicaInfo>& replicas,
-                                     std::string const&        worker,
-                                     std::string const&        database=std::string()) const;
+    virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+                                    std::string const& worker,
+                                    std::string const& database=std::string()) const = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -208,16 +208,16 @@ public:
      * @throw std::invalid_argument - if the worker is unknown or its name is empty,
      *                                or if the database family is unknown (if provided)
      */
-    virtual bool findWorkerReplicas (std::vector<ReplicaInfo>& replicas,
-                                     unsigned int              chunk,
-                                     std::string const&        worker,
-                                     std::string const&        databaseFamily=std::string()) const;
+    virtual bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+                                    unsigned int chunk,
+                                    std::string const& worker,
+                                    std::string const& databaseFamily=std::string()) const = 0;
 
 protected:
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
-    std::shared_ptr<T> shared_from_base () {
+    std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
@@ -226,7 +226,7 @@ protected:
      *
      * @param configuration - the configuration service
      */
-    explicit DatabaseServices (Configuration::pointer const& configuration);
+    explicit DatabaseServices(Configuration::pointer const& configuration);
 
 protected:
 

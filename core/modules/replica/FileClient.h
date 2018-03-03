@@ -88,10 +88,10 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer open (ServiceProvider& serviceProvider,
-                         std::string const& workerName,
-                         std::string const& databaseName,
-                         std::string const& fileName);
+    static pointer open(ServiceProvider& serviceProvider,
+                        std::string const& workerName,
+                        std::string const& databaseName,
+                        std::string const& fileName);
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successfull then a valid pointer will be returned.
@@ -110,31 +110,31 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer stat (ServiceProvider& serviceProvider,
-                         std::string const& workerName,
-                         std::string const& databaseName,
-                         std::string const& fileName);
+    static pointer stat(ServiceProvider& serviceProvider,
+                        std::string const& workerName,
+                        std::string const& databaseName,
+                        std::string const& fileName);
     
     // Default construction and copy semantics are prohibited
 
-    FileClient () = delete;
-    FileClient (FileClient const&) = delete;
-    FileClient &operator= (FileClient const&) = delete;
+    FileClient() = delete;
+    FileClient(FileClient const&) = delete;
+    FileClient &operator=(FileClient const&) = delete;
 
     /// Destructor
     ~FileClient () = default;
 
     // Trivial accessors
 
-    std::string const& worker   () const;
-    std::string const& database () const;
-    std::string const& file     () const;
+    std::string const& worker() const;
+    std::string const& database() const;
+    std::string const& file() const;
 
     /// The size of a file (as reported by a server)
-    size_t size () const { return _size; }
+    size_t size() const { return _size; }
 
     /// The last modification time (mtime) of the file
-    std::time_t mtime () const { return _mtime; }
+    std::time_t mtime() const { return _mtime; }
 
     /**
      * Read (up to, but not exceeding) the specified number of bytes into a buffer.
@@ -149,7 +149,7 @@ public:
      *
      * @return the actual number of bytes read or 0 if the end of file reached
      */
-    size_t read (uint8_t* buf, size_t bufSize);
+    size_t read(uint8_t* buf, size_t bufSize);
 
 private:
 
@@ -165,16 +165,16 @@ private:
      * @param fileName        - the file to read or examine
      * @param readContent     - indicates if a file is open for reading its content   
      */
-    FileClient (ServiceProvider& serviceProvider,
-                std::string const& workerName,
-                std::string const& databaseName,
-                std::string const& fileName,
-                bool readContent);
+    FileClient(ServiceProvider& serviceProvider,
+               std::string const& workerName,
+               std::string const& databaseName,
+               std::string const& fileName,
+               bool readContent);
 
     /**
      * Try opening the file. Return 'true' if successfull.
      */
-    bool openImpl ();
+    bool openImpl();
 
 private:
 

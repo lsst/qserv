@@ -24,10 +24,12 @@
 #include "replica/ConfigurationFile.h"
 
 // System headers
-#include <boost/lexical_cast.hpp>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
+
+// Third party headers
+#include <boost/lexical_cast.hpp>
 
 // Qserv headers
 #include "lsst/log/Log.h"
@@ -36,6 +38,8 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigurationFile");
+
+namespace util = lsst::qserv::util;
 
 /**
  * Fetch and parse a value of the specified key into. Return the specified
@@ -46,10 +50,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigurationFile");
  *   std::bad_lexical_cast
  */
 template <typename T, typename D>
-void parseKeyVal (lsst::qserv::util::ConfigStore &configStore,
-                  std::string const& key,
-                  T&                 val,
-                  D const&           defaultVal) {
+void parseKeyVal(util::ConfigStore& configStore,
+                 std::string const& key,
+                 T&                 val,
+                 D const&           defaultVal) {
 
     std::string const str = configStore.get(key);
     val = str.empty() ? defaultVal : boost::lexical_cast<T>(str);        
@@ -59,13 +63,13 @@ void parseKeyVal (lsst::qserv::util::ConfigStore &configStore,
  * Function specialization for the boolean type
  */
 template <>
-void parseKeyVal<bool,bool> (lsst::qserv::util::ConfigStore &configStore,
-                             std::string const& key,
-                             bool&              val,
-                             bool const&        defaultVal) {
+void parseKeyVal<bool,bool>(util::ConfigStore& configStore,
+                            std::string const& key,
+                            bool&              val,
+                            bool const&        defaultVal) {
 
     unsigned int number;
-    parseKeyVal (configStore, key, number, defaultVal ? 1 : 0);
+    parseKeyVal(configStore, key, number, defaultVal ? 1 : 0);
     val = (bool) number;      
 }
 
@@ -75,15 +79,14 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ConfigurationFile::ConfigurationFile (std::string const& configFile)
-    :   Configuration (),
-        _configFile (configFile) {
+ConfigurationFile::ConfigurationFile(std::string const& configFile)
+    :   Configuration(),
+        _configFile(configFile) {
 
     loadConfiguration();
 }
 
-WorkerInfo const&
-ConfigurationFile::disableWorker (std::string const& name) {
+WorkerInfo const& ConfigurationFile::disableWorker(std::string const& name) {
 
     std::string const context = "ConfigurationFile::disableWorker  ";
 
@@ -100,8 +103,7 @@ ConfigurationFile::disableWorker (std::string const& name) {
     return info;
 }
 
-void
-ConfigurationFile::deleteWorker (std::string const& name) {
+void ConfigurationFile::deleteWorker(std::string const& name) {
 
     std::string const context = "ConfigurationFile::deleteWorker  ";
 
@@ -113,10 +115,9 @@ ConfigurationFile::deleteWorker (std::string const& name) {
     _workerInfo.erase(info.name);
 }
 
-void
-ConfigurationFile::loadConfiguration () {
+void ConfigurationFile::loadConfiguration() {
 
-    lsst::qserv::util::ConfigStore configStore(_configFile);
+    util::ConfigStore configStore(_configFile);
 
     // Parse the list of worker names
 
@@ -169,7 +170,7 @@ ConfigurationFile::loadConfiguration () {
 
     std::string commonDataDir;
     
-    ::parseKeyVal(configStore, "worker.data_dir",    commonDataDir,    defaultDataDir);
+    ::parseKeyVal(configStore, "worker.data_dir",  commonDataDir, defaultDataDir);
 
     // Parse optional worker-specific configuraton sections. Assume default
     // or (previously parsed) common values if a whole secton or individual
@@ -178,11 +179,11 @@ ConfigurationFile::loadConfiguration () {
     for (std::string const& name: workers) {
 
         std::string const section = "worker:" + name;
-        if (_workerInfo.count(name))
-            throw std::range_error (
+        if (_workerInfo.count(name)) {
+            throw std::range_error(
                     "ConfigurationFile::loadConfiguration() duplicate worker entry: '" +
                     name + "' in: [common] or ["+section+"], configuration file: " + _configFile);
-
+        }
         _workerInfo[name].name = name;
 
         ::parseKeyVal(configStore, section+".is_enabled",   _workerInfo[name].isEnabled,  true);
@@ -200,12 +201,15 @@ ConfigurationFile::loadConfiguration () {
 
     for (std::string const& name: databaseFamilies) {
         std::string const section = "database_family:" + name;
-        if (_replicationLevel.count(name))
-            throw std::range_error (
+        if (_replicationLevel.count(name)) {
+            throw std::range_error(
                     "ConfigurationFile::loadConfiguration() duplicate database family entry: '" +
                     name + "' in: [common] or ["+section+"], configuration file: " + _configFile);
-        ::parseKeyVal(configStore, section+".min_replication_level",   _replicationLevel[name], defaultReplicationLevel);
-        if (!_replicationLevel[name]) _replicationLevel[name] = defaultReplicationLevel;
+        }
+        ::parseKeyVal(configStore, section+".min_replication_level", _replicationLevel[name], defaultReplicationLevel);
+        if (not _replicationLevel[name]) {
+            _replicationLevel[name] = defaultReplicationLevel;
+        }
     }
 
     // Parse mandatory database-specific configuraton sections
@@ -213,17 +217,18 @@ ConfigurationFile::loadConfiguration () {
     for (std::string const& name: databases) {
 
         std::string const section = "database:" + name;
-        if (_databaseInfo.count(name))
-            throw std::range_error (
+        if (_databaseInfo.count(name)) {
+            throw std::range_error(
                     "ConfigurationFile::loadConfiguration() duplicate database entry: '" +
                     name + "' in: [common] or ["+section+"], configuration file: " + _configFile);
-
+        }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
-        if (!_replicationLevel.count(_databaseInfo[name].family))
-            throw std::range_error (
+        if (not _replicationLevel.count(_databaseInfo[name].family)) {
+            throw std::range_error(
                     "ConfigurationFile::loadConfiguration() unknown database family: '" +
                     _databaseInfo[name].family + "' in section ["+section+"], configuration file: " + _configFile);
+        }
         {
             std::istringstream ss(configStore.getRequired(section+".partitioned_tables"));
             std::istream_iterator<std::string> begin(ss), end;
