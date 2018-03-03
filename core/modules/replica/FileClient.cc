@@ -44,11 +44,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileClient::pointer
-FileClient::open (ServiceProvider& serviceProvider,
-                  std::string const& workerName,
-                  std::string const& databaseName,
-                  std::string const& fileName) {
+FileClient::pointer FileClient::open(ServiceProvider& serviceProvider,
+                                     std::string const& workerName,
+                                     std::string const& databaseName,
+                                     std::string const& fileName) {
     try {
         const bool readContent = true;
         FileClient::pointer ptr(
@@ -58,7 +57,7 @@ FileClient::open (ServiceProvider& serviceProvider,
                            fileName,
                            readContent));
 
-        if (ptr->openImpl()) return ptr;
+        if (ptr->openImpl()) { return ptr; }
 
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "FileClient::open  failed to construct an object for "
@@ -71,13 +70,12 @@ FileClient::open (ServiceProvider& serviceProvider,
 }
 
 
-FileClient::pointer
-FileClient::stat (ServiceProvider& serviceProvider,
-                  std::string const& workerName,
-                  std::string const& databaseName,
-                  std::string const& fileName) {
+FileClient::pointer FileClient::stat(ServiceProvider& serviceProvider,
+                                     std::string const& workerName,
+                                     std::string const& databaseName,
+                                     std::string const& fileName) {
     try {
-        bool const readContent = true;
+        bool const readContent = false;
         FileClient::pointer ptr(
             new FileClient(serviceProvider,
                            workerName,
@@ -85,7 +83,7 @@ FileClient::stat (ServiceProvider& serviceProvider,
                            fileName,
                            readContent));
 
-        if (ptr->openImpl()) return ptr;
+        if (ptr->openImpl()) { return ptr; }
 
     } catch (std::exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "FileClient::open  failed to construct an object for "
@@ -97,73 +95,67 @@ FileClient::stat (ServiceProvider& serviceProvider,
     return nullptr;
 }
 
-FileClient::FileClient (ServiceProvider& serviceProvider,
-                        std::string const& workerName,
-                        std::string const& databaseName,
-                        std::string const& fileName,
-                        bool readContent)
-
-    :   _workerInfo  (serviceProvider.config()->workerInfo  (workerName)),
+FileClient::FileClient(ServiceProvider& serviceProvider,
+                       std::string const& workerName,
+                       std::string const& databaseName,
+                       std::string const& fileName,
+                       bool readContent)
+    :   _workerInfo(serviceProvider.config()->workerInfo(workerName)),
         _databaseInfo(serviceProvider.config()->databaseInfo(databaseName)),
-        _fileName    (fileName),
-        _readContent (readContent),
-
-        _bufferPtr (new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
-
+        _fileName(fileName),
+        _readContent(readContent),
+        _bufferPtr(new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
         _io_service(),
-        _socket    (_io_service),
-        
-        _size  (0),
-        _mtime (0),
-        _eof   (false) {
+        _socket(_io_service),
+        _size(0),
+        _mtime(0),
+        _eof(false) {
 }
 
-std::string const&
-FileClient::worker () const {
+std::string const& FileClient::worker() const {
     return _workerInfo.name;
 }
 
-std::string const&
-FileClient::database () const {
+std::string const& FileClient::database() const {
     return _databaseInfo.name;
 }
 
-std::string const&
-FileClient::file () const {
+std::string const& FileClient::file() const {
     return _fileName;
 }
 
-bool
-FileClient::openImpl () {
+bool FileClient::openImpl() {
 
-    LOGS(_log, LOG_LVL_DEBUG, "FileClient::openImpl");
+    static std::string const context = "FileClient::openImpl  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
     boost::system::error_code ec;
 
     // Connect to the server synchroniously using error codes to process errors
     // insteda of exceptions.
 
-    boost::asio::ip::tcp::resolver::query query (
+    boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
         std::to_string(_workerInfo.fsPort)
     );
     boost::asio::ip::tcp::resolver resolver(_io_service);
     boost::asio::ip::tcp::resolver::iterator iter =
-        resolver.resolve (
-            boost::asio::ip::tcp::resolver::query (
+        resolver.resolve(
+            boost::asio::ip::tcp::resolver::query(
                 _workerInfo.svcHost,
                 std::to_string(_workerInfo.fsPort)),
         ec
     );
     if (ec) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  failed to resolve the server: "
+        LOGS(_log, LOG_LVL_ERROR, context << "failed to resolve the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", error: " << ec.message());
         return false;
     }
     boost::asio::connect(_socket, iter, ec);
     if (ec) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  failed to connect to the server: "
+        LOGS(_log, LOG_LVL_ERROR, context << "failed to connect to the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", error: " << ec.message());
         return false;
@@ -185,22 +177,23 @@ FileClient::openImpl () {
         _bufferPtr->resize();
     
         proto::ReplicationFileRequest request;
-        request.set_database    (database());
-        request.set_file        (file());
+        request.set_database(database());
+        request.set_file(file());
         request.set_send_content(_readContent);
     
         _bufferPtr->serialize(request);
     
-        boost::asio::write (
+        boost::asio::write(
             _socket,
-            boost::asio::buffer (
+            boost::asio::buffer(
                 _bufferPtr->data(),
                 _bufferPtr->size()
             ),
             ec
         );
         if (ec) {
-            LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  failed to send the file open request to the server: "
+            LOGS(_log, LOG_LVL_ERROR, context
+                 << "failed to send the file open request to the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
@@ -216,9 +209,9 @@ FileClient::openImpl () {
     
         _bufferPtr->resize(frameLengthBytes);
     
-        boost::asio::read (
+        boost::asio::read(
             _socket,
-            boost::asio::buffer (
+            boost::asio::buffer(
                 _bufferPtr->data(),
                 frameLengthBytes
             ),
@@ -226,7 +219,8 @@ FileClient::openImpl () {
             ec
         );
         if (ec) {
-            LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  failed to receive the file open response frame header from the server: "
+            LOGS(_log, LOG_LVL_ERROR, context
+                 << "failed to receive the file open response frame header from the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
@@ -240,9 +234,9 @@ FileClient::openImpl () {
     
         _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to accomodate
                                                     // the data of the message.
-        boost::asio::read (
+        boost::asio::read(
             _socket,
-            boost::asio::buffer (
+            boost::asio::buffer(
                 _bufferPtr->data(),
                 responseLengthBytes
             ),
@@ -250,7 +244,8 @@ FileClient::openImpl () {
             ec
         );
         if (ec) {
-            LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  failed to receive the file open response from the server: "
+            LOGS(_log, LOG_LVL_ERROR, context
+                 << "failed to receive the file open response from the server: "
                  << _workerInfo.svcHost << ":" << _workerInfo.fsPort
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
@@ -269,7 +264,8 @@ FileClient::openImpl () {
         }
 
     } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "FileClient::openImpl  an exception occured while processing response from the server: "
+        LOGS(_log, LOG_LVL_ERROR, context
+             << "an exception occured while processing response from the server: "
              << _workerInfo.svcHost << ":" << _workerInfo.fsPort
              << ", database: " << database() << ", file: " << file()
              << ", error: " << ex.what());
@@ -278,29 +274,32 @@ FileClient::openImpl () {
 }
 
 
-size_t
-FileClient::read (uint8_t* buf, size_t bufSize) {
+size_t FileClient::read(uint8_t* buf, size_t bufSize) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "FileClient::read");
+    static std::string const context = "FileClient::read  ";
 
-    if (!_readContent)
-        throw FileClientError (
-            "FileClient::read  this file was open in 'stat' mode, server: "
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (not _readContent) {
+        throw FileClientError(
+            context + "this file was open in 'stat' mode, server: "
             + _workerInfo.svcHost + ":" + std::to_string(_workerInfo.fsPort) +
             ", database: " + database() +
             ", file: " + file());
-
-    if (!buf || !bufSize)
-        throw std::invalid_argument("FileClient::read  zero buffer pointer or buffer size passed into the method");
+    }
+    if (not buf or not bufSize) {
+        throw std::invalid_argument(
+                        context + "  zero buffer pointer or buffer size passed into the method");
+    }
 
     // If EOF was detected earlier
-    if (_eof) return 0;
+    if (_eof) { return 0; }
 
     // Read the specified number of bytes
     boost::system::error_code ec;
-    const size_t num = boost::asio::read (
+    const size_t num = boost::asio::read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             buf,
             bufSize
         ),
@@ -312,18 +311,20 @@ FileClient::read (uint8_t* buf, size_t bufSize) {
         // some amount of byte. We just need to store this status for future attempts
         // to read data from the file.
 
-        if (ec == boost::asio::error::eof)
+        if (ec == boost::asio::error::eof) {
             _eof = true;
-        else
-            throw FileClientError ("failed to receive a data record from the server: " +
-                _workerInfo.svcHost + ":" + std::to_string(_workerInfo.fsPort) +
-                ", database: " + database() +
-                ", file: " + file() +
-                ", bufSize: " + std::to_string(bufSize) +
-                ", error code: " + std::to_string(ec.value()) +
-                ", error message: " + ec.message());
+        } else {
+            throw FileClientError(
+                        "failed to receive a data record from the server: " +
+                        _workerInfo.svcHost + ":" + std::to_string(_workerInfo.fsPort) +
+                        ", database: " + database() +
+                        ", file: " + file() +
+                        ", bufSize: " + std::to_string(bufSize) +
+                        ", error code: " + std::to_string(ec.value()) +
+                        ", error message: " + ec.message());
+        }
     } else {
-        if (!num) _eof = true;
+        if (not num) { _eof = true; }
     }
     return num;
 }

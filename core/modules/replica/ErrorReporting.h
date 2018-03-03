@@ -48,8 +48,8 @@ namespace replica {
  * @param os       - an output stream
  */
 template <class COLLECTION>
-void reportRequestState (COLLECTION const& requests,
-                         std::ostream& os) {
+void reportRequestState(COLLECTION const& requests,
+                        std::ostream& os) {
     os  << "\n"
         << "REQUESTS:\n"
         << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n"

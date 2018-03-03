@@ -85,25 +85,23 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           std::string const&       workerName,
-                           boost::asio::io_service& io_service);
+    static pointer create(ServiceProvider& serviceProvider,
+                          std::string const& workerName,
+                          boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
 
-    FileServerConnection () = delete;
-    FileServerConnection (FileServerConnection const&) = delete;
-    FileServerConnection& operator= (FileServerConnection const&) = delete;
+    FileServerConnection() = delete;
+    FileServerConnection(FileServerConnection const&) = delete;
+    FileServerConnection& operator=(FileServerConnection const&) = delete;
 
     /// Destructor (non-trivial)
-    ~FileServerConnection ();
+    ~FileServerConnection();
 
     /**
      * Return a network socket associated with the connection.
      */
-    boost::asio::ip::tcp::socket& socket () {
-        return _socket;
-    }
+    boost::asio::ip::tcp::socket& socket() { return _socket; }
 
     /**
      * Begin communicating asynchroniously with a client. This is essentially
@@ -132,16 +130,16 @@ public:
      * The chain ends when a client disconnects or when an error condition
      * is met.
      */
-    void beginProtocol ();
+    void beginProtocol();
 
 private:
 
     /**
      * The constructor of the class.
      */
-    FileServerConnection (ServiceProvider&         serviceProvider,
-                          std::string const&       workerName,
-                          boost::asio::io_service& io_service);
+    FileServerConnection(ServiceProvider& serviceProvider,
+                         std::string const& workerName,
+                         boost::asio::io_service& io_service);
 
     /**
      * Begin reading (asynchronosly) the frame header of a new request
@@ -149,38 +147,38 @@ private:
      * The frame header is presently a 32-bit unsigned integer
      * representing the length of the subsequent message.
      */
-    void receiveRequest ();
+    void receiveRequest();
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious
      * reads. The request will be parsed, analysed and if everything is right
      * the file transfer will begin.
      */
-    void requestReceived (boost::system::error_code const& ec,
-                          size_t bytes_transferred);
+    void requestReceived(boost::system::error_code const& ec,
+                         size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronosly) a result back to a client
      */
-    void sendResponse ();
+    void sendResponse();
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
      */
-    void responseSent (boost::system::error_code const& ec,
-                       size_t bytes_transferred);
+    void responseSent(boost::system::error_code const& ec,
+                      size_t bytes_transferred);
 
     /**
      * Read the next record from the currently open file, and if succeeded
      * then begin streaming (asynchronosly) it to a client.
      */
-    void sendData ();
+    void sendData();
 
     /**
      * The calback on finishing (either successfully or not) of aynchronious writes.
      */
-    void dataSent (boost::system::error_code const& ec,
-                   size_t bytes_transferred);
+    void dataSent(boost::system::error_code const& ec,
+                  size_t bytes_transferred);
 
 private:
 

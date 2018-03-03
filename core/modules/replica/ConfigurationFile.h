@@ -60,9 +60,9 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    ConfigurationFile () = delete;
-    ConfigurationFile (ConfigurationFile const&) = delete;
-    ConfigurationFile& operator= (ConfigurationFile const&) = delete;
+    ConfigurationFile() = delete;
+    ConfigurationFile(ConfigurationFile const&) = delete;
+    ConfigurationFile& operator=(ConfigurationFile const&) = delete;
 
     /**
      * Construct the object by reading the configuration
@@ -70,7 +70,7 @@ public:
      *
      * @param configFile - the name of a configuraiton file
      */
-    explicit ConfigurationFile (std::string const& configFile);
+    explicit ConfigurationFile(std::string const& configFile);
 
     /// Destructor
     ~ConfigurationFile() override = default;
@@ -80,7 +80,7 @@ public:
      *
      * @see Configuration::configUrl ()
      */
-    std::string configUrl () const override {
+    std::string configUrl() const override {
         return "file:" + _configFile;
     }
 
@@ -89,14 +89,14 @@ public:
      *
      * @see Configuration::disableWorker ()
      */
-    WorkerInfo const& disableWorker (std::string const& name) override;
+    WorkerInfo const& disableWorker(std::string const& name) override;
 
     /**
      * Implements the method defined in the base class
      *
      * @see Configuration::deleteWorker ()
      */
-    void deleteWorker (std::string const& name) override;
+    void deleteWorker(std::string const& name) override;
 
 private:
 
@@ -108,7 +108,7 @@ private:
      *   std::runtime_error
      *      the configuration is not consistent with expectations of the application
      */
-    void loadConfiguration ();
+    void loadConfiguration();
 
 private:
 

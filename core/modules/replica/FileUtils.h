@@ -68,11 +68,11 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    FileUtils () = delete;
-    FileUtils (FileUtils const&) = delete;
-    FileUtils& operator= (FileUtils const&) = delete;
+    FileUtils() = delete;
+    FileUtils(FileUtils const&) = delete;
+    FileUtils& operator=(FileUtils const&) = delete;
 
-    ~FileUtils () = delete;
+    ~FileUtils() = delete;
 
     /**
      * Return a list of all file names representing partitioned tables
@@ -81,8 +81,8 @@ public:
      * @param databaseInfo - the description of the database and tables
      * @param chunk        - the chunk number
      */
-    static std::vector<std::string> partitionedFiles (DatabaseInfo const& databaseInfo,
-                                                      unsigned int        chunk);
+    static std::vector<std::string> partitionedFiles(DatabaseInfo const& databaseInfo,
+                                                     unsigned int chunk);
 
     /**
      * Return a list of all file names representing regular tables
@@ -90,7 +90,7 @@ public:
      *
      * @param databaseInfo - the description of the database and tables
      */
-    static std::vector<std::string> regularFiles (DatabaseInfo const& databaseInfo);
+    static std::vector<std::string> regularFiles(DatabaseInfo const& databaseInfo);
 
 
     /**
@@ -114,9 +114,9 @@ public:
      * will be (in the order of their definition): the name of a table (including 'FullOverlap'
      * where applies), the number of a chunk, adm its extention (w/o the dot)
      */
-    static bool parsePartitionedFile (std::tuple<std::string, unsigned int, std::string>& parsed,
-                                      std::string const&                                  fileName,
-                                      DatabaseInfo const&                                 databaseInfo);
+    static bool parsePartitionedFile(std::tuple<std::string, unsigned int, std::string>& parsed,
+                                     std::string const& fileName,
+                                     DatabaseInfo const& databaseInfo);
 
     /**
      * Compute a simple control sum on the specified file
@@ -132,13 +132,12 @@ public:
      *
      * @return the control sum of the file content
      */
-    static uint64_t compute_cs (std::string const& fileName,
-                                size_t             recordSizeBytes=DEFAULT_RECORD_SIZE_BYTES);
+    static uint64_t compute_cs(std::string const& fileName,
+                               size_t recordSizeBytes=DEFAULT_RECORD_SIZE_BYTES);
 
     /// Get the user account uner which the current process runs
-    static std::string getEffectiveUser ();
+    static std::string getEffectiveUser();
 };
-
 
 /**
   * Class FileCsComputeEngine incrementally computes a control sum of
@@ -166,12 +165,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    FileCsComputeEngine () = delete;
-    FileCsComputeEngine (FileCsComputeEngine const&) = delete;
-    FileCsComputeEngine& operator= (FileCsComputeEngine const&) = delete;
+    FileCsComputeEngine() = delete;
+    FileCsComputeEngine(FileCsComputeEngine const&) = delete;
+    FileCsComputeEngine& operator=(FileCsComputeEngine const&) = delete;
 
     /// The destructor
-    virtual ~FileCsComputeEngine ();
+    ~FileCsComputeEngine();
 
     /**
      * The normal constructor
@@ -193,17 +192,17 @@ public:
      * @param recordSizeBytes - desired record size
      *
      */
-    explicit FileCsComputeEngine (std::string const& fileName,
-                                  size_t             recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
+    explicit FileCsComputeEngine(std::string const& fileName,
+                                 size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
     /// Return the name of the file
-    std::string const& fileName () const { return _fileName; }
+    std::string const& fileName() const { return _fileName; }
     
     /// Return the number of bytes read so far
-    size_t bytes () const { return _bytes; }
+    size_t bytes() const { return _bytes; }
 
     /// Return the running (and the final one the file is fully read) control sum
-    uint64_t cs () const { return _cs; }
+    uint64_t cs() const { return _cs; }
 
     /**
      * Run the next iteration of reading the file and computing its control sum
@@ -214,7 +213,7 @@ public:
      *
      * @return 'true' (meaning 'done') when the EOF has been reached.
      */
-    bool execute ();
+    bool execute();
 
 private:
 
@@ -248,12 +247,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    MultiFileCsComputeEngine () = delete;
-    MultiFileCsComputeEngine (MultiFileCsComputeEngine const&) = delete;
-    MultiFileCsComputeEngine& operator= (MultiFileCsComputeEngine const&) = delete;
+    MultiFileCsComputeEngine() = delete;
+    MultiFileCsComputeEngine(MultiFileCsComputeEngine const&) = delete;
+    MultiFileCsComputeEngine& operator=(MultiFileCsComputeEngine const&) = delete;
 
-    /// Destructor (non-trivial)
-    ~MultiFileCsComputeEngine ();
+    /// Destructor
+    ~MultiFileCsComputeEngine();
 
     /**
      * The normal constructor
@@ -265,10 +264,10 @@ public:
      */
     explicit MultiFileCsComputeEngine (
                 std::vector<std::string> const& fileNames,
-                size_t                          recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
+                size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
     /// Return the names of the files
-    std::vector<std::string> const& fileNames () const { return _fileNames; }
+    std::vector<std::string> const& fileNames() const { return _fileNames; }
     
     /**
      * Return 'true' if the specified file has been or is being proccessed
@@ -280,7 +279,7 @@ public:
      *
      * @param fileName - the name of a file
      */
-    bool processed (std::string const& fileName) const;
+    bool processed(std::string const& fileName) const;
 
     /**
      * Return the number of bytes read so far for the specified file.
@@ -291,7 +290,7 @@ public:
      *
      * @param fileName - the name of a file
      */
-    size_t bytes (std::string const& fileName) const;
+    size_t bytes(std::string const& fileName) const;
 
    /**
      * Return the running (and the final one the file is fully read) control sum for
@@ -303,7 +302,7 @@ public:
      *
      * @param fileName - the name of a file
      */
-    uint64_t cs (std::string const& fileName) const;
+    uint64_t cs(std::string const& fileName) const;
 
     /**
      * Run the next iteration of reading files and computing their control sums
@@ -314,7 +313,7 @@ public:
      *
      * @return 'true' (meaning 'done') when the EOF of the last file has been reached.
      */
-    bool execute ();
+    bool execute();
 
 private:
 

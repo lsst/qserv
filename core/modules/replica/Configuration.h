@@ -94,7 +94,7 @@ struct DatabaseInfo {
 };
 
 /// Overloaded operator for dumping objects of class WorkerInfo
-std::ostream& operator << (std::ostream& os, DatabaseInfo const& info);
+std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
 
 /**
   * Class Configuration is a base class for a family of concrete classes
@@ -122,12 +122,12 @@ public:
      * @throw std::invalid_argument - if the URL has unsupported prefix or it
      *                                couldn't be parsed
      */
-    static pointer load (std::string const& configUrl);
+    static pointer load(std::string const& configUrl);
 
     // Copy semantics is prohibited
 
-    Configuration (Configuration const&) = delete;
-    Configuration& operator= (Configuration const&) = delete;
+    Configuration(Configuration const&) = delete;
+    Configuration& operator=(Configuration const&) = delete;
 
     /// Destructor
     virtual ~Configuration() = default;
@@ -136,7 +136,7 @@ public:
      * Return the original (minus security-related info) path to the configuration
      * source.
      */
-    virtual std::string configUrl () const=0;
+    virtual std::string configUrl() const=0;
 
     // ------------------------------------------------------------------------
     // -- Common configuration parameters of both the controller and workers --
@@ -153,8 +153,8 @@ public:
      *                     deletion) operations would be allowed against those workers.
      *                     NOTE: this filter only matters for the 'enabled' workers.
      */
-    std::vector<std::string> workers (bool isEnabled,
-                                      bool isReadOnly=false) const;
+    std::vector<std::string> workers(bool isEnabled,
+                                     bool isReadOnly=false) const;
 
     /**
      * Return the nams of workers which are 'allowed' and which are *NOT* in
@@ -166,66 +166,63 @@ public:
      *     workers (isEnabled, isReadOnly);
      *   @code
      */
-    std::vector<std::string> workers () const {
-        return workers (true, false);
+    std::vector<std::string> workers() const {
+        return workers(true, false);
     }
 
-
     /// The maximum size of the request buffers in bytes
-    size_t requestBufferSizeBytes () const { return _requestBufferSizeBytes; }
+    size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 
     /// A timeout in seconds for the network retry operations
-    unsigned int retryTimeoutSec () const { return _retryTimeoutSec; }
-
+    unsigned int retryTimeoutSec() const { return _retryTimeoutSec; }
 
     // --------------------------------------------------------
     // -- Configuration parameters of the controller service --
     // --------------------------------------------------------
 
     /// The port number for the controller's HTTP server
-    uint16_t controllerHttpPort () const { return _controllerHttpPort; }
+    uint16_t controllerHttpPort() const { return _controllerHttpPort; }
 
     /// The number of threads to run within the controller's HTTP server
-    size_t controllerHttpThreads () const { return _controllerHttpThreads; }
+    size_t controllerHttpThreads() const { return _controllerHttpThreads; }
 
-    unsigned int controllerRequestTimeoutSec () const { return _controllerRequestTimeoutSec; }
-
+    unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
 
     // -----------------------------------------------------------
     // -- Configuration parameters related to database services --
     // -----------------------------------------------------------
 
-    std::string const& databaseTechnology () const { return _databaseTechnology; }
+    std::string const& databaseTechnology() const { return _databaseTechnology; }
  
     /// The DNS name or IP address of a machine where the database
     /// server runs
-    std::string const& databaseHost () const { return _databaseHost; }
+    std::string const& databaseHost() const { return _databaseHost; }
 
     /// The port number of the database service
-    uint16_t databasePort () const { return _databasePort; }
+    uint16_t databasePort() const { return _databasePort; }
 
     /// The name of a database user
-    std::string const& databaseUser () const { return _databaseUser; }
+    std::string const& databaseUser() const { return _databaseUser; }
 
     /// The database password
-    std::string const& databasePassword () const { return _databasePassword; }
+    std::string const& databasePassword() const { return _databasePassword; }
 
     /// The name of a database to be set upon the connection
-    std::string const& databaseName () const { return _databaseName; }
+    std::string const& databaseName() const { return _databaseName; }
 
     // ---------------------------------------------------
     // -- Configuration parameters related to databases --
     // ---------------------------------------------------
 
     /// The names of known database families
-    std::vector<std::string> databaseFamilies () const;
+    std::vector<std::string> databaseFamilies() const;
 
     /**
      * Return 'true' if the specified database family is known to the configuraion
      *
      * @param name - the name of a family
      */
-    bool isKnownDatabaseFamily (std::string const& name) const;
+    bool isKnownDatabaseFamily(std::string const& name) const;
 
     /**
      * Return the minimum number of chunks for a database family
@@ -235,7 +232,7 @@ public:
      * @throw std::invalid_argument - if the specified family was not found in
      *                                the configuration.
      */
-    size_t replicationLevel (std::string const& family) const;
+    size_t replicationLevel(std::string const& family) const;
 
     /**
      * Return the names of known databases. A reslt of the method may be
@@ -246,14 +243,14 @@ public:
      * @throw std::invalid_argument - if the specified family was not found in
      *                                the configuration.
      */
-    std::vector<std::string> databases (std::string const& family=std::string()) const;
+    std::vector<std::string> databases(std::string const& family=std::string()) const;
 
     /**
      * Return 'true' if the specified database is known in the configuraion
      *
      * @param name - the name of a database
      */
-    bool isKnownDatabase (std::string const& name) const;
+    bool isKnownDatabase(std::string const& name) const;
 
     /**
      * Return parameters of the specified database
@@ -263,7 +260,7 @@ public:
      * @throw std::invalid_argument - if the specified database was not found in
      *                                the configuration
      */
-    DatabaseInfo const& databaseInfo (std::string const& name) const;
+    DatabaseInfo const& databaseInfo(std::string const& name) const;
 
     // -----------------------------------------------------
     // -- Configuration parameters of the worker services --
@@ -274,7 +271,7 @@ public:
      *
      * @param name - the name of a worker
      */
-    bool isKnownWorker (std::string const& name) const;
+    bool isKnownWorker(std::string const& name) const;
 
     /**
      * Return parameters of the specified worker
@@ -284,7 +281,7 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    WorkerInfo const& workerInfo (std::string const& name) const;
+    WorkerInfo const& workerInfo(std::string const& name) const;
 
     /**
      * Change the status of the worker node to 'disabled' thus disallowing
@@ -311,7 +308,7 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual WorkerInfo const& disableWorker (std::string const& name)=0;
+    virtual WorkerInfo const& disableWorker(std::string const& name)=0;
 
     /**
      * Completelly remove the specified worker from the Configuration.
@@ -321,19 +318,19 @@ public:
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
-    virtual void deleteWorker (std::string const& name)=0;
+    virtual void deleteWorker(std::string const& name)=0;
 
     /// Return the name of the default technology for implementing requests
-    std::string const& workerTechnology () const { return _workerTechnology; }
+    std::string const& workerTechnology() const { return _workerTechnology; }
 
     /// The number of request processing threads in each worker service
-    size_t workerNumProcessingThreads () const { return _workerNumProcessingThreads; }
+    size_t workerNumProcessingThreads() const { return _workerNumProcessingThreads; }
 
     /// The number of request processing threads in each worker's file service
-    size_t workerNumFsProcessingThreads () const { return _workerNumFsProcessingThreads; }
+    size_t workerNumFsProcessingThreads() const { return _workerNumFsProcessingThreads; }
 
     /// Return the buffer size for the file I/O operations
-    size_t workerFsBufferSizeBytes () const { return _workerFsBufferSizeBytes; }
+    size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
 
     // ---------------------------------------------------
     // -- Configuration parameters of the Job Scheduler --
@@ -342,12 +339,12 @@ public:
     /// Return the number of seconds betwean re-evaluations of the Schedule's
     /// state. At each expiration moment of the interval the Scheduler would
     /// check if there are new jobs which are requested to be run on the time basis.
-    unsigned int jobSchedulerIvalSec () const { return _jobSchedulerIvalSec; }
+    unsigned int jobSchedulerIvalSec() const { return _jobSchedulerIvalSec; }
 
     /**
      * Serialize the configuration parameters into the Logger
      */
-    void dumpIntoLogger ();
+    void dumpIntoLogger();
 
 protected:
 
@@ -385,15 +382,15 @@ protected:
      * @param dataDir    - the string to be translated
      * @param workerName - the actual name of a worker for replacing the placeholder
      */
-    static void translateDataDir (std::string&       dataDir,
-                                  std::string const& workerName);
+    static void translateDataDir(std::string&       dataDir,
+                                 std::string const& workerName);
     /**
      * Construct the object
      *
      * The constructor will initialize the configuration parameters with
      * some default states, some of which are probably meaninless.
      */
-    Configuration ();
+    Configuration();
 
 protected:
 

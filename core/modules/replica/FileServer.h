@@ -70,20 +70,20 @@ public:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create (ServiceProvider& serviceProvider,
-                           std::string const& workerName);
+    static pointer create(ServiceProvider& serviceProvider,
+                          std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
-    FileServer () = delete;
-    FileServer (FileServer const&) = delete;
-    FileServer& operator= (FileServer const&) = delete;
+    FileServer() = delete;
+    FileServer(FileServer const&) = delete;
+    FileServer& operator=(FileServer const&) = delete;
 
     /// Destructor
-    ~FileServer () = default;
+    ~FileServer() = default;
 
     /// Return the name of a worker this server runs for
-    std::string const& worker () const { return _workerName; }
+    std::string const& worker() const { return _workerName; }
 
     /**
      * Run the server in a thread pool (as per the Configuration)
@@ -91,7 +91,7 @@ public:
      * ATTENTION: this is the blovking operation. Please, run it
      * witin ots own thread if needed.
      */
-    void run ();
+    void run();
 
 private:
 
@@ -101,24 +101,24 @@ private:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    FileServer (ServiceProvider& serviceProvider,
-                std::string const& workerName);
+    FileServer(ServiceProvider& serviceProvider,
+               std::string const& workerName);
 
     /**
      * Begin (asynchrnonously) accepting connection requests.
      */
-    void beginAccept ();
+    void beginAccept();
     
     /**
      * Handle a connection request once it's detected. The rest of
      * the comunication will be forewarded to the connection object
      * specified as a parameter of the method.
      */
-    void handleAccept (FileServerConnection::pointer const& connection,
-                       boost::system::error_code     const& ec);
+    void handleAccept(FileServerConnection::pointer const& connection,
+                      boost::system::error_code const& ec);
 
     /// Return the context string
-    std::string context () const { return "FILE-SERVER  "; }
+    std::string context() const { return "FILE-SERVER  "; }
 
 private:
 

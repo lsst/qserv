@@ -59,79 +59,79 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    DatabaseServicesMySQL () = delete;
-    DatabaseServicesMySQL (DatabaseServicesMySQL const&) = delete;
-    DatabaseServicesMySQL& operator= (DatabaseServicesMySQL const&) = delete;
+    DatabaseServicesMySQL() = delete;
+    DatabaseServicesMySQL(DatabaseServicesMySQL const&) = delete;
+    DatabaseServicesMySQL& operator=(DatabaseServicesMySQL const&) = delete;
 
     /**
      * Construct the object.
      *
      * @param configuration - the configuration service
      */
-    explicit DatabaseServicesMySQL (Configuration::pointer const& configuration);
+    explicit DatabaseServicesMySQL(Configuration::pointer const& configuration);
 
     /// Destructor
-    ~DatabaseServicesMySQL () override = default;
+    ~DatabaseServicesMySQL() override = default;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState (ControllerIdentity const& identity,
-                    uint64_t                  startTime) override;
+    void saveState(ControllerIdentity const& identity,
+                   uint64_t startTime) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState (Job_pointer const& job) override;
+    void saveState(Job_pointer const& job) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::saveState()
      */
-    void saveState (Request_pointer const& request) override;
+    void saveState(Request_pointer const& request) override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::findOldestReplica()
      */
-    bool findOldestReplicas (std::vector<ReplicaInfo>& replicas,
-                             size_t                    maxReplicas,
-                             bool                      enabledWorkersOnly) const override;
+    bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
+                            size_t maxReplicas,
+                            bool enabledWorkersOnly) const override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::findReplicas()
      */
-    bool findReplicas (std::vector<ReplicaInfo>& replicas,
-                       unsigned int              chunk,
-                       std::string const&        database,
-                       bool                      enabledWorkersOnly) const override;
+    bool findReplicas(std::vector<ReplicaInfo>& replicas,
+                      unsigned int chunk,
+                      std::string const& database,
+                      bool enabledWorkersOnly) const override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas (std::vector<ReplicaInfo>& replicas,
-                             std::string const&        worker,
-                             std::string const&        database) const override;
+    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+                            std::string const& worker,
+                            std::string const& database) const override;
 
     /**
      * Implement the corresponding method defined in the base class
      *
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicas (std::vector<ReplicaInfo>& replicas,
-                             unsigned int              chunk,
-                             std::string const&        worker,
-                             std::string const&        databaseFamily) const override;
+    bool findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
+                            unsigned int chunk,
+                            std::string const& worker,
+                            std::string const& databaseFamily) const override;
                              
 private:
 
@@ -142,9 +142,9 @@ private:
      *
      * @see DatabaseServices::findWorkerReplicas()
      */
-    bool findWorkerReplicasNoLock (std::vector<ReplicaInfo>& replicas,
-                                   std::string const&        worker,
-                                   std::string const&        database) const;
+    bool findWorkerReplicasNoLock(std::vector<ReplicaInfo>& replicas,
+                                  std::string const& worker,
+                                  std::string const&  database) const;
 
     /**
      * Update the status of replica in the corresponidng tables. Actual actions
@@ -159,7 +159,7 @@ private:
      *
      * @param info - a replica to be added/updated or deleted
      */
-    void saveReplicaInfo (ReplicaInfo const& info);
+    void saveReplicaInfo(ReplicaInfo const& info);
 
     /**
      * Update the status of multiple replicas using a collection reported
@@ -178,9 +178,9 @@ private:
      * @param database       - the name of a database (as per the request)
      * @param infoCollection - a collection of replicas
      */
-    void saveReplicaInfoCollection (std::string const&           worker,
-                                    std::string const&           database,
-                                    ReplicaInfoCollection const& infoCollection);
+    void saveReplicaInfoCollection(std::string const& worker,
+                                   std::string const& database,
+                                   ReplicaInfoCollection const& infoCollection);
 
     /**
      * Fetch replicas satisfying the specified query
@@ -190,8 +190,8 @@ private:
      *
      * @return 'true' if the operation has succeeded (even if no replicas were found)
      */
-    bool findReplicas (std::vector<ReplicaInfo>& replicas,
-                       std::string const&        query) const;
+    bool findReplicas(std::vector<ReplicaInfo>& replicas,
+                      std::string const& query) const;
 
 protected:
 

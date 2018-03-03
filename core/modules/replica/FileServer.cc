@@ -43,37 +43,32 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServer::pointer
-FileServer::create (ServiceProvider& serviceProvider,
-                    std::string const& workerName) {
-
-    return FileServer::pointer (
-        new FileServer (
+FileServer::pointer FileServer::create(ServiceProvider& serviceProvider,
+                                       std::string const& workerName) {
+    return FileServer::pointer(
+        new FileServer(
             serviceProvider,
             workerName));
 }
 
-FileServer::FileServer (ServiceProvider& serviceProvider,
-                        std::string const& workerName)
-
-    :   _serviceProvider {serviceProvider},
-        _workerName      {workerName},
-        _workerInfo      {serviceProvider.config()->workerInfo(workerName)},
-        _io_service (),
-        _acceptor (
+FileServer::FileServer(ServiceProvider& serviceProvider,
+                       std::string const& workerName)
+    :   _serviceProvider(serviceProvider),
+        _workerName(workerName),
+        _workerInfo(serviceProvider.config()->workerInfo(workerName)),
+        _io_service(),
+        _acceptor(
             _io_service,
-            boost::asio::ip::tcp::endpoint (
+            boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
                 _workerInfo.fsPort)) {
 
     // Set the socket reuse option to allow recycling ports after catastrophic
     // failures.
-
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
-void
-FileServer::run () {
+void FileServer::run() {
 
     // We shall do so before running the io_service. Otherwise it will
     // immediatelly finish as soon as it will discover that there are
@@ -81,49 +76,46 @@ FileServer::run () {
     beginAccept();
 
     // Launch all threads in the pool    
-    std::vector<std::shared_ptr<std::thread>> threads(_serviceProvider.config()->workerNumFsProcessingThreads());
+    std::vector<std::shared_ptr<std::thread>> threads(
+                    _serviceProvider.config()->workerNumFsProcessingThreads());
+
     for (std::size_t i = 0; i < threads.size(); ++i) {
-        std::shared_ptr<std::thread> ptr (
-            new std::thread (
+        std::shared_ptr<std::thread> ptr(
+            new std::thread(
                 boost::bind(&boost::asio::io_service::run,
-                        &_io_service)));
+                            &_io_service)));
         threads[i] = ptr;
     }
 
     // Wait for all threads in the pool to exit.
-    for (std::size_t i = 0; i < threads.size(); ++i)
+    for (std::size_t i = 0; i < threads.size(); ++i) {
         threads[i]->join();
+    }
 }
 
-void
-FileServer::beginAccept () {
+void FileServer::beginAccept() {
 
     FileServerConnection::pointer connection =
-        FileServerConnection::create (
+        FileServerConnection::create(
             _serviceProvider,
             _workerName,
-            _io_service
-        );
+            _io_service);
         
-    _acceptor.async_accept (
+    _acceptor.async_accept(
         connection->socket(),
-        boost::bind (
+        boost::bind(
             &FileServer::handleAccept,
             shared_from_this(),
             connection,
-            boost::asio::placeholders::error
-        )
-    );
+            boost::asio::placeholders::error));
 }
 
-void
-FileServer::handleAccept (FileServerConnection::pointer const& connection,
-                          boost::system::error_code     const& err) {
-
-    if (!err) {
+void FileServer::handleAccept(FileServerConnection::pointer const& connection,
+                              boost::system::error_code     const& ec) {
+    if (not ec) {
         connection->beginProtocol();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  err:" << err);
+        LOGS(_log, LOG_LVL_DEBUG, context() << "handleAccept  ec:" << ec);
     }
     beginAccept();
 }
