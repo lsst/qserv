@@ -24,22 +24,21 @@
 #include "replica/Common.h"
 
 // System headers
+#include <stdexcept>
+
+// Third party headers
 #include "boost/uuid/uuid.hpp"
 #include "boost/uuid/uuid_generators.hpp"
 #include "boost/uuid/uuid_io.hpp"
-#include <stdexcept>
 
 // Qserv headers
 #include "proto/replication.pb.h"
-
-namespace proto = lsst::qserv::proto;
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string
-status2string (ExtendedCompletionStatus status) {
+std::string status2string(ExtendedCompletionStatus status) {
     switch (status) {
         case ExtendedCompletionStatus::EXT_STATUS_NONE:             return "EXT_STATUS_NONE";
         case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM:    return "EXT_STATUS_INVALID_PARAM";
@@ -66,11 +65,12 @@ status2string (ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return "EXT_STATUS_NO_SPACE";
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return "EXT_STATUS_FILE_MTIME";
     }
-    throw std::logic_error("Common::status2string(ExtendedCompletionStatus) - unhandled status: " + std::to_string(status));
+    throw std::logic_error(
+                    "Common::status2string(ExtendedCompletionStatus) - unhandled status: " +
+                    std::to_string(status));
 }
 
-ExtendedCompletionStatus
-translate (proto::ReplicationStatusExt status) {
+ExtendedCompletionStatus translate(proto::ReplicationStatusExt status) {
     switch (status) {
         case proto::ReplicationStatusExt::NONE:             return ExtendedCompletionStatus::EXT_STATUS_NONE;
         case proto::ReplicationStatusExt::INVALID_PARAM:    return ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM;
@@ -97,11 +97,12 @@ translate (proto::ReplicationStatusExt status) {
         case proto::ReplicationStatusExt::NO_SPACE:         return ExtendedCompletionStatus::EXT_STATUS_NO_SPACE;
         case proto::ReplicationStatusExt::FILE_MTIME:       return ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME;
     }
-    throw std::logic_error("Common::translate(proto::ReplicationStatusExt) - unhandled status: " + std::to_string(status));
+    throw std::logic_error(
+                    "Common::translate(proto::ReplicationStatusExt) - unhandled status: " +
+                    std::to_string(status));
 }
 
-proto::ReplicationStatusExt
-translate (ExtendedCompletionStatus status) {
+proto::ReplicationStatusExt translate(ExtendedCompletionStatus status) {
     switch (status) {
         case ExtendedCompletionStatus::EXT_STATUS_NONE:             return proto::ReplicationStatusExt::NONE;
         case ExtendedCompletionStatus::EXT_STATUS_INVALID_PARAM:    return proto::ReplicationStatusExt::INVALID_PARAM;
@@ -128,7 +129,9 @@ translate (ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SPACE:         return proto::ReplicationStatusExt::NO_SPACE;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME:       return proto::ReplicationStatusExt::FILE_MTIME;
     }
-    throw std::logic_error("Common::translate(ExtendedCompletionStatus) - unhandled status: " + std::to_string(status));
+    throw std::logic_error(
+                    "Common::translate(ExtendedCompletionStatus) - unhandled status: " +
+                    std::to_string(status));
 }
 
 ////////////////////////////////////////////
@@ -138,11 +141,9 @@ translate (ExtendedCompletionStatus status) {
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
-std::mutex
-Generators::_mtx;
+std::mutex Generators::_mtx;
 
-std::string
-Generators::uniqueId () {
+std::string Generators::uniqueId() {
     LOCK_GUARD;
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
@@ -152,49 +153,50 @@ Generators::uniqueId () {
 //        Parameters of requests          //
 ////////////////////////////////////////////
 
-ReplicationRequestParams::ReplicationRequestParams ()
-    :   priority     (0),
-        database     (""),
-        chunk        (0),
-        sourceWorker ("") {
-}
-ReplicationRequestParams::ReplicationRequestParams (lsst::qserv::proto::ReplicationRequestReplicate const& message)
-    :   priority     (message.priority ()),
-        database     (message.database ()),
-        chunk        (message.chunk    ()),
-        sourceWorker (message.worker   ()) {
+ReplicationRequestParams::ReplicationRequestParams()
+    :   priority(0),
+        database(""),
+        chunk(0),
+        sourceWorker("") {
 }
 
-DeleteRequestParams::DeleteRequestParams ()
-    :   priority     (0),
-        database     (""),
-        chunk        (0) {
-}
-DeleteRequestParams::DeleteRequestParams (lsst::qserv::proto::ReplicationRequestDelete const& message)
-    :   priority     (message.priority ()),
-        database     (message.database ()),
-        chunk        (message.chunk    ()) {
+ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestReplicate const& message)
+    :   priority(message.priority()),
+        database(message.database()),
+        chunk(message.chunk()),
+        sourceWorker(message.worker()) {
 }
 
+DeleteRequestParams::DeleteRequestParams()
+    :   priority(0),
+        database(""),
+        chunk(0) {
+}
+DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& message)
+    :   priority(message.priority()),
+        database(message.database()),
+        chunk(message.chunk()) {
+}
 
-FindRequestParams::FindRequestParams ()
-    :   priority     (0),
-        database     (""),
-        chunk        (0) {
-}
-FindRequestParams::FindRequestParams (lsst::qserv::proto::ReplicationRequestFind const& message)
-    :   priority     (message.priority ()),
-        database     (message.database ()),
-        chunk        (message.chunk    ()) {
+FindRequestParams::FindRequestParams()
+    :   priority(0),
+        database(""),
+        chunk(0) {
 }
 
-FindAllRequestParams::FindAllRequestParams ()
-    :   priority     (0),
-        database     ("") {
+FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& message)
+    :   priority(message.priority()),
+        database(message.database()),
+        chunk(message.chunk()) {
 }
-FindAllRequestParams::FindAllRequestParams (lsst::qserv::proto::ReplicationRequestFindAll const& message)
-    :   priority     (message.priority ()),
-        database     (message.database ()) {
+
+FindAllRequestParams::FindAllRequestParams()
+    :   priority(0),
+        database("") {
+}
+FindAllRequestParams::FindAllRequestParams(proto::ReplicationRequestFindAll const& message)
+    :   priority(message.priority()),
+        database(message.database()) {
 }
 
 }}} // namespace lsst::qserv::replica

@@ -34,119 +34,111 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-bool
-CmdParser::found_in (std::string const&              val,
-                     std::vector<std::string> const& col) {
+bool CmdParser::found_in(std::string const& val,
+                         std::vector<std::string> const& col) {
     return col.end() != std::find(col.begin(), col.end(), val);
 }
 
-CmdParser::CmdParser (int                argc,
-                      const char* const* argv,
-                      const char*        usage)
+CmdParser::CmdParser(int argc,
+                     char const* const* argv,
+                     char const* usage)
     :   _usage(usage) {
 
     _usage = _usage +
     "\nSpecial options:\n"
     "  --help  - print the help page\n";
 
-    for (int i=0; i < argc; ++i) _argv.push_back(argv[i]);
+    for (int i=0; i < argc; ++i) {
+        _argv.push_back(argv[i]);
+    }
     parse();
 }
 
-bool
-CmdParser::flag (std::string const& name) const {
+bool CmdParser::flag(std::string const& name) const {
     if (name == "help") {
-        std::cerr
-            << _usage << std::endl;
+        std::cerr << _usage << std::endl;
         return true;
     }
     return _flag.count(name);
 }
 
-std::string
-CmdParser::parameterRestrictedBy (unsigned int                    pos,
-                                  std::vector<std::string> const& allowedValues) const {
+std::string CmdParser::parameterRestrictedBy(unsigned int pos,
+                                             std::vector<std::string> const& allowedValues) const {
 
     const std::string str = parameter<std::string>(pos);
-    if (found_in(str, allowedValues)) return str;
+    if (found_in(str, allowedValues)) { return str; }
 
     std::cerr
         << "CmdParser::parameterRestrictedBy(" << std::to_string(pos)
         << "): parameter value is not permitted: " << str << "\n"
         << _usage << std::endl;
 
-    throw std::invalid_argument (
+    throw std::invalid_argument(
         "CmdParser::parameterRestrictedBy(" + std::to_string(pos) +
         "): parameter value is not permitted: " + str);
 }
 
-bool
-CmdParser::optionImpl (std::string const& name,
-                       bool        const& defaultValue) const {
+bool CmdParser::optionImpl(std::string const& name,
+                           bool const& defaultValue) const {
 
     std::string const str = optionImpl(name, std::string());
-    if (str.empty()) return defaultValue;
+    if (str.empty()) { return defaultValue; }
 
-    if      (str == "true")  return true;
-    else if (str == "false") return false;
+    if      (str == "true")  { return true; }
+    else if (str == "false") { return false; }
 
-    throw std::invalid_argument (
+    throw std::invalid_argument(
         "CmdParser::optionImpl<bool>: failed to parse a value of option: " + name);
 }
 
-int
-CmdParser::optionImpl (std::string const& name,
-                       int         const& defaultValue) const {
+int CmdParser::optionImpl(std::string const& name,
+                          int const& defaultValue) const {
 
     std::string const str = optionImpl(name, std::string());
-    if (str.empty()) return defaultValue;
+    if (str.empty()) { return defaultValue; }
 
     try {
         return std::stoi(str);
     } catch (std::exception const&) {
-        throw std::invalid_argument (
+        throw std::invalid_argument(
             "CmdParser::optionImpl<int>: failed to parse a value of option: " + name);
     }
 }
 
-unsigned int
-CmdParser::optionImpl (std::string const&  name,
-                       unsigned int const& defaultValue) const {
+unsigned int CmdParser::optionImpl(std::string const& name,
+                                   unsigned int const& defaultValue) const {
 
     std::string const str = optionImpl(name, std::string());
-    if (str.empty()) return defaultValue;
+    if (str.empty()) { return defaultValue; }
 
     try {
         return std::stoul(str);
     } catch (std::exception const&) {
-        throw std::invalid_argument (
+        throw std::invalid_argument(
             "CmdParser::optionImpl<uint>: failed to parse a value of option: " + name);
     }
 }
 
-std::string
-CmdParser::optionImpl (std::string const& name,
-                       std::string const& defaultValue) const {
+std::string CmdParser::optionImpl(std::string const& name,
+                                  std::string const& defaultValue) const {
     return _option.count(name) ? _option.at(name) : defaultValue;
 }
 
-void
-CmdParser::parameterImpl (unsigned int pos,
-                          bool&        val) const {
+void CmdParser::parameterImpl(unsigned int pos,
+                              bool& val) const {
     std::string str;
     parameterImpl(pos, str);
 
     if      (str == "true")  { val = true;  return; }
     else if (str == "false") { val = false; return; }
 
-    throw std::invalid_argument (
+    throw std::invalid_argument(
         "CmdParser::parameterImpl<bool>(" + std::to_string(pos) +
         "): failed to parse a value of argument: " + str);
 }
 
-void
-CmdParser::parameterImpl (unsigned int  pos,
-                          int&          val) const {
+void CmdParser::parameterImpl(unsigned int pos,
+                              int& val) const {
     std::string str;
     parameterImpl(pos, str);
     
@@ -154,15 +146,14 @@ CmdParser::parameterImpl (unsigned int  pos,
         val = std::stoi(str);
         return;
     } catch (std::exception const&) {
-        throw std::invalid_argument (
+        throw std::invalid_argument(
             "CmdParser::parameterImpl<int>(" + std::to_string(pos) +
             "): failed to parse a value of argument: " + str);
     }
 }
 
-void
-CmdParser::parameterImpl (unsigned int  pos,
-                          unsigned int& val) const {
+void CmdParser::parameterImpl(unsigned int pos,
+                              unsigned int& val) const {
     std::string str;
     parameterImpl(pos, str);
     
@@ -170,45 +161,44 @@ CmdParser::parameterImpl (unsigned int  pos,
         val = std::stoul(str);
         return;
     } catch (std::exception const&) {
-        throw std::invalid_argument (
+        throw std::invalid_argument(
             "CmdParser::parameterImpl<uint>(" + std::to_string(pos) +
             "): failed to parse a value of argument: " + str);
     }
 }
-void
-CmdParser::parameterImpl (unsigned int pos,
-                          std::string& val) const {
+
+void CmdParser::parameterImpl(unsigned int pos,
+                              std::string& val) const {
     if (pos >= _parameter.size()) {
         std::cerr
             << "CmdParser::parameterImpl<string>(" << pos << "): too few positional arguments\n"
             << _usage << std::endl;
-        throw std::out_of_range (
+        throw std::out_of_range(
             "CmdParser::parameterImpl<string>(" + std::to_string(pos) + "): too few positional arguments");
     }
     val = _parameter[pos];
     return;
 }
 
-void
-CmdParser::dump (std::ostream& os) const {
+void CmdParser::dump(std::ostream& os) const {
 
     os << "CmdParser::dump()\n";
 
     os << "  PARAMETERS:\n";
-    for (auto const& p: _parameter)
+    for (auto const& p: _parameter) {
         os << "    " << p << "\n";
-
+    }
     os << "  OPTIONS:\n";
-    for (auto const& p: _option)
+    for (auto const& p: _option) {
         os << "    " << p.first << "=" << p.second << "\n";
-
+    }
     os << "  FLAGS:\n";
-    for (auto const& p: _flag)
+    for (auto const& p: _flag) {
         os << "    " << p << "\n";
+    }
 }
 
-void
-CmdParser::parse () {
+void CmdParser::parse() {
     for (auto const& arg: _argv) {
         if (arg.substr(0,2) == "--") {
             std::string const nameEqualValue = arg.substr(2);
@@ -224,7 +214,7 @@ CmdParser::parse () {
                 if (nameEqualValue == "help") {
                     std::cerr
                         << _usage << std::endl;
-                    throw std::invalid_argument (
+                    throw std::invalid_argument(
                         "CmdParser::parse: help mode intercepted");
                 }
                 _flag.insert(nameEqualValue);
@@ -235,7 +225,7 @@ CmdParser::parse () {
                     std::cerr
                         << "CmdParser::parse: no value provided for option: " << option << "\n"
                         << _usage << std::endl;
-                    throw std::invalid_argument (
+                    throw std::invalid_argument(
                         "CmdParser::parse: no value provided for option: " + option);
                 }
                 _option[option] = value;

@@ -35,40 +35,34 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-BlockPost::BlockPost (int minMilliseconds, int maxMilliseconds)
+BlockPost::BlockPost(int minMilliseconds, int maxMilliseconds)
     :   _rd(),
         _gen(_rd()),
-        _distr (minMilliseconds, maxMilliseconds)
+        _distr(minMilliseconds, maxMilliseconds)
 {
-    if (minMilliseconds < 0 || minMilliseconds >= maxMilliseconds)
+    if ((minMilliseconds < 0) or (minMilliseconds >= maxMilliseconds)) {
         throw std::invalid_argument("BlockPost::BlockPost() - invalid range of milliseconds");
+    }
 }
 
-int
-BlockPost::wait () {
+int BlockPost::wait() {
     const int ival = next();
     wait(ival);
     return ival;
 }
 
-int
-BlockPost::wait (int milliseconds) {
+int BlockPost::wait(int milliseconds) {
 
-    if (milliseconds < 0)
+    if (milliseconds < 0) {
         throw std::invalid_argument("BlockPost::wait(milliseconds) - invalid number of milliseconds");
-
-    std::this_thread::sleep_for (
-        std::chrono::duration<long, std::milli> (
-            std::chrono::milliseconds (
-                milliseconds
-            )
-        )
-    );
+    }
+    std::this_thread::sleep_for(
+        std::chrono::duration<long, std::milli>(
+            std::chrono::milliseconds(milliseconds)));
     return milliseconds;
 }
 
-int
-BlockPost::next () {
+int BlockPost::next() {
     std::lock_guard<std::mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
