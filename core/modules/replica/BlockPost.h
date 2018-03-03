@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_BLOCKPOST_H
-#define LSST_QSERV_REPLICA_BLOCKPOST_H
+#ifndef LSST_QSERV_REPLICA_BLOCK_POST_H
+#define LSST_QSERV_REPLICA_BLOCK_POST_H
 
 /// BlockPost.h declares:
 ///
@@ -54,9 +54,9 @@ public:
     
     // Default construction and copy semantics are prohibited
 
-    BlockPost () = delete;
-    BlockPost (BlockPost const&) = delete;
-    BlockPost& operator= (BlockPost const&) = delete;
+    BlockPost() = delete;
+    BlockPost(BlockPost const&) = delete;
+    BlockPost& operator=(BlockPost const&) = delete;
 
     /**
      * Normal constructor
@@ -68,10 +68,10 @@ public:
      * @param minMilliseconds - the lower limit of the series
      * @param maxMilliseconds - the upper limit of the series
     */
-    BlockPost (int minMilliseconds, int maxMilliseconds);
+    BlockPost(int minMilliseconds, int maxMilliseconds);
 
     /// Destructor
-    ~BlockPost () = default;
+    ~BlockPost() = default;
 
     /**
      * Block a calling thread for a randomly generated number
@@ -79,7 +79,7 @@ public:
      *
      * @return the number of milliseconds the thread was blocked for
      */
-    int wait ();
+    int wait();
 
     /**
      * Block a calling thread for the specified number
@@ -90,12 +90,12 @@ public:
      *                       integer number.
      * @return the number of milliseconds the thread was blocked for
      */
-    int wait (int milliseconds);
+    int wait(int milliseconds);
 
 private:
     
     /// Return the next random number of milliseconds
-    int next ();
+    int next();
 
 private:
 
@@ -108,4 +108,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_BLOCKPOST_H
+#endif // LSST_QSERV_REPLICA_BLOCK_POST_H

@@ -64,7 +64,7 @@ struct Chunk {
  *
  * @return 'true' if the chunk is 'equal' to the other one.
  */
-bool operator== (Chunk const& lhs, Chunk const& rhs);
+bool operator==(Chunk const& lhs, Chunk const& rhs);
 
 /**
  * The overloaded operator for comparing objects of struct Chunk.
@@ -75,7 +75,7 @@ bool operator== (Chunk const& lhs, Chunk const& rhs);
  *
  * @return 'true' if the chunk is 'less' than the other one.
  */
-bool operator< (Chunk const& lhs, Chunk const& rhs);
+bool operator<(Chunk const& lhs, Chunk const& rhs);
 
 /// The overloaded operator for dumping objects of type Chunk
 std::ostream& operator<< (std::ostream& os, Chunk const& chunk);
@@ -94,22 +94,22 @@ public:
     typedef std::map<std::string, std::list<Chunk>> ChunksByOwners;
 
     /// The default constructor
-    ChunkLocker () = default;
+    ChunkLocker() = default;
 
     // The copy semantics is prohibited
 
-    ChunkLocker (ChunkLocker const&) = delete;
-    ChunkLocker& operator= (ChunkLocker const&) = delete;
+    ChunkLocker(ChunkLocker const&) = delete;
+    ChunkLocker& operator=(ChunkLocker const&) = delete;
 
     /// Destructor
-    ~ChunkLocker () = default;
+    ~ChunkLocker() = default;
 
     /**
      * Return 'true' if a chunk is locked
      *
      * @param chunk - a chunk to be tested
      */
-    bool isLocked (Chunk const& chunk) const;
+    bool isLocked(Chunk const& chunk) const;
 
     /**
      * Return 'true' if the chunk is locked and set an identifier of
@@ -120,8 +120,8 @@ public:
      *                an identifier of an owner of the chunk if the chunk is found
      *                locked
      */
-    bool isLocked (Chunk const& chunk,
-                   std::string& ownerId) const;
+    bool isLocked(Chunk const& chunk,
+                  std::string& ownerId) const;
 
 
     /**
@@ -133,7 +133,7 @@ public:
      *
      * @return a collection of chunks groupped by owners
      */
-    ChunksByOwners locked (std::string const& owner=std::string()) const;
+    ChunksByOwners locked(std::string const& owner=std::string()) const;
 
     /**
      * Lock a chunk to a specific owner and return 'true' of the operation
@@ -147,15 +147,15 @@ public:
      *
      * @throw std::invalid_argument - if the ownerId is an empty string
      */
-    bool lock (Chunk const&       chunk,
-               std::string const& owner);
+    bool lock(Chunk const&       chunk,
+              std::string const& owner);
 
     /**
      * Release a chunk and return 'true' if the operation was successfull
      *
      * @param chunk - a chunk to be released
      */
-    bool release (Chunk const& chunk);
+    bool release(Chunk const& chunk);
 
     /**
      * Release a chunk and return 'true' if the operation was successfull.
@@ -167,8 +167,8 @@ public:
      *                an identifier of an owner which had a claim on the chunk
      *                at a time of the method call if the chunk was found locked
      */
-    bool release (Chunk const& chunk,
-                  std::string& owner);
+    bool release(Chunk const& chunk,
+                 std::string& owner);
 
     /**
      * Release all chunks which were found claimed by the specified owner
@@ -176,7 +176,7 @@ public:
      *
      * @throw std::invalid_argument - if the owner is an empty string
      */
-    std::vector<Chunk> release (std::string const& owner);
+    std::vector<Chunk> release(std::string const& owner);
 
 private:
 
@@ -193,8 +193,8 @@ private:
      *                an identifier of an owner which had a claim on the chunk
      *                at a time of the method call if the chunk was found locked
      */
-    bool releaseImpl (Chunk const& chunk,
-                      std::string& owner);
+    bool releaseImpl(Chunk const& chunk,
+                     std::string& owner);
 
 private:
 
@@ -215,7 +215,7 @@ private:
 /// Overloaded streaming operator for a collection of locked chunks
 /// groupped by owners
 
-std::ostream& operator << (std::ostream& os, ChunkLocker::ChunksByOwners const& chunks);
+std::ostream& operator<<(std::ostream& os, ChunkLocker::ChunksByOwners const& chunks);
 
 }}} // namespace lsst::qserv::replica
 

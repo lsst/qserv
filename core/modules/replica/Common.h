@@ -74,13 +74,13 @@ enum ExtendedCompletionStatus {
 };
 
 /// Return the string representation of the extended status
-std::string status2string (ExtendedCompletionStatus status);
+std::string status2string(ExtendedCompletionStatus status);
 
 /// Translate Protobuf status into the transient one
-ExtendedCompletionStatus translate (lsst::qserv::proto::ReplicationStatusExt status);
+ExtendedCompletionStatus translate(proto::ReplicationStatusExt status);
 
 /// Translate transient extended status into the Protobuf one
-lsst::qserv::proto::ReplicationStatusExt translate (ExtendedCompletionStatus status);
+proto::ReplicationStatusExt translate (ExtendedCompletionStatus status);
 
 /**
  * The utility class for generating unique identifiers, etc.
@@ -91,21 +91,20 @@ public:
     
     // No construction, copying or destruction
 
-    Generators () = delete;
-    Generators (Generators const&) = delete;
-    Generators& operator= (Generators const&) = delete;
+    Generators() = delete;
+    Generators(Generators const&) = delete;
+    Generators& operator=(Generators const&) = delete;
 
-    ~Generators () = delete;
+    ~Generators() = delete;
 
     /// Generate a unique identifier
-    static std::string uniqueId ();
+    static std::string uniqueId();
 
 private:
 
     /// For thread safety where it's required
     static std::mutex _mtx;
 };
-
 
 /**
  * Parameters of the replica creation requests
@@ -118,10 +117,10 @@ struct ReplicationRequestParams {
     std::string  sourceWorker;
 
     /// The default constructor
-    ReplicationRequestParams ();
+    ReplicationRequestParams();
 
     /// The normal constructor
-    explicit ReplicationRequestParams (lsst::qserv::proto::ReplicationRequestReplicate const& message);
+    explicit ReplicationRequestParams(proto::ReplicationRequestReplicate const& message);
 };
 
 /**
@@ -135,10 +134,10 @@ struct DeleteRequestParams {
     std::string  sourceWorker;
 
     /// The default constructor
-    DeleteRequestParams ();
+    DeleteRequestParams();
 
     /// The normal constructor
-    explicit DeleteRequestParams (lsst::qserv::proto::ReplicationRequestDelete const& message);
+    explicit DeleteRequestParams(proto::ReplicationRequestDelete const& message);
 };
 
 /**
@@ -151,10 +150,10 @@ struct FindRequestParams {
     unsigned int chunk;
 
     /// The default constructor
-    FindRequestParams ();
+    FindRequestParams();
 
     /// The normal constructor
-    explicit FindRequestParams (lsst::qserv::proto::ReplicationRequestFind const& message);
+    explicit FindRequestParams(proto::ReplicationRequestFind const& message);
 };
 
 /**
@@ -166,10 +165,10 @@ struct FindAllRequestParams {
     std::string  database;
 
     /// The default constructor
-    FindAllRequestParams ();
+    FindAllRequestParams();
 
     /// The normal constructor
-    explicit FindAllRequestParams (lsst::qserv::proto::ReplicationRequestFindAll const& message);
+    explicit FindAllRequestParams(proto::ReplicationRequestFindAll const& message);
 };
 
 }}} // namespace lsst::qserv::replica

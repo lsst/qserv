@@ -70,14 +70,14 @@ public:
      * @param val - a string to be evaluated
      * @param col - a collection
      */
-    static bool found_in (std::string const&              val,
-                          std::vector<std::string> const& col);
+    static bool found_in(std::string const& val,
+                         std::vector<std::string> const& col);
 
     // Default construction and copy semantics are proxibited
 
-    CmdParser () = delete;
-    CmdParser (CmdParser const&) = delete;
-    CmdParser& operator= (CmdParser const&) = delete;
+    CmdParser() = delete;
+    CmdParser(CmdParser const&) = delete;
+    CmdParser& operator=(CmdParser const&) = delete;
 
     /**
      * Constructor
@@ -86,12 +86,12 @@ public:
      * @param argv  - the vector of arguments
      * @param usage - the command line argument syntax to be printed
      */
-    CmdParser (int                argc,
-               const char* const* argv,
-               const char*        usage);
+    CmdParser(int argc,
+              char const* const* argv,
+              char const* usage);
 
     /// Destructor
-    ~CmdParser () = default;
+    ~CmdParser() = default;
 
     /**
      * Return 'true' if the specified flag was found in the command line
@@ -99,7 +99,7 @@ public:
      * @param name - the name of a flag
      * @param 
      */
-    bool flag (std::string const& name) const;
+    bool flag(std::string const& name) const;
 
     /**
      * Check if the specified option was found in the command line, parse its
@@ -111,8 +111,8 @@ public:
      * @param defaultValue - a default value of the option
      */
     template <class V>
-    V option (std::string const& name,
-             V const&            defaultValue) const {
+    V option(std::string const& name,
+             V const& defaultValue) const {
 
         return optionImpl (name, defaultValue);
     }
@@ -123,12 +123,13 @@ public:
      * the type conversion is not possible.
      */
     template <class V>
-    void parameters (std::vector<V>& vals) const {
+    void parameters(std::vector<V>& vals) const {
         // Skipping the command path
         size_t const size = _parameter.size();
         vals.resize(size-1);
-        for (size_t pos=1; pos < size; ++pos)
+        for (size_t pos=1; pos < size; ++pos) {
             parameterImpl(pos, vals[pos-1]);
+        }
     }
 
     /**
@@ -140,7 +141,7 @@ public:
      * @param pos - position number starting with 0
      */
     template <class V>
-    V parameter (unsigned int pos) const {
+    V parameter(unsigned int pos) const {
         V val;
         parameterImpl (pos, val);
         return val;
@@ -155,52 +156,52 @@ public:
      * @param pos           - position number starting with 0
      * @param allowedValues - a collection of possible values
      */
-    std::string parameterRestrictedBy (unsigned int                    pos,
-                                       std::vector<std::string> const& allowedValues) const;
+    std::string parameterRestrictedBy(unsigned int pos,
+                                      std::vector<std::string> const& allowedValues) const;
 
     /**
      * Dump parsed flags, options and parameters into the specified stream
      *
      * @param os - an output stream
      */
-    void dump (std::ostream& os) const;
+    void dump(std::ostream& os) const;
 
 private:
 
     /// Parse the command line
-    void parse ();
+    void parse();
 
     /**
      * Implement option lookup for the boolean type
      *
      * @see method CmdParser::option()
      */
-    bool optionImpl (std::string const& name,
-                    bool const&         defaultValue) const;
+    bool optionImpl(std::string const& name,
+                    bool const& defaultValue) const;
 
     /**
      * Implement option lookup for the integer type
      *
      * @see method CmdParser::option()
      */
-    int optionImpl (std::string const& name,
-                    int const&         defaultValue) const;
+    int optionImpl(std::string const& name,
+                   int const& defaultValue) const;
 
     /**
      * Implement option lookup for the integer type
      *
      * @see method CmdParser::option()
      */
-    unsigned int optionImpl (std::string const&  name,
-                             unsigned int const& defaultValue) const;
+    unsigned int optionImpl(std::string const& name,
+                            unsigned int const& defaultValue) const;
  
     /**
      * Implement option lookup for the string type
      *
      * @see method CmdParser::option()
      */
-    std::string optionImpl (std::string const& name,
-                            std::string const& defaultValue) const;
+    std::string optionImpl(std::string const& name,
+                           std::string const& defaultValue) const;
 
     /**
      * Implement positional parameter lookup for the boolean type
@@ -211,8 +212,8 @@ private:
      * 
      * @see method CmdParser::parameter()
      */
-    void parameterImpl (unsigned int pos,
-                        bool&        val) const;
+    void parameterImpl(unsigned int pos,
+                       bool& val) const;
 
     /**
      * Implement positional parameter lookup for the integer type
@@ -223,8 +224,8 @@ private:
      * 
      * @see method CmdParser::parameter()
      */
-    void parameterImpl (unsigned int pos,
-                        int&         val) const;
+    void parameterImpl(unsigned int pos,
+                       int& val) const;
 
     /**
      * Implement positional parameter lookup for the unsigned integer type
@@ -235,8 +236,8 @@ private:
      * 
      * @see method CmdParser::parameter()
      */
-    void parameterImpl (unsigned int  pos,
-                        unsigned int& val) const;
+    void parameterImpl(unsigned int pos,
+                       unsigned int& val) const;
 
     /**
      * Implement positional parameter lookup for the string type
@@ -247,8 +248,8 @@ private:
      * 
      * @see method CmdParser::parameter()
      */
-    void parameterImpl (unsigned int pos,
-                        std::string& val) const;
+    void parameterImpl(unsigned int pos,
+                       std::string& val) const;
 
 private:
     
