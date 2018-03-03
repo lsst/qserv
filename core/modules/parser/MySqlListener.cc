@@ -50,12 +50,12 @@ using namespace std;
 #define ENTER_EXIT_PARENT(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
-    pushAdapterStack<NAME##CBH, NAME##Adapter>(); \
+    pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
 void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
-    popAdapterStack<NAME##Adapter>(ctx); \
+    popAdapterStack<NAME##Adapter>(); \
 } \
 
 namespace lsst {
@@ -219,7 +219,7 @@ public:
 class PredicateExpressionCBH {
 public:
     virtual ~PredicateExpressionCBH() {}
-    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* ctx) = 0;
+    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 /// Adapter classes
@@ -227,11 +227,13 @@ public:
 
 class Adapter {
 public:
+    Adapter(antlr4::ParserRuleContext* ctx) : _ctx(ctx) {}
     virtual ~Adapter() {}
 
     // onExit is called when the Adapter is being popped from the context stack
-    virtual void onExit(antlr4::ParserRuleContext* ctx) {}
+    virtual void onExit() {}
 protected:
+    antlr4::ParserRuleContext* _ctx;
     weak_ptr<NullCBH> _parent;
 };
 
@@ -240,6 +242,8 @@ namespace {
 
 class RootAdapter : public Adapter, public DMLStatementCBH {
 public:
+    RootAdapter(antlr4::ParserRuleContext* ctx) : Adapter(ctx) {}
+
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
     virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) {
@@ -257,13 +261,14 @@ private:
 
 class DMLStatementAdapter : public Adapter, public SelectStatementCBH {
 public:
-    DMLStatementAdapter(shared_ptr<DMLStatementCBH> parent) : _parent(parent) {}
+    DMLStatementAdapter(shared_ptr<DMLStatementCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) {
         _selectStatement = selectStatement;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleDMLStatement(_selectStatement);
@@ -278,7 +283,8 @@ private:
 
 class SelectStatmentAdapter : public Adapter, public QuerySpecificationCBH {
 public:
-    SelectStatmentAdapter(shared_ptr<SelectStatementCBH> parent) : _parent(parent) {}
+    SelectStatmentAdapter(shared_ptr<SelectStatementCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
                                           shared_ptr<query::FromList> fromList,
@@ -288,7 +294,7 @@ public:
         _whereClause = whereClause;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             shared_ptr<query::SelectStmt> selectStatement = make_shared<query::SelectStmt>();
@@ -309,7 +315,8 @@ private:
 
 class QuerySpecificationAdapter : public Adapter, public SelectElementsCBH, public FromClauseCBH {
 public:
-    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent) : _parent(parent) {}
+    QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
         _selectList = selectList;
@@ -320,7 +327,7 @@ public:
         _whereClause = whereClause;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleQuerySpecification(_selectList, _fromList, _whereClause);
@@ -337,14 +344,15 @@ private:
 
 class SelectElementsAdapter : public Adapter, public SelectColumnElementCBH {
 public:
-    SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent) : _parent(parent) {}
+    SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << columnElement);
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleSelectList(_selectList);
@@ -359,25 +367,30 @@ private:
 
 class FromClauseAdapter : public Adapter, public TableSourcesCBH, public PredicateExpressionCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH> parent) : _parent(parent) {}
-    virtual ~FromClauseAdapter() {}
+    FromClauseAdapter(shared_ptr<FromClauseCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleTableSources(query::TableRefListPtr tableRefList) {
         _tableRefList = tableRefList;
     }
 
-    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* ctx) {
-        // todo check if the ctx is the 'where' or the 'having' ctx (the PredicateExpressionAdapter could be either)
-        if (_whereClause->getRootTerm()) {
-            std::ostringstream msg;
-            msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
-            LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw MySqlListener::adapter_execution_error(msg.str());
+    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) {
+        MySqlParser::FromClauseContext* ctx = dynamic_cast<MySqlParser::FromClauseContext*>(_ctx);
+        if (nullptr == ctx) {
+            throw MySqlListener::adapter_order_error("FromClauseAdapter's _ctx could not be cast to a FromClauseContext.");
         }
-        _whereClause->setRootTerm(orTerm);
+        if (ctx->whereExpr == childCtx) {
+            if (_whereClause->getRootTerm()) {
+                std::ostringstream msg;
+                msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
+                LOGS(_log, LOG_LVL_ERROR, msg.str());
+                throw MySqlListener::adapter_execution_error(msg.str());
+            }
+            _whereClause->setRootTerm(orTerm);
+        }
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
@@ -394,13 +407,14 @@ private:
 
 class TableSourcesAdapter : public Adapter, public TableSourceCBH {
 public:
-    TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent) : _parent(parent) {}
+    TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) {
         _tableRefList->push_back(tableRef);
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleTableSources(_tableRefList);
@@ -415,14 +429,15 @@ private:
 
 class TableSourceAdapter : public Adapter, public TableSourceItemCBH{
 public:
-    TableSourceAdapter(shared_ptr<TableSourceCBH> parent) : _parent(parent) {}
+    TableSourceAdapter(shared_ptr<TableSourceCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleTableSourceItem(shared_ptr<query::TableRef> tableRef) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
         _tableRef = tableRef;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleTableSource(_tableRef);
@@ -437,14 +452,15 @@ private:
 
 class TableSourceItemAdapter : public Adapter, public TableNameCBH {
 public:
-    TableSourceItemAdapter(shared_ptr<TableSourceItemCBH> parent) : _parent(parent) {}
+    TableSourceItemAdapter(shared_ptr<TableSourceItemCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleTableName(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         _table = string;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
             shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
@@ -462,7 +478,8 @@ protected:
 
 class TableNameAdapter : public Adapter , public FullIdCBH {
 public:
-    TableNameAdapter(shared_ptr<TableNameCBH> parent) : _parent(parent) {}
+    TableNameAdapter(shared_ptr<TableNameCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleFullIdString(const std::string& string) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
@@ -479,7 +496,8 @@ protected:
 
 class DecimalLiteralAdapter : public Adapter {
 public:
-    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent) : _parent(parent) {}
+    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     void onEnter(MySqlParser::DecimalLiteralContext * ctx) {
         auto parent = _parent.lock();
@@ -495,7 +513,9 @@ private:
 
 class StringLiteralAdapter : public Adapter {
 public:
-    StringLiteralAdapter(shared_ptr<StringLiteralCBH> parent) : _parent(parent) {}
+    StringLiteralAdapter(shared_ptr<StringLiteralCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
+
 private:
     weak_ptr<StringLiteralCBH> _parent;
 };
@@ -503,7 +523,8 @@ private:
 
 class FullIdAdapter : public Adapter, public UidCBH {
 public:
-    FullIdAdapter(shared_ptr<FullIdCBH> parent) : _parent(parent) {}
+    FullIdAdapter(shared_ptr<FullIdCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual ~FullIdAdapter() {}
 
@@ -522,7 +543,8 @@ protected:
 
 class FullColumnNameAdapter : public Adapter, public UidCBH {
 public:
-    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent) : _parent(parent) {}
+    FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleUidString(const std::string& string) {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -542,7 +564,8 @@ protected:
 
 class ConstantExpressionAtomAdapter : public Adapter, public DecimalLiteralCBH {
 public:
-    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent) : _parent(parent) {}
+    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleDecimalLiteral(const string& text) override {
         auto parent = _parent.lock();
@@ -558,8 +581,8 @@ private:
 
 class FullColumnNameExpressionAtomAdapter : public Adapter, public FullColumnNameCBH {
 public:
-    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent)
-    : _parent(parent) {}
+    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -577,7 +600,8 @@ private:
 class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH {
 public:
-    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent) : _parent(parent) {}
+    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     void handleDecimalLiteral(const string& text) override {
         auto parent = _parent.lock();
@@ -606,18 +630,19 @@ private:
 
 class PredicateExpressionAdapter : public Adapter, public BinaryComparasionPredicateCBH {
 public:
-    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> parent) : _parent(parent) {}
+    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm) {
         _orTerm = orTerm;
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) {
+    void onExit() {
         auto parent = _parent.lock();
         if (!parent || !_orTerm) {
             return;
         }
-        parent->handleOrTerm(_orTerm, ctx);
+        parent->handleOrTerm(_orTerm, _ctx);
     }
 
 private:
@@ -629,7 +654,8 @@ private:
 class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomPredicateCBH,
         public ComparisonOperatorCBH {
 public:
-    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> parent) : _parent(parent) {}
+    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     void handleComparisonOperator(const string& text) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << text);
@@ -660,7 +686,7 @@ public:
 
     }
 
-    virtual void onExit(antlr4::ParserRuleContext* ctx) {
+    void onExit() {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " " << _left << " " << _comparison << " " << _right);
 
         auto parent = _parent.lock();
@@ -707,7 +733,8 @@ private:
 
 class ComparisonOperatorAdapter : public Adapter {
 public:
-    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent) : _parent(parent) {}
+    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     void onEnter(MySqlParser::ComparisonOperatorContext * ctx) {
         auto parent = _parent.lock();
@@ -723,7 +750,8 @@ private:
 
 class SelectColumnElementAdapter : public Adapter, public FullColumnNameCBH {
 public:
-    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> parent) : _parent(parent) {}
+    SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> parent, antlr4::ParserRuleContext* ctx)
+    : Adapter(ctx), _parent(parent) {}
 
     virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) {
         auto parent = _parent.lock();
@@ -742,7 +770,7 @@ private:
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter>
-std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
+std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRuleContext* ctx) {
     auto p = std::dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
         int status;
@@ -753,7 +781,7 @@ std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
         LOGS(_log, LOG_LVL_ERROR, msg.str());
         throw adapter_order_error(msg.str());
     }
-    auto childAdapter = std::make_shared<ChildAdapter>(p);
+    auto childAdapter = std::make_shared<ChildAdapter>(p, ctx);
     _adapterStack.push(childAdapter);
     return childAdapter;
 }
@@ -761,17 +789,17 @@ std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
 
 // Create and push an Adapter onto the context stack. Does not install a callback handler into the Adapter.
 template<typename ChildAdapter>
-std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack() {
-    auto childAdapter = std::make_shared<ChildAdapter>();
+std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRuleContext* ctx) {
+    auto childAdapter = std::make_shared<ChildAdapter>(ctx);
     _adapterStack.push(childAdapter);
     return childAdapter;
 }
 
 
 template<typename ChildAdapter>
-void MySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
+void MySqlListener::popAdapterStack() {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
-    adapterPtr->onExit(ctx);
+    adapterPtr->onExit();
     _adapterStack.pop();
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     if (nullptr == derivedPtr) {
@@ -808,7 +836,7 @@ void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
     // since there's no parent listener on the stack for a root listener, we don't use the template push
     // function, we just push the first item onto the stack by hand like so:
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    _rootAdapter = pushAdapterStack<RootAdapter>();
+    _rootAdapter = pushAdapterStack<RootAdapter>(ctx);
 }
 
 
@@ -822,7 +850,7 @@ void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
 
 void MySqlListener::enterDmlStatement(MySqlParser::DmlStatementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DMLStatementCBH, DMLStatementAdapter>();
+    pushAdapterStack<DMLStatementCBH, DMLStatementAdapter>(ctx);
 }
 
 
@@ -834,7 +862,7 @@ void MySqlListener::exitDmlStatement(MySqlParser::DmlStatementContext * ctx) {
 
 void MySqlListener::enterSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectStatementCBH, SelectStatmentAdapter>();
+    pushAdapterStack<SelectStatementCBH, SelectStatmentAdapter>(ctx);
 }
 
 
@@ -846,7 +874,7 @@ void MySqlListener::exitSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
 
 void MySqlListener::enterQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<QuerySpecificationCBH, QuerySpecificationAdapter>();
+    pushAdapterStack<QuerySpecificationCBH, QuerySpecificationAdapter>(ctx);
 }
 
 
@@ -858,7 +886,7 @@ void MySqlListener::exitQuerySpecification(MySqlParser::QuerySpecificationContex
 
 void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectElementsCBH, SelectElementsAdapter>();
+    pushAdapterStack<SelectElementsCBH, SelectElementsAdapter>(ctx);
 }
 
 
@@ -870,7 +898,7 @@ void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx)
 
 void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectColumnElementCBH, SelectColumnElementAdapter>();
+    pushAdapterStack<SelectColumnElementCBH, SelectColumnElementAdapter>(ctx);
 }
 
 
@@ -882,7 +910,7 @@ void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementCont
 
 void MySqlListener::enterFromClause(MySqlParser::FromClauseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FromClauseCBH, FromClauseAdapter>();
+    pushAdapterStack<FromClauseCBH, FromClauseAdapter>(ctx);
 }
 
 
@@ -894,7 +922,7 @@ void MySqlListener::exitFromClause(MySqlParser::FromClauseContext * ctx) {
 
 void MySqlListener::enterTableSources(MySqlParser::TableSourcesContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourcesCBH, TableSourcesAdapter>();
+    pushAdapterStack<TableSourcesCBH, TableSourcesAdapter>(ctx);
 }
 
 
@@ -906,7 +934,7 @@ void MySqlListener::exitTableSources(MySqlParser::TableSourcesContext * ctx) {
 
 void MySqlListener::enterTableSourceBase(MySqlParser::TableSourceBaseContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceCBH, TableSourceAdapter>();
+    pushAdapterStack<TableSourceCBH, TableSourceAdapter>(ctx);
 }
 
 
@@ -918,7 +946,7 @@ void MySqlListener::exitTableSourceBase(MySqlParser::TableSourceBaseContext * ct
 
 void MySqlListener::enterAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceItemCBH, TableSourceItemAdapter>();
+    pushAdapterStack<TableSourceItemCBH, TableSourceItemAdapter>(ctx);
 }
 
 
@@ -930,7 +958,7 @@ void MySqlListener::exitAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
 
 void MySqlListener::enterTableName(MySqlParser::TableNameContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableNameCBH, TableNameAdapter>();
+    pushAdapterStack<TableNameCBH, TableNameAdapter>(ctx);
 }
 
 
@@ -942,7 +970,7 @@ void MySqlListener::exitTableName(MySqlParser::TableNameContext * ctx) {
 
 void MySqlListener::enterFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>();
+    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>(ctx);
 }
 
 
@@ -955,7 +983,7 @@ void MySqlListener::exitFullColumnName(MySqlParser::FullColumnNameContext * ctx)
 
 void MySqlListener::enterFullId(MySqlParser::FullIdContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FullIdCBH, FullIdAdapter>();
+    pushAdapterStack<FullIdCBH, FullIdAdapter>(ctx);
 }
 
 
@@ -983,7 +1011,7 @@ void MySqlListener::exitUid(MySqlParser::UidContext * ctx) {
 
 void MySqlListener::enterDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DecimalLiteralCBH, DecimalLiteralAdapter>();
+    pushAdapterStack<DecimalLiteralCBH, DecimalLiteralAdapter>(ctx);
     auto adapter = adapterStackTop<DecimalLiteralAdapter>();
     if (adapter) {
         adapter->onEnter(ctx);
@@ -999,7 +1027,7 @@ void MySqlListener::exitDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx)
 
 void MySqlListener::enterStringLiteral(MySqlParser::StringLiteralContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<StringLiteralCBH, StringLiteralAdapter>();
+    pushAdapterStack<StringLiteralCBH, StringLiteralAdapter>(ctx);
 }
 
 
@@ -1014,7 +1042,7 @@ ENTER_EXIT_PARENT(PredicateExpression)
 
 void MySqlListener::enterExpressionAtomPredicate(MySqlParser::ExpressionAtomPredicateContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ExpressionAtomPredicateCBH, ExpressionAtomPredicateAdapter>();
+    pushAdapterStack<ExpressionAtomPredicateCBH, ExpressionAtomPredicateAdapter>(ctx);
 }
 
 
@@ -1029,7 +1057,7 @@ ENTER_EXIT_PARENT(BinaryComparasionPredicate)
 
 void MySqlListener::enterConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ConstantExpressionAtomCBH, ConstantExpressionAtomAdapter>();
+    pushAdapterStack<ConstantExpressionAtomCBH, ConstantExpressionAtomAdapter>(ctx);
 }
 
 
@@ -1044,7 +1072,7 @@ ENTER_EXIT_PARENT(FullColumnNameExpressionAtom)
 
 void MySqlListener::enterComparisonOperator(MySqlParser::ComparisonOperatorContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ComparisonOperatorCBH, ComparisonOperatorAdapter>();
+    pushAdapterStack<ComparisonOperatorCBH, ComparisonOperatorAdapter>(ctx);
     auto adapter = adapterStackTop<ComparisonOperatorAdapter>();
     if (adapter) {
         adapter->onEnter(ctx);
