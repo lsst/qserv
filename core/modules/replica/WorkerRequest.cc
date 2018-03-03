@@ -70,7 +70,7 @@ std::string WorkerRequest::status2string(CompletionStatus status) {
                     std::to_string(status));
 }
 
-std::string WorkerRequest::status2string(CompletionStatus         status,
+std::string WorkerRequest::status2string(CompletionStatus status,
                                          ExtendedCompletionStatus extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }

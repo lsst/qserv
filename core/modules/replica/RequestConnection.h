@@ -62,12 +62,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    RequestConnection () = delete;
-    RequestConnection (RequestConnection const&) = delete;
-    RequestConnection& operator= (RequestConnection const&) = delete;
+    RequestConnection() = delete;
+    RequestConnection(RequestConnection const&) = delete;
+    RequestConnection& operator=(RequestConnection const&) = delete;
 
     /// Destructor
-    ~RequestConnection () override = default;
+    ~RequestConnection() override = default;
 
 protected:
 
@@ -87,18 +87,18 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    RequestConnection (ServiceProvider&         serviceProvider,
-                       boost::asio::io_service& io_service,
-                       std::string const&       type,
-                       std::string const&       worker,
-                       int                      priority,
-                       bool                     keepTracking,
-                       bool                     allowDuplicate);
+    RequestConnection(ServiceProvider& serviceProvider,
+                      boost::asio::io_service& io_service,
+                      std::string const& type,
+                      std::string const& worker,
+                      int  priority,
+                      bool keepTracking,
+                      bool allowDuplicate);
 
     /**
      * Implement a method defined in the base class.
      */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
      * Restart the whole operation from scratch.
@@ -109,42 +109,42 @@ protected:
      * NOTE: This method is called internally when there is a doubt that
      * it's possible to do a clean recovery from a failure.
      */
-    void restart ();
+    void restart();
 
     /// Start resolving the destination worker host & port
-    void resolve ();
+    void resolve();
 
     /// Callback handler for the asynchronious operation
-    void resolved (const boost::system::error_code &ec,
-                   boost::asio::ip::tcp::resolver::iterator iter);
+    void resolved(boost::system::error_code const& ec,
+                  boost::asio::ip::tcp::resolver::iterator iter);
 
     /// Start resolving the destination worker host & port
-    void connect (boost::asio::ip::tcp::resolver::iterator iter);
+    void connect(boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Callback handler for the asynchronious operation upon its
      * successfull completion will trigger a request-specific
      * protocol sequence.
      */
-    void connected (const boost::system::error_code &ec,
-                    boost::asio::ip::tcp::resolver::iterator iter);
+    void connected(boost::system::error_code const& ec,
+                   boost::asio::ip::tcp::resolver::iterator iter);
 
     /// Start a timeout before attempting to restart the connection
-    void waitBeforeRestart ();
+    void waitBeforeRestart();
 
     /// Callback handler fired for restarting the connection
-    void awakenForRestart (const boost::system::error_code &ec);
+    void awakenForRestart(boost::system::error_code const& ec);
 
     /**
      * Implement a method defined in the base class.
      */
-    void finishImpl () override;
+    void finishImpl() override;
 
     /**
       * This method is supposed to be provided by subclasses to begin
       * an actual protocol as required by the subclass.
       */
-    virtual void beginProtocol ()=0;
+    virtual void beginProtocol()=0;
     
     /**
      * Synchroniously read a protocol frame which carries the length
@@ -155,7 +155,7 @@ protected:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadFrame (size_t &bytes);
+    boost::system::error_code syncReadFrame(size_t &bytes);
 
     /**
      * Synchriniously read a message of a known size. Then parse it
@@ -170,11 +170,11 @@ protected:
      * @return the completion code of the operation
      */
     template <class MESSAGE_TYPE>
-    boost::system::error_code syncReadMessage (const size_t bytes,
-                                               MESSAGE_TYPE &message) {
+    boost::system::error_code syncReadMessage(size_t const bytes,
+                                              MESSAGE_TYPE &message) {
 
-        boost::system::error_code ec = syncReadMessageImpl (bytes);
-        if (!ec) _bufferPtr->parse(message, bytes);
+        boost::system::error_code const ec = syncReadMessageImpl(bytes);
+        if (not ec) { _bufferPtr->parse(message, bytes); }
         return ec;
     }
 
@@ -188,7 +188,7 @@ protected:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadMessageImpl (const size_t bytes);
+    boost::system::error_code syncReadMessageImpl(size_t const bytes);
 
    /**
      * Synchriniously read a response header of a known size. Then parse it
@@ -203,7 +203,7 @@ protected:
      *
      * @return the completion code of the operation
      */
-    boost::system::error_code syncReadVerifyHeader (const size_t bytes);
+    boost::system::error_code syncReadVerifyHeader(size_t const bytes);
     
 protected:
 

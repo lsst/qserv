@@ -76,10 +76,10 @@ struct JobWrapper {
 
     /// This method will be called upon a completion of a request
     /// to notify a subscriber on the event.
-    virtual void notify ()=0;
+    virtual void notify()=0;
 
     /// Return a pointer to the stored job object
-    virtual Job::pointer job () const=0;
+    virtual Job::pointer job() const=0;
 };
 
 /**
@@ -123,18 +123,18 @@ public:
                                 JobCompare> {
 
         /// The beginning of the container to allow the iterator protocol
-        decltype(c.begin()) begin () {
+        decltype(c.begin()) begin() {
             return c.begin();
         }
 
         /// The end of the container to allow the iterator protocol
-        decltype(c.end()) end () {
+        decltype(c.end()) end() {
             return c.end();
         }
 
         /// Remove an entry from the queue by its identifier
-        bool remove (std::string const& id) {
-            auto itr = std::find_if (
+        bool remove(std::string const& id) {
+            auto itr = std::find_if(
                 c.begin(),
                 c.end(),
                 [&id] (Job::pointer const& ptr) {
@@ -161,29 +161,29 @@ public:
      *
      * @param serviceProvider - for configuration, other services
      */
-    static pointer create (ServiceProvider &serviceProvider);
+    static pointer create(ServiceProvider& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
-    JobController () = delete;
-    JobController (JobController const&) = delete;
-    JobController& operator= (JobController const&) = delete;
+    JobController() = delete;
+    JobController(JobController const&) = delete;
+    JobController& operator=(JobController const&) = delete;
 
     /// Destructor
-    virtual ~JobController () = default;
+    virtual ~JobController() = default;
 
     /**
      * Run the scheduler in a dedicated thread unless it's already running.
      * It's safe to call this method multiple times from any thread.
      */
-    void run ();
+    void run();
 
     /**
      * Check if the service is running.
      *
      * @return true if the scheduler is running.
      */
-    bool isRunning () const;
+    bool isRunning() const;
 
     /**
      * Stop the scheduler. This method will guarantee that all outstanding
@@ -192,7 +192,7 @@ public:
      * This operation will also result in stopping the internal thread
      * in which the scheduler is being run.
      */
-    void stop ();
+    void stop();
 
     /**
      * Join with a thread in which the scheduler is being run (if any).
@@ -203,7 +203,7 @@ public:
      * a larger multi-threaded application which may require a proper
      * synchronization between threads.
      */
-    void join ();
+    void join();
     
     /**
      * Submit a job for finding all replicas and updating replica status
@@ -221,11 +221,11 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    FindAllJob_pointer findAll (std::string const&       databaseFamily,
-                                FindAllJob_callback_type onFinish    = nullptr,
-                                int                      priority    = 0,
-                                bool                     exclusive   = false,
-                                bool                     preemptable = true);
+    FindAllJob_pointer findAll(std::string const& databaseFamily,
+                               FindAllJob_callback_type onFinish = nullptr,
+                               int  priority = 0,
+                               bool exclusive = false,
+                               bool preemptable = true);
 
     /**
      * Submit a job for fixin up all non-colocateds replicas.
@@ -242,11 +242,11 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    FixUpJob_pointer fixUp (std::string const&     databaseFamily,
-                            FixUpJob_callback_type onFinish    = nullptr,
-                            int                    priority    = 2,
-                            bool                   exclusive   = true,
-                            bool                   preemptable = false);
+    FixUpJob_pointer fixUp(std::string const& databaseFamily,
+                           FixUpJob_callback_type onFinish = nullptr,
+                           int  priority = 2,
+                           bool exclusive = true,
+                           bool preemptable = false);
 
     /**
      * Submit a job for bringing the number of each chunk's replicas down
@@ -267,12 +267,12 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    PurgeJob_pointer purge (std::string const&     databaseFamily,
-                            unsigned int           numReplicas,
-                            PurgeJob_callback_type onFinish    = nullptr,
-                            int                    priority    = -1,
-                            bool                   exclusive   = false,
-                            bool                   preemptable = true);
+    PurgeJob_pointer purge(std::string const& databaseFamily,
+                           unsigned int numReplicas,
+                           PurgeJob_callback_type onFinish = nullptr,
+                           int  priority = -1,
+                           bool exclusive = false,
+                           bool preemptable = true);
 
     /**
      * Submit a job for bringing the number of each chunk's replicas up
@@ -293,12 +293,12 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    ReplicateJob_pointer replicate (std::string const&         databaseFamily,
-                                    unsigned int               numReplicas,
-                                    ReplicateJob_callback_type onFinish    = nullptr,
-                                    int                        priority    = 1,
-                                    bool                       exclusive   = true,
-                                    bool                       preemptable = true);
+    ReplicateJob_pointer replicate(std::string const& databaseFamily,
+                                   unsigned int numReplicas,
+                                   ReplicateJob_callback_type onFinish = nullptr,
+                                   int  priority = 1,
+                                   bool exclusive = true,
+                                   bool preemptable = true);
 
     /**
      * Submit a job for verifying integrity of known replicas, updating their status
@@ -316,11 +316,11 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    VerifyJob_pointer verify (VerifyJob_callback_type         onFinish            = nullptr,
-                              VerifyJob_callback_type_on_diff onReplicaDifference = nullptr,
-                              int                             priority            = -2,
-                              bool                            exclusive           = false,
-                              bool                            preemptable         = true);
+    VerifyJob_pointer verify(VerifyJob_callback_type onFinish  = nullptr,
+                             VerifyJob_callback_type_on_diff onReplicaDifference = nullptr,
+                             int  priority = -2,
+                             bool exclusive = false,
+                             bool preemptable  = true);
 
     /**
      * Submit a job for disabling or permanently deleting (depends on the corresponding
@@ -340,12 +340,12 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    DeleteWorkerJob_pointer deleteWorker (std::string const&            worker,
-                                          bool                          permanentDelete,
-                                          DeleteWorkerJob_callback_type onFinish    = nullptr,
-                                          int                           priority    = 2,
-                                          bool                          exclusive   = true,
-                                          bool                          preemptable = false);
+    DeleteWorkerJob_pointer deleteWorker(std::string const& worker,
+                                         bool permanentDelete,
+                                         DeleteWorkerJob_callback_type onFinish = nullptr,
+                                         int  priority = 2,
+                                         bool exclusive = true,
+                                         bool preemptable = false);
 
     // TODO: add job inspection methods
 
@@ -356,7 +356,7 @@ private:
      *
      * @see JobController::create()
      */
-    JobController (ServiceProvider& serviceProvider);
+    JobController(ServiceProvider& serviceProvider);
 
     /**
      * Check is there are any jobs in the input queue which are eligible
@@ -364,7 +364,7 @@ private:
      * as: 'priority', 'exclusive' or 'preemptable' modes. If so then launch
      * them.
      */
-    void runQueued ();
+    void runQueued();
 
     /**
      * Check is there are any time-based jobs which are supposed to run on
@@ -375,12 +375,12 @@ private:
      * the jobs will be put into the input queue and the previously
      * defined method JobController::runQueuedJobs() will be invoked.
      */
-    void runScheduled ();
+    void runScheduled();
 
     /**
      * Stop all in-progress jobs and do *NOT* start the new ones.
      */
-    void cancelAll ();
+    void cancelAll();
 
     /**
      * The callback method to be called upon a completion of a job.
@@ -388,7 +388,7 @@ private:
      *
      * @param job - a reference to the job
      */
-    void onFinish (Job::pointer const& job);
+    void onFinish(Job::pointer const& job);
 
 private:
 

@@ -118,7 +118,7 @@ bool WorkerFindAllRequest::execute() {
 ///////////////////// WorkerFindAllRequestPOSIX ////////////////////
 ////////////////////////////////////////////////////////////////////
 
-WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create (
+WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create(
                                         ServiceProvider&   serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,

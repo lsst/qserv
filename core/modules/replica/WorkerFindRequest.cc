@@ -80,16 +80,16 @@ WorkerFindRequest::WorkerFindRequest(
                         std::string const& database,
                         unsigned int       chunk,
                         bool               computeCheckSum)
-    :   WorkerRequest (
+    :   WorkerRequest(
             serviceProvider,
             worker,
             "FIND",
             id,
             priority),
-        _database        (database),
-        _chunk           (chunk),
-        _computeCheckSum (computeCheckSum),
-        _replicaInfo     () {
+        _database(database),
+        _chunk(chunk),
+        _computeCheckSum(computeCheckSum),
+        _replicaInfo() {
 
     serviceProvider.assertDatabaseIsValid(database);
 }
@@ -118,7 +118,7 @@ bool WorkerFindRequest::execute() {
 ///////////////////// WorkerFindRequestPOSIX ////////////////////
 /////////////////////////////////////////////////////////////////
 
-WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create (
+WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create(
                                     ServiceProvider&   serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,

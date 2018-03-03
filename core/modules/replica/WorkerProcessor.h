@@ -119,7 +119,7 @@ public:
 
     WorkerProcessor() = delete;
     WorkerProcessor(WorkerProcessor const&) = delete;
-    WorkerProcessor&operator=(WorkerProcessor const&) = delete;
+    WorkerProcessor& operator=(WorkerProcessor const&) = delete;
 
     /**
      * The constructor of the class.
@@ -354,7 +354,7 @@ private:
      */
     WorkerRequest::pointer fetchNextForProcessing(
                                 WorkerProcessorThread::pointer const& processorThread,
-                                unsigned int                          timeoutMilliseconds=0);
+                                unsigned int timeoutMilliseconds=0);
 
     /**
      * Implement the operation for the specified identifier if such request

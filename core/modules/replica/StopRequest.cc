@@ -52,23 +52,22 @@ namespace replica {
 //         StopRequestBaseC          //
 ////////////////////////////////////////
 
-StopRequestBaseC::StopRequestBaseC (ServiceProvider&         serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    char const*              requestTypeName,
-                                    std::string const&       worker,
-                                    std::string const&       targetRequestId,
-                                    proto::ReplicationReplicaRequestType requestType,
-                                    bool                     keepTracking)
-
-    :   RequestConnection (serviceProvider,
-                           io_service,
-                           requestTypeName,
-                           worker,
-                           0,
-                           keepTracking,
-                           false /* allowDuplicate */),
-        _targetRequestId (targetRequestId),
-        _requestType     (requestType) {
+StopRequestBaseC::StopRequestBaseC(ServiceProvider&         serviceProvider,
+                                   boost::asio::io_service& io_service,
+                                   char const*              requestTypeName,
+                                   std::string const&       worker,
+                                   std::string const&       targetRequestId,
+                                   proto::ReplicationReplicaRequestType requestType,
+                                   bool                     keepTracking)
+    :   RequestConnection(serviceProvider,
+                          io_service,
+                          requestTypeName,
+                          worker,
+                          0,
+                          keepTracking,
+                          false /* allowDuplicate */),
+        _targetRequestId(targetRequestId),
+        _requestType(requestType) {
 }
 
 void StopRequestBaseC::beginProtocol() {
@@ -81,27 +80,27 @@ void StopRequestBaseC::beginProtocol() {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStop message;
-    message.set_id  (_targetRequestId);
+    message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
     _bufferPtr->serialize(message);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &StopRequestBaseC::requestSent,
             shared_from_base<StopRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -123,7 +122,7 @@ void StopRequestBaseC::requestSent(boost::system::error_code const& ec,
     else    { receiveResponse(); }
 }
 
-void StopRequestBaseC::receiveResponse () {
+void StopRequestBaseC::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -175,7 +174,7 @@ void StopRequestBaseC::responseReceived(boost::system::error_code const& ec,
     if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
 
     size_t bytes;
-    if (syncReadFrame(bytes)) { restart (); }
+    if (syncReadFrame(bytes)) { restart(); }
  
     if (syncReadMessageImpl(bytes)) { restart(); }
     else                            { analyze(parseResponse()); }
@@ -221,14 +220,14 @@ void StopRequestBaseC::sendStatus() {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (_targetRequestId);
+    message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
     _bufferPtr->serialize(message);
@@ -334,33 +333,33 @@ void StopRequestBaseC::analyze(proto::ReplicationStatus status) {
 
         case proto::ReplicationStatus::QUEUED:
             if (_keepTracking) { wait(); }
-            else               { finish (SERVER_QUEUED); }
+            else               { finish(SERVER_QUEUED); }
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
             if (_keepTracking) { wait(); }
-            else               { finish (SERVER_IN_PROGRESS); }
+            else               { finish(SERVER_IN_PROGRESS); }
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
             if (_keepTracking) { wait(); }
-            else               { finish (SERVER_IS_CANCELLING); }
+            else               { finish(SERVER_IS_CANCELLING); }
             break;
 
         case proto::ReplicationStatus::BAD:
-            finish (SERVER_BAD);
+            finish(SERVER_BAD);
             break;
 
         case proto::ReplicationStatus::FAILED:
-            finish (SERVER_ERROR);
+            finish(SERVER_ERROR);
             break;
 
         case proto::ReplicationStatus::CANCELLED:
-            finish (SERVER_CANCELLED);
+            finish(SERVER_CANCELLED);
             break;
 
         default:
-            throw std::logic_error (
+            throw std::logic_error(
                     "StopRequestBaseC::analyze() unknown status '" +
                     proto::ReplicationStatus_Name(status) +
                     "' received from server");
@@ -371,24 +370,24 @@ void StopRequestBaseC::analyze(proto::ReplicationStatus status) {
 //         StopRequestBaseM          //
 ///////////////////////////////////////
 
-StopRequestBaseM::StopRequestBaseM (ServiceProvider&         serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    char const*              requestTypeName,
-                                    std::string const&       worker,
-                                    std::string const&       targetRequestId,
-                                    proto::ReplicationReplicaRequestType requestType,
-                                    bool                     keepTracking,
-                                    std::shared_ptr<Messenger> const&  messenger)
-    :   RequestMessenger (serviceProvider,
-                          io_service,
-                          requestTypeName,
-                          worker,
-                          0,    /* priority */
-                          keepTracking,
-                          false /* allowDuplicate */,
-                          messenger),
-        _targetRequestId (targetRequestId),
-        _requestType     (requestType) {
+StopRequestBaseM::StopRequestBaseM(ServiceProvider&         serviceProvider,
+                                   boost::asio::io_service& io_service,
+                                   char const*              requestTypeName,
+                                   std::string const&       worker,
+                                   std::string const&       targetRequestId,
+                                   proto::ReplicationReplicaRequestType requestType,
+                                   bool                     keepTracking,
+                                   std::shared_ptr<Messenger> const&  messenger)
+    :   RequestMessenger(serviceProvider,
+                         io_service,
+                         requestTypeName,
+                         worker,
+                         0,    /* priority */
+                         keepTracking,
+                         false /* allowDuplicate */,
+                         messenger),
+        _targetRequestId(targetRequestId),
+        _requestType(requestType) {
 }
 
 void StopRequestBaseM::startImpl() {
@@ -401,14 +400,14 @@ void StopRequestBaseM::startImpl() {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STOP);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStop message;
-    message.set_id  (_targetRequestId);
+    message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
     _bufferPtr->serialize(message);
@@ -449,14 +448,14 @@ void StopRequestBaseM::awaken(boost::system::error_code const& ec) {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (_targetRequestId);
+    message.set_id(_targetRequestId);
     message.set_type(_requestType);
 
     _bufferPtr->serialize(message);
@@ -464,8 +463,8 @@ void StopRequestBaseM::awaken(boost::system::error_code const& ec) {
     send();
 }
 
-void StopRequestBaseM::analyze (bool success,
-                                proto::ReplicationStatus status) {
+void StopRequestBaseM::analyze(bool success,
+                               proto::ReplicationStatus status) {
 
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
@@ -479,45 +478,45 @@ void StopRequestBaseM::analyze (bool success,
         switch (status) {
      
             case proto::ReplicationStatus::SUCCESS:
-                finish (SUCCESS);
+                finish(SUCCESS);
                 break;
     
             case proto::ReplicationStatus::QUEUED:
                 if (_keepTracking) { wait(); }
-                else               { finish (SERVER_QUEUED); }
+                else               { finish(SERVER_QUEUED); }
                 break;
     
             case proto::ReplicationStatus::IN_PROGRESS:
                 if (_keepTracking) { wait(); }
-                else               { finish (SERVER_IN_PROGRESS); }
+                else               { finish(SERVER_IN_PROGRESS); }
                 break;
     
             case proto::ReplicationStatus::IS_CANCELLING:
                 if (_keepTracking) { wait(); }
-                else               { finish (SERVER_IS_CANCELLING); }
+                else               { finish(SERVER_IS_CANCELLING); }
                 break;
     
             case proto::ReplicationStatus::BAD:
-                finish (SERVER_BAD);
+                finish(SERVER_BAD);
                 break;
     
             case proto::ReplicationStatus::FAILED:
-                finish (SERVER_ERROR);
+                finish(SERVER_ERROR);
                 break;
     
             case proto::ReplicationStatus::CANCELLED:
-                finish (SERVER_CANCELLED);
+                finish(SERVER_CANCELLED);
                 break;
     
             default:
-                throw std::logic_error (
+                throw std::logic_error(
                         "StopRequestBaseM::analyze() unknown status '" +
                         proto::ReplicationStatus_Name(status) +
                         "' received from server");
         }
 
     } else {
-        finish (CLIENT_ERROR);
+        finish(CLIENT_ERROR);
     }
 }
 

@@ -36,7 +36,6 @@
 
 // Qserv headers
 
-
 // Forward declarations
 
 namespace lsst {
@@ -46,7 +45,6 @@ namespace proto {
 class ReplicationReplicaInfo;
 
 }}} // namespace lsst::qserv::proto
-
 
 // This header declarations
 
@@ -103,12 +101,12 @@ public:
     };
     
     /// Return the string representation of the status
-    static std::string status2string (Status status);
+    static std::string status2string(Status status);
 
     /**
      * Construct with the default state NOT_FOUND
      */
-    ReplicaInfo ();
+    ReplicaInfo();
 
     /**
      * Construct with the specified state.
@@ -120,48 +118,48 @@ public:
      * @param verifyTime - when the replica info was obtainer by a worker
      * @param fileInfo   - a collection of info on each file of the chunk
      */
-    ReplicaInfo (Status                    status,
-                 std::string const&        worker,
-                 std::string const&        database,
-                 unsigned int              chunk,
-                 uint64_t                  verifyTime,
-                 FileInfoCollection const& fileInfo);
+    ReplicaInfo(Status status,
+                std::string const& worker,
+                std::string const& database,
+                unsigned int chunk,
+                uint64_t verifyTime,
+                FileInfoCollection const& fileInfo);
 
     /// Construct from a protobuf object
-    explicit ReplicaInfo (proto::ReplicationReplicaInfo const* info);
+    explicit ReplicaInfo(proto::ReplicationReplicaInfo const* info);
 
     /// Copy constructor
-    ReplicaInfo (ReplicaInfo const& ri) = default;
+    ReplicaInfo(ReplicaInfo const& ri) = default;
 
     /// Assignment operator
-    ReplicaInfo& operator= (ReplicaInfo const& ri) = default;
+    ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
 
     /// Destructor
-    ~ReplicaInfo () = default;
+    ~ReplicaInfo() = default;
 
     // Trivial accessors
 
-    Status status () const { return _status; }
+    Status status() const { return _status; }
 
-    std::string const& worker   () const { return _worker; }
-    std::string const& database () const { return _database; }
+    std::string const& worker() const   { return _worker; }
+    std::string const& database() const { return _database; }
 
-    unsigned int chunk () const { return _chunk; }
+    unsigned int chunk() const { return _chunk; }
 
     /**
      * Return the last time when the replica status was checked
      */
-    uint64_t verifyTime () const { return _verifyTime; }
+    uint64_t verifyTime() const { return _verifyTime; }
 
 
     /// Return a collection of files constituiting the replica
-    FileInfoCollection const& fileInfo () const { return _fileInfo; }
+    FileInfoCollection const& fileInfo() const { return _fileInfo; }
 
     /**
      * Return a collection of files constituiting the replica as a map,
      * in which the file name is the key.
      */
-    std::map<std::string,FileInfo> fileInfoMap () const;
+    std::map<std::string,FileInfo> fileInfoMap() const;
 
     /**
      * Return the minimum start time of the file migration operations of any
@@ -170,7 +168,7 @@ public:
      * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
      * produced in a context of creating a new replica.
      */
-    uint64_t beginTransferTime () const;
+    uint64_t beginTransferTime() const;
 
     /**
      * Return the maximum end time of the file migration operations of any
@@ -179,7 +177,7 @@ public:
      * NOTE: the method is allowed to return 0 if the ReplicaInfo was not
      * produced in a context of creating a new replica.
      */
-    uint64_t endTransferTime () const;
+    uint64_t endTransferTime() const;
 
     /**
      * Return a protobuf object
@@ -187,12 +185,12 @@ public:
      * OWNERSHIP TRANSFER NOTE: this method allocates a new object and
      * returns a pointer along with its ownership.
      */
-    lsst::qserv::proto::ReplicationReplicaInfo* info () const;
+    lsst::qserv::proto::ReplicationReplicaInfo* info() const;
 
     /**
      * Initialize a protobuf object from the object's state
      */
-    void setInfo (proto::ReplicationReplicaInfo* info) const;
+    void setInfo(proto::ReplicationReplicaInfo* info) const;
 
 private:
 
@@ -210,14 +208,17 @@ private:
     FileInfoCollection _fileInfo;
 };
 
+/// Overloaded streaming operator for type ReplicaInfo::FileInfo
+std::ostream& operator<<(std::ostream& os, ReplicaInfo::FileInfo const& fi);
+
 /// Overloaded streaming operator for type ReplicaInfo
-std::ostream& operator<< (std::ostream& os, ReplicaInfo const& ri);
+std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri);
 
 /// The collection type for transient representations
 typedef std::vector<ReplicaInfo> ReplicaInfoCollection;
 
 /// Overloaded streaming operator for type ReplicaInfoCollection
-std::ostream& operator<< (std::ostream& os, ReplicaInfoCollection const& ric);
+std::ostream& operator<<(std::ostream& os, ReplicaInfoCollection const& ric);
 
 }}} // namespace lsst::qserv::replica
 

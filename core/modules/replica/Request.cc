@@ -50,16 +50,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string Request::state2string (State state) {
+std::string Request::state2string(State state) {
     switch (state) {
         case CREATED:     return "CREATED";
         case IN_PROGRESS: return "IN_PROGRESS";
         case FINISHED:    return "FINISHED";
     }
-    throw std::logic_error("incomplete implementation of method Request::state2string(State)");
+    throw std::logic_error(
+                    "incomplete implementation of method Request::state2string(State)");
 }
 
-std::string Request::state2string (ExtendedState state) {
+std::string Request::state2string(ExtendedState state) {
     switch (state) {
         case NONE:                 return "NONE";
         case SUCCESS:              return "SUCCESS";
@@ -73,45 +74,46 @@ std::string Request::state2string (ExtendedState state) {
         case EXPIRED:              return "EXPIRED";
         case CANCELLED:            return "CANCELLED";
     }
-    throw std::logic_error("incomplete implementation of method Request::state2string(ExtendedState)");
+    throw std::logic_error(
+                    "incomplete implementation of method Request::state2string(ExtendedState)");
 }
 
-Request::Request (ServiceProvider&         serviceProvider,
-                  boost::asio::io_service& io_service,
-                  std::string const& type,
-                  std::string const&       worker,
-                  int                      priority,
-                  bool                     keepTracking,
-                  bool                     allowDuplicate)
+Request::Request(ServiceProvider& serviceProvider,
+                 boost::asio::io_service& io_service,
+                 std::string const& type,
+                 std::string const& worker,
+                 int  priority,
+                 bool keepTracking,
+                 bool allowDuplicate)
 
-    :   _serviceProvider (serviceProvider),
-        _type   (type),
-        _id     (Generators::uniqueId()),
-        _worker (worker),
-        _priority       (priority),
-        _keepTracking   (keepTracking),
-        _allowDuplicate (allowDuplicate),
-        _state                (CREATED),
-        _extendedState        (NONE),
-        _extendedServerStatus (ExtendedCompletionStatus::EXT_STATUS_NONE),
-        _performance          (),
-        _bufferPtr  (new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
-        _workerInfo (serviceProvider.config()->workerInfo(worker)),
-        _timerIvalSec (serviceProvider.config()->retryTimeoutSec()),
-        _timer        (io_service),
-        _requestExpirationIvalSec (serviceProvider.config()->controllerRequestTimeoutSec()),
-        _requestExpirationTimer   (io_service) {
+    :   _serviceProvider(serviceProvider),
+        _type(type),
+        _id(Generators::uniqueId()),
+        _worker(worker),
+        _priority(priority),
+        _keepTracking(keepTracking),
+        _allowDuplicate(allowDuplicate),
+        _state(CREATED),
+        _extendedState(NONE),
+        _extendedServerStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
+        _performance(),
+        _bufferPtr(new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
+        _workerInfo(serviceProvider.config()->workerInfo(worker)),
+        _timerIvalSec(serviceProvider.config()->retryTimeoutSec()),
+        _timer(io_service),
+        _requestExpirationIvalSec(serviceProvider.config()->controllerRequestTimeoutSec()),
+        _requestExpirationTimer(io_service) {
 
         _serviceProvider.assertWorkerIsValid(worker);
 }
 
-std::string const& Request::remoteId () const {
+std::string const& Request::remoteId() const {
     return _duplicateRequestId.empty() ? _id : _duplicateRequestId;
 }
 
-void Request::start (std::shared_ptr<Controller> const& controller,
-                     std::string const& jobId,
-                     unsigned int requestExpirationIvalSec) {
+void Request::start(std::shared_ptr<Controller> const& controller,
+                    std::string const& jobId,
+                    unsigned int requestExpirationIvalSec) {
 
     LOCK_GUARD;
 
@@ -137,8 +139,8 @@ void Request::start (std::shared_ptr<Controller> const& controller,
     if (_requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
-        _requestExpirationTimer.async_wait (
-            boost::bind (
+        _requestExpirationTimer.async_wait(
+            boost::bind(
                 &Request::expired,
                 shared_from_this(),
                 boost::asio::placeholders::error
@@ -149,18 +151,18 @@ void Request::start (std::shared_ptr<Controller> const& controller,
     // Let a subclass to proceed with its own sequence of actions
     startImpl();
 
-    _controller->serviceProvider().databaseServices()->saveState (shared_from_this());
+    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
 }
 
-std::string const& Request::jobId () const {
+std::string const& Request::jobId() const {
     if (_state == State::CREATED) {
-        throw std::logic_error (
+        throw std::logic_error(
             "the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
 
-void Request::expired (boost::system::error_code const& ec) {
+void Request::expired(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
@@ -176,7 +178,7 @@ void Request::expired (boost::system::error_code const& ec) {
     finish(EXPIRED);
 }
 
-void Request::cancel () {
+void Request::cancel() {
 
     LOCK_GUARD;
 
@@ -185,7 +187,7 @@ void Request::cancel () {
     finish(CANCELLED);
 }
 
-void Request::finish (ExtendedState extendedState) {
+void Request::finish(ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
@@ -206,14 +208,14 @@ void Request::finish (ExtendedState extendedState) {
     // callback on the completion of the operation.
     _performance.setUpdateFinish();
 
-    _controller->serviceProvider().databaseServices()->saveState (shared_from_this());
+    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
 
     // This will invoke user-defined notifiers (if any)
     notify();
 }
 
 
-bool Request::isAborted (boost::system::error_code const& ec) const {
+bool Request::isAborted(boost::system::error_code const& ec) const {
 
     if (ec == boost::asio::error::operation_aborted) {
         LOGS(_log, LOG_LVL_DEBUG, context() << "isAborted  ** ABORTED **");
@@ -222,22 +224,22 @@ bool Request::isAborted (boost::system::error_code const& ec) const {
     return false;
 }
 
-void Request::assertState (State state) const {
+void Request::assertState(State state) const {
     if (state != _state) {
-        throw std::logic_error (
+        throw std::logic_error(
             "wrong state " + state2string(state) + " instead of " + state2string(_state));
     }
 }
 
-void Request::setState (State         state,
-                        ExtendedState extendedState)
+void Request::setState(State state,
+                       ExtendedState extendedState)
 {
     LOGS(_log, LOG_LVL_DEBUG, context() << "setState  " << state2string(state, extendedState));
 
     _state         = state;
     _extendedState = extendedState;
 
-    _controller->serviceProvider().databaseServices()->saveState (shared_from_this());
+    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
 }
     
 }}} // namespace lsst::qserv::replica

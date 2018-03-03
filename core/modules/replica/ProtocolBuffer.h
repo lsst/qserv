@@ -60,21 +60,21 @@ public:
     /**
      * Construct the buffer of the specified initial capacity (bytes).
      */
-    explicit ProtocolBuffer (size_t capacity);
+    explicit ProtocolBuffer(size_t capacity);
 
     // Default construction and copy semantics are prohibited
 
-    ProtocolBuffer () = delete;
-    ProtocolBuffer (ProtocolBuffer const&) = delete;
-    ProtocolBuffer& operator= (ProtocolBuffer const&) = delete;
+    ProtocolBuffer() = delete;
+    ProtocolBuffer(ProtocolBuffer const&) = delete;
+    ProtocolBuffer& operator=(ProtocolBuffer const&) = delete;
 
     /// Destructor (non-trivial)
-    ~ProtocolBuffer ();
+    ~ProtocolBuffer();
 
     /**
      * Pointer to the data blob
      */
-    char* data () { return _data; }
+    char* data() { return _data; }
 
     /**
      * Maximum capacity (bytes) of the buffer.
@@ -87,7 +87,7 @@ public:
      * NOTE: a value return by the method will never exceed the buffer's
      * capacity.
      */
-    size_t size () const { return _size; }
+    size_t size() const { return _size; }
 
     /**
      * Set the size of the meaningful content of the buffer. If the buffer
@@ -100,7 +100,7 @@ public:
      *   std::overflow_error
      *      if the buffer doesn't have enough space to accomodate the request
      */
-    void resize (size_t newSizeBytes=0);
+    void resize(size_t newSizeBytes=0);
 
     /**
      * Add a message into the buffer. The message will be preceeed
@@ -115,7 +115,7 @@ public:
      *      if the serialization failed
      */
     template <class T>
-    void serialize (T const& message) {
+    void serialize(T const& message) {
 
         uint32_t const bytes = message.ByteSize();
 
@@ -147,7 +147,7 @@ public:
      *      if the buffer doesn't have enough data to be interpreted as the
      *      frame header
      */
-    uint32_t parseLength () const;
+    uint32_t parseLength() const;
 
     /*
      * Parse and deserialize the message given the specified size of
@@ -164,7 +164,7 @@ public:
      *      if the deserialization failed
      */
     template <class T>
-    void parse (T& message, uint32_t bytes) {
+    void parse(T& message, uint32_t bytes) {
         if (_size != bytes) {
             throw std::underflow_error("not enough data to be interpreted as the message");
         }
@@ -180,7 +180,7 @@ private:
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
      * as well as its size will be preserved.
      */
-    void extend (size_t newCapacityBytes);
+    void extend(size_t newCapacityBytes);
 
 private:
 

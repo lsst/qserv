@@ -53,31 +53,31 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    ServiceProvider () = delete;
-    ServiceProvider (ServiceProvider const&) = delete;
-    ServiceProvider& operator= (ServiceProvider const&) = delete;
+    ServiceProvider() = delete;
+    ServiceProvider(ServiceProvider const&) = delete;
+    ServiceProvider& operator=(ServiceProvider const&) = delete;
 
     /**
      * Construct the object.
      *
      * @param configUrl - a source of the application configuration parameters
      */
-    explicit ServiceProvider (std::string const& configUrl);
+    explicit ServiceProvider(std::string const& configUrl);
 
     /// Detructor
-    virtual ~ServiceProvider () = default;
+    virtual ~ServiceProvider() = default;
 
     /**
      * Return a reference to the configuration service
      */
-    Configuration::pointer const& config () const { return _configuration; }
+    Configuration::pointer const& config() const { return _configuration; }
 
     /**
      * Return a reference to the database services
      */
-    DatabaseServices::pointer const& databaseServices () const { return _databaseServices; }
+    DatabaseServices::pointer const& databaseServices() const { return _databaseServices; }
 
-    ChunkLocker& chunkLocker () { return _chunkLocker; }
+    ChunkLocker& chunkLocker() { return _chunkLocker; }
 
     /**
      * Make sure this worker is known in the configuration. Throws exception
@@ -85,14 +85,14 @@ public:
      * 
      * @param name - the name of a worker
      */
-    void assertWorkerIsValid (std::string const& name);
+    void assertWorkerIsValid(std::string const& name);
 
     /**
      * Make sure workers are now known in the configuration and they're different.
      * Throws exception std::invalid_argument otherwise.
      */
-    void assertWorkersAreDifferent (std::string const& workerOneName,
-                                    std::string const& workerTwoName);
+    void assertWorkersAreDifferent(std::string const& workerOneName,
+                                   std::string const& workerTwoName);
 
     /**
      * Make sure this database is known in the configuration. Throws exception
@@ -100,7 +100,7 @@ public:
      *
      * @param name - the name of a database
      */
-    void assertDatabaseIsValid (std::string const& name);
+    void assertDatabaseIsValid(std::string const& name);
 
 private:
 

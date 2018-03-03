@@ -48,8 +48,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
 namespace proto = lsst::qserv::proto;
 
 /// Dump a collection of request descriptions onto the output stream
-void dumpRequestInfo (std::ostream& os,
-                      std::vector<proto::ReplicationServiceResponseInfo> const& requests) {
+void dumpRequestInfo(std::ostream& os,
+                     std::vector<proto::ReplicationServiceResponseInfo> const& requests) {
 
     for (const auto &r : requests) {
         os  << "\n"
@@ -91,7 +91,7 @@ namespace replica {
 //         ServiceState          //
 ///////////////////////////////////
 
-void ServiceState::set (proto::ReplicationServiceResponse const& message) {
+void ServiceState::set(proto::ReplicationServiceResponse const& message) {
 
     switch (message.service_state()) {
 
@@ -129,9 +129,9 @@ void ServiceState::set (proto::ReplicationServiceResponse const& message) {
     }
 }
 
-std::ostream& operator<< (std::ostream& os, ServiceState const& ss) {
+std::ostream& operator<<(std::ostream& os, ServiceState const& ss) {
 
-    unsigned int const secondsAgo = (PerformanceUtils::now() - ss.startTime ) / 1000.0f;
+    unsigned int const secondsAgo = (PerformanceUtils::now() - ss.startTime) / 1000.0f;
 
     os  << "ServiceState:\n"
         << "\n  Summary:\n\n"
@@ -158,7 +158,7 @@ std::ostream& operator<< (std::ostream& os, ServiceState const& ss) {
 //         ServiceManagementRequestBaseC          //
 ////////////////////////////////////////////////////
 
-ServiceState const& ServiceManagementRequestBaseC::getServiceState () const {
+ServiceState const& ServiceManagementRequestBaseC::getServiceState() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
 
@@ -185,18 +185,17 @@ ServiceManagementRequestBaseC::ServiceManagementRequestBaseC(
                                     char const*              requestTypeName,
                                     std::string const&       worker,
                                     proto::ReplicationServiceRequestType requestType)
-    :   RequestConnection (serviceProvider,
-                           io_service,
-                           requestTypeName,
-                           worker,
-                           0,       /* priority */
-                           false,   /* keepTracking */
-                           false    /* allowDuplicate */
-                           ),
-        _requestType (requestType) {
+    :   RequestConnection(serviceProvider,
+                          io_service,
+                          requestTypeName,
+                          worker,
+                          0,       /* priority */
+                          false,   /* keepTracking */
+                          false    /* allowDuplicate */),
+        _requestType(requestType) {
 }
 
-void ServiceManagementRequestBaseC::beginProtocol () {
+void ServiceManagementRequestBaseC::beginProtocol() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol");
 
@@ -206,21 +205,21 @@ void ServiceManagementRequestBaseC::beginProtocol () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::SERVICE);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
 
     _bufferPtr->serialize(hdr);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &ServiceManagementRequestBaseC::requestSent,
             shared_from_base<ServiceManagementRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -229,8 +228,8 @@ void ServiceManagementRequestBaseC::beginProtocol () {
     );
 }
 
-void ServiceManagementRequestBaseC::requestSent (boost::system::error_code const& ec,
-                                                 size_t bytes_transferred) {
+void ServiceManagementRequestBaseC::requestSent(boost::system::error_code const& ec,
+                                                size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
@@ -242,7 +241,7 @@ void ServiceManagementRequestBaseC::requestSent (boost::system::error_code const
 }
 
 void
-ServiceManagementRequestBaseC::receiveResponse () {
+ServiceManagementRequestBaseC::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -258,14 +257,14 @@ ServiceManagementRequestBaseC::receiveResponse () {
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &ServiceManagementRequestBaseC::responseReceived,
             shared_from_base<ServiceManagementRequestBaseC>(),
             boost::asio::placeholders::error,
@@ -298,8 +297,8 @@ void ServiceManagementRequestBaseC::responseReceived(boost::system::error_code c
     if (syncReadFrame(bytes)) { restart(); }
            
     proto::ReplicationServiceResponse message;
-    if (syncReadMessage (bytes, message)) { restart(); }
-    else                                  { analyze(message); }
+    if (syncReadMessage(bytes, message)) { restart(); }
+    else                                 { analyze(message); }
 }
 
 void ServiceManagementRequestBaseC::analyze(proto::ReplicationServiceResponse const& message) {
@@ -319,11 +318,11 @@ void ServiceManagementRequestBaseC::analyze(proto::ReplicationServiceResponse co
     
             _serviceState.set(message);
 
-            finish (SUCCESS);
+            finish(SUCCESS);
             break;
 
         default:
-            finish (SERVER_ERROR);
+            finish(SERVER_ERROR);
             break;
     }    
 }
@@ -332,7 +331,7 @@ void ServiceManagementRequestBaseC::analyze(proto::ReplicationServiceResponse co
 //         ServiceManagementRequestBaseM          //
 ////////////////////////////////////////////////////
 
-ServiceState const& ServiceManagementRequestBaseM::getServiceState () const {
+ServiceState const& ServiceManagementRequestBaseM::getServiceState() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
 
@@ -359,15 +358,15 @@ ServiceManagementRequestBaseM::ServiceManagementRequestBaseM(
                                     std::string const&                   worker,
                                     proto::ReplicationServiceRequestType requestType,
                                     std::shared_ptr<Messenger> const&    messenger)
-    :   RequestMessenger (serviceProvider,
-                          io_service,
-                          requestTypeName,
-                          worker,
-                          0,        /* priority */
-                          false,    /* keepTracking */
-                          false,    /* allowDuplicate */
-                          messenger),
-        _requestType (requestType) {
+    :   RequestMessenger(serviceProvider,
+                         io_service,
+                         requestTypeName,
+                         worker,
+                         0,        /* priority */
+                         false,    /* keepTracking */
+                         false,    /* allowDuplicate */
+                         messenger),
+        _requestType(requestType) {
 }
 
 void ServiceManagementRequestBaseM::startImpl() {
@@ -380,8 +379,8 @@ void ServiceManagementRequestBaseM::startImpl() {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::SERVICE);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
 
     _bufferPtr->serialize(hdr);
@@ -390,14 +389,14 @@ void ServiceManagementRequestBaseM::startImpl() {
 
     auto self = shared_from_base<ServiceManagementRequestBaseM>();
 
-    _messenger->send<proto::ReplicationServiceResponse> (
+    _messenger->send<proto::ReplicationServiceResponse>(
         worker(),
         id(),
         _bufferPtr,
-        [self] (std::string const&                       id,
-                bool                                     success,
+        [self] (std::string const& id,
+                bool success,
                 proto::ReplicationServiceResponse const& response) {
-            self->analyze (success, response);
+            self->analyze(success, response);
         }
     );
 }
@@ -426,15 +425,15 @@ void ServiceManagementRequestBaseM::analyze(bool success,
         
                 _serviceState.set(message);
     
-                finish (SUCCESS);
+                finish(SUCCESS);
                 break;
     
             default:
-                finish (SERVER_ERROR);
+                finish(SERVER_ERROR);
                 break;
         }
     } else {
-        finish (CLIENT_ERROR);
+        finish(CLIENT_ERROR);
     }
 }
 

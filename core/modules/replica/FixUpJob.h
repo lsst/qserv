@@ -111,25 +111,25 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    static pointer create (std::string const&         databaseFamily,
-                           Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           bool                       bestEffort  = false,
-                           int                        priority    = 1,
-                           bool                       exclusive   = true,
-                           bool                       preemptable = true);
+    static pointer create(std::string const& databaseFamily,
+                          Controller::pointer const& controller,
+                          callback_type onFinish,
+                          bool bestEffort = false,
+                          int  priority = 1,
+                          bool exclusive = true,
+                          bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
-    FixUpJob () = delete;
-    FixUpJob (FixUpJob const&) = delete;
-    FixUpJob& operator= (FixUpJob const&) = delete;
+    FixUpJob() = delete;
+    FixUpJob(FixUpJob const&) = delete;
+    FixUpJob& operator=(FixUpJob const&) = delete;
 
     /// Destructor (non-trivial)
-    ~FixUpJob () override;
+    ~FixUpJob() override;
 
     /// Return the name of a database family defining a scope of the operation
-    std::string const& databaseFamily () const { return _databaseFamily; }
+    std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
      * Return the result of the operation.
@@ -148,17 +148,17 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    FixUpJobResult const& getReplicaData () const;
+    FixUpJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::track()
       */
-    void track (bool progressReport,
-                bool errorReport,
-                bool chunkLocksReport,
-                std::ostream& os) const override;
+    void track(bool progressReport,
+               bool errorReport,
+               bool chunkLocksReport,
+               std::ostream& os) const override;
 
 protected:
 
@@ -167,61 +167,61 @@ protected:
      *
      * @see FixUpJob::create()
      */
-    FixUpJob (std::string const&         databaseFamily,
-              Controller::pointer const& controller,
-              callback_type              onFinish,
-              bool                       bestEffort,
-              int                        priority,
-              bool                       exclusive,
-              bool                       preemptable);
+    FixUpJob(std::string const& databaseFamily,
+             Controller::pointer const& controller,
+             callback_type onFinish,
+             bool bestEffort,
+             int  priority,
+             bool exclusive,
+             bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * The calback function to be invoked on a completion of the precursor job
      * which harvests chunk disposition accross relevant worker nodes.
      */
-    void onPrecursorJobFinish ();
+    void onPrecursorJobFinish();
 
     /**
      * The calback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (ReplicationRequest::pointer request);
+    void onRequestFinish(ReplicationRequest::pointer const& request);
 
     /**
      * Restart the job from scratch. This method will reset object context
      * to a state it was before method Job::startImpl() called and then call
      * Job::startImpl() again.
      */
-    void restart ();
+    void restart();
 
     /**
      * Unconditionally release the specified chunk
      *
      * @param chunk - the chunk number
      */
-    void release (unsigned int chunk);
+    void release(unsigned int chunk);
 
 protected:
 

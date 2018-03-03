@@ -37,10 +37,8 @@
 
 // These macros to appear witin each block which requires thread safety
 // at the corresponding level
-#define LOCK_DATA_FOLDER \
-std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
-
-#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_DATA_FOLDER std::lock_guard<std::mutex> lock(_mtxDataFolderOperations)
+#define LOCK_GUARD       std::lock_guard<std::mutex> lock(_mtx)
 
 namespace fs = boost::filesystem;
 
@@ -113,7 +111,6 @@ ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
     return info;
 }
     
-
 bool WorkerReplicationRequest::execute() {
 
    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
@@ -200,8 +197,8 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquering LOCK_DATA_FOLDER where it's needed.
 
-    WorkerInfo   const& inWorkerInfo  = _serviceProvider.config()->workerInfo(  sourceWorker());
-    WorkerInfo   const& outWorkerInfo = _serviceProvider.config()->workerInfo(  worker());
+    WorkerInfo   const& inWorkerInfo  = _serviceProvider.config()->workerInfo(sourceWorker());
+    WorkerInfo   const& outWorkerInfo = _serviceProvider.config()->workerInfo(worker());
     DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
 
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
@@ -539,11 +536,10 @@ bool WorkerReplicationRequestFS::execute () {
             for (auto const& file: _files) {
     
                 // Open the file on the remote server in the no-content-read mode
-                FileClient::pointer inFilePtr =
-                    FileClient::stat(_serviceProvider,
-                                     _inWorkerInfo.name,
-                                     _databaseInfo.name,
-                                    file);
+                FileClient::pointer inFilePtr = FileClient::stat(_serviceProvider,
+                                                                 _inWorkerInfo.name,
+                                                                 _databaseInfo.name,
+                                                                 file);
                 errorContext = errorContext
                     or reportErrorIf(
                         not inFilePtr,
@@ -776,11 +772,10 @@ bool WorkerReplicationRequestFS::openFiles () {
     WorkerRequest::ErrorContext errorContext;
 
     // Open the input file on the remote server
-    _inFilePtr =
-        FileClient::open(_serviceProvider,
-                         _inWorkerInfo.name,
-                         _databaseInfo.name,
-                         *_fileItr);
+    _inFilePtr = FileClient::open(_serviceProvider,
+                                  _inWorkerInfo.name,
+                                  _databaseInfo.name,
+                                  *_fileItr);
     errorContext = errorContext
         or reportErrorIf(
             not _inFilePtr,
@@ -802,7 +797,7 @@ bool WorkerReplicationRequestFS::openFiles () {
     _tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
     errorContext = errorContext
         or reportErrorIf(
-        not !_tmpFilePtr,
+            not _tmpFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN,
             "failed to open temporary file: " + tmpFile.string() +
             ", error: " + std::strerror(errno));

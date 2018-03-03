@@ -36,8 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -49,40 +48,41 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-std::string MessengerConnector::state2string (MessengerConnector::State state) {
+std::string MessengerConnector::state2string(MessengerConnector::State state) {
     switch (state) {
         case STATE_INITIAL:       return "STATE_INITIAL";
         case STATE_CONNECTING:    return "STATE_CONNECTING";
         case STATE_COMMUNICATING: return "STATE_COMMUNICATING";
     }
-    throw std::logic_error (
+    throw std::logic_error(
             "incomplete implementation of method MessengerConnector::state2string()");
 }
 
-MessengerConnector::pointer MessengerConnector::create (ServiceProvider&         serviceProvider,
-                                                        boost::asio::io_service& io_service,
-                                                        std::string const&       worker) {
-    return MessengerConnector::pointer (
-        new MessengerConnector (serviceProvider,
-                                io_service,
-                                worker));
-}
-
-MessengerConnector::MessengerConnector (ServiceProvider&         serviceProvider,
+MessengerConnector::pointer MessengerConnector::create(
+                                        ServiceProvider& serviceProvider,
                                         boost::asio::io_service& io_service,
-                                        std::string const&       worker)
-    :   _serviceProvider (serviceProvider),
-        _workerInfo      (serviceProvider.config()->workerInfo(worker)),
-        _bufferCapacityBytes (serviceProvider.config()->requestBufferSizeBytes()),
-        _timerIvalSec        (serviceProvider.config()->retryTimeoutSec()),
-        _state (State::STATE_INITIAL),
-        _resolver (io_service),
-        _socket   (io_service),
-        _timer    (io_service),
-        _inBuffer (serviceProvider.config()->requestBufferSizeBytes()) {
+                                        std::string const& worker) {
+    return MessengerConnector::pointer(
+        new MessengerConnector(serviceProvider,
+                               io_service,
+                               worker));
 }
 
-void MessengerConnector::stop () {
+MessengerConnector::MessengerConnector(ServiceProvider&serviceProvider,
+                                       boost::asio::io_service& io_service,
+                                       std::string const& worker)
+    :   _serviceProvider(serviceProvider),
+        _workerInfo(serviceProvider.config()->workerInfo(worker)),
+        _bufferCapacityBytes(serviceProvider.config()->requestBufferSizeBytes()),
+        _timerIvalSec(serviceProvider.config()->retryTimeoutSec()),
+        _state(State::STATE_INITIAL),
+        _resolver(io_service),
+        _socket(io_service),
+        _timer(io_service),
+        _inBuffer(serviceProvider.config()->requestBufferSizeBytes()) {
+}
+
+void MessengerConnector::stop() {
 
     LOCK_GUARD;
 
@@ -107,25 +107,26 @@ void MessengerConnector::stop () {
     }
 }
 
-void MessengerConnector::cancel (std::string const& id) {
+void MessengerConnector::cancel(std::string const& id) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
     
-    if (!_id2request.count(id))
-        throw std::logic_error (
+    if (not _id2request.count(id)) {
+        throw std::logic_error(
                 "MessengerConnector::cancel()  unknow request id: " + id);
+    }
 
     // If the request is already being processed then a more aggressive approach
     // of aborting all communications must be taken.
-    if (_currentRequest && _currentRequest->id == id) {
+    if (_currentRequest and (_currentRequest->id == id)) {
         _currentRequest = nullptr;
-        if (_state == STATE_COMMUNICATING) restart();
+        if (_state == STATE_COMMUNICATING) { restart(); }
     }
     
     // Also remove from both collections
-    _requests.remove_if (
+    _requests.remove_if(
         [&id] (WrapperBase_pointer ptr) {
             return ptr->id == id;
         }
@@ -133,7 +134,7 @@ void MessengerConnector::cancel (std::string const& id) {
     _id2request.erase(id);
 }
 
-bool MessengerConnector::exists (std::string const& id) const {
+bool MessengerConnector::exists(std::string const& id) const {
 
     LOCK_GUARD;
 
@@ -142,15 +143,16 @@ bool MessengerConnector::exists (std::string const& id) const {
     return _id2request.count(id);
 }
 
-void MessengerConnector::sendImpl (std::string const& id,
-                                   MessengerConnector::WrapperBase_pointer const& ptr) {
+void MessengerConnector::sendImpl(std::string const& id,
+                                  MessengerConnector::WrapperBase_pointer const& ptr) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendImpl  id: " + id);
     
-    if (_id2request.count(id))
-        throw std::logic_error (
+    if (_id2request.count(id)) {
+        throw std::logic_error(
                 "MessengerConnector::sendImpl()  the request is alrady registered for id:" + id);
+    }
 
     // Register the request
 
@@ -174,7 +176,7 @@ void MessengerConnector::sendImpl (std::string const& id,
     }
 }
 
-void MessengerConnector::restart () {
+void MessengerConnector::restart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
 
@@ -198,19 +200,19 @@ void MessengerConnector::restart () {
     resolve();
 }
 
-void MessengerConnector::resolve () {
+void MessengerConnector::resolve() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolve");
 
-    if (_state != STATE_INITIAL) return;
+    if (_state != STATE_INITIAL) { return; }
 
-    boost::asio::ip::tcp::resolver::query query (
+    boost::asio::ip::tcp::resolver::query query(
         _workerInfo.svcHost,
         std::to_string(_workerInfo.svcPort)
     );
-    _resolver.async_resolve (
+    _resolver.async_resolve(
         query,
-        boost::bind (
+        boost::bind(
             &MessengerConnector::resolved,
             shared_from_this(),
             boost::asio::placeholders::error,
@@ -220,27 +222,27 @@ void MessengerConnector::resolve () {
     _state = STATE_CONNECTING;
 }
 
-void MessengerConnector::resolved (boost::system::error_code const& ec,
-                                   boost::asio::ip::tcp::resolver::iterator iter) {
+void MessengerConnector::resolved(boost::system::error_code const& ec,
+                                  boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "resolved");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) waitBeforeRestart();
-    else    connect(iter);
+    if (ec) { waitBeforeRestart(); }
+    else    { connect(iter); }
 }
 
-void MessengerConnector::connect (boost::asio::ip::tcp::resolver::iterator iter) {
+void MessengerConnector::connect(boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connect");
 
-    boost::asio::async_connect (
+    boost::asio::async_connect(
         _socket,
         iter,
-        boost::bind (
+        boost::bind(
             &MessengerConnector::connected,
             shared_from_this(),
             boost::asio::placeholders::error,
@@ -249,31 +251,32 @@ void MessengerConnector::connect (boost::asio::ip::tcp::resolver::iterator iter)
     );
 }
 
-void MessengerConnector::connected (boost::system::error_code const& ec,
-                                    boost::asio::ip::tcp::resolver::iterator iter) {
+void MessengerConnector::connected(boost::system::error_code const& ec,
+                                   boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "connected");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) waitBeforeRestart();
-    else {
+    if (ec) {
+        waitBeforeRestart();
+    } else {
         _state = STATE_COMMUNICATING;
         sendRequest();
     }
 }
 
-void MessengerConnector::waitBeforeRestart () {
+void MessengerConnector::waitBeforeRestart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "waitBeforeRestart");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &MessengerConnector::awakenForRestart,
             shared_from_this(),
             boost::asio::placeholders::error
@@ -281,29 +284,29 @@ void MessengerConnector::waitBeforeRestart () {
     );
 }
 
-void MessengerConnector::awakenForRestart (boost::system::error_code const& ec) {
+void MessengerConnector::awakenForRestart(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awakenForRestart");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (_state != STATE_CONNECTING) return;
+    if (_state != STATE_CONNECTING) { return; }
 
     restart();
 }
 
-void MessengerConnector::sendRequest () {
+void MessengerConnector::sendRequest() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendRequest");
   
     // Check if there is an outstanding send request
-    if (_currentRequest) return;
+    if (_currentRequest) { return; }
     
     // Pull a request (if any) from the from of the queue
     // 
-    if (_requests.empty()) return;
+    if (_requests.empty()) { return; }
     _currentRequest = _requests.front();
 
     // Remove request from the front. But leave it in the map
@@ -312,13 +315,13 @@ void MessengerConnector::sendRequest () {
     _requests.pop_front();
 
     // Send the message
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _currentRequest->requestBufferPtr->data(),
             _currentRequest->requestBufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &MessengerConnector::requestSent,
             shared_from_this(),
             boost::asio::placeholders::error,
@@ -327,8 +330,8 @@ void MessengerConnector::sendRequest () {
     );
 }
 
-void MessengerConnector::requestSent (boost::system::error_code const& ec,
-                                      size_t bytes_transferred) {
+void MessengerConnector::requestSent(boost::system::error_code const& ec,
+                                     size_t bytes_transferred) {
 
     LOCK_GUARD;
 
@@ -370,7 +373,7 @@ void MessengerConnector::requestSent (boost::system::error_code const& ec,
     }
 }
 
-void MessengerConnector::receiveResponse () {
+void MessengerConnector::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -382,17 +385,17 @@ void MessengerConnector::receiveResponse () {
     // that the worker server sends the whol emessage (its frame and
     // the message itsef) at once.
 
-    const size_t bytes = sizeof(uint32_t);
+    size_t const bytes = sizeof(uint32_t);
     _inBuffer.resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _inBuffer.data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &MessengerConnector::responseReceived,
             shared_from_this(),
             boost::asio::placeholders::error,
@@ -401,8 +404,8 @@ void MessengerConnector::receiveResponse () {
     );
 }
 
-void MessengerConnector::responseReceived (boost::system::error_code const& ec,
-                                           size_t bytes_transferred) {
+void MessengerConnector::responseReceived(boost::system::error_code const& ec,
+                                          size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
 
@@ -442,9 +445,9 @@ void MessengerConnector::responseReceived (boost::system::error_code const& ec,
     
                 // Receive response header into the temporary buffer
     
-                if (syncReadVerifyHeader (_inBuffer,
-                                          _inBuffer.parseLength(),
-                                          _currentRequest->id)) {
+                if (syncReadVerifyHeader(_inBuffer,
+                                         _inBuffer.parseLength(),
+                                         _currentRequest->id)) {
     
                     // If something bad happened along the line then we should notify a caller about
                     // a problem with the request, remove the request from all data structures and
@@ -460,7 +463,7 @@ void MessengerConnector::responseReceived (boost::system::error_code const& ec,
                 } else {
     
                     size_t bytes;
-                    if (syncReadFrame (_inBuffer, bytes)) {
+                    if (syncReadFrame(_inBuffer, bytes)) {
     
                         // If something bad happened along the line then we should notify a caller about
                         // a problem with the request, remove the request from all data structures and
@@ -476,7 +479,7 @@ void MessengerConnector::responseReceived (boost::system::error_code const& ec,
                     } else {
     
                         // Then receive response body into a buffer inside the wrapper
-                        if (syncReadMessageImpl (_currentRequest->responseBuffer, bytes)) {
+                        if (syncReadMessageImpl(_currentRequest->responseBuffer, bytes)) {
                             
                             // If something bad happened along the line then we should notify a caller about
                             // a problem with the request, remove the request from all data structures and
@@ -513,64 +516,64 @@ void MessengerConnector::responseReceived (boost::system::error_code const& ec,
             // The request submission had a chance to finish (successfully or not)
             // before the cancellation attempt was made. So, we just forget about
             // this request and send no notification to a caller.
-            if (ec) {
-                restart();
-            } else {
-                sendRequest();
-            }
+            //
+            if (ec) { restart(); }
+            else    { sendRequest(); }
         }
     }
     
     // Sending notifications (if requsted) outsize the lock guard
 
-    if (request2notify)
+    if (request2notify) {
         request2notify->parseAndNotify();
+    }
 }
 
-boost::system::error_code MessengerConnector::syncReadFrame (replica::ProtocolBuffer& buf,
-                                                             size_t& bytes) {
-    const size_t frameLength = sizeof(uint32_t);
+boost::system::error_code MessengerConnector::syncReadFrame(replica::ProtocolBuffer& buf,
+                                                            size_t& bytes) {
+    size_t const frameLength = sizeof(uint32_t);
     buf.resize(frameLength);
 
     boost::system::error_code ec;
-    boost::asio::read (
+    boost::asio::read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             buf.data(),
             frameLength
         ),
         boost::asio::transfer_at_least(frameLength),
         ec
     );
-    if (!ec)
+    if (not ec) {
         bytes = buf.parseLength();
-
-    return ec;
-}
-
-boost::system::error_code MessengerConnector::syncReadVerifyHeader (replica::ProtocolBuffer& buf,
-                                                                    size_t bytes,
-                                                                    std::string const& id) {
-    boost::system::error_code ec = syncReadMessageImpl (buf, bytes);
-    if (!ec) {
-        proto::ReplicationResponseHeader hdr;
-        buf.parse(hdr, bytes);
-        if (id != hdr.id())
-            throw std::logic_error (
-                    "MessengerConnector::syncReadVerifyHeader()  got unexpected id: " + hdr.id() +
-                    " instead of: " + id);
     }
     return ec;
 }
 
-boost::system::error_code MessengerConnector::syncReadMessageImpl (replica::ProtocolBuffer& buf,
-                                                                   size_t bytes) {
+boost::system::error_code MessengerConnector::syncReadVerifyHeader(replica::ProtocolBuffer& buf,
+                                                                   size_t bytes,
+                                                                   std::string const& id) {
+    boost::system::error_code ec = syncReadMessageImpl(buf, bytes);
+    if (not ec) {
+        proto::ReplicationResponseHeader hdr;
+        buf.parse(hdr, bytes);
+        if (id != hdr.id()) {
+            throw std::logic_error(
+                    "MessengerConnector::syncReadVerifyHeader()  got unexpected id: " + hdr.id() +
+                    " instead of: " + id);
+        }
+    }
+    return ec;
+}
+
+boost::system::error_code MessengerConnector::syncReadMessageImpl(replica::ProtocolBuffer& buf,
+                                                                  size_t bytes) {
     buf.resize(bytes);
 
     boost::system::error_code ec;
-    boost::asio::read (
+    boost::asio::read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             buf.data(),
             bytes
         ),
@@ -580,7 +583,7 @@ boost::system::error_code MessengerConnector::syncReadMessageImpl (replica::Prot
     return ec;
 }
 
-bool MessengerConnector::isAborted (boost::system::error_code const& ec) const {
+bool MessengerConnector::isAborted(boost::system::error_code const& ec) const {
 
     if (ec == boost::asio::error::operation_aborted) {
         LOGS(_log, LOG_LVL_DEBUG, context() << "isAborted  ** ABORTED **");
@@ -589,7 +592,7 @@ bool MessengerConnector::isAborted (boost::system::error_code const& ec) const {
     return false;
 }
 
-std::string MessengerConnector::context () const {
+std::string MessengerConnector::context() const {
     return
         "MESSENGER-CONNECTION [worker=" + _workerInfo.name +
         ", state=" + state2string(_state) + "]  ";

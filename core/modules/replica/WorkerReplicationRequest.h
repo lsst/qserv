@@ -344,7 +344,7 @@ private:
     std::map<std::string,FileDescr> _file2descr;
 
     /// The buffer for records read from the remote service
-    uint8_t *_buf;
+    uint8_t* _buf;
 
     /// The size of the buffer
     size_t _bufSize;
