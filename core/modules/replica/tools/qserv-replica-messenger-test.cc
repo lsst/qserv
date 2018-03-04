@@ -6,16 +6,17 @@
 #include <string>
 
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
-#include "replica/BlockPost.h"
 #include "replica/Controller.h"
 #include "replica/Messenger.h"
 #include "replica/MessengerConnector.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
+#include "util/CmdLineParser.h"
 
 namespace proto = lsst::qserv::proto;
 namespace rc    = lsst::qserv::replica;
+namespace util  = lsst::qserv::util;
 
 namespace {
 
@@ -93,7 +94,7 @@ bool test () {
         //////////////////////////////////
         // Wait before all requests finish
  
-        rc::BlockPost blockPost (1000, 2000);
+        util::BlockPost blockPost (1000, 2000);
         while (numFinished < numIterations)
             std::cout << "HEARTBEAT  " << blockPost.wait() << " millisec" << std::endl;
 
@@ -119,7 +120,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

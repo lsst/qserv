@@ -6,19 +6,20 @@
 
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
-#include "replica/BlockPost.h"
+#include "replica/Controller.h"
 #include "replica/DeleteRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
-#include "replica/Controller.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+#include "util/BlockPost.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -99,7 +100,7 @@ bool test () {
                 priority,
                 keepTracking);
 
-            rc::BlockPost blockPost (0, 500);
+            util::BlockPost blockPost (0, 500);
             blockPost.wait();
 
             request->cancel();
@@ -245,7 +246,7 @@ bool test () {
 
         // Wait before the request is finished. Then stop the master controller
 
-        rc::BlockPost blockPost (0, 5000);  // for random delays (milliseconds) between iterations
+        util::BlockPost blockPost (0, 5000);    // for random delays (milliseconds) between iterations
 
         while (request->state() != rc::Request::State::FINISHED) {
             std::cout << "HEARTBEAT: " << blockPost.wait() << " msec" << std::endl;;
@@ -273,7 +274,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"
@@ -336,7 +337,7 @@ int main (int argc, const char* const argv[]) {
 
         ::worker = parser.parameter<std::string>(2);
 
-        if (parser.found_in(::operation, {
+        if (parser.in(::operation, {
 
             "REPLICA_CREATE",
             "REPLICA_CREATE,CANCEL"})) {
@@ -345,7 +346,7 @@ int main (int argc, const char* const argv[]) {
             ::db           = parser.parameter<std::string>(4);
             ::chunk        = parser.parameter<int>        (5);
 
-        } else if (parser.found_in(::operation, {
+        } else if (parser.in(::operation, {
 
             "REPLICA_DELETE",
             "REPLICA_FIND",
@@ -354,7 +355,7 @@ int main (int argc, const char* const argv[]) {
             ::db    = parser.parameter<std::string>(3);
             ::chunk = parser.parameter<int>        (4);
 
-        } else if (parser.found_in(::operation, {
+        } else if (parser.in(::operation, {
 
             "REQUEST_STATUS:REPLICA_CREATE",
             "REQUEST_STATUS:REPLICA_DELETE",

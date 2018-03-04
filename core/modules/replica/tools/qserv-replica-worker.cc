@@ -4,15 +4,16 @@
 
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
-#include "replica/BlockPost.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerServer.h"
+#include "util/BlockPost.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -47,7 +48,7 @@ void service () {
         std::thread fileSvrThread ([fileSvr]() {
             fileSvr->run();
         });
-        rc::BlockPost blockPost (1000, 5000);
+        util::BlockPost blockPost (1000, 5000);
         while (true) {
             blockPost.wait();
             LOGS(_log, LOG_LVL_INFO, "HEARTBEAT"
@@ -76,7 +77,7 @@ int main (int argc, const char* const argv[]) {
  
      // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

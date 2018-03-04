@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
@@ -38,6 +37,7 @@
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerRequestFactory.h"
+#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -669,7 +669,7 @@ WorkerRequest::pointer WorkerProcessor::fetchNextForProcessing(
     // For generating random intervals within the maximum range of seconds
     // requested by a client.
 
-    BlockPost blockPost(0, timeoutMilliseconds);
+    util::BlockPost blockPost(0, timeoutMilliseconds);
 
     unsigned int totalElapsedTime = 0;
     while (totalElapsedTime < timeoutMilliseconds) {

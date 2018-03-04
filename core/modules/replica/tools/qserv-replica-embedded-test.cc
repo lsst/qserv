@@ -3,14 +3,15 @@
 
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
-#include "replica/BlockPost.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerServer.h"
+#include "util/BlockPost.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -44,7 +45,7 @@ void runAllWorkers (rc::ServiceProvider      &provider,
         // Run the heartbeat monitor for the server within another thread
  
         std::thread reqProcMonThread ([reqProcSrv]() {
-            rc::BlockPost blockPost(1000, 5000);
+            util::BlockPost blockPost(1000, 5000);
             while (true) {
                 blockPost.wait();
                 LOGS(_log, LOG_LVL_INFO, "<WORKER:" << reqProcSrv->worker() << " HEARTBEAT> "
@@ -87,7 +88,7 @@ void run () {
         runAllWorkers (serviceProvider, requestFactory);
 
         // Then block the calling thread foreever.
-        rc::BlockPost blockPost(1000, 5000);
+        util::BlockPost blockPost(1000, 5000);
         while (true) {
             blockPost.wait();  
         }
@@ -108,7 +109,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

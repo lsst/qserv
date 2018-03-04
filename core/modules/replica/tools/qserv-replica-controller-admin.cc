@@ -5,13 +5,14 @@
 #include <string>
 
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
 #include "replica/Controller.h"
 #include "replica/RequestTracker.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -160,7 +161,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

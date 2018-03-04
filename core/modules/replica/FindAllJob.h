@@ -150,24 +150,24 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    static pointer create (std::string const&         databaseFamily,
-                           Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           int                        priority    = 0,
-                           bool                       exclusive   = false,
-                           bool                       preemptable = true);
+    static pointer create(std::string const& databaseFamily,
+                          Controller::pointer const& controller,
+                          callback_type onFinish,
+                          int  priority = 0,
+                          bool exclusive = false,
+                          bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
-    FindAllJob () = delete;
-    FindAllJob (FindAllJob const&) = delete;
-    FindAllJob& operator= (FindAllJob const&) = delete;
+    FindAllJob() = delete;
+    FindAllJob(FindAllJob const&) = delete;
+    FindAllJob& operator=(FindAllJob const&) = delete;
 
     /// Destructor
-    ~FindAllJob () override = default;
+    ~FindAllJob() override = default;
 
     /// Return the name of a database family defining a scope of the operation
-    std::string const& databaseFamily () const { return _databaseFamily; }
+    std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
      * Return the result of the operation.
@@ -186,17 +186,17 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    FindAllJobResult const& getReplicaData () const;
+    FindAllJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::track()
       */
-    void track (bool          progressReport,
-                bool          errorReport,
-                bool          chunkLocksReport,
-                std::ostream& os) const override;
+    void track(bool progressReport,
+               bool errorReport,
+               bool chunkLocksReport,
+               std::ostream& os) const override;
 
 protected:
 
@@ -205,40 +205,40 @@ protected:
      *
      * @see FindAllJob::create()
      */
-    FindAllJob (std::string const&         databaseFamily,
-                Controller::pointer const& controller,
-                callback_type              onFinish,
-                int                        priority,
-                bool                       exclusive,
-                bool                       preemptable);
+    FindAllJob(std::string const& databaseFamily,
+               Controller::pointer const& controller,
+               callback_type onFinish,
+               int  priority,
+               bool exclusive,
+               bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * The calback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (FindAllRequest::pointer request);
+    void onRequestFinish(FindAllRequest::pointer const& request);
 
 protected:
 

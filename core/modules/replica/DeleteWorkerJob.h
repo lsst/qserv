@@ -43,7 +43,6 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
 
-
 // Forward declarations
 
 // This header declarations
@@ -135,29 +134,29 @@ public:
      *                          interrupted to give a way to some other job of
      *                          high importancy.
      */
-    static pointer create (std::string const&         worker,
-                           bool                       permanentDelete,
-                           Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           bool                       bestEffort  = false,
-                           int                        priority    = 2,
-                           bool                       exclusive   = true,
-                           bool                       preemptable = false);
+    static pointer create(std::string const& worker,
+                          bool permanentDelete,
+                          Controller::pointer const& controller,
+                          callback_type onFinish,
+                          bool bestEffort = false,
+                          int  priority = 2,
+                          bool exclusive = true,
+                          bool preemptable = false);
 
     // Default construction and copy semantics are prohibited
 
-    DeleteWorkerJob () = delete;
-    DeleteWorkerJob (DeleteWorkerJob const&) = delete;
-    DeleteWorkerJob& operator= (DeleteWorkerJob const&) = delete;
+    DeleteWorkerJob() = delete;
+    DeleteWorkerJob(DeleteWorkerJob const&) = delete;
+    DeleteWorkerJob& operator=(DeleteWorkerJob const&) = delete;
 
     /// Destructor
-    ~DeleteWorkerJob () override = default;
+    ~DeleteWorkerJob() override = default;
 
     /// Return the name of a worker to be deleted
-    std::string const& worker () const { return _worker; }
+    std::string const& worker() const { return _worker; }
 
-    /// Return 'true' i fthis is teh permanent delete
-    bool permanentDelete () const { return _permanentDelete; }
+    /// Return 'true' if this is the permanent delete
+    bool permanentDelete() const { return _permanentDelete; }
 
     /**
      * Return the result of the operation.
@@ -176,17 +175,17 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    DeleteWorkerJobResult const& getReplicaData () const;
+    DeleteWorkerJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::track()
       */
-    void track (bool progressReport,
-                bool errorReport,
-                bool chunkLocksReport,
-                std::ostream& os) const override;
+    void track(bool progressReport,
+               bool errorReport,
+               bool chunkLocksReport,
+               std::ostream& os) const override;
 
 protected:
 
@@ -195,47 +194,47 @@ protected:
      *
      * @see DeleteWorkerJob::create()
      */
-    DeleteWorkerJob (std::string const&         worker,
-                     bool                       permanentDelete,
-                     Controller::pointer const& controller,
-                     callback_type              onFinish,
-                     bool                       bestEffort,
-                     int                        priority,
-                     bool                       exclusive,
-                     bool                       preemptable);
+    DeleteWorkerJob(std::string const& worker,
+                    bool permanentDelete,
+                    Controller::pointer const& controller,
+                    callback_type onFinish,
+                    bool bestEffort,
+                    int  priority,
+                    bool exclusive,
+                    bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void startImpl () override;
+    void startImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::startImpl()
       */
-    void cancelImpl () override;
+    void cancelImpl() override;
 
     /**
       * Implement the corresponding method of the base class.
       *
       * @see Job::notify()
       */
-    void notify () override;
+    void notify() override;
 
     /**
      * Beging the actual sequence of actions for removing the worker
      */
-    void disableWorker ();
+    void disableWorker();
     
     /**
      * The calback function to be invoked on a completion of each request.
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish (FindAllRequest::pointer request);
+    void onRequestFinish(FindAllRequest::pointer const& request);
 
     /**
      * The calback function to be invoked on a completion of a job
@@ -243,7 +242,7 @@ protected:
      * 
      * @param request - a pointer to a job
      */
-    void onJobFinish (FindAllJob::pointer job);
+    void onJobFinish(FindAllJob::pointer const& job);
 
     /**
      * The calback function to be invoked on a completion of a job
@@ -251,7 +250,7 @@ protected:
      * 
      * @param request - a pointer to a job
      */
-    void onJobFinish (ReplicateJob::pointer job);
+    void onJobFinish(ReplicateJob::pointer const& job);
 
 protected:
 

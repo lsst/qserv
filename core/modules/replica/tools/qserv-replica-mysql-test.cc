@@ -32,12 +32,13 @@
 #include <string>
 
 // Qserv headers
-#include "replica/CmdParser.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/FileUtils.h"
+#include "util/CmdLineParser.h"
 
 namespace rc       = lsst::qserv::replica;
 namespace database = lsst::qserv::replica::database::mysql;
+namespace util     = lsst::qserv::util;
 
 namespace {
 
@@ -208,7 +209,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"
@@ -253,12 +254,12 @@ int main (int argc, const char* const argv[]) {
                 "DROP_DATABASE",
                 "QUERY"}
         );
-        if (parser.found_in(::operation, {
+        if (parser.in(::operation, {
             "CREATE_DATABASE",
             "DROP_DATABASE"})) {
             ::databaseName = parser.parameter<std::string>(2);
         }
-        if (parser.found_in(::operation, {
+        if (parser.in(::operation, {
             "QUERY"})) {
             ::fileName = parser.parameter<std::string>(2);
         }

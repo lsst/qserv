@@ -28,7 +28,6 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/DeleteWorkerJob.h"
 #include "replica/FindAllJob.h"
 #include "replica/FixUpJob.h"
@@ -37,6 +36,7 @@
 #include "replica/ReplicateJob.h"
 #include "replica/ServiceProvider.h"
 #include "replica/VerifyJob.h"
+#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -124,9 +124,9 @@ void JobController::run() {
                     // This will prevent the scheduler from existing unless
                     // instructed to do so
                     
-                    BlockPost blockPost(0, 1000);   // values of parameters are meaningless
-                                                    // in this context because the object will
-                                                    // be always used to wait for a specific interval
+                    util::BlockPost blockPost(0, 1000); // values of parameters are meaningless
+                                                        // in this context because the object will
+                                                        // be always used to wait for a specific interval
 
                     unsigned int const wakeUpIvalMillisec =
                         1000 * self->_serviceProvider.config()->jobSchedulerIvalSec();
