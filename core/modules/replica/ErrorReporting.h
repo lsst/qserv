@@ -22,7 +22,7 @@
 #ifndef LSST_QSERV_REPLICA_ERROR_REPORTING_H
 #define LSST_QSERV_REPLICA_ERROR_REPORTING_H
 
-/// CmdParser.h declares:
+/// ErrorReporting.h declares:
 ///
 /// function reportRequestState
 /// (see individual class documentation for more information)

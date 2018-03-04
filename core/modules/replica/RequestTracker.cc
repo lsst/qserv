@@ -26,8 +26,8 @@
 // System headers
 
 // Qserv headers
-#include "replica/BlockPost.h"
 #include "replica/Controller.h"
+#include "util/BlockPost.h"
 
 namespace lsst {
 namespace qserv {
@@ -53,7 +53,7 @@ void RequestTrackerBase::track() const {
     // Wait before all request are finished. Then analyze results
     // and print a report on failed requests (if any)
 
-    replica::BlockPost blockPost(100, 200);
+    util::BlockPost blockPost(100, 200);
     while (_numFinished < _numLaunched) {
         blockPost.wait();
         if (_progressReport) {

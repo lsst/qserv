@@ -40,8 +40,6 @@
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
-namespace proto = lsst::qserv::proto;
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteRequest");
@@ -56,19 +54,17 @@ namespace replica {
 //         DeleteRequestC          //
 /////////////////////////////////////
 
-DeleteRequestC::pointer
-DeleteRequestC::create (ServiceProvider& serviceProvider,
-                        boost::asio::io_service& io_service,
-                        std::string const& worker,
-                        std::string const& database,
-                        unsigned int  chunk,
-                        callback_type onFinish,
-                        int  priority,
-                        bool keepTracking,
-                        bool allowDuplicate) {
-
-    return DeleteRequestC::pointer (
-        new DeleteRequestC (
+DeleteRequestC::pointer DeleteRequestC::create(ServiceProvider& serviceProvider,
+                                               boost::asio::io_service& io_service,
+                                               std::string const& worker,
+                                               std::string const& database,
+                                               unsigned int  chunk,
+                                               callback_type onFinish,
+                                               int  priority,
+                                               bool keepTracking,
+                                               bool allowDuplicate) {
+    return DeleteRequestC::pointer(
+        new DeleteRequestC(
             serviceProvider,
             io_service,
             worker,
@@ -80,34 +76,32 @@ DeleteRequestC::create (ServiceProvider& serviceProvider,
             allowDuplicate));
 }
 
-DeleteRequestC::DeleteRequestC (ServiceProvider& serviceProvider,
-                                boost::asio::io_service& io_service,
-                                std::string const& worker,
-                                std::string const& database,
-                                unsigned int  chunk,
-                                callback_type onFinish,
-                                int  priority,
-                                bool keepTracking,
-                                bool allowDuplicate)
+DeleteRequestC::DeleteRequestC(ServiceProvider& serviceProvider,
+                               boost::asio::io_service& io_service,
+                               std::string const& worker,
+                               std::string const& database,
+                               unsigned int  chunk,
+                               callback_type onFinish,
+                               int  priority,
+                               bool keepTracking,
+                               bool allowDuplicate)
+    :   RequestConnection(serviceProvider,
+                          io_service,
+                          "REPLICA_DELETE",
+                          worker,
+                          priority,
+                          keepTracking,
+                          allowDuplicate),
+        _database(database),
+        _chunk(chunk),
+        _onFinish(onFinish),
+        _responseData() {
 
-    :   RequestConnection (serviceProvider,
-                           io_service,
-                           "REPLICA_DELETE",
-                           worker,
-                           priority,
-                           keepTracking,
-                           allowDuplicate),
- 
-        _database     (database),
-        _chunk        (chunk),
-        _onFinish     (onFinish),
-        _responseData () {
-
-    _serviceProvider.assertDatabaseIsValid (database);
+    _serviceProvider.assertDatabaseIsValid(database);
 }
 
 void
-DeleteRequestC::beginProtocol () {
+DeleteRequestC::beginProtocol() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol");
 
@@ -117,28 +111,28 @@ DeleteRequestC::beginProtocol () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestDelete message;
-    message.set_priority (priority());
-    message.set_database (database());
-    message.set_chunk    (chunk());
+    message.set_priority(priority());
+    message.set_database(database());
+    message.set_chunk(chunk());
 
     _bufferPtr->serialize(message);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &DeleteRequestC::requestSent,
             shared_from_base<DeleteRequestC>(),
             boost::asio::placeholders::error,
@@ -147,22 +141,19 @@ DeleteRequestC::beginProtocol () {
     );
 }
 
-void
-DeleteRequestC::requestSent (boost::system::error_code const& ec,
-                            size_t bytes_transferred) {
-
+void DeleteRequestC::requestSent(boost::system::error_code const& ec,
+                                 size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveResponse();
+    if (ec) { restart(); }
+    else    { receiveResponse(); }
 }
 
-void
-DeleteRequestC::receiveResponse () {
+void DeleteRequestC::receiveResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
 
@@ -177,14 +168,14 @@ DeleteRequestC::receiveResponse () {
     size_t const bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &DeleteRequestC::responseReceived,
             shared_from_base<DeleteRequestC>(),
             boost::asio::placeholders::error,
@@ -193,15 +184,14 @@ DeleteRequestC::receiveResponse () {
     );
 }
 
-void
-DeleteRequestC::responseReceived (boost::system::error_code const& ec,
-                                  size_t bytes_transferred) {
+void DeleteRequestC::responseReceived(boost::system::error_code const& ec,
+                                      size_t bytes_transferred) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -212,26 +202,25 @@ DeleteRequestC::responseReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart ();
-           
+    if (syncReadFrame(bytes)) { restart(); }
+ 
     proto::ReplicationResponseDelete message;
-    if (syncReadMessage (bytes, message)) restart();
-    else                                  analyze(message);
+    if (syncReadMessage(bytes, message)) { restart(); }
+    else                                 { analyze(message); }
 }
 
-void
-DeleteRequestC::wait () {
+void DeleteRequestC::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &DeleteRequestC::awaken,
             shared_from_base<DeleteRequestC>(),
             boost::asio::placeholders::error
@@ -239,23 +228,21 @@ DeleteRequestC::wait () {
     );
 }
 
-void
-DeleteRequestC::awaken (boost::system::error_code const& ec) {
+void DeleteRequestC::awaken(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     sendStatus();
 }
 
-void
-DeleteRequestC::sendStatus () {
+void DeleteRequestC::sendStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "sendStatus");
 
@@ -265,27 +252,27 @@ DeleteRequestC::sendStatus () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (remoteId());
+    message.set_id(remoteId());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
 
     _bufferPtr->serialize(message);
 
     // Send the message
 
-    boost::asio::async_write (
+    boost::asio::async_write(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             _bufferPtr->size()
         ),
-        boost::bind (
+        boost::bind(
             &DeleteRequestC::statusSent,
             shared_from_base<DeleteRequestC>(),
             boost::asio::placeholders::error,
@@ -294,22 +281,19 @@ DeleteRequestC::sendStatus () {
     );
 }
 
-void
-DeleteRequestC::statusSent (boost::system::error_code const& ec,
-                            size_t bytes_transferred) {
-
+void DeleteRequestC::statusSent(boost::system::error_code const& ec,
+                                size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusSent");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
-    if (ec) restart();
-    else    receiveStatus();
+    if (ec) { restart(); }
+    else    { receiveStatus(); }
 }
 
-void
-DeleteRequestC::receiveStatus () {
+void DeleteRequestC::receiveStatus() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "receiveStatus");
 
@@ -324,14 +308,14 @@ DeleteRequestC::receiveStatus () {
     size_t const bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read (
+    boost::asio::async_read(
         _socket,
-        boost::asio::buffer (
+        boost::asio::buffer(
             _bufferPtr->data(),
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind (
+        boost::bind(
             &DeleteRequestC::statusReceived,
             shared_from_base<DeleteRequestC>(),
             boost::asio::placeholders::error,
@@ -340,15 +324,13 @@ DeleteRequestC::receiveStatus () {
     );
 }
 
-void
-DeleteRequestC::statusReceived (boost::system::error_code const& ec,
-                                size_t bytes_transferred) {
-
+void DeleteRequestC::statusReceived(boost::system::error_code const& ec,
+                                    size_t bytes_transferred) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "statusReceived");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     if (ec) {
         restart();
@@ -359,20 +341,20 @@ DeleteRequestC::statusReceived (boost::system::error_code const& ec,
     // is supposed to send a complete multi-message response w/o
     // making any explicit handshake with the Controller.
 
-    if (syncReadVerifyHeader (_bufferPtr->parseLength())) restart();        
-    
+    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
+
     size_t bytes;
-    if (syncReadFrame (bytes)) restart();
+    if (syncReadFrame(bytes)) { restart(); }
 
     proto::ReplicationResponseDelete message;
-    if (syncReadMessage (bytes, message)) restart();
-    else                                  analyze(message);
+    if (syncReadMessage(bytes, message)) { restart(); }
+    else                                 { analyze(message); }
 }
 
-void
-DeleteRequestC::analyze (proto::ReplicationResponseDelete const& message) {
+void DeleteRequestC::analyze(proto::ReplicationResponseDelete const& message) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: " << proto::ReplicationStatus_Name(message.status()));
+    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  remote status: "
+         << proto::ReplicationStatus_Name(message.status()));
 
     // Always get the latest status reported by the remote server
     _extendedServerStatus = replica::translate(message.status_ext());
@@ -382,10 +364,11 @@ DeleteRequestC::analyze (proto::ReplicationResponseDelete const& message) {
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
 
-    if (message.has_target_performance())
+    if (message.has_target_performance()) {
         _performance.update(message.target_performance());
-    else
+    } else {
         _performance.update(message.performance());
+    }
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
@@ -393,28 +376,28 @@ DeleteRequestC::analyze (proto::ReplicationResponseDelete const& message) {
     _responseData = ReplicaInfo(&(message.replica_info()));
 
     // Extract target request type-specific parameters from the response
-    if (message.has_request())
+    if (message.has_request()) {
         _targetRequestParams = DeleteRequestParams(message.request());
-
+    }
     switch (message.status()) {
  
         case proto::ReplicationStatus::SUCCESS:
-            finish (SUCCESS);
+            finish(SUCCESS);
             break;
 
         case proto::ReplicationStatus::QUEUED:
-            if (_keepTracking) wait();
-            else               finish (SERVER_QUEUED);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_QUEUED); }
             break;
 
         case proto::ReplicationStatus::IN_PROGRESS:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IN_PROGRESS);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_IN_PROGRESS); }
             break;
 
         case proto::ReplicationStatus::IS_CANCELLING:
-            if (_keepTracking) wait();
-            else               finish (SERVER_IS_CANCELLING);
+            if (_keepTracking) { wait(); }
+            else               { finish(SERVER_IS_CANCELLING); }
             break;
 
         case proto::ReplicationStatus::BAD:
@@ -428,26 +411,27 @@ DeleteRequestC::analyze (proto::ReplicationResponseDelete const& message) {
                     return;
                 }
             }
-            finish (SERVER_BAD);
+            finish(SERVER_BAD);
             break;
 
         case proto::ReplicationStatus::FAILED:
-            finish (SERVER_ERROR);
+            finish(SERVER_ERROR);
             break;
 
         case proto::ReplicationStatus::CANCELLED:
-            finish (SERVER_CANCELLED);
+            finish(SERVER_CANCELLED);
             break;
 
         default:
-            throw std::logic_error("DeleteRequestC::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
-                                   "' received from server");
+            throw std::logic_error(
+                        "DeleteRequestC::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) +
+                        "' received from server");
 
     }
 }
 
-void
-DeleteRequestC::notify () {
+void DeleteRequestC::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -460,20 +444,18 @@ DeleteRequestC::notify () {
 //         DeleteRequestM          //
 /////////////////////////////////////
 
-DeleteRequestM::pointer
-DeleteRequestM::create (ServiceProvider& serviceProvider,
-                        boost::asio::io_service& io_service,
-                        std::string const& worker,
-                        std::string const& database,
-                        unsigned int  chunk,
-                        callback_type onFinish,
-                        int  priority,
-                        bool keepTracking,
-                        bool allowDuplicate,
-                        std::shared_ptr<Messenger> const& messenger) {
-
-    return DeleteRequestM::pointer (
-        new DeleteRequestM (
+DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider& serviceProvider,
+                                               boost::asio::io_service& io_service,
+                                               std::string const& worker,
+                                               std::string const& database,
+                                               unsigned int  chunk,
+                                               callback_type onFinish,
+                                               int  priority,
+                                               bool keepTracking,
+                                               bool allowDuplicate,
+                                               std::shared_ptr<Messenger> const& messenger) {
+    return DeleteRequestM::pointer(
+        new DeleteRequestM(
             serviceProvider,
             io_service,
             worker,
@@ -486,36 +468,33 @@ DeleteRequestM::create (ServiceProvider& serviceProvider,
             messenger));
 }
 
-DeleteRequestM::DeleteRequestM (ServiceProvider& serviceProvider,
-                                boost::asio::io_service& io_service,
-                                std::string const& worker,
-                                std::string const& database,
-                                unsigned int  chunk,
-                                callback_type onFinish,
-                                int  priority,
-                                bool keepTracking,
-                                bool allowDuplicate,
-                                std::shared_ptr<Messenger> const& messenger)
+DeleteRequestM::DeleteRequestM(ServiceProvider& serviceProvider,
+                               boost::asio::io_service& io_service,
+                               std::string const& worker,
+                               std::string const& database,
+                               unsigned int  chunk,
+                               callback_type onFinish,
+                               int  priority,
+                               bool keepTracking,
+                               bool allowDuplicate,
+                               std::shared_ptr<Messenger> const& messenger)
+    :   RequestMessenger(serviceProvider,
+                         io_service,
+                         "REPLICA_DELETE",
+                         worker,
+                         priority,
+                         keepTracking,
+                         allowDuplicate,
+                         messenger),
+        _database(database),
+        _chunk(chunk),
+        _onFinish(onFinish),
+        _responseData() {
 
-    :   RequestMessenger (serviceProvider,
-                          io_service,
-                          "REPLICA_DELETE",
-                          worker,
-                          priority,
-                          keepTracking,
-                          allowDuplicate,
-                          messenger),
- 
-        _database     (database),
-        _chunk        (chunk),
-        _onFinish     (onFinish),
-        _responseData () {
-
-    _serviceProvider.assertDatabaseIsValid (database);
+    _serviceProvider.assertDatabaseIsValid(database);
 }
 
-void
-DeleteRequestM::startImpl () {
+void DeleteRequestM::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -525,32 +504,31 @@ DeleteRequestM::startImpl () {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id          (id());
-    hdr.set_type        (proto::ReplicationRequestHeader::REPLICA);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REPLICA);
     hdr.set_replica_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestDelete message;
-    message.set_priority (priority());
-    message.set_database (database());
-    message.set_chunk    (chunk());
+    message.set_priority(priority());
+    message.set_database(database());
+    message.set_chunk(chunk());
 
     _bufferPtr->serialize(message);
 
     send ();
 }
 
-void
-DeleteRequestM::wait () {
+void DeleteRequestM::wait() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
     
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait (
-        boost::bind (
+    _timer.async_wait(
+        boost::bind(
             &DeleteRequestM::awaken,
             shared_from_base<DeleteRequestM>(),
             boost::asio::placeholders::error
@@ -558,17 +536,16 @@ DeleteRequestM::wait () {
     );
 }
 
-void
-DeleteRequestM::awaken (boost::system::error_code const& ec) {
+void DeleteRequestM::awaken(boost::system::error_code const& ec) {
 
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "awaken");
 
-    if (isAborted(ec)) return;
+    if (isAborted(ec)) { return; }
 
     // Also ignore this event if the request expired
-    if (_state== State::FINISHED) return;
+    if (_state== State::FINISHED) { return; }
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
@@ -576,14 +553,14 @@ DeleteRequestM::awaken (boost::system::error_code const& ec) {
     _bufferPtr->resize();
 
     proto::ReplicationRequestHeader hdr;
-    hdr.set_id             (id());
-    hdr.set_type           (proto::ReplicationRequestHeader::REQUEST);
+    hdr.set_id(id());
+    hdr.set_type(proto::ReplicationRequestHeader::REQUEST);
     hdr.set_management_type(proto::ReplicationManagementRequestType::REQUEST_STATUS);
 
     _bufferPtr->serialize(hdr);
 
     proto::ReplicationRequestStatus message;
-    message.set_id  (remoteId());
+    message.set_id(remoteId());
     message.set_type(proto::ReplicationReplicaRequestType::REPLICA_DELETE);
 
     _bufferPtr->serialize(message);
@@ -591,26 +568,24 @@ DeleteRequestM::awaken (boost::system::error_code const& ec) {
     send ();
 }
 
-void
-DeleteRequestM::send () {
+void DeleteRequestM::send() {
 
     auto self = shared_from_base<DeleteRequestM>();
 
-    _messenger->send<proto::ReplicationResponseDelete> (
+    _messenger->send<proto::ReplicationResponseDelete>(
         worker(),
         id(),
         _bufferPtr,
-        [self] (std::string const&                      id,
-                bool                                    success,
+        [self] (std::string const& id,
+                bool success,
                 proto::ReplicationResponseDelete const& response) {
             self->analyze (success, response);
         }
     );
 }
 
-void
-DeleteRequestM::analyze (bool success,
-                         proto::ReplicationResponseDelete const& message) {
+void DeleteRequestM::analyze(bool success,
+                             proto::ReplicationResponseDelete const& message) {
 
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
@@ -629,10 +604,11 @@ DeleteRequestM::analyze (bool success,
         // filled in by the 'STATUS' queries. If the later is not available
         // then fallback to the one of the current request.
     
-        if (message.has_target_performance())
+        if (message.has_target_performance()) {
             _performance.update(message.target_performance());
-        else
+        } else {
             _performance.update(message.performance());
+        }
     
         // Always extract extended data regardless of the completion status
         // reported by the worker service.
@@ -640,28 +616,28 @@ DeleteRequestM::analyze (bool success,
         _responseData = ReplicaInfo(&(message.replica_info()));
 
         // Extract target request type-specific parameters from the response
-        if (message.has_request())
+        if (message.has_request()) {
             _targetRequestParams = DeleteRequestParams(message.request());
-
+        }
         switch (message.status()) {
      
             case proto::ReplicationStatus::SUCCESS:
-                finish (SUCCESS);
+                finish(SUCCESS);
                 break;
     
             case proto::ReplicationStatus::QUEUED:
-                if (_keepTracking) wait();
-                else               finish (SERVER_QUEUED);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_QUEUED); }
                 break;
     
             case proto::ReplicationStatus::IN_PROGRESS:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IN_PROGRESS);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_IN_PROGRESS); }
                 break;
     
             case proto::ReplicationStatus::IS_CANCELLING:
-                if (_keepTracking) wait();
-                else               finish (SERVER_IS_CANCELLING);
+                if (_keepTracking) { wait(); }
+                else               { finish(SERVER_IS_CANCELLING); }
                 break;
     
             case proto::ReplicationStatus::BAD:
@@ -675,30 +651,30 @@ DeleteRequestM::analyze (bool success,
                         return;
                     }
                 }
-                finish (SERVER_BAD);
+                finish(SERVER_BAD);
                 break;
     
             case proto::ReplicationStatus::FAILED:
-                finish (SERVER_ERROR);
+                finish(SERVER_ERROR);
                 break;
     
             case proto::ReplicationStatus::CANCELLED:
-                finish (SERVER_CANCELLED);
+                finish(SERVER_CANCELLED);
                 break;
     
             default:
-                throw std::logic_error (
-                        "DeleteRequestM::analyze() unknown status '" + proto::ReplicationStatus_Name(message.status()) +
+                throw std::logic_error(
+                        "DeleteRequestM::analyze() unknown status '" +
+                        proto::ReplicationStatus_Name(message.status()) +
                         "' received from server");
         }
 
     } else {
-        finish (CLIENT_ERROR);
+        finish(CLIENT_ERROR);
     }
 }
 
-void
-DeleteRequestM::notify () {
+void DeleteRequestM::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 

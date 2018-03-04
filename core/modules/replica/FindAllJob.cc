@@ -28,9 +28,9 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -45,91 +45,91 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FindAllJob::pointer FindAllJob::create (std::string const&         databaseFamily,
-                                        Controller::pointer const& controller,
-                                        callback_type              onFinish,
-                                        int                        priority,
-                                        bool                       exclusive,
-                                        bool                       preemptable) {
-    return FindAllJob::pointer (
-        new FindAllJob (databaseFamily,
-                        controller,
-                        onFinish,
-                        priority,
-                        exclusive,
-                        preemptable));
+FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
+                                       Controller::pointer const& controller,
+                                       callback_type onFinish,
+                                       int  priority,
+                                       bool exclusive,
+                                       bool preemptable) {
+    return FindAllJob::pointer(
+        new FindAllJob(databaseFamily,
+                       controller,
+                       onFinish,
+                       priority,
+                       exclusive,
+                       preemptable));
 }
 
-FindAllJob::FindAllJob (std::string const&         databaseFamily,
-                        Controller::pointer const& controller,
-                        callback_type              onFinish,
-                        int                        priority,
-                        bool                       exclusive,
-                        bool                       preemptable)
-
-    :   Job (controller,
-             "FIND_ALL",
-             priority,
-             exclusive,
-             preemptable),
-        _databaseFamily (databaseFamily),
-        _databases      (controller->serviceProvider().config()->databases(databaseFamily)),
-        _onFinish       (onFinish),
-        _numLaunched (0),
-        _numFinished (0),
-        _numSuccess  (0) {
+FindAllJob::FindAllJob(std::string const& databaseFamily,
+                       Controller::pointer const& controller,
+                       callback_type onFinish,
+                       int  priority,
+                       bool exclusive,
+                       bool preemptable)
+    :   Job(controller,
+            "FIND_ALL",
+            priority,
+            exclusive,
+            preemptable),
+        _databaseFamily(databaseFamily),
+        _databases(controller->serviceProvider().config()->databases(databaseFamily)),
+        _onFinish(onFinish),
+        _numLaunched(0),
+        _numFinished(0),
+        _numSuccess(0) {
 }
 
-FindAllJobResult const& FindAllJob::getReplicaData () const {
+FindAllJobResult const& FindAllJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
 
-    if (_state == State::FINISHED)  return _replicaData;
+    if (_state == State::FINISHED) { return _replicaData; }
 
-    throw std::logic_error (
+    throw std::logic_error(
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void FindAllJob::track (bool          progressReport,
-                        bool          errorReport,
-                        bool          chunkLocksReport,
-                        std::ostream& os) const {
+void FindAllJob::track(bool progressReport,
+                       bool errorReport,
+                       bool chunkLocksReport,
+                       std::ostream& os) const {
 
-    if (_state == State::FINISHED) return;
-    
-    BlockPost blockPost (1000, 2000);
+    if (_state == State::FINISHED) { return; }
+ 
+    util::BlockPost blockPost(1000, 2000);
 
     while (_numFinished < _numLaunched) {
         blockPost.wait();
 
-        if (progressReport)
+        if (progressReport) {
             os  << "FindAllJob::track()  "
                 << "launched: " << _numLaunched << ", "
                 << "finished: " << _numFinished << ", "
                 << "success: "  << _numSuccess
                 << std::endl;
-
-        if (chunkLocksReport)
+        }
+        if (chunkLocksReport) {
             os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked (_id);
+                << _controller->serviceProvider().chunkLocker().locked(_id);
+        }
     }
-    if (progressReport)
+    if (progressReport) {
         os  << "FindAllJob::track()  "
             << "launched: " << _numLaunched << ", "
             << "finished: " << _numFinished << ", "
             << "success: "  << _numSuccess
             << std::endl;
-
-    if (chunkLocksReport)
+    }
+    if (chunkLocksReport) {
         os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked (_id);
-
-    if (errorReport && _numLaunched - _numSuccess)
-        replica::reportRequestState (_requests, os);
-
+            << _controller->serviceProvider().chunkLocker().locked(_id);
+    }
+    if (errorReport and (_numLaunched - _numSuccess)) {
+        replica::reportRequestState(_requests, os);
+    }
 }
 
-void FindAllJob::startImpl () {
+void FindAllJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
@@ -137,12 +137,12 @@ void FindAllJob::startImpl () {
 
     for (auto const& worker: _controller->serviceProvider().config()->workers()) {
         for (auto const& database: _databases) {
-            _requests.push_back (
-                _controller->findAllReplicas (
+            _requests.push_back(
+                _controller->findAllReplicas(
                     worker,
                     database,
                     [self] (FindAllRequest::pointer request) {
-                        self->onRequestFinish (request);
+                        self->onRequestFinish(request);
                     },
                     0,      /* priority */
                     true,   /* keepTracking*/
@@ -155,11 +155,11 @@ void FindAllJob::startImpl () {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) setState(State::FINISHED);
-    else                  setState(State::IN_PROGRESS);
+    if (not _numLaunched) { setState(State::FINISHED); }
+    else                  { setState(State::IN_PROGRESS); }
 }
 
-void FindAllJob::cancelImpl () {
+void FindAllJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -169,13 +169,14 @@ void FindAllJob::cancelImpl () {
 
     for (auto const& ptr: _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplicaFindAll (
+        if (ptr->state() != Request::State::FINISHED) {
+            _controller->stopReplicaFindAll(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
                 _id         /* jobId */);
+        }
     }
     _requests.clear();
     
@@ -186,7 +187,7 @@ void FindAllJob::cancelImpl () {
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void FindAllJob::notify () {
+void FindAllJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -196,18 +197,17 @@ void FindAllJob::notify () {
     }
 }
 
-void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
+void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()
          << " worker=" << request->worker());
 
-
     do {
         LOCK_GUARD;
 
         // Ignore the callback if the job was cancelled   
-        if (_state == State::FINISHED) return;
+        if (_state == State::FINISHED) { return; }
 
         // Update counters and object state if needed.
         _numFinished++;
@@ -222,11 +222,11 @@ void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
         } else {
             _replicaData.workers[request->worker()] = false;
         }
-        if (_numFinished == _numLaunched)
-            setState (State::FINISHED,
-                      _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                    ExtendedState::FAILED);
-
+        if (_numFinished == _numLaunched) {
+            setState(State::FINISHED,
+                     _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                                   ExtendedState::FAILED);
+        }
     } while (false);
     
     // Note that access to the job's public API shoul not be locked while
@@ -298,7 +298,8 @@ void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
                 std::string const& worker       = entry.first;
                 size_t      const  numDatabases = entry.second;
 
-                _replicaData.isColocated[chunk][worker] = _replicaData.databases[chunk].size() == numDatabases;
+                _replicaData.isColocated[chunk][worker] =
+                    _replicaData.databases[chunk].size() == numDatabases;
             }
         }
         
@@ -324,7 +325,7 @@ void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
                         for (auto const& database2workers: chunk2databases.second) {
                             if (worker == database2workers.first) {
                                 ReplicaInfo const& replica = database2workers.second;
-                                isGood = isGood && (replica.status() == ReplicaInfo::Status::COMPLETE);
+                                isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
                             }
                         }
                     }
@@ -334,7 +335,7 @@ void FindAllJob::onRequestFinish (FindAllRequest::pointer request) {
         }
 
         // Finally, notify a caller
-        notify ();
+        notify();
     }
 }
 

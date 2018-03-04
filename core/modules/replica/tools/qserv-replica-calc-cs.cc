@@ -30,10 +30,11 @@
 #include <vector> 
 
 // Qserv headers
-#include "replica/CmdParser.h"
 #include "replica/FileUtils.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -67,7 +68,7 @@ int main(int argc, const char *argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

@@ -60,11 +60,10 @@ struct Error
     :   std::runtime_error {
 
     /// Constructor   
-    explicit Error (std::string const& what)
-        :   std::runtime_error (what) {
+    explicit Error(std::string const& what)
+        :   std::runtime_error(what) {
     }
 };
-
 
 /**
  * Instances of this exception class are thrown on attempts to insert
@@ -74,8 +73,8 @@ struct DuplicateKeyError
     :   Error {
 
     /// Constructor   
-    explicit DuplicateKeyError (std::string const& what)
-        :   Error (what) {
+    explicit DuplicateKeyError(std::string const& what)
+        :   Error(what) {
     }
 };
 
@@ -87,8 +86,8 @@ struct InvalidTypeError
     :   Error {
 
     /// Constructor   
-    explicit InvalidTypeError (std::string const& what)
-        :   Error (what) {
+    explicit InvalidTypeError(std::string const& what)
+        :   Error(what) {
     }
 };
 
@@ -100,8 +99,8 @@ struct EmptyResultSetError
     :   Error {
 
     /// Constructor   
-    explicit EmptyResultSetError (std::string const& what)
-        :   Error (what) {
+    explicit EmptyResultSetError(std::string const& what)
+        :   Error(what) {
     }
 };
 
@@ -144,22 +143,22 @@ struct ConnectionParams {
      *
      * @throw std::invalid_argument - if the string can't be parsed
      */
-    static ConnectionParams parse (std::string const& params,
-                                   std::string const& defaultHost,
-                                   uint16_t           defaultPort,
-                                   std::string const& defaultUser,
-                                   std::string const& defaultPassword);
+    static ConnectionParams parse(std::string const& params,
+                                  std::string const& defaultHost,
+                                  uint16_t           defaultPort,
+                                  std::string const& defaultUser,
+                                  std::string const& defaultPassword);
 
     /**
      * Return a string representation of all (but the password) parameters.
      * The result will be formatted similarily to the one expected by
      * the non-default constructor of the class.
      */
-    std::string toString () const;
+    std::string toString() const;
 };
 
 /// Overloaded operator for serializing ConnectionParams instances
-std::ostream& operator<< (std::ostream&, ConnectionParams const&);
+std::ostream& operator<<(std::ostream&, ConnectionParams const&);
 
 /**
  * Class Row represens the current row obtained from the last result set.
@@ -215,29 +214,29 @@ public:
      *
      * @see Connection::next()
      */
-    Row ();
+    Row();
 
     /// Copy constructor
-    Row (Row const& rhs) = default;
+    Row(Row const& rhs) = default;
 
     /// The Assignment operator
-    Row& operator= (Row const& rhs) = default;
+    Row& operator=(Row const& rhs) = default;
  
     /// Destructor
-    ~Row () = default;
+    ~Row() = default;
 
     /// Return 'true' of the object has meaningful content
-    bool isValid () const { return _isValid; }
+    bool isValid() const { return _isValid; }
 
     /**
      * Return the width of the row
      */
-    size_t numColumns () const;
+    size_t numColumns() const;
 
     // These methods will return 'true' if the specified field is NULL
 
-    bool isNull (size_t             columnIdx)  const;
-    bool isNull (std::string const& columnName) const;
+    bool isNull(size_t             columnIdx)  const;
+    bool isNull(std::string const& columnName) const;
 
     // Type-specific data extractors/converters for values of fields.
     // There are two ways to access the values: either by a relative
@@ -246,60 +245,60 @@ public:
     //
     // @see class Row
 
-    bool get (size_t      columnIdx,         std::string& value) const;
-    bool get (std::string const& columnName, std::string& value) const;
+    bool get(size_t      columnIdx,         std::string& value) const;
+    bool get(std::string const& columnName, std::string& value) const;
 
     // Unsigned integer types
 
-    bool get (size_t columnIdx, uint64_t& value) const;
-    bool get (size_t columnIdx, uint32_t& value) const;
-    bool get (size_t columnIdx, uint16_t& value) const;
-    bool get (size_t columnIdx, uint8_t&  value) const;
+    bool get(size_t columnIdx, uint64_t& value) const;
+    bool get(size_t columnIdx, uint32_t& value) const;
+    bool get(size_t columnIdx, uint16_t& value) const;
+    bool get(size_t columnIdx, uint8_t&  value) const;
 
-    bool get (std::string const& columnName, uint64_t& value) const;
-    bool get (std::string const& columnName, uint32_t& value) const;
-    bool get (std::string const& columnName, uint16_t& value) const;
-    bool get (std::string const& columnName, uint8_t&  value) const;
+    bool get(std::string const& columnName, uint64_t& value) const;
+    bool get(std::string const& columnName, uint32_t& value) const;
+    bool get(std::string const& columnName, uint16_t& value) const;
+    bool get(std::string const& columnName, uint8_t&  value) const;
 
     // Signed integer types
 
-    bool get (size_t columnIdx, int64_t& value) const;
-    bool get (size_t columnIdx, int32_t& value) const;
-    bool get (size_t columnIdx, int16_t& value) const;
-    bool get (size_t columnIdx, int8_t&  value) const;
+    bool get(size_t columnIdx, int64_t& value) const;
+    bool get(size_t columnIdx, int32_t& value) const;
+    bool get(size_t columnIdx, int16_t& value) const;
+    bool get(size_t columnIdx, int8_t&  value) const;
 
-    bool get (std::string const& columnName, int64_t& value) const;
-    bool get (std::string const& columnName, int32_t& value) const;
-    bool get (std::string const& columnName, int16_t& value) const;
-    bool get (std::string const& columnName, int8_t&  value) const;
+    bool get(std::string const& columnName, int64_t& value) const;
+    bool get(std::string const& columnName, int32_t& value) const;
+    bool get(std::string const& columnName, int16_t& value) const;
+    bool get(std::string const& columnName, int8_t&  value) const;
 
     // Floating point types
 
-    bool get (size_t columnIdx, float&  value) const;
-    bool get (size_t columnIdx, double& value) const;
+    bool get(size_t columnIdx, float&  value) const;
+    bool get(size_t columnIdx, double& value) const;
 
-    bool get (std::string const& columnName, float&  value) const;
-    bool get (std::string const& columnName, double& value) const;
+    bool get(std::string const& columnName, float&  value) const;
+    bool get(std::string const& columnName, double& value) const;
 
     // Other types
     
-    bool get (size_t columnIdx, bool& value) const;
+    bool get(size_t columnIdx, bool& value) const;
 
-    bool get (std::string const& columnName, bool&  value) const;
+    bool get(std::string const& columnName, bool&  value) const;
 
     /**
      * Return a reference to the data cell for the column
      *
      * @param columnIdx - the index of a column
      */
-    Cell const& getDataCell (size_t columnIdx) const;
+    Cell const& getDataCell(size_t columnIdx) const;
 
     /**
      * Return a reference to the data cell for the column
      *
      * @param columnName - the name of a column
      */
-    Cell const& getDataCell (std::string const& columnName) const;
+    Cell const& getDataCell(std::string const& columnName) const;
 
 private:
 
@@ -335,7 +334,7 @@ struct Function {
     // For others use the normal constructor
 
     /// The constructor
-    explicit Function (std::string const& name_);
+    explicit Function(std::string const& name_);
 };
 
 /**
@@ -369,18 +368,18 @@ public:
      * @return a valid object if the connection attempt succeeded
      * @throws Error - if the connection failed
      */
-    static pointer open (ConnectionParams const& connectionParams,
-                         bool                    autoReconnect = true,
-                         bool                    autoCommit    = false);
+    static pointer open(ConnectionParams const& connectionParams,
+                        bool autoReconnect = true,
+                        bool autoCommit    = false);
 
     // Default construction and copy semantics are prohibited
 
-    Connection () = delete;
-    Connection (Connection const&) = delete;
-    Connection& operator= (Connection const&) = delete;
+    Connection() = delete;
+    Connection(Connection const&) = delete;
+    Connection& operator=(Connection const&) = delete;
  
     /// Destructor
-    virtual ~Connection ();
+    ~Connection();
 
     /**
       * A front-end to mysql_real_escape_string()
@@ -389,40 +388,40 @@ public:
       *
       * @return the processed string
       */
-    std::string escape (std::string const& str) const;
+    std::string escape(std::string const& str) const;
 
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
     // -------------------------------------------------
     
     template <typename T>
-    T           sqlValue (T const&           val) const { return val; }
-    std::string sqlValue (std::string const& val) const { return "'" + escape (val) + "'"; }
-    std::string sqlValue (char const*        val) const { return sqlValue (std::string(val)); }
-    std::string sqlValue (Function const&    val) const { return val.name; }
+    T           sqlValue(T const&           val) const { return val; }
+    std::string sqlValue(std::string const& val) const { return "'" + escape(val) + "'"; }
+    std::string sqlValue(char const*        val) const { return sqlValue(std::string(val)); }
+    std::string sqlValue(Function const&    val) const { return val.name; }
 
     // Generator: ([value [, value [, ... ]]])
     // Where values of the string types will be surrounded with single quotes
 
     /// The end of variadic recursion
-    void sqlValues (std::string& sql) const { sql += ")"; }
+    void sqlValues(std::string& sql) const { sql += ")"; }
 
     /// The next step in the variadic recursion when at least one value is
     /// still available
     template <typename T,
               typename ...Targs>
-    void sqlValues (std::string& sql,
-                    T            val,
-                    Targs...     Fargs) const {
+    void sqlValues(std::string& sql,
+                   T            val,
+                   Targs...     Fargs) const {
 
         bool const last = sizeof...(Fargs) - 1 < 0;
         std::ostringstream ss;
-        ss << (sql.empty() ? "(" : (last ? "" : ",")) << sqlValue (val);
+        ss << (sql.empty() ? "(" : (last ? "" : ",")) << sqlValue(val);
         sql += ss.str();
 
         // Recursively keep drilling down the list of arguments with one
         // argument less.
-        sqlValues (sql, Fargs...);
+        sqlValues(sql, Fargs...);
     }
     
     /**
@@ -440,9 +439,9 @@ public:
      *   @code
      */
     template <typename...Targs>
-    std::string sqlPackValues (Targs... Fargs) const {
+    std::string sqlPackValues(Targs... Fargs) const {
         std::string sql;
-        sqlValues (sql, Fargs...);
+        sqlValues(sql, Fargs...);
         return sql;
     }
 
@@ -457,17 +456,17 @@ public:
      * @param Fargs     - the variadic list of values to be inserted
      */
     template <typename...Targs>
-    std::string sqlInsertQuery (std::string const& tableName,
-                                Targs...           Fargs) const {
+    std::string sqlInsertQuery(std::string const& tableName,
+                               Targs...           Fargs) const {
         std::ostringstream qs;
-        qs  << "INSERT INTO " << sqlId (tableName) << " "
-            << "VALUES "      << sqlPackValues (Fargs...);
+        qs  << "INSERT INTO " << sqlId(tableName) << " "
+            << "VALUES "      << sqlPackValues(Fargs...);
         return qs.str();
     }
 
     /// Return a string representing a built-in MySQL function for the last
     /// insert auto-incremented identifier: LAST_INSERT_ID()
-    std::string sqlLastInsertId () const { return "LAST_INSERT_ID()"; }
+    std::string sqlLastInsertId() const { return "LAST_INSERT_ID()"; }
 
     // ----------------------------------------------------------------------
     // Generator: [`column` = value [, `column` = value [, ... ]]]
@@ -475,7 +474,7 @@ public:
 
     /// Return a non-escaped and back-tick-quoted string which is meant
     /// to be an SQL identifier.
-    std::string sqlId (std::string const& str) const { return "`" + str + "`"; }
+    std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
 
     /**
      * Return:
@@ -487,45 +486,45 @@ public:
      * - values of string types will be escped and surrounded by single quotes
      */
     template <typename T>
-    std::string sqlEqual (std::string const& col,
-                          T const&           val) const {
+    std::string sqlEqual(std::string const& col,
+                         T const&           val) const {
         std::ostringstream ss;
-        ss << sqlId (col) << "=" << sqlValue (val);
+        ss << sqlId(col) << "=" << sqlValue(val);
         return ss.str();
     }
 
     /// The base (the final function) to be called
-    void sqlPackPair (std::string&) const {}
+    void sqlPackPair(std::string&) const {}
 
     /// Recursive variadic function (overloaded for column names gived as std::string)
     template <typename T, typename...Targs>
-    void sqlPackPair (std::string&             sql,
-                      std::pair<std::string,T> colVal,
-                      Targs...                 Fargs) const {
+    void sqlPackPair(std::string&             sql,
+                     std::pair<std::string,T> colVal,
+                     Targs...                 Fargs) const {
     
         std::string const& col = colVal.first;
         T const&           val = colVal.second;
     
         std::ostringstream ss;
-        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual (col, val);
+        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
-        sqlPackPair (sql, Fargs...);
+        sqlPackPair(sql, Fargs...);
     }
     
 
     /// Recursive variadic function (overloaded for column names gived as char const*)
     template <typename T, typename...Targs>
-    void sqlPackPair (std::string&             sql,
-                      std::pair<char const*,T> colVal,
-                      Targs...                 Fargs) const {
+    void sqlPackPair(std::string&             sql,
+                     std::pair<char const*,T> colVal,
+                     Targs...                 Fargs) const {
     
         std::string const  col = colVal.first;
         T const&           val = colVal.second;
     
         std::ostringstream ss;
-        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual (col, val);
+        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
-        sqlPackPair (sql, Fargs...);
+        sqlPackPair(sql, Fargs...);
     }
     
     /**
@@ -558,9 +557,9 @@ public:
      * @param Fargs          - the variadic list of values to be inserted
      */
     template <typename...Targs>
-    std::string sqlPackPairs (Targs... Fargs) const {
+    std::string sqlPackPairs(Targs... Fargs) const {
         std::string sql;
-        sqlPackPair (sql, Fargs...);
+        sqlPackPair(sql, Fargs...);
         return sql;
     }
 
@@ -577,13 +576,13 @@ public:
      * @param values - an iterable collection of values
      */
     template <typename T>
-    std::string sqlIn (std::string const& col,
-                       T const&           values) const {
+    std::string sqlIn(std::string const& col,
+                      T const&           values) const {
         std::ostringstream ss;
-        ss << sqlId (col) << " IN (";
+        ss << sqlId(col) << " IN (";
         int num=0;
         for (auto const& val: values)
-            ss << (num++ ? "," : "") << sqlValue (val);
+            ss << (num++ ? "," : "") << sqlValue(val);
         ss << ")";
         return ss.str();
     }
@@ -626,12 +625,12 @@ public:
      * @param Fargs          - the variadic list of values to be inserted
      */
     template <typename...Targs>
-    std::string sqlSimpleUpdateQuery (std::string const& tableName,
-                                      std::string const& condition,
-                                      Targs...           Fargs) const {
+    std::string sqlSimpleUpdateQuery(std::string const& tableName,
+                                     std::string const& condition,
+                                     Targs...           Fargs) const {
         std::ostringstream qs;
-        qs  << "UPDATE " << sqlId (tableName)       << " "
-            << "SET "    << sqlPackPairs (Fargs...) << " "
+        qs  << "UPDATE " << sqlId(tableName)       << " "
+            << "SET "    << sqlPackPairs(Fargs...) << " "
             << (condition.empty() ? "" : "WHERE " + condition);
         return qs.str();
     }
@@ -639,7 +638,7 @@ public:
     /**
      * Return the status of the transaction
      */
-    bool inTransaction () const { return _inTransaction; }
+    bool inTransaction() const { return _inTransaction; }
 
     /**
      * Start the transaction
@@ -647,7 +646,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was already been started
      */
-    Connection::pointer begin ();
+    Connection::pointer begin();
 
     /**
      * Commit the transaction
@@ -655,7 +654,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was not started
      */
-    Connection::pointer commit ();
+    Connection::pointer commit();
 
     /**
      * Rollback the transaction
@@ -663,7 +662,7 @@ public:
      * @return                  - a smart pointer to self to allow chaned calles.
      * @throws std::logic_error - if the transaction was not started
      */
-    Connection::pointer rollback ();
+    Connection::pointer rollback();
 
     /**
      * Execute the specified query and initialize object context to allow
@@ -675,7 +674,7 @@ public:
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
      * @throws Error                 - for any other MySQL specific errors
      */
-    Connection::pointer execute (std::string const& query);
+    Connection::pointer execute(std::string const& query);
 
     /**
      * Execute an SQL statement for inserting a new row into a table based
@@ -704,11 +703,11 @@ public:
      * @throws Error                 - for any other MySQL specific errors
      */
     template <typename...Targs>
-    Connection::pointer executeInsertQuery (std::string const& tableName,
-                                            Targs...           Fargs) {
+    Connection::pointer executeInsertQuery(std::string const& tableName,
+                                           Targs...           Fargs) {
 
-        return execute (sqlInsertQuery (tableName,
-                                        Fargs...));
+        return execute(sqlInsertQuery(tableName,
+                                      Fargs...));
     }
 
     /**
@@ -736,20 +735,20 @@ public:
      * @throws Error                 - for any MySQL specific errors
      */
     template <typename...Targs>
-    Connection::pointer executeSimpleUpdateQuery (std::string const& tableName,
-                                                  std::string const& condition,
-                                                  Targs...           Fargs) {
+    Connection::pointer executeSimpleUpdateQuery(std::string const& tableName,
+                                                 std::string const& condition,
+                                                 Targs...           Fargs) {
 
-        return execute (sqlSimpleUpdateQuery (tableName,
-                                              condition,
-                                              Fargs...));
+        return execute(sqlSimpleUpdateQuery(tableName,
+                                            condition,
+                                            Fargs...));
     }
 
     /**
      * Returns 'true' if the last successfull query returned a result set
      * (even though it may be empty)
      */
-    bool hasResult () const;
+    bool hasResult() const;
 
     /**
      * Return the names of the columns from the current result set.
@@ -760,7 +759,7 @@ public:
      * @throws std::logic_error - if no SQL statement has ever been executed, or
      *                            if the last query failed.
      */
-    std::vector<std::string> const& columnNames () const;
+    std::vector<std::string> const& columnNames() const;
 
     /**
      * Move the iterator to the next (first) row of the current result set
@@ -777,7 +776,7 @@ public:
      *     conn->execute ("SELECT ...");
      *
      *     Row row;
-     *     while (conn->nextRow(row)) {
+     *     while (conn->next(row)) {
      *         // Extract data from 'row' within this block
      *         // before proceeding to teh next row, etc.
      *     }
@@ -789,7 +788,7 @@ public:
      * @return 'true' if the row was initialized or 'false' if past the last row
      *          in the result set.
      */
-    bool next (Row& row);
+    bool next(Row& row);
 
     /**
      * The convenience method is for executing a query from which a single value
@@ -817,14 +816,15 @@ public:
      * @return 'true' if the value is not NULL
      */
     template <typename T>
-    bool executeSingleValueSelect (std::string const& query,
-                                   std::string const& col,
-                                   T&                 val,
-                                   bool               noMoreThanOne=true) {
-        execute (query);
-        if (!hasResult ())
-            throw EmptyResultSetError (
+    bool executeSingleValueSelect(std::string const& query,
+                                  std::string const& col,
+                                  T&                 val,
+                                  bool               noMoreThanOne=true) {
+        execute(query);
+        if (not hasResult()) {
+            throw EmptyResultSetError(
                 "DatabaseMySQL::executeSingleValueSelect()  result set is empty");
+        }
 
         bool isNotNull;
         size_t numRows = 0;
@@ -833,15 +833,15 @@ public:
         while (next(row)) {
 
             // Only the very first row matters
-            if (!numRows) isNotNull = row.get (col, val);
+            if (not numRows) { isNotNull = row.get (col, val); }
 
             // have to read the rest of the result set to avoid problems with the MySQL
             // protocol
             ++numRows;
         }
-        if ((1 == numRows) || !noMoreThanOne) return isNotNull;
+        if ((1 == numRows) or not noMoreThanOne) { return isNotNull; }
 
-        throw std::logic_error (
+        throw std::logic_error(
                 "DatabaseMySQL::executeSingleValueSelect()  result set has more than 1 row");        
     }
 
@@ -852,23 +852,23 @@ private:
      *
      * @see Connection::connect()
      */
-    Connection (ConnectionParams const& connectionParams,
-                bool autoReconnect,
-                bool autoCommit);
+    Connection(ConnectionParams const& connectionParams,
+               bool autoReconnect,
+               bool autoCommit);
 
     /**
      * Establish a connection
      *
      * @throws Error - if the connection is not possible
      */
-    void connect ();
+    void connect();
 
     /**
      * The method is to ensure that the transaction is in teh desired state.
      * 
      * @param inTransaction - the desired state of the transaction
      */
-    void assertTransaction (bool inTransaction) const;
+    void assertTransaction(bool inTransaction) const;
 
     /**
      * The method is to ensure that a proper query context is set and
@@ -876,7 +876,7 @@ private:
      *
      * @throw Error - if the connection is not established or no prior query was made
      */
-    void assertQueryContext () const;
+    void assertQueryContext() const;
 
 private:
 

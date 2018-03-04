@@ -68,25 +68,23 @@ struct RequestWrapperImpl
     :   ControllerRequestWrapper {
 
     /// The implementation of the vurtual method defined in the base class
-    virtual void notify () {
-        if (_onFinish == nullptr) return;
+    virtual void notify() {
+        if (_onFinish == nullptr) { return; }
         _onFinish(_request);
     }
 
     RequestWrapperImpl(typename T::pointer const& request,
-                       typename T::callback_type  onFinish)
-
+                       typename T::callback_type onFinish)
         :   ControllerRequestWrapper(),
-
-            _request  (request),
-            _onFinish (onFinish) {
+            _request(request),
+            _onFinish(onFinish) {
     }
 
     /// Destructor
     ~RequestWrapperImpl() override = default;
 
     /// Implement a virtual method of the base class
-    std::shared_ptr<Request> request () const override {
+    std::shared_ptr<Request> request() const override {
         return _request;
     }
 
@@ -114,15 +112,15 @@ class ControllerImpl {
 public:
 
     /// Default constructor
-    ControllerImpl () = default;
+    ControllerImpl() = default;
 
     // Default copy semantics is prohibited
 
-    ControllerImpl (ControllerImpl const&) = delete;
-    ControllerImpl& operator= (ControllerImpl const&) = delete;
+    ControllerImpl(ControllerImpl const&) = delete;
+    ControllerImpl& operator=(ControllerImpl const&) = delete;
 
     /// Destructor
-    ~ControllerImpl () = default;
+    ~ControllerImpl() = default;
 
     /**
      * Generic method for managing requests such as stopping an outstanding
@@ -134,23 +132,22 @@ public:
      */
     template <class REQUEST_TYPE>
     static
-    typename REQUEST_TYPE::pointer requestManagementOperation (
-
-            Controller::pointer const&           controller,
-            std::string const&                   jobId,
-            std::string const&                   workerName,
-            std::string const&                   targetRequestId,
+    typename REQUEST_TYPE::pointer requestManagementOperation(
+            Controller::pointer const& controller,
+            std::string const& jobId,
+            std::string const& workerName,
+            std::string const& targetRequestId,
             typename REQUEST_TYPE::callback_type onFinish,
-            bool                                 keepTracking,
+            bool  keepTracking,
 #ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
-            typename Messenger::pointer const&   messenger,
+            typename Messenger::pointer const& messenger,
 #endif
-            unsigned int                         requestExpirationIvalSec) {
+            unsigned int requestExpirationIvalSec) {
 
         controller->assertIsRunning();
 
         typename REQUEST_TYPE::pointer request =
-            REQUEST_TYPE::create (
+            REQUEST_TYPE::create(
                 controller->_serviceProvider,
                 controller->_io_service,
                 workerName,
@@ -169,11 +166,11 @@ public:
         // be automatically removed from the Registry.
     
         (controller->_registry)[request->id()] =
-            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>> (request, onFinish);  
+            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);  
     
         // Initiate the request
 
-        request->start (controller, jobId, requestExpirationIvalSec);
+        request->start(controller, jobId, requestExpirationIvalSec);
 
         return request;
     }
@@ -187,21 +184,20 @@ public:
      */
     template <class REQUEST_TYPE>
     static
-    typename REQUEST_TYPE::pointer serviceManagementOperation (
-
-            Controller::pointer const&           controller,
-            std::string const&                   jobId,
-            std::string const&                   workerName,
+    typename REQUEST_TYPE::pointer serviceManagementOperation(
+            Controller::pointer const& controller,
+            std::string const& jobId,
+            std::string const& workerName,
             typename REQUEST_TYPE::callback_type onFinish,
 #ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
-            typename Messenger::pointer const&   messenger,
+            typename Messenger::pointer const& messenger,
 #endif
-            unsigned int                         requestExpirationIvalSec) {
+            unsigned int requestExpirationIvalSec) {
 
         controller->assertIsRunning();
 
         typename REQUEST_TYPE::pointer request =
-            REQUEST_TYPE::create (
+            REQUEST_TYPE::create(
                 controller->_serviceProvider,
                 controller->_io_service,
                 workerName,
@@ -218,24 +214,23 @@ public:
         // be automatically removed from the Registry.
 
         (controller->_registry)[request->id()] =
-            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>> (request, onFinish);
+            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);
 
         // Initiate the request
 
-        request->start (controller, jobId, requestExpirationIvalSec);
+        request->start(controller, jobId, requestExpirationIvalSec);
 
         return request;
     }
 };
 
-
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////  ControllerIdentity  //////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::ostream&
-operator << (std::ostream& os, ControllerIdentity const& identity) {
-    os << "ControllerIdentity (id:'" << identity.id << "',host:'" << identity.host << "', pid:" << identity.pid << ")";
+std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity) {
+    os  << "ControllerIdentity (id:'" << identity.id << "',host:'" << identity.host
+        << "', pid:" << identity.pid << ")";
     return os;
 }
 
@@ -243,58 +238,53 @@ operator << (std::ostream& os, ControllerIdentity const& identity) {
 //////////////////////////  Controller  //////////////////////////
 //////////////////////////////////////////////////////////////////
 
-Controller::pointer
-Controller::create (ServiceProvider& serviceProvider) {
+Controller::pointer Controller::create(ServiceProvider& serviceProvider) {
     return Controller::pointer(new Controller(serviceProvider));
 }
 
-Controller::Controller (ServiceProvider& serviceProvider)
-    :   _identity ({
+Controller::Controller(ServiceProvider& serviceProvider)
+    :   _identity({
             Generators::uniqueId(),
             boost::asio::ip::host_name(),
             getpid()}),
-
-        _startTime       (PerformanceUtils::now()),
-        _serviceProvider (serviceProvider),
-        _io_service      (),
-        _work            (nullptr),
-        _thread          (nullptr),
-        _registry        () {
+        _startTime(PerformanceUtils::now()),
+        _serviceProvider(serviceProvider),
+        _io_service(),
+        _work(nullptr),
+        _thread(nullptr),
+        _registry() {
 
 #ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
-    _messenger = Messenger::create (_serviceProvider, _io_service);
+    _messenger = Messenger::create(_serviceProvider, _io_service);
 #endif
 
     LOGS(_log, LOG_LVL_DEBUG, "Controller  identity=" << _identity);
 
-    serviceProvider.databaseServices()->saveState (_identity, _startTime);
+    serviceProvider.databaseServices()->saveState(_identity, _startTime);
 }
 
-void
-Controller::run () {
+void Controller::run() {
 
     LOCK_GUARD;
 
-    if (!isRunning()) {
+    if (not isRunning()) {
 
         Controller::pointer controller = shared_from_this();
      
-        _work.reset (
-            new boost::asio::io_service::work(_io_service)
-        );
-        _thread.reset (
-            new std::thread (
+        _work.reset(
+            new boost::asio::io_service::work(_io_service));
+
+        _thread.reset(
+            new std::thread(
                 [controller] () {
         
                     // This will prevent the I/O service from existing the .run()
                     // method event when it will run out of any requess to process.
                     // Unless the service will be explicitly stopped.
-    
                     controller->_io_service.run();
                     
                     // Always reset the object in a preparation for its further
                     // usage.
-    
                     controller->_io_service.reset();
                 }
             )
@@ -302,15 +292,13 @@ Controller::run () {
     }
 }
 
-bool
-Controller::isRunning () const {
+bool Controller::isRunning() const {
     return _thread.get() != nullptr;
 }
 
-void
-Controller::stop () {
+void Controller::stop() {
 
-    if (!isRunning()) return;
+    if (not isRunning()) { return; }
 
     // IMPORTANT:
     //
@@ -342,26 +330,27 @@ Controller::stop () {
     
     // Double check that the collection of requests is empty.
     
-    if (!_registry.empty())
-        throw std::logic_error ("Controller::stop() the collection of outstanding requests is not empty");
+    if (not _registry.empty()) {
+        throw std::logic_error(
+                        "Controller::stop() the collection of outstanding requests is not empty");
+    }
 }
 
-void
-Controller::join () {
-    if (_thread) _thread->join();
+void Controller::join() {
+    if (_thread) { _thread->join(); }
 }
 
-ReplicationRequest::pointer
-Controller::replicate (std::string const&                workerName,
-                       std::string const&                sourceWorkerName,
-                       std::string const&                database,
-                       unsigned int                      chunk,
-                       ReplicationRequest::callback_type onFinish,
-                       int                               priority,
-                       bool                              keepTracking,
-                       bool                              allowDuplicate,
-                       std::string const&                jobId,
-                       unsigned int                      requestExpirationIvalSec) {
+ReplicationRequest::pointer Controller::replicate(
+                                std::string const& workerName,
+                                std::string const& sourceWorkerName,
+                                std::string const& database,
+                                unsigned int chunk,
+                                ReplicationRequest::callback_type onFinish,
+                                int  priority,
+                                bool keepTracking,
+                                bool allowDuplicate,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     assertIsRunning();
@@ -369,7 +358,7 @@ Controller::replicate (std::string const&                workerName,
     Controller::pointer controller = shared_from_this();
 
     ReplicationRequest::pointer request =
-        ReplicationRequest::create (
+        ReplicationRequest::create(
             _serviceProvider,
             _io_service,
             workerName,
@@ -392,25 +381,25 @@ Controller::replicate (std::string const&                workerName,
     // be automatically removed from the Registry.
 
     _registry[request->id()] =
-        std::make_shared<RequestWrapperImpl<ReplicationRequest>> (request, onFinish);
+        std::make_shared<RequestWrapperImpl<ReplicationRequest>>(request, onFinish);
 
     // Initiate the request
 
-    request->start (controller, jobId, requestExpirationIvalSec);
+    request->start(controller, jobId, requestExpirationIvalSec);
 
     return request;
 }
 
-DeleteRequest::pointer
-Controller::deleteReplica (std::string const&           workerName,
-                           std::string const&           database,
-                           unsigned int                 chunk,
-                           DeleteRequest::callback_type onFinish,
-                           int                          priority,
-                           bool                         keepTracking,
-                           bool                         allowDuplicate,
-                           std::string const&           jobId,
-                           unsigned int                 requestExpirationIvalSec) {
+DeleteRequest::pointer Controller::deleteReplica(
+                            std::string const& workerName,
+                            std::string const& database,
+                            unsigned int chunk,
+                            DeleteRequest::callback_type onFinish,
+                            int  priority,
+                            bool keepTracking,
+                            bool allowDuplicate,
+                            std::string const& jobId,
+                            unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     assertIsRunning();
@@ -418,7 +407,7 @@ Controller::deleteReplica (std::string const&           workerName,
     Controller::pointer controller = shared_from_this();
 
     DeleteRequest::pointer request =
-        DeleteRequest::create (
+        DeleteRequest::create(
             _serviceProvider,
             _io_service,
             workerName,
@@ -440,25 +429,25 @@ Controller::deleteReplica (std::string const&           workerName,
     // be automatically removed from the Registry.
 
     _registry[request->id()] =
-        std::make_shared<RequestWrapperImpl<DeleteRequest>> (request, onFinish);
+        std::make_shared<RequestWrapperImpl<DeleteRequest>>(request, onFinish);
 
     // Initiate the request
 
-    request->start (controller, jobId, requestExpirationIvalSec);
+    request->start(controller, jobId, requestExpirationIvalSec);
 
     return request;
 }
 
-FindRequest::pointer
-Controller::findReplica (std::string const&         workerName,
-                         std::string const&         database,
-                         unsigned int               chunk,
-                         FindRequest::callback_type onFinish,
-                         int                        priority,
-                         bool                       computeCheckSum,
-                         bool                       keepTracking,
-                         std::string const&         jobId,
-                         unsigned int               requestExpirationIvalSec) {
+FindRequest::pointer Controller::findReplica(
+                        std::string const& workerName,
+                        std::string const& database,
+                        unsigned int chunk,
+                        FindRequest::callback_type onFinish,
+                        int  priority,
+                        bool computeCheckSum,
+                        bool keepTracking,
+                        std::string const& jobId,
+                        unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     assertIsRunning();
@@ -466,7 +455,7 @@ Controller::findReplica (std::string const&         workerName,
     Controller::pointer controller = shared_from_this();
 
     FindRequest::pointer request =
-        FindRequest::create (
+        FindRequest::create(
             _serviceProvider,
             _io_service,
             workerName,
@@ -488,23 +477,23 @@ Controller::findReplica (std::string const&         workerName,
     // be automatically removed from the Registry.
 
     _registry[request->id()] =
-        std::make_shared<RequestWrapperImpl<FindRequest>> (request, onFinish);
+        std::make_shared<RequestWrapperImpl<FindRequest>>(request, onFinish);
 
     // Initiate the request
 
-    request->start (controller, jobId, requestExpirationIvalSec);
+    request->start(controller, jobId, requestExpirationIvalSec);
 
     return request;
 }
 
-FindAllRequest::pointer
-Controller::findAllReplicas (std::string const&            workerName,
-                             std::string const&            database,
-                             FindAllRequest::callback_type onFinish,
-                             int                           priority,
-                             bool                          keepTracking,
-                             std::string const&            jobId,
-                             unsigned int                  requestExpirationIvalSec) {
+FindAllRequest::pointer Controller::findAllReplicas(
+                            std::string const& workerName,
+                            std::string const& database,
+                            FindAllRequest::callback_type onFinish,
+                            int  priority,
+                            bool keepTracking,
+                            std::string const& jobId,
+                            unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     assertIsRunning();
@@ -512,7 +501,7 @@ Controller::findAllReplicas (std::string const&            workerName,
     Controller::pointer controller = shared_from_this();
 
     FindAllRequest::pointer request =
-        FindAllRequest::create (
+        FindAllRequest::create(
             _serviceProvider,
             _io_service,
             workerName,
@@ -532,27 +521,27 @@ Controller::findAllReplicas (std::string const&            workerName,
     // be automatically removed from the Registry.
 
     _registry[request->id()] =
-        std::make_shared<RequestWrapperImpl<FindAllRequest>> (request, onFinish);
+        std::make_shared<RequestWrapperImpl<FindAllRequest>>(request, onFinish);
 
     // Initiate the request
 
-    request->start (controller, jobId, requestExpirationIvalSec);
+    request->start(controller, jobId, requestExpirationIvalSec);
 
     return request;
 }
 
-StopReplicationRequest::pointer
-Controller::stopReplication (std::string const&                    workerName,
-                             std::string const&                    targetRequestId,
-                             StopReplicationRequest::callback_type onFinish,
-                             bool                                  keepTracking,
-                             std::string const&                    jobId,
-                             unsigned int                          requestExpirationIvalSec) {
+StopReplicationRequest::pointer Controller::stopReplication(
+                                    std::string const& workerName,
+                                    std::string const& targetRequestId,
+                                    StopReplicationRequest::callback_type onFinish,
+                                    bool keepTracking,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "stopReplication  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StopReplicationRequest> (
+    return ControllerImpl::requestManagementOperation<StopReplicationRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -565,18 +554,18 @@ Controller::stopReplication (std::string const&                    workerName,
         requestExpirationIvalSec);
 }
 
-StopDeleteRequest::pointer
-Controller::stopReplicaDelete (std::string const&               workerName,
-                               std::string const&               targetRequestId,
-                               StopDeleteRequest::callback_type onFinish,
-                               bool                             keepTracking,
-                               std::string const&               jobId,
-                               unsigned int                     requestExpirationIvalSec) {
+StopDeleteRequest::pointer Controller::stopReplicaDelete(
+                                std::string const& workerName,
+                                std::string const& targetRequestId,
+                                StopDeleteRequest::callback_type onFinish,
+                                bool keepTracking,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "stopReplicaDelete  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StopDeleteRequest> (
+    return ControllerImpl::requestManagementOperation<StopDeleteRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -589,18 +578,18 @@ Controller::stopReplicaDelete (std::string const&               workerName,
         requestExpirationIvalSec);
 }
 
-StopFindRequest::pointer
-Controller::stopReplicaFind (std::string const&             workerName,
-                             std::string const&             targetRequestId,
-                             StopFindRequest::callback_type onFinish,
-                             bool                           keepTracking,
-                             std::string const&             jobId,
-                             unsigned int                   requestExpirationIvalSec) {
+StopFindRequest::pointer Controller::stopReplicaFind(
+                            std::string const& workerName,
+                            std::string const& targetRequestId,
+                            StopFindRequest::callback_type onFinish,
+                            bool keepTracking,
+                            std::string const& jobId,
+                            unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "stopReplicaFind  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StopFindRequest> (
+    return ControllerImpl::requestManagementOperation<StopFindRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -613,18 +602,18 @@ Controller::stopReplicaFind (std::string const&             workerName,
         requestExpirationIvalSec);
 }
 
-StopFindAllRequest::pointer
-Controller::stopReplicaFindAll (std::string const&                workerName,
-                                std::string const&                targetRequestId,
+StopFindAllRequest::pointer Controller::stopReplicaFindAll(
+                                std::string const& workerName,
+                                std::string const& targetRequestId,
                                 StopFindAllRequest::callback_type onFinish,
-                                bool                              keepTracking,
-                                std::string const&                jobId,
-                                unsigned int                      requestExpirationIvalSec) {
+                                bool keepTracking,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "stopReplicaFindAll  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StopFindAllRequest> (
+    return ControllerImpl::requestManagementOperation<StopFindAllRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -637,18 +626,18 @@ Controller::stopReplicaFindAll (std::string const&                workerName,
         requestExpirationIvalSec);
 }
 
-StatusReplicationRequest::pointer
-Controller::statusOfReplication (std::string const&                      workerName,
-                                 std::string const&                      targetRequestId,
-                                 StatusReplicationRequest::callback_type onFinish,
-                                 bool                                    keepTracking,
-                                 std::string const&                      jobId,
-                                 unsigned int                            requestExpirationIvalSec) {
+StatusReplicationRequest::pointer Controller::statusOfReplication(
+                                        std::string const& workerName,
+                                        std::string const& targetRequestId,
+                                        StatusReplicationRequest::callback_type onFinish,
+                                        bool keepTracking,
+                                        std::string const& jobId,
+                                        unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "statusOfReplication  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StatusReplicationRequest> (
+    return ControllerImpl::requestManagementOperation<StatusReplicationRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -661,18 +650,18 @@ Controller::statusOfReplication (std::string const&                      workerN
         requestExpirationIvalSec);
 }
 
-StatusDeleteRequest::pointer
-Controller::statusOfDelete (std::string const&                 workerName,
-                            std::string const&                 targetRequestId,
-                            StatusDeleteRequest::callback_type onFinish,
-                            bool                               keepTracking,
-                            std::string const&                 jobId,
-                            unsigned int                       requestExpirationIvalSec) {
+StatusDeleteRequest::pointer Controller::statusOfDelete(
+                                    std::string const& workerName,
+                                    std::string const& targetRequestId,
+                                    StatusDeleteRequest::callback_type onFinish,
+                                    bool keepTracking,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "statusOfDelete  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StatusDeleteRequest> (
+    return ControllerImpl::requestManagementOperation<StatusDeleteRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -685,18 +674,18 @@ Controller::statusOfDelete (std::string const&                 workerName,
         requestExpirationIvalSec);
 }
 
-StatusFindRequest::pointer
-Controller::statusOfFind (std::string const&               workerName,
-                          std::string const&               targetRequestId,
-                          StatusFindRequest::callback_type onFinish,
-                          bool                             keepTracking,
-                          std::string const&               jobId,
-                          unsigned int                     requestExpirationIvalSec) {
+StatusFindRequest::pointer Controller::statusOfFind(
+                                std::string const& workerName,
+                                std::string const& targetRequestId,
+                                StatusFindRequest::callback_type onFinish,
+                                bool keepTracking,
+                                std::string const& jobId,
+                                unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "statusOfFind  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StatusFindRequest> (
+    return ControllerImpl::requestManagementOperation<StatusFindRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -709,18 +698,18 @@ Controller::statusOfFind (std::string const&               workerName,
         requestExpirationIvalSec);
 }
 
-StatusFindAllRequest::pointer
-Controller::statusOfFindAll (std::string const&                  workerName,
-                             std::string const&                  targetRequestId,
-                             StatusFindAllRequest::callback_type onFinish,
-                             bool                                keepTracking,
-                             std::string const&                  jobId,
-                             unsigned int                        requestExpirationIvalSec) {
+StatusFindAllRequest::pointer Controller::statusOfFindAll(
+                                    std::string const& workerName,
+                                    std::string const& targetRequestId,
+                                    StatusFindAllRequest::callback_type onFinish,
+                                    bool keepTracking,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "statusOfFindAll  targetRequestId = " << targetRequestId);
 
-    return ControllerImpl::requestManagementOperation<StatusFindAllRequest> (
+    return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -733,16 +722,16 @@ Controller::statusOfFindAll (std::string const&                  workerName,
         requestExpirationIvalSec);
 }
 
-ServiceSuspendRequest::pointer
-Controller::suspendWorkerService (std::string const&                   workerName,
-                                  ServiceSuspendRequest::callback_type onFinish,
-                                  std::string const&                   jobId,
-                                  unsigned int                         requestExpirationIvalSec) {
+ServiceSuspendRequest::pointer Controller::suspendWorkerService(
+                                    std::string const& workerName,
+                                    ServiceSuspendRequest::callback_type onFinish,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "suspendWorkerService  workerName: " << workerName);
 
-    return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest> (
+    return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -753,16 +742,16 @@ Controller::suspendWorkerService (std::string const&                   workerNam
         requestExpirationIvalSec);
 }
 
-ServiceResumeRequest::pointer
-Controller::resumeWorkerService (std::string const&                  workerName,
-                                 ServiceResumeRequest::callback_type onFinish,
-                                 std::string const&                  jobId,
-                                 unsigned int                        requestExpirationIvalSec) {
+ServiceResumeRequest::pointer Controller::resumeWorkerService(
+                                    std::string const& workerName,
+                                    ServiceResumeRequest::callback_type onFinish,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "resumeWorkerService  workerName: " << workerName);
 
-    return ControllerImpl::serviceManagementOperation<ServiceResumeRequest> (
+    return ControllerImpl::serviceManagementOperation<ServiceResumeRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -773,16 +762,16 @@ Controller::resumeWorkerService (std::string const&                  workerName,
         requestExpirationIvalSec);
 }
 
-ServiceStatusRequest::pointer
-Controller::statusOfWorkerService (std::string const&                  workerName,
-                                   ServiceStatusRequest::callback_type onFinish,
-                                   std::string const&                  jobId,
-                                   unsigned int                        requestExpirationIvalSec) {
+ServiceStatusRequest::pointer Controller::statusOfWorkerService(
+                                    std::string const& workerName,
+                                    ServiceStatusRequest::callback_type onFinish,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "statusOfWorkerService  workerName: " << workerName);
 
-    return ControllerImpl::serviceManagementOperation<ServiceStatusRequest> (
+    return ControllerImpl::serviceManagementOperation<ServiceStatusRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -793,16 +782,16 @@ Controller::statusOfWorkerService (std::string const&                  workerNam
         requestExpirationIvalSec);
 }
 
-ServiceRequestsRequest::pointer
-Controller::requestsOfWorkerService (std::string const&                    workerName,
-                                     ServiceRequestsRequest::callback_type onFinish,
-                                     std::string const&                    jobId,
-                                     unsigned int                          requestExpirationIvalSec) {
+ServiceRequestsRequest::pointer Controller::requestsOfWorkerService(
+                                    std::string const& workerName,
+                                    ServiceRequestsRequest::callback_type onFinish,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "requestsOfWorkerService  workerName: " << workerName);
 
-    return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest> (
+    return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -813,16 +802,16 @@ Controller::requestsOfWorkerService (std::string const&                    worke
         requestExpirationIvalSec);
 }
 
-ServiceDrainRequest::pointer
-Controller::drainWorkerService (std::string const&                 workerName,
-                                ServiceDrainRequest::callback_type onFinish,
-                                std::string const&                 jobId,
-                                unsigned int                       requestExpirationIvalSec) {
+ServiceDrainRequest::pointer Controller::drainWorkerService(
+                                    std::string const& workerName,
+                                    ServiceDrainRequest::callback_type onFinish,
+                                    std::string const& jobId,
+                                    unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, "drainWorkerService  workerName: " << workerName);
 
-    return ControllerImpl::serviceManagementOperation<ServiceDrainRequest> (
+    return ControllerImpl::serviceManagementOperation<ServiceDrainRequest>(
         shared_from_this(),
         jobId,
         workerName,
@@ -833,14 +822,12 @@ Controller::drainWorkerService (std::string const&                 workerName,
         requestExpirationIvalSec);
 }
 
-size_t
-Controller::numActiveRequests () const {
+size_t Controller::numActiveRequests() const {
     LOCK_GUARD;
     return _registry.size();
 }
 
-void
-Controller::finish (std::string const& id) {
+void Controller::finish(std::string const& id) {
 
     // IMPORTANT:
     //
@@ -863,10 +850,10 @@ Controller::finish (std::string const& id) {
     request->notify();
 }
 
-void
-Controller::assertIsRunning () const {
-    if (!isRunning())
+void Controller::assertIsRunning() const {
+    if (not isRunning()) {
         throw std::runtime_error("the replication service is not running");
+    }
 }
 
 }}} // namespace lsst::qserv::replica

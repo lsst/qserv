@@ -6,15 +6,16 @@
 
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
-#include "replica/CmdParser.h"
-#include "replica/BlockPost.h"
 #include "replica/Controller.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+#include "util/BlockPost.h"
+#include "util/CmdLineParser.h"
 
-namespace rc = lsst::qserv::replica;
+namespace rc   = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -86,9 +87,9 @@ public:
      *                     
      * @return - a collection of pointers to the requests.
      */
-    replication_requests replicate (size_t         num,
-                                    unsigned int   firstChunk,
-                                    rc::BlockPost *blockPost=nullptr) {
+    replication_requests replicate (size_t num,
+                                    unsigned int firstChunk,
+                                    util::BlockPost *blockPost=nullptr) {
 
         replication_requests requests;
         
@@ -201,7 +202,7 @@ void test () {
 
     try {
 
-        rc::BlockPost blockPost (0, 100);  // for random delays (milliseconds) between operations
+        util::BlockPost blockPost (0, 100);     // for random delays (milliseconds) between operations
 
         rc::ServiceProvider provider (configUrl);
 
@@ -312,7 +313,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

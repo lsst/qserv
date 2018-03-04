@@ -29,9 +29,9 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -113,7 +113,7 @@ void FixUpJob::track (bool progressReport,
                            chunkLocksReport,
                            os);
     
-    BlockPost blockPost(1000, 2000);
+    util::BlockPost blockPost(1000, 2000);
 
     while (_numFinished < _numLaunched) {
         blockPost.wait();

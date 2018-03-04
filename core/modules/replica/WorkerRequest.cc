@@ -28,24 +28,22 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SuccessRateGenerator.h"
+#include "util/BlockPost.h"
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequest");
 
-namespace replica = lsst::qserv::replica;
-
 /// Maximum duration for the request execution
 unsigned int const maxDurationMillisec = 10000;
 
 /// Random interval for the incremental execution
-replica::BlockPost incrementIvalMillisec (1000, 2000);
+lsst::qserv::util::BlockPost incrementIvalMillisec (1000, 2000);
 
 /// Random generator of success/failure rates
-replica::SuccessRateGenerator successRateGenerator(0.9);
+lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);
 
 } /// namespace
 

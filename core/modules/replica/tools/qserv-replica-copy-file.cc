@@ -1,4 +1,4 @@
-#include "replica/CmdParser.h"
+#include "util/CmdLineParser.h"
 #if 0
 #include "XrdCl/XrdClFile.hh"
 #endif
@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace rc  = lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -86,7 +86,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        rc::CmdParser parser (
+        util::CmdLineParser parser (
             argc,
             argv,
             "\n"

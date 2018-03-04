@@ -30,10 +30,10 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "replica/BlockPost.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -41,8 +41,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
-
-using namespace lsst::qserv::replica;
 
 /**
  * Count the total number of entries in the input collection,
@@ -56,7 +54,7 @@ using namespace lsst::qserv::replica;
  * @return - a tuple of three elements
  */
 template <class T>
-std::tuple<size_t,size_t,size_t> counters (std::list<typename T::pointer> const& collection) {
+std::tuple<size_t,size_t,size_t> counters(std::list<typename T::pointer> const& collection) {
     size_t total    = 0;
     size_t finished = 0;
     size_t success  = 0;
@@ -79,30 +77,30 @@ std::tuple<size_t,size_t,size_t> counters (std::list<typename T::pointer> const&
  * @param collection - a collection of entries to be analyzed
  */
 template <class T>
-void track (std::list<typename T::pointer> const& collection,
-            std::string const&                    scope,
-            bool                                  progressReport,
-            std::ostream&                         os) {
+void track(std::list<typename T::pointer> const& collection,
+           std::string const& scope,
+           bool progressReport,
+           std::ostream& os) {
 
-    BlockPost blockPost (1000, 2000);
+    lsst::qserv::util::BlockPost blockPost(1000, 2000);
 
     while (true) {
         blockPost.wait();
 
-        std::tuple<size_t,size_t,size_t> t = ::counters<T> (collection);
+        std::tuple<size_t,size_t,size_t> t = ::counters<T>(collection);
 
         size_t const launched = std::get<0>(t);
         size_t const finished = std::get<1>(t);
         size_t const success  = std::get<1>(t);
             
-        if (progressReport)
+        if (progressReport) {
             os  << "DeleteWorkerJob::track()  " << scope << "  "
                 << "launched: " << launched << ", "
                 << "finished: " << finished << ", "
                 << "success: "  << success
                 << std::endl;
-
-        if (finished == launched) break;
+        }
+        if (finished == launched) { break; }
     }
 }
 
@@ -112,106 +110,99 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-DeleteWorkerJob::pointer
-DeleteWorkerJob::create (std::string const&         worker,
-                         bool                       permanentDelete,
-                         Controller::pointer const& controller,
-                         callback_type              onFinish,
-                         bool                       bestEffort,
-                         int                        priority,
-                         bool                       exclusive,
-                         bool                       preemptable) {
-    return DeleteWorkerJob::pointer (
-        new DeleteWorkerJob (worker,
-                             permanentDelete,
-                             controller,
-                             onFinish,
-                             bestEffort,
-                             priority,
-                             exclusive,
-                             preemptable));
+DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
+                                                 bool permanentDelete,
+                                                 Controller::pointer const& controller,
+                                                 callback_type onFinish,
+                                                 bool bestEffort,
+                                                 int  priority,
+                                                 bool exclusive,
+                                                 bool preemptable) {
+    return DeleteWorkerJob::pointer(
+        new DeleteWorkerJob(worker,
+                            permanentDelete,
+                            controller,
+                            onFinish,
+                            bestEffort,
+                            priority,
+                            exclusive,
+                            preemptable));
 }
 
-DeleteWorkerJob::DeleteWorkerJob (std::string const&         worker,
-                                  bool                       permanentDelete,
-                                  Controller::pointer const& controller,
-                                  callback_type              onFinish,
-                                  bool                       bestEffort,
-                                  int                        priority,
-                                  bool                       exclusive,
-                                  bool                       preemptable)
-
-    :   Job (controller,
-             "DELETE_WORKER",
-             priority,
-             exclusive,
-             preemptable),
-
-        _worker          (worker),
-        _permanentDelete (permanentDelete),
-
-        _onFinish   (onFinish),
-        _bestEffort (bestEffort),
-        
-        _numLaunched (0),
-        _numFinished (0),
-        _numSuccess  (0) {
+DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
+                                 bool permanentDelete,
+                                 Controller::pointer const& controller,
+                                 callback_type onFinish,
+                                 bool bestEffort,
+                                 int  priority,
+                                 bool exclusive,
+                                 bool preemptable)
+    :   Job(controller,
+            "DELETE_WORKER",
+            priority,
+            exclusive,
+            preemptable),
+        _worker(worker),
+        _permanentDelete(permanentDelete),
+        _onFinish(onFinish),
+        _bestEffort(bestEffort),
+        _numLaunched(0),
+        _numFinished(0),
+        _numSuccess(0) {
 }
 
-DeleteWorkerJobResult const&
-DeleteWorkerJob::getReplicaData () const {
+DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getReplicaData");
+    LOGS(_log, LOG_LVL_DEBUG, context());
 
-    if (_state == State::FINISHED)  return _replicaData;
+    if (_state == State::FINISHED) { return _replicaData; }
 
-    throw std::logic_error (
-        "DeleteWorkerJob::getReplicaData  the method can't be called while the job hasn't finished");
+    throw std::logic_error(
+        "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
 }
 
-void
-DeleteWorkerJob::track (bool progressReport,
-                        bool errorReport,
-                        bool chunkLocksReport,
-                        std::ostream& os) const {
+void DeleteWorkerJob::track(bool progressReport,
+                            bool errorReport,
+                            bool chunkLocksReport,
+                            std::ostream& os) const {
 
-    if (_state == State::FINISHED) return;
-    
-    ::track<FindAllRequest> (_findAllRequests, "_findAllRequests", progressReport, os);
+    if (_state == State::FINISHED) { return; }
+ 
+    ::track<FindAllRequest>(_findAllRequests, "_findAllRequests", progressReport, os);
     if (errorReport) {
 
-        std::tuple<size_t,size_t,size_t> t = ::counters<FindAllRequest> (_findAllRequests);
+        std::tuple<size_t,size_t,size_t> t = ::counters<FindAllRequest>(_findAllRequests);
         size_t const launched = std::get<0>(t);
         size_t const success  = std::get<1>(t);
 
-        if (launched - success)
-            replica::reportRequestState (_findAllRequests, os);
+        if (launched - success) {
+            replica::reportRequestState(_findAllRequests, os);
+        }
     }
-    ::track<FindAllJob>   (_findAllJobs,   "_findAllJobs",   progressReport, os);
-    ::track<ReplicateJob> (_replicateJobs, "_replicateJobs", progressReport, os);
+    ::track<FindAllJob>(  _findAllJobs,   "_findAllJobs",   progressReport, os);
+    ::track<ReplicateJob>(_replicateJobs, "_replicateJobs", progressReport, os);
 
     // The last step is needed to le the job to finalize its state after
     // finishing all activities.
-    BlockPost blockPost (1000, 2000);
+    util::BlockPost blockPost(1000, 2000);
     while (state() != State::FINISHED) {
         LOGS(_log, LOG_LVL_DEBUG, context() << "track");
         blockPost.wait();
     }
 }
 
-void
-DeleteWorkerJob::startImpl () {
+void DeleteWorkerJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
-    BlockPost blockPost (1000, 2000);
+    util::BlockPost blockPost(1000, 2000);
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
     ServiceStatusRequest::pointer const statusRequest =
-        _controller->statusOfWorkerService (
+        _controller->statusOfWorkerService(
             _worker,
             nullptr,    /* onFinish  -- not needed here because tracking the request -- */
             _id,        /* jobId */
@@ -227,7 +218,7 @@ DeleteWorkerJob::startImpl () {
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfeering with the current job's requests
             ServiceDrainRequest::pointer const drainRequest =
-                _controller->drainWorkerService (
+                _controller->drainWorkerService(
                     _worker,
                     nullptr,    /* onFinish  -- not needed here because tracking the request -- */
                     _id,        /* jobId */
@@ -244,7 +235,7 @@ DeleteWorkerJob::startImpl () {
                     // for all known databases
                     for (auto const& database: _controller->serviceProvider().config()->databases()) {
                         FindAllRequest::pointer const request =
-                            _controller->findAllReplicas (
+                            _controller->findAllReplicas(
                                 _worker,
                                 database,
                                 [self] (FindAllRequest::pointer ptr) {
@@ -273,8 +264,7 @@ DeleteWorkerJob::startImpl () {
     return;
 }
 
-void
-DeleteWorkerJob::cancelImpl () {
+void DeleteWorkerJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
@@ -284,25 +274,25 @@ DeleteWorkerJob::cancelImpl () {
 
     for (auto const& ptr: _findAllRequests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
-            _controller->stopReplicaFindAll (
+        if (ptr->state() != Request::State::FINISHED) {
+            _controller->stopReplicaFindAll(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
                 true,       /* keepTracking */
                 _id         /* jobId */);
+        }
     }
 
     // Stop chained jobs (if any) as well
 
-    for (auto const& ptr: _findAllJobs)   ptr->cancel();
-    for (auto const& ptr: _replicateJobs) ptr->cancel();
+    for (auto const& ptr: _findAllJobs)   { ptr->cancel(); }
+    for (auto const& ptr: _replicateJobs) { ptr->cancel(); }
 
     setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
-void
-DeleteWorkerJob::notify () {
+void DeleteWorkerJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
@@ -312,8 +302,7 @@ DeleteWorkerJob::notify () {
     }
 }
 
-void
-DeleteWorkerJob::onRequestFinish (FindAllRequest::pointer request) {
+void DeleteWorkerJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish"
@@ -350,7 +339,7 @@ DeleteWorkerJob::onRequestFinish (FindAllRequest::pointer request) {
 }
 
 void
-DeleteWorkerJob::disableWorker () {
+DeleteWorkerJob::disableWorker() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker");
 
@@ -369,7 +358,7 @@ DeleteWorkerJob::disableWorker () {
     auto self = shared_from_base<DeleteWorkerJob>();
 
     for (auto const& databaseFamily: _controller->serviceProvider().config()->databaseFamilies()) {
-        FindAllJob::pointer job = FindAllJob::create (
+        FindAllJob::pointer job = FindAllJob::create(
             databaseFamily,
             _controller,
             [self] (FindAllJob::pointer job) {
@@ -382,8 +371,7 @@ DeleteWorkerJob::disableWorker () {
     }
 }
 
-void
-DeleteWorkerJob::onJobFinish (FindAllJob::pointer job) {
+void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
          << " databaseFamily: " << job->databaseFamily());
@@ -396,12 +384,12 @@ DeleteWorkerJob::onJobFinish (FindAllJob::pointer job) {
         _numFinished++;
 
         // Ignore the callback if the job was cancelled (or otherwise failed)
-        if (_state == State::FINISHED) return;
-    
+        if (_state == State::FINISHED) { return; }
+
         // Do not proceed with the rest unless running the jobs
         // under relaxed condition.
     
-        if (!_bestEffort && (job->extendedState() != ExtendedState::SUCCESS)) {
+        if (not _bestEffort and (job->extendedState() != ExtendedState::SUCCESS)) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
@@ -420,7 +408,7 @@ DeleteWorkerJob::onJobFinish (FindAllJob::pointer job) {
             auto self = shared_from_base<DeleteWorkerJob>();
     
             for (auto const& databaseFamily: _controller->serviceProvider().config()->databaseFamilies()) {
-                ReplicateJob::pointer job = ReplicateJob::create (
+                ReplicateJob::pointer const job = ReplicateJob::create(
                     databaseFamily,
                     0,  /* numReplicas -- pull from Configuration */
                     _controller,
@@ -440,12 +428,10 @@ DeleteWorkerJob::onJobFinish (FindAllJob::pointer job) {
     // notifying a caller (if the callback function was povided) in order to avoid
     // the circular deadlocks.
 
-    if (_state == State::FINISHED)
-        notify ();
+    if (_state == State::FINISHED) { notify (); }
 }
 
-void
-DeleteWorkerJob::onJobFinish (ReplicateJob::pointer job) {
+void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob) "
          << " databaseFamily: " << job->databaseFamily()
@@ -495,8 +481,9 @@ DeleteWorkerJob::onJobFinish (ReplicateJob::pointer job) {
                         replicated = replicated or
                             (chunks.count(chunk) and chunks.at(chunk).count(database));
                     }
-                    if (not replicated)
+                    if (not replicated) {
                         _replicaData.orphanChunks[chunk][database] = replica;
+                    }
                 }
             }
             
@@ -510,9 +497,9 @@ DeleteWorkerJob::onJobFinish (ReplicateJob::pointer job) {
 
             // Do this only if requested, and only in case of the successful
             // completion of the job
-            if (_permanentDelete)
+            if (_permanentDelete) {
                 _controller->serviceProvider().config()->deleteWorker (_worker);
-
+            }
             setState(State::FINISHED, ExtendedState::SUCCESS);
             break;
         }
@@ -523,8 +510,7 @@ DeleteWorkerJob::onJobFinish (ReplicateJob::pointer job) {
     // notifying a caller (if the callback function was povided) in order to avoid
     // the circular deadlocks.
 
-    if (_state == State::FINISHED)
-        notify ();
+    if (_state == State::FINISHED) { notify (); }
 }
 
 }}} // namespace lsst::qserv::replica

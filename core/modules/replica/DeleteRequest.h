@@ -85,24 +85,24 @@ public:
     // Default construction and copy semantics are 
     
 
-    DeleteRequestC () = delete;
-    DeleteRequestC (DeleteRequestC const&) = delete;
-    DeleteRequestC& operator= (DeleteRequestC const&) = delete;
+    DeleteRequestC() = delete;
+    DeleteRequestC(DeleteRequestC const&) = delete;
+    DeleteRequestC& operator=(DeleteRequestC const&) = delete;
 
     /// Destructor
-    ~DeleteRequestC () final = default;
+    ~DeleteRequestC() final = default;
 
     // Trivial acccessors
  
-    std::string const& database () const { return _database; }
-    unsigned int       chunk    () const { return _chunk; }
+    std::string const& database() const { return _database; }
+    unsigned int       chunk() const    { return _chunk; }
 
     /// Return target request specific parameters
-    DeleteRequestParams const& targetRequestParams () const { return _targetRequestParams; }
+    DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /// Return request-specific extended data reported upon a successfull
     /// completion of the request
-    ReplicaInfo const& responseData () const { return _responseData; }
+    ReplicaInfo const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -121,30 +121,30 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      */
-    static pointer create (ServiceProvider& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& database,
-                           unsigned int  chunk,
-                           callback_type onFinish,
-                           int  priority,
-                           bool keepTracking,
-                           bool allowDuplicate);
+    static pointer create(ServiceProvider& serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const& worker,
+                          std::string const& database,
+                          unsigned int  chunk,
+                          callback_type onFinish,
+                          int  priority,
+                          bool keepTracking,
+                          bool allowDuplicate);
 
 private:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestC (ServiceProvider& serviceProvider,
-                    boost::asio::io_service& io_service,
-                    std::string const& worker,
-                    std::string const& database,
-                    unsigned int  chunk,
-                    callback_type onFinish,
-                    int  priority,
-                    bool keepTracking,
-                    bool allowDuplicate);
+    DeleteRequestC(ServiceProvider& serviceProvider,
+                   boost::asio::io_service& io_service,
+                   std::string const& worker,
+                   std::string const& database,
+                   unsigned int  chunk,
+                   callback_type onFinish,
+                   int  priority,
+                   bool keepTracking,
+                   bool allowDuplicate);
 
     /**
       * This method is called when a connection is established and
@@ -154,42 +154,42 @@ private:
       * The first step of teh protocol will be to send the replication
       * request to the destination worker.
       */
-    void beginProtocol () final;
+    void beginProtocol() final;
     
     /// Callback handler for the asynchronious operation
-    void requestSent (boost::system::error_code const& ec,
-                      size_t bytes_transferred);
+    void requestSent(boost::system::error_code const& ec,
+                     size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
-    void receiveResponse ();
+    void receiveResponse();
 
     /// Callback handler for the asynchronious operation
-    void responseReceived (boost::system::error_code const& ec,
-                           size_t bytes_transferred);
+    void responseReceived(boost::system::error_code const& ec,
+                          size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
-    void wait ();
+    void wait();
 
     /// Callback handler for the asynchronious operation
-    void awaken (boost::system::error_code const& ec);
+    void awaken(boost::system::error_code const& ec);
 
     /// Start sending the status request to the destination worker
     void sendStatus ();
 
     /// Callback handler for the asynchronious operation
-    void statusSent (boost::system::error_code const& ec,
-                     size_t bytes_transferred);
+    void statusSent(boost::system::error_code const& ec,
+                    size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
-    void receiveStatus ();
+    void receiveStatus();
 
     /// Callback handler for the asynchronious operation
-    void statusReceived (boost::system::error_code const& ec,
-                         size_t bytes_transferred);
+    void statusReceived(boost::system::error_code const& ec,
+                        size_t bytes_transferred);
 
     /// Process the completion of the requested operation
-    void analyze (proto::ReplicationResponseDelete const& message);
+    void analyze(proto::ReplicationResponseDelete const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -197,7 +197,7 @@ private:
      * This method implements the corresponing virtual method defined
      * bu the base class.
      */
-    void notify () final;
+    void notify() final;
 
 private:
 
@@ -238,24 +238,24 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    DeleteRequestM () = delete;
-    DeleteRequestM (DeleteRequestM const&) = delete;
-    DeleteRequestM& operator= (DeleteRequestM const&) = delete;
+    DeleteRequestM() = delete;
+    DeleteRequestM(DeleteRequestM const&) = delete;
+    DeleteRequestM& operator=(DeleteRequestM const&) = delete;
 
     /// Destructor
-    ~DeleteRequestM () final = default;
+    ~DeleteRequestM() final = default;
 
     // Trivial acccessors
  
-    std::string const& database () const { return _database; }
-    unsigned int       chunk    () const { return _chunk; }
+    std::string const& database() const { return _database; }
+    unsigned int       chunk() const    { return _chunk; }
 
     /// Return target request specific parameters
-    DeleteRequestParams const& targetRequestParams () const { return _targetRequestParams; }
+    DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /// Return request-specific extended data reported upon a successfull
     /// completion of the request
-    ReplicaInfo const& responseData () const { return _responseData; }
+    ReplicaInfo const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -275,49 +275,49 @@ public:
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create (ServiceProvider& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& database,
-                           unsigned int  chunk,
-                           callback_type onFinish,
-                           int  priority,
-                           bool keepTracking,
-                           bool allowDuplicate,
-                           std::shared_ptr<Messenger> const& messenger);
+    static pointer create(ServiceProvider& serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const& worker,
+                          std::string const& database,
+                          unsigned int  chunk,
+                          callback_type onFinish,
+                          int  priority,
+                          bool keepTracking,
+                          bool allowDuplicate,
+                          std::shared_ptr<Messenger> const& messenger);
 
 private:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestM (ServiceProvider& serviceProvider,
-                    boost::asio::io_service& io_service,
-                    std::string const& worker,
-                    std::string const& database,
-                    unsigned int  chunk,
-                    callback_type onFinish,
-                    int  priority,
-                    bool keepTracking,
-                    bool allowDuplicate,
-                    std::shared_ptr<Messenger> const& messenger);
+    DeleteRequestM(ServiceProvider& serviceProvider,
+                   boost::asio::io_service& io_service,
+                   std::string const& worker,
+                   std::string const& database,
+                   unsigned int  chunk,
+                   callback_type onFinish,
+                   int  priority,
+                   bool keepTracking,
+                   bool allowDuplicate,
+                   std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
       *
       * @see Request::startImpl()
       */
-    void startImpl () final;
+    void startImpl() final;
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
-    void wait ();
+    void wait();
 
     /// Callback handler for the asynchronious operation
-    void awaken (boost::system::error_code const& ec);
+    void awaken(boost::system::error_code const& ec);
 
     /// Send the serialized content of the buffer to a worker
-    void send ();
+    void send();
 
     /**
      * Process the worker response to the requested operation.
@@ -325,8 +325,8 @@ private:
      * @param success - the flag indicating if the operation was successfull
      * @param message - a response from the worker service (if success is 'true')
      */
-    void analyze (bool success,
-                  proto::ReplicationResponseDelete const& message);
+    void analyze(bool success,
+                 proto::ReplicationResponseDelete const& message);
 
     /**
      * Notifying a party which initiated the request.
@@ -334,7 +334,7 @@ private:
      * This method implements the corresponing virtual method defined
      * bu the base class.
      */
-    void notify () final;
+    void notify() final;
 
 private:
 
