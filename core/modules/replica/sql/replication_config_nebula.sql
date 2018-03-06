@@ -34,8 +34,9 @@ INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '600');
 
 -- Connection parameters for the Qserv Management Services
 
-INSERT INTO `config` VALUES ('xrootd', 'host', 'localhost');
-INSERT INTO `config` VALUES ('xrootd', 'port', '1094');
+INSERT INTO `config` VALUES ('xrootd', 'host',                'localhost');
+INSERT INTO `config` VALUES ('xrootd', 'port',                '1094');
+INSERT INTO `config` VALUES ('xrootd', 'request_timeout_sec', '600');
 
 -- Default parameters for all workers unless overwritten in worker-specific
 -- tables

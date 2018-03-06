@@ -122,6 +122,7 @@ size_t       const Configuration::defaultControllerHttpThreads       {1};
 unsigned int const Configuration::defaultControllerRequestTimeoutSec {3600};
 std::string  const Configuration::defaultXrootdHost                  {"localhost"};
 uint16_t     const Configuration::defaultXrootdPort                  {1094};
+unsigned int const Configuration::defaultXrootdTimeoutSec            {3600};
 std::string  const Configuration::defaultWorkerTechnology            {"TEST"};
 size_t       const Configuration::defaultWorkerNumProcessingThreads  {1};
 size_t       const Configuration::defaultWorkerNumFsProcessingThreads{1};
@@ -162,6 +163,7 @@ Configuration::Configuration()
         _controllerRequestTimeoutSec  (defaultControllerRequestTimeoutSec),
         _xrootdHost                   (defaultXrootdHost),
         _xrootdPort                   (defaultXrootdPort),
+        _xrootdTimeoutSec             (defaultXrootdTimeoutSec),
         _workerTechnology             (defaultWorkerTechnology),
         _workerNumProcessingThreads   (defaultWorkerNumProcessingThreads),
         _workerNumFsProcessingThreads (defaultWorkerNumFsProcessingThreads),
@@ -270,6 +272,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdHost:                   " << defaultXrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdPort:                   " << defaultXrootdPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdTimeoutSec:             " << defaultXrootdTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerTechnology:             " << defaultWorkerTechnology);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerNumProcessingThreads:   " << defaultWorkerNumProcessingThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultWorkerNumFsProcessingThreads: " << defaultWorkerNumFsProcessingThreads);
@@ -294,6 +297,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdHost:                         " << _xrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdPort:                         " << _xrootdPort);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdTimeoutSec:                   " << _xrootdTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "_workerTechnology:                   " << _workerTechnology);
     LOGS(_log, LOG_LVL_DEBUG, context << "_workerNumProcessingThreads:         " << _workerNumProcessingThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "_workerNumFsProcessingThreads:       " << _workerNumFsProcessingThreads);

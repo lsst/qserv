@@ -186,17 +186,21 @@ public:
     /// The number of threads to run within the controller's HTTP server
     size_t controllerHttpThreads() const { return _controllerHttpThreads; }
 
+    // @return expiration timeout for requests
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
 
     // --------------------------------------------------------
     // -- Qserv Worker Management Services  (via XRootD/SSI) --
     // --------------------------------------------------------
 
-    /// The host name of the worker XRootD service
+    /// @return host name of the worker XRootD service
     std::string const& xrootdHost() const { return  _xrootdHost; }
 
-    /// The port number of the worker XRootD service
+    /// @return port number of the worker XRootD service
     uint16_t xrootdPort() const { return _xrootdPort; }
+
+    // @return expiration timeout for requests
+    unsigned int xrootdTimeoutSec() const { return _xrootdTimeoutSec; }
 
     // -----------------------------------------------------------
     // -- Configuration parameters related to database services --
@@ -369,6 +373,7 @@ protected:
     static unsigned int const defaultControllerRequestTimeoutSec;
     static std::string  const defaultXrootdHost;
     static uint16_t     const defaultXrootdPort;
+    static unsigned int const defaultXrootdTimeoutSec;
     static std::string  const defaultWorkerTechnology;
     static size_t       const defaultWorkerNumProcessingThreads;
     static size_t       const defaultWorkerNumFsProcessingThreads;
@@ -417,9 +422,10 @@ protected:
 
     // -- Qserv Worker Management Services  (via XRootD/SSI)
 
-    std::string  _xrootdHost;   ///< host name of the worker XRootD service
-    uint16_t     _xrootdPort;   ///< port number of the worker XRootD service
-    
+    std::string  _xrootdHost;           ///< host name of the worker XRootD service
+    uint16_t     _xrootdPort;           ///< port number of the worker XRootD service
+    unsigned int _xrootdTimeoutSec;     ///< expiration timeout for requests
+
     // -- Worker parameters --
 
     std::string  _workerTechnology;
