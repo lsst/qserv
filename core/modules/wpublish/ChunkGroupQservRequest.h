@@ -66,12 +66,12 @@ public:
                                std::string const&)>;    // error message (depends on a status)
 
     // Default construction and copy semantics is prohibited
-    ChunkGroupQservRequest () = delete;
-    ChunkGroupQservRequest (ChunkGroupQservRequest const&) = delete;
-    ChunkGroupQservRequest& operator= (ChunkGroupQservRequest const&) = delete;
+    ChunkGroupQservRequest() = delete;
+    ChunkGroupQservRequest(ChunkGroupQservRequest const&) = delete;
+    ChunkGroupQservRequest& operator=(ChunkGroupQservRequest const&) = delete;
 
     /// Destructor
-    ~ChunkGroupQservRequest () override;
+    ~ChunkGroupQservRequest() override;
 
 protected:
 
@@ -85,17 +85,17 @@ protected:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    ChunkGroupQservRequest (bool add,
-                            unsigned int chunk,
-                            std::vector<std::string> const& dbs,
-                            bool force,
-                            calback_type onFinish);
+    ChunkGroupQservRequest(bool add,
+                           unsigned int chunk,
+                           std::vector<std::string> const& dbs,
+                           bool force,
+                           calback_type onFinish);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
 
 private:
 
@@ -125,23 +125,23 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    AddChunkGroupQservRequest (unsigned int chunk,
-                               std::vector<std::string> const& dbs,
-                               calback_type onFinish = nullptr)
-
-        :   ChunkGroupQservRequest (true,
-                                    chunk,
-                                    dbs,
-                                    false,
-                                    onFinish) {}
+    AddChunkGroupQservRequest(unsigned int chunk,
+                              std::vector<std::string> const& dbs,
+                              calback_type onFinish = nullptr)
+        :   ChunkGroupQservRequest(true,
+                                   chunk,
+                                   dbs,
+                                   false,
+                                   onFinish) {
+    }
 
     // Default construction and copy semantics is prohibited
-    AddChunkGroupQservRequest () = delete;
-    AddChunkGroupQservRequest (AddChunkGroupQservRequest const&) = delete;
-    AddChunkGroupQservRequest& operator= (AddChunkGroupQservRequest const&) = delete;
+    AddChunkGroupQservRequest() = delete;
+    AddChunkGroupQservRequest(AddChunkGroupQservRequest const&) = delete;
+    AddChunkGroupQservRequest& operator=(AddChunkGroupQservRequest const&) = delete;
 
     /// Destructor
-    ~AddChunkGroupQservRequest () override {}
+    ~AddChunkGroupQservRequest() override  = default;
 };
 
 /**
@@ -162,24 +162,24 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RemoveChunkGroupQservRequest (unsigned int chunk,
-                                  std::vector<std::string> const& dbs,
-                                  bool force,
-                                  calback_type onFinish = nullptr)
-
-        :   ChunkGroupQservRequest (false,
-                                    chunk,
-                                    dbs,
-                                    force,
-                                    onFinish) {}
+    RemoveChunkGroupQservRequest(unsigned int chunk,
+                                 std::vector<std::string> const& dbs,
+                                 bool force,
+                                 calback_type onFinish = nullptr)
+        :   ChunkGroupQservRequest(false,
+                                   chunk,
+                                   dbs,
+                                   force,
+                                   onFinish) {
+    }
 
     // Default construction and copy semantics is prohibited
-    RemoveChunkGroupQservRequest () = delete;
-    RemoveChunkGroupQservRequest (RemoveChunkGroupQservRequest const&) = delete;
-    RemoveChunkGroupQservRequest& operator= (RemoveChunkGroupQservRequest const&) = delete;
+    RemoveChunkGroupQservRequest() = delete;
+    RemoveChunkGroupQservRequest(RemoveChunkGroupQservRequest const&) = delete;
+    RemoveChunkGroupQservRequest& operator=(RemoveChunkGroupQservRequest const&) = delete;
 
     /// Destructor
-    ~RemoveChunkGroupQservRequest () override {}
+    ~RemoveChunkGroupQservRequest() override = default;
 };
 
 }}} // namespace lsst::qserv::wpublish

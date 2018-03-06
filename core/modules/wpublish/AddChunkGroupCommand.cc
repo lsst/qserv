@@ -62,12 +62,9 @@ AddChunkGroupCommand::AddChunkGroupCommand(std::shared_ptr<wbase::SendChannel> c
                                            std::vector<std::string> const& databases)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
-        _mySqlConfig   (mySqlConfig),
+        _mySqlConfig(mySqlConfig),
         _chunk(chunk),
         _databases(databases) {
-}
-
-AddChunkGroupCommand::~AddChunkGroupCommand() {
 }
 
 void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
@@ -84,8 +81,7 @@ void AddChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status s
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
-void
-AddChunkGroupCommand::run() {
+void AddChunkGroupCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "AddChunkGroupCommand::run");
 

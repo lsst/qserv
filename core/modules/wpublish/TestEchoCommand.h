@@ -64,14 +64,14 @@ public:
                              std::string const& value);
 
     /// The destructor
-    virtual ~TestEchoCommand();
+    ~TestEchoCommand() override = default;
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 

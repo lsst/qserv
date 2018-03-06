@@ -71,24 +71,24 @@ public:
      * @param value    - a value to be sent to the worker service
      * @param onFinish - function to be called upon the completion of a request
      */
-    explicit TestEchoQservRequest (std::string const& value,
-                                   calback_type       onFinish = nullptr);
+    explicit TestEchoQservRequest(std::string const& value,
+                                  calback_type onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
-    TestEchoQservRequest () = delete;
-    TestEchoQservRequest (TestEchoQservRequest const&) = delete;
-    TestEchoQservRequest& operator= (TestEchoQservRequest const&) = delete;
+    TestEchoQservRequest() = delete;
+    TestEchoQservRequest(TestEchoQservRequest const&) = delete;
+    TestEchoQservRequest& operator=(TestEchoQservRequest const&) = delete;
 
     /// Destructor
-    ~TestEchoQservRequest () override;
+    ~TestEchoQservRequest() override;
 
 protected:
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
 
 private:
 

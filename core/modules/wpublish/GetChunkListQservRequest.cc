@@ -36,13 +36,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListQservRequest");
 
 using namespace lsst::qserv;
 
-wpublish::GetChunkListQservRequest::Status
-translate (proto::WorkerCommandGetChunkListR::Status status) {
+wpublish::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandGetChunkListR::SUCCESS: return wpublish::GetChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandGetChunkListR::ERROR:   return wpublish::GetChunkListQservRequest::ERROR;
     }
-    throw std::domain_error (
+    throw std::domain_error(
             "GetChunkListQservRequest::translate  no match for Protobuf status: " +
             proto::WorkerCommandGetChunkListR_Status_Name(status));
 }
@@ -52,39 +51,36 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string
-GetChunkListQservRequest::status2str (Status status) {
+std::string GetChunkListQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error (
+    throw std::domain_error(
             "GetChunkListQservRequest::status2str  no match for status: " +
             std::to_string(status));
 }
 
-GetChunkListQservRequest::GetChunkListQservRequest (bool inUseOnly,
-                                                    calback_type onFinish)
+GetChunkListQservRequest::GetChunkListQservRequest(bool inUseOnly,
+                                                   calback_type onFinish)
     :   _inUseOnly(inUseOnly),
-        _onFinish (onFinish){
+        _onFinish(onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** CONSTRUCTED **");
 }
 
-GetChunkListQservRequest::~GetChunkListQservRequest () {
+GetChunkListQservRequest::~GetChunkListQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** DELETED **");
 }
 
-void
-GetChunkListQservRequest::onRequest (proto::FrameBuffer& buf) {
+void GetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
     proto::WorkerCommandH header;
     header.set_command(proto::WorkerCommandH::GET_CHUNK_LIST);
     buf.serialize(header);
 }
 
-void
-GetChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
+void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
     static std::string const context = "GetChunkListQservRequest  ";
 
@@ -101,18 +97,19 @@ GetChunkListQservRequest::onResponse (proto::FrameBufferView& view) {
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
             proto::WorkerCommandGetChunkListR::Chunk const& chunkEntry  = reply.chunks(i);
-            if (_inUseOnly and not chunkEntry.use_count()) continue;
+            if (_inUseOnly and not chunkEntry.use_count()) { continue; }
             Chunk chunk {chunkEntry.chunk(), chunkEntry.db(), chunkEntry.use_count()};
             chunks.push_back(chunk);
         }
         LOGS(_log, LOG_LVL_DEBUG, context << "total chunks: " << num);
     }
 
-    if (_onFinish)
-        _onFinish (
+    if (_onFinish) {
+        _onFinish(
             ::translate(reply.status()),
             reply.error(),
             chunks);
+    }
 }
 
 }}} // namespace lsst::qserv::wpublish

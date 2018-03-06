@@ -43,7 +43,6 @@
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-
 // Qserv headers
 
 namespace {
@@ -62,17 +61,13 @@ TestEchoCommand::TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& send
         _value(value) {
 }
 
-TestEchoCommand::~TestEchoCommand() {
-}
-
-void
-TestEchoCommand::run() {
+void TestEchoCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::run");
 
     proto::WorkerCommandTestEchoR reply;
     reply.set_status(proto::WorkerCommandTestEchoR::SUCCESS);
-    reply.set_value (_value);
+    reply.set_value(_value);
 
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());

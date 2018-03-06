@@ -51,31 +51,25 @@ GetChunkListCommand::GetChunkListCommand(std::shared_ptr<wbase::SendChannel> con
                                          std::shared_ptr<ChunkInventory>     const& chunkInventory,
                                          std::shared_ptr<ResourceMonitor>    const& resourceMonitor)
     :   wbase::WorkerCommand(sendChannel),
-
-        _chunkInventory (chunkInventory),
+        _chunkInventory(chunkInventory),
         _resourceMonitor(resourceMonitor) {
 }
 
-GetChunkListCommand::~GetChunkListCommand() {
-}
-
-void
-GetChunkListCommand::reportError(std::string const& message) {
+void GetChunkListCommand::reportError(std::string const& message) {
 
     LOGS(_log, LOG_LVL_ERROR, "GetChunkListCommand::run  " << message);
 
     proto::WorkerCommandGetChunkListR reply;
 
     reply.set_status(proto::WorkerCommandGetChunkListR::ERROR);
-    reply.set_error (message);
+    reply.set_error(message);
 
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
-void
-GetChunkListCommand::run() {
+void GetChunkListCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::run");
 

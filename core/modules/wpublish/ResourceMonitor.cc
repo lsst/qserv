@@ -75,7 +75,9 @@ unsigned int ResourceMonitor::count(int chunk,
 unsigned int ResourceMonitor::count(int chunk,
                                     std::vector<std::string> const& dbs) const {
     unsigned int result = 0;
-    for (std::string const& db: dbs) result += count(chunk, db);
+    for (std::string const& db: dbs) {
+        result += count(chunk, db);
+    }
     return result;
 }
 

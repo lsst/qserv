@@ -40,8 +40,7 @@ namespace qserv {
 namespace wpublish {
 
 // Set this parameter to some reasonable default
-int const
-QservRequest::_bufIncrementSize = 1024;
+int const QservRequest::_bufIncrementSize = 1024;
 
 QservRequest::~QservRequest() {
     delete _buf;
@@ -53,8 +52,7 @@ QservRequest::QservRequest()
          _buf(new char[_bufIncrementSize]) {
 }
 
-char*
-QservRequest::GetRequest (int& dlen) {
+char* QservRequest::GetRequest(int& dlen) {
 
     // Ask a subclass to serialize its request into the frame buffer
     onRequest(_frameBuf);
@@ -64,9 +62,8 @@ QservRequest::GetRequest (int& dlen) {
     return _frameBuf.data();
 }
 
-bool
-QservRequest::ProcessResponse (const XrdSsiErrInfo&  eInfo,
-                               const XrdSsiRespInfo& rInfo) {
+bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
+                                   const XrdSsiRespInfo& rInfo) {
 
     static std::string const context = "QservRequest::ProcessResponse  ";
 
@@ -92,11 +89,10 @@ QservRequest::ProcessResponse (const XrdSsiErrInfo&  eInfo,
     }
 }
 
-XrdSsiRequest::PRD_Xeq
-QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                                  char*                buff,
-                                  int                  blen,
-                                  bool                 last) {
+XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
+                                                         char* buff,
+                                                         int   blen,
+                                                         bool  last) {
 
     static std::string const context = "QservRequest::ProcessResponseData  ";
 
@@ -134,8 +130,7 @@ QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
     return XrdSsiRequest::PRD_Normal;
 }
 
-void
-QservRequest::Finished () {
+void QservRequest::Finished() {
     delete this;
 }
 

@@ -49,12 +49,12 @@ class GetChunkListCommand
 public:
 
     // The default construction and copy semantics are prohibited
-    GetChunkListCommand () = delete;
-    GetChunkListCommand& operator= (GetChunkListCommand const&) = delete;
-    GetChunkListCommand (GetChunkListCommand const&) = delete;
+    GetChunkListCommand() = delete;
+    GetChunkListCommand& operator=(GetChunkListCommand const&) = delete;
+    GetChunkListCommand(GetChunkListCommand const&) = delete;
 
     /// The destructor
-    ~GetChunkListCommand () override;
+    ~GetChunkListCommand() override = default;
 
     /**
      * The normal constructor of the class
@@ -63,16 +63,16 @@ public:
      * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
      * @param mySqlConfig    - database connection parameters
      */
-    GetChunkListCommand (std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                         std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                         std::shared_ptr<ResourceMonitor>    const& resourceMonitor);
+    GetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                        std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                        std::shared_ptr<ResourceMonitor>    const& resourceMonitor);
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 

@@ -77,14 +77,14 @@ public:
                          std::vector<std::string> const& databases);
 
     /// The destructor
-    virtual ~AddChunkGroupCommand();
+    ~AddChunkGroupCommand() override = default;
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 

@@ -43,7 +43,6 @@
 
 extern XrdSsiProvider* XrdSsiProviderLookup;
 
-
 // Qserv headers
 
 namespace {
@@ -64,38 +63,32 @@ RemoveChunkGroupCommand::RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChan
                                                  std::vector<std::string> const& dbs,
                                                  bool force)
     :   wbase::WorkerCommand(sendChannel),
-
-        _chunkInventory  (chunkInventory),
-        _resourceMonitor (resourceMonitor),
-        _mySqlConfig     (mySqlConfig),
-        _chunk (chunk),
-        _dbs   (dbs),
-        _force (force) {
+        _chunkInventory(chunkInventory),
+        _resourceMonitor(resourceMonitor),
+        _mySqlConfig(mySqlConfig),
+        _chunk(chunk),
+        _dbs(dbs),
+        _force(force) {
 }
 
-RemoveChunkGroupCommand::~RemoveChunkGroupCommand() {
-}
 
-void
-RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                     std::string const& message) {
+void RemoveChunkGroupCommand::reportError(proto::WorkerCommandChunkGroupR::Status status,
+                                          std::string const& message) {
 
     LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::reportError  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
     reply.set_status(status);
-    reply.set_error (message);
+    reply.set_error(message);
 
     _frameBuf.serialize(reply);
-    // _sendChannel->sendStream(_frameBuf.data(), _frameBuf.size(), true);
     std::string str(_frameBuf.data(), _frameBuf.size());
     auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
     _sendChannel->sendStream(streamBuffer, true);
 }
 
-void
-RemoveChunkGroupCommand::run() {
+void RemoveChunkGroupCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "RemoveChunkGroupCommand::run");
 
