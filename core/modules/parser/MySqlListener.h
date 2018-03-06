@@ -1676,9 +1676,6 @@ private:
     std::shared_ptr<ChildAdapter> pushAdapterStack(antlr4::ParserRuleContext* ctx);
 
     template<typename ChildAdapter>
-    std::shared_ptr<ChildAdapter> pushAdapterStack(antlr4::ParserRuleContext* ctx);
-
-    template<typename ChildAdapter>
     void popAdapterStack();
 
     template<typename ChildAdapter>
