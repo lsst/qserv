@@ -70,7 +70,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 // NullCBH is a class that can't be instantiated, it exists as a placeholder for
 // Adapters that don't use their _parent, so that they may have a weak_ptr to a CBH that is a nullptr.
 class NullCBH {
-private:
+public:
     NullCBH() {}
 };
 
@@ -242,7 +242,7 @@ namespace {
 
 class RootAdapter : public Adapter, public DMLStatementCBH {
 public:
-    RootAdapter(antlr4::ParserRuleContext* ctx) : Adapter(ctx) {}
+    RootAdapter(shared_ptr<NullCBH> nullCBH, antlr4::ParserRuleContext* ctx) : Adapter(ctx) {}
 
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
@@ -789,15 +789,6 @@ std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRule
 }
 
 
-// Create and push an Adapter onto the context stack. Does not install a callback handler into the Adapter.
-template<typename ChildAdapter>
-std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRuleContext* ctx) {
-    auto childAdapter = std::make_shared<ChildAdapter>(ctx);
-    _adapterStack.push(childAdapter);
-    return childAdapter;
-}
-
-
 template<typename ChildAdapter>
 void MySqlListener::popAdapterStack() {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
@@ -838,7 +829,7 @@ void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
     // since there's no parent listener on the stack for a root listener, we don't use the template push
     // function, we just push the first item onto the stack by hand like so:
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    _rootAdapter = pushAdapterStack<RootAdapter>(ctx);
+    _rootAdapter = pushAdapterStack<NullCBH, RootAdapter>(ctx);
 }
 
 
