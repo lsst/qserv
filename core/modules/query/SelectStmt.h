@@ -111,6 +111,11 @@ public:
     int getLimit() const { return _limit; }
 
     /**
+     * @brief Set LIMIT value in LIMIT clause for a SQL query
+     */
+    void setLimit(int limit) { _limit = limit; }
+
+    /**
      * @brief Indicate existence of a LIMIT clause
      *
      * @return: true if LIMIT clause exists, else false
