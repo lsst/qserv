@@ -301,6 +301,7 @@ public:
             selectStatement->setSelectList(_selectList);
             selectStatement->setFromList(_fromList);
             selectStatement->setWhereClause(_whereClause);
+            selectStatement->setLimit(_limit);
             parent->handleSelectStatement(selectStatement);
         }
     }
@@ -310,6 +311,7 @@ private:
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::WhereClause> _whereClause;
     weak_ptr<SelectStatementCBH> _parent;
+    int _limit{lsst::qserv::NOTSET};
 };
 
 
