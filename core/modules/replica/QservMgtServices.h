@@ -56,6 +56,12 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtServices> pointer;
 
+    /// The function type for notifications on the completon of notification
+    /// requests on adding new replicas to workers
+    typedef std::function<void(pointer,     // pointer to self
+                               bool         // 'true' if the operation succeeded
+                               )> added_callback_type;
+
     /**
      * The factory method for instamtiating a proper service object based
      * on an application configuration.
@@ -72,6 +78,19 @@ public:
 
     /// Destructor
     ~QservMgtServices() = default;
+
+    /**
+     * Notify Qserv worker on availability of a new chunk
+     *
+     * @param databaseFamily - the name of a database family involved into the operation
+     * @param chunk          - the chunk number
+     * @param worker         - the name of a worker where the input replica is residing
+     * @param onFinish       - callback function called on a completion of the operation
+     */
+    void replicaAdded(std::string const& databaseFamily,
+                      unsigned int chunk,
+                      std::string const& worker,
+                      added_callback_type onFinish);
 
 private:
 

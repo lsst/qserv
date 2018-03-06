@@ -85,7 +85,6 @@ Request::Request(ServiceProvider& serviceProvider,
                  int  priority,
                  bool keepTracking,
                  bool allowDuplicate)
-
     :   _serviceProvider(serviceProvider),
         _type(type),
         _id(Generators::uniqueId()),

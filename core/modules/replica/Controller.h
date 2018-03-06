@@ -660,7 +660,7 @@ private:
     uint64_t const _startTime;
 
     /// The provider of variou services
-    ServiceProvider &_serviceProvider;
+    ServiceProvider& _serviceProvider;
 
     // BOOST ASIO communication services
 
