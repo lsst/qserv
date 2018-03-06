@@ -188,6 +188,16 @@ public:
 
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
 
+    // --------------------------------------------------------
+    // -- Qserv Worker Management Services  (via XRootD/SSI) --
+    // --------------------------------------------------------
+
+    /// The host name of the worker XRootD service
+    std::string const& xrootdHost() const { return  _xrootdHost; }
+
+    /// The port number of the worker XRootD service
+    uint16_t xrootdPort() const { return _xrootdPort; }
+
     // -----------------------------------------------------------
     // -- Configuration parameters related to database services --
     // -----------------------------------------------------------
@@ -357,6 +367,8 @@ protected:
     static uint16_t     const defaultControllerHttpPort;
     static size_t       const defaultControllerHttpThreads;
     static unsigned int const defaultControllerRequestTimeoutSec;
+    static std::string  const defaultXrootdHost;
+    static uint16_t     const defaultXrootdPort;
     static std::string  const defaultWorkerTechnology;
     static size_t       const defaultWorkerNumProcessingThreads;
     static size_t       const defaultWorkerNumFsProcessingThreads;
@@ -394,7 +406,7 @@ protected:
 
 protected:
 
-    // Cached values of parameters
+    // -- Cached values of parameters --
 
     size_t       _requestBufferSizeBytes;
     unsigned int _retryTimeoutSec;
@@ -402,6 +414,13 @@ protected:
     uint16_t     _controllerHttpPort;
     size_t       _controllerHttpThreads;
     unsigned int _controllerRequestTimeoutSec;
+
+    // -- Qserv Worker Management Services  (via XRootD/SSI)
+
+    std::string  _xrootdHost;   ///< host name of the worker XRootD service
+    uint16_t     _xrootdPort;   ///< port number of the worker XRootD service
+    
+    // -- Worker parameters --
 
     std::string  _workerTechnology;
 
@@ -416,7 +435,7 @@ protected:
     std::map<std::string, DatabaseInfo> _databaseInfo;
     std::map<std::string, WorkerInfo>   _workerInfo;
 
-    // Database-specific parameters
+    // -- Database-specific parameters --
     
     std::string _databaseTechnology;
 
@@ -436,7 +455,8 @@ protected:
     /// The name of a database to be set upon the connection
     std::string _databaseName;
     
-    // Parameters of the Job scheduler
+    // -- Parameters of the Job scheduler --
+
     unsigned int _jobSchedulerIvalSec;
 };
 

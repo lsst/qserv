@@ -154,6 +154,9 @@ void ConfigurationFile::loadConfiguration() {
     ::parseKeyVal(configStore, "controller.http_server_threads",    _controllerHttpThreads,        defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec",    _controllerRequestTimeoutSec,  defaultControllerRequestTimeoutSec);
 
+    ::parseKeyVal(configStore, "xrootd.host", _xrootdHost, defaultXrootdHost);
+    ::parseKeyVal(configStore, "xrootd.port", _xrootdPort, defaultXrootdPort);
+
     ::parseKeyVal(configStore, "worker.technology",                 _workerTechnology,             defaultWorkerTechnology);
     ::parseKeyVal(configStore, "worker.num_svc_processing_threads", _workerNumProcessingThreads,   defaultWorkerNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _workerNumFsProcessingThreads, defaultWorkerNumFsProcessingThreads);
