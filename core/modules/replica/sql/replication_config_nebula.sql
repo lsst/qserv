@@ -32,6 +32,11 @@ INSERT INTO `config` VALUES ('controller', 'http_server_port',    '80');
 INSERT INTO `config` VALUES ('controller', 'http_server_threads', '1');
 INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '600');
 
+-- Connection parameters for the Qserv Management Services
+
+INSERT INTO `config` VALUES ('xrootd', 'host', 'localhost');
+INSERT INTO `config` VALUES ('xrootd', 'port', '1094');
+
 -- Default parameters for all workers unless overwritten in worker-specific
 -- tables
 

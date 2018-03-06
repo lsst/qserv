@@ -35,6 +35,7 @@
 #include "replica/ChunkLocker.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/QservMgtServices.h"
 
 // Forward declarations
 
@@ -68,16 +69,24 @@ public:
     virtual ~ServiceProvider() = default;
 
     /**
-     * Return a reference to the configuration service
+     * @return a reference to the configuration service
      */
     Configuration::pointer const& config() const { return _configuration; }
 
     /**
-     * Return a reference to the database services
+     * @return a reference to the database services
      */
     DatabaseServices::pointer const& databaseServices() const { return _databaseServices; }
 
+    /**
+     * @return a reference to the local (process) chunk locking services
+     */
     ChunkLocker& chunkLocker() { return _chunkLocker; }
+
+    /**
+     * @return a reference to the Qserv management services
+     */
+    QservMgtServices::pointer const& qservMgtServices() const { return _qservMgtServices; }
 
     /**
      * Make sure this worker is known in the configuration. Throws exception
@@ -113,6 +122,9 @@ private:
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
+    
+    /// For interacting with Qserv on changes in disposition of replicas
+    QservMgtServices::pointer _qservMgtServices;
 };
 
 }}} // namespace lsst::qserv::replica

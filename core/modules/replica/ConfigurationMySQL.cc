@@ -188,6 +188,9 @@ void ConfigurationMySQL::loadConfiguration() {
         ::tryParameter(row, "controller", "http_server_threads", _controllerHttpThreads) or
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
 
+        ::tryParameter(row, "xrootd", "host", _xrootdHost) or
+        ::tryParameter(row, "xrootd", "port", _xrootdPort) or
+
         ::tryParameter(row, "worker", "technology",                 _workerTechnology) or
         ::tryParameter(row, "worker", "num_svc_processing_threads", _workerNumProcessingThreads) or
         ::tryParameter(row, "worker", "num_fs_processing_threads",  _workerNumFsProcessingThreads) or

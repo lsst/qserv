@@ -38,6 +38,7 @@ ServiceProvider::ServiceProvider(std::string const& configUrl) {
 
     _configuration    = Configuration::load(configUrl);
     _databaseServices = DatabaseServices::create(_configuration);
+    _qservMgtServices = QservMgtServices::create(_configuration);
 }
 
 void ServiceProvider::assertWorkerIsValid(std::string const& name) {
