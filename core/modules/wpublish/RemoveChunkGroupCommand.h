@@ -83,14 +83,14 @@ public:
                             bool force);
 
     /// The destructor
-    virtual ~RemoveChunkGroupCommand();
+    ~RemoveChunkGroupCommand() override = default;
 
     /**
      * Implement the corresponding method of the base class
      *
      * @see WorkerCommand::run()
      */
-    void run () override;
+    void run() override;
 
 private:
 

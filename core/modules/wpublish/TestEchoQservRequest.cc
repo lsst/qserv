@@ -36,13 +36,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoQservRequest");
 
 using namespace lsst::qserv;
 
-wpublish::TestEchoQservRequest::Status
-translate (proto::WorkerCommandTestEchoR::Status status) {
+wpublish::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::Status status) {
     switch (status) {
         case proto::WorkerCommandTestEchoR::SUCCESS: return wpublish::TestEchoQservRequest::SUCCESS;
         case proto::WorkerCommandTestEchoR::ERROR:   return wpublish::TestEchoQservRequest::ERROR;
     }
-    throw std::domain_error (
+    throw std::domain_error(
             "TestEchoQservRequest::translate  no match for Protobuf status: " +
             proto::WorkerCommandTestEchoR_Status_Name(status));
 }
@@ -52,31 +51,29 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string
-TestEchoQservRequest::status2str (Status status) {
+std::string TestEchoQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error (
+    throw std::domain_error(
             "TestEchoQservRequest::status2str  no match for status: " +
             std::to_string(status));
 }
 
-TestEchoQservRequest::TestEchoQservRequest (std::string const& value,
-                                            calback_type       onFinish)
-    :   _value    (value),
-        _onFinish (onFinish) {
+TestEchoQservRequest::TestEchoQservRequest(std::string const& value,
+                                           calback_type       onFinish)
+    :   _value(value),
+        _onFinish(onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** CONSTRUCTED **");
 }
 
-TestEchoQservRequest::~TestEchoQservRequest () {
+TestEchoQservRequest::~TestEchoQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** DELETED **");
 }
 
-void
-TestEchoQservRequest::onRequest (proto::FrameBuffer& buf) {
+void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
 
     proto::WorkerCommandH header;
     header.set_command(proto::WorkerCommandH::TEST_ECHO);
@@ -87,8 +84,7 @@ TestEchoQservRequest::onRequest (proto::FrameBuffer& buf) {
     buf.serialize(echo);
 }
 
-void
-TestEchoQservRequest::onResponse (proto::FrameBufferView& view) {
+void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
 
     proto::WorkerCommandTestEchoR reply;
     view.parse(reply);
@@ -96,12 +92,13 @@ TestEchoQservRequest::onResponse (proto::FrameBufferView& view) {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** SERVICE REPLY **  status: "
          << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
 
-    if (_onFinish)
-        _onFinish (
+    if (_onFinish) {
+        _onFinish(
             ::translate(reply.status()),
             reply.error(),
             _value,
             reply.value());
+    }
 }
 
 }}} // namespace lsst::qserv::wpublish

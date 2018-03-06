@@ -76,12 +76,12 @@ public:
                            ChunkCollection const&)>;    // chunks removed (if success)
 
     // Default construction and copy semantics are prohibited
-    ChunkListQservRequest () = delete;
-    ChunkListQservRequest (ChunkListQservRequest const&) = delete;
-    ChunkListQservRequest& operator= (ChunkListQservRequest const&) = delete;
+    ChunkListQservRequest() = delete;
+    ChunkListQservRequest(ChunkListQservRequest const&) = delete;
+    ChunkListQservRequest& operator=(ChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~ChunkListQservRequest () override;
+    ~ChunkListQservRequest() override;
 
 protected:
 
@@ -93,15 +93,15 @@ protected:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     ChunkListQservRequest (bool rebuild,
-                            bool reload,
-                            calback_type onFinish = nullptr);
+     ChunkListQservRequest(bool rebuild,
+                           bool reload,
+                           calback_type onFinish = nullptr);
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
 
 private:
 
@@ -127,11 +127,11 @@ class ReloadChunkListQservRequest
 public:
 
     // Copy semantics is prohibited
-    ReloadChunkListQservRequest (ReloadChunkListQservRequest const&) = delete;
-    ReloadChunkListQservRequest& operator= (ReloadChunkListQservRequest const&) = delete;
+    ReloadChunkListQservRequest(ReloadChunkListQservRequest const&) = delete;
+    ReloadChunkListQservRequest& operator=(ReloadChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~ReloadChunkListQservRequest () override {}
+    ~ReloadChunkListQservRequest() override {}
 
     /**
      * Normal constructor
@@ -139,7 +139,7 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     explicit ReloadChunkListQservRequest (calback_type onFinish = nullptr)
+     explicit ReloadChunkListQservRequest(calback_type onFinish = nullptr)
         :   ChunkListQservRequest(false,
                                   true,
                                   onFinish) {
@@ -156,12 +156,12 @@ class RebuildChunkListQservRequest
 public:
 
     // Default construction and copy semantics are prohibited
-    RebuildChunkListQservRequest () = delete;
-    RebuildChunkListQservRequest (RebuildChunkListQservRequest const&) = delete;
-    RebuildChunkListQservRequest& operator= (RebuildChunkListQservRequest const&) = delete;
+    RebuildChunkListQservRequest() = delete;
+    RebuildChunkListQservRequest(RebuildChunkListQservRequest const&) = delete;
+    RebuildChunkListQservRequest& operator=(RebuildChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~RebuildChunkListQservRequest () override {}
+    ~RebuildChunkListQservRequest() override {}
 
     /**
      * Normal constructor
@@ -170,8 +170,8 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RebuildChunkListQservRequest (bool reload,
-                                  calback_type onFinish = nullptr)
+    RebuildChunkListQservRequest(bool reload,
+                                 calback_type onFinish = nullptr)
         :   ChunkListQservRequest(true,
                                   reload,
                                   onFinish) {

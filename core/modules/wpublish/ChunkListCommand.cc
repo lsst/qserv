@@ -76,23 +76,21 @@ ChunkListCommand::ChunkListCommand(std::shared_ptr<wbase::SendChannel> const& se
         _reload        (reload) {
 }
 
-void
-ChunkListCommand::reportError(std::string const& message) {
+void ChunkListCommand::reportError(std::string const& message) {
 
     LOGS(_log, LOG_LVL_ERROR, "ChunkListCommand::run  " << message);
 
     proto::WorkerCommandUpdateChunkListR reply;
 
     reply.set_status(proto::WorkerCommandUpdateChunkListR::ERROR);
-    reply.set_error (message);
+    reply.set_error(message);
 
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
-void
-ChunkListCommand::run() {
+void ChunkListCommand::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkListCommand::run");
 

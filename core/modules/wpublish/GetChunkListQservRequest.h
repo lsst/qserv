@@ -76,11 +76,11 @@ public:
                            ChunkCollection const&)>;    // chunks (if success)
 
     // Copy semantics is prohibited
-    GetChunkListQservRequest (GetChunkListQservRequest const&) = delete;
-    GetChunkListQservRequest& operator= (GetChunkListQservRequest const&) = delete;
+    GetChunkListQservRequest(GetChunkListQservRequest const&) = delete;
+    GetChunkListQservRequest& operator=(GetChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~GetChunkListQservRequest () override;
+    ~GetChunkListQservRequest() override;
 
     /**
      * Normal constructor
@@ -89,16 +89,16 @@ public:
      * @param onFinish  - optional callback function to be called upon the completion
      *                    (successful or not) of the request.
      */
-    GetChunkListQservRequest (bool inUseOnly,
-                              calback_type onFinish = nullptr);
+    GetChunkListQservRequest(bool inUseOnly,
+                             calback_type onFinish = nullptr);
 
 protected:
 
     /// Implement the corresponding method of the base class
-    void onRequest (proto::FrameBuffer& buf) override;
+    void onRequest(proto::FrameBuffer& buf) override;
 
     /// Implement the corresponding method of the base class
-    void onResponse (proto::FrameBufferView& view) override;
+    void onResponse(proto::FrameBufferView& view) override;
 
 private:
 
