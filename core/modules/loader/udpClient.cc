@@ -23,6 +23,7 @@
 
 using boost::asio::ip::udp;
 
+
 int main(int argc, char* argv[])
 {
   try
@@ -59,6 +60,7 @@ int main(int argc, char* argv[])
 
   return 0;
 }
+
 #else
 //
 // client.cpp
