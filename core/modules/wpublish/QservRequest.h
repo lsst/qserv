@@ -75,6 +75,14 @@ protected:
      */
     virtual void onResponse(proto::FrameBufferView& view) = 0;
 
+    /**
+     * Notify a base class about a failure occured when sending a request data
+     * or receiving a response.
+     *
+     * @param error - message explaining a reson of the failure
+     */
+    virtual void onError(std::string const& msg) = 0;
+
     /// Implements the corresponidng method of the base class
     char* GetRequest(int& dlen) override;
 
@@ -89,7 +97,7 @@ protected:
                                                bool  last) override;
 
     /// Request finalizer (cleanup, etc.)
-    void Finished();
+    //void Finished();
 
 private:
 

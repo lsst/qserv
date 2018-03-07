@@ -69,6 +69,13 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
 
     if (eInfo.hasError()) {
         LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << rInfo.eMsg);
+
+        // Notify a subclass on the ubnormal condition
+        onError(rInfo.eMsg);
+
+        // Dispose the object
+        Finished();
+
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG, context
@@ -85,6 +92,13 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
             return true;
 
         default:
+
+            // Notify a subclass on the ubnormal condition
+            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " +
+                    std::to_string(rInfo.rType));
+    
+            // Dispose the object
+            Finished();
             return false;
     }
 }
@@ -97,9 +111,17 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
     static std::string const context = "QservRequest::ProcessResponseData  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
+
     if (not eInfo.isOK()) {
         LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << eInfo.Get()
              << ", eInfo.GetArg(): " << eInfo.GetArg());
+
+        // Notify a subclass on the ubnormal condition
+        onError(eInfo.Get());
+
+        // Dispose the object
+        Finished();
+
     } else {
         LOGS(_log, LOG_LVL_DEBUG, context << "blen: " << blen << ", last: " << last);
 
@@ -113,6 +135,7 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
 
             // Ready to dispose the object
             Finished();
+
         } else {
             // Extend the buffer and copy over its previous content into the new location
             int prevBufCapacity = _bufCapacity;
@@ -129,9 +152,10 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
     }
     return XrdSsiRequest::PRD_Normal;
 }
-
+/*
 void QservRequest::Finished() {
     delete this;
 }
+*/
 
 }}} // namespace lsst::qserv::wpublish

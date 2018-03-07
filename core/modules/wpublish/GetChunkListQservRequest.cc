@@ -112,4 +112,13 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
+void GetChunkListQservRequest::onError(std::string const& error) {
+
+    if (_onFinish) {
+        _onFinish(
+            Status::ERROR,
+            error,
+            ChunkCollection());
+    }
+}
 }}} // namespace lsst::qserv::wpublish

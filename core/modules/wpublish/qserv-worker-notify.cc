@@ -48,10 +48,10 @@ int test() {
 
     std::atomic<bool> finished(false);
 
-    XrdSsiRequest* request = nullptr;
+    std::shared_ptr<wpublish::QservRequest> request = nullptr;
 
     if ("GET_CHUNK_LIST" == operation) {
-        request = new wpublish::GetChunkListQservRequest(
+        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::GetChunkListQservRequest(
             inUseOnly,
             [&finished] (wpublish::GetChunkListQservRequest::Status status,
                          std::string const& error,
@@ -75,10 +75,10 @@ int test() {
                     }
                 }
                 finished = true;
-            });
+            }));
 
     } else if ("REBUILD_CHUNK_LIST" == operation) {
-        request = new wpublish::RebuildChunkListQservRequest(
+        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::RebuildChunkListQservRequest(
             reload,
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
@@ -93,10 +93,10 @@ int test() {
                               << "# chuks  removed: " << removed.size() << std::endl;
                 }
                 finished = true;
-            });
+            }));
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
-        request = new wpublish::ReloadChunkListQservRequest(
+        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::ReloadChunkListQservRequest(
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
@@ -110,10 +110,10 @@ int test() {
                               << "# chuks  removed: " << removed.size() << std::endl;
                 }
                 finished = true;
-            });
+            }));
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
-        request = new wpublish::AddChunkGroupQservRequest(
+        request = wpublish::AddChunkGroupQservRequest::create(
             chunk,
             dbs,
             [&finished] (wpublish::ChunkGroupQservRequest::Status status,
@@ -127,7 +127,7 @@ int test() {
             });
 
     } else if ("REMOVE_CHUNK_GROUP" == operation) {
-        request = new wpublish::RemoveChunkGroupQservRequest(
+        request = wpublish::RemoveChunkGroupQservRequest::create(
             chunk,
             dbs,
             force,
@@ -142,7 +142,7 @@ int test() {
             });
 
     } else if ("TEST_ECHO" == operation) {
-        request = new wpublish::TestEchoQservRequest(
+        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::TestEchoQservRequest(
             value,
             [&finished] (wpublish::TestEchoQservRequest::Status status,
                          std::string const& error,
@@ -157,7 +157,7 @@ int test() {
                               << "value received: " << received << std::endl;
                 }
                 finished = true;
-            });
+            }));
 
     } else {
         return 1;

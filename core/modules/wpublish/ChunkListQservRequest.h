@@ -103,6 +103,9 @@ protected:
     /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
+
 private:
 
     /// Rebuild the list from actual database tables
@@ -131,7 +134,7 @@ public:
     ReloadChunkListQservRequest& operator=(ReloadChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~ReloadChunkListQservRequest() override {}
+    ~ReloadChunkListQservRequest() override = default;
 
     /**
      * Normal constructor
@@ -139,11 +142,7 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     explicit ReloadChunkListQservRequest(calback_type onFinish = nullptr)
-        :   ChunkListQservRequest(false,
-                                  true,
-                                  onFinish) {
-    }
+     explicit ReloadChunkListQservRequest(calback_type onFinish = nullptr);
 };
 
 /**
@@ -161,7 +160,7 @@ public:
     RebuildChunkListQservRequest& operator=(RebuildChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~RebuildChunkListQservRequest() override {}
+    ~RebuildChunkListQservRequest() override = default;
 
     /**
      * Normal constructor
@@ -170,13 +169,10 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RebuildChunkListQservRequest(bool reload,
-                                 calback_type onFinish = nullptr)
-        :   ChunkListQservRequest(true,
-                                  reload,
-                                  onFinish) {
-    }
+    explicit RebuildChunkListQservRequest(bool reload,
+                                          calback_type onFinish = nullptr);
 };
+
 }}} // namespace lsst::qserv::wpublish
 
 #endif // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
