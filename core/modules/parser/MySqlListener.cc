@@ -771,6 +771,25 @@ private:
 };
 
 
+class UidAdapter : public Adapter {
+public:
+    UidAdapter(shared_ptr<UidCBH> parent, MySqlParser::UidContext* ctx)
+    : Adapter(ctx), _parent(parent), _uidContext(ctx) {}
+
+    virtual void onEnter() {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+        auto parent = _parent.lock();
+        if (parent) {
+            parent->handleUidString(_uidContext->simpleId()->ID()->getText());
+        }
+    }
+
+private:
+    weak_ptr<UidCBH> _parent;
+    MySqlParser::UidContext* _uidContext;
+};
+
+
 /// MySqlListener impl
 
 
@@ -873,22 +892,7 @@ ENTER_EXIT_PARENT(AtomTableItem)
 ENTER_EXIT_PARENT(TableName)
 ENTER_EXIT_PARENT(FullColumnName)
 ENTER_EXIT_PARENT(FullId)
-
-void MySqlListener::enterUid(MySqlParser::UidContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    shared_ptr<UidCBH> handler = adapterStackTop<UidCBH>();
-    if (handler && ctx && ctx->simpleId() && ctx->simpleId()->ID()) {
-        handler->handleUidString(ctx->simpleId()->ID()->getText());
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Unhandled UID: " << ctx->simpleId()->ID()->getText());
-    }
-}
-
-
-void MySqlListener::exitUid(MySqlParser::UidContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-}
-
+ENTER_EXIT_PARENT(Uid)
 ENTER_EXIT_PARENT(DecimalLiteral)
 ENTER_EXIT_PARENT(StringLiteral)
 ENTER_EXIT_PARENT(PredicateExpression)
