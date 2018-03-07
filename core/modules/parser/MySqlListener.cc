@@ -75,16 +75,16 @@ public:
 };
 
 
-class DMLStatementCBH {
+class DmlStatementCBH {
 public:
-    virtual ~DMLStatementCBH() {}
-    virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
+    virtual ~DmlStatementCBH() {}
+    virtual void handleDmlStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
 };
 
 
-class SelectStatementCBH {
+class SimpleSelectCBH {
 public:
-    virtual ~SelectStatementCBH() {}
+    virtual ~SimpleSelectCBH() {}
     virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
 };
 
@@ -132,17 +132,17 @@ public:
     virtual void handleTableSources(query::TableRefListPtr tableRefList) = 0;
 };
 
-class TableSourceCBH {
+class TableSourceBaseCBH {
 public:
-    virtual ~TableSourceCBH() {}
+    virtual ~TableSourceBaseCBH() {}
     virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) = 0;
 };
 
 
-class TableSourceItemCBH {
+class AtomTableItemCBH {
 public:
-    virtual ~TableSourceItemCBH() {}
-    virtual void handleTableSourceItem(shared_ptr<query::TableRef> tableRef) = 0;
+    virtual ~AtomTableItemCBH() {}
+    virtual void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) = 0;
 };
 
 
@@ -230,23 +230,24 @@ public:
     Adapter(antlr4::ParserRuleContext* ctx) : _ctx(ctx) {}
     virtual ~Adapter() {}
 
-    // onExit is called when the Adapter is being popped from the context stack
+    // onEnter is called just after the Adapter is pushed onto the context stack
+    virtual void onEnter() {}
+
+    // onExit is called just before the Adapter is popped from the context stack
     virtual void onExit() {}
 protected:
     antlr4::ParserRuleContext* _ctx;
     weak_ptr<NullCBH> _parent;
 };
 
-namespace {
 
-
-class RootAdapter : public Adapter, public DMLStatementCBH {
+class RootAdapter : public Adapter, public DmlStatementCBH {
 public:
-    RootAdapter(shared_ptr<NullCBH> nullCBH, antlr4::ParserRuleContext* ctx) : Adapter(ctx) {}
+    RootAdapter() : Adapter(nullptr) {}
 
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
-    virtual void handleDMLStatement(shared_ptr<query::SelectStmt> selectStatement) {
+    virtual void handleDmlStatement(shared_ptr<query::SelectStmt> selectStatement) {
         _selectStatement = selectStatement;
     }
 
@@ -255,13 +256,13 @@ private:
 };
 
 
-// Between Root and DMLStatement, there are skipped statements: `sqlStatements` and `sqlStatement`.
+// Between Root and DmlStatement, there are skipped statements: `sqlStatements` and `sqlStatement`.
 // Adapters and enter/exit handlers for these may need to be implemented, TBD.
 
 
-class DMLStatementAdapter : public Adapter, public SelectStatementCBH {
+class DmlStatementAdapter : public Adapter, public SimpleSelectCBH {
 public:
-    DMLStatementAdapter(shared_ptr<DMLStatementCBH> parent, antlr4::ParserRuleContext* ctx)
+    DmlStatementAdapter(shared_ptr<DmlStatementCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
     virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) {
@@ -271,19 +272,19 @@ public:
     void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleDMLStatement(_selectStatement);
+            parent->handleDmlStatement(_selectStatement);
         }
     }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
-    weak_ptr<DMLStatementCBH> _parent;
+    weak_ptr<DmlStatementCBH> _parent;
 };
 
 
-class SelectStatmentAdapter : public Adapter, public QuerySpecificationCBH {
+class SimpleSelectAdapter : public Adapter, public QuerySpecificationCBH {
 public:
-    SelectStatmentAdapter(shared_ptr<SelectStatementCBH> parent, antlr4::ParserRuleContext* ctx)
+    SimpleSelectAdapter(shared_ptr<SimpleSelectCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
     virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
@@ -310,7 +311,7 @@ private:
     shared_ptr<query::SelectList> _selectList;
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::WhereClause> _whereClause;
-    weak_ptr<SelectStatementCBH> _parent;
+    weak_ptr<SimpleSelectCBH> _parent;
     int _limit{lsst::qserv::NOTSET};
 };
 
@@ -407,7 +408,7 @@ private:
 };
 
 
-class TableSourcesAdapter : public Adapter, public TableSourceCBH {
+class TableSourcesAdapter : public Adapter, public TableSourceBaseCBH {
 public:
     TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
@@ -429,12 +430,12 @@ private:
 };
 
 
-class TableSourceAdapter : public Adapter, public TableSourceItemCBH{
+class TableSourceBaseAdapter : public Adapter, public AtomTableItemCBH{
 public:
-    TableSourceAdapter(shared_ptr<TableSourceCBH> parent, antlr4::ParserRuleContext* ctx)
+    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleTableSourceItem(shared_ptr<query::TableRef> tableRef) {
+    virtual void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
         _tableRef = tableRef;
     }
@@ -448,13 +449,13 @@ public:
 
 private:
     shared_ptr<query::TableRef> _tableRef;
-    weak_ptr<TableSourceCBH> _parent;
+    weak_ptr<TableSourceBaseCBH> _parent;
 };
 
 
-class TableSourceItemAdapter : public Adapter, public TableNameCBH {
+class AtomTableItemAdapter : public Adapter, public TableNameCBH {
 public:
-    TableSourceItemAdapter(shared_ptr<TableSourceItemCBH> parent, antlr4::ParserRuleContext* ctx)
+    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
     virtual void handleTableName(const std::string& string) {
@@ -466,12 +467,12 @@ public:
         auto parent = _parent.lock();
         if (parent) {
             shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
-            parent->handleTableSourceItem(tableRef);
+            parent->handleAtomTableItem(tableRef);
         }
     }
 
 protected:
-    weak_ptr<TableSourceItemCBH> _parent;
+    weak_ptr<AtomTableItemCBH> _parent;
     std::string _db;
     std::string _table;
     std::string _alias;
@@ -498,18 +499,19 @@ protected:
 
 class DecimalLiteralAdapter : public Adapter {
 public:
-    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent, MySqlParser::DecimalLiteralContext* ctx)
+    : Adapter(ctx), _parent(parent), _decimalLiteralCtx(ctx) {}
 
-    void onEnter(MySqlParser::DecimalLiteralContext * ctx) {
+    void onEnter() {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleDecimalLiteral(ctx->DECIMAL_LITERAL()->getText());
+            parent->handleDecimalLiteral(_decimalLiteralCtx->DECIMAL_LITERAL()->getText());
         }
     }
 
 private:
     weak_ptr<DecimalLiteralCBH> _parent;
+    MySqlParser::DecimalLiteralContext * _decimalLiteralCtx;
 };
 
 
@@ -735,18 +737,20 @@ private:
 
 class ComparisonOperatorAdapter : public Adapter {
 public:
-    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent,
+            MySqlParser::ComparisonOperatorContext* ctx)
+    : Adapter(ctx), _parent(parent),  _comparisonOperatorCtx(ctx) {}
 
-    void onEnter(MySqlParser::ComparisonOperatorContext * ctx) {
+    void onEnter() {
         auto parent = _parent.lock();
         if (parent != nullptr) {
-            parent->handleComparisonOperator(ctx->getText());
+            parent->handleComparisonOperator(_comparisonOperatorCtx->getText());
         }
     }
 
 private:
     weak_ptr<ComparisonOperatorCBH> _parent;
+    MySqlParser::ComparisonOperatorContext * _comparisonOperatorCtx;
 };
 
 
@@ -766,13 +770,26 @@ private:
     weak_ptr<SelectColumnElementCBH> _parent;
 };
 
-} // end namespace
+
+/// MySqlListener impl
+
+
+MySqlListener::MySqlListener() {
+    _rootAdapter = std::make_shared<RootAdapter>();
+    _adapterStack.push(_rootAdapter);
+}
+
+
+std::shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
+    return _rootAdapter->getSelectStatement();
+}
+
 
 
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
-template<typename ParentCBH, typename ChildAdapter>
-std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRuleContext* ctx) {
+template<typename ParentCBH, typename ChildAdapter, typename Context>
+std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(Context * ctx) {
     auto p = std::dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
         int status;
@@ -785,6 +802,7 @@ std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(antlr4::ParserRule
     }
     auto childAdapter = std::make_shared<ChildAdapter>(p, ctx);
     _adapterStack.push(childAdapter);
+    childAdapter->onEnter();
     return childAdapter;
 }
 
@@ -826,165 +844,35 @@ std::shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
 
 
 void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
-    // since there's no parent listener on the stack for a root listener, we don't use the template push
-    // function, we just push the first item onto the stack by hand like so:
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    _rootAdapter = pushAdapterStack<NullCBH, RootAdapter>(ctx);
+// root is pushed by the ctor (and popped by the dtor)
+
+//    // since there's no parent listener on the stack for a root listener, we don't use the template push
+//    // function, we just push the first item onto the stack by hand like so:
+//    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+//    _rootAdapter = pushAdapterStack<NullCBH, RootAdapter>(ctx);
 }
 
 
 void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    auto rootAdapter = adapterStackTop<RootAdapter>();
-    popAdapterStack<RootAdapter>();
-    _selectStatement = rootAdapter->getSelectStatement();
+//    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+//    auto rootAdapter = adapterStackTop<RootAdapter>();
+//    popAdapterStack<RootAdapter>();
+//    _selectStatement = rootAdapter->getSelectStatement();
 }
 
 
-void MySqlListener::enterDmlStatement(MySqlParser::DmlStatementContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DMLStatementCBH, DMLStatementAdapter>(ctx);
-}
-
-
-void MySqlListener::exitDmlStatement(MySqlParser::DmlStatementContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<DMLStatementAdapter>();
-}
-
-
-void MySqlListener::enterSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectStatementCBH, SelectStatmentAdapter>(ctx);
-}
-
-
-void MySqlListener::exitSimpleSelect(MySqlParser::SimpleSelectContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<SelectStatmentAdapter>();
-}
-
-
-void MySqlListener::enterQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<QuerySpecificationCBH, QuerySpecificationAdapter>(ctx);
-}
-
-
-void MySqlListener::exitQuerySpecification(MySqlParser::QuerySpecificationContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<QuerySpecificationAdapter>();
-}
-
-
-void MySqlListener::enterSelectElements(MySqlParser::SelectElementsContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectElementsCBH, SelectElementsAdapter>(ctx);
-}
-
-
-void MySqlListener::exitSelectElements(MySqlParser::SelectElementsContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<SelectElementsAdapter>();
-}
-
-
-void MySqlListener::enterSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<SelectColumnElementCBH, SelectColumnElementAdapter>(ctx);
-}
-
-
-void MySqlListener::exitSelectColumnElement(MySqlParser::SelectColumnElementContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<SelectColumnElementAdapter>();
-}
-
-
-void MySqlListener::enterFromClause(MySqlParser::FromClauseContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FromClauseCBH, FromClauseAdapter>(ctx);
-}
-
-
-void MySqlListener::exitFromClause(MySqlParser::FromClauseContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<FromClauseAdapter>();
-}
-
-
-void MySqlListener::enterTableSources(MySqlParser::TableSourcesContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourcesCBH, TableSourcesAdapter>(ctx);
-}
-
-
-void MySqlListener::exitTableSources(MySqlParser::TableSourcesContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<TableSourcesAdapter>();
-}
-
-
-void MySqlListener::enterTableSourceBase(MySqlParser::TableSourceBaseContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceCBH, TableSourceAdapter>(ctx);
-}
-
-
-void MySqlListener::exitTableSourceBase(MySqlParser::TableSourceBaseContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<TableSourceAdapter>();
-}
-
-
-void MySqlListener::enterAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableSourceItemCBH, TableSourceItemAdapter>(ctx);
-}
-
-
-void MySqlListener::exitAtomTableItem(MySqlParser::AtomTableItemContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<TableSourceItemAdapter>();
-}
-
-
-void MySqlListener::enterTableName(MySqlParser::TableNameContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<TableNameCBH, TableNameAdapter>(ctx);
-}
-
-
-void MySqlListener::exitTableName(MySqlParser::TableNameContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<TableNameAdapter>();
-}
-
-
-void MySqlListener::enterFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FullColumnNameCBH, FullColumnNameAdapter>(ctx);
-}
-
-
-void MySqlListener::exitFullColumnName(MySqlParser::FullColumnNameContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<FullColumnNameAdapter>();
-}
-
-
-
-void MySqlListener::enterFullId(MySqlParser::FullIdContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<FullIdCBH, FullIdAdapter>(ctx);
-}
-
-
-void MySqlListener::exitFullId(MySqlParser::FullIdContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<FullIdAdapter>();
-}
-
+ENTER_EXIT_PARENT(DmlStatement)
+ENTER_EXIT_PARENT(SimpleSelect)
+ENTER_EXIT_PARENT(QuerySpecification)
+ENTER_EXIT_PARENT(SelectElements)
+ENTER_EXIT_PARENT(SelectColumnElement)
+ENTER_EXIT_PARENT(FromClause)
+ENTER_EXIT_PARENT(TableSources)
+ENTER_EXIT_PARENT(TableSourceBase)
+ENTER_EXIT_PARENT(AtomTableItem)
+ENTER_EXIT_PARENT(TableName)
+ENTER_EXIT_PARENT(FullColumnName)
+ENTER_EXIT_PARENT(FullId)
 
 void MySqlListener::enterUid(MySqlParser::UidContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -1001,83 +889,14 @@ void MySqlListener::exitUid(MySqlParser::UidContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
-
-void MySqlListener::enterDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<DecimalLiteralCBH, DecimalLiteralAdapter>(ctx);
-    auto adapter = adapterStackTop<DecimalLiteralAdapter>();
-    if (adapter) {
-        adapter->onEnter(ctx);
-    }
-}
-
-
-void MySqlListener::exitDecimalLiteral(MySqlParser::DecimalLiteralContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<DecimalLiteralAdapter>();
-}
-
-
-void MySqlListener::enterStringLiteral(MySqlParser::StringLiteralContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<StringLiteralCBH, StringLiteralAdapter>(ctx);
-}
-
-
-void MySqlListener::exitStringLiteral(MySqlParser::StringLiteralContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<StringLiteralAdapter>();
-}
-
-
+ENTER_EXIT_PARENT(DecimalLiteral)
+ENTER_EXIT_PARENT(StringLiteral)
 ENTER_EXIT_PARENT(PredicateExpression)
-
-
-void MySqlListener::enterExpressionAtomPredicate(MySqlParser::ExpressionAtomPredicateContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ExpressionAtomPredicateCBH, ExpressionAtomPredicateAdapter>(ctx);
-}
-
-
-void MySqlListener::exitExpressionAtomPredicate(MySqlParser::ExpressionAtomPredicateContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<ExpressionAtomPredicateAdapter>();
-}
-
-
+ENTER_EXIT_PARENT(ExpressionAtomPredicate)
 ENTER_EXIT_PARENT(BinaryComparasionPredicate)
-
-
-void MySqlListener::enterConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ConstantExpressionAtomCBH, ConstantExpressionAtomAdapter>(ctx);
-}
-
-
-void MySqlListener::exitConstantExpressionAtom(MySqlParser::ConstantExpressionAtomContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<ConstantExpressionAtomAdapter>();
-}
-
-
+ENTER_EXIT_PARENT(ConstantExpressionAtom)
 ENTER_EXIT_PARENT(FullColumnNameExpressionAtom)
-
-
-void MySqlListener::enterComparisonOperator(MySqlParser::ComparisonOperatorContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    pushAdapterStack<ComparisonOperatorCBH, ComparisonOperatorAdapter>(ctx);
-    auto adapter = adapterStackTop<ComparisonOperatorAdapter>();
-    if (adapter) {
-        adapter->onEnter(ctx);
-    }
-}
-
-
-void MySqlListener::exitComparisonOperator(MySqlParser::ComparisonOperatorContext * ctx) {
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    popAdapterStack<ComparisonOperatorAdapter>();
-}
-
+ENTER_EXIT_PARENT(ComparisonOperator)
 
 
 }}} // namespace lsst::qserv::parser
