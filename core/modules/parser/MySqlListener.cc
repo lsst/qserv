@@ -509,23 +509,7 @@ public:
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
-            antlr4::tree::TerminalNode * terminalNode(_decimalLiteralCtx->DECIMAL_LITERAL());
-            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "decimal literal:" << terminalNode);
-            if (nullptr == terminalNode) {
-                terminalNode = _decimalLiteralCtx->ZERO_DECIMAL();
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "zero decimal:" << terminalNode);
-            }
-            if (nullptr == terminalNode) {
-                terminalNode = _decimalLiteralCtx->ONE_DECIMAL();
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "one decimal:" << terminalNode);
-            }
-            if (nullptr == terminalNode) {
-                terminalNode = _decimalLiteralCtx->TWO_DECIMAL();
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "two decimal:" << terminalNode);
-            }
-            if (nullptr != terminalNode) {
-                parent->handleDecimalLiteral(terminalNode->getText());
-            }
+            parent->handleDecimalLiteral(_decimalLiteralCtx->getText());
         }
     }
 
@@ -800,7 +784,10 @@ public:
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleUidString(_uidContext->simpleId()->ID()->getText());
+            // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
+            // (see MySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
+            // it will have to be handled and this shortcut may not be taken.
+            parent->handleUidString(_uidContext->getText());
         }
     }
 
