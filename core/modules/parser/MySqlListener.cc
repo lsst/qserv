@@ -247,7 +247,7 @@ public:
 
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
-    virtual void handleDmlStatement(shared_ptr<query::SelectStmt> selectStatement) {
+    void handleDmlStatement(shared_ptr<query::SelectStmt> selectStatement) override {
         _selectStatement = selectStatement;
     }
 
@@ -265,7 +265,7 @@ public:
     DmlStatementAdapter(shared_ptr<DmlStatementCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) {
+    void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) override {
         _selectStatement = selectStatement;
     }
 
@@ -287,9 +287,9 @@ public:
     SimpleSelectAdapter(shared_ptr<SimpleSelectCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
-                                          shared_ptr<query::FromList> fromList,
-                                          shared_ptr<query::WhereClause> whereClause) {
+    void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
+                                  shared_ptr<query::FromList> fromList,
+                                  shared_ptr<query::WhereClause> whereClause) override {
         _selectList = selectList;
         _fromList = fromList;
         _whereClause = whereClause;
@@ -321,11 +321,12 @@ public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleSelectList(shared_ptr<query::SelectList> selectList) {
+    void handleSelectList(shared_ptr<query::SelectList> selectList) override {
         _selectList = selectList;
     }
 
-    virtual void handleFromClause(shared_ptr<query::FromList> fromList, shared_ptr<query::WhereClause> whereClause) {
+    void handleFromClause(shared_ptr<query::FromList> fromList,
+                          shared_ptr<query::WhereClause> whereClause) override {
         _fromList = fromList;
         _whereClause = whereClause;
     }
@@ -350,7 +351,7 @@ public:
     SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) {
+    void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << columnElement);
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
@@ -373,11 +374,11 @@ public:
     FromClauseAdapter(shared_ptr<FromClauseCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleTableSources(query::TableRefListPtr tableRefList) {
+    void handleTableSources(query::TableRefListPtr tableRefList) override {
         _tableRefList = tableRefList;
     }
 
-    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) {
+    void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) override {
         MySqlParser::FromClauseContext* ctx = dynamic_cast<MySqlParser::FromClauseContext*>(_ctx);
         if (nullptr == ctx) {
             throw MySqlListener::adapter_order_error("FromClauseAdapter's _ctx could not be cast to a FromClauseContext.");
@@ -413,7 +414,7 @@ public:
     TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) {
+    void handleTableSource(shared_ptr<query::TableRef> tableRef) override {
         _tableRefList->push_back(tableRef);
     }
 
@@ -435,7 +436,7 @@ public:
     TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) {
+    void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
         _tableRef = tableRef;
     }
@@ -458,7 +459,7 @@ public:
     AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleTableName(const std::string& string) {
+    void handleTableName(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         _table = string;
     }
@@ -484,7 +485,7 @@ public:
     TableNameAdapter(shared_ptr<TableNameCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleFullIdString(const std::string& string) {
+    void handleFullIdString(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
         if (parent) {
@@ -500,12 +501,31 @@ protected:
 class DecimalLiteralAdapter : public Adapter {
 public:
     DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent, MySqlParser::DecimalLiteralContext* ctx)
-    : Adapter(ctx), _parent(parent), _decimalLiteralCtx(ctx) {}
+    : Adapter(ctx), _parent(parent), _decimalLiteralCtx(ctx) {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+    }
 
-    void onEnter() {
+    void onEnter() override {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleDecimalLiteral(_decimalLiteralCtx->DECIMAL_LITERAL()->getText());
+            antlr4::tree::TerminalNode * terminalNode(_decimalLiteralCtx->DECIMAL_LITERAL());
+            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "decimal literal:" << terminalNode);
+            if (nullptr == terminalNode) {
+                terminalNode = _decimalLiteralCtx->ZERO_DECIMAL();
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "zero decimal:" << terminalNode);
+            }
+            if (nullptr == terminalNode) {
+                terminalNode = _decimalLiteralCtx->ONE_DECIMAL();
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "one decimal:" << terminalNode);
+            }
+            if (nullptr == terminalNode) {
+                terminalNode = _decimalLiteralCtx->TWO_DECIMAL();
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "two decimal:" << terminalNode);
+            }
+            if (nullptr != terminalNode) {
+                parent->handleDecimalLiteral(terminalNode->getText());
+            }
         }
     }
 
@@ -532,7 +552,7 @@ public:
 
     virtual ~FullIdAdapter() {}
 
-    virtual void handleUidString(const std::string& string) {
+    void handleUidString(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         auto parent = _parent.lock();
         if (parent) {
@@ -550,7 +570,7 @@ public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleUidString(const std::string& string) {
+    void handleUidString(const std::string& string) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
@@ -571,7 +591,7 @@ public:
     ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleDecimalLiteral(const string& text) override {
+    void handleDecimalLiteral(const string& text) override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleDecimalLiteral(text);
@@ -588,7 +608,7 @@ public:
     FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) {
+    void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
@@ -637,7 +657,7 @@ public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm) {
+    void handleOrTerm(shared_ptr<query::OrTerm> orTerm) override {
         _orTerm = orTerm;
     }
 
@@ -741,7 +761,7 @@ public:
             MySqlParser::ComparisonOperatorContext* ctx)
     : Adapter(ctx), _parent(parent),  _comparisonOperatorCtx(ctx) {}
 
-    void onEnter() {
+    void onEnter() override {
         auto parent = _parent.lock();
         if (parent != nullptr) {
             parent->handleComparisonOperator(_comparisonOperatorCtx->getText());
@@ -759,7 +779,7 @@ public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) {
+    void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
         auto parent = _parent.lock();
         if (parent) {
             parent->handleColumnElement(columnValueExpr);
@@ -776,7 +796,7 @@ public:
     UidAdapter(shared_ptr<UidCBH> parent, MySqlParser::UidContext* ctx)
     : Adapter(ctx), _parent(parent), _uidContext(ctx) {}
 
-    virtual void onEnter() {
+    void onEnter() override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
@@ -788,7 +808,6 @@ private:
     weak_ptr<UidCBH> _parent;
     MySqlParser::UidContext* _uidContext;
 };
-
 
 /// MySqlListener impl
 
