@@ -101,4 +101,15 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
+void TestEchoQservRequest::onError(std::string const& error) {
+
+    if (_onFinish) {
+        _onFinish(
+            Status::ERROR,
+            error,
+            _value,
+            std::string());
+    }
+}
+
 }}} // namespace lsst::qserv::wpublish

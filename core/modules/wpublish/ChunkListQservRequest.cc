@@ -128,4 +128,28 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
+void ChunkListQservRequest::onError(std::string const& error) {
+
+    if (_onFinish) {
+        _onFinish(
+            Status::ERROR,
+            error,
+            ChunkCollection(),
+            ChunkCollection());
+    }
+}
+
+ReloadChunkListQservRequest::ReloadChunkListQservRequest(calback_type onFinish)
+   :   ChunkListQservRequest(false,
+                             true,
+                             onFinish) {
+}
+
+RebuildChunkListQservRequest::RebuildChunkListQservRequest(bool reload,
+                                                           calback_type onFinish)
+    :   ChunkListQservRequest(true,
+                              reload,
+                              onFinish) {
+}
+
 }}} // namespace lsst::qserv::wpublish

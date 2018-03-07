@@ -68,12 +68,12 @@ std::string ChunkGroupQservRequest::status2str(Status status) {
 
 ChunkGroupQservRequest::ChunkGroupQservRequest(bool add,
                                                unsigned int  chunk,
-                                               std::vector<std::string> const& dbs,
+                                               std::vector<std::string> const& databases,
                                                bool force,
                                                calback_type onFinish)
     :   _add(add),
         _chunk(chunk),
-        _dbs(dbs),
+        _databases(databases),
         _force(force),
         _onFinish(onFinish){
 
@@ -96,8 +96,8 @@ void ChunkGroupQservRequest::onRequest(proto::FrameBuffer& buf) {
 
     proto::WorkerCommandChunkGroupM message;
     message.set_chunk(_chunk);
-    for (auto db: _dbs) {
-        message.add_dbs(db);
+    for (auto const& database: _databases) {
+        message.add_dbs(database);
     }
     message.set_force(_force);
     buf.serialize(message);
@@ -117,6 +117,60 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
             ::translate(reply.status()),
             reply.error());
     }
+}
+
+void ChunkGroupQservRequest::onError(std::string const& error) {
+
+    if (_onFinish) {
+        _onFinish(
+            Status::ERROR,
+            error);
+    }
+}
+
+AddChunkGroupQservRequest::pointer AddChunkGroupQservRequest::create(
+                                        unsigned int chunk,
+                                        std::vector<std::string> const& databases,
+                                        calback_type onFinish) {
+    return AddChunkGroupQservRequest::pointer(
+        new AddChunkGroupQservRequest(chunk,
+                                      databases,
+                                      onFinish));
+}
+
+AddChunkGroupQservRequest::AddChunkGroupQservRequest(
+                                    unsigned int chunk,
+                                    std::vector<std::string> const& databases,
+                                    calback_type onFinish)
+    :   ChunkGroupQservRequest(true,
+                               chunk,
+                               databases,
+                               false,
+                               onFinish) {
+}
+
+RemoveChunkGroupQservRequest::pointer RemoveChunkGroupQservRequest::create(
+                                            unsigned int chunk,
+                                            std::vector<std::string> const& databases,
+                                            bool force,
+                                            calback_type onFinish) {
+    return RemoveChunkGroupQservRequest::pointer(
+        new RemoveChunkGroupQservRequest(chunk,
+                                         databases,
+                                         force,
+                                         onFinish));
+}
+
+RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(
+                                    unsigned int chunk,
+                                    std::vector<std::string> const& databases,
+                                    bool force,
+                                    calback_type onFinish)
+    :   ChunkGroupQservRequest(false,
+                               chunk,
+                               databases,
+                               force,
+                               onFinish) {
 }
 
 }}} // namespace lsst::qserv::wpublish

@@ -18,6 +18,7 @@ for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
         "XrdSsiLib",
         "replica",
         "qserv_common",
+        "xrdsvc",
         "util",
         "protobuf",
         "boost_filesystem",

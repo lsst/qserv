@@ -100,6 +100,9 @@ protected:
     /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
+    /// Implement the corresponding method of the base class
+    void onError(std::string const& error) override;
+
 private:
 
     bool _inUseOnly;
