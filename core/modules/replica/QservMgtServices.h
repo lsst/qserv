@@ -28,13 +28,16 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <map>
 #include <memory>
 #include <mutex>
 
 // Qserv headers
+#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Configuration.h"
 
 // Forward declarations
+class XrdSsiService;
 
 // This header declarations
 
@@ -43,6 +46,29 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
+
+/**
+ * The base class for implementing requests registry as a polymorphic
+ * collection to store active requests. Pure virtual methods of
+ * the class will be overriden by request-type-specific implementations
+ * (see struct RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
+ * type-dependant pointer and a callback function.
+ */
+struct QservMgtRequestWrapper {
+
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<QservMgtRequestWrapper> pointer;
+
+    /// Destructor
+    virtual ~QservMgtRequestWrapper() = default;
+
+    /// This method will be called upon a completion of a request
+    /// to notify a subscriber on the event.
+    virtual void notify ()=0;
+
+    /// Return a pointer to the stored request object
+    virtual std::shared_ptr<QservMgtRequest> request () const=0;
+};
 
 /**
   * Class QservMgtServices is a high-level interface to the Qserv management
@@ -55,12 +81,6 @@ public:
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtServices> pointer;
-
-    /// The function type for notifications on the completon of notification
-    /// requests on adding new replicas to workers
-    typedef std::function<void(pointer,     // pointer to self
-                               bool         // 'true' if the operation succeeded
-                               )> added_callback_type;
 
     /**
      * The factory method for instamtiating a proper service object based
@@ -82,15 +102,22 @@ public:
     /**
      * Notify Qserv worker on availability of a new chunk
      *
-     * @param databaseFamily - the name of a database family involved into the operation
      * @param chunk          - the chunk number
+     * @param databaseFamily - the name of a database family involved into the operation
      * @param worker         - the name of a worker where the input replica is residing
      * @param onFinish       - callback function called on a completion of the operation
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                         allowing to override the default value of
+     *                         the corresponding parameter from the Configuration.
+     * @return pointer to the request object if the request was made. Return the null
+     * pointer otherwise.
      */
-    void replicaAdded(std::string const& databaseFamily,
-                      unsigned int chunk,
-                      std::string const& worker,
-                      added_callback_type onFinish);
+    AddReplicaQservMgtRequest::pointer addRreplica(
+                                            unsigned int chunk,
+                                            std::string const& databaseFamily,
+                                            std::string const& worker,
+                                            AddReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            unsigned int requestExpirationIvalSec=0);
 
 private:
 
@@ -101,10 +128,30 @@ private:
      */
     explicit QservMgtServices(Configuration::pointer const& configuration);
 
+    /**
+     * Finalize the completion of the request. This method will notify
+     * a requestor on the completion of the operation and it will also
+     * remove the request from the server's registry.
+     */
+    void finish(std::string const& id);
+
+    /// @return XROOTD/SSI API service for launching worker management requests.
+    /// The method is allowed to return the null pointer in case if a connection
+    /// to the service provider could not be established.
+    XrdSsiService* xrdSsiService();
+
 private:
 
     /// The configuration service
     Configuration::pointer _configuration;
+
+    // BOOST ASIO communication services
+
+    boost::asio::io_service _io_service;
+    std::unique_ptr<boost::asio::io_service::work> _work;
+
+    /// The registry of the on-going requests.
+    std::map<std::string,std::shared_ptr<QservMgtRequestWrapper>> _registry;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

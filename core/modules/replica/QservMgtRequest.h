@@ -36,6 +36,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/Performance.h"
 
 // Forward declarations
@@ -98,6 +99,10 @@ public:
         /// parameters, etc.
         SERVER_BAD,
 
+        /// Server reports that the request can not be implemented because
+        /// some of the required remote resources (chunks, etc.) are in use.
+        SERVER_IN_USE,
+
         /// The request could not be implemented due to an unrecoverable
         /// server-side error.
         SERVER_ERROR,
@@ -127,8 +132,8 @@ public:
     /// Destructor
     virtual ~QservMgtRequest() = default;
 
-    /// @return reference to the service provider
-    ServiceProvider& serviceProvider() { return _serviceProvider; }
+    /// @return reference to the configuration service
+    Configuration::pointer const& configuration() { return _configuration; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
@@ -144,6 +149,12 @@ public:
 
     /// @return extended status of the request
     ExtendedState extendedState() const { return _extendedState; }
+
+    /// @return error message (if any) reported by the remote service.
+    /// Note that the method should only be called after the request
+    /// has finished (state is set to State::FINISHED). Otherwise
+    /// exception std::logic_error will be thrown.
+    std::string const& serverError() const;
 
     /// @return performance info
     Performance const& performance() const { return _performance; }
@@ -193,18 +204,15 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - a provider of various services
-     * @param type            - its type name (used informally for debugging)
-     * @param worker          - the name of a worker
-     * @io_service            - BOOST ASIO service
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     *                          (applies to specific requests only)
+     * @param configuration - reference to the configuration service
+     * @param type          - its type name (used informally for debugging)
+     * @param worker        - the name of a worker
+     * @io_service          - BOOST ASIO service
      */
-    QservMgtRequest(ServiceProvider& serviceProvider,
+    QservMgtRequest(Configuration::pointer const& configuration,
                     boost::asio::io_service& io_service,
                     std::string const& type,
-                    std::string const& worker,
-                    bool keepTracking);
+                    std::string const& worker);
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -225,7 +233,8 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      */
-    void finish(ExtendedState extendedState);
+    void finish(ExtendedState extendedState,
+                std::string const& serverError="");
 
     /**
       * This method is supposed to be provided by subclasses
@@ -239,20 +248,6 @@ protected:
      * the request, etc.
      */
     virtual void notify()=0;
-
-    /**
-     * Return 'true' if the operation was aborted.
-     *
-     * USAGE NOTES:
-     *
-     *    Nomally this method is supposed to be called as the first action
-     *    witin asynchronous handlers to figure out if an on-going aynchronous
-     *    operation was cancelled for some reason. Should this be the case
-     *    the caller is supposed to quit right away. It will be up to a code
-     *    which initiated the abort to take care of putting the object into
-     *    a proper state.
-     */
-    bool isAborted(boost::system::error_code const& ec) const;
 
     /**
      * Ensure the object is in the deseride internal state. Throw an
@@ -282,19 +277,20 @@ protected:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
+    Configuration::pointer _configuration;
 
     std::string _type;
-    std::string _id;                    ///< own identifier
+    std::string _id;
     std::string _worker;
-
-    bool _keepTracking;
 
     // Primary and extended states of the request
 
     State         _state;
     ExtendedState _extendedState;
- 
+     
+    /// Error message (if any) reported by the remote service
+    std::string _serverError;
+
     /// Performance counters
     Performance _performance;
 

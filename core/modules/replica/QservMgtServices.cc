@@ -26,8 +26,18 @@
 // System headers
 #include <stdexcept>
 
+// Third party headers
+#include "XrdSsi/XrdSsiProvider.hh"
+#include "XrdSsi/XrdSsiService.hh"
+
 // Qserv headers
 #include "lsst/log/Log.h"
+
+/// This C++ symbol is provided by the SSI shared library
+extern XrdSsiProvider* XrdSsiProviderClient;
+
+// This macro to appear witin each block which requires thread safety
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace {
 
@@ -40,13 +50,145 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////  QservMgtRequestWrapperImpl  //////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Request-type specific wrappers
+ */
+template <class  T>
+struct QservMgtRequestWrapperImpl
+    :   QservMgtRequestWrapper {
+
+    /// The implementation of the vurtual method defined in the base class
+    virtual void notify() {
+        if (_onFinish == nullptr) { return; }
+        _onFinish(_request);
+    }
+
+    QservMgtRequestWrapperImpl(typename T::pointer const& request,
+                               typename T::callback_type onFinish)
+        :   QservMgtRequestWrapper(),
+            _request(request),
+            _onFinish(onFinish) {
+    }
+
+    /// Destructor
+    ~QservMgtRequestWrapperImpl() override = default;
+
+    /// Implement a virtual method of the base class
+    std::shared_ptr<QservMgtRequest> request() const override {
+        return _request;
+    }
+
+private:
+
+    // The context of the operation
+    
+    typename T::pointer       _request;
+    typename T::callback_type _onFinish;
+};
+
+////////////////////////////////////////////////////////////////////////
+//////////////////////////  QservMgtServices  //////////////////////////
+////////////////////////////////////////////////////////////////////////
+
 QservMgtServices::pointer QservMgtServices::create(Configuration::pointer const& configuration) {
     return QservMgtServices::pointer(
         new QservMgtServices(configuration));
 }
 
 QservMgtServices::QservMgtServices(Configuration::pointer const& configuration)
-    :   _configuration(configuration) {
+    :   _configuration(configuration),
+        _io_service(),
+        _work(nullptr),
+        _registry() {
+}
+
+AddReplicaQservMgtRequest::pointer QservMgtServices::addRreplica(
+                                        unsigned int chunk,
+                                        std::string const& databaseFamily,
+                                        std::string const& worker,
+                                        AddReplicaQservMgtRequest::callback_type onFinish,
+                                        unsigned int requestExpirationIvalSec) {
+    LOCK_GUARD;
+
+    // Ensure we have the XROOTD/SSI service object before attempting any
+    // operations on requests
+    XrdSsiService* service = xrdSsiService();
+    if (not service) {
+        return AddReplicaQservMgtRequest::pointer();
+    }
+
+    QservMgtServices::pointer manager = shared_from_this();
+
+    AddReplicaQservMgtRequest::pointer const request =
+        AddReplicaQservMgtRequest::create(
+            _configuration,
+            _io_service,
+            worker,
+            chunk,
+            databaseFamily,
+            [manager] (QservMgtRequest::pointer const& request) {
+                manager->finish(request->id());
+            }
+        );
+
+    // Register the request (along with its callback) by its unique
+    // identifier in the local registry. Once it's complete it'll
+    // be automatically removed from the Registry.
+    _registry[request->id()] =
+        std::make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(
+            request, onFinish);
+
+    // Initiate the request
+    request->start(service, requestExpirationIvalSec);
+
+    return request;
+}
+    
+void QservMgtServices::finish(std::string const& id) {
+
+    // IMPORTANT:
+    //
+    //   Make sure the notification is complete before removing
+    //   the request from the registry. This has two reasons:
+    //
+    //   - it will avoid a possibility of deadlocking in case if
+    //     the callback function to be notified will be doing
+    //     any API calls of the service manager.
+    //
+    //   - it will reduce the controller API dead-time due to a prolonged
+    //     execution time of of the callback function.
+
+    QservMgtRequestWrapper::pointer request;
+    {
+        LOCK_GUARD;
+        request = _registry[id];
+        _registry.erase(id);
+    }
+    request->notify();
+}
+
+XrdSsiService* QservMgtServices::xrdSsiService() {
+
+    // Lazy construction of the locator string to allow dynamic
+    // reconfiguration.
+    std::string const serviceProviderLocation =
+        _configuration->xrootdHost() + ":" + std::to_string(_configuration->xrootdPort());
+
+    // Connect to a service provider
+    XrdSsiErrInfo errInfo;
+    XrdSsiService* service =
+        XrdSsiProviderClient->GetService(errInfo,
+                                         serviceProviderLocation);
+    if (not service) {
+        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::xrdSsiService()  "
+             << "failed to contact service provider at: " << serviceProviderLocation
+             << ", error: " << errInfo.Get());
+    }
+    return service;
 }
 
 }}} // namespace lsst::qserv::replica

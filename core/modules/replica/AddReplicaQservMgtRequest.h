@@ -59,6 +59,9 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AddReplicaQservMgtRequest> pointer;
 
+    /// The function type for notifications on the completon of the request
+    typedef std::function<void(pointer)> callback_type;
+
     // Default construction and copy semantics are prohibited
 
     AddReplicaQservMgtRequest() = delete;
@@ -73,22 +76,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider - a provider of various services
+     * @param configuration   - reference to the configuration service
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     *                          (applies to specific requests only)
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(Configuration::pointer const& configuration,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           unsigned int chunk,
                           std::string const& databaseFamily,
-                          wpublish::ChunkGroupQservRequest::calback_type onFinish = nullptr,
-                          bool keepTracking = false);
+                          callback_type onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -101,22 +101,19 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider - a provider of various services
+     * @param configuration   - reference to the configuration service
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
-     * @param keepTracking    - keep tracking the request before it finishes or fails
-     *                          (applies to specific requests only)
      */
-    AddReplicaQservMgtRequest(ServiceProvider& serviceProvider,
+    AddReplicaQservMgtRequest(Configuration::pointer const& configuration,
                               boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,
                               std::string const& databaseFamily,
-                              wpublish::ChunkGroupQservRequest::calback_type onFinish,
-                              bool keepTracking);
+                              callback_type onFinish);
 
     /**
       * Implememnt the corresponding method of the base class
@@ -148,7 +145,7 @@ private:
     std::string _databaseFamily;
 
     /// The callback function for sending a notification upon request completion
-    wpublish::ChunkGroupQservRequest::calback_type _onFinish;
+    callback_type _onFinish;
 
     /// A request to the remote services
     wpublish::AddChunkGroupQservRequest::pointer _qservRequest;

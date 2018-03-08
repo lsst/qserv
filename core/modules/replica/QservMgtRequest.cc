@@ -33,7 +33,6 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Common.h"
-#include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -50,9 +49,9 @@ namespace replica {
 
 std::string QservMgtRequest::state2string(State state) {
     switch (state) {
-        case CREATED:     return "CREATED";
-        case IN_PROGRESS: return "IN_PROGRESS";
-        case FINISHED:    return "FINISHED";
+        case State::CREATED:     return "CREATED";
+        case State::IN_PROGRESS: return "IN_PROGRESS";
+        case State::FINISHED:    return "FINISHED";
     }
     throw std::logic_error(
                     "incomplete implementation of method QservMgtRequest::state2string(State)");
@@ -60,43 +59,50 @@ std::string QservMgtRequest::state2string(State state) {
 
 std::string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
-        case NONE:                 return "NONE";
-        case SUCCESS:              return "SUCCESS";
-        case CLIENT_ERROR:         return "CLIENT_ERROR";
-        case SERVER_BAD:           return "SERVER_BAD";
-        case SERVER_ERROR:         return "SERVER_ERROR";
-        case EXPIRED:              return "EXPIRED";
-        case CANCELLED:            return "CANCELLED";
+        case ExtendedState::NONE:                 return "NONE";
+        case ExtendedState::SUCCESS:              return "SUCCESS";
+        case ExtendedState::CLIENT_ERROR:         return "CLIENT_ERROR";
+        case ExtendedState::SERVER_BAD:           return "SERVER_BAD";
+        case ExtendedState::SERVER_IN_USE:        return "SERVER_IN_USE";
+        case ExtendedState::SERVER_ERROR:         return "SERVER_ERROR";
+        case ExtendedState::EXPIRED:              return "EXPIRED";
+        case ExtendedState::CANCELLED:            return "CANCELLED";
     }
     throw std::logic_error(
                     "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
 }
 
-QservMgtRequest::QservMgtRequest(ServiceProvider& serviceProvider,
+QservMgtRequest::QservMgtRequest(Configuration::pointer const& configuration,
                                  boost::asio::io_service& io_service,
                                  std::string const& type,
-                                 std::string const& worker,
-                                 bool keepTracking)
-    :   _serviceProvider(serviceProvider),
+                                 std::string const& worker)
+    :   _configuration(configuration),
         _type(type),
         _id(Generators::uniqueId()),
         _worker(worker),
-        _keepTracking(keepTracking),
-        _state(CREATED),
-        _extendedState(NONE),
+        _state(State::CREATED),
+        _extendedState(ExtendedState::NONE),
+        _serverError() ,
         _performance(),
         _service(nullptr),
-        _requestExpirationIvalSec(serviceProvider.config()->xrootdTimeoutSec()),
+        _requestExpirationIvalSec(configuration->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
+}
 
-        _serviceProvider.assertWorkerIsValid(worker);
+std::string const& QservMgtRequest::serverError() const {
+    static std::string const context = "QservMgtRequest::serverError()  ";
+    if (_state != State::FINISHED) {
+        throw std::logic_error(
+                        context + "not allowed to call this method while the request hasn't finished");
+    }
+    return _serverError;
 }
 
 void QservMgtRequest::start(XrdSsiService* service,
                             unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    assertState(CREATED);
+    assertState(State::CREATED);
 
     // Change the expiration ival if requested
     if (requestExpirationIvalSec) {
@@ -142,7 +148,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
     // Pringt this only after those rejections made above
     LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
 
-    finish(EXPIRED);
+    finish(ExtendedState::EXPIRED);
 }
 
 void QservMgtRequest::cancel() {
@@ -151,19 +157,23 @@ void QservMgtRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
 
-    finish(CANCELLED);
+    finish(ExtendedState::CANCELLED);
 }
 
-void QservMgtRequest::finish(ExtendedState extendedState) {
+void QservMgtRequest::finish(ExtendedState extendedState,
+                             std::string const& serverError) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
 
     // Check if it's not too late for this operation
-    if (_state == FINISHED) { return; }
+    if (_state == State::FINISHED) { return; }
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
-    setState(FINISHED, extendedState);
+    setState(State::FINISHED, extendedState);
+
+    // Set the optional server error state as well
+    _serverError = serverError;
 
     // Close all operations on BOOST ASIO if needed
     _requestExpirationTimer.cancel();
@@ -177,15 +187,6 @@ void QservMgtRequest::finish(ExtendedState extendedState) {
 
     // This will invoke user-defined notifiers (if any)
     notify();
-}
-
-bool QservMgtRequest::isAborted(boost::system::error_code const& ec) const {
-
-    if (ec == boost::asio::error::operation_aborted) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "isAborted  ** ABORTED **");
-        return true;
-    }
-    return false;
 }
 
 void QservMgtRequest::assertState(State state) const {

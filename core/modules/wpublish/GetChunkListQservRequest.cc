@@ -121,4 +121,5 @@ void GetChunkListQservRequest::onError(std::string const& error) {
             ChunkCollection());
     }
 }
+
 }}} // namespace lsst::qserv::wpublish
