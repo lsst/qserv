@@ -49,36 +49,32 @@ namespace qserv {
 namespace replica {
 
 AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
-                                        ServiceProvider& serviceProvider,
+                                        Configuration::pointer const& configuration,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::string const& databaseFamily,
-                                        wpublish::ChunkGroupQservRequest::calback_type onFinish,
-                                        bool keepTracking) {
+                                        AddReplicaQservMgtRequest::callback_type onFinish) {
     return AddReplicaQservMgtRequest::pointer(
-        new AddReplicaQservMgtRequest(serviceProvider,
+        new AddReplicaQservMgtRequest(configuration,
                                       io_service,
                                       worker,
                                       chunk,
                                       databaseFamily,
-                                      onFinish,
-                                      keepTracking));
+                                      onFinish));
 }
 
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
-                                ServiceProvider& serviceProvider,
+                                Configuration::pointer const& configuration,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::string const& databaseFamily,
-                                wpublish::ChunkGroupQservRequest::calback_type onFinish,
-                                bool keepTracking)
-    :   QservMgtRequest(serviceProvider,
+                                AddReplicaQservMgtRequest::callback_type onFinish)
+    :   QservMgtRequest(configuration,
                         io_service,
                         "ADD_REPLICA",
-                        worker,
-                        keepTracking),
+                        worker),
         _chunk(chunk),
         _databaseFamily(databaseFamily),
         _onFinish(onFinish),
@@ -87,20 +83,57 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
 
 void AddReplicaQservMgtRequest::startImpl() {
 
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
+    AddReplicaQservMgtRequest::pointer const& request =
+        shared_from_base<AddReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
-                                    _chunk,
-                                    _serviceProvider.config()->databases(_databaseFamily),
-                                    _onFinish);
+        _chunk,
+        _configuration->databases(_databaseFamily),
+        [request] (wpublish::AddChunkGroupQservRequest::Status status,
+                   std::string const& error) {
 
+            switch (status) {
+                case wpublish::AddChunkGroupQservRequest::Status::SUCCESS:
+                    request->finish(QservMgtRequest::ExtendedState::SUCCESS);
+                    break;
+                case wpublish::AddChunkGroupQservRequest::Status::INVALID:
+                    request->finish(QservMgtRequest::ExtendedState::SERVER_BAD, error);
+                    break;
+                case wpublish::AddChunkGroupQservRequest::Status::IN_USE:
+                    request->finish(QservMgtRequest::ExtendedState::SERVER_IN_USE, error);
+                    break;
+                case wpublish::AddChunkGroupQservRequest::Status::ERROR:
+                    request->finish(QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                    break;
+                default:
+                    throw std::logic_error(
+                                    "AddReplicaQservMgtRequest:  unhandled server status: " +
+                                    wpublish::ChunkGroupQservRequest::status2str(status));
+            }
+        }
+    );
+    XrdSsiResource resource(ResourceUnit::makeWorkerPath(_worker));
     _service->ProcessRequest(*_qservRequest, resource);
 }
 
 void AddReplicaQservMgtRequest::finishImpl() {
+
+    assertState(State::FINISHED);
+
+    if (_extendedState == ExtendedState::CANCELLED) {
+        // And if the SSI request is still around then tell it to stop
+        if (_qservRequest) {
+            bool const cancel = true;
+            _qservRequest->Finished(cancel);
+        }
+    }
+    _qservRequest = nullptr;
 }
 
 void AddReplicaQservMgtRequest::notify() {
+    if (_onFinish) {
+        _onFinish(shared_from_base<AddReplicaQservMgtRequest>());
+    }
 }
     
 }}} // namespace lsst::qserv::replica
