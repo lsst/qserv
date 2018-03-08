@@ -32,6 +32,8 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
+#include "replica/ServiceProvider.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
@@ -94,13 +96,13 @@ private:
 //////////////////////////  QservMgtServices  //////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-QservMgtServices::pointer QservMgtServices::create(Configuration::pointer const& configuration) {
+QservMgtServices::pointer QservMgtServices::create(ServiceProvider& serviceProvider) {
     return QservMgtServices::pointer(
-        new QservMgtServices(configuration));
+        new QservMgtServices(serviceProvider));
 }
 
-QservMgtServices::QservMgtServices(Configuration::pointer const& configuration)
-    :   _configuration(configuration),
+QservMgtServices::QservMgtServices(ServiceProvider& serviceProvider)
+    :   _serviceProvider(serviceProvider),
         _io_service(),
         _work(nullptr),
         _registry() {
@@ -125,7 +127,7 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addRreplica(
 
     AddReplicaQservMgtRequest::pointer const request =
         AddReplicaQservMgtRequest::create(
-            _configuration,
+            _serviceProvider,
             _io_service,
             worker,
             chunk,
@@ -176,7 +178,8 @@ XrdSsiService* QservMgtServices::xrdSsiService() {
     // Lazy construction of the locator string to allow dynamic
     // reconfiguration.
     std::string const serviceProviderLocation =
-        _configuration->xrootdHost() + ":" + std::to_string(_configuration->xrootdPort());
+        _serviceProvider.config()->xrootdHost() + ":" +
+        std::to_string(_serviceProvider.config()->xrootdPort());
 
     // Connect to a service provider
     XrdSsiErrInfo errInfo;

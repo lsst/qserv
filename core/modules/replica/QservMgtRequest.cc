@@ -32,7 +32,9 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/Common.h"
+#include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -72,11 +74,11 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
                     "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
 }
 
-QservMgtRequest::QservMgtRequest(Configuration::pointer const& configuration,
+QservMgtRequest::QservMgtRequest(ServiceProvider& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  std::string const& type,
                                  std::string const& worker)
-    :   _configuration(configuration),
+    :   _serviceProvider(serviceProvider),
         _type(type),
         _id(Generators::uniqueId()),
         _worker(worker),
@@ -85,8 +87,10 @@ QservMgtRequest::QservMgtRequest(Configuration::pointer const& configuration,
         _serverError() ,
         _performance(),
         _service(nullptr),
-        _requestExpirationIvalSec(configuration->xrootdTimeoutSec()),
+        _requestExpirationIvalSec(_serviceProvider.config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
+
+        _serviceProvider.assertWorkerIsValid(_worker);
 }
 
 std::string const& QservMgtRequest::serverError() const {
