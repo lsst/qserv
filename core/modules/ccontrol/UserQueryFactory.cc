@@ -84,6 +84,26 @@ namespace qserv {
 namespace ccontrol {
 
 
+std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery) {
+    try {
+        ANTLRInputStream input(userQuery);
+        MySqlLexer lexer(&input);
+        CommonTokenStream tokens(&lexer);
+        tokens.fill();
+        MySqlParser parser(&tokens);
+        tree::ParseTree *tree = parser.root();
+        LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
+        tree::ParseTreeWalker walker;
+        parser::MySqlListener listener;
+        walker.walk(&listener, tree);
+        return listener.getSelectStatement();
+    } catch (std::exception& e) {
+        LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
+        return nullptr;
+    }
+}
+
+
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
@@ -120,40 +140,6 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
-UserQuery::Ptr UserQueryFactory::a4NewUserQuery(const std::string& userQuery) {
-    ANTLRInputStream input(userQuery);
-    MySqlLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-
-    tokens.fill();
-    // for (auto token : tokens.getTokens()) {
-    //  std::cout << token->toString() << std::endl;
-    // }
-
-    MySqlParser parser(&tokens);
-    tree::ParseTree *tree = parser.root();
-
-    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
-
-    tree::ParseTreeWalker walker;
-    parser::MySqlListener listener;
-    try {
-        walker.walk(&listener, tree);
-    } catch (parser::MySqlListener::adapter_order_error& e) {
-        LOGS(_log, LOG_LVL_ERROR, "Adapter order error: " << e.what());
-    }
-
-    //std::cout << *listener.getRootComponent() << std::endl;
-    auto selectStatement = listener.getSelectStatement();
-    if (selectStatement) {
-        LOGS(_log, LOG_LVL_DEBUG, "antlr4 select statment: " << *selectStatement);
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "antlr4 did not generate a statment.");
-    }
-    return nullptr; //temp
-}
-
-
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -167,8 +153,6 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
     // First check for SUBMIT and strip it
     std::string query = aQuery;
-
-    UserQuery::Ptr antlr4GeneratedQuery = a4NewUserQuery(query);
 
     std::string stripped;
     bool async = false;
@@ -194,16 +178,24 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::string errorExtra;
 
         // Parse SELECT
-        std::shared_ptr<query::SelectStmt> stmt;
-        try {
-            auto parser = parser::SelectParser::newInstance(query);
-            parser->setup();
-            stmt = parser->getSelectStmt();
-        } catch(parser::ParseException const& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        std::shared_ptr<query::SelectStmt> a4stmt = a4NewUserQuery(query);
+        if (a4stmt) {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
 
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+        std::shared_ptr<query::SelectStmt> stmt(a4stmt);
+        if (nullptr == stmt) {
+            try {
+                auto parser = parser::SelectParser::newInstance(query);
+                parser->setup();
+                stmt = parser->getSelectStmt();
+            } catch(parser::ParseException const& e) {
+                return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+            }
+            LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+        }
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();
