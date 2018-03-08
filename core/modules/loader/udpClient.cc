@@ -107,62 +107,60 @@ private:
 
 int main()
 {
-  int state = OPEN_UDP_PORT;
-    string scannerAddress = "10.48.37.183";
+    int state = OPEN_UDP_PORT;
+    string scannerAddress = "127.0.0.1"; // "10.48.37.183";
 
-  boost::asio::io_service io_service;
-    UDPClient client(io_service, "localhost", "5337" ); // Client created;
+    boost::asio::io_service io_service;
+    UDPClient client(io_service, "localhost", "10043" ); // Client created;
 
     while(true)
     {
         switch (state)
-            {
-            case OPEN_UDP_PORT:
-            {
+        {
+        case OPEN_UDP_PORT:
+        {
             cout << "hello world" << endl;
-                    if(client.isOpen())
-                    {
-                            cout << "UDP connection open!" << endl;
-                            state = SEND_DATA_TO_SERVER;
-                    }
-                    else
-            {
-                            cout << "UDP connection is not open!" << endl;
-                            state = ERROR_HANDLING;
+            if(client.isOpen()) {
+                cout << "UDP connection open!" << endl;
+                state = SEND_DATA_TO_SERVER;
+            } else {
+                cout << "UDP connection is not open!" << endl;
+                state = ERROR_HANDLING;
             }
             break;
-            }
+        }
 
-            case SEND_DATA_TO_SERVER:
-            {
+        case SEND_DATA_TO_SERVER:
+        {
             //cout << "Send data to server" << endl;
-                        client.sendToServer(scannerAddress,9008);
+            //client.sendToServer(scannerAddress,9008);
+            client.sendToServer(scannerAddress,10042);
             break;
-            }
-            case RECEIVE_ANSWER_FROM_SERVER:
-            {
+        }
+        case RECEIVE_ANSWER_FROM_SERVER:
+        {
             cout << "hello world" << endl;
-                break;
-            }
-            case RECEIVE_DATA:
-            {
-                    cout << "hello world" << endl;
             break;
-            }
-            case CLOSE_UDP_PORT:
-            {
+        }
+        case RECEIVE_DATA:
+        {
             cout << "hello world" << endl;
-                break;
-            }
-            case ERROR_HANDLING:
-            {
+            break;
+        }
+        case CLOSE_UDP_PORT:
+        {
             cout << "hello world" << endl;
-                break;
-            }
+            break;
+        }
+        case ERROR_HANDLING:
+        {
+            cout << "hello world" << endl;
+            break;
         }
         }
+    }
 
-return 0;
+    return 0;
 }
 
 #else
