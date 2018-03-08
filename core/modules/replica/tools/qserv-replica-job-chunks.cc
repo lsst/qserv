@@ -40,8 +40,10 @@
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
+
+#define OUT std::cout
 
 namespace {
 
@@ -54,10 +56,9 @@ bool        errorReport;
 bool        detailedReport;
 bool        chunkLocksReport = false;
 
-void dump (rc::FindAllJobResult const& replicaData) {
-    std::cout << "*** DETAILED REPORTS ***\n";
-
-    std::cout << "\nCO-LOCATION:\n";
+void dump(replica::FindAllJobResult const& replicaData) {
+    OUT << "*** DETAILED REPORTS ***\n"
+        << "\nCO-LOCATION:\n";
     for (auto const& chunk2workers: replicaData.isColocated) {
         unsigned int chunk = chunk2workers.first;
 
@@ -65,17 +66,17 @@ void dump (rc::FindAllJobResult const& replicaData) {
             std::string const& destinationWorker = worker2colocated.first;
             bool        const  isColocated       = worker2colocated.second;
             
-            std::cout << "  "
-                      << "  chunk: "  << std::setw(6) << chunk
-                      << "  worker: " << std::setw(12) << destinationWorker
-                      << "  isColocated: " << (isColocated ? "YES" : "NO")
-                      << "\n";
+            OUT << "  "
+                << "  chunk: "  << std::setw(6) << chunk
+                << "  worker: " << std::setw(12) << destinationWorker
+                << "  isColocated: " << (isColocated ? "YES" : "NO")
+                << "\n";
         }
     }
 }
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -84,9 +85,9 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
+        replica::ServiceProvider provider(configUrl);
 
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::Controller::pointer controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -94,10 +95,10 @@ bool test () {
         // Find all replicas accross all workers
 
         auto job =
-            rc::FindAllJob::create (
+            replica::FindAllJob::create(
                 databaseFamily,
                 controller,
-                [](rc::FindAllJob::pointer job) {
+                [] (replica::FindAllJob::pointer const& job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
                     ;
@@ -105,59 +106,68 @@ bool test () {
             );
 
         job->start();
-        job->track (progressReport,
-                    errorReport,
-                    chunkLocksReport,
-                    std::cout);
+        job->track(progressReport,
+                   errorReport,
+                   chunkLocksReport,
+                   OUT);
 
         //////////////////////////////
         // Analyse and display results
 
-        rc::FindAllJobResult const& replicaData = job->getReplicaData();
-
-        if (detailedReport) dump(replicaData);
-
-        std::cout
-            << "\n"
-            << "WORKERS:";
-        for (auto const& worker: provider.config()->workers()) {
-            std::cout << " " << worker;
+        replica::FindAllJobResult const& replicaData = job->getReplicaData();
+        if (detailedReport) {
+            dump(replicaData);
         }
-        std::cout
-            << std::endl;
 
-        // Failed workers
+        // Build and print a map of worker "numbers" to use them instead of
+        // (potentially) very long worker identifiers
+
+        std::vector<std::string> const workers = provider.config()->workers();
+        std::map<std::string,size_t> worker2idx;
+
+        OUT << "\n"
+            << "WORKERS:\n";
+        for (size_t idx = 0, num = workers.size(); idx < num; ++idx) {
+            std::string const& worker = workers[idx];
+            worker2idx[worker] = idx;
+            OUT << std::setw(3) << idx << ": " << worker << "\n";
+        }
+        OUT << std::endl;
+
+        // Build a set of failed workers
+
         std::set<std::string> failedWorkers;
+        for (auto const& entry: replicaData.workers) {
+            if (not entry.second) { failedWorkers.insert(entry.first); }
+        }
+        std::map<std::string,
+                 std::map<unsigned int,
+                         std::map<std::string,
+                                  bool>>> worker2chunks2databases;
 
-        for (auto const& entry: replicaData.workers)
-            if (!entry.second) failedWorkers.insert(entry.first);
-
-        std::map<std::string, std::map<unsigned int, std::map<std::string,bool>>> worker2chunks2databases;
-
-        for (rc::ReplicaInfoCollection const& replicaCollection: replicaData.replicas)
-            for (rc::ReplicaInfo const& replica: replicaCollection)
+        for (replica::ReplicaInfoCollection const& replicaCollection: replicaData.replicas) {
+            for (replica::ReplicaInfo const& replica: replicaCollection) {
                 worker2chunks2databases[replica.worker()][replica.chunk()][replica.database()] = true;
+            }
+        }
 
-        std::cout
-            << "\n"
+        OUT << "\n"
             << "CHUNK DISTRIBUTION:\n"
-            << "----------+------------\n"
-            << "   worker | num.chunks \n"
-            << "----------+------------\n";
+            << "---------+------------\n"
+            << "  worker | num.chunks \n"
+            << "---------+------------\n";
 
-        for (auto const& worker: provider.config()->workers())
-            std::cout
-                << " " << std::setw(8) << worker << " | " << std::setw(10)
-                << (failedWorkers.count(worker) ? "*" : std::to_string(worker2chunks2databases[worker].size())) << "\n";
-
-        std::cout
-            << "----------+------------\n"
+        for (auto const& worker: provider.config()->workers()) {
+            OUT << " " << std::setw(7) << worker2idx[worker] << " | " << std::setw(10)
+                << (failedWorkers.count(worker) ? "*" : std::to_string(worker2chunks2databases[worker].size()))
+                << "\n";
+        }
+        OUT << "---------+------------\n"
             << std::endl;
 
-        std::cout
-            << "REPLICAS:\n"
-            << "----------+----------+-----+-----+-----------------------------------------\n"
-            << "    chunk | database | rep | r+- | workers\n";
+        OUT << "REPLICAS:\n"
+            << "-------------+----------+-----+-----+-----------------------------------------\n"
+            << "       chunk | database | rep | r+- | workers\n";
 
         size_t const replicationLevel = provider.config()->replicationLevel(databaseFamily);
 
@@ -174,31 +184,28 @@ bool test () {
                 long long   const  numReplicasDiff    = numReplicas - replicationLevel;
                 std::string const  numReplicasDiffStr = numReplicasDiff ? std::to_string(numReplicasDiff) : "";
 
-                if (chunk != prevChunk)
-                    std::cout
-                        << "----------+----------+-----+-----+-----------------------------------------\n";
-
+                if (chunk != prevChunk) {
+                    OUT << "-------------+----------+-----+-----+-----------------------------------------\n";
+                }
                 prevChunk = chunk;
 
-                std::cout
-                    << " "   << std::setw(8) << chunk
-                    << " | " << std::setw(8) << database
-                    << " | " << std::setw(3) << numReplicas
-                    << " | " << std::setw(3) << numReplicasDiffStr
+                OUT << " "   << std::setw(11) << chunk
+                    << " | " << std::setw(8)  << database
+                    << " | " << std::setw(3)  << numReplicas
+                    << " | " << std::setw(3)  << numReplicasDiffStr
                     << " | ";
 
                 for (auto const& replicaEntry: databaseEntry.second) {
 
                     std::string     const& worker = replicaEntry.first;
-                    rc::ReplicaInfo const& info   = replicaEntry.second;
+                    replica::ReplicaInfo const& info   = replicaEntry.second;
 
-                    std::cout << worker << (info.status() != rc::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
+                    OUT << worker2idx[worker] << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                 }
-                std::cout << "\n";
+                OUT << "\n";
             }
         }
-        std::cout
-            << "----------+----------+-----+-----+-----------------------------------------\n"
+        OUT << "-------------+----------+-----+-----+-----------------------------------------\n"
             << std::endl;
 
         ///////////////////////////////////////////////////
@@ -214,7 +221,7 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -223,7 +230,7 @@ int main (int argc, const char* const argv[]) {
     
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -244,10 +251,10 @@ int main (int argc, const char* const argv[]) {
             "  --detailed-report  - detailed report on results\n");
 
         ::databaseFamily = parser.parameter<std::string>(1);
-        ::configUrl      = parser.option   <std::string>("config", "file:replication.cfg");
-        ::progressReport = parser.flag                  ("progress-report");
-        ::errorReport    = parser.flag                  ("error-report");
-        ::detailedReport = parser.flag                  ("detailed-report");
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
+        ::progressReport = parser.flag("progress-report");
+        ::errorReport    = parser.flag("error-report");
+        ::detailedReport = parser.flag("detailed-report");
 
     } catch (std::exception const& ex) {
         return 1;
