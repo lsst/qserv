@@ -34,7 +34,6 @@
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
-#include "replica/Configuration.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -46,6 +45,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
+class ServiceProvider;
 
 /**
  * The base class for implementing requests registry as a polymorphic
@@ -88,7 +88,7 @@ public:
      *
      * @param configuration - the configuration service
      */
-    static pointer create(Configuration::pointer const& configuration);
+    static pointer create(ServiceProvider& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -98,6 +98,9 @@ public:
 
     /// Destructor
     ~QservMgtServices() = default;
+
+    /// @return reference to the ServiceProvider object
+    ServiceProvider& serviceProvider() { return _serviceProvider; }
 
     /**
      * Notify Qserv worker on availability of a new chunk
@@ -126,7 +129,7 @@ private:
      *
      * @param configuration - the configuration service
      */
-    explicit QservMgtServices(Configuration::pointer const& configuration);
+    explicit QservMgtServices(ServiceProvider& serviceProvider);
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -142,8 +145,8 @@ private:
 
 private:
 
-    /// The configuration service
-    Configuration::pointer _configuration;
+    /// Reference to a provider of services
+    ServiceProvider& _serviceProvider;
 
     // BOOST ASIO communication services
 

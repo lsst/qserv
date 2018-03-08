@@ -36,7 +36,6 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/Performance.h"
 
 // Forward declarations
@@ -132,8 +131,8 @@ public:
     /// Destructor
     virtual ~QservMgtRequest() = default;
 
-    /// @return reference to the configuration service
-    Configuration::pointer const& configuration() { return _configuration; }
+    /// @return reference to a provider of services
+    ServiceProvider& serviceProvider() { return _serviceProvider; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
@@ -204,12 +203,12 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param configuration - reference to the configuration service
-     * @param type          - its type name (used informally for debugging)
-     * @param worker        - the name of a worker
-     * @io_service          - BOOST ASIO service
+     * @param serviceProvider - reference to a provider of services
+     * @param type            - its type name (used informally for debugging)
+     * @param worker          - the name of a worker
+     * @io_service            - BOOST ASIO service
      */
-    QservMgtRequest(Configuration::pointer const& configuration,
+    QservMgtRequest(ServiceProvider& serviceProvider,
                     boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
@@ -277,7 +276,7 @@ protected:
 
     // Parameters of the object
 
-    Configuration::pointer _configuration;
+    ServiceProvider& _serviceProvider;
 
     std::string _type;
     std::string _id;

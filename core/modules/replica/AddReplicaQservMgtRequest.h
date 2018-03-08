@@ -46,6 +46,7 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
+class ServiceProvider;
 
 /**
   * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
@@ -76,14 +77,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param configuration   - reference to the configuration service
+     * @param serviceProvider - reference to a provider of services
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(Configuration::pointer const& configuration,
+    static pointer create(ServiceProvider& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           unsigned int chunk,
@@ -101,14 +102,14 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param configuration   - reference to the configuration service
+     * @param serviceProvider - reference to a provider of services
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
      */
-    AddReplicaQservMgtRequest(Configuration::pointer const& configuration,
+    AddReplicaQservMgtRequest(ServiceProvider& serviceProvider,
                               boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,

@@ -32,8 +32,8 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "lsst/log/Log.h"
-#include "replica/ServiceProvider.h"
 #include "replica/Configuration.h"
+#include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -49,14 +49,14 @@ namespace qserv {
 namespace replica {
 
 AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
-                                        Configuration::pointer const& configuration,
+                                        ServiceProvider& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::string const& databaseFamily,
                                         AddReplicaQservMgtRequest::callback_type onFinish) {
     return AddReplicaQservMgtRequest::pointer(
-        new AddReplicaQservMgtRequest(configuration,
+        new AddReplicaQservMgtRequest(serviceProvider,
                                       io_service,
                                       worker,
                                       chunk,
@@ -65,13 +65,13 @@ AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
 }
 
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
-                                Configuration::pointer const& configuration,
+                                ServiceProvider& serviceProvider,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::string const& databaseFamily,
                                 AddReplicaQservMgtRequest::callback_type onFinish)
-    :   QservMgtRequest(configuration,
+    :   QservMgtRequest(serviceProvider,
                         io_service,
                         "ADD_REPLICA",
                         worker),
@@ -88,7 +88,7 @@ void AddReplicaQservMgtRequest::startImpl() {
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
         _chunk,
-        _configuration->databases(_databaseFamily),
+        _serviceProvider.config()->databases(_databaseFamily),
         [request] (wpublish::AddChunkGroupQservRequest::Status status,
                    std::string const& error) {
 
