@@ -40,6 +40,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
 
@@ -52,7 +53,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 class WorkerRequestFactory;
 
 /**
@@ -124,9 +124,9 @@ public:
     /**
      * The constructor of the class.
      */
-    WorkerProcessor(ServiceProvider&      serviceProvider,
+    WorkerProcessor(ServiceProvider::pointer const& serviceProvider,
                     WorkerRequestFactory& requestFactory,
-                    std::string const&    worker);
+                    std::string const& worker);
 
     /// Destructor
     ~WorkerProcessor() = default;
@@ -462,7 +462,7 @@ private:
 private:
 
     /// Services used by the processor
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     /// A factory of request objects
     WorkerRequestFactory &_requestFactory;

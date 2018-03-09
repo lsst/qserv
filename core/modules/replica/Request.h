@@ -39,6 +39,7 @@
 #include "replica/Common.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -50,7 +51,6 @@ namespace replica {
 
 // Forward declarations
 class Controller;
-class ServiceProvider;
 class WorkerInfo;
 
 /**
@@ -142,7 +142,7 @@ public:
     virtual ~Request() = default;
 
     /// Return a reference to the service provider,
-    ServiceProvider& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
     /// Return a string representing a type of a request.
     std::string const& type() const { return _type; }
@@ -251,7 +251,7 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    Request(ServiceProvider& serviceProvider,
+    Request(ServiceProvider::pointer const& serviceProvider,
             boost::asio::io_service& io_service,
             std::string const& type,
             std::string const& worker,
@@ -335,7 +335,7 @@ protected:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     std::string _type;
     std::string _id;                    ///< own identifier

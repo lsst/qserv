@@ -121,7 +121,7 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& database,
@@ -136,7 +136,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestC(ServiceProvider& serviceProvider,
+    DeleteRequestC(ServiceProvider::pointer const& serviceProvider,
                    boost::asio::io_service& io_service,
                    std::string const& worker,
                    std::string const& database,
@@ -275,7 +275,7 @@ public:
      * @param allowDuplicate   - follow a previously made request if the current one duplicates it
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& database,
@@ -291,7 +291,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    DeleteRequestM(ServiceProvider& serviceProvider,
+    DeleteRequestM(ServiceProvider::pointer const& serviceProvider,
                    boost::asio::io_service& io_service,
                    std::string const& worker,
                    std::string const& database,

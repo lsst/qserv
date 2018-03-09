@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -43,7 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServer::pointer FileServer::create(ServiceProvider& serviceProvider,
+FileServer::pointer FileServer::create(ServiceProvider::pointer const& serviceProvider,
                                        std::string const& workerName) {
     return FileServer::pointer(
         new FileServer(
@@ -51,11 +52,11 @@ FileServer::pointer FileServer::create(ServiceProvider& serviceProvider,
             workerName));
 }
 
-FileServer::FileServer(ServiceProvider& serviceProvider,
+FileServer::FileServer(ServiceProvider::pointer const& serviceProvider,
                        std::string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _workerInfo(serviceProvider.config()->workerInfo(workerName)),
+        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
             _io_service,
@@ -77,7 +78,7 @@ void FileServer::run() {
 
     // Launch all threads in the pool    
     std::vector<std::shared_ptr<std::thread>> threads(
-                    _serviceProvider.config()->workerNumFsProcessingThreads());
+                    _serviceProvider->config()->workerNumFsProcessingThreads());
 
     for (std::size_t i = 0; i < threads.size(); ++i) {
         std::shared_ptr<std::thread> ptr(

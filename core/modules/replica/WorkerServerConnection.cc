@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
@@ -115,7 +116,7 @@ namespace qserv {
 namespace replica {
 
 WorkerServerConnection::pointer WorkerServerConnection::create(
-                                    ServiceProvider& serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     WorkerProcessor& processor,
                                     boost::asio::io_service& io_service) {
     return WorkerServerConnection::pointer(
@@ -125,15 +126,14 @@ WorkerServerConnection::pointer WorkerServerConnection::create(
             io_service));
 }
 
-WorkerServerConnection::WorkerServerConnection(ServiceProvider& serviceProvider,
+WorkerServerConnection::WorkerServerConnection(ServiceProvider::pointer const& serviceProvider,
                                                WorkerProcessor& processor,
                                                boost::asio::io_service& io_service)
-
     :   _serviceProvider(serviceProvider),
-        _processor(      processor),
-        _socket(         io_service),
-        _bufferPtr(      std::make_shared<ProtocolBuffer>(
-                                    serviceProvider.config()->requestBufferSizeBytes())) {
+        _processor(processor),
+        _socket(io_service),
+        _bufferPtr(std::make_shared<ProtocolBuffer>(
+                       serviceProvider->config()->requestBufferSizeBytes())) {
 }
 
 void WorkerServerConnection::beginProtocol() {

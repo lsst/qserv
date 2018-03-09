@@ -27,6 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 namespace lsst {
@@ -44,7 +45,7 @@ ReplicaFinder::ReplicaFinder(Controller::pointer const& controller,
             errorReport) {
 
     // Launch requests against all workers
-    for (const auto &worker: controller->serviceProvider().config()->workers()) {
+    for (const auto &worker: controller->serviceProvider()->config()->workers()) {
         add(controller->findAllReplicas(
                             worker,
                             database,

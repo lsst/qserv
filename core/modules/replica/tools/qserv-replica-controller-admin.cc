@@ -5,14 +5,15 @@
 #include <string>
 
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/RequestTracker.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -25,7 +26,7 @@ std::string configUrl;
 
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -34,9 +35,8 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -47,46 +47,50 @@ bool test () {
         //            be executed within the Contoller's thread. Watch for proper
         //            synchronization when inspecting/updating shared variables.
 
-        rc::CommonRequestTracker<rc::ServiceManagementRequestBase> tracker (std::cout,
-                                                                            progressReport,
-                                                                            errorReport);
-        for (auto const& worker: provider.config()->workers())
+        replica::CommonRequestTracker<replica::ServiceManagementRequestBase>
+            tracker(std::cout,
+                    progressReport,
+                    errorReport);
 
-            if (operation == "STATUS")
+        for (auto const& worker: provider->config()->workers()) {
+
+            if (operation == "STATUS") {
                 tracker.add (
-                    controller->statusOfWorkerService (
+                    controller->statusOfWorkerService(
                         worker,
-                        [&tracker] (rc::ServiceStatusRequest::pointer ptr) {
+                        [&tracker] (replica::ServiceStatusRequest::pointer const& ptr) {
                             tracker.onFinish(ptr);
                         }));
-            else if (operation == "SUSPEND")
+            } else if (operation == "SUSPEND") {
                 tracker.add (
-                    controller->suspendWorkerService (
+                    controller->suspendWorkerService(
                         worker,
-                        [&tracker] (rc::ServiceSuspendRequest::pointer ptr) {
+                        [&tracker] (replica::ServiceSuspendRequest::pointer const& ptr) {
                             tracker.onFinish(ptr);
                         }));
-            else if (operation == "RESUME")
+            } else if (operation == "RESUME") {
                 tracker.add (
-                    controller->resumeWorkerService (
+                    controller->resumeWorkerService(
                         worker,
-                        [&tracker] (rc::ServiceResumeRequest::pointer ptr) {
+                        [&tracker] (replica::ServiceResumeRequest::pointer const& ptr) {
                             tracker.onFinish(ptr);
                         }));
-            else if (operation == "REQUESTS")
+            } else if (operation == "REQUESTS") {
                 tracker.add (
-                    controller->requestsOfWorkerService (
+                    controller->requestsOfWorkerService(
                         worker,
-                        [&tracker] (rc::ServiceRequestsRequest::pointer ptr) {
+                        [&tracker] (replica::ServiceRequestsRequest::pointer const& ptr) {
                             tracker.onFinish(ptr);
                         }));
-            else if (operation == "DRAIN")
+            } else if (operation == "DRAIN") {
                 tracker.add (
-                    controller->drainWorkerService (
+                    controller->drainWorkerService(
                         worker,
-                        [&tracker] (rc::ServiceDrainRequest::pointer ptr) {
+                        [&tracker] (replica::ServiceDrainRequest::pointer const& ptr) {
                             tracker.onFinish(ptr);
                         }));
+            }
+        }
 
         // Wait before all request are finished
 
@@ -98,7 +102,7 @@ bool test () {
         std::cout
             << "\n"
             << "WORKERS:";
-        for (auto const& worker: provider.config()->workers()) {
+        for (auto const& worker: provider->config()->workers()) {
             std::cout << " " << worker;
         }
         std::cout
@@ -112,10 +116,12 @@ bool test () {
 
         for (auto const& ptr: tracker.requests) {
 
-            if ((ptr->state()         == rc::Request::State::FINISHED) &&
-                (ptr->extendedState() == rc::Request::ExtendedState::SUCCESS)) {
+            if ((ptr->state()         == replica::Request::State::FINISHED) &&
+                (ptr->extendedState() == replica::Request::ExtendedState::SUCCESS)) {
 
-                const uint32_t startedSecondsAgo = (rc::PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000.0f;
+                const uint32_t startedSecondsAgo =
+                    (replica::PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000.0f;
+
                 std::cout
                     << " "   << std::setw (8) << ptr->worker()
                     << " | " << std::setw(21) << startedSecondsAgo
@@ -152,7 +158,7 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -161,7 +167,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -183,15 +189,16 @@ int main (int argc, const char* const argv[]) {
             "  --config           - a configuration URL (a configuration file or a set of the database\n"
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
-        ::operation = parser.parameterRestrictedBy (1, {"STATUS",
-                                                        "SUSPEND",
-                                                         "RESUME",
-                                                         "REQUESTS",
-                                                         "DRAIN"});
+        ::operation = parser.parameterRestrictedBy(1, {
+            "STATUS",
+            "SUSPEND",
+            "RESUME",
+            "REQUESTS",
+            "DRAIN"});
 
-        ::progressReport = parser.flag                ("progress-report");
-        ::errorReport    = parser.flag                ("error-report");
-        ::configUrl      = parser.option<std::string> ("config", "file:replication.cfg");
+        ::progressReport = parser.flag("progress-report");
+        ::errorReport    = parser.flag("error-report");
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;

@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/FindAllJob.h"
 #include "replica/ReplicaInfo.h"
@@ -85,9 +86,8 @@ bool test() {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        replica::ServiceProvider provider(configUrl);
-
-        replica::Controller::pointer controller = replica::Controller::create(provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -122,7 +122,7 @@ bool test() {
         // Build and print a map of worker "numbers" to use them instead of
         // (potentially) very long worker identifiers
 
-        std::vector<std::string> const workers = provider.config()->workers();
+        std::vector<std::string> const workers = provider->config()->workers();
         std::map<std::string,size_t> worker2idx;
 
         OUT << "\n"
@@ -157,7 +157,7 @@ bool test() {
             << "  worker | num.chunks \n"
             << "---------+------------\n";
 
-        for (auto const& worker: provider.config()->workers()) {
+        for (auto const& worker: provider->config()->workers()) {
             OUT << " " << std::setw(7) << worker2idx[worker] << " | " << std::setw(10)
                 << (failedWorkers.count(worker) ? "*" : std::to_string(worker2chunks2databases[worker].size()))
                 << "\n";
@@ -169,7 +169,7 @@ bool test() {
             << "-------------+----------+-----+-----+-----------------------------------------\n"
             << "       chunk | database | rep | r+- | workers\n";
 
-        size_t const replicationLevel = provider.config()->replicationLevel(databaseFamily);
+        size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
 
         unsigned int prevChunk  = (unsigned int) -1;
 

@@ -52,7 +52,7 @@ namespace replica {
 //         StopRequestBaseC          //
 ////////////////////////////////////////
 
-StopRequestBaseC::StopRequestBaseC(ServiceProvider&         serviceProvider,
+StopRequestBaseC::StopRequestBaseC(ServiceProvider::pointer const& serviceProvider,
                                    boost::asio::io_service& io_service,
                                    char const*              requestTypeName,
                                    std::string const&       worker,
@@ -370,7 +370,7 @@ void StopRequestBaseC::analyze(proto::ReplicationStatus status) {
 //         StopRequestBaseM          //
 ///////////////////////////////////////
 
-StopRequestBaseM::StopRequestBaseM(ServiceProvider&         serviceProvider,
+StopRequestBaseM::StopRequestBaseM(ServiceProvider::pointer const& serviceProvider,
                                    boost::asio::io_service& io_service,
                                    char const*              requestTypeName,
                                    std::string const&       worker,

@@ -28,13 +28,12 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
 
 // Qserv headers
 #include "replica/ChunkLocker.h"
-#include "replica/Configuration.h"
-#include "replica/DatabaseServices.h"
 
 // Forward declarations
 
@@ -44,13 +43,28 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+// Forward declarations
+class Configuration;
+class DatabaseServices;
+class QservMgtServices;
+
 /**
   * Class ServiceProvider hosts various serviceses for the master server.
   */
-class ServiceProvider {
+class ServiceProvider
+    :   public std::enable_shared_from_this<ServiceProvider> {
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<ServiceProvider> pointer;
+
+    // Forward definition for pointer types of the owned services
+ 
+    typedef std::shared_ptr<Configuration>    Configuration_pointer;
+    typedef std::shared_ptr<DatabaseServices> DatabaseServices_pointer;
+    typedef std::shared_ptr<QservMgtServices> QservMgtServices_pointer;
+    
     // Default construction and copy semantics are prohibited
 
     ServiceProvider() = delete;
@@ -58,29 +72,35 @@ public:
     ServiceProvider& operator=(ServiceProvider const&) = delete;
 
     /**
-     * Construct the object.
+     * Static factory for creating  the object.
      *
      * @param configUrl - a source of the application configuration parameters
+     * @return pointer to the instance
      */
-    explicit ServiceProvider(std::string const& configUrl);
+    static ServiceProvider::pointer create(std::string const& configUrl);
 
     /// Detructor
-    virtual ~ServiceProvider() = default;
+    ~ServiceProvider() = default;
 
     /**
      * @return a reference to the configuration service
      */
-    Configuration::pointer const& config() const { return _configuration; }
+    Configuration_pointer const& config() const { return _configuration; }
 
     /**
      * @return a reference to the database services
      */
-    DatabaseServices::pointer const& databaseServices() const { return _databaseServices; }
+    DatabaseServices_pointer const& databaseServices() const { return _databaseServices; }
 
     /**
      * @return a reference to the local (process) chunk locking services
      */
     ChunkLocker& chunkLocker() { return _chunkLocker; }
+
+    /**
+     * @return a reference to the Qserv notification services
+     */
+    QservMgtServices_pointer const& qservMgtServices() const { return _qservMgtServices; }
 
     /**
      * Make sure this worker is known in the configuration. Throws exception
@@ -107,15 +127,27 @@ public:
 
 private:
 
+    /**
+     * Construct the object.
+     *
+     * @param configUrl - a source of the application configuration parameters
+     */
+    explicit ServiceProvider(std::string const& configUrl);
+
+private:
+
     /// Configuration manager
-    Configuration::pointer _configuration;
+    Configuration_pointer _configuration;
 
     /// Database services
-    DatabaseServices::pointer _databaseServices;
+    DatabaseServices_pointer _databaseServices;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
+
+    /// Qserv management services
+    QservMgtServices_pointer _qservMgtServices;
 };
 
 }}} // namespace lsst::qserv::replica

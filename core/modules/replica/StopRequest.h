@@ -212,7 +212,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StopRequestBaseC(ServiceProvider&         serviceProvider,
+    StopRequestBaseC(ServiceProvider::pointer const& serviceProvider,
                      boost::asio::io_service& io_service,
                      char const*              requestTypeName,
                      std::string const&       worker,
@@ -338,7 +338,7 @@ public:
      *                           the request.
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create(ServiceProvider&         serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const&       worker,
                           std::string const&       targetRequestId,
@@ -361,7 +361,7 @@ private:
     /**
      * Construct the request
      */
-    StopRequestC(ServiceProvider&         serviceProvider,
+    StopRequestC(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  char const*              requestTypeName,
                  std::string const&       worker,
@@ -475,7 +475,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StopRequestBaseM(ServiceProvider&         serviceProvider,
+    StopRequestBaseM(ServiceProvider::pointer const& serviceProvider,
                      boost::asio::io_service& io_service,
                      char const*              requestTypeName,
                      std::string const&       worker,
@@ -583,7 +583,7 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider&         serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const&       worker,
                           std::string const&       targetRequestId,
@@ -608,7 +608,7 @@ private:
     /**
      * Construct the request
      */
-    StopRequestM(ServiceProvider&         serviceProvider,
+    StopRequestM(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  char const*              requestTypeName,
                  std::string const&       worker,

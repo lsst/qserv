@@ -43,6 +43,7 @@
 // Qserv headers
 #include "replica/Request.h"
 #include "replica/RequestTypesFwd.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -58,7 +59,6 @@ class ControllerImpl;
 #ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
 class Messenger;
 #endif
-class ServiceProvider;
 
 /**
  * The base class for implementing requests registry as a polymorphic
@@ -139,7 +139,7 @@ public:
      *
      * @param serviceProvider - for configuration, other services
      */
-    static pointer create(ServiceProvider& serviceProvider);
+    static pointer create(ServiceProvider::pointer const& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -157,7 +157,7 @@ public:
     uint64_t startTime() const { return _startTime; }
 
     /// Return the Service Provider used by the server
-    ServiceProvider& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
     /// Return a reference to the I/O service
     boost::asio::io_service& io_service() { return _io_service; }
@@ -636,7 +636,7 @@ private:
      *
      * @param serviceProvider - for configuration, other services
      */
-    explicit Controller(ServiceProvider& serviceProvider);
+    explicit Controller(ServiceProvider::pointer const& serviceProvider);
 
     /**
      * Finalize the completion of the request. This method will notify
@@ -660,7 +660,7 @@ private:
     uint64_t const _startTime;
 
     /// The provider of variou services
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     // BOOST ASIO communication services
 

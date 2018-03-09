@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
@@ -110,14 +111,14 @@ proto::ReplicationStatus WorkerProcessor::translate(WorkerRequest::CompletionSta
     }
 }
 
-WorkerProcessor::WorkerProcessor(ServiceProvider&      serviceProvider,
+WorkerProcessor::WorkerProcessor(ServiceProvider::pointer const& serviceProvider,
                                  WorkerRequestFactory& requestFactory,
-                                 std::string const&    worker)
+                                 std::string const& worker)
     :   _serviceProvider(serviceProvider),
-        _requestFactory (requestFactory),
-        _worker         (worker),
-        _state          (STATE_IS_STOPPED),
-        _startTime      (PerformanceUtils::now()) {
+        _requestFactory(requestFactory),
+        _worker(worker),
+        _state(STATE_IS_STOPPED),
+        _startTime(PerformanceUtils::now()) {
 }
 
 void WorkerProcessor::run() {
@@ -128,7 +129,7 @@ void WorkerProcessor::run() {
 
     if (_state == STATE_IS_STOPPED) {
 
-        size_t const numThreads = _serviceProvider.config()->workerNumProcessingThreads();
+        size_t const numThreads = _serviceProvider->config()->workerNumProcessingThreads();
         if (not numThreads) {
             throw std::out_of_range(
                         "invalid configuration parameter for the number of processing threads. "

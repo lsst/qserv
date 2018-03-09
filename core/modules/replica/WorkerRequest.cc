@@ -73,7 +73,7 @@ std::string WorkerRequest::status2string(CompletionStatus status,
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
-WorkerRequest::WorkerRequest(ServiceProvider&   serviceProvider,
+WorkerRequest::WorkerRequest(ServiceProvider::pointer const& serviceProvider,
                              std::string const& worker,
                              std::string const& type,
                              std::string const& id,
@@ -88,7 +88,7 @@ WorkerRequest::WorkerRequest(ServiceProvider&   serviceProvider,
         _performance(),
         _durationMillisec(0) {
 
-    serviceProvider.assertWorkerIsValid(worker);
+    serviceProvider->assertWorkerIsValid(worker);
 }
 
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(

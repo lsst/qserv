@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -349,7 +350,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
             }
 
             std::vector<ReplicaInfo> otherReplicas;
-            _controller->serviceProvider().databaseServices()->findReplicas(
+            _controller->serviceProvider()->databaseServices()->findReplicas(
                                                                     otherReplicas,
                                                                     oldReplica.chunk(),
                                                                     oldReplica.database());
@@ -422,7 +423,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
 bool VerifyJob::nextReplicas(std::vector<ReplicaInfo>& replicas,
                              size_t numReplicas) {
 
-    return _controller->serviceProvider().databaseServices()->findOldestReplicas(
+    return _controller->serviceProvider()->databaseServices()->findOldestReplicas(
                                                                     replicas,
                                                                     numReplicas);
 }

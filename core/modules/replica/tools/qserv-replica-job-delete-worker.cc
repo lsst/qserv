@@ -36,26 +36,25 @@
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/DeleteWorkerJob.h"
-#include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
 // Command line parameters
 
-std::string  worker;
-std::string  configUrl;
-bool permanentDelete;
-bool bestEffort;
-bool progressReport;
-bool errorReport;
-bool chunkLocksReport;
+std::string worker;
+std::string configUrl;
+bool        permanentDelete;
+bool        bestEffort;
+bool        progressReport;
+bool        errorReport;
+bool        chunkLocksReport;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -64,9 +63,8 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -74,11 +72,11 @@ bool test () {
         // Start replication
 
         auto job =
-            rc::DeleteWorkerJob::create (
+            replica::DeleteWorkerJob::create(
                 worker,
                 permanentDelete,
                 controller,
-                [](rc::DeleteWorkerJob::pointer job) {
+                [] (replica::DeleteWorkerJob::pointer job) {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
                     ;
@@ -87,12 +85,12 @@ bool test () {
             );
 
         job->start();
-        job->track (progressReport,
-                    errorReport,
-                    chunkLocksReport,
-                    std::cout);    
+        job->track(progressReport,
+                   errorReport,
+                   chunkLocksReport,
+                   std::cout);    
 
-        rc::DeleteWorkerJobResult const& jobReport = job->getReplicaData();
+        replica::DeleteWorkerJobResult const& jobReport = job->getReplicaData();
 
         //////////////////////////////////
         // New replicas created by the job
@@ -117,10 +115,10 @@ bool test () {
     
                     for (auto const& replicaEntry: databaseEntry.second) {
     
-                        std::string     const& worker = replicaEntry.first;
-                        rc::ReplicaInfo const& info   = replicaEntry.second;
+                        std::string          const& worker = replicaEntry.first;
+                        replica::ReplicaInfo const& info   = replicaEntry.second;
     
-                        std::cout << worker << (info.status() != rc::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
+                        std::cout << worker << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                     }
                     std::cout << "\n";
                 }
@@ -152,14 +150,14 @@ bool test () {
         controller->stop();
         controller->join();
 
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (std::exception const& ex) {
+        std::cerr << ex.what() << std::endl;
     }
     return true;
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -168,7 +166,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -194,14 +192,14 @@ int main (int argc, const char* const argv[]) {
             "  --chunk-locks-report - report chunks which are locked\n");
 
         ::worker           = parser.parameter<std::string>(1);
-        ::configUrl        = parser.option   <std::string>("config", "file:replication.cfg");
-        ::permanentDelete  = parser.flag                  ("permanent-delete");
-        ::bestEffort       = parser.flag                  ("best-effort");
-        ::progressReport   = parser.flag                  ("progress-report");
-        ::errorReport      = parser.flag                  ("error-report");
-        ::chunkLocksReport = parser.flag                  ("chunk-locks-report");
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
+        ::permanentDelete  = parser.flag("permanent-delete");
+        ::bestEffort       = parser.flag("best-effort");
+        ::progressReport   = parser.flag("progress-report");
+        ::errorReport      = parser.flag("error-report");
+        ::chunkLocksReport = parser.flag("chunk-locks-report");
 
-    } catch (std::exception &ex) {
+    } catch (std::exception const& ex) {
         return 1;
     }  
     ::test();

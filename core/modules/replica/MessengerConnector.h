@@ -41,6 +41,7 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 // This header declarations
 
@@ -49,7 +50,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 class WorkerInfo;
 
 /**
@@ -212,7 +212,7 @@ public:
      *                           the object must exceed the one of this instanc.
      * @param worker           - the name of a worker
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker);
 
@@ -273,7 +273,7 @@ private:
     /**
      * The constructor
      */
-    MessengerConnector(ServiceProvider& serviceProvider,
+    MessengerConnector(ServiceProvider::pointer const& serviceProvider,
                        boost::asio::io_service& io_service,
                        std::string const& worker);
 
@@ -419,7 +419,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     WorkerInfo const& _workerInfo;
 

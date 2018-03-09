@@ -12,8 +12,8 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -28,32 +28,32 @@ std::string configUrl;
  * Instantiate and launch the service in its own thread. Then block
  * the current thread in a series of repeated timeouts.
  */
-void service () {
+void service() {
     
     try {
-        rc::ServiceProvider      provider       (configUrl);
-        rc::WorkerRequestFactory requestFactory (provider);
+        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::WorkerRequestFactory requestFactory(provider);
 
-        rc::WorkerServer::pointer reqProcSvr =
-            rc::WorkerServer::create (provider,
-                                      requestFactory,
-                                      workerName);
-        std::thread reqProcSvrThread ([reqProcSvr]() {
+        replica::WorkerServer::pointer const reqProcSvr =
+            replica::WorkerServer::create(provider, requestFactory, workerName);
+
+        std::thread reqProcSvrThread([reqProcSvr] () {
             reqProcSvr->run();
         });
 
-        rc::FileServer::pointer fileSvr =
-            rc::FileServer::create (provider,
-                                    workerName);
-        std::thread fileSvrThread ([fileSvr]() {
+        replica::FileServer::pointer const fileSvr =
+            replica::FileServer::create(provider, workerName);
+
+        std::thread fileSvrThread([fileSvr]() {
             fileSvr->run();
         });
-        util::BlockPost blockPost (1000, 5000);
+
+        util::BlockPost blockPost(1000, 5000);
         while (true) {
             blockPost.wait();
             LOGS(_log, LOG_LVL_INFO, "HEARTBEAT"
                 << "  worker: " << reqProcSvr->worker()
-                << "  processor: " << rc::WorkerProcessor::state2string(reqProcSvr->processor().state())
+                << "  processor: " << replica::WorkerProcessor::state2string(reqProcSvr->processor().state())
                 << "  new, in-progress, finished: "
                 << reqProcSvr->processor().numNewRequests() << ", "
                 << reqProcSvr->processor().numInProgressRequests() << ", "
@@ -62,13 +62,13 @@ void service () {
         reqProcSvrThread.join();
         fileSvrThread.join();
 
-    } catch (std::exception& e) {
-        LOGS(_log, LOG_LVL_ERROR, e.what());
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, ex.what());
     }
 }
 }  /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -77,7 +77,7 @@ int main (int argc, const char* const argv[]) {
  
      // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -92,7 +92,7 @@ int main (int argc, const char* const argv[]) {
             "               connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::workerName = parser.parameter<std::string> (1);
-        ::configUrl  = parser.option   <std::string> ("config", "file:replication.cfg");
+        ::configUrl  = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;

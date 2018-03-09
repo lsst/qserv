@@ -3,6 +3,7 @@
 
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerRequestFactory.h"
@@ -10,8 +11,8 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -26,30 +27,30 @@ std::string configUrl;
  * Launch all worker servers in dedicated detached threads. Also run
  * one extra thread per each worked for the 'hearbeat' monitoring.
  */
-void runAllWorkers (rc::ServiceProvider      &provider,
-                    rc::WorkerRequestFactory &requestFactory) {
+void runAllWorkers(replica::ServiceProvider::pointer const& provider,
+                   replica::WorkerRequestFactory& requestFactory) {
 
-    for (const std::string &workerName : provider.config()->workers()) {
+    for (std::string const& workerName : provider->config()->workers()) {
         
         // Create the request pocessing server and run it within a dedicated thread
         // because it's the blocking operation fr the launching thread.
 
-        rc::WorkerServer::pointer reqProcSrv =
-            rc::WorkerServer::create (provider, requestFactory, workerName);
+        replica::WorkerServer::pointer const reqProcSrv =
+            replica::WorkerServer::create(provider, requestFactory, workerName);
 
-        std::thread reqProcSrvThread ([reqProcSrv]() {
+        std::thread reqProcSrvThread([reqProcSrv] () {
             reqProcSrv->run();
         });
         reqProcSrvThread.detach();
         
         // Run the heartbeat monitor for the server within another thread
  
-        std::thread reqProcMonThread ([reqProcSrv]() {
+        std::thread reqProcMonThread([reqProcSrv] () {
             util::BlockPost blockPost(1000, 5000);
             while (true) {
                 blockPost.wait();
                 LOGS(_log, LOG_LVL_INFO, "<WORKER:" << reqProcSrv->worker() << " HEARTBEAT> "
-                    << " processor state: " << rc::WorkerProcessor::state2string(reqProcSrv->processor().state())
+                    << " processor state: " << replica::WorkerProcessor::state2string(reqProcSrv->processor().state())
                     << " new:"              << reqProcSrv->processor().numNewRequests()
                     << " in-progress: "     << reqProcSrv->processor().numInProgressRequests()
                     << " finished: "        << reqProcSrv->processor().numFinishedRequests());
@@ -62,10 +63,10 @@ void runAllWorkers (rc::ServiceProvider      &provider,
         // operation fr the launching thread.
 
         if (enableFileServer) {
-            rc::FileServer::pointer fileSrv =
-                rc::FileServer::create (provider, workerName);
+            replica::FileServer::pointer const fileSrv =
+                replica::FileServer::create(provider, workerName);
     
-            std::thread fileSrvThread ([fileSrv]() {
+            std::thread fileSrvThread([fileSrv] () {
                 fileSrv->run();
             });
             fileSrvThread.detach();
@@ -77,15 +78,15 @@ void runAllWorkers (rc::ServiceProvider      &provider,
  * Instantiate and run all threads. Then block the current thread in
  * a series of repeated timeouts.
  */
-void run () {
+void run() {
     
     try {
-        rc::ServiceProvider      serviceProvider (configUrl);
-        rc::WorkerRequestFactory requestFactory  (serviceProvider);
+        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+        replica::WorkerRequestFactory requestFactory(provider);
 
         // Run the worker servers
 
-        runAllWorkers (serviceProvider, requestFactory);
+        runAllWorkers(provider, requestFactory);
 
         // Then block the calling thread foreever.
         util::BlockPost blockPost(1000, 5000);
@@ -100,7 +101,7 @@ void run () {
 
 }  /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -109,7 +110,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -121,13 +122,12 @@ int main (int argc, const char* const argv[]) {
             "  --config              - a configuration URL (a configuration file or a set of the database\n"
             "                          connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
-        ::enableFileServer = parser.flag                ("enable-file-server");
-        ::configUrl        = parser.option <std::string>("config", "file:replication.cfg");
+        ::enableFileServer = parser.flag("enable-file-server");
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;
     }
-
     ::run();
     return 0;
 }

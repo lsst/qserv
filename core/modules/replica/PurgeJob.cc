@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -82,7 +83,7 @@ PurgeJob::PurgeJob(std::string const&         databaseFamily,
         _databaseFamily(databaseFamily),
         _numReplicas(numReplicas ?
                      numReplicas :
-                     controller->serviceProvider().config()->replicationLevel(databaseFamily)),
+                     controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
         _onFinish(onFinish),
         _bestEffort(bestEffort),
         _numIterations(0),
@@ -99,7 +100,7 @@ PurgeJob::PurgeJob(std::string const&         databaseFamily,
 
 PurgeJob::~PurgeJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider().chunkLocker().release(_id);
+    _controller->serviceProvider()->chunkLocker().release(_id);
 }
 
 PurgeJobResult const& PurgeJob::getReplicaData() const {
@@ -138,7 +139,7 @@ void PurgeJob::track(bool progressReport,
         }
         if (chunkLocksReport) {
             os  << "PurgeJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked(_id);
+                << _controller->serviceProvider()->chunkLocker().locked(_id);
         }
     }
     if (progressReport) {
@@ -150,7 +151,7 @@ void PurgeJob::track(bool progressReport,
     }
     if (chunkLocksReport) {
         os  << "PurgeJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked(_id);
+            << _controller->serviceProvider()->chunkLocker().locked(_id);
     }
     if (errorReport and (_numLaunched - _numSuccess)) {
         replica::reportRequestState(_requests, os);
@@ -336,7 +337,7 @@ void PurgeJob::onPrecursorJobFinish() {
             // Chunk locking is mandatory. If it's not possible to do this now then
             // the job will need to make another attempt later.
     
-            if (not _controller->serviceProvider().chunkLocker().lock({_databaseFamily, chunk}, _id)) {
+            if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
                 ++_numFailedLocks;
                 continue;
             }
@@ -508,7 +509,7 @@ void PurgeJob::onRequestFinish(DeleteRequest::pointer const& request) {
 void PurgeJob::release(unsigned int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
     Chunk chunkObj {_databaseFamily, chunk};
-    _controller->serviceProvider().chunkLocker().release(chunkObj);
+    _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

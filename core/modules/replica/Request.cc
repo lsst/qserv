@@ -78,7 +78,7 @@ std::string Request::state2string(ExtendedState state) {
                     "incomplete implementation of method Request::state2string(ExtendedState)");
 }
 
-Request::Request(ServiceProvider& serviceProvider,
+Request::Request(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  std::string const& type,
                  std::string const& worker,
@@ -96,14 +96,14 @@ Request::Request(ServiceProvider& serviceProvider,
         _extendedState(NONE),
         _extendedServerStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
         _performance(),
-        _bufferPtr(new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
-        _workerInfo(serviceProvider.config()->workerInfo(worker)),
-        _timerIvalSec(serviceProvider.config()->retryTimeoutSec()),
+        _bufferPtr(new ProtocolBuffer(serviceProvider->config()->requestBufferSizeBytes())),
+        _workerInfo(serviceProvider->config()->workerInfo(worker)),
+        _timerIvalSec(serviceProvider->config()->retryTimeoutSec()),
         _timer(io_service),
-        _requestExpirationIvalSec(serviceProvider.config()->controllerRequestTimeoutSec()),
+        _requestExpirationIvalSec(serviceProvider->config()->controllerRequestTimeoutSec()),
         _requestExpirationTimer(io_service) {
 
-        _serviceProvider.assertWorkerIsValid(worker);
+        _serviceProvider->assertWorkerIsValid(worker);
 }
 
 std::string const& Request::remoteId() const {
@@ -150,7 +150,7 @@ void Request::start(std::shared_ptr<Controller> const& controller,
     // Let a subclass to proceed with its own sequence of actions
     startImpl();
 
-    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
 
 std::string const& Request::jobId() const {
@@ -207,7 +207,7 @@ void Request::finish(ExtendedState extendedState) {
     // callback on the completion of the operation.
     _performance.setUpdateFinish();
 
-    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 
     // This will invoke user-defined notifiers (if any)
     notify();
@@ -238,7 +238,7 @@ void Request::setState(State state,
     _state         = state;
     _extendedState = extendedState;
 
-    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
     
 }}} // namespace lsst::qserv::replica

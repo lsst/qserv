@@ -17,31 +17,29 @@ namespace {
 
 // Command line parameters
 
-std::string operation;
-std::string worker;
-std::string databaseFamily;
+std::string  operation;
+std::string  worker;
+std::string  databaseFamily;
 unsigned int chunk;
-std::string configUrl;
+std::string  configUrl;
 
 /// Run the test
 bool test() {
 
     try {
 
-        // Instantiate the manager.
+        // Initialize the context
+
+        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
+
+        // Launch the requst and wait for its completion
         //
         // Note that omFinish callbacks which are activated upon a completion
         // of the requsts will be run in a different thread.
 
-        replica::ServiceProvider provider(configUrl);
-
-        replica::QservMgtServices::pointer manager = replica::QservMgtServices::create(provider);
-
-        // Launch the requst and wait for its completion
-
         std::atomic<bool> finished(false);
 
-        auto const& request = manager->addRreplica(
+        auto const& request = provider->qservMgtServices()->addRreplica(
             chunk,
             databaseFamily,
             worker,
@@ -68,7 +66,7 @@ bool test() {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -77,7 +75,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -96,9 +94,9 @@ int main (int argc, const char* const argv[]) {
             "  --config          - a configuration URL (a configuration file or a set of the database\n"
             "                      connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
-        ::operation      = parser.parameterRestrictedBy(  1, {"ADD_REPLICA"});
-        ::worker         = parser.parameter<std::string>( 2);
-        ::databaseFamily = parser.parameter<std::string>( 3);
+        ::operation      = parser.parameterRestrictedBy(1, {"ADD_REPLICA"});
+        ::worker         = parser.parameter<std::string>(2);
+        ::databaseFamily = parser.parameter<std::string>(3);
         ::chunk          = parser.parameter<unsigned int>(4);
 
         ::configUrl = parser.option<std::string>("config", "file:replication.cfg");

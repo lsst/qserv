@@ -14,8 +14,8 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -40,20 +40,19 @@ class RequestGenerator {
 public:
 
     /// A collection of REPLICATION requsts
-    typedef std::vector<rc::ReplicationRequest::pointer> replication_requests;
+    typedef std::vector<replica::ReplicationRequest::pointer> replication_requests;
 
     /// A collection of STATUS requsts
-    typedef std::vector<rc::StatusReplicationRequest::pointer> status_requests;
+    typedef std::vector<replica::StatusReplicationRequest::pointer> status_requests;
 
     /// A collection of STOP requsts
-    typedef std::vector<rc::StopReplicationRequest::pointer> stop_requests;
+    typedef std::vector<replica::StopReplicationRequest::pointer> stop_requests;
 
     // Default construction and copy semantics are proxibited
 
-    RequestGenerator () = delete;
-    RequestGenerator (RequestGenerator const&) = delete;
-    RequestGenerator & operator= (RequestGenerator const&) = delete;
-
+    RequestGenerator() = delete;
+    RequestGenerator(RequestGenerator const&) = delete;
+    RequestGenerator& operator=(RequestGenerator const&) = delete;
 
     /**
      * The normal constructor.
@@ -63,14 +62,14 @@ public:
      * @param sourceWorker      - the name of a worker node for chunks to be replicated
      * @param database          - the database which is a subject of the replication
      */
-    RequestGenerator (rc::Controller::pointer  controller,
-                      const std::string       &worker,
-                      const std::string       &sourceWorker,
-                      const std::string       &database)
-        :   _controller   (controller),
-            _worker       (worker),
-            _sourceWorker (sourceWorker),
-            _database     (database) {
+    RequestGenerator(replica::Controller::pointer const& controller,
+                     std::string const& worker,
+                     std::string const& sourceWorker,
+                     std::string const& database)
+        :   _controller(controller),
+            _worker(worker),
+            _sourceWorker(sourceWorker),
+            _database(database) {
     }
 
     /**
@@ -87,9 +86,9 @@ public:
      *                     
      * @return - a collection of pointers to the requests.
      */
-    replication_requests replicate (size_t num,
-                                    unsigned int firstChunk,
-                                    util::BlockPost *blockPost=nullptr) {
+    replication_requests replicate(size_t num,
+                                   unsigned int firstChunk,
+                                   util::BlockPost *blockPost=nullptr) {
 
         replication_requests requests;
         
@@ -99,21 +98,22 @@ public:
 
             // Delay the request generation if needed.
 
-            if (blockPost) blockPost->wait();
+            if (blockPost) { blockPost->wait(); }
 
-            rc::ReplicationRequest::pointer request =
-                _controller->replicate (
+            replica::ReplicationRequest::pointer const request =
+                _controller->replicate(
                     _worker,
                     _sourceWorker,
                     _database,
                     chunk++,
-                    [] (rc::ReplicationRequest::pointer request) {
+                    [] (replica::ReplicationRequest::pointer request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  chunk: " << request->chunk()
                             << "  " << request->performance());
                     }
                 );
+
             requests.push_back(request);
         }
         return requests;
@@ -126,16 +126,16 @@ public:
      * 
      * @return - a collection of pointers to the STATUS requests.
      */
-    status_requests status (const replication_requests& replicationRequests) {
+    status_requests status(replication_requests const& replicationRequests) {
 
         status_requests requests;
 
-        for (auto request : replicationRequests)
-            requests.push_back (
-                _controller->statusOfReplication (
+        for (auto const& request: replicationRequests) {
+            requests.push_back(
+                _controller->statusOfReplication(
                     request->worker(),
                     request->id(),
-                    [] (rc::StatusReplicationRequest::pointer request) {
+                    [] (replica::StatusReplicationRequest::pointer request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  targetRequestId: " << request->targetRequestId()
@@ -144,7 +144,7 @@ public:
                     true
                 )
             );
-
+        }
         return requests;
     }
 
@@ -155,16 +155,16 @@ public:
      * 
      * @return - a collection of pointers to the STOP requests.
      */
-    stop_requests stop (const replication_requests& replicationRequests) {
+    stop_requests stop(replication_requests const& replicationRequests) {
 
         stop_requests requests;
 
-        for (auto request : replicationRequests)
-            requests.push_back (
-                _controller->stopReplication (
+        for (auto const& request: replicationRequests) {
+            requests.push_back(
+                _controller->stopReplication(
                     request->worker(),
                     request->id(),
-                    [] (rc::StopReplicationRequest::pointer request) {
+                    [] (replica::StopReplicationRequest::pointer request) {
                         LOGS(_log, LOG_LVL_INFO, request->context()
                             << "** DONE **"
                             << "  targetRequestId: " << request->targetRequestId()
@@ -173,7 +173,7 @@ public:
                     true
                 )
             );
-
+        }
         return requests;
     }
 
@@ -181,7 +181,7 @@ private:
 
     // Parameters of the object
 
-    rc::Controller::pointer _controller;
+    replica::Controller::pointer _controller;
 
     std::string _worker;
     std::string _sourceWorker;
@@ -191,30 +191,29 @@ private:
 /**
  * Print a status of the controller
  */
-void reportControllerStatus (rc::Controller::pointer controller) {
+void reportControllerStatus(replica::Controller::pointer const& controller) {
     LOGS(_log, LOG_LVL_INFO, "controller is " << (controller->isRunning() ? "" : "NOT ") << "running");
 }
 
 /**
  * Run the test
  */
-void test () {
+void test() {
 
     try {
 
-        util::BlockPost blockPost (0, 100);     // for random delays (milliseconds) between operations
+        util::BlockPost blockPost(0, 100);     // for random delays (milliseconds) between operations
 
-        rc::ServiceProvider provider (configUrl);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
-        rc::Controller::pointer controller = rc::Controller::create (provider);
 
         // Configure the generator of requests 
 
-        RequestGenerator requestGenerator (
-            controller,
-            workerName,
-            sourceWorkerName,
-            database);
+        RequestGenerator requestGenerator(controller,
+                                          workerName,
+                                          sourceWorkerName,
+                                          database);
         
         // Start the controller in its own thread before injecting any requests
 
@@ -255,14 +254,13 @@ void test () {
         // NOTE: The thread may (and will) finish when the specified number of
         // requests will be launched because the requests are execured in
         // a context of the controller thread.
-        std::thread another (
+        std::thread another(
             [&requestGenerator, &blockPost] () {
 
-                const size_t num = 1000;
-                const unsigned int chunk = 100;
+                size_t const num = 1000;
+                unsigned int const chunk = 100;
 
                 requestGenerator.replicate(num, chunk, &blockPost);
-
             }
         );
 
@@ -275,11 +273,11 @@ void test () {
         // Launch STATUS and STOP requests for each of the previously
         // generated REPLICATION request.
 
-        LOGS(_log, LOG_LVL_INFO, "checking status of " <<  requests.size() << " requests");
+        LOGS(_log, LOG_LVL_INFO, "checking status of " << requests.size() << " requests");
         requestGenerator.status(requests);
 
-        LOGS(_log, LOG_LVL_INFO, "stopping " <<  requests.size() << " requests");
-        requestGenerator.stop  (requests);
+        LOGS(_log, LOG_LVL_INFO, "stopping " << requests.size() << " requests");
+        requestGenerator.stop(requests);
 
         // Wait before the request launching thread finishes
 
@@ -298,13 +296,13 @@ void test () {
         controller->join();
         LOGS(_log, LOG_LVL_INFO, "past: controller->join()");
 
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (std::exception const& ex) {
+        std::cerr << ex.what() << std::endl;
     }
 }
 }
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -313,7 +311,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -329,15 +327,15 @@ int main (int argc, const char* const argv[]) {
             "  --config           - a configuration URL (a configuration file or a set of the database\n"
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
-        ::workerName       = parser.parameter<std::string> (1);
-        ::sourceWorkerName = parser.parameter<std::string> (2);
-        ::database         = parser.parameter<std::string> (3);
-        ::configUrl        = parser.option   <std::string> ("config", "file:replication.cfg");
+        ::workerName       = parser.parameter<std::string>(1);
+        ::sourceWorkerName = parser.parameter<std::string>(2);
+        ::database         = parser.parameter<std::string>(3);
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;
     } 
-    ::test ();
+    ::test();
 
     return 0;
 }

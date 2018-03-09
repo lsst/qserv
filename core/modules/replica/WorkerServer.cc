@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 
@@ -43,9 +44,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerServer::pointer WorkerServer::create(ServiceProvider&      serviceProvider,
+WorkerServer::pointer WorkerServer::create(ServiceProvider::pointer const& serviceProvider,
                                            WorkerRequestFactory& requestFactory,
-                                           std::string const&    workerName) {
+                                           std::string const& workerName) {
     return WorkerServer::pointer(
         new WorkerServer(
             serviceProvider,
@@ -53,13 +54,13 @@ WorkerServer::pointer WorkerServer::create(ServiceProvider&      serviceProvider
             workerName));
 }
 
-WorkerServer::WorkerServer(ServiceProvider&      serviceProvider,
+WorkerServer::WorkerServer(ServiceProvider::pointer const& serviceProvider,
                            WorkerRequestFactory& requestFactory,
-                           std::string const&    workerName)
+                           std::string const& workerName)
     :   _serviceProvider(serviceProvider),
-        _workerName(     workerName),
-        _processor(      serviceProvider, requestFactory, workerName),
-        _workerInfo(     serviceProvider.config()->workerInfo(workerName)),
+        _workerName(workerName),
+        _processor(serviceProvider, requestFactory, workerName),
+        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
             _io_service,

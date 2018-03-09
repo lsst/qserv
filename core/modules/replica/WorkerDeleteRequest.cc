@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/FileUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
@@ -55,7 +56,7 @@ namespace replica {
 //////////////////////////////////////////////////////////////
 
 WorkerDeleteRequest::pointer WorkerDeleteRequest::create(
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -70,7 +71,7 @@ WorkerDeleteRequest::pointer WorkerDeleteRequest::create(
                                 chunk));
 }
 
-WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider&   serviceProvider,
+WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::pointer const& serviceProvider,
                                          std::string const& worker,
                                          std::string const& id,
                                          int                priority,
@@ -106,7 +107,7 @@ bool WorkerDeleteRequest::execute() {
 ///////////////////////////////////////////////////////////////////
 
 WorkerDeleteRequestPOSIX::pointer WorkerDeleteRequestPOSIX::create(
-                                        ServiceProvider&   serviceProvider,
+                                        ServiceProvider::pointer const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -124,7 +125,7 @@ WorkerDeleteRequestPOSIX::pointer WorkerDeleteRequestPOSIX::create(
 }
 
 WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
-                                ServiceProvider&   serviceProvider,
+                                ServiceProvider::pointer const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
@@ -145,8 +146,8 @@ bool WorkerDeleteRequestPOSIX::execute() {
          << "  db: "    << database()
          << "  chunk: " << chunk());
 
-    WorkerInfo   const& workerInfo    = _serviceProvider.config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
+    WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
     
     std::vector<std::string> const files =
         FileUtils::partitionedFiles(databaseInfo, chunk());

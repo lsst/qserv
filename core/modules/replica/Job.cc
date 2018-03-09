@@ -29,6 +29,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Common.h"            // Generators::uniqueId()
+#include "replica/DatabaseServices.h"
 #include "replica/Performance.h"       // PerformanceUtils::now()
 #include "replica/ServiceProvider.h"
 
@@ -101,7 +102,7 @@ void Job::start() {
         startImpl();
 
         _beginTime = PerformanceUtils::now();
-        _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+        _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 
         // Allow the job to be fully accomplished right away
         if (_state == State::FINISHED) { break; }
@@ -134,7 +135,7 @@ void Job::cancel() {
 
     notify();
 
-    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
 
 void Job::assertState(State state) const {
@@ -155,7 +156,7 @@ void Job::setState(State state,
     if (_state == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
-    _controller->serviceProvider().databaseServices()->saveState(shared_from_this());
+    _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
     
 }}} // namespace lsst::qserv::replica

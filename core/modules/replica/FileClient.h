@@ -38,6 +38,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -50,7 +51,6 @@ namespace replica {
 // Forward declarations
 class DatabaseInfo;
 class ProtocolBuffer;
-class ServiceProvider;
 class WorkerInfo;
 
 /**
@@ -88,7 +88,7 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer open(ServiceProvider& serviceProvider,
+    static pointer open(ServiceProvider::pointer const& serviceProvider,
                         std::string const& workerName,
                         std::string const& databaseName,
                         std::string const& fileName);
@@ -110,7 +110,7 @@ public:
      * @param databaseName    - the name of a atabase the file belongs to
      * @param fileName        - the file to read or examine
      */
-    static pointer stat(ServiceProvider& serviceProvider,
+    static pointer stat(ServiceProvider::pointer const& serviceProvider,
                         std::string const& workerName,
                         std::string const& databaseName,
                         std::string const& fileName);
@@ -165,7 +165,7 @@ private:
      * @param fileName        - the file to read or examine
      * @param readContent     - indicates if a file is open for reading its content   
      */
-    FileClient(ServiceProvider& serviceProvider,
+    FileClient(ServiceProvider::pointer const& serviceProvider,
                std::string const& workerName,
                std::string const& databaseName,
                std::string const& fileName,

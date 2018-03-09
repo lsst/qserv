@@ -37,6 +37,7 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -47,7 +48,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 class WorkerProcessor;
 
 /**
@@ -80,7 +80,7 @@ public:
      * @param processor       - processor of long requests
      * @param io_service      - enpoint for network I/O
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           WorkerProcessor& processor,
                           boost::asio::io_service& io_service);
 
@@ -130,7 +130,7 @@ private:
     /**
      * The constructor of the class.
      */
-    WorkerServerConnection(ServiceProvider& serviceProvider,
+    WorkerServerConnection(ServiceProvider::pointer const& serviceProvider,
                            WorkerProcessor& processor,
                            boost::asio::io_service& io_service);
 
@@ -195,7 +195,7 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
     WorkerProcessor& _processor;
 
     boost::asio::ip::tcp::socket _socket;

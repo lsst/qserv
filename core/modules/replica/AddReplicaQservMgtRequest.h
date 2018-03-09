@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "replica/QservMgtRequest.h"
+#include "replica/ServiceProvider.h"
 #include "wpublish/ChunkGroupQservRequest.h"
 
 // Forward declarations
@@ -46,7 +47,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 
 /**
   * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
@@ -84,7 +84,7 @@ public:
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           unsigned int chunk,
@@ -109,7 +109,7 @@ private:
      * @param databaseFamily  - the name of a database family
      * @param onFinish        - callback function to be called upon request completion
      */
-    AddReplicaQservMgtRequest(ServiceProvider& serviceProvider,
+    AddReplicaQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
                               boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,

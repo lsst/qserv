@@ -213,7 +213,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ServiceManagementRequestBaseC (ServiceProvider&        serviceProvider,
+    ServiceManagementRequestBaseC (ServiceProvider::pointer const&        serviceProvider,
                                   boost::asio::io_service& io_service,
                                   char const*              requestTypeName,
                                   std::string const&       worker,
@@ -291,7 +291,7 @@ public:
      * @param onFinish         - an optional callback function to be called upon a completion of
      *                           the request.
      */
-    static pointer create (ServiceProvider&         serviceProvider,
+    static pointer create (ServiceProvider::pointer const& serviceProvider,
                            boost::asio::io_service& io_service,
                            std::string const&       worker,
                            callback_type            onFinish) {
@@ -311,7 +311,7 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestC (ServiceProvider&         serviceProvider,
+    ServiceManagementRequestC (ServiceProvider::pointer const& serviceProvider,
                                boost::asio::io_service& io_service,
                                char const*              requestTypeName,
                                std::string const&       worker,
@@ -388,7 +388,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ServiceManagementRequestBaseM (ServiceProvider&         serviceProvider,
+    ServiceManagementRequestBaseM (ServiceProvider::pointer const& serviceProvider,
                                    boost::asio::io_service& io_service,
                                    char const*              requestTypeName,
                                    std::string const&       worker,
@@ -462,7 +462,7 @@ public:
      *                           the request.
      * @param messenger       - an interface for communicating with workers
      */
-    static pointer create (ServiceProvider&                  serviceProvider,
+    static pointer create (ServiceProvider::pointer const&   serviceProvider,
                            boost::asio::io_service&          io_service,
                            std::string const&                worker,
                            callback_type                     onFinish,
@@ -484,7 +484,7 @@ private:
     /**
      * Construct the request
      */
-    ServiceManagementRequestM (ServiceProvider&         serviceProvider,
+    ServiceManagementRequestM (ServiceProvider::pointer const& serviceProvider,
                                boost::asio::io_service& io_service,
                                char const*              requestTypeName,
                                std::string const&       worker,

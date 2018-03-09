@@ -37,23 +37,23 @@
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
 // Command line parameters
 
 std::string configUrl;
-size_t maxReplicas;
-bool   computeCheckSum;
-bool   progressReport;
-bool   errorReport;
-bool   detailedReport;
-bool   chunkLocksReport = false;
+size_t      maxReplicas;
+bool        computeCheckSum;
+bool        progressReport;
+bool        errorReport;
+bool        detailedReport;
+bool        chunkLocksReport = false;
 
 /// Run the test
-bool run () {
+bool run() {
 
     try {
 
@@ -62,9 +62,8 @@ bool run () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -72,19 +71,19 @@ bool run () {
         // Find all replicas accross all workers
 
         auto job =
-            rc::VerifyJob::create (
+            replica::VerifyJob::create (
                 controller,
-                [](rc::VerifyJob::pointer job) {
+                [] (replica::VerifyJob::pointer const& job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
                     ;
                 },
-                [] (rc::VerifyJob::pointer              job,
-                    rc::ReplicaDiff const&              selfReplicaDiff,
-                    std::vector<rc::ReplicaDiff> const& otherReplicaDiff) {
+                [] (replica::VerifyJob::pointer const& job,
+                    replica::ReplicaDiff const& selfReplicaDiff,
+                    std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 
-                    rc::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
-                    rc::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
+                    replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
+                    replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
                     std::cout
                         << "Compared with OWN previous state  "
                         << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
@@ -93,8 +92,8 @@ bool run () {
                         << std::endl;
 
                     for (auto const& diff: otherReplicaDiff) {
-                        rc::ReplicaInfo const& r1 = diff.replica1();
-                        rc::ReplicaInfo const& r2 = diff.replica2();
+                        replica::ReplicaInfo const& r1 = diff.replica1();
+                        replica::ReplicaInfo const& r2 = diff.replica2();
                         std::cout
                             << "Compared with OTHER replica state "
                             << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
@@ -108,10 +107,10 @@ bool run () {
             );
 
         job->start();
-        job->track (progressReport,
-                    errorReport,
-                    chunkLocksReport,
-                    std::cout);
+        job->track(progressReport,
+                   errorReport,
+                   chunkLocksReport,
+                   std::cout);
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -126,7 +125,7 @@ bool run () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -135,7 +134,7 @@ int main (int argc, const char* const argv[]) {
     
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -157,12 +156,12 @@ int main (int argc, const char* const argv[]) {
             "  --error-report     - detailed report on failed requests\n"
             "  --detailed-report  - detailed report on results\n");
 
-        ::configUrl       = parser.option<std::string> ("config", "file:replication.cfg");
+        ::configUrl       = parser.option<std::string>("config", "file:replication.cfg");
         ::maxReplicas     = parser.option<unsigned int>("max-replicas", 1);
-        ::computeCheckSum = parser.flag                ("check-sum");
-        ::progressReport  = parser.flag                ("progress-report");
-        ::errorReport     = parser.flag                ("error-report");
-        ::detailedReport  = parser.flag                ("detailed-report");
+        ::computeCheckSum = parser.flag("check-sum");
+        ::progressReport  = parser.flag("progress-report");
+        ::errorReport     = parser.flag("error-report");
+        ::detailedReport  = parser.flag("detailed-report");
 
     } catch (std::exception const& ex) {
         return 1;

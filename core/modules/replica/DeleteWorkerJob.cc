@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
@@ -233,7 +234,7 @@ void DeleteWorkerJob::startImpl() {
                     
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
-                    for (auto const& database: _controller->serviceProvider().config()->databases()) {
+                    for (auto const& database: _controller->serviceProvider()->config()->databases()) {
                         FindAllRequest::pointer const request =
                             _controller->findAllReplicas(
                                 _worker,
@@ -346,7 +347,7 @@ DeleteWorkerJob::disableWorker() {
     // Temporary disable this worker from the configuration. If it's requsted
     // to be permanently deleted this will be done only after all other relevamnt
     // operations of this job will be done.
-    _controller->serviceProvider().config()->disableWorker(_worker);
+    _controller->serviceProvider()->config()->disableWorker(_worker);
 
     // Launch the chained jobs to get chunk disposition within the rest
     // of the cluster
@@ -357,7 +358,7 @@ DeleteWorkerJob::disableWorker() {
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
-    for (auto const& databaseFamily: _controller->serviceProvider().config()->databaseFamilies()) {
+    for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
         FindAllJob::pointer job = FindAllJob::create(
             databaseFamily,
             _controller,
@@ -407,7 +408,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
     
             auto self = shared_from_base<DeleteWorkerJob>();
     
-            for (auto const& databaseFamily: _controller->serviceProvider().config()->databaseFamilies()) {
+            for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
                 ReplicateJob::pointer const job = ReplicateJob::create(
                     databaseFamily,
                     0,  /* numReplicas -- pull from Configuration */
@@ -470,7 +471,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
             // Construct a collection of orphan replicas if possible
 
             ReplicaInfoCollection replicas;
-            if (_controller->serviceProvider().databaseServices()->findWorkerReplicas(replicas, _worker)) {
+            if (_controller->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, _worker)) {
                 for (ReplicaInfo const& replica: replicas) {
                     unsigned int const chunk    = replica.chunk();
                     std::string const& database = replica.database();
@@ -498,7 +499,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
             // Do this only if requested, and only in case of the successful
             // completion of the job
             if (_permanentDelete) {
-                _controller->serviceProvider().config()->deleteWorker (_worker);
+                _controller->serviceProvider()->config()->deleteWorker (_worker);
             }
             setState(State::FINISHED, ExtendedState::SUCCESS);
             break;

@@ -41,6 +41,7 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/Job.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -56,7 +57,6 @@ class FixUpJob;
 class PurgeJob;
 class ReplicaDiff;
 class ReplicateJob;
-class ServiceProvider;
 class VerifyJob;
 
 /**
@@ -161,7 +161,7 @@ public:
      *
      * @param serviceProvider - for configuration, other services
      */
-    static pointer create(ServiceProvider& serviceProvider);
+    static pointer create(ServiceProvider::pointer const& serviceProvider);
 
     // Default construction and copy semantics are prohibited
 
@@ -356,7 +356,7 @@ private:
      *
      * @see JobController::create()
      */
-    JobController(ServiceProvider& serviceProvider);
+    JobController(ServiceProvider::pointer const& serviceProvider);
 
     /**
      * Check is there are any jobs in the input queue which are eligible
@@ -393,7 +393,7 @@ private:
 private:
 
     /// Services used by the processor
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     /// A dedciated instance of the Controller for executing requests
     Controller::pointer _controller;

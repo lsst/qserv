@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/DeleteWorkerJob.h"
 #include "replica/FindAllJob.h"
 #include "replica/FixUpJob.h"
@@ -92,12 +93,12 @@ private:
 //////////////////////////  JobController  //////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-JobController::pointer JobController::create(ServiceProvider& serviceProvider) {
+JobController::pointer JobController::create(ServiceProvider::pointer const& serviceProvider) {
     return JobController::pointer(
         new JobController(serviceProvider));
 }
 
-JobController::JobController(ServiceProvider& serviceProvider)
+JobController::JobController(ServiceProvider::pointer const& serviceProvider)
     :   _serviceProvider(serviceProvider),
         _controller(Controller::create (serviceProvider)),
         _stop(false) {
@@ -129,7 +130,7 @@ void JobController::run() {
                                                         // be always used to wait for a specific interval
 
                     unsigned int const wakeUpIvalMillisec =
-                        1000 * self->_serviceProvider.config()->jobSchedulerIvalSec();
+                        1000 * self->_serviceProvider->config()->jobSchedulerIvalSec();
 
                     while (blockPost.wait(wakeUpIvalMillisec)) {
 

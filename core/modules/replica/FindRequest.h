@@ -126,7 +126,7 @@ public:
      * @param computeCheckSum  - tell a worker server to compute check/control sum on each file
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& database,
@@ -141,7 +141,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindRequestC(ServiceProvider& serviceProvider,
+    FindRequestC(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  std::string const& worker,
                  std::string const& database,
@@ -286,7 +286,7 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& database,
@@ -302,7 +302,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindRequestM(ServiceProvider& serviceProvider,
+    FindRequestM(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  std::string const& worker,
                  std::string const& database,

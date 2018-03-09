@@ -54,7 +54,7 @@ namespace replica {
 //////////////////////////////////////////
 
 ReplicationRequestC::pointer ReplicationRequestC::create(
-                                    ServiceProvider& serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
@@ -79,7 +79,7 @@ ReplicationRequestC::pointer ReplicationRequestC::create(
 }
 
 ReplicationRequestC::ReplicationRequestC (
-                                    ServiceProvider& serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
@@ -102,9 +102,9 @@ ReplicationRequestC::ReplicationRequestC (
         _onFinish(onFinish),
         _replicaInfo() {
 
-    _serviceProvider.assertWorkerIsValid(sourceWorker);
-    _serviceProvider.assertWorkersAreDifferent(sourceWorker, worker);
-    _serviceProvider.assertDatabaseIsValid(database);
+    _serviceProvider->assertWorkerIsValid(sourceWorker);
+    _serviceProvider->assertWorkersAreDifferent(sourceWorker, worker);
+    _serviceProvider->assertDatabaseIsValid(database);
 }
 
 void ReplicationRequestC::beginProtocol() {
@@ -445,7 +445,7 @@ void ReplicationRequestC::notify() {
 //////////////////////////////////////////
 
 ReplicationRequestM::pointer ReplicationRequestM::create(
-                                    ServiceProvider& serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
@@ -473,7 +473,7 @@ ReplicationRequestM::pointer ReplicationRequestM::create(
 }
 
 ReplicationRequestM::ReplicationRequestM(
-                                    ServiceProvider& serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& sourceWorker,
@@ -498,9 +498,9 @@ ReplicationRequestM::ReplicationRequestM(
         _onFinish(onFinish),
         _replicaInfo() {
 
-    _serviceProvider.assertWorkerIsValid(sourceWorker);
-    _serviceProvider.assertWorkersAreDifferent(sourceWorker, worker);
-    _serviceProvider.assertDatabaseIsValid(database);
+    _serviceProvider->assertWorkerIsValid(sourceWorker);
+    _serviceProvider->assertWorkersAreDifferent(sourceWorker, worker);
+    _serviceProvider->assertDatabaseIsValid(database);
 }
 
 void ReplicationRequestM::startImpl() {

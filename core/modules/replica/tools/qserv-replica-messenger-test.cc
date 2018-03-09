@@ -6,6 +6,7 @@
 #include <string>
 
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Messenger.h"
 #include "replica/MessengerConnector.h"
@@ -14,9 +15,9 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
-namespace proto = lsst::qserv::proto;
-namespace rc    = lsst::qserv::replica;
-namespace util  = lsst::qserv::util;
+namespace proto   = lsst::qserv::proto;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -28,7 +29,7 @@ int         cancelIter;
 std::string configUrl;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -37,18 +38,17 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         /////////////////////////////////////////////////////////////////////
         // Instantiate the messenger configured in the same way as Controller 
 
-        rc::Messenger::pointer messenger
-            = rc::Messenger::create(provider,
-                                    controller->io_service());
+        replica::Messenger::pointer const messenger
+            = replica::Messenger::create(provider,
+                                         controller->io_service());
 
         //////////////////////////////////////////////////
         // Prepare, serialize and launch multiple requests
@@ -59,24 +59,24 @@ bool test () {
 
             std::string const& id{"unique-request-id-"+std::to_string(i)};
         
-            std::shared_ptr<rc::ProtocolBuffer> requestBufferPtr =
-                std::make_shared<rc::ProtocolBuffer>(provider.config()->requestBufferSizeBytes());
+            std::shared_ptr<replica::ProtocolBuffer> const requestBufferPtr =
+                std::make_shared<replica::ProtocolBuffer>(provider->config()->requestBufferSizeBytes());
  
             requestBufferPtr->resize();
     
             proto::ReplicationRequestHeader hdr;
-            hdr.set_id          (id);
-            hdr.set_type        (proto::ReplicationRequestHeader::SERVICE);
+            hdr.set_id(id);
+            hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
             hdr.set_service_type(proto::ReplicationServiceRequestType::SERVICE_STATUS);
         
             requestBufferPtr->serialize(hdr);
     
-            messenger->send<proto::ReplicationServiceResponse> (
+            messenger->send<proto::ReplicationServiceResponse>(
                 workerName,
                 id,
                 requestBufferPtr,
-                [&numFinished] (std::string const&                       id,
-                                bool                                     success,
+                [&numFinished] (std::string const& id,
+                                bool success,
                                 proto::ReplicationServiceResponse const& response) {
                     numFinished++;
                     std::cout
@@ -87,16 +87,17 @@ bool test () {
             );
         }
         if (cancelIter >= 0) {
-            std::string const& id{"unique-request-id-"+std::to_string(cancelIter)};
+            std::string const& id("unique-request-id-"+std::to_string(cancelIter));
             messenger->cancel(workerName, id);
         }
 
         //////////////////////////////////
         // Wait before all requests finish
  
-        util::BlockPost blockPost (1000, 2000);
-        while (numFinished < numIterations)
+        util::BlockPost blockPost(1000, 2000);
+        while (numFinished < numIterations) {
             std::cout << "HEARTBEAT  " << blockPost.wait() << " millisec" << std::endl;
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -111,7 +112,7 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -120,7 +121,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -140,9 +141,9 @@ int main (int argc, const char* const argv[]) {
             "                  connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::workerName    = parser.parameter<std::string>(1);
-        ::numIterations = parser.option   <int>        ("iterations", 1);
-        ::cancelIter    = parser.option   <int>        ("cancel",    -1);
-        ::configUrl     = parser.option   <std::string>("config",     "file:replication.cfg");
+        ::numIterations = parser.option<int>("iterations", 1);
+        ::cancelIter    = parser.option<int>("cancel", -1);
+        ::configUrl     = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;

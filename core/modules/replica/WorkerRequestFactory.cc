@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
 #include "replica/WorkerFindAllRequest.h"
@@ -48,7 +49,7 @@ namespace replica {
 ///////////////////// WorkerRequestFactoryBase ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider &serviceProvider)
+WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::pointer const& serviceProvider)
     :   _serviceProvider(serviceProvider) {
 }
 
@@ -72,7 +73,7 @@ public:
     WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryTest(ServiceProvider& serviceProvider)
+    WorkerRequestFactoryTest(ServiceProvider::pointer const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -189,7 +190,7 @@ public:
     WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryPOSIX(ServiceProvider& serviceProvider)
+    WorkerRequestFactoryPOSIX(ServiceProvider::pointer const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -307,7 +308,7 @@ public:
     WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
 
     /// Normal constructor
-    WorkerRequestFactoryFS(ServiceProvider& serviceProvider)
+    WorkerRequestFactoryFS(ServiceProvider::pointer const& serviceProvider)
         :   WorkerRequestFactoryBase(serviceProvider) {
     }
     
@@ -408,12 +409,12 @@ public:
 ///////////////////// WorkerRequestFactory ////////////////////
 ///////////////////////////////////////////////////////////////
 
-WorkerRequestFactory::WorkerRequestFactory(ServiceProvider&   serviceProvider,
+WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::pointer const&   serviceProvider,
                                            std::string const& technology)
     :   WorkerRequestFactoryBase(serviceProvider) {
         
     std::string const finalTechnology =
-        technology.empty() ? serviceProvider.config()->workerTechnology() : technology;
+        technology.empty() ? serviceProvider->config()->workerTechnology() : technology;
 
     if      (finalTechnology == "TEST")  { _ptr = new WorkerRequestFactoryTest( serviceProvider); }
     else if (finalTechnology == "POSIX") { _ptr = new WorkerRequestFactoryPOSIX(serviceProvider); }
