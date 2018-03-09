@@ -20,11 +20,8 @@ using boost::asio::ip::udp;
 class UDPClient
 {
 public:
-    UDPClient(
-        boost::asio::io_service& io_service,
-        const std::string& host,
-        const std::string& port
-    ) : io_service_(io_service), socket_(io_service, udp::endpoint(udp::v4(), 0)) {
+    UDPClient(boost::asio::io_service& io_service, const std::string& host, const std::string& port)
+              : io_service_(io_service), socket_(io_service, udp::endpoint(udp::v4(), 0)) {
         udp::resolver resolver(io_service_);
         udp::resolver::query query(udp::v4(), host, port);
         udp::resolver::iterator iter = resolver.resolve(query);
@@ -35,8 +32,7 @@ public:
         endpoint_ = *iter;
     }
 
-    ~UDPClient()
-    {
+    ~UDPClient() {
         socket_.close();
     }
 
@@ -44,58 +40,38 @@ public:
         socket_.send_to(boost::asio::buffer(msg, msg.size()), endpoint_);
     }
 
-    bool isOpen()
-    {
-
-        if(socket_.is_open())
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+    bool isOpen() {
+        return socket_.is_open();
     }
 
     void connect_handler(const boost::system::error_code &error )
     {
-        if(!error)
-        {
-            cout << "Everything went well" << endl;
-        }
-        if(error)
-        {
-            cout << "Something went wront" << endl;
-        }
-        else
-        {
-            cout << "nothing returned" << endl;
+        std::string str("connect_handler ");
+        if(!error) {
+            cout << str << "Success" << endl;
+        } else {
+            cout << str << "error " << error.value() << endl;
         }
     }
 
-    void write_handler(const boost::system::error_code& error, std::size_t byte_transferred)
-    {
-        if(!error)
-        {
-            cout << "Everything went well" << endl;
-        }
-        if(error)
-        {
-            cout << "Something went wront" << endl;
-        }
-        else
-        {
-            cout << "nothing returned" << endl;
+    void write_handler(const boost::system::error_code& error, std::size_t byte_transferred) {
+        std::string str("write_handler ");
+        if(!error) {
+            cout << str << "Success " << byte_transferred << endl;
+        } else {
+            cout << str << "error " << error.value() << endl;
         }
     }
 
-    void sendToServer(string scannerAddress, int port)
-    {
+    void sendToServer(string scannerAddress, int port, std::string const& info) {
+        std::cout << "sendToServer " << info << endl;
         boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::address::from_string(scannerAddress),port);
         socket_.async_connect(endpoint,boost::bind(&UDPClient::connect_handler,this,boost::asio::placeholders::error)); //async connect to server
-        int data[3] = {-1,-1,17230};
-        socket_.async_send(boost::asio::buffer(data),0, boost::bind(&UDPClient::write_handler,this, boost::asio::placeholders::error,sizeof(data))); //async send to server
+        //int data[3] = {-1,-1,17230};
+        //socket_.async_send(boost::asio::buffer(data),0, boost::bind(&UDPClient::write_handler,this, boost::asio::placeholders::error,sizeof(data))); //async send to server
 
+        socket_.async_send(boost::asio::buffer(info), 0,                                                                   //
+                           boost::bind(&UDPClient::write_handler, this, boost::asio::placeholders::error, info.length())); // callback function
     }
 
 private:
@@ -105,21 +81,19 @@ private:
 };
 
 
-int main()
-{
+int main() {
     int state = OPEN_UDP_PORT;
     string scannerAddress = "127.0.0.1"; // "10.48.37.183";
 
     boost::asio::io_service io_service;
     UDPClient client(io_service, "localhost", "10043" ); // Client created;
 
-    while(true)
-    {
-        switch (state)
-        {
+    while(true) {
+    //if (true) {
+        switch (state) {
         case OPEN_UDP_PORT:
         {
-            cout << "hello world" << endl;
+            cout << "OPEN_UDP_PORT" << endl;
             if(client.isOpen()) {
                 cout << "UDP connection open!" << endl;
                 state = SEND_DATA_TO_SERVER;
@@ -132,29 +106,37 @@ int main()
 
         case SEND_DATA_TO_SERVER:
         {
-            //cout << "Send data to server" << endl;
+            cout << "SEND_DATA_TO_SERVER" << endl;
             //client.sendToServer(scannerAddress,9008);
-            client.sendToServer(scannerAddress,10042);
+            std::string info("hi There");
+            client.sendToServer(scannerAddress, 10042, info);
+            sleep(5);
+            /* &&&
+            boost::array<char, 128> recv_buf;
+            udp::endpoint sender_endpoint;
+            size_t sz = socket.receive_from(boost::asio::buffer(recv_buf), sender_endpoint);
+            cout.write(recv_buf.data(), sz);
+            */
             break;
         }
         case RECEIVE_ANSWER_FROM_SERVER:
         {
-            cout << "hello world" << endl;
+            cout << "RECEIVE_ANSWER_FROM_SERVER" << endl;
             break;
         }
         case RECEIVE_DATA:
         {
-            cout << "hello world" << endl;
+            cout << "RECEIVE_DATA" << endl;
             break;
         }
         case CLOSE_UDP_PORT:
         {
-            cout << "hello world" << endl;
+            cout << "CLOSE_UDP_PORT" << endl;
             break;
         }
         case ERROR_HANDLING:
         {
-            cout << "hello world" << endl;
+            cout << "ERROR_HANDLING" << endl;
             break;
         }
         }
