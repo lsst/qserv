@@ -154,6 +154,7 @@ void ConfigurationFile::loadConfiguration() {
     ::parseKeyVal(configStore, "controller.http_server_threads",    _controllerHttpThreads,        defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec",    _controllerRequestTimeoutSec,  defaultControllerRequestTimeoutSec);
 
+    ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);
     ::parseKeyVal(configStore, "xrootd.port",                _xrootdPort,       defaultXrootdPort);
     ::parseKeyVal(configStore, "xrootd.request_timeout_sec", _xrootdTimeoutSec, defaultXrootdTimeoutSec);

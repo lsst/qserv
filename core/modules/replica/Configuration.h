@@ -193,6 +193,9 @@ public:
     // -- Qserv Worker Management Services  (via XRootD/SSI) --
     // --------------------------------------------------------
 
+    /// @return flag indicating if Qserv should be automatically notified on changes
+    bool xrootdAutoNotify() const { return  _xrootdAutoNotify; }
+
     /// @return host name of the worker XRootD service
     std::string const& xrootdHost() const { return  _xrootdHost; }
 
@@ -371,6 +374,7 @@ protected:
     static uint16_t     const defaultControllerHttpPort;
     static size_t       const defaultControllerHttpThreads;
     static unsigned int const defaultControllerRequestTimeoutSec;
+    static bool         const defaultXrootdAutoNotify;
     static std::string  const defaultXrootdHost;
     static uint16_t     const defaultXrootdPort;
     static unsigned int const defaultXrootdTimeoutSec;
@@ -422,6 +426,7 @@ protected:
 
     // -- Qserv Worker Management Services  (via XRootD/SSI)
 
+    bool         _xrootdAutoNotify;     ///< if set to 'true' then automatically notify Qserv
     std::string  _xrootdHost;           ///< host name of the worker XRootD service
     uint16_t     _xrootdPort;           ///< port number of the worker XRootD service
     unsigned int _xrootdTimeoutSec;     ///< expiration timeout for requests

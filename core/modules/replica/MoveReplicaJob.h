@@ -227,6 +227,11 @@ protected:
     void onRequestFinish(ReplicationRequest::pointer const& request);
 
     /**
+     * Initiate a process of removing the replica from the source worker
+     */
+    void beginDeleteReplica();
+
+    /**
      * The calback function to be invoked on a completion of each replica
      * deletion request.
      *

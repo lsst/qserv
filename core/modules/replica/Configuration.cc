@@ -120,6 +120,7 @@ unsigned int const Configuration::defaultRetryTimeoutSec             {1};
 uint16_t     const Configuration::defaultControllerHttpPort          {80};
 size_t       const Configuration::defaultControllerHttpThreads       {1};
 unsigned int const Configuration::defaultControllerRequestTimeoutSec {3600};
+bool         const Configuration::defaultXrootdAutoNotify            {false};
 std::string  const Configuration::defaultXrootdHost                  {"localhost"};
 uint16_t     const Configuration::defaultXrootdPort                  {1094};
 unsigned int const Configuration::defaultXrootdTimeoutSec            {3600};
@@ -161,6 +162,7 @@ Configuration::Configuration()
         _controllerHttpPort           (defaultControllerHttpPort),
         _controllerHttpThreads        (defaultControllerHttpThreads),
         _controllerRequestTimeoutSec  (defaultControllerRequestTimeoutSec),
+        _xrootdAutoNotify             (defaultXrootdAutoNotify),
         _xrootdHost                   (defaultXrootdHost),
         _xrootdPort                   (defaultXrootdPort),
         _xrootdTimeoutSec             (defaultXrootdTimeoutSec),
@@ -270,6 +272,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdAutoNotify:             " << (defaultXrootdAutoNotify ? "true" : "false"));
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdHost:                   " << defaultXrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdPort:                   " << defaultXrootdPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdTimeoutSec:             " << defaultXrootdTimeoutSec);
@@ -295,6 +298,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpPort:                 " << _controllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpThreads:              " << _controllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdAutoNotify:                   " << (_xrootdAutoNotify ? "true" : "false"));
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdHost:                         " << _xrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdPort:                         " << _xrootdPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdTimeoutSec:                   " << _xrootdTimeoutSec);

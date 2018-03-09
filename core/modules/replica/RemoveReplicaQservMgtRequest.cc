@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "replica/AddReplicaQservMgtRequest.h"
+#include "replica/RemoveReplicaQservMgtRequest.h"
 
 // System headers
 
@@ -40,7 +40,7 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RemoveReplicaQservMgtRequest");
 
 } /// namespace
 
@@ -48,47 +48,52 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
+RemoveReplicaQservMgtRequest::pointer RemoveReplicaQservMgtRequest::create(
                                         ServiceProvider::pointer const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
                                         std::string const& databaseFamily,
-                                        AddReplicaQservMgtRequest::callback_type onFinish) {
-    return AddReplicaQservMgtRequest::pointer(
-        new AddReplicaQservMgtRequest(serviceProvider,
-                                      io_service,
-                                      worker,
-                                      chunk,
-                                      databaseFamily,
-                                      onFinish));
+                                        bool force,
+                                        RemoveReplicaQservMgtRequest::callback_type onFinish) {
+    return RemoveReplicaQservMgtRequest::pointer(
+        new RemoveReplicaQservMgtRequest(serviceProvider,
+                                         io_service,
+                                         worker,
+                                         chunk,
+                                         databaseFamily,
+                                         force,
+                                         onFinish));
 }
 
-AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
+RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 ServiceProvider::pointer const& serviceProvider,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
                                 std::string const& databaseFamily,
-                                AddReplicaQservMgtRequest::callback_type onFinish)
+                                bool force,
+                                RemoveReplicaQservMgtRequest::callback_type onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "ADD_REPLICA",
+                        "REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
         _databaseFamily(databaseFamily),
+        _force(force),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
 }
 
-void AddReplicaQservMgtRequest::startImpl() {
+void RemoveReplicaQservMgtRequest::startImpl() {
 
-    AddReplicaQservMgtRequest::pointer const& request =
-        shared_from_base<AddReplicaQservMgtRequest>();
+    RemoveReplicaQservMgtRequest::pointer const& request =
+        shared_from_base<RemoveReplicaQservMgtRequest>();
 
-    _qservRequest = wpublish::AddChunkGroupQservRequest::create(
+    _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
         _chunk,
         _serviceProvider->config()->databases(_databaseFamily),
+        _force,
         [request] (wpublish::ChunkGroupQservRequest::Status status,
                    std::string const& error) {
 
@@ -107,7 +112,7 @@ void AddReplicaQservMgtRequest::startImpl() {
                     break;
                 default:
                     throw std::logic_error(
-                                    "AddReplicaQservMgtRequest:  unhandled server status: " +
+                                    "RemoveReplicaQservMgtRequest:  unhandled server status: " +
                                     wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
@@ -116,7 +121,7 @@ void AddReplicaQservMgtRequest::startImpl() {
     _service->ProcessRequest(*_qservRequest, resource);
 }
 
-void AddReplicaQservMgtRequest::finishImpl() {
+void RemoveReplicaQservMgtRequest::finishImpl() {
 
     assertState(State::FINISHED);
 
@@ -130,9 +135,9 @@ void AddReplicaQservMgtRequest::finishImpl() {
     _qservRequest = nullptr;
 }
 
-void AddReplicaQservMgtRequest::notify() {
+void RemoveReplicaQservMgtRequest::notify() {
     if (_onFinish) {
-        _onFinish(shared_from_base<AddReplicaQservMgtRequest>());
+        _onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
     }
 }
     

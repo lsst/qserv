@@ -32,6 +32,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
+#include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
@@ -365,29 +366,92 @@ void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request)
 
         if (numFinished == numLaunched) {
             if (numSuccess == numLaunched) {
-                if (_purge) {
+                
+                // Notify Qserv about the change in a disposposition of replicas should
+                // the application be configured to do so.
+                //
+                // NOTE: The current implementation will not be affected by a result
+                //       of the operation. Neither any upstream notifications will be
+                //       sent to a requestor of this job.
 
-                    // Launch the second stage of requests to eliminate replicas
-                    // from the source worker.
+                ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
+
+                if (serviceProvider->config()->xrootdAutoNotify()) {
 
                     auto self = shared_from_base<MoveReplicaJob>();
 
-                    for (auto const& replicatePtr: _replicationRequests) {
-                        DeleteRequest::pointer ptr =
-                            _controller->deleteReplica(
-                                replicatePtr->sourceWorker(),
-                                replicatePtr->database(),
-                                replicatePtr->chunk(),
-                                [self] (DeleteRequest::pointer ptr) {
-                                    self->onRequestFinish(ptr);
-                                },
-                                _priority,
-                                true,   /* keepTracking */
-                                true,   /* allowDuplicate */
-                                _id     /* jobId */
-                            );
-                        _deleteRequests.emplace_back(ptr);
+                    LOGS(_log, LOG_LVL_DEBUG, self->context()
+                         << "** START ** Qserv notification on NEW replica:"
+                         << "  chunk="          << self->chunk()
+                         << ", databaseFamily=" << self->databaseFamily()
+                         << ", worker="         << self->destinationWorker());
+
+                    serviceProvider->qservMgtServices()->addReplica(
+                        _chunk,
+                        _databaseFamily,
+                        _destinationWorker,
+                        [self] (AddReplicaQservMgtRequest::pointer const& request) {
+                            LOGS(_log, LOG_LVL_DEBUG, self->context()
+                                 << "** FINISH ** Qserv notification on NEW replica:"
+                                 << "  chunk="          << self->chunk()
+                                 << ", databaseFamily=" << self->databaseFamily()
+                                 << ", worker="         << self->destinationWorker()
+                                 << ", state="          << request->state2string(request->state())
+                                 << ", extendedState="  << request->state2string(request->extendedState())
+                                 << ". serverError="    << request->serverError());
+                        }
+                    );
+                }
+                if (_purge) {
+
+                    // If the Qserv notification is required then try notifying Qserv
+                    // about the intent to remove the replica before actually
+                    // deleting the one.
+                    //
+                    // NOTE: the currenyt implementation ignores the completion status
+                    //       of the operation. It will just report its completion status and
+                    //       immediatelly initiate the actual remova of replica's files.
+
+                    ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
+    
+                    if (serviceProvider->config()->xrootdAutoNotify()) {
+    
+                        auto self = shared_from_base<MoveReplicaJob>();
+    
+                        LOGS(_log, LOG_LVL_DEBUG, self->context()
+                             << "** START ** Qserv notification on REMOVED replica:"
+                             << "  chunk="          << self->chunk()
+                             << ", databaseFamily=" << self->databaseFamily()
+                             << ", worker="         << self->destinationWorker());
+    
+                        bool const force = true;    // force the removal regardless of the replica
+                                                    // usage status. See the implementation of the
+                                                    // corresponiding worker management service for
+                                                    // specific detail on what "remove" means in
+                                                    // that service's context.
+
+                        serviceProvider->qservMgtServices()->removeReplica(
+                            _chunk,
+                            _databaseFamily,
+                            _sourceWorker,
+                            force,
+                            [self] (RemoveReplicaQservMgtRequest::pointer const& request) {
+                                LOGS(_log, LOG_LVL_DEBUG, self->context()
+                                     << "** FINISH ** Qserv notification on REMOVED replica:"
+                                     << "  chunk="          << self->chunk()
+                                     << ", databaseFamily=" << self->databaseFamily()
+                                     << ", worker="         << self->sourceWorker()
+                                     << ", state="          << request->state2string(request->state())
+                                     << ", extendedState="  << request->state2string(request->extendedState())
+                                     << ". serverError="    << request->serverError());
+
+                                // Launch the second stage of requests to actually eliminate replica's
+                                // files from the source worker.
+                                self->beginDeleteReplica();
+                            }
+                        );
                     }
+                    
                 } else {
                     // Otherwise, we're done.
                     setState(State::FINISHED, ExtendedState::SUCCESS);
@@ -402,6 +466,28 @@ void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request)
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
     if (_state == State::FINISHED) { notify(); }
+}
+
+void MoveReplicaJob::beginDeleteReplica() {
+
+    auto self = shared_from_base<MoveReplicaJob>();
+
+    for (auto const& replicatePtr: _replicationRequests) {
+        DeleteRequest::pointer ptr =
+            _controller->deleteReplica(
+                replicatePtr->sourceWorker(),
+                replicatePtr->database(),
+                replicatePtr->chunk(),
+                [self] (DeleteRequest::pointer ptr) {
+                    self->onRequestFinish(ptr);
+                },
+                _priority,
+                true,   /* keepTracking */
+                true,   /* allowDuplicate */
+                _id     /* jobId */
+            );
+        _deleteRequests.emplace_back(ptr);
+    }
 }
 
 void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
@@ -440,10 +526,11 @@ void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
         ::countRequestStates(numLaunched, numFinished, numSuccess,
                              _deleteRequests);
 
-        if (numFinished == numLaunched)
+        if (numFinished == numLaunched) {
             setState(State::FINISHED,
                      numSuccess == numLaunched ? ExtendedState::SUCCESS :
                                                  ExtendedState::FAILED);
+        }
     } while (false);
 
     // Client notification should be made from the lock-free zone

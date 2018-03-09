@@ -188,6 +188,7 @@ void ConfigurationMySQL::loadConfiguration() {
         ::tryParameter(row, "controller", "http_server_threads", _controllerHttpThreads) or
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
 
+        ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
         ::tryParameter(row, "xrootd", "port",                _xrootdPort) or
         ::tryParameter(row, "xrootd", "request_timeout_sec", _xrootdTimeoutSec) or
