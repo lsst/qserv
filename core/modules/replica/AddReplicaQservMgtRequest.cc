@@ -49,7 +49,7 @@ namespace qserv {
 namespace replica {
 
 AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
-                                        ServiceProvider& serviceProvider,
+                                        ServiceProvider::pointer const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
@@ -65,7 +65,7 @@ AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
 }
 
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
-                                ServiceProvider& serviceProvider,
+                                ServiceProvider::pointer const& serviceProvider,
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
@@ -88,7 +88,7 @@ void AddReplicaQservMgtRequest::startImpl() {
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
         _chunk,
-        _serviceProvider.config()->databases(_databaseFamily),
+        _serviceProvider->config()->databases(_databaseFamily),
         [request] (wpublish::AddChunkGroupQservRequest::Status status,
                    std::string const& error) {
 

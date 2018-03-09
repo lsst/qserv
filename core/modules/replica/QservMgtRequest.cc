@@ -74,7 +74,7 @@ std::string QservMgtRequest::state2string(ExtendedState state) {
                     "incomplete implementation of method QservMgtRequest::state2string(ExtendedState)");
 }
 
-QservMgtRequest::QservMgtRequest(ServiceProvider& serviceProvider,
+QservMgtRequest::QservMgtRequest(ServiceProvider::pointer const& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  std::string const& type,
                                  std::string const& worker)
@@ -87,10 +87,10 @@ QservMgtRequest::QservMgtRequest(ServiceProvider& serviceProvider,
         _serverError() ,
         _performance(),
         _service(nullptr),
-        _requestExpirationIvalSec(_serviceProvider.config()->xrootdTimeoutSec()),
+        _requestExpirationIvalSec(_serviceProvider->config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
 
-        _serviceProvider.assertWorkerIsValid(_worker);
+        _serviceProvider->assertWorkerIsValid(_worker);
 }
 
 std::string const& QservMgtRequest::serverError() const {

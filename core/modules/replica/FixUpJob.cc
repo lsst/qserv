@@ -87,7 +87,7 @@ FixUpJob::FixUpJob(std::string const& databaseFamily,
 
 FixUpJob::~FixUpJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider().chunkLocker().release(_id);
+    _controller->serviceProvider()->chunkLocker().release(_id);
 }
 
 FixUpJobResult const& FixUpJob::getReplicaData() const {
@@ -127,7 +127,7 @@ void FixUpJob::track (bool progressReport,
 
         if (chunkLocksReport) {
             os  << "FixUpJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked(_id);
+                << _controller->serviceProvider()->chunkLocker().locked(_id);
         }
     }
     if (progressReport) {
@@ -139,7 +139,7 @@ void FixUpJob::track (bool progressReport,
     }
     if (chunkLocksReport) {
         os  << "FixUpJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked(_id);
+            << _controller->serviceProvider()->chunkLocker().locked(_id);
     }
     if (errorReport and (_numLaunched - _numSuccess)) {
         replica::reportRequestState(_requests, os);
@@ -273,7 +273,7 @@ void FixUpJob::onPrecursorJobFinish() {
                 // Chunk locking is mandatory. If it's not possible to do this now then
                 // the job will need to make another attempt later.
         
-                if (not _controller->serviceProvider().chunkLocker().lock({_databaseFamily, chunk}, _id)) {
+                if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
                     ++_numFailedLocks;
                     continue;
                 }
@@ -425,7 +425,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
 void FixUpJob::release(unsigned int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
     Chunk chunkObj {_databaseFamily, chunk};
-    _controller->serviceProvider().chunkLocker().release(chunkObj);
+    _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

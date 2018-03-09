@@ -36,7 +36,7 @@
 #include "replica/FileUtils.h"
 #include "util/CmdLineParser.h"
 
-namespace rc       = lsst::qserv::replica;
+namespace replica  = lsst::qserv::replica;
 namespace database = lsst::qserv::replica::database::mysql;
 namespace util     = lsst::qserv::util;
 
@@ -57,43 +57,43 @@ std::string fileName;
 
 
 // Run various test on transactions
-void runTransactionTest (database::Connection::pointer const&                    conn,
-                         std::string const&                                      testName,
-                         std::function<void(database::Connection::pointer const& conn)> func) {
+void runTransactionTest(database::Connection::pointer const& conn,
+                        std::string const& testName,
+                        std::function<void(database::Connection::pointer const& conn)> func) {
     try {
         std::cout << "transaction is " << (conn->inTransaction() ? "" : "NOT ") << "active" << std::endl;
-        func (conn);
+        func(conn);
         std::cout << "transaction test [PASSED]: '" << testName << "'" << std::endl;   
     } catch (std::logic_error const& ex) {
         std::cout << "transaction test [FAILED]: '" << testName << "' " << ex.what() << std::endl; 
     }
 }
-void testTransactions (database::Connection::pointer const conn) {
+void testTransactions(database::Connection::pointer const& conn) {
 
-    runTransactionTest (conn, "begin,commit",   [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "begin,commit", [] (database::Connection::pointer const& conn) {
         conn->begin();
         conn->commit();
     });
-    runTransactionTest (conn, "begin,rollback", [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "begin,rollback", [] (database::Connection::pointer const& conn) {
         conn->begin();
         conn->rollback();
     });
-    runTransactionTest (conn, "begin,begin",    [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "begin,begin", [] (database::Connection::pointer const& conn) {
         conn->begin();
         conn->begin();
     });
-    runTransactionTest (conn, "commit",         [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "commit", [] (database::Connection::pointer const& conn) {
         conn->commit();
     });
-    runTransactionTest (conn, "rollback",       [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "rollback", [] (database::Connection::pointer const& conn) {
         conn->rollback();
     });
-    runTransactionTest (conn, "begin,commit,rollback", [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "begin,commit,rollback", [] (database::Connection::pointer const& conn) {
         conn->begin();
         conn->commit();
         conn->rollback();
     });
-    runTransactionTest (conn, "begin,rollback,commit", [] (database::Connection::pointer const conn) {
+    runTransactionTest(conn, "begin,rollback,commit", [] (database::Connection::pointer const& conn) {
         conn->begin();
         conn->rollback();
         conn->commit();
@@ -101,16 +101,16 @@ void testTransactions (database::Connection::pointer const conn) {
 }
 
 /// Create a new database
-void createDatabase (database::Connection::pointer const conn) {
+void createDatabase(database::Connection::pointer const& conn) {
     try {
-        conn->execute ("CREATE DATABASE " + databaseName);
+        conn->execute("CREATE DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
         std::cout << ex.what() << std::endl; 
     }
 }
 
 /// Drop an existing database
-void dropDatabase (database::Connection::pointer const conn) {
+void dropDatabase(database::Connection::pointer const& conn) {
     try {
         conn->execute ("DROP DATABASE " + databaseName);
     } catch (std::logic_error const& ex) {
@@ -120,7 +120,7 @@ void dropDatabase (database::Connection::pointer const conn) {
 
 /// Read a query from a file, execute it and (if requested)
 /// explore ita results
-void query (database::Connection::pointer const conn) {
+void query(database::Connection::pointer const& conn) {
 
     // Read q query from the standard input or from a file into a string.
 
@@ -134,28 +134,28 @@ void query (database::Connection::pointer const conn) {
         // size and preallocates the string buffer before
         // perforмing the actual read.
 
-        std::ifstream fs (fileName);
-        if (!fs) {
+        std::ifstream fs(fileName);
+        if (not fs) {
             std::cerr << "faild to read the contents of file: " << fileName << std::endl;
             return;
         }
-        fs.seekg      (0, std::ios::end);   
-        query.reserve (fs.tellg());
-        fs.seekg      (0, std::ios::beg);
-        query.assign  ((std::istreambuf_iterator<char>(fs)),
-                        std::istreambuf_iterator<char>());
+        fs.seekg(0, std::ios::end);   
+        query.reserve(fs.tellg());
+        fs.seekg(0, std::ios::beg);
+        query.assign((std::istreambuf_iterator<char>(fs)),
+                      std::istreambuf_iterator<char>());
     }    
     std::cout << "Query: " << query << std::endl;
 
     // Execute the query
 
     try {
-        if (!noTransaction) conn->begin();
+        if (not noTransaction) { conn->begin(); }
         {
-            conn->execute (query);
+            conn->execute(query);
             std::cout << "hasResult: " << (conn->hasResult() ? "true" : "false") << std::endl;
 
-            if (!noResultSet && conn->hasResult()) {
+            if (not noResultSet and conn->hasResult()) {
                 std::cout << "Columns:   ";
                 for (std::string const& name: conn->columnNames()) {
                     std::cout << "'" << name << "', ";
@@ -179,7 +179,7 @@ void query (database::Connection::pointer const conn) {
                 }
             }
         }
-        if (!noTransaction) conn->commit();
+        if (not noTransaction) { conn->commit(); }
 
     } catch (std::logic_error const& ex) {
         std::cout << ex.what() << std::endl; 
@@ -187,16 +187,16 @@ void query (database::Connection::pointer const conn) {
 }
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
         database::Connection::pointer const conn =
             database::Connection::open(connectionParams, !noAutoReconnect);
         
         if      ("TEST_TRANSACTIONS" == operation) { testTransactions(conn); }
-        else if ("CREATE_DATABASE"   == operation) { createDatabase  (conn); }
-        else if ("DROP_DATABASE"     == operation) { dropDatabase    (conn); }
-        else if ("QUERY"             == operation) { query           (conn); }
+        else if ("CREATE_DATABASE"   == operation) { createDatabase(conn); }
+        else if ("DROP_DATABASE"     == operation) { dropDatabase(conn); }
+        else if ("QUERY"             == operation) { query(conn); }
 
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -205,11 +205,11 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -248,7 +248,7 @@ int main (int argc, const char* const argv[]) {
             "  --default-database   - the name of the default database to connect to\n"
             "                         [ DEFAULT: '']\n");
 
-        ::operation = parser.parameterRestrictedBy (
+        ::operation = parser.parameterRestrictedBy(
             1, {"TEST_TRANSACTIONS",
                 "CREATE_DATABASE",
                 "DROP_DATABASE",
@@ -263,16 +263,16 @@ int main (int argc, const char* const argv[]) {
             "QUERY"})) {
             ::fileName = parser.parameter<std::string>(2);
         }
-        ::noAutoReconnect           = parser.flag               ("no-auto-reconnect");
-        ::noTransaction             = parser.flag               ("no-transaction");
-        ::noResultSet               = parser.flag               ("no-result-set");
-        ::connectionParams.host     = parser.option<std::string>("host",             "localhost");
-        ::connectionParams.port     = parser.option<uint16_t>   ("port",             3306);
-        ::connectionParams.user     = parser.option<std::string>("user",             rc::FileUtils::getEffectiveUser ());
-        ::connectionParams.password = parser.option<std::string>("password",         "");
+        ::noAutoReconnect           = parser.flag("no-auto-reconnect");
+        ::noTransaction             = parser.flag("no-transaction");
+        ::noResultSet               = parser.flag("no-result-set");
+        ::connectionParams.host     = parser.option<std::string>("host", "localhost");
+        ::connectionParams.port     = parser.option<uint16_t>("port", 3306);
+        ::connectionParams.user     = parser.option<std::string>("user", replica::FileUtils::getEffectiveUser());
+        ::connectionParams.password = parser.option<std::string>("password", "");
         ::connectionParams.database = parser.option<std::string>("default-database", "");
 
-    } catch (std::exception &ex) {
+    } catch (std::exception const& ex) {
         return 1;
     }  
     ::test();

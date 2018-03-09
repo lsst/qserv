@@ -36,6 +36,7 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/MessengerConnector.h"
+#include "replica/ServiceProvider.h"
 
 // This header declarations
 
@@ -45,7 +46,6 @@ namespace replica {
 
 // Forward declarations
 class ProtocolBuffer;
-class ServiceProvider;
 
 /**
  * This class provides a communication interface for sending/receiving messages
@@ -81,7 +81,7 @@ public:
      *                           the object must exceed the one of this instance
      *                           of the Messenger.
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service);
 
     /**
@@ -149,7 +149,7 @@ private:
     /**
      * The constructor
      */
-    Messenger(ServiceProvider& serviceProvider,
+    Messenger(ServiceProvider::pointer const& serviceProvider,
               boost::asio::io_service& io_service);
 
     /**

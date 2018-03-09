@@ -29,6 +29,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -44,7 +45,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileClient::pointer FileClient::open(ServiceProvider& serviceProvider,
+FileClient::pointer FileClient::open(ServiceProvider::pointer const& serviceProvider,
                                      std::string const& workerName,
                                      std::string const& databaseName,
                                      std::string const& fileName) {
@@ -70,7 +71,7 @@ FileClient::pointer FileClient::open(ServiceProvider& serviceProvider,
 }
 
 
-FileClient::pointer FileClient::stat(ServiceProvider& serviceProvider,
+FileClient::pointer FileClient::stat(ServiceProvider::pointer const& serviceProvider,
                                      std::string const& workerName,
                                      std::string const& databaseName,
                                      std::string const& fileName) {
@@ -95,16 +96,16 @@ FileClient::pointer FileClient::stat(ServiceProvider& serviceProvider,
     return nullptr;
 }
 
-FileClient::FileClient(ServiceProvider& serviceProvider,
+FileClient::FileClient(ServiceProvider::pointer const& serviceProvider,
                        std::string const& workerName,
                        std::string const& databaseName,
                        std::string const& fileName,
                        bool readContent)
-    :   _workerInfo(serviceProvider.config()->workerInfo(workerName)),
-        _databaseInfo(serviceProvider.config()->databaseInfo(databaseName)),
+    :   _workerInfo(serviceProvider->config()->workerInfo(workerName)),
+        _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
         _fileName(fileName),
         _readContent(readContent),
-        _bufferPtr(new ProtocolBuffer(serviceProvider.config()->requestBufferSizeBytes())),
+        _bufferPtr(new ProtocolBuffer(serviceProvider->config()->requestBufferSizeBytes())),
         _io_service(),
         _socket(_io_service),
         _size(0),

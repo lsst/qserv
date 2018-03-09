@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 namespace fs    = boost::filesystem;
@@ -111,7 +112,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-FileServerConnection::pointer FileServerConnection::create(ServiceProvider& serviceProvider,
+FileServerConnection::pointer FileServerConnection::create(ServiceProvider::pointer const& serviceProvider,
                                                            std::string const& workerName,
                                                            boost::asio::io_service& io_service) {
     return FileServerConnection::pointer(
@@ -121,19 +122,19 @@ FileServerConnection::pointer FileServerConnection::create(ServiceProvider& serv
             io_service));
 }
 
-FileServerConnection::FileServerConnection(ServiceProvider& serviceProvider,
+FileServerConnection::FileServerConnection(ServiceProvider::pointer const& serviceProvider,
                                            std::string const& workerName,
                                            boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _workerInfo(serviceProvider.config()->workerInfo(workerName)),
+        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(
             std::make_shared<ProtocolBuffer>(
-                serviceProvider.config()->requestBufferSizeBytes())),
+                serviceProvider->config()->requestBufferSizeBytes())),
         _fileName(),
         _filePtr(0),
-        _fileBufSize(serviceProvider.config()->workerFsBufferSizeBytes()),
+        _fileBufSize(serviceProvider->config()->workerFsBufferSizeBytes()),
         _fileBuf(0) {
 
     if (not _fileBufSize or (_fileBufSize > maxFileBufSizeBytes)) {
@@ -209,7 +210,7 @@ void FileServerConnection::requestReceived(boost::system::error_code const& ec,
     uint64_t    size      = 0;
     std::time_t mtime     = 0;
     do {
-        if (not _serviceProvider.config()->isKnownDatabase(request.database())) {
+        if (not _serviceProvider->config()->isKnownDatabase(request.database())) {
             LOGS(_log, LOG_LVL_ERROR, context << "requestReceived  unknown database: "
                  << request.database());
             break;

@@ -125,7 +125,7 @@ public:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& sourceWorker,
@@ -141,7 +141,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ReplicationRequestC(ServiceProvider& serviceProvider,
+    ReplicationRequestC(ServiceProvider::pointer const& serviceProvider,
                         boost::asio::io_service& io_service,
                         std::string const& worker,
                         std::string const& sourceWorker,
@@ -287,7 +287,7 @@ public:
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - worker messenging service
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& sourceWorker,
@@ -304,7 +304,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    ReplicationRequestM(ServiceProvider& serviceProvider,
+    ReplicationRequestM(ServiceProvider::pointer const& serviceProvider,
                         boost::asio::io_service& io_service,
                         std::string const& worker,
                         std::string const& sourceWorker,

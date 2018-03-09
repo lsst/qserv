@@ -10,6 +10,7 @@
 #include <string>
 
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/ReplicaFinder.h"
 #include "replica/ReplicaInfo.h"
@@ -18,8 +19,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -32,7 +33,7 @@ bool         errorReport;
 std::string  configUrl;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -41,20 +42,19 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        rc::ReplicaFinder finder (controller,
-                                 databaseName,
-                                 std::cout,
-                                 progressReport,
-                                 errorReport);
+        replica::ReplicaFinder finder(controller,
+                                      databaseName,
+                                      std::cout,
+                                      progressReport,
+                                      errorReport);
 
         /////////////////////////////////////////////////////////////////
         // Analyse results and prepare a replication plan to create extra
@@ -69,13 +69,13 @@ bool test () {
         // Failed workers
         std::set<std::string> failedWorkers;
 
-        for (const auto& ptr: finder.requests)
+        for (auto const& ptr: finder.requests)
 
-            if ((ptr->state()         == rc::Request::State::FINISHED) &&
-                (ptr->extendedState() == rc::Request::ExtendedState::SUCCESS)) {
+            if ((ptr->state()         == replica::Request::State::FINISHED) &&
+                (ptr->extendedState() == replica::Request::ExtendedState::SUCCESS)) {
 
-                for (const auto &replica: ptr->responseData ())
-                    if (replica.status() == rc::ReplicaInfo::Status::COMPLETE) {
+                for (auto const &replica: ptr->responseData ())
+                    if (replica.status() == replica::ReplicaInfo::Status::COMPLETE) {
                         chunk2workers[replica.chunk ()].push_back(replica.worker());
                         worker2chunks[replica.worker()].push_back(replica.chunk ());
                     }
@@ -88,31 +88,32 @@ bool test () {
         // Check which chunks are under-represented. Then find a least loaded
         // worker and launch a replication request.
 
-        rc::CommonRequestTracker<rc::ReplicationRequest> tracker (std::cout,
-                                                                  progressReport,
-                                                                  errorReport);
+        replica::CommonRequestTracker<replica::ReplicationRequest>
+            tracker(std::cout,
+                    progressReport,
+                    errorReport);
 
         // This counter will be used for optimization purposes as the upper limit for
         // the number of chunks per worker in the load balancing algorithm below.
-        const size_t numUniqueChunks = chunk2workers.size();
+        size_t const numUniqueChunks = chunk2workers.size();
 
         for (auto &entry: chunk2workers) {
 
-            const unsigned int chunk{entry.first};
+            unsigned int const chunk{entry.first};
 
             // Take a copy of the non-modified list of workers with chunk's replicas
             // and cache it here to know which workers are allowed to be used as reliable
             // sources vs chunk2workers[chunk] which will be modified below as new replicas
             // will get created.
-            const std::list<std::string> replicas{entry.second};
+            std::list<std::string> const replicas{entry.second};
 
             // Pick the first worker which has this chunk as the 'sourceWorker'
             // in case if we'll decide to replica the chunk within the loop below
-            const std::string &sourceWorker = *(replicas.begin());
+            std::string const& sourceWorker = *(replicas.begin());
 
             // Note that some chunks may have more replicas than required. In that case
             // the difference would be negative.
-            const int numReplicas2create = numReplicas - replicas.size();
+            int const numReplicas2create = numReplicas - replicas.size();
 
             for (int i = 0; i < numReplicas2create; ++i) {
 
@@ -125,11 +126,11 @@ bool test () {
                 std::string destinationWorker;
                 size_t      numChunksPerDestinationWorker = numUniqueChunks;
 
-                for (const auto &worker: provider.config()->workers()) {
+                for (auto const& worker: provider->config()->workers()) {
 
                     // Exclude failed workers
 
-                    if (failedWorkers.count(worker)) continue;
+                    if (failedWorkers.count(worker)) { continue; }
 
                     // Exclude workers which already have this chunk, or for which
                     // there is an outstanding replication requsts. Both kinds of
@@ -163,13 +164,13 @@ bool test () {
                 // Finally, launch and register for further tracking the replication
                 // request.
                 
-                tracker.add (
-                    controller->replicate (
+                tracker.add(
+                    controller->replicate(
                         destinationWorker,
                         sourceWorker,
                         databaseName,
                         chunk,
-                        [&tracker] (rc::ReplicationRequest::pointer ptr) {
+                        [&tracker] (replica::ReplicationRequest::pointer ptr) {
                             tracker.onFinish(ptr);
                         }
                     )
@@ -188,14 +189,14 @@ bool test () {
         controller->stop();
         controller->join();
 
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (std::exception const& ex) {
+        std::cerr << ex.what() << std::endl;
     }
     return true;
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -204,7 +205,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -222,10 +223,10 @@ int main (int argc, const char* const argv[]) {
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::databaseName   = parser.parameter<std::string>(1);
-        ::numReplicas    = parser.parameter<int>        (2);
-        ::progressReport = parser.flag                  ("progress-report");
-        ::errorReport    = parser.flag                  ("error-report");
-        ::configUrl      = parser.option   <std::string>("config", "file:replication.cfg");
+        ::numReplicas    = parser.parameter<int>(2);
+        ::progressReport = parser.flag("progress-report");
+        ::errorReport    = parser.flag("error-report");
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception &ex) {
         return 1;

@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "replica/Performance.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -48,7 +49,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 
 /**
   * Class QservMgtRequest is a base class for a family of the Qserv worker
@@ -132,7 +132,7 @@ public:
     virtual ~QservMgtRequest() = default;
 
     /// @return reference to a provider of services
-    ServiceProvider& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
@@ -208,7 +208,7 @@ protected:
      * @param worker          - the name of a worker
      * @io_service            - BOOST ASIO service
      */
-    QservMgtRequest(ServiceProvider& serviceProvider,
+    QservMgtRequest(ServiceProvider::pointer const& serviceProvider,
                     boost::asio::io_service& io_service,
                     std::string const& type,
                     std::string const& worker);
@@ -276,7 +276,7 @@ protected:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     std::string _type;
     std::string _id;

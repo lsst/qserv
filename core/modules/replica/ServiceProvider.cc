@@ -28,14 +28,25 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/ChunkLocker.h"
+#include "replica/Configuration.h"
+#include "replica/DatabaseServices.h"
+#include "replica/QservMgtServices.h"
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
+ServiceProvider::pointer ServiceProvider::create(std::string const& configUrl) {
+    auto ptr = ServiceProvider::pointer(new ServiceProvider(configUrl));
+    // This initialization is made a posteriori because the shared pointer
+    // onto the object can't be accessed via the usual call to shared_from_this()
+    // inside the contsructor.
+    ptr->_qservMgtServices = QservMgtServices::create(ptr);
+    return ptr;
+}
 
 ServiceProvider::ServiceProvider(std::string const& configUrl) {
-
     _configuration    = Configuration::load(configUrl);
     _databaseServices = DatabaseServices::create(_configuration);
 }

@@ -81,9 +81,9 @@ namespace replica {
 
 struct StatusReplicationRequestPolicy {
 
-    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_CREATE"; } 
+    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_CREATE"; } 
 
-    static proto::ReplicationReplicaRequestType requestType () {
+    static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_CREATE;
     }
 
@@ -91,12 +91,12 @@ struct StatusReplicationRequestPolicy {
     using responseDataType        = ReplicaInfo;
     using targetRequestParamsType = ReplicationRequestParams;
 
-    static void extractResponseData (responseMessageType const& msg,
-                                     responseDataType& data) {
+    static void extractResponseData(responseMessageType const& msg,
+                                    responseDataType& data) {
         data = responseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams (responseMessageType const& msg,
-                                            targetRequestParamsType& params) {
+    static void extractTargetRequestParams(responseMessageType const& msg,
+                                           targetRequestParamsType& params) {
         if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
         }
@@ -105,9 +105,9 @@ struct StatusReplicationRequestPolicy {
 
 struct StatusDeleteRequestPolicy {
 
-    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_DELETE"; }
+    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_DELETE"; }
 
-    static proto::ReplicationReplicaRequestType requestType () {
+    static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_DELETE;
     }
 
@@ -115,22 +115,23 @@ struct StatusDeleteRequestPolicy {
     using responseDataType        = ReplicaInfo;
     using targetRequestParamsType = DeleteRequestParams;
 
-    static void extractResponseData (responseMessageType const& msg,
-                                     responseDataType& data) {
+    static void extractResponseData(responseMessageType const& msg,
+                                    responseDataType& data) {
         data = responseDataType(&(msg.replica_info()));
     }
-    static void extractTargetRequestParams (responseMessageType const& msg,
-                                            targetRequestParamsType& params) {
-        if (msg.has_request())
+    static void extractTargetRequestParams(responseMessageType const& msg,
+                                           targetRequestParamsType& params) {
+        if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
+        }
     }
 };
 
 struct StatusFindRequestPolicy {
 
-    static char const* requestTypeName () { return "REQUEST_STATUS:REPLICA_FIND"; }
+    static char const* requestTypeName() { return "REQUEST_STATUS:REPLICA_FIND"; }
 
-    static proto::ReplicationReplicaRequestType requestType () {
+    static proto::ReplicationReplicaRequestType requestType() {
         return proto::ReplicationReplicaRequestType::REPLICA_FIND;
     }
 
@@ -162,15 +163,15 @@ struct StatusFindAllRequestPolicy {
     using responseDataType        = ReplicaInfoCollection;
     using targetRequestParamsType = FindAllRequestParams;
 
-    static void extractResponseData (responseMessageType const& msg,
-                                     responseDataType& data) {
+    static void extractResponseData(responseMessageType const& msg,
+                                    responseDataType& data) {
 
         for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
             data.emplace_back(&(msg.replica_info_many(idx)));
         }
     }
-    static void extractTargetRequestParams (responseMessageType const& msg,
-                                            targetRequestParamsType& params) {
+    static void extractTargetRequestParams(responseMessageType const& msg,
+                                           targetRequestParamsType& params) {
         if (msg.has_request()) {
             params = targetRequestParamsType(msg.request());
         }
@@ -203,23 +204,23 @@ public:
     ~StatusRequestBaseC () override = default;
 
     /// Return an identifier of the target request
-    std::string const& targetRequestId () const { return _targetRequestId; }
+    std::string const& targetRequestId() const { return _targetRequestId; }
 
     /// Return the performance info of the target operation (if available)
-    Performance const& targetPerformance () const { return _targetPerformance; }
+    Performance const& targetPerformance() const { return _targetPerformance; }
 
 protected:
 
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StatusRequestBaseC (ServiceProvider&         serviceProvider,
-                        boost::asio::io_service& io_service,
-                        char const*              requestTypeName,
-                        std::string const&       worker,
-                        std::string const&       targetRequestId,
-                        proto::ReplicationReplicaRequestType requestType,
-                        bool                     keepTracking);
+    StatusRequestBaseC(ServiceProvider::pointer const& serviceProvider,
+                       boost::asio::io_service& io_service,
+                       char const* requestTypeName,
+                       std::string const& worker,
+                       std::string const& targetRequestId,
+                       proto::ReplicationReplicaRequestType requestType,
+                       bool keepTracking);
 
     /**
       * This method is called when a connection is established and
@@ -229,49 +230,49 @@ protected:
       * The first step of the protocol will be to send the replication
       * request to the destination worker.
       */
-    void beginProtocol () final;
+    void beginProtocol() final;
     
     /// Callback handler for the asynchronious operation
-    void requestSent (boost::system::error_code const& ec,
-                      size_t bytes_transferred);
+    void requestSent(boost::system::error_code const& ec,
+                     size_t bytes_transferred);
 
     /// Start receiving the response from the destination worker
-    void receiveResponse ();
+    void receiveResponse();
 
     /// Callback handler for the asynchronious operation
-    void responseReceived (boost::system::error_code const& ec,
-                           size_t bytes_transferred);
+    void responseReceived(boost::system::error_code const& ec,
+                          size_t bytes_transferred);
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
-    void wait ();
+    void wait();
 
     /// Callback handler for the asynchronious operation
-    void awaken (boost::system::error_code const& ec);
+    void awaken(boost::system::error_code const& ec);
 
     /// Start sending the status request to the destination worker
-    void sendStatus ();
+    void sendStatus();
 
     /// Callback handler for the asynchronious operation
-    void statusSent (boost::system::error_code const& ec,
-                     size_t bytes_transferred);
+    void statusSent(boost::system::error_code const& ec,
+                    size_t bytes_transferred);
 
     /// Start receiving the status response from the destination worker
-    void receiveStatus ();
+    void receiveStatus();
 
     /// Callback handler for the asynchronious operation
-    void statusReceived (boost::system::error_code const& ec,
-                         size_t bytes_transferred);
+    void statusReceived(boost::system::error_code const& ec,
+                        size_t bytes_transferred);
 
     /**
      * Parse request-specific reply
      *
      * This method must be implemented by subclasses.
      */
-    virtual proto::ReplicationStatus parseResponse ()=0;
+    virtual proto::ReplicationStatus parseResponse() = 0;
 
     /// Process the completion of the requested operation
-    void analyze (proto::ReplicationStatus status);
+    void analyze(proto::ReplicationStatus status);
 
 private:
 
@@ -337,12 +338,12 @@ public:
      *                           the request.
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const&       worker,
-                           std::string const&       targetRequestId,
-                           callback_type            onFinish,
-                           bool                     keepTracking) {
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const& worker,
+                          std::string const& targetRequestId,
+                          callback_type onFinish,
+                          bool keepTracking) {
 
         return StatusRequestC<POLICY>::pointer(
             new StatusRequestC<POLICY>(
@@ -361,21 +362,21 @@ private:
     /**
      * Construct the request
      */
-    StatusRequestC (ServiceProvider&         serviceProvider,
-                    boost::asio::io_service& io_service,
-                    char const*              requestTypeName,
-                    std::string const&       worker,
-                    std::string const&       targetRequestId,
-                    proto::ReplicationReplicaRequestType requestType,
-                    callback_type            onFinish,
-                    bool                     keepTracking)
-        :   StatusRequestBaseC (serviceProvider,
-                                io_service,
-                                requestTypeName,
-                                worker,
-                                targetRequestId,
-                                requestType,
-                                keepTracking),
+    StatusRequestC(ServiceProvider::pointer const& serviceProvider,
+                   boost::asio::io_service& io_service,
+                   char const* requestTypeName,
+                   std::string const& worker,
+                   std::string const& targetRequestId,
+                   proto::ReplicationReplicaRequestType requestType,
+                   callback_type onFinish,
+                   bool keepTracking)
+        :   StatusRequestBaseC(serviceProvider,
+                               io_service,
+                               requestTypeName,
+                               worker,
+                               targetRequestId,
+                               requestType,
+                               keepTracking),
             _onFinish(onFinish) {
     }
 
@@ -475,35 +476,35 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    StatusRequestBaseM (ServiceProvider&         serviceProvider,
-                        boost::asio::io_service& io_service,
-                        char const*              requestTypeName,
-                        std::string const&       worker,
-                        std::string const&       targetRequestId,
-                        proto::ReplicationReplicaRequestType requestType,
-                        bool                     keepTracking,
-                        std::shared_ptr<Messenger> const& messenger);
+    StatusRequestBaseM(ServiceProvider::pointer const& serviceProvider,
+                       boost::asio::io_service& io_service,
+                       char const* requestTypeName,
+                       std::string const& worker,
+                       std::string const& targetRequestId,
+                       proto::ReplicationReplicaRequestType requestType,
+                       bool keepTracking,
+                       std::shared_ptr<Messenger> const& messenger);
 
     /**
       * Implement the method declared in the base class
       *
       * @see Request::startImpl()
       */
-    void startImpl () final;
+    void startImpl() final;
 
     /// Start the timer before attempting the previously failed
     /// or successfull (if a status check is needed) step.
-    void wait ();
+    void wait();
 
     /// Callback handler for the asynchronious operation
-    void awaken (boost::system::error_code const& ec);
+    void awaken(boost::system::error_code const& ec);
 
     /**
      * Initiate request-specific send
      *
      * This method must be implemented by subclasses.
      */
-    virtual void send ()=0;
+    virtual void send() = 0;
 
     /**
      * Process the worker response to the requested operation.
@@ -511,8 +512,8 @@ protected:
      * @param success - the flag indicating if the operation was successfull
      * @param status  - a response from the worker service (only valid if success is 'true')
      */
-    void analyze (bool success,
-                  proto::ReplicationStatus status=proto::ReplicationStatus::FAILED);
+    void analyze(bool success,
+                 proto::ReplicationStatus status = proto::ReplicationStatus::FAILED);
 
 private:
 
@@ -546,21 +547,21 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    StatusRequestM () = delete;
-    StatusRequestM (StatusRequestM const&) = delete;
-    StatusRequestM& operator= (StatusRequestM const&) = delete;
+    StatusRequestM() = delete;
+    StatusRequestM(StatusRequestM const&) = delete;
+    StatusRequestM& operator=(StatusRequestM const&) = delete;
 
     /// Destructor
-    ~StatusRequestM () final = default;
+    ~StatusRequestM() final = default;
 
     /// Return target request specific parameters
-    typename POLICY::targetRequestParamsType const& targetRequestParams () const {
+    typename POLICY::targetRequestParamsType const& targetRequestParams() const {
         return _targetRequestParams;
     }
 
     /// Return request-specific extended data reported upon asuccessfull completion
     /// of the request
-    typename POLICY::responseDataType const& responseData () const { return _responseData; }
+    typename POLICY::responseDataType const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -579,16 +580,16 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create (ServiceProvider&         serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const&       worker,
-                           std::string const&       targetRequestId,
-                           callback_type            onFinish,
-                           bool                     keepTracking,
-                           std::shared_ptr<Messenger> const& messenger) {
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
+                          boost::asio::io_service& io_service,
+                          std::string const& worker,
+                          std::string const& targetRequestId,
+                          callback_type onFinish,
+                          bool keepTracking,
+                          std::shared_ptr<Messenger> const& messenger) {
 
-        return StatusRequestM<POLICY>::pointer (
-            new StatusRequestM<POLICY> (
+        return StatusRequestM<POLICY>::pointer(
+            new StatusRequestM<POLICY>(
                 serviceProvider,
                 io_service,
                 POLICY::requestTypeName(),
@@ -605,16 +606,16 @@ private:
     /**
      * Construct the request
      */
-    StatusRequestM (ServiceProvider&         serviceProvider,
-                    boost::asio::io_service& io_service,
-                    char const*              requestTypeName,
-                    std::string const&       worker,
-                    std::string const&       targetRequestId,
-                    proto::ReplicationReplicaRequestType requestType,
-                    callback_type            onFinish,
-                    bool                     keepTracking,
-                    std::shared_ptr<Messenger> const& messenger)
-        :   StatusRequestBaseM (serviceProvider,
+    StatusRequestM(ServiceProvider::pointer const& serviceProvider,
+                   boost::asio::io_service& io_service,
+                   char const* requestTypeName,
+                   std::string const& worker,
+                   std::string const& targetRequestId,
+                   proto::ReplicationReplicaRequestType requestType,
+                   callback_type onFinish,
+                   bool keepTracking,
+                   std::shared_ptr<Messenger> const& messenger)
+        :   StatusRequestBaseM(serviceProvider,
                                io_service,
                                requestTypeName,
                                worker,
@@ -622,7 +623,7 @@ private:
                                requestType,
                                keepTracking,
                                messenger),
-            _onFinish (onFinish) {
+            _onFinish(onFinish) {
     }
 
     /**
@@ -631,7 +632,7 @@ private:
      * This method implements the corresponing virtual method defined
      * by the base class.
      */
-    void notify () final {
+    void notify() final {
         if (_onFinish != nullptr) {
             StatusRequestM<POLICY>::pointer self = shared_from_base<StatusRequestM<POLICY>>();
             _onFinish(self);
@@ -644,11 +645,11 @@ private:
      * This method implements the corresponing virtual method defined
      * by the base class.
      */
-    void send () final {
+    void send() final {
  
         auto self = shared_from_base<StatusRequestM<POLICY>>();
     
-        _messenger->send<typename POLICY::responseMessageType> (
+        _messenger->send<typename POLICY::responseMessageType>(
             worker(),
             id(),
             _bufferPtr,
@@ -668,7 +669,7 @@ private:
      * @param message - message to parse
      * @return status of the operation reported by a server
      */
-    proto::ReplicationStatus parseResponse (
+    proto::ReplicationStatus parseResponse(
             typename POLICY::responseMessageType const& message) {
 
         // Extract target request-specific parameters from the response if available

@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/FindAllJob.h"
 #include "replica/FixUpJob.h"
 #include "replica/JobController.h"
@@ -44,37 +45,38 @@
 #include "replica/VerifyJob.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
 // Command line parameters
 std::string  configUrl;
 unsigned int numReplicas;
-bool computeCheckSum;
-bool bestEffort;
-bool progressReport;
-bool errorReport;
-bool chunkLocksReport;
+bool         computeCheckSum;
+bool         bestEffort;
+bool         progressReport;
+bool         errorReport;
+bool         chunkLocksReport;
 
 /**
  * Recursive function for continious submition of the replica verification
  * jobs. The method will ensure a new job will be launched immediatelly upon
  * a completion of the previous one unless the later was was explicitly canceled.
  */
-void submitVerifyJob (rc::JobController::pointer jobCtrl) {
+void submitVerifyJob(replica::JobController::pointer const& jobCtrl) {
     jobCtrl->verify (
-        [jobCtrl](rc::VerifyJob::pointer job) {
-            if (job->extendedState() != rc::Job::ExtendedState::CANCELLED)
+        [jobCtrl] (replica::VerifyJob::pointer const& job) {
+            if (job->extendedState() != replica::Job::ExtendedState::CANCELLED) {
                 submitVerifyJob (jobCtrl);
+            }
         },
-        [] (rc::VerifyJob::pointer              job,
-            rc::ReplicaDiff const&              selfReplicaDiff,
-            std::vector<rc::ReplicaDiff> const& otherReplicaDiff) {
+        [] (replica::VerifyJob::pointer const& job,
+            replica::ReplicaDiff const& selfReplicaDiff,
+            std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 
-            rc::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
-            rc::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
+            replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
+            replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
             std::cout
                 << "Compared with OWN previous state  "
                 << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
@@ -83,8 +85,8 @@ void submitVerifyJob (rc::JobController::pointer jobCtrl) {
                 << std::endl;
             
             for (auto const& diff: otherReplicaDiff) {
-                rc::ReplicaInfo const& r1 = diff.replica1();
-                rc::ReplicaInfo const& r2 = diff.replica2();
+                replica::ReplicaInfo const& r1 = diff.replica1();
+                replica::ReplicaInfo const& r2 = diff.replica2();
                 std::cout
                     << "Compared with OTHER replica state "
                     << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
@@ -98,7 +100,7 @@ void submitVerifyJob (rc::JobController::pointer jobCtrl) {
 }
 
 /// Run the aaplication
-bool run () {
+bool run() {
 
     try {
 
@@ -107,34 +109,32 @@ bool run () {
         // Note that omFinish callbak which are activated upon a completion
         // of the job will be run in a thread wich will differ from the current one
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::JobController::pointer jobCtrl =
-            rc::JobController::create (provider);
+        replica::ServiceProvider::pointer const provider  = replica::ServiceProvider::create(configUrl);
+        replica::JobController::pointer   const jobCtrl   = replica::JobController::create(provider);
 
         jobCtrl->run();
 
         // Refresh the current disposition of replicas accross the cluster.
         // This will also update the state of replicas within the database.
 
-        for (auto const& databaseFamily: provider.config()->databaseFamilies()) {
-            rc::FindAllJob::pointer job = jobCtrl->findAll (
+        for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+            replica::FindAllJob::pointer const job = jobCtrl->findAll(
                 databaseFamily,
-                [](rc::FindAllJob::pointer job) {
+                [] (replica::FindAllJob::pointer const& job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
                     ;
                 }
             );
-            job->track (progressReport,
-                        errorReport,
-                        chunkLocksReport,
-                        std::cout);
+            job->track(progressReport,
+                       errorReport,
+                       chunkLocksReport,
+                       std::cout);
         }
 
         // Launch a never-ending replicas verification job
 
-        submitVerifyJob (jobCtrl);
+        submitVerifyJob(jobCtrl);
 
         // Launch a series of jobs witin an infinite loop for each databse family
         //
@@ -146,58 +146,57 @@ bool run () {
             // Check for chunks which need to be fixed and do so if the ones
             // were found.
 
-            for (auto const& databaseFamily: provider.config()->databaseFamilies()) {
-                rc::FixUpJob::pointer job = jobCtrl->fixUp (
+            for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                replica::FixUpJob::pointer const job = jobCtrl->fixUp(
                     databaseFamily,
-                    [](rc::FixUpJob::pointer job) {
+                    [] (replica::FixUpJob::pointer const& job) {
                         // Not using the callback because the completion of
                         // the request will be caught by the tracker below
                         ;
                     }
                 );
-                job->track (progressReport,
-                            errorReport,
-                            chunkLocksReport,
-                            std::cout);
-
+                job->track(progressReport,
+                           errorReport,
+                           chunkLocksReport,
+                           std::cout);
             }
 
             // Check the replication level and bring the minimum number of replicas
             // to the desired level if needed
 
-            for (auto const& databaseFamily: provider.config()->databaseFamilies()) {
-                rc::ReplicateJob::pointer job = jobCtrl->replicate (
+            for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                replica::ReplicateJob::pointer const job = jobCtrl->replicate(
                     databaseFamily,
                     numReplicas,
-                    [](rc::ReplicateJob::pointer job) {
+                    [] (replica::ReplicateJob::pointer const& job) {
                         // Not using the callback because the completion of
                         // the request will be caught by the tracker below
                         ;
                     }
                 );
-                job->track (progressReport,
-                            errorReport,
-                            chunkLocksReport,
-                            std::cout);
+                job->track(progressReport,
+                           errorReport,
+                           chunkLocksReport,
+                           std::cout);
             }
 
             // Check the replication level and shave off the excess replicas
             // to the desired level if needed
 
-            for (auto const& databaseFamily: provider.config()->databaseFamilies()) {
-                rc::PurgeJob::pointer job = jobCtrl->purge (
+            for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                replica::PurgeJob::pointer const job = jobCtrl->purge(
                     databaseFamily,
                     numReplicas,
-                    [](rc::PurgeJob::pointer job) {
+                    [] (replica::PurgeJob::pointer const& job) {
                         // Not using the callback because the completion of
                         // the request will be caught by the tracker below
                         ;
                     }
                 );
-                job->track (progressReport,
-                            errorReport,
-                            chunkLocksReport,
-                            std::cout);
+                job->track(progressReport,
+                           errorReport,
+                           chunkLocksReport,
+                           std::cout);
             }
         }   
 
@@ -214,7 +213,7 @@ bool run () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -223,7 +222,7 @@ int main (int argc, const char* const argv[]) {
     
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -248,13 +247,13 @@ int main (int argc, const char* const argv[]) {
             "  --error-report       - detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked after finishing each job\n");
 
-        ::configUrl        = parser.option <std::string>("config", "file:replication.cfg");
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
         ::numReplicas      = parser.option<unsigned int>("replicas", 0);
-        ::computeCheckSum  = parser.flag                ("check-sum");
-        ::bestEffort       = parser.flag                ("best-effort");
-        ::progressReport   = parser.flag                ("progress-report");
-        ::errorReport      = parser.flag                ("error-report");
-        ::chunkLocksReport = parser.flag                ("chunk-locks-report");
+        ::computeCheckSum  = parser.flag("check-sum");
+        ::bestEffort       = parser.flag("best-effort");
+        ::progressReport   = parser.flag("progress-report");
+        ::errorReport      = parser.flag("error-report");
+        ::chunkLocksReport = parser.flag("chunk-locks-report");
 
     } catch (std::exception const& ex) {
         return 1;

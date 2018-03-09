@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "replica/Request.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -47,7 +48,6 @@ namespace replica {
 
 // Forward declarations
 class Messenger;
-class ServiceProvider;
 
 /**
   * Class RequestMessenger is a base class for a family of requests within
@@ -63,12 +63,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    RequestMessenger () = delete;
-    RequestMessenger (RequestMessenger const&) = delete;
-    RequestMessenger& operator= (RequestMessenger const&) = delete;
+    RequestMessenger() = delete;
+    RequestMessenger(RequestMessenger const&) = delete;
+    RequestMessenger& operator=(RequestMessenger const&) = delete;
 
     /// Destructor
-    ~RequestMessenger () override = default;
+    ~RequestMessenger() override = default;
 
 protected:
 
@@ -89,19 +89,19 @@ protected:
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      * @param messenger       - an interface for communicating with workers
      */
-    RequestMessenger (ServiceProvider&                  serviceProvider,
-                      boost::asio::io_service&          io_service,
-                      std::string const&                type,
-                      std::string const&                worker,
-                      int                               priority,
-                      bool                              keepTracking,
-                      bool                              allowDuplicate,
-                      std::shared_ptr<Messenger> const& messenger);
+    RequestMessenger(ServiceProvider::pointer const& serviceProvider,
+                     boost::asio::io_service& io_service,
+                     std::string const& type,
+                     std::string const& worker,
+                     int  priority,
+                     bool keepTracking,
+                     bool allowDuplicate,
+                     std::shared_ptr<Messenger> const& messenger);
 
     /**
      * Implement a method defined in the base class.
      */
-    void finishImpl () override;
+    void finishImpl() override;
     
 protected:
 

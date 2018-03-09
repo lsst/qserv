@@ -115,13 +115,13 @@ MoveReplicaJob::MoveReplicaJob(std::string const&         databaseFamily,
         _purge(purge),
         _onFinish(onFinish) {
 
-    if (not _controller->serviceProvider().config()->isKnownDatabaseFamily(_databaseFamily)) {
+    if (not _controller->serviceProvider()->config()->isKnownDatabaseFamily(_databaseFamily)) {
         throw std::invalid_argument(
                         "MoveReplicaJob::MoveReplicaJob ()  the database family is unknown: " +
                         _databaseFamily);
     }
-    _controller->serviceProvider().assertWorkerIsValid(_sourceWorker);
-    _controller->serviceProvider().assertWorkerIsValid(_destinationWorker);
+    _controller->serviceProvider()->assertWorkerIsValid(_sourceWorker);
+    _controller->serviceProvider()->assertWorkerIsValid(_destinationWorker);
 }
 
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
@@ -194,7 +194,7 @@ void MoveReplicaJob::startImpl() {
     // Make sure no such replicas exist yet at the destination
 
     std::vector<ReplicaInfo> destinationReplicas;
-    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas(
+    if (not _controller->serviceProvider()->databaseServices()->findWorkerReplicas(
                 destinationReplicas,
                 _chunk,
                 _destinationWorker,
@@ -229,7 +229,7 @@ void MoveReplicaJob::startImpl() {
     //    see if the chunk is available on a source node.
 
     std::vector<ReplicaInfo> sourceReplicas;
-    if (not _controller->serviceProvider().databaseServices()->findWorkerReplicas(
+    if (not _controller->serviceProvider()->databaseServices()->findWorkerReplicas(
                 sourceReplicas,
                 _chunk,
                 _sourceWorker,

@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/FileUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
@@ -55,7 +56,7 @@ namespace replica {
 ///////////////////////////////////////////////////////////////
 
 WorkerFindAllRequest::pointer WorkerFindAllRequest::create(
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -70,7 +71,7 @@ WorkerFindAllRequest::pointer WorkerFindAllRequest::create(
 }
 
 WorkerFindAllRequest::WorkerFindAllRequest(
-                            ServiceProvider&   serviceProvider,
+                            ServiceProvider::pointer const& serviceProvider,
                             std::string const& worker,
                             std::string const& id,
                             int                priority,
@@ -119,7 +120,7 @@ bool WorkerFindAllRequest::execute() {
 ////////////////////////////////////////////////////////////////////
 
 WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create(
-                                        ServiceProvider&   serviceProvider,
+                                        ServiceProvider::pointer const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -134,7 +135,7 @@ WorkerFindAllRequestPOSIX::pointer WorkerFindAllRequestPOSIX::create(
 }
 
 WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
-                                ServiceProvider&   serviceProvider,
+                                ServiceProvider::pointer const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
@@ -151,8 +152,8 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "execute" << "  database: " << database());
 
-    WorkerInfo   const& workerInfo    = _serviceProvider.config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
+    WorkerInfo   const& workerInfo    = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number

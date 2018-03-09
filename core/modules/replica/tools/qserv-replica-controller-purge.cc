@@ -17,8 +17,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -31,7 +31,7 @@ bool         errorReport;
 std::string  configUrl;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -40,20 +40,19 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        rc::ReplicaFinder finder (controller,
-                                 databaseName,
-                                 std::cout,
-                                 progressReport,
-                                 errorReport);
+        replica::ReplicaFinder finder(controller,
+                                      databaseName,
+                                      std::cout,
+                                      progressReport,
+                                      errorReport);
 
         //////////////////////////////////////////////////////////////
         // Analyse results and prepare a purge plan to shave off extra
@@ -65,13 +64,13 @@ bool test () {
         // Chunks hosted by a worker
         std::map<std::string, std::list<unsigned int>> worker2chunks;
 
-        for (const auto& request: finder.requests)
+        for (auto const& request: finder.requests)
 
-            if ((request->state()         == rc::Request::State::FINISHED) &&
-                (request->extendedState() == rc::Request::ExtendedState::SUCCESS))
+            if ((request->state()         == replica::Request::State::FINISHED) &&
+                (request->extendedState() == replica::Request::ExtendedState::SUCCESS))
 
-                for (const auto &replica: request->responseData ())
-                    if (replica.status() == rc::ReplicaInfo::Status::COMPLETE) {
+                for (auto const& replica: request->responseData ())
+                    if (replica.status() == replica::ReplicaInfo::Status::COMPLETE) {
                         chunk2workers[replica.chunk ()].push_back(replica.worker());
                         worker2chunks[replica.worker()].push_back(replica.chunk ());
                     }
@@ -85,20 +84,21 @@ bool test () {
         //       an account other chunks. Ideally, it neees to be a two-pass
         //       scan.
 
-        rc::CommonRequestTracker<rc::DeleteRequest> tracker (std::cout,
-                                                             progressReport,
-                                                             errorReport);
+        replica::CommonRequestTracker<replica::DeleteRequest>
+            tracker(std::cout,
+            progressReport,
+            errorReport);
  
         for (auto &entry: chunk2workers) {
 
-            const unsigned int chunk{entry.first};
+            unsigned int const chunk(entry.first);
 
             // This collection is going to be modified
-            std::list<std::string> replicas{entry.second};
+            std::list<std::string> replicas(entry.second);
 
             // Note that some chunks may have fewer replicas than required. In that case
             // the difference would be negative.
-            const int numReplicas2delete =  replicas.size() - numReplicas;
+            int const numReplicas2delete =  replicas.size() - numReplicas;
 
             for (int i = 0; i < numReplicas2delete; ++i) {
 
@@ -108,7 +108,7 @@ bool test () {
                 std::string destinationWorker;
                 size_t      numChunksPerDestinationWorker = 0;
 
-                for (const auto &worker: replicas) {
+                for (auto const &worker: replicas) {
                     if (worker2chunks[worker].size() > numChunksPerDestinationWorker) {
                         destinationWorker = worker;
                         numChunksPerDestinationWorker = worker2chunks[worker].size();
@@ -139,12 +139,12 @@ bool test () {
                 // Finally, launch and register for further tracking the deletion
                 // request.
                 
-                tracker.add (
-                    controller->deleteReplica (
+                tracker.add(
+                    controller->deleteReplica(
                         destinationWorker,
                         databaseName,
                         chunk,
-                        [&tracker] (rc::DeleteRequest::pointer ptr) {
+                        [&tracker] (replica::DeleteRequest::pointer ptr) {
                             tracker.onFinish(ptr);
                         }
                     )
@@ -163,14 +163,14 @@ bool test () {
         controller->stop();
         controller->join();
 
-    } catch (const std::exception& e) {
+    } catch (std::exception const& e) {
         std::cerr << e.what() << std::endl;
     }
     return true;
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -179,7 +179,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -197,10 +197,10 @@ int main (int argc, const char* const argv[]) {
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::databaseName   = parser.parameter<std::string>(1);
-        ::numReplicas    = parser.parameter<int>        (2);
-        ::progressReport = parser.flag                  ("progress-report");
-        ::errorReport    = parser.flag                  ("error-report");
-        ::configUrl      = parser.option   <std::string>("config", "file:replication.cfg");
+        ::numReplicas    = parser.parameter<int>(2);
+        ::progressReport = parser.flag("progress-report");
+        ::errorReport    = parser.flag("error-report");
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception &ex) {
         return 1;

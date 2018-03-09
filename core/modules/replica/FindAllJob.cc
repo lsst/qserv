@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -72,7 +73,7 @@ FindAllJob::FindAllJob(std::string const& databaseFamily,
             exclusive,
             preemptable),
         _databaseFamily(databaseFamily),
-        _databases(controller->serviceProvider().config()->databases(databaseFamily)),
+        _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _onFinish(onFinish),
         _numLaunched(0),
         _numFinished(0),
@@ -110,7 +111,7 @@ void FindAllJob::track(bool progressReport,
         }
         if (chunkLocksReport) {
             os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked(_id);
+                << _controller->serviceProvider()->chunkLocker().locked(_id);
         }
     }
     if (progressReport) {
@@ -122,7 +123,7 @@ void FindAllJob::track(bool progressReport,
     }
     if (chunkLocksReport) {
         os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked(_id);
+            << _controller->serviceProvider()->chunkLocker().locked(_id);
     }
     if (errorReport and (_numLaunched - _numSuccess)) {
         replica::reportRequestState(_requests, os);
@@ -135,7 +136,7 @@ void FindAllJob::startImpl() {
 
     auto self = shared_from_base<FindAllJob>();
 
-    for (auto const& worker: _controller->serviceProvider().config()->workers()) {
+    for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
         for (auto const& database: _databases) {
             _requests.push_back(
                 _controller->findAllReplicas(

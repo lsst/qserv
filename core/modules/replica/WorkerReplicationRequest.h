@@ -76,7 +76,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider&   serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -116,7 +116,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequest(ServiceProvider&   serviceProvider,
+    WorkerReplicationRequest(ServiceProvider::pointer const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
                              int                priority,
@@ -154,7 +154,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider&   serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -183,7 +183,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestPOSIX(ServiceProvider&   serviceProvider,
+    WorkerReplicationRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
                                   std::string const& worker,
                                   std::string const& id,
                                   int                priority,
@@ -211,7 +211,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider&   serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -240,7 +240,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerReplicationRequestFS(ServiceProvider&   serviceProvider,
+    WorkerReplicationRequestFS(ServiceProvider::pointer const& serviceProvider,
                                std::string const& worker,
                                std::string const& id,
                                int                priority,

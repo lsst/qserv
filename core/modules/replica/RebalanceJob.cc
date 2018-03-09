@@ -109,7 +109,7 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
 
 RebalanceJob::~RebalanceJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider().chunkLocker().release(_id);
+    _controller->serviceProvider()->chunkLocker().release(_id);
 }
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
@@ -158,7 +158,7 @@ void RebalanceJob::track(bool progressReport,
         }
         if (chunkLocksReport) {
             os  << "RebalanceJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked(_id);
+                << _controller->serviceProvider()->chunkLocker().locked(_id);
         }
         blockPost.wait();
    }
@@ -552,7 +552,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         for (auto const& chunkEntry: _replicaData.plan) {
             unsigned int const chunk = chunkEntry.first;
-            if (not _controller->serviceProvider().chunkLocker().lock({_databaseFamily, chunk}, _id)) {
+            if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
                 ++_numFailedLocks;
                 continue;
             }
@@ -623,7 +623,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
         if (_chunk2jobs.at(chunk).empty()) {
             _chunk2jobs.erase(chunk);
             Chunk chunkObj {_databaseFamily, chunk};
-            _controller->serviceProvider().chunkLocker().release(chunkObj);
+            _controller->serviceProvider()->chunkLocker().release(chunkObj);
         }
 
         // Ignore the callback if the job was cancelled   

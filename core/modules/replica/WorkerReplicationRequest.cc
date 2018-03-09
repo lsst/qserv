@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/FileClient.h"
 #include "replica/FileUtils.h"
 #include "replica/Performance.h"
@@ -57,7 +58,7 @@ namespace replica {
 ///////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequest::pointer WorkerReplicationRequest::create(
-                                        ServiceProvider&   serviceProvider,
+                                        ServiceProvider::pointer const& serviceProvider,
                                         std::string const& worker,
                                         std::string const& id,
                                         int                priority,
@@ -76,7 +77,7 @@ WorkerReplicationRequest::pointer WorkerReplicationRequest::create(
 }
 
 WorkerReplicationRequest::WorkerReplicationRequest(
-                                ServiceProvider&   serviceProvider,
+                                ServiceProvider::pointer const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
@@ -94,8 +95,8 @@ WorkerReplicationRequest::WorkerReplicationRequest(
         _sourceWorker(sourceWorker),
         _replicaInfo() {
 
-    _serviceProvider.assertWorkerIsValid(sourceWorker);
-    _serviceProvider.assertWorkersAreDifferent(worker, sourceWorker);
+    _serviceProvider->assertWorkerIsValid(sourceWorker);
+    _serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
 }
 
 ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
@@ -137,7 +138,7 @@ bool WorkerReplicationRequest::execute() {
 ////////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestPOSIX::pointer WorkerReplicationRequestPOSIX::create (
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -156,7 +157,7 @@ WorkerReplicationRequestPOSIX::pointer WorkerReplicationRequestPOSIX::create (
 }
 
 WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -197,9 +198,9 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquering LOCK_DATA_FOLDER where it's needed.
 
-    WorkerInfo   const& inWorkerInfo  = _serviceProvider.config()->workerInfo(sourceWorker());
-    WorkerInfo   const& outWorkerInfo = _serviceProvider.config()->workerInfo(worker());
-    DatabaseInfo const& databaseInfo  = _serviceProvider.config()->databaseInfo(database());
+    WorkerInfo   const& inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
+    WorkerInfo   const& outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
+    DatabaseInfo const& databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
     fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
@@ -411,7 +412,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
 /////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestFS::pointer WorkerReplicationRequestFS::create (
-                                            ServiceProvider&   serviceProvider,
+                                            ServiceProvider::pointer const& serviceProvider,
                                             std::string const& worker,
                                             std::string const& id,
                                             int                priority,
@@ -430,7 +431,7 @@ WorkerReplicationRequestFS::pointer WorkerReplicationRequestFS::create (
 }
 
 WorkerReplicationRequestFS::WorkerReplicationRequestFS(
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -445,14 +446,14 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
                 database,
                 chunk,
                 sourceWorker),
-        _inWorkerInfo( _serviceProvider.config()->workerInfo(  sourceWorker)),
-        _outWorkerInfo(_serviceProvider.config()->workerInfo(  worker)),
-        _databaseInfo( _serviceProvider.config()->databaseInfo(database)),
+        _inWorkerInfo(_serviceProvider->config()->workerInfo(sourceWorker)),
+        _outWorkerInfo(_serviceProvider->config()->workerInfo(worker)),
+        _databaseInfo(_serviceProvider->config()->databaseInfo(database)),
         _initialized(false),
         _files(FileUtils::partitionedFiles(_databaseInfo, chunk)),
         _tmpFilePtr(nullptr),
         _buf(0),
-        _bufSize(serviceProvider.config()->workerFsBufferSizeBytes()) {
+        _bufSize(serviceProvider->config()->workerFsBufferSizeBytes()) {
 }
 
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {

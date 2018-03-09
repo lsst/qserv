@@ -38,6 +38,7 @@
 // Qserv headers
 #include "proto/replication.pb.h"
 #include "replica/ProtocolBuffer.h"
+#include "replica/ServiceProvider.h"
 
 namespace proto = lsst::qserv::proto;
 
@@ -50,8 +51,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-
-class ServiceProvider;
 class WorkerInfo;
 
 /**
@@ -85,7 +84,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& workerName,
                           boost::asio::io_service& io_service);
 
@@ -137,7 +136,7 @@ private:
     /**
      * The constructor of the class.
      */
-    FileServerConnection(ServiceProvider& serviceProvider,
+    FileServerConnection(ServiceProvider::pointer const& serviceProvider,
                          std::string const& workerName,
                          boost::asio::io_service& io_service);
 
@@ -184,8 +183,8 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
-    std::string      _workerName;
+    ServiceProvider::pointer _serviceProvider;
+    std::string _workerName;
 
     // Cached parameters of the worker
     WorkerInfo const& _workerInfo;

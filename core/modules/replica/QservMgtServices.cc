@@ -96,12 +96,12 @@ private:
 //////////////////////////  QservMgtServices  //////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-QservMgtServices::pointer QservMgtServices::create(ServiceProvider& serviceProvider) {
+QservMgtServices::pointer QservMgtServices::create(ServiceProvider::pointer const& serviceProvider) {
     return QservMgtServices::pointer(
         new QservMgtServices(serviceProvider));
 }
 
-QservMgtServices::QservMgtServices(ServiceProvider& serviceProvider)
+QservMgtServices::QservMgtServices(ServiceProvider::pointer const& serviceProvider)
     :   _serviceProvider(serviceProvider),
         _io_service(),
         _work(nullptr),
@@ -178,8 +178,8 @@ XrdSsiService* QservMgtServices::xrdSsiService() {
     // Lazy construction of the locator string to allow dynamic
     // reconfiguration.
     std::string const serviceProviderLocation =
-        _serviceProvider.config()->xrootdHost() + ":" +
-        std::to_string(_serviceProvider.config()->xrootdPort());
+        _serviceProvider->config()->xrootdHost() + ":" +
+        std::to_string(_serviceProvider->config()->xrootdPort());
 
     // Connect to a service provider
     XrdSsiErrInfo errInfo;

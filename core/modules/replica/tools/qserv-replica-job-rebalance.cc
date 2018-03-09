@@ -38,8 +38,8 @@
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -53,8 +53,7 @@ bool        errorReport;
 bool        chunkLocksReport;
 
 
-void
-printPlan (rc::RebalanceJobResult const& r) {
+void printPlan(replica::RebalanceJobResult const& r) {
     std::cout
         << "THE REBALANCE PLAN:\n"
         << "  totalWorkers:    " << r.totalWorkers    << "  (not counting workers which failed to report chunks)\n"
@@ -82,8 +81,8 @@ printPlan (rc::RebalanceJobResult const& r) {
 }
 
 template <class COLLECTION>
-void printReplicaInfo (std::string const& collectionName,
-                       COLLECTION  const& collection) {
+void printReplicaInfo(std::string const& collectionName,
+                      COLLECTION  const& collection) {
     std::cout
         << collectionName << ":\n"
         << "----------+----------+-----+-----------------------------------------\n"
@@ -113,10 +112,10 @@ void printReplicaInfo (std::string const& collectionName,
 
             for (auto const& replicaEntry: databaseEntry.second) {
 
-                std::string     const& worker = replicaEntry.first;
-                rc::ReplicaInfo const& info   = replicaEntry.second;
+                std::string          const& worker = replicaEntry.first;
+                replica::ReplicaInfo const& info   = replicaEntry.second;
 
-                std::cout << worker << (info.status() != rc::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
+                std::cout << worker << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
             }
             std::cout << "\n";
         }
@@ -136,9 +135,8 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -146,11 +144,11 @@ bool test () {
         // Start replication
 
         auto job =
-            rc::RebalanceJob::create (
+            replica::RebalanceJob::create(
                 databaseFamily,
                 estimateOnly,
                 controller,
-                [](rc::RebalanceJob::pointer job) {
+                [] (replica::RebalanceJob::pointer job) {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
                     ;
@@ -158,19 +156,19 @@ bool test () {
             );
 
         job->start();
-        job->track (progressReport,
-                    errorReport,
-                    chunkLocksReport,
-                    std::cout);    
+        job->track(progressReport,
+                   errorReport,
+                   chunkLocksReport,
+                   std::cout);    
 
         //////////////////////////////
         // Analyse and display results
     
-        rc::RebalanceJobResult const& replicaData = job->getReplicaData();
+        replica::RebalanceJobResult const& replicaData = job->getReplicaData();
 
-        printPlan (replicaData);
-        printReplicaInfo ("CREATED REPLICAS", replicaData.createdChunks);
-        printReplicaInfo ("DELETED REPLICAS", replicaData.deletedChunks);
+        printPlan(replicaData);
+        printReplicaInfo("CREATED REPLICAS", replicaData.createdChunks);
+        printReplicaInfo("DELETED REPLICAS", replicaData.deletedChunks);
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -178,14 +176,14 @@ bool test () {
         controller->stop();
         controller->join();
 
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (std::exception const& ex) {
+        std::cerr << ex.what() << std::endl;
     }
     return true;
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -194,7 +192,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -219,13 +217,13 @@ int main (int argc, const char* const argv[]) {
             "  --chunk-locks-report - report chunks which are locked\n");
 
         ::databaseFamily   = parser.parameter<std::string> (1);
-        ::configUrl        = parser.option   <std::string> ("config", "file:replication.cfg");
-        ::estimateOnly     = parser.flag                   ("estimate-only");
-        ::progressReport   = parser.flag                   ("progress-report");
-        ::errorReport      = parser.flag                   ("error-report");
-        ::chunkLocksReport = parser.flag                   ("chunk-locks-report");
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
+        ::estimateOnly     = parser.flag("estimate-only");
+        ::progressReport   = parser.flag("progress-report");
+        ::errorReport      = parser.flag("error-report");
+        ::chunkLocksReport = parser.flag("chunk-locks-report");
 
-    } catch (std::exception &ex) {
+    } catch (std::exception const& ex) {
         return 1;
     }  
     ::test();

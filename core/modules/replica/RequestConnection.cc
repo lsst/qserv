@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -44,7 +45,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RequestConnection::RequestConnection(ServiceProvider& serviceProvider,
+RequestConnection::RequestConnection(ServiceProvider::pointer const& serviceProvider,
                                      boost::asio::io_service& io_service,
                                      std::string const& type,
                                      std::string const& worker,

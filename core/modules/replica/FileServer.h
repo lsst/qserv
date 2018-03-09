@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "replica/FileServerConnection.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -46,7 +47,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 class WorkerInfo;
 
 /**
@@ -70,7 +70,7 @@ public:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create(ServiceProvider& serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
@@ -101,7 +101,7 @@ private:
      * @param serviceProvider - for configuration, etc. services
      * @workerName            - the name of a worker this instance represents
      */
-    FileServer(ServiceProvider& serviceProvider,
+    FileServer(ServiceProvider::pointer const& serviceProvider,
                std::string const& workerName);
 
     /**
@@ -124,8 +124,8 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
-    std::string      _workerName;
+    ServiceProvider::pointer _serviceProvider;
+    std::string _workerName;
 
     // Cached parameters of the worker
 

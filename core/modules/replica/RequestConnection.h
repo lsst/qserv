@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "replica/Request.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -44,9 +45,6 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class ServiceProvider;
 
 /**
   * Class RequestConnection is a base class for a family of requests within
@@ -87,7 +85,7 @@ protected:
      * @param keepTracking    - keep tracking the request before it finishes or fails
      * @param allowDuplicate  - follow a previously made request if the current one duplicates it
      */
-    RequestConnection(ServiceProvider& serviceProvider,
+    RequestConnection(ServiceProvider::pointer const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& type,
                       std::string const& worker,

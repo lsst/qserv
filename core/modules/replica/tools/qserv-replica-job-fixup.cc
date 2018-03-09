@@ -35,13 +35,14 @@
 
 // Qserv headers
 #include "proto/replication.pb.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/FixUpJob.h"
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -54,7 +55,7 @@ bool        errorReport;
 bool        chunkLocksReport;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -63,9 +64,8 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create (provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
@@ -73,10 +73,10 @@ bool test () {
         // Find all replicas accross all workers
 
         auto job =
-            rc::FixUpJob::create (
+            replica::FixUpJob::create(
                 databaseFamily,
                 controller,
-                [](rc::FixUpJob::pointer job) {
+                [] (replica::FixUpJob::pointer job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
                     ;
@@ -84,20 +84,20 @@ bool test () {
             );
 
         job->start();
-        job->track (progressReport,
-                    errorReport,
-                    chunkLocksReport,
-                    std::cout);
+        job->track(progressReport,
+                   errorReport,
+                   chunkLocksReport,
+                   std::cout);
 
         //////////////////////////////
         // Analyse and display results
     
-        rc::FixUpJobResult const& replicaData = job->getReplicaData();
+        replica::FixUpJobResult const& replicaData = job->getReplicaData();
 
         std::cout
             << "\n"
             << "WORKERS:";
-        for (auto const& worker: provider.config()->workers()) {
+        for (auto const& worker: provider->config()->workers()) {
             std::cout << " " << worker;
         }
         std::cout
@@ -106,14 +106,14 @@ bool test () {
         // Failed workers
         std::set<std::string> failedWorkers;
 
-        for (auto const& entry: replicaData.workers)
+        for (auto const& entry: replicaData.workers) {
             if (!entry.second) failedWorkers.insert(entry.first);
-
+        }
         std::map<std::string, std::vector<unsigned int>> worker2chunks;     // Chunks hosted by a worker
 
-        for (rc::ReplicaInfo const& replica: replicaData.replicas)
+        for (replica::ReplicaInfo const& replica: replicaData.replicas) {
             worker2chunks[replica.worker()].push_back(replica.chunk());
-
+        }
         std::cout
             << "\n"
             << "CHUNK DISTRIBUTION:\n"
@@ -121,11 +121,11 @@ bool test () {
             << "   worker | num.chunks \n"
             << "----------+------------\n";
 
-        for (auto const& worker: provider.config()->workers())
+        for (auto const& worker: provider->config()->workers()) {
             std::cout
                 << " " << std::setw(8) << worker << " | " << std::setw(10)
                 << (failedWorkers.count(worker) ? "*" : std::to_string(worker2chunks[worker].size())) << "\n";
-
+        }
         std::cout
             << "----------+------------\n"
             << std::endl;
@@ -159,10 +159,10 @@ bool test () {
 
                 for (auto const& replicaEntry: databaseEntry.second) {
 
-                    std::string     const& worker = replicaEntry.first;
-                    rc::ReplicaInfo const& info   = replicaEntry.second;
+                    std::string          const& worker = replicaEntry.first;
+                    replica::ReplicaInfo const& info   = replicaEntry.second;
 
-                    std::cout << worker << (info.status() != rc::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
+                    std::cout << worker << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                 }
                 std::cout << "\n";
             }
@@ -184,7 +184,7 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -193,7 +193,7 @@ int main (int argc, const char* const argv[]) {
     
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -214,10 +214,10 @@ int main (int argc, const char* const argv[]) {
             "  --chunk-locks-report - report chunks which are locked\n");
 
         ::databaseFamily   = parser.parameter<std::string>(1);
-        ::configUrl        = parser.option   <std::string>("config", "file:replication.cfg");
-        ::progressReport   = parser.flag                  ("progress-report");
-        ::errorReport      = parser.flag                  ("error-report");
-        ::chunkLocksReport = parser.flag                  ("chunk-locks-report");
+        ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
+        ::progressReport   = parser.flag("progress-report");
+        ::errorReport      = parser.flag("error-report");
+        ::chunkLocksReport = parser.flag("chunk-locks-report");
 
     } catch (std::exception const& ex) {
         return 1;

@@ -8,15 +8,16 @@
 #include <set>
 
 #include "proto/replication.pb.h"
-#include "replica/ReplicaFinder.h"
+#include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/FindAllRequest.h"
+#include "replica/ReplicaFinder.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -28,7 +29,7 @@ bool        errorReport;
 std::string configUrl;
 
 /// Run the test
-bool test () {
+bool test() {
 
     try {
 
@@ -37,20 +38,19 @@ bool test () {
         // Note that omFinish callbak which are activated upon a completion
         // of the requsts will be run in that Controller's thread.
 
-        rc::ServiceProvider provider (configUrl);
-
-        rc::Controller::pointer controller = rc::Controller::create(provider);
+        replica::ServiceProvider::pointer const provider   = replica::ServiceProvider::create(configUrl);
+        replica::Controller::pointer      const controller = replica::Controller::create(provider);
 
         controller->run();
 
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        rc::ReplicaFinder finder (controller,
-                                  databaseName,
-                                  std::cout,
-                                  progressReport,
-                                  errorReport);
+        replica::ReplicaFinder finder(controller,
+                                      databaseName,
+                                      std::cout,
+                                      progressReport,
+                                      errorReport);
 
         //////////////////////////////
         // Analyse and display results
@@ -58,7 +58,7 @@ bool test () {
         std::cout
             << "\n"
             << "WORKERS:";
-        for (const auto &worker: provider.config()->workers()) {
+        for (const auto &worker: provider->config()->workers()) {
             std::cout << " " << worker;
         }
         std::cout
@@ -75,12 +75,12 @@ bool test () {
 
         for (const auto &ptr: finder.requests)
 
-            if ((ptr->state()         == rc::Request::State::FINISHED) &&
-                (ptr->extendedState() == rc::Request::ExtendedState::SUCCESS))
+            if ((ptr->state()         == replica::Request::State::FINISHED) &&
+                (ptr->extendedState() == replica::Request::ExtendedState::SUCCESS))
 
                 for (const auto &replica: ptr->responseData ()) {
                     chunk2workers[replica.chunk()].push_back (
-                        replica.worker() + (replica.status() == rc::ReplicaInfo::Status::COMPLETE ? "" : "(!)"));
+                        replica.worker() + (replica.status() == replica::ReplicaInfo::Status::COMPLETE ? "" : "(!)"));
                     worker2chunks[replica.worker()].push_back(replica.chunk());
                 }
             else
@@ -93,7 +93,7 @@ bool test () {
             << "   worker | num.chunks \n"
             << "----------+------------\n";
 
-        for (const auto &worker: provider.config()->workers())
+        for (const auto &worker: provider->config()->workers())
             std::cout
                 << " " << std::setw(8) << worker << " | " << std::setw(10)
                 << (failedWorkers.count(worker) ? "*" : std::to_string(worker2chunks[worker].size())) << "\n";
@@ -136,7 +136,7 @@ bool test () {
 }
 } /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -145,7 +145,7 @@ int main (int argc, const char* const argv[]) {
     
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -162,9 +162,9 @@ int main (int argc, const char* const argv[]) {
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
         ::databaseName   = parser.parameter<std::string>(1);
-        ::progressReport = parser.flag                  ("progress-report");
-        ::errorReport    = parser.flag                  ("error-report");
-        ::configUrl      = parser.option   <std::string>("config", "file:replication.cfg");
+        ::progressReport = parser.flag("progress-report");
+        ::errorReport    = parser.flag("error-report");
+        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception &ex) {
         return 1;

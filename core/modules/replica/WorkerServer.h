@@ -35,6 +35,7 @@
 #include <boost/asio.hpp>
 
 // Qserv headers
+#include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerServerConnection.h"
 
@@ -47,7 +48,6 @@ namespace qserv {
 namespace replica {
 
 // Forward declarations
-class ServiceProvider;
 class WorkerInfo;
 class WorkerRequestFactory;
 
@@ -73,9 +73,9 @@ public:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    static pointer create(ServiceProvider&      serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           WorkerRequestFactory& requestFactory,
-                          std::string const&    workerName);
+                          std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
@@ -107,9 +107,9 @@ private:
      * @param requestFactory  - the factory of requests
      * @workerName            - the name of a worker this instance represents
      */
-    WorkerServer(ServiceProvider&      serviceProvider,
+    WorkerServer(ServiceProvider::pointer const& serviceProvider,
                  WorkerRequestFactory& requestFactory,
-                 std::string const&    workerName);
+                 std::string const& workerName);
 
     /**
      * Begin (asynchrnonously) accepting connection requests.
@@ -122,7 +122,7 @@ private:
      * specified as a parameter of the method.
      */
     void handleAccept(WorkerServerConnection::pointer const& connection,
-                      boost::system::error_code       const& ec);
+                      boost::system::error_code const& ec);
 
     /// Return the context string
     std::string context() const { return "SERVER  "; }
@@ -131,8 +131,8 @@ private:
 
     // Parameters of the object
 
-    ServiceProvider& _serviceProvider;
-    std::string      _workerName;
+    ServiceProvider::pointer _serviceProvider;
+    std::string _workerName;
 
     // Cached parameters of the worker
 

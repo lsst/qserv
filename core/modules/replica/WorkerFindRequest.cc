@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/FileUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
@@ -54,7 +55,7 @@ namespace replica {
 ////////////////////////////////////////////////////////////
 
 WorkerFindRequest::pointer WorkerFindRequest::create(
-                                ServiceProvider&   serviceProvider,
+                                ServiceProvider::pointer const& serviceProvider,
                                 std::string const& worker,
                                 std::string const& id,
                                 int                priority,
@@ -73,7 +74,7 @@ WorkerFindRequest::pointer WorkerFindRequest::create(
 }
 
 WorkerFindRequest::WorkerFindRequest(
-                        ServiceProvider&   serviceProvider,
+                        ServiceProvider::pointer const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
                         int                priority,
@@ -91,7 +92,7 @@ WorkerFindRequest::WorkerFindRequest(
         _computeCheckSum(computeCheckSum),
         _replicaInfo() {
 
-    serviceProvider.assertDatabaseIsValid(database);
+    serviceProvider->assertDatabaseIsValid(database);
 }
 
 bool WorkerFindRequest::execute() {
@@ -119,7 +120,7 @@ bool WorkerFindRequest::execute() {
 /////////////////////////////////////////////////////////////////
 
 WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create(
-                                    ServiceProvider&   serviceProvider,
+                                    ServiceProvider::pointer const& serviceProvider,
                                     std::string const& worker,
                                     std::string const& id,
                                     int                priority,
@@ -138,7 +139,7 @@ WorkerFindRequestPOSIX::pointer WorkerFindRequestPOSIX::create(
 }
 
 WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
-                            ServiceProvider&   serviceProvider,
+                            ServiceProvider::pointer const& serviceProvider,
                             std::string const& worker,
                             std::string const& id,
                             int                priority,
@@ -186,8 +187,8 @@ bool WorkerFindRequestPOSIX::execute() {
 
     if (not _computeCheckSum or not _csComputeEnginePtr) {
 
-        WorkerInfo   const& workerInfo   = _serviceProvider.config()->workerInfo(worker());
-        DatabaseInfo const& databaseInfo = _serviceProvider.config()->databaseInfo(database());
+        WorkerInfo   const& workerInfo   = _serviceProvider->config()->workerInfo(worker());
+        DatabaseInfo const& databaseInfo = _serviceProvider->config()->databaseInfo(database());
     
         // Check if the data directory exists and it can be read
     
@@ -353,7 +354,7 @@ bool WorkerFindRequestPOSIX::execute() {
             // Fnalize the operation
 
             DatabaseInfo const& databaseInfo =
-                _serviceProvider.config()->databaseInfo(database());
+                _serviceProvider->config()->databaseInfo(database());
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())

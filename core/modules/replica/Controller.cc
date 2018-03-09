@@ -32,6 +32,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Common.h"
+#include "replica/DatabaseServices.h"
 #include "replica/DeleteRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
@@ -238,11 +239,11 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity) 
 //////////////////////////  Controller  //////////////////////////
 //////////////////////////////////////////////////////////////////
 
-Controller::pointer Controller::create(ServiceProvider& serviceProvider) {
+Controller::pointer Controller::create(ServiceProvider::pointer const& serviceProvider) {
     return Controller::pointer(new Controller(serviceProvider));
 }
 
-Controller::Controller(ServiceProvider& serviceProvider)
+Controller::Controller(ServiceProvider::pointer const& serviceProvider)
     :   _identity({
             Generators::uniqueId(),
             boost::asio::ip::host_name(),
@@ -260,7 +261,7 @@ Controller::Controller(ServiceProvider& serviceProvider)
 
     LOGS(_log, LOG_LVL_DEBUG, "Controller  identity=" << _identity);
 
-    serviceProvider.databaseServices()->saveState(_identity, _startTime);
+    serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
 void Controller::run() {

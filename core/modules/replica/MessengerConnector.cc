@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
@@ -59,7 +60,7 @@ std::string MessengerConnector::state2string(MessengerConnector::State state) {
 }
 
 MessengerConnector::pointer MessengerConnector::create(
-                                        ServiceProvider& serviceProvider,
+                                        ServiceProvider::pointer const& serviceProvider,
                                         boost::asio::io_service& io_service,
                                         std::string const& worker) {
     return MessengerConnector::pointer(
@@ -68,18 +69,18 @@ MessengerConnector::pointer MessengerConnector::create(
                                worker));
 }
 
-MessengerConnector::MessengerConnector(ServiceProvider&serviceProvider,
+MessengerConnector::MessengerConnector(ServiceProvider::pointer const&serviceProvider,
                                        boost::asio::io_service& io_service,
                                        std::string const& worker)
     :   _serviceProvider(serviceProvider),
-        _workerInfo(serviceProvider.config()->workerInfo(worker)),
-        _bufferCapacityBytes(serviceProvider.config()->requestBufferSizeBytes()),
-        _timerIvalSec(serviceProvider.config()->retryTimeoutSec()),
+        _workerInfo(serviceProvider->config()->workerInfo(worker)),
+        _bufferCapacityBytes(serviceProvider->config()->requestBufferSizeBytes()),
+        _timerIvalSec(serviceProvider->config()->retryTimeoutSec()),
         _state(State::STATE_INITIAL),
         _resolver(io_service),
         _socket(io_service),
         _timer(io_service),
-        _inBuffer(serviceProvider.config()->requestBufferSizeBytes()) {
+        _inBuffer(serviceProvider->config()->requestBufferSizeBytes()) {
 }
 
 void MessengerConnector::stop() {

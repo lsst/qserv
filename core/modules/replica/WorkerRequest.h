@@ -37,6 +37,7 @@
 // Qserv headers
 #include "replica/Common.h"        // ExtendedCompletionStatus
 #include "replica/Performance.h"
+#include "replica/ServiceProvider.h"
 
 // Forward declarations
 
@@ -45,9 +46,6 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-// Forward declarations
-class ServiceProvider;
 
 /// Exception thrown when a replication request is cancelled
 struct WorkerRequestCancelled
@@ -101,7 +99,7 @@ public:
 
     // Trivial accessors
 
-    ServiceProvider& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
     std::string const& type() const   { return _type; }
@@ -177,7 +175,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerRequest(ServiceProvider& serviceProvider,
+    WorkerRequest(ServiceProvider::pointer const& serviceProvider,
                   std::string const& worker,
                   std::string const& type,
                   std::string const& id,
@@ -235,7 +233,7 @@ protected:
 
 protected:
 
-    ServiceProvider& _serviceProvider;
+    ServiceProvider::pointer _serviceProvider;
 
     std::string _worker;
     std::string _type;

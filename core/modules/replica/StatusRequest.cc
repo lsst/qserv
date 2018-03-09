@@ -52,7 +52,7 @@ namespace replica {
 //         StatusRequestBaseC          //
 /////////////////////////////////////////
 
-StatusRequestBaseC::StatusRequestBaseC(ServiceProvider&         serviceProvider,
+StatusRequestBaseC::StatusRequestBaseC(ServiceProvider::pointer const& serviceProvider,
                                        boost::asio::io_service& io_service,
                                        char const*              requestTypeName,
                                        std::string const&       worker,
@@ -373,7 +373,7 @@ void StatusRequestBaseC::analyze(proto::ReplicationStatus status) {
 //         StatusRequestBaseM          //
 /////////////////////////////////////////
 
-StatusRequestBaseM::StatusRequestBaseM(ServiceProvider&         serviceProvider,
+StatusRequestBaseM::StatusRequestBaseM(ServiceProvider::pointer const& serviceProvider,
                                        boost::asio::io_service& io_service,
                                        char const*              requestTypeName,
                                        std::string const&       worker,

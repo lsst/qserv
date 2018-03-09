@@ -54,7 +54,7 @@ namespace replica {
 //         FindAllRequestC          //
 //////////////////////////////////////
 
-FindAllRequestC::pointer FindAllRequestC::create(ServiceProvider&        serviceProvider,
+FindAllRequestC::pointer FindAllRequestC::create(ServiceProvider::pointer const& serviceProvider,
                                                  boost::asio::io_service& io_service,
                                                  std::string const&       worker,
                                                  std::string const&       database,
@@ -71,7 +71,7 @@ FindAllRequestC::pointer FindAllRequestC::create(ServiceProvider&        service
                             keepTracking));
 }
 
-FindAllRequestC::FindAllRequestC(ServiceProvider&         serviceProvider,
+FindAllRequestC::FindAllRequestC(ServiceProvider::pointer const& serviceProvider,
                                  boost::asio::io_service& io_service,
                                  std::string const&       worker,
                                  std::string const&       database,
@@ -89,7 +89,7 @@ FindAllRequestC::FindAllRequestC(ServiceProvider&         serviceProvider,
         _onFinish(onFinish),
         _replicaInfoCollection() {
 
-    _serviceProvider.assertDatabaseIsValid(database);
+    _serviceProvider->assertDatabaseIsValid(database);
 }
 
 ReplicaInfoCollection const& FindAllRequestC::responseData() const {
@@ -434,7 +434,7 @@ void FindAllRequestC::notify() {
 //         FindAllRequestM          //
 //////////////////////////////////////
 
-FindAllRequestM::pointer FindAllRequestM::create(ServiceProvider&                  serviceProvider,
+FindAllRequestM::pointer FindAllRequestM::create(ServiceProvider::pointer const&   serviceProvider,
                                                  boost::asio::io_service&          io_service,
                                                  std::string const&                worker,
                                                  std::string const&                database,
@@ -453,7 +453,7 @@ FindAllRequestM::pointer FindAllRequestM::create(ServiceProvider&               
                             messenger));
 }
 
-FindAllRequestM::FindAllRequestM(ServiceProvider&                  serviceProvider,
+FindAllRequestM::FindAllRequestM(ServiceProvider::pointer const&   serviceProvider,
                                  boost::asio::io_service&          io_service,
                                  std::string const&                worker,
                                  std::string const&                database,
@@ -473,7 +473,7 @@ FindAllRequestM::FindAllRequestM(ServiceProvider&                  serviceProvid
         _onFinish(onFinish),
         _replicaInfoCollection() {
 
-    _serviceProvider.assertDatabaseIsValid (database);
+    _serviceProvider->assertDatabaseIsValid (database);
 }
 
 const ReplicaInfoCollection& FindAllRequestM::responseData() const {

@@ -65,7 +65,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider&   serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -104,7 +104,7 @@ protected:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequest(ServiceProvider&   serviceProvider,
+    WorkerFindAllRequest(ServiceProvider::pointer const& serviceProvider,
                          std::string const& worker,
                          std::string const& id,
                          int                priority,
@@ -137,7 +137,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      */
-    static pointer create(ServiceProvider&   serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           std::string const& worker,
                           std::string const& id,
                           int                priority,
@@ -164,7 +164,7 @@ private:
     /**
      * The normal constructor of the class.
      */
-    WorkerFindAllRequestPOSIX(ServiceProvider&   serviceProvider,
+    WorkerFindAllRequestPOSIX(ServiceProvider::pointer const& serviceProvider,
                               std::string const& worker,
                               std::string const& id,
                               int                priority,

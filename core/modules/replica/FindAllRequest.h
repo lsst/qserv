@@ -119,7 +119,7 @@ public:
      * @param priority         - a priority level of the request
      * @param keepTracking     - keep tracking the request before it finishes or fails
      */
-    static pointer create(ServiceProvider&         serviceProvider,
+    static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const&       worker,
                           std::string const&       database,
@@ -132,7 +132,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindAllRequestC(ServiceProvider&         serviceProvider,
+    FindAllRequestC(ServiceProvider::pointer const& serviceProvider,
                     boost::asio::io_service& io_service,
                     std::string const&       worker,
                     std::string const&       database,
@@ -269,7 +269,7 @@ public:
      * @param keepTracking     - keep tracking the request before it finishes or fails
      * @param messenger        - an interface for communicating with workers
      */
-    static pointer create(ServiceProvider&                  serviceProvider,
+    static pointer create(ServiceProvider::pointer const&   serviceProvider,
                           boost::asio::io_service&          io_service,
                           std::string const&                worker,
                           std::string const&                database,
@@ -283,7 +283,7 @@ private:
     /**
      * Construct the request with the pointer to the services provider.
      */
-    FindAllRequestM(ServiceProvider&                  serviceProvider,
+    FindAllRequestM(ServiceProvider::pointer const&   serviceProvider,
                     boost::asio::io_service&          io_service,
                     std::string const&                worker,
                     std::string const&                database,

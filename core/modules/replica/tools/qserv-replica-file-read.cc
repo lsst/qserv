@@ -10,8 +10,8 @@
 #include "replica/FileClient.h"
 #include "util/CmdLineParser.h"
 
-namespace rc   = lsst::qserv::replica;
-namespace util = lsst::qserv::util;
+namespace replica = lsst::qserv::replica;
+namespace util    = lsst::qserv::util;
 
 namespace {
 
@@ -34,20 +34,20 @@ uint8_t buf[bufSize];
  * Instantiate and launch the service in its own thread. Then block
  * the current thread in a series of repeated timeouts.
  */
-int run () {
+int run() {
   
     std::FILE* fp = 0;
     try {
-        rc::ServiceProvider provider (configUrl);
+        replica::ServiceProvider::pointer const provider = replica::ServiceProvider::create(configUrl);
 
-        if (rc::FileClient::pointer file =
-            rc::FileClient::open (provider, workerName, databaseName, inFileName)) {
+        if (replica::FileClient::pointer file =
+            replica::FileClient::open(provider, workerName, databaseName, inFileName)) {
 
-            const size_t fileSize = file->size();
-            if (verbose)
+            size_t const fileSize = file->size();
+            if (verbose) {
                 std::cout << "file size: " << fileSize << " bytes" << std::endl;
-
-            if ((fp = std::fopen (outFileName.c_str(), "wb"))) {
+            }
+            if ((fp = std::fopen(outFileName.c_str(), "wb"))) {
                 
                 size_t totalRead = 0;
                 size_t num;
@@ -69,16 +69,16 @@ int run () {
         }
         std::cerr << "failed to open the input file" << std::endl;
 
-    } catch (std::exception &ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
     }
-    if (fp) std::fclose(fp);
+    if (fp) { std::fclose(fp); }
 
     return 1;
 }
 }  /// namespace
 
-int main (int argc, const char* const argv[]) {
+int main(int argc, const char* const argv[]) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -87,7 +87,7 @@ int main (int argc, const char* const argv[]) {
 
     // Parse command line parameters
     try {
-        util::CmdLineParser parser (
+        util::CmdLineParser parser(
             argc,
             argv,
             "\n"
@@ -105,13 +105,13 @@ int main (int argc, const char* const argv[]) {
             "  --config   - a configuration URL (a configuration file or a set of the database\n"
             "               connection parameters [ DEFAULT: file:replication.cfg ]\n");
 
-        ::workerName     = parser.parameter<std::string> (1);
-        ::databaseName   = parser.parameter<std::string> (2);
-        ::inFileName     = parser.parameter<std::string> (3);
-        ::outFileName    = parser.parameter<std::string> (4);
+        ::workerName   = parser.parameter<std::string>(1);
+        ::databaseName = parser.parameter<std::string>(2);
+        ::inFileName   = parser.parameter<std::string>(3);
+        ::outFileName  = parser.parameter<std::string>(4);
 
-        ::verbose        = parser.flag                ("verbose");
-        ::configUrl      = parser.option<std::string> ("config", "file:replication.cfg");
+        ::verbose      = parser.flag("verbose");
+        ::configUrl    = parser.option<std::string>("config", "file:replication.cfg");
 
     } catch (std::exception const& ex) {
         return 1;

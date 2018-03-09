@@ -54,7 +54,7 @@ namespace replica {
 //         DeleteRequestC          //
 /////////////////////////////////////
 
-DeleteRequestC::pointer DeleteRequestC::create(ServiceProvider& serviceProvider,
+DeleteRequestC::pointer DeleteRequestC::create(ServiceProvider::pointer const& serviceProvider,
                                                boost::asio::io_service& io_service,
                                                std::string const& worker,
                                                std::string const& database,
@@ -76,7 +76,7 @@ DeleteRequestC::pointer DeleteRequestC::create(ServiceProvider& serviceProvider,
             allowDuplicate));
 }
 
-DeleteRequestC::DeleteRequestC(ServiceProvider& serviceProvider,
+DeleteRequestC::DeleteRequestC(ServiceProvider::pointer const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& database,
@@ -97,7 +97,7 @@ DeleteRequestC::DeleteRequestC(ServiceProvider& serviceProvider,
         _onFinish(onFinish),
         _responseData() {
 
-    _serviceProvider.assertDatabaseIsValid(database);
+    _serviceProvider->assertDatabaseIsValid(database);
 }
 
 void
@@ -444,7 +444,7 @@ void DeleteRequestC::notify() {
 //         DeleteRequestM          //
 /////////////////////////////////////
 
-DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider& serviceProvider,
+DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider::pointer const& serviceProvider,
                                                boost::asio::io_service& io_service,
                                                std::string const& worker,
                                                std::string const& database,
@@ -468,7 +468,7 @@ DeleteRequestM::pointer DeleteRequestM::create(ServiceProvider& serviceProvider,
             messenger));
 }
 
-DeleteRequestM::DeleteRequestM(ServiceProvider& serviceProvider,
+DeleteRequestM::DeleteRequestM(ServiceProvider::pointer const& serviceProvider,
                                boost::asio::io_service& io_service,
                                std::string const& worker,
                                std::string const& database,
@@ -491,7 +491,7 @@ DeleteRequestM::DeleteRequestM(ServiceProvider& serviceProvider,
         _onFinish(onFinish),
         _responseData() {
 
-    _serviceProvider.assertDatabaseIsValid(database);
+    _serviceProvider->assertDatabaseIsValid(database);
 }
 
 void DeleteRequestM::startImpl() {

@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 namespace {
@@ -40,17 +41,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Messenger::pointer Messenger::create(ServiceProvider& serviceProvider,
+Messenger::pointer Messenger::create(ServiceProvider::pointer const& serviceProvider,
                                      boost::asio::io_service& io_service) {
     return Messenger::pointer(
         new Messenger(serviceProvider,
                       io_service));
 }
 
-Messenger::Messenger(ServiceProvider& serviceProvider,
+Messenger::Messenger(ServiceProvider::pointer const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
-    for (auto const& worker: serviceProvider.config()->workers()){
+    for (auto const& worker: serviceProvider->config()->workers()){
         _connector[worker] = MessengerConnector::create(serviceProvider,
                                                         io_service,
                                                         worker);

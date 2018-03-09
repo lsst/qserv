@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -84,7 +85,7 @@ ReplicateJob::ReplicateJob(std::string const&         databaseFamily,
         _databaseFamily(databaseFamily),
         _numReplicas(numReplicas ?
                      numReplicas :
-                     controller->serviceProvider().config()->replicationLevel(databaseFamily)),
+                     controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
         _onFinish(onFinish),
         _bestEffort(bestEffort),
         _numIterations(0),
@@ -96,7 +97,7 @@ ReplicateJob::ReplicateJob(std::string const&         databaseFamily,
 
 ReplicateJob::~ReplicateJob() {
     // Make sure all chuks locked by this job are released
-    _controller->serviceProvider().chunkLocker().release(_id);
+    _controller->serviceProvider()->chunkLocker().release(_id);
 }
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
@@ -135,7 +136,7 @@ void ReplicateJob::track(bool progressReport,
         }
         if (chunkLocksReport) {
             os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider().chunkLocker().locked(_id);
+                << _controller->serviceProvider()->chunkLocker().locked(_id);
         }
     }
     if (progressReport) {
@@ -147,7 +148,7 @@ void ReplicateJob::track(bool progressReport,
     }
     if (chunkLocksReport) {
         os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider().chunkLocker().locked(_id);
+            << _controller->serviceProvider()->chunkLocker().locked(_id);
     }
     if (errorReport && (_numLaunched - _numSuccess)) {
         replica::reportRequestState(_requests, os);
@@ -345,7 +346,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         // for the new replicas.
     
         std::vector<std::string> workers;
-        for (auto const& worker: _controller->serviceProvider().config()->workers()) {
+        for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
             if (replicaData.workers.at(worker)) {
                 workers.push_back(worker);
             }
@@ -374,7 +375,7 @@ void ReplicateJob::onPrecursorJobFinish() {
             // the job will need to make another attempt later.
     
             Chunk const chunkObj{_databaseFamily, chunk};
-            if (not _controller->serviceProvider().chunkLocker().lock(chunkObj, _id)) {
+            if (not _controller->serviceProvider()->chunkLocker().lock(chunkObj, _id)) {
                 ++_numFailedLocks;
                 continue;
             }
@@ -575,7 +576,7 @@ void ReplicateJob::release(unsigned int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
 
     Chunk chunkObj {_databaseFamily, chunk};
-    _controller->serviceProvider().chunkLocker().release(chunkObj);
+    _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica
