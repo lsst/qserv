@@ -21,10 +21,11 @@ std::string  operation;
 std::string  worker;
 std::string  databaseFamily;
 unsigned int chunk;
+bool         force;
 std::string  configUrl;
 
 /// Run the test
-bool test() {
+void test() {
 
     try {
 
@@ -39,18 +40,36 @@ bool test() {
 
         std::atomic<bool> finished(false);
 
-        auto const& request = provider->qservMgtServices()->addRreplica(
-            chunk,
-            databaseFamily,
-            worker,
-            [&finished] (replica::AddReplicaQservMgtRequest::pointer const& request) {
-                std::cout
-                    << "state:         " << request->state2string(request->state()) << "\n"
-                    << "extendedState: " << request->state2string(request->extendedState()) << "\n"
-                    << "serverError:   " << request->serverError() << std::endl;
-                finished = true;
-            }
-        );
+        if (operation == "ADD_REPLICA") {
+            provider->qservMgtServices()->addReplica(
+                chunk,
+                databaseFamily,
+                worker,
+                [&finished] (replica::AddReplicaQservMgtRequest::pointer const& request) {
+                    std::cout
+                        << "state:         " << request->state2string(request->state()) << "\n"
+                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
+                        << "serverError:   " << request->serverError() << std::endl;
+                    finished = true;
+                }
+            );
+        } else if (operation == "REMOVE_REPLICA") {
+            provider->qservMgtServices()->removeReplica(
+                chunk,
+                databaseFamily,
+                worker,
+                force,
+                [&finished] (replica::RemoveReplicaQservMgtRequest::pointer const& request) {
+                    std::cout
+                        << "state:         " << request->state2string(request->state()) << "\n"
+                        << "extendedState: " << request->state2string(request->extendedState()) << "\n"
+                        << "serverError:   " << request->serverError() << std::endl;
+                    finished = true;
+                }
+            );
+        } else {
+            throw std::logic_error("unsupported operation: " + operation);
+        }
 
         // Block while the request is in progress
 
@@ -58,11 +77,9 @@ bool test() {
         while (not finished) {
             blockPost.wait(200);
         } 
-        return 0;
     } catch (const std::exception& ex) {
         std::cerr << ex.what() << std::endl;
     }
-    return true;
 }
 } /// namespace
 
@@ -83,7 +100,8 @@ int main(int argc, const char* const argv[]) {
             "  <operation> <parameters> [--config=<url>]\n"
             "\n"
             "Supported operations & their parameters:\n"
-            "  ADD_REPLICA <worker> <database-family> <chunk>\n"
+            "  ADD_REPLICA    <worker> <database-family> <chunk>\n"
+            "  REMOVE_REPLICA <worker> <database-family> <chunk> [--force]\n"
             "\n"
             "Parameters:\n"
             "  <worker>          - the worker name (identifier)\n"
@@ -92,12 +110,15 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Flags and options:\n"
             "  --config          - a configuration URL (a configuration file or a set of the database\n"
-            "                      connection parameters [ DEFAULT: file:replication.cfg ]\n");
+            "                      connection parameters [ DEFAULT: file:replication.cfg ]\n"
+            "  --force           - the flag telling the remote service to proceed with requested\n"
+            "                      replica removal regardless of the replica usage status\n");
 
-        ::operation      = parser.parameterRestrictedBy(1, {"ADD_REPLICA"});
+        ::operation      = parser.parameterRestrictedBy(1, {"ADD_REPLICA", "REMOVE_REPLICA"});
         ::worker         = parser.parameter<std::string>(2);
         ::databaseFamily = parser.parameter<std::string>(3);
         ::chunk          = parser.parameter<unsigned int>(4);
+        ::force          = parser.flag("force");
 
         ::configUrl = parser.option<std::string>("config", "file:replication.cfg");
 

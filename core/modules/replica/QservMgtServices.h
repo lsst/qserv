@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
+#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
@@ -101,11 +102,11 @@ public:
     ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
     /**
-     * Notify Qserv worker on availability of a new chunk
+     * Notify Qserv worker on availability of a new replica
      *
      * @param chunk          - the chunk number
      * @param databaseFamily - the name of a database family involved into the operation
-     * @param worker         - the name of a worker where the input replica is residing
+     * @param worker         - the name of a worker where the replica is residing
      * @param onFinish       - callback function called on a completion of the operation
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                         allowing to override the default value of
@@ -113,11 +114,35 @@ public:
      * @return pointer to the request object if the request was made. Return the null
      * pointer otherwise.
      */
-    AddReplicaQservMgtRequest::pointer addRreplica(
+    AddReplicaQservMgtRequest::pointer addReplica(
                                             unsigned int chunk,
                                             std::string const& databaseFamily,
                                             std::string const& worker,
                                             AddReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Notify Qserv worker on a removal of a replica
+     *
+     * @param chunk          - the chunk number
+     * @param databaseFamily - the name of a database family involved into the operation
+     * @param worker         - the name of a worker where the replica is residing
+     * @param onFinish       - callback function called on a completion of the operation
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                         allowing to override the default value of
+     *                         the corresponding parameter from the Configuration.
+     * @param force          - tell Qserv that the replica has to be removed from its
+     *                         repository regardless if there are any outstanding requests
+     *                         using the replica.
+     * @return pointer to the request object if the request was made. Return the null
+     * pointer otherwise.
+     */
+    RemoveReplicaQservMgtRequest::pointer removeReplica(
+                                            unsigned int chunk,
+                                            std::string const& databaseFamily,
+                                            std::string const& worker,
+                                            bool force,
+                                            RemoveReplicaQservMgtRequest::callback_type onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 
 private:
