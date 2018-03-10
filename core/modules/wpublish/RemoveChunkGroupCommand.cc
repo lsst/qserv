@@ -111,9 +111,6 @@ void RemoveChunkGroupCommand::run() {
     xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
     XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
 
-    proto::WorkerCommandChunkGroupR reply;
-    reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
-
     for (std::string const& db: _dbs) {
 
         std::string const resource = "/chk/" + db + "/" + std::to_string(_chunk);
@@ -144,6 +141,23 @@ void RemoveChunkGroupCommand::run() {
             return;
         }
     }
+
+    proto::WorkerCommandChunkGroupR reply;
+    if (_resourceMonitor->count(_chunk, _dbs)) {
+
+        // Tell a caller that some of the associated resources are still
+        // in use by this worker even though they've been blocked from use for any
+        // further requests. It's up to a caller of this service to correctly
+        // interpret the effect of th eoperation based on a presence of the "force"
+        // flag in the request.
+
+        reply.set_status(proto::WorkerCommandChunkGroupR::IN_USE);
+        reply.set_error("some chunks of the group are in use");
+
+    } else{
+        reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
+    }
+
     _frameBuf.serialize(reply);
     std::string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
