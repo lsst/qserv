@@ -91,152 +91,131 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 
 /// Callback Handler classes
 
-// NullCBH is a class that can't be instantiated, it exists as a placeholder for
-// Adapters that don't use their _parent, so that they may have a weak_ptr to a CBH that is a nullptr.
-class NullCBH {
+class BaseCBH {
 public:
-    NullCBH() {}
+    virtual ~BaseCBH() {}
 };
 
 
-class DmlStatementCBH {
+class DmlStatementCBH : public BaseCBH {
 public:
-    virtual ~DmlStatementCBH() {}
     virtual void handleDmlStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
 };
 
 
-class SimpleSelectCBH {
+class SimpleSelectCBH : public BaseCBH {
 public:
-    virtual ~SimpleSelectCBH() {}
     virtual void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) = 0;
 };
 
 
-class QuerySpecificationCBH {
+class QuerySpecificationCBH : public BaseCBH {
 public:
-    virtual ~QuerySpecificationCBH() {}
     virtual void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
                                           shared_ptr<query::FromList> fromList,
                                           shared_ptr<query::WhereClause> whereClause) = 0;
 };
 
 
-class SelectElementsCBH {
+class SelectElementsCBH : public BaseCBH {
 public:
-    virtual ~SelectElementsCBH() {}
     virtual void handleSelectList(shared_ptr<query::SelectList> selectList) = 0;
 };
 
 
-class FullColumnNameCBH {
+class FullColumnNameCBH : public BaseCBH {
 public:
-    virtual ~FullColumnNameCBH() {}
     virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) = 0;
 };
 
 
-class TableNameCBH {
+class TableNameCBH : public BaseCBH {
 public:
-    virtual ~TableNameCBH() {}
     virtual void handleTableName(const std::string& string) = 0;
 };
 
 
-class FromClauseCBH {
+class FromClauseCBH : public BaseCBH {
 public:
-    virtual ~FromClauseCBH() {}
     virtual void handleFromClause(shared_ptr<query::FromList> fromList, shared_ptr<query::WhereClause> whereClause) = 0;
 };
 
 
-class TableSourcesCBH {
+class TableSourcesCBH : public BaseCBH {
 public:
-    virtual ~TableSourcesCBH() {}
     virtual void handleTableSources(query::TableRefListPtr tableRefList) = 0;
 };
 
-class TableSourceBaseCBH {
+class TableSourceBaseCBH : public BaseCBH {
 public:
-    virtual ~TableSourceBaseCBH() {}
     virtual void handleTableSource(shared_ptr<query::TableRef> tableRef) = 0;
 };
 
 
-class AtomTableItemCBH {
+class AtomTableItemCBH : public BaseCBH {
 public:
-    virtual ~AtomTableItemCBH() {}
     virtual void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) = 0;
 };
 
 
-class UidCBH {
+class UidCBH : public BaseCBH {
 public:
-    virtual ~UidCBH() {}
     virtual void handleUidString(const std::string& string) = 0;
 };
 
 
-class FullIdCBH {
+class FullIdCBH : public BaseCBH {
 public:
-    virtual ~FullIdCBH() {}
     virtual void handleFullIdString(const std::string& string) = 0;
 };
 
 
-class ConstantExpressionAtomCBH {
+class ConstantExpressionAtomCBH : public BaseCBH {
 public:
-    virtual ~ConstantExpressionAtomCBH() {}
     virtual void handleConstantExpressionAtom(const string& text) = 0;
 };
 
 
-class ExpressionAtomPredicateCBH {
+class ExpressionAtomPredicateCBH : public BaseCBH {
 public:
-    virtual ~ExpressionAtomPredicateCBH() {}
     virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
 
 
-class ComparisonOperatorCBH {
+class ComparisonOperatorCBH : public BaseCBH {
 public:
-    virtual ~ComparisonOperatorCBH() {}
     virtual void handleComparisonOperator(const string& text) = 0;
 };
 
 
-class SelectColumnElementCBH {
+class SelectColumnElementCBH : public BaseCBH {
 public:
-    virtual ~SelectColumnElementCBH() {}
     virtual void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) = 0;
 };
 
 
-class FullColumnNameExpressionAtomCBH {
+class FullColumnNameExpressionAtomCBH : public BaseCBH {
 public:
-    virtual ~FullColumnNameExpressionAtomCBH() {}
     virtual void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) = 0;
 
 };
 
 
-class BinaryComparasionPredicateCBH {
+class BinaryComparasionPredicateCBH : public BaseCBH {
 public:
     virtual ~BinaryComparasionPredicateCBH() {}
     virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm) = 0;
 };
 
 
-class PredicateExpressionCBH {
+class PredicateExpressionCBH : public BaseCBH {
 public:
-    virtual ~PredicateExpressionCBH() {}
     virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 
-class ConstantCBH {
+class ConstantCBH : public BaseCBH {
 public:
-    virtual ~ConstantCBH() {}
     virtual void handleConstant(const std::string& val) = 0;
 };
 
@@ -246,7 +225,10 @@ public:
 
 class Adapter {
 public:
-    Adapter(antlr4::ParserRuleContext* ctx) : _ctx(ctx) {}
+    Adapter(shared_ptr<BaseCBH> parent, antlr4::ParserRuleContext* ctx)
+    : _ctx(ctx)
+    , _parent(parent)
+    {}
     virtual ~Adapter() {}
 
     // onEnter is called just after the Adapter is pushed onto the context stack
@@ -254,15 +236,30 @@ public:
 
     // onExit is called just before the Adapter is popped from the context stack
     virtual void onExit() {}
+
 protected:
+    template <typename CBH>
+    shared_ptr<CBH> lockedParent() {
+        shared_ptr<BaseCBH> lockedParent = _parent.lock();
+        if (nullptr == lockedParent) {
+            throw MySqlListener::adapter_execution_error("Locking weak ptr to parent callback handler returned null");
+        }
+        auto castedParent = dynamic_pointer_cast<CBH>(lockedParent);
+        if (nullptr == castedParent) {
+            throw MySqlListener::adapter_execution_error("Casting ptr to parent callback handler returned null.");
+        }
+        return castedParent;
+    }
+
+
     antlr4::ParserRuleContext* _ctx;
-    weak_ptr<NullCBH> _parent;
+    weak_ptr<BaseCBH> _parent;
 };
 
 
 class RootAdapter : public Adapter, public DmlStatementCBH {
 public:
-    RootAdapter() : Adapter(nullptr) {}
+    RootAdapter() : Adapter(nullptr, nullptr) {}
 
     shared_ptr<query::SelectStmt> getSelectStatement() { return _selectStatement; }
 
@@ -278,29 +275,25 @@ private:
 class DmlStatementAdapter : public Adapter, public SimpleSelectCBH {
 public:
     DmlStatementAdapter(shared_ptr<DmlStatementCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleSelectStatement(shared_ptr<query::SelectStmt> selectStatement) override {
         _selectStatement = selectStatement;
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleDmlStatement(_selectStatement);
-        }
+        lockedParent<DmlStatementCBH>()->handleDmlStatement(_selectStatement);
     }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
-    weak_ptr<DmlStatementCBH> _parent;
 };
 
 
 class SimpleSelectAdapter : public Adapter, public QuerySpecificationCBH {
 public:
     SimpleSelectAdapter(shared_ptr<SimpleSelectCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleQuerySpecification(shared_ptr<query::SelectList> selectList,
                                   shared_ptr<query::FromList> fromList,
@@ -311,22 +304,18 @@ public:
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            shared_ptr<query::SelectStmt> selectStatement = make_shared<query::SelectStmt>();
-            selectStatement->setSelectList(_selectList);
-            selectStatement->setFromList(_fromList);
-            selectStatement->setWhereClause(_whereClause);
-            selectStatement->setLimit(_limit);
-            parent->handleSelectStatement(selectStatement);
-        }
+        shared_ptr<query::SelectStmt> selectStatement = make_shared<query::SelectStmt>();
+        selectStatement->setSelectList(_selectList);
+        selectStatement->setFromList(_fromList);
+        selectStatement->setWhereClause(_whereClause);
+        selectStatement->setLimit(_limit);
+        lockedParent<SimpleSelectCBH>()->handleSelectStatement(selectStatement);
     }
 
 private:
     shared_ptr<query::SelectList> _selectList;
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::WhereClause> _whereClause;
-    weak_ptr<SimpleSelectCBH> _parent;
     int _limit{lsst::qserv::NOTSET};
 };
 
@@ -334,7 +323,7 @@ private:
 class QuerySpecificationAdapter : public Adapter, public SelectElementsCBH, public FromClauseCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleSelectList(shared_ptr<query::SelectList> selectList) override {
         _selectList = selectList;
@@ -349,7 +338,7 @@ public:
     void onExit() override {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleQuerySpecification(_selectList, _fromList, _whereClause);
+        lockedParent<QuerySpecificationCBH>()->handleQuerySpecification(_selectList, _fromList, _whereClause);
         }
     }
 
@@ -357,14 +346,13 @@ private:
     shared_ptr<query::WhereClause> _whereClause;
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::SelectList> _selectList;
-    weak_ptr<QuerySpecificationCBH> _parent;
 };
 
 
 class SelectElementsAdapter : public Adapter, public SelectColumnElementCBH {
 public:
     SelectElementsAdapter(shared_ptr<SelectElementsCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << columnElement);
@@ -372,22 +360,18 @@ public:
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleSelectList(_selectList);
-        }
+        lockedParent<SelectElementsCBH>()->handleSelectList(_selectList);
     }
 
 private:
     std::shared_ptr<query::SelectList> _selectList{std::make_shared<query::SelectList>()};
-    weak_ptr<SelectElementsCBH> _parent;
 };
 
 
 class FromClauseAdapter : public Adapter, public TableSourcesCBH, public PredicateExpressionCBH {
 public:
     FromClauseAdapter(shared_ptr<FromClauseCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleTableSources(query::TableRefListPtr tableRefList) override {
         _tableRefList = tableRefList;
@@ -410,46 +394,38 @@ public:
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
-            parent->handleFromClause(fromList, _whereClause);
-        }
+        shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
+        lockedParent<FromClauseCBH>()->handleFromClause(fromList, _whereClause);
     }
 
 private:
     shared_ptr<query::WhereClause> _whereClause{std::make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
-    weak_ptr<FromClauseCBH> _parent;
 };
 
 
 class TableSourcesAdapter : public Adapter, public TableSourceBaseCBH {
 public:
     TableSourcesAdapter(shared_ptr<TableSourcesCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleTableSource(shared_ptr<query::TableRef> tableRef) override {
         _tableRefList->push_back(tableRef);
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleTableSources(_tableRefList);
-        }
+        lockedParent<TableSourcesCBH>()->handleTableSources(_tableRefList);
     }
 
 private:
     query::TableRefListPtr _tableRefList{make_shared<query::TableRefList>()};
-    weak_ptr<TableSourcesCBH> _parent;
 };
 
 
 class TableSourceBaseAdapter : public Adapter, public AtomTableItemCBH {
 public:
     TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleAtomTableItem(shared_ptr<query::TableRef> tableRef) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
@@ -457,22 +433,18 @@ public:
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleTableSource(_tableRef);
-        }
+        lockedParent<TableSourceBaseCBH>()->handleTableSource(_tableRef);
     }
 
 private:
     shared_ptr<query::TableRef> _tableRef;
-    weak_ptr<TableSourceBaseCBH> _parent;
 };
 
 
 class AtomTableItemAdapter : public Adapter, public TableNameCBH {
 public:
     AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleTableName(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
@@ -480,15 +452,11 @@ public:
     }
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent) {
-            shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
-            parent->handleAtomTableItem(tableRef);
-        }
+        shared_ptr<query::TableRef> tableRef = make_shared<query::TableRef>(_db, _table, _alias);
+        lockedParent<AtomTableItemCBH>()->handleAtomTableItem(tableRef);
     }
 
 protected:
-    weak_ptr<AtomTableItemCBH> _parent;
     std::string _db;
     std::string _table;
     std::string _alias;
@@ -498,14 +466,11 @@ protected:
 class TableNameAdapter : public Adapter , public FullIdCBH {
 public:
     TableNameAdapter(shared_ptr<TableNameCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleFullIdString(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleTableName(string);
-        }
+        lockedParent<TableNameCBH>()->handleTableName(string);
     }
 
 protected:
@@ -516,16 +481,13 @@ protected:
 class FullIdAdapter : public Adapter, public UidCBH {
 public:
     FullIdAdapter(shared_ptr<FullIdCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     virtual ~FullIdAdapter() {}
 
     void handleUidString(const std::string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleFullIdString(string);
-        }
+        lockedParent<FullIdCBH>()->handleFullIdString(string);
     }
 
 protected:
@@ -536,56 +498,38 @@ protected:
 class FullColumnNameAdapter : public Adapter, public UidCBH {
 public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleUidString(const std::string& string) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        auto parent = _parent.lock();
-        if (parent) {
-            auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
-            auto valueExpr = std::make_shared<query::ValueExpr>();
-            ValueExprFactory::addValueFactor(valueExpr, valueFactor);
-            parent->handleFullColumnName(valueExpr);
-        }
+        auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
+        auto valueExpr = std::make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent<FullColumnNameCBH>()->handleFullColumnName(valueExpr);
     }
-
-protected:
-    weak_ptr<FullColumnNameCBH> _parent;
 };
 
 
 class ConstantExpressionAtomAdapter : public Adapter, public ConstantCBH {
 public:
     ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleConstant(const string& text) override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleConstantExpressionAtom(text);
-        }
+        lockedParent<ConstantExpressionAtomCBH>()->handleConstantExpressionAtom(text);
     }
-
-private:
-    weak_ptr<ConstantExpressionAtomCBH> _parent;
 };
 
 
 class FullColumnNameExpressionAtomAdapter : public Adapter, public FullColumnNameCBH {
 public:
     FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleFullColumnName(columnValueExpr);
-        }
+        lockedParent<FullColumnNameExpressionAtomCBH>()->handleFullColumnName(columnValueExpr);
     }
-
-private:
-    weak_ptr<FullColumnNameExpressionAtomCBH> _parent;
 };
 
 
@@ -593,52 +537,41 @@ class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpression
         public FullColumnNameExpressionAtomCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleConstantExpressionAtom(const string& text) override {
-        auto parent = _parent.lock();
-        if (parent) {
-            query::ValueExpr::FactorOp factorOp;
-            factorOp.factor =  query::ValueFactor::newConstFactor(text);
-            auto valueExpr = std::make_shared<query::ValueExpr>();
-            valueExpr->getFactorOps().push_back(factorOp);
-            parent->handleExpressionAtomPredicate(valueExpr);
-        }
+        query::ValueExpr::FactorOp factorOp;
+        factorOp.factor =  query::ValueFactor::newConstFactor(text);
+        auto valueExpr = std::make_shared<query::ValueExpr>();
+        valueExpr->getFactorOps().push_back(factorOp);
+        lockedParent<ExpressionAtomPredicateCBH>()->handleExpressionAtomPredicate(valueExpr);
     }
 
     void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleExpressionAtomPredicate(columnValueExpr);
-        }
+        lockedParent<ExpressionAtomPredicateCBH>()->handleExpressionAtomPredicate(columnValueExpr);
     }
-
-private:
-    weak_ptr<ExpressionAtomPredicateCBH> _parent;
 };
 
 
 class PredicateExpressionAdapter : public Adapter, public BinaryComparasionPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleOrTerm(shared_ptr<query::OrTerm> orTerm) override {
         _orTerm = orTerm;
     }
 
     void onExit() {
-        auto parent = _parent.lock();
-        if (!parent || !_orTerm) {
-            return;
+        if (!_orTerm) {
+            return; // todo; raise here?
         }
-        parent->handleOrTerm(_orTerm, _ctx);
+        lockedParent<PredicateExpressionCBH>()->handleOrTerm(_orTerm, _ctx);
     }
 
 private:
     shared_ptr<query::OrTerm> _orTerm;
-    weak_ptr<PredicateExpressionCBH> _parent;
 };
 
 
@@ -646,7 +579,7 @@ class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomP
         public ComparisonOperatorCBH {
 public:
     BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleComparisonOperator(const string& text) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << text);
@@ -679,11 +612,6 @@ public:
     void onExit() {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " " << _left << " " << _comparison << " " << _right);
 
-        auto parent = _parent.lock();
-        if (!parent) {
-            return;
-        }
-
         if (_left == nullptr || _right == nullptr) {
             std::ostringstream msg;
             msg << "unexpected call to " << __FUNCTION__ <<
@@ -715,14 +643,13 @@ public:
         auto orTerm = std::make_shared<query::OrTerm>();
         orTerm->_terms.push_back(boolFactor);
 
-        parent->handleOrTerm(orTerm);
+        lockedParent<BinaryComparasionPredicateCBH>()->handleOrTerm(orTerm);
     }
 
 private:
     shared_ptr<query::ValueExpr> _left;
     string _comparison;
     shared_ptr<query::ValueExpr> _right;
-    weak_ptr<BinaryComparasionPredicateCBH> _parent;
 };
 
 
@@ -730,17 +657,13 @@ class ComparisonOperatorAdapter : public Adapter {
 public:
     ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH> parent,
             MySqlParser::ComparisonOperatorContext* ctx)
-    : Adapter(ctx), _parent(parent),  _comparisonOperatorCtx(ctx) {}
+    : Adapter(parent, ctx),  _comparisonOperatorCtx(ctx) {}
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent != nullptr) {
-            parent->handleComparisonOperator(_comparisonOperatorCtx->getText());
-        }
+        lockedParent<ComparisonOperatorCBH>()->handleComparisonOperator(_comparisonOperatorCtx->getText());
     }
 
 private:
-    weak_ptr<ComparisonOperatorCBH> _parent;
     MySqlParser::ComparisonOperatorContext * _comparisonOperatorCtx;
 };
 
@@ -748,38 +671,28 @@ private:
 class SelectColumnElementAdapter : public Adapter, public FullColumnNameCBH {
 public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
+    : Adapter(parent, ctx) {}
 
     void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleColumnElement(columnValueExpr);
-        }
+        lockedParent<SelectColumnElementCBH>()->handleColumnElement(columnValueExpr);
     }
-
-private:
-    weak_ptr<SelectColumnElementCBH> _parent;
 };
 
 
 class UidAdapter : public Adapter {
 public:
     UidAdapter(shared_ptr<UidCBH> parent, MySqlParser::UidContext* ctx)
-    : Adapter(ctx), _parent(parent), _uidContext(ctx) {}
+    : Adapter(parent, ctx), _uidContext(ctx) {}
 
     void onExit() override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        auto parent = _parent.lock();
-        if (parent) {
-            // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
-            // (see MySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
-            // it will have to be handled and this shortcut may not be taken.
-            parent->handleUidString(_uidContext->getText());
-        }
+        // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
+        // (see MySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
+        // it will have to be handled and this shortcut may not be taken.
+        lockedParent<UidCBH>()->handleUidString(_uidContext->getText());
     }
 
 private:
-    weak_ptr<UidCBH> _parent;
     MySqlParser::UidContext* _uidContext;
 };
 
@@ -787,17 +700,13 @@ private:
 class ConstantAdapter : public Adapter {
 public:
     ConstantAdapter(shared_ptr<ConstantCBH> parent, MySqlParser::ConstantContext* ctx)
-    : Adapter(ctx), _parent(parent), _constantContext(ctx) {}
+    : Adapter(parent, ctx), _constantContext(ctx) {}
 
     void onExit() override {
-        auto parent = _parent.lock();
-        if (parent && _constantContext) {
-            parent->handleConstant(_constantContext->getText());
-        }
+        lockedParent<ConstantCBH>()->handleConstant(_constantContext->getText());
     }
 
 private:
-    weak_ptr<ConstantCBH> _parent;
     MySqlParser::ConstantContext* _constantContext;
 };
 
