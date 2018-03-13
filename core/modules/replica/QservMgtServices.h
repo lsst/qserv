@@ -104,13 +104,16 @@ public:
     /**
      * Notify Qserv worker on availability of a new replica
      *
-     * @param chunk          - the chunk number
+     * @param chunk    - the chunk number
      * @param databaseFamily - the name of a database family involved into the operation
-     * @param worker         - the name of a worker where the replica is residing
-     * @param onFinish       - callback function called on a completion of the operation
+     * @param worker   - the name of a worker where the replica is residing
+     * @param onFinish - callback function called on a completion of the operation
+     * @param jobId    - an optional identifier of a job specifying a context
+     *                   in which a request will be executed.
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
-     *                         allowing to override the default value of
-     *                         the corresponding parameter from the Configuration.
+     *                   allowing to override the default value of
+     *                   the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return the null
      * pointer otherwise.
      */
@@ -119,21 +122,25 @@ public:
                                             std::string const& databaseFamily,
                                             std::string const& worker,
                                             AddReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
 
     /**
      * Notify Qserv worker on a removal of a replica
      *
-     * @param chunk          - the chunk number
+     * @param chunk    - the chunk number
      * @param databaseFamily - the name of a database family involved into the operation
-     * @param worker         - the name of a worker where the replica is residing
-     * @param onFinish       - callback function called on a completion of the operation
+     * @param worker   - the name of a worker where the replica is residing
+     * @param force    - tell Qserv that the replica has to be removed from its
+     *                   repository regardless if there are any outstanding requests
+     *                   using the replica.
+     * @param onFinish - callback function called on a completion of the operation
+     * @param jobId    - an optional identifier of a job specifying a context
+     *                   in which a request will be executed.
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
-     *                         allowing to override the default value of
-     *                         the corresponding parameter from the Configuration.
-     * @param force          - tell Qserv that the replica has to be removed from its
-     *                         repository regardless if there are any outstanding requests
-     *                         using the replica.
+     *                   allowing to override the default value of
+     *                   the corresponding parameter from the Configuration.
+     *
      * @return pointer to the request object if the request was made. Return the null
      * pointer otherwise.
      */
@@ -143,6 +150,7 @@ public:
                                             std::string const& worker,
                                             bool force,
                                             RemoveReplicaQservMgtRequest::callback_type onFinish = nullptr,
+                                            std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
 
 private:

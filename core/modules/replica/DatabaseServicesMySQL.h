@@ -93,6 +93,13 @@ public:
      *
      * @see DatabaseServices::saveState()
      */
+    void saveState(QservMgtRequest_pointer const& request) override;
+
+    /**
+     * Implement the corresponding method defined in the base class
+     *
+     * @see DatabaseServices::saveState()
+     */
     void saveState(Request_pointer const& request) override;
 
     /**
@@ -132,7 +139,7 @@ public:
                             unsigned int chunk,
                             std::string const& worker,
                             std::string const& databaseFamily) const override;
-                             
+
 private:
 
     /**

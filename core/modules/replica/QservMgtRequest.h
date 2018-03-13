@@ -68,10 +68,10 @@ public:
         /// The request has been constructed, and no attempt to execute it has
         /// been made.
         CREATED,
-        
+
         /// The request is in a progress
         IN_PROGRESS,
-        
+
         /// The request is finihed. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
@@ -84,12 +84,12 @@ public:
     /// the above defined primary state.
     enum ExtendedState {
 
-        /// No extended state exists at this time        
+        /// No extended state exists at this time
         NONE,
 
         /// The request has been fully implemented
         SUCCESS,
-        
+
         /// The request could not be implemented due to an unrecoverable
         /// cliend-side error.
         CLIENT_ERROR,
@@ -108,7 +108,7 @@ public:
 
         /// Expired due to a timeout (as per the Configuration)
         EXPIRED,
-        
+
         /// Explicitly cancelled on the client-side (similar to EXPIRED)
         CANCELLED
     };
@@ -159,6 +159,13 @@ public:
     Performance const& performance() const { return _performance; }
 
     /**
+     * Return an identifier if the owning job (if the request has started)
+     *
+     * @throws std::logic_error - if the request hasn't started
+     */
+    std::string const& jobId() const;
+
+    /**
      * Reset the state (if needed) and begin processing the request.
      *
      * This is supposed to be the first operation to be called upon a creation
@@ -167,11 +174,14 @@ public:
      *
      * @param service  - a pointer to an instance of the API object for
      *                   submititng requests to remote services
+     * @param jobId    - an optional identifier of a job specifying a context
+     *                   in which a request will be executed.
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
-     *                                   allowing to override the default value of
-     *                                   the corresponding parameter from the Configuration.
+     *                   allowing to override the default value of
+     *                   the corresponding parameter from the Configuration.
      */
     void start(XrdSsiService* service,
+               std::string const& jobId="",
                unsigned int requestExpirationIvalSec=0);
 
     /**
@@ -255,7 +265,7 @@ protected:
      * NOTES: normally this condition should never been seen unless
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
-     * 
+     *
      * @throws std::logic_error
      */
     void assertState(State desiredState) const;
@@ -271,7 +281,7 @@ protected:
      */
     void setState(State state,
                   ExtendedState extendedStat);
-    
+
 protected:
 
     // Parameters of the object
@@ -286,12 +296,15 @@ protected:
 
     State         _state;
     ExtendedState _extendedState;
-     
+
     /// Error message (if any) reported by the remote service
     std::string _serverError;
 
     /// Performance counters
     Performance _performance;
+
+    /// An identifier of the parent job which started the request
+    std::string _jobId;
 
     /// An API for submitting requests to the remote services
     XrdSsiService* _service;
@@ -301,7 +314,7 @@ protected:
     /// explicitly finished when a request finishes (successfully or not).
     ///
     /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::EXPIRED.    
+    /// with status: FINISHED::EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 

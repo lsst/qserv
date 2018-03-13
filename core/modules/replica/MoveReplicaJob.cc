@@ -141,7 +141,7 @@ void MoveReplicaJob::track(bool progressReport,
                            std::ostream& os) const {
 
     if (_state == State::FINISHED) { return; }
- 
+
     util::BlockPost blockPost(1000, 2000);
 
     size_t numLaunched;
@@ -251,7 +251,7 @@ void MoveReplicaJob::startImpl() {
 
         setState(State::FINISHED, ExtendedState::FAILED);
         return;
-    } 
+    }
 
     // Launch the replication requests first. After (if) they all will
     // succeed the next optional stage will be launched to remove replicas
@@ -328,7 +328,7 @@ void MoveReplicaJob::notify() {
 
 void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request) {
 
-    std::string  const database          = request->database(); 
+    std::string  const database          = request->database();
     std::string  const destinationWorker = request->worker();
     std::string  const sourceWorker      = request->sourceWorker();
     unsigned int const chunk             = request->chunk();
@@ -345,7 +345,7 @@ void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request)
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
         // Update stats
@@ -353,7 +353,7 @@ void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request)
             _replicaData.createdReplicas.emplace_back(request->responseData());
             _replicaData.createdChunks[chunk][database][destinationWorker] = request->responseData();
         }
-        
+
         // Evaluate the status of on-going operations to see if the replica creation
         // stage has finished.
 
@@ -366,92 +366,66 @@ void MoveReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request)
 
         if (numFinished == numLaunched) {
             if (numSuccess == numLaunched) {
-                
-                // Notify Qserv about the change in a disposposition of replicas should
-                // the application be configured to do so.
+
+                // Notify Qserv about the change in a disposposition of replicas
                 //
                 // NOTE: The current implementation will not be affected by a result
                 //       of the operation. Neither any upstream notifications will be
                 //       sent to a requestor of this job.
 
                 ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
-
                 if (serviceProvider->config()->xrootdAutoNotify()) {
-
-                    auto self = shared_from_base<MoveReplicaJob>();
-
-                    LOGS(_log, LOG_LVL_DEBUG, self->context()
-                         << "** START ** Qserv notification on NEW replica:"
-                         << "  chunk="          << self->chunk()
-                         << ", databaseFamily=" << self->databaseFamily()
-                         << ", worker="         << self->destinationWorker());
-
-                    serviceProvider->qservMgtServices()->addReplica(
-                        _chunk,
-                        _databaseFamily,
-                        _destinationWorker,
-                        [self] (AddReplicaQservMgtRequest::pointer const& request) {
-                            LOGS(_log, LOG_LVL_DEBUG, self->context()
-                                 << "** FINISH ** Qserv notification on NEW replica:"
-                                 << "  chunk="          << self->chunk()
-                                 << ", databaseFamily=" << self->databaseFamily()
-                                 << ", worker="         << self->destinationWorker()
-                                 << ", state="          << request->state2string(request->state())
-                                 << ", extendedState="  << request->state2string(request->extendedState())
-                                 << ". serverError="    << request->serverError());
-                        }
-                    );
+                    qservAddReplica(chunk,
+                                    databaseFamily(),
+                                    destinationWorker);
                 }
+
                 if (_purge) {
 
-                    // If the Qserv notification is required then try notifying Qserv
-                    // about the intent to remove the replica before actually
-                    // deleting the one.
-                    //
-                    // NOTE: the currenyt implementation ignores the completion status
-                    //       of the operation. It will just report its completion status and
-                    //       immediatelly initiate the actual remova of replica's files.
+                    // Notify Qserv about the change in a disposposition of replicas
+                    // if the notification is required vefore actually deleting the replica.
 
                     ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
-    
                     if (serviceProvider->config()->xrootdAutoNotify()) {
-    
+
                         auto self = shared_from_base<MoveReplicaJob>();
-    
-                        LOGS(_log, LOG_LVL_DEBUG, self->context()
-                             << "** START ** Qserv notification on REMOVED replica:"
-                             << "  chunk="          << self->chunk()
-                             << ", databaseFamily=" << self->databaseFamily()
-                             << ", worker="         << self->destinationWorker());
-    
+
                         bool const force = true;    // force the removal regardless of the replica
                                                     // usage status. See the implementation of the
                                                     // corresponiding worker management service for
                                                     // specific detail on what "remove" means in
                                                     // that service's context.
-
-                        serviceProvider->qservMgtServices()->removeReplica(
-                            _chunk,
-                            _databaseFamily,
-                            _sourceWorker,
+                        qservRemoveReplica(
+                            chunk,
+                            databaseFamily(),
+                            sourceWorker,
                             force,
                             [self] (RemoveReplicaQservMgtRequest::pointer const& request) {
-                                LOGS(_log, LOG_LVL_DEBUG, self->context()
-                                     << "** FINISH ** Qserv notification on REMOVED replica:"
-                                     << "  chunk="          << self->chunk()
-                                     << ", databaseFamily=" << self->databaseFamily()
-                                     << ", worker="         << self->sourceWorker()
-                                     << ", state="          << request->state2string(request->state())
-                                     << ", extendedState="  << request->state2string(request->extendedState())
-                                     << ". serverError="    << request->serverError());
 
-                                // Launch the second stage of requests to actually eliminate replica's
-                                // files from the source worker.
-                                self->beginDeleteReplica();
+                                switch (request->extendedState()) {
+
+                                    // If there is a solid confirmation from Qserv on source node that the replica
+                                    // is not being used and it won't be used then it's safe to proceed with
+                                    // the second stage of requests to actually eliminate replica's
+                                    // files from the source worker.
+                                    case QservMgtRequest::ExtendedState::SUCCESS:
+                                        self->beginDeleteReplica();
+                                        return;
+
+                                    // Otherwise set an appropriate status of the operation, finish them
+                                    // job and notify the caller.
+                                    case QservMgtRequest::ExtendedState::SERVER_IN_USE:
+                                        self->setState(State::FINISHED, ExtendedState::QSERV_IN_USE);
+                                        break;
+                                    default:
+                                        self->setState(State::FINISHED, ExtendedState::QSERV_FAILED);
+                                        break;
+                                }
+                                self->notify();
                             }
                         );
                     }
-                    
+
                 } else {
                     // Otherwise, we're done.
                     setState(State::FINISHED, ExtendedState::SUCCESS);
@@ -492,8 +466,8 @@ void MoveReplicaJob::beginDeleteReplica() {
 
 void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
 
-    std::string  const database = request->database(); 
-    std::string  const worker   = request->worker(); 
+    std::string  const database = request->database();
+    std::string  const worker   = request->worker();
     unsigned int const chunk    = request->chunk();
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -507,7 +481,7 @@ void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
         // Update stats
@@ -515,7 +489,7 @@ void MoveReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
             _replicaData.deletedReplicas.emplace_back(request->responseData());
             _replicaData.deletedChunks[chunk][database][worker] = request->responseData();
         }
-        
+
         // Evaluate the status of on-going operations to see if the job
         // has finished.
 
