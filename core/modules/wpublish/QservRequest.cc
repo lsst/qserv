@@ -73,6 +73,9 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
         // Notify a subclass on the ubnormal condition
         onError(rInfo.eMsg);
 
+        // Tell XrootD to realease all resources associated with this request
+        Finished();
+
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG, context
@@ -93,7 +96,10 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
             // Notify a subclass on the ubnormal condition
             onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " +
                     std::to_string(rInfo.rType));
-    
+
+            // Tell XrootD to realease all resources associated with this request
+            Finished();
+
             return false;
     }
 }
@@ -114,6 +120,9 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
         // Notify a subclass on the ubnormal condition
         onError(eInfo.Get());
 
+        // Tell XrootD to realease all resources associated with this request
+        Finished();
+
     } else {
         LOGS(_log, LOG_LVL_DEBUG, context << "blen: " << blen << ", last: " << last);
 
@@ -124,6 +133,9 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
             // Ask a subclass to process the response
             proto::FrameBufferView view(_buf, _bufSize);
             onResponse(view);
+
+            // Tell XrootD to realease all resources associated with this request
+            Finished();
 
         } else {
             // Extend the buffer and copy over its previous content into the new location
