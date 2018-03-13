@@ -83,7 +83,6 @@ public:
         std::string _msg;
     };
 
-
 protected:
 
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
@@ -1659,8 +1658,9 @@ protected:
 
 private:
     // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for
-    // the kinds of children that may be assigned to them. The stack represents execution state of the call
-    // to listen. The root object (separate from the stack) will end up owning the parsed query.
+    // the kinds of children that may be assigned to them. The stack represents execution state while the
+    // antlr4 walker traverses it's internal AST. The root object (separate from the stack) will end up owning
+    // the parsed query.
     std::stack<std::shared_ptr<Adapter>> _adapterStack;
     std::shared_ptr<RootAdapter> _rootAdapter;
 
