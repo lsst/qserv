@@ -137,7 +137,8 @@ public:
 
 class FromClauseCBH : public BaseCBH {
 public:
-    virtual void handleFromClause(shared_ptr<query::FromList> fromList, shared_ptr<query::WhereClause> whereClause) = 0;
+    virtual void handleFromClause(shared_ptr<query::FromList> fromList,
+                                  shared_ptr<query::WhereClause> whereClause) = 0;
 };
 
 
@@ -242,11 +243,13 @@ protected:
     shared_ptr<CBH> lockedParent() {
         shared_ptr<BaseCBH> lockedParent = _parent.lock();
         if (nullptr == lockedParent) {
-            throw MySqlListener::adapter_execution_error("Locking weak ptr to parent callback handler returned null");
+            throw MySqlListener::adapter_execution_error(
+                    "Locking weak ptr to parent callback handler returned null");
         }
         auto castedParent = dynamic_pointer_cast<CBH>(lockedParent);
         if (nullptr == castedParent) {
-            throw MySqlListener::adapter_execution_error("Casting ptr to parent callback handler returned null.");
+            throw MySqlListener::adapter_execution_error(
+                    "Casting ptr to parent callback handler returned null.");
         }
         return castedParent;
     }
@@ -355,7 +358,8 @@ public:
     : Adapter(parent, ctx) {}
 
     void handleColumnElement(shared_ptr<query::ValueExpr> columnElement) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " << columnElement);
+        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " <<
+                columnElement);
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
@@ -380,7 +384,8 @@ public:
     void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) override {
         MySqlParser::FromClauseContext* ctx = dynamic_cast<MySqlParser::FromClauseContext*>(_ctx);
         if (nullptr == ctx) {
-            throw MySqlListener::adapter_order_error("FromClauseAdapter's _ctx could not be cast to a FromClauseContext.");
+            throw MySqlListener::adapter_order_error(
+                    "FromClauseAdapter's _ctx could not be cast to a FromClauseContext.");
         }
         if (ctx->whereExpr == childCtx) {
             if (_whereClause->getRootTerm()) {
@@ -512,7 +517,8 @@ public:
 
 class ConstantExpressionAtomAdapter : public Adapter, public ConstantCBH {
 public:
-    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
+    ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent,
+                                  antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
     void handleConstant(const string& text) override {
@@ -523,7 +529,8 @@ public:
 
 class FullColumnNameExpressionAtomAdapter : public Adapter, public FullColumnNameCBH {
 public:
-    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
+    FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH> parent,
+                                        antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
     void handleFullColumnName(shared_ptr<query::ValueExpr> columnValueExpr) override {
@@ -536,7 +543,8 @@ public:
 class ExpressionAtomPredicateAdapter : public Adapter, public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH {
 public:
-    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
+    ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent,
+                                   antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
     void handleConstantExpressionAtom(const string& text) override {
@@ -578,7 +586,8 @@ private:
 class BinaryComparasionPredicateAdapter : public Adapter, public ExpressionAtomPredicateCBH,
         public ComparisonOperatorCBH {
 public:
-    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
+    BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH> parent,
+                                      antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
     void handleComparisonOperator(const string& text) override {
@@ -1315,7 +1324,5 @@ UNHANDLED(IntervalTypeBase)
 UNHANDLED(DataTypeBase)
 UNHANDLED(KeywordsCanBeId)
 UNHANDLED(FunctionNameBase)
-
-
 
 }}} // namespace lsst::qserv::parser
