@@ -275,10 +275,6 @@ private:
 };
 
 
-// Between Root and DmlStatement, there are skipped statements: `sqlStatements` and `sqlStatement`.
-// Adapters and enter/exit handlers for these may need to be implemented, TBD.
-
-
 class DmlStatementAdapter : public Adapter, public SimpleSelectCBH {
 public:
     DmlStatementAdapter(shared_ptr<DmlStatementCBH> parent, antlr4::ParserRuleContext* ctx)
