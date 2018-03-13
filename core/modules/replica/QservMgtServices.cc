@@ -87,7 +87,7 @@ struct QservMgtRequestWrapperImpl
 private:
 
     // The context of the operation
-    
+
     typename T::pointer       _request;
     typename T::callback_type _onFinish;
 };
@@ -113,6 +113,7 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
                                         std::string const& databaseFamily,
                                         std::string const& worker,
                                         AddReplicaQservMgtRequest::callback_type onFinish,
+                                        std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
@@ -145,7 +146,9 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
             request, onFinish);
 
     // Initiate the request
-    request->start(service, requestExpirationIvalSec);
+    request->start(service,
+                   jobId,
+                   requestExpirationIvalSec);
 
     return request;
 }
@@ -158,6 +161,7 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
                                         std::string const& worker,
                                         bool force,
                                         RemoveReplicaQservMgtRequest::callback_type onFinish,
+                                        std::string const& jobId,
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
@@ -191,7 +195,9 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
             request, onFinish);
 
     // Initiate the request
-    request->start(service, requestExpirationIvalSec);
+    request->start(service,
+                   jobId,
+                   requestExpirationIvalSec);
 
     return request;
 }

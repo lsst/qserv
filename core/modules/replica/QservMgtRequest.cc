@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Common.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
@@ -86,6 +87,7 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::pointer const& serviceProvider
         _extendedState(ExtendedState::NONE),
         _serverError() ,
         _performance(),
+        _jobId(""),
         _service(nullptr),
         _requestExpirationIvalSec(_serviceProvider->config()->xrootdTimeoutSec()),
         _requestExpirationTimer(io_service) {
@@ -103,6 +105,7 @@ std::string const& QservMgtRequest::serverError() const {
 }
 
 void QservMgtRequest::start(XrdSsiService* service,
+                            std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
@@ -115,11 +118,16 @@ void QservMgtRequest::start(XrdSsiService* service,
     LOGS(_log, LOG_LVL_DEBUG, context() << "start  _requestExpirationIvalSec: "
          << _requestExpirationIvalSec);
 
-    // Set the API object for submititng requests
-    if (not service) {
+    // Build optional associaitons with the corresponding service and the job
+    //
+    // NOTE: this is done only once, the first time a non-trivial value
+    // of each parameter is presented to the method.
+
+    if (not _service and service) { _service = service; }
+    if (not _service) {
         throw std::invalid_argument("QservMgtRequest::start  null pointer for XrdSsiService");
     }
-    _service = service;
+    if (_jobId.empty() and not jobId.empty()) { _jobId = jobId; }
 
     _performance.setUpdateStart();
 
@@ -137,6 +145,16 @@ void QservMgtRequest::start(XrdSsiService* service,
 
     // Let a subclass to proceed with its own sequence of actions
     startImpl();
+
+    _serviceProvider->databaseServices()->saveState(shared_from_this());
+}
+
+std::string const& QservMgtRequest::jobId() const {
+    if (_state == State::CREATED) {
+        throw std::logic_error(
+            "the Job Id is not available because the request has not started yet");
+    }
+    return _jobId;
 }
 
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
@@ -189,6 +207,8 @@ void QservMgtRequest::finish(ExtendedState extendedState,
     // callback on the completion of the operation.
     _performance.setUpdateFinish();
 
+    _serviceProvider->databaseServices()->saveState(shared_from_this());
+
     // This will invoke user-defined notifiers (if any)
     notify();
 }
@@ -207,6 +227,8 @@ void QservMgtRequest::setState(State state,
 
     _state         = state;
     _extendedState = extendedState;
+
+    _serviceProvider->databaseServices()->saveState(shared_from_this());
 }
-    
+
 }}} // namespace lsst::qserv::replica

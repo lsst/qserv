@@ -340,7 +340,7 @@ CREATE TABLE IF NOT EXISTS `job_delete_worker` (
   `job_id`  VARCHAR(255) NOT NULL ,
 
   `worker`    VARCHAR(255) NOT NULL ,
-  `permanent` BOOLEAN      NOT NULL , 
+  `permanent` BOOLEAN      NOT NULL ,
 
   CONSTRAINT `job_delete_worker_fk_1`
     FOREIGN KEY (`job_id` )
@@ -412,10 +412,12 @@ CREATE TABLE IF NOT EXISTS `request` (
   `job_id`  VARCHAR(255) NOT NULL ,
 
   `name` ENUM ('REPLICA_CREATE',
-               'REPLICA_DELETE') NOT NULL ,
+               'REPLICA_DELETE',
+               'QSERV:ADD_REPLICA',
+               'QSERV:REMOVE_REPLICA') NOT NULL ,
 
   `worker`   VARCHAR(255) NOT NULL ,
-  `priority` INT NOT NULL ,
+  `priority` INT          DEFAULT 0 ,
 
   `state`          VARCHAR(255) NOT NULL ,
   `ext_state`      VARCHAR(255) DEFAULT '' ,
@@ -453,7 +455,7 @@ CREATE TABLE IF NOT EXISTS `request_replica_create` (
 
   `database` VARCHAR(255) NOT NULL ,
   `chunk`    INT UNSIGNED NOT NULL ,
-  
+
   `source_worker`  VARCHAR(255) NOT NULL ,
 
   CONSTRAINT `request_replica_create_fk_1`
@@ -481,6 +483,55 @@ CREATE TABLE IF NOT EXISTS `request_replica_delete` (
   `chunk`    INT UNSIGNED NOT NULL ,
 
   CONSTRAINT `request_replica_delete_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `request_qserv_add_replica`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'QSERV:ADD_REPLICA' requests
+--
+DROP TABLE IF EXISTS `request_qserv_add_replica` ;
+
+CREATE TABLE IF NOT EXISTS `request_qserv_add_replica` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `database_family` VARCHAR(255) NOT NULL ,
+  `chunk`           INT UNSIGNED NOT NULL ,
+
+  CONSTRAINT `request_qserv_add_replica_fk_1`
+    FOREIGN KEY (`request_id` )
+    REFERENCES `request` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `request_qserv_remove_replica`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'QSERV:REMOVE_REPLICA' requests
+--
+DROP TABLE IF EXISTS `request_qserv_remove_replica` ;
+
+CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
+
+  `request_id`  VARCHAR(255) NOT NULL ,
+
+  `database_family` VARCHAR(255) NOT NULL ,
+  `chunk`           INT UNSIGNED NOT NULL ,
+  `force`           BOOLEAN      NOT NULL ,
+
+  CONSTRAINT `request_qserv_remove_replica_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
     ON DELETE CASCADE

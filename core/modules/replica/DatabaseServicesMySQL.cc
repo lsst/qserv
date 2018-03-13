@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/DeleteRequest.h"
@@ -41,7 +42,9 @@
 #include "replica/FixUpJob.h"
 #include "replica/MoveReplicaJob.h"
 #include "replica/PurgeJob.h"
+#include "replica/QservMgtRequest.h"
 #include "replica/RebalanceJob.h"
+#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
 #include "replica/ReplicationRequest.h"
@@ -59,7 +62,7 @@ using namespace lsst::qserv::replica;
 
 /**
  * Return 'true' if the specified string is found in a collection.
- * 
+ *
  * Typical usage:
  * @code
  * bool yesFound = in("what to find", {
@@ -76,7 +79,7 @@ bool in(std::string const& val,
 
 /**
  * Return 'true' if the specified state is found in a collection.
- * 
+ *
  * Typical use:
  * @code
  * bool yesFound = in(Request::ExtendedState::SUCCESS, {
@@ -138,9 +141,18 @@ void targetRequestData(Request::pointer const& ptr,
                     ", or request's actual type and type name mismatch");
 }
 
-// Helper method whose role is to reduce the amount of teh boilerplate
+// Helper methods whose role is to reduce the amount of the boilerplate
 // code in the implementations of the correspondig save* methods
 // and to make those methos easier to use and maintain.
+
+template <class T>
+typename T::pointer safeAssign(QservMgtRequest::pointer const& request) {
+    static std::string  const context = "DatabaseServicesMySQL::safeAssign[QservMgtRequest]  ";
+    typename T::pointer const ptr = std::dynamic_pointer_cast<T>(request);
+    if (ptr) { return ptr; }
+    throw std::logic_error(context + "incorrect upcast for request id: " +
+                           request->id() + ", type: " + request->type());
+}
 
 template <class T>
 typename T::pointer safeAssign(Request::pointer const& request) {
@@ -323,7 +335,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
     // The algorithm will first try the INSERT query. If a row with the same
     // primary key (Job id) already exists in the table then the UPDATE
     // query will be executed.
-    
+
     try {
         _conn->begin();
         _conn->executeInsertQuery(
@@ -419,6 +431,104 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
+void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
+
+    std::string const context = "DatabaseServicesMySQL::saveState[QservMgtRequest::" + request->type() + "]  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    LOCK_GUARD;
+
+    // The implementation of the procedure varies quite significally depending on
+    // a family of a request.
+
+    // The original (target) requests are processed normally, via the usual
+    // protocol: try-insert-if-duplicate-then-update.
+
+
+    if (::in(request->type(), {"QSERV::ADD_REPLICA",
+                               "QSERV::REMOVE_REPLICA"})) {
+
+        // Requests which haven't started yet or the ones which aren't associated
+        // with any job should be ignored.
+        try {
+            if (request->jobId().empty()) {
+                LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request with no job set, id=" << request->id());
+                return;
+            }
+        } catch (std::logic_error const&) {
+            LOGS(_log, LOG_LVL_DEBUG, context << "ignoring the request which hasn't yet started, id=" << request->id());
+            return;
+        }
+
+        Performance const& performance = request->performance();
+        try {
+            _conn->begin();
+            _conn->executeInsertQuery(
+                "request",
+                request->id(),
+                request->jobId(),
+                request->type(),
+                request->worker(),
+                0,
+                QservMgtRequest::state2string(request->state()),
+                QservMgtRequest::state2string(request->extendedState()),
+                request->serverError(),
+                performance.c_create_time,
+                performance.c_start_time,
+                performance.w_receive_time,
+                performance.w_start_time,
+                performance.w_finish_time,
+                performance.c_finish_time);
+
+            if (request->type() == "QSERV::ADD_REPLICA") {
+                auto ptr = safeAssign<AddReplicaQservMgtRequest>(request);
+                _conn->executeInsertQuery(
+                    "request_qserv_add_replica",
+                    ptr->id(),
+                    ptr->databaseFamily(),
+                    ptr->chunk());
+            } else if (request->type() == "QSERV::REMOVE_REPLICA") {
+                auto ptr = safeAssign<RemoveReplicaQservMgtRequest>(request);
+                _conn->executeInsertQuery(
+                    "request_qserv_remove_replica",
+                    ptr->id(),
+                    ptr->databaseFamily(),
+                    ptr->chunk(),
+                    ptr->force());
+            }
+            _conn->commit ();
+
+        } catch (database::mysql::DuplicateKeyError const&) {
+
+            try {
+                _conn->rollback();
+                _conn->begin();
+                _conn->executeSimpleUpdateQuery(
+                    "request",
+                    _conn->sqlEqual("id",                                           request->id()),
+                    std::make_pair( "state",          QservMgtRequest::state2string(request->state())),
+                    std::make_pair( "ext_state",      QservMgtRequest::state2string(request->extendedState())),
+                    std::make_pair( "server_status",                                request->serverError()),
+                    std::make_pair( "c_create_time",  performance.c_create_time),
+                    std::make_pair( "c_start_time",   performance.c_start_time),
+                    std::make_pair( "w_receive_time", performance.w_receive_time),
+                    std::make_pair( "w_start_time",   performance.w_start_time),
+                    std::make_pair( "w_finish_time",  performance.w_finish_time),
+                    std::make_pair( "c_finish_time",  performance.c_finish_time));
+
+                _conn->commit();
+
+            } catch (database::mysql::Error const& ex) {
+                if (_conn->inTransaction()) { _conn->rollback(); }
+                throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
+            }
+        }
+        return;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
 void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
 
     std::string const context = "DatabaseServicesMySQL::saveState[Request::" + request->type() + "]  ";
@@ -429,14 +539,14 @@ void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
 
     // The implementation of the procedure varies quite significally depending on
     // a family of a request.
-    
+
     // The original (target) requests are processed normally, via the usual
     // protocol: try-insert-if-duplicate-then-update.
 
 
     if (::in(request->type(), {"REPLICA_CREATE",
                                "REPLICA_DELETE"})) {
-        
+
         // Requests which haven't started yet or the ones which aren't associated
         // with any job should be ignored.
         try {
@@ -490,13 +600,13 @@ void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
                 saveReplicaInfo(::replicaInfo (request));
             }
             _conn->commit ();
-    
+
         } catch (database::mysql::DuplicateKeyError const&) {
-    
+
             try {
                 _conn->rollback();
                 _conn->begin();
-                _conn->executeSimpleUpdateQuery (
+                _conn->executeSimpleUpdateQuery(
                     "request",
                     _conn->sqlEqual("id",                                   request->id()),
                     std::make_pair( "state",          Request::state2string(request->state())),
@@ -513,7 +623,7 @@ void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
                     saveReplicaInfo(::replicaInfo(request));
                 }
                 _conn->commit();
-    
+
             } catch (database::mysql::Error const& ex) {
                 if (_conn->inTransaction()) { _conn->rollback(); }
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
@@ -566,7 +676,7 @@ void DatabaseServicesMySQL::saveState(Request::pointer const& request) {
                     saveReplicaInfo(::replicaInfo(request));
                 }
                 _conn->commit();
-    
+
             } catch (database::mysql::Error const& ex) {
                 if (_conn->inTransaction()) { _conn->rollback(); }
                 throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
@@ -730,10 +840,10 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
         // Check each old replicas to see if it's present in the new collection
         std::vector<ReplicaInfo> oldReplicas;
         if (findWorkerReplicasNoLock(oldReplicas, worker, database)) {
-    
+
             for (ReplicaInfo const& replica: oldReplicas) {
                 unsigned int const chunk = replica.chunk();
-    
+
                 // Eliminate the 'dead' chunks entry from the database
                 if (not newReplicas.at(worker).at(database).count(chunk)) {
                     _conn->execute(
@@ -787,12 +897,12 @@ bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replica
     }
     return true;
 }
- 
+
 bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
                                          unsigned int chunk,
                                          std::string const& database,
                                          bool enabledWorkersOnly) const {
-    std::string const context = 
+    std::string const context =
          "DatabaseServicesMySQL::findReplicas  chunk: " + std::to_string(chunk) +
          "  database: " + database + "  ";
 
@@ -829,8 +939,8 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
 bool DatabaseServicesMySQL::findWorkerReplicasNoLock(std::vector<ReplicaInfo>& replicas,
                                                      std::string const& worker,
                                                      std::string const& database) const {
-    std::string const context = 
-         "DatabaseServicesMySQL::findWorkerReplicasNoLock  worker: " + worker + 
+    std::string const context =
+         "DatabaseServicesMySQL::findWorkerReplicasNoLock  worker: " + worker +
          " database: " + database;
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -858,7 +968,7 @@ bool DatabaseServicesMySQL::findWorkerReplicas(std::vector<ReplicaInfo>& replica
                                                unsigned int chunk,
                                                std::string const& worker,
                                                std::string const& databaseFamily) const {
-    std::string const context = 
+    std::string const context =
          "DatabaseServicesMySQL::findWorkerReplicas  worker: " + worker +
          " chunk: " + std::to_string(chunk) + "  database family: " + databaseFamily;
 
@@ -938,28 +1048,28 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
                 _conn2->execute(
                     "SELECT * FROM " + _conn->sqlId(   "replica_file") +
                     "  WHERE "       + _conn->sqlEqual("replica_id", id));
-                 
+
                 if (_conn2->hasResult()) {
-            
+
                     database::mysql::Row row2;
                     while (_conn2->next(row2)) {
-            
+
                         // Extract attributes of the file
-            
+
                         std::string name;
                         uint64_t    size;
                         std::time_t mtime;
                         std::string cs;
                         uint64_t    beginCreateTime;
                         uint64_t    endCreateTime;
-            
+
                         row2.get("name",              name);
                         row2.get("size",              size);
                         row2.get("mtime",             mtime);
                         row2.get("cs",                cs);
                         row2.get("begin_create_time", beginCreateTime);
                         row2.get("end_create_time",   endCreateTime);
-            
+
                         files.emplace_back(
                             ReplicaInfo::FileInfo{
                                 name,
@@ -990,7 +1100,7 @@ bool DatabaseServicesMySQL::findReplicas(std::vector<ReplicaInfo>& replicas,
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context
              << "database operation failed due to: " << ex.what());
-    }    
+    }
     if (startedTransaction  and _conn ->inTransaction()) { _conn ->rollback(); }
     if (startedTransaction2 and _conn2->inTransaction()) { _conn2->rollback(); }
 

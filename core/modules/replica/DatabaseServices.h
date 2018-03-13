@@ -47,6 +47,7 @@ namespace replica {
 // Forward declarations
 struct ControllerIdentity;
 class Job;
+class QservMgtRequest;
 class ReplicaInfo;
 class Request;
 
@@ -68,6 +69,9 @@ public:
 
     /// Forward declaration for the smart reference to Job objects
     typedef std::shared_ptr<Job> Job_pointer;
+
+    /// Forward declaration for the smart reference to QservMgtRequest objects
+    typedef std::shared_ptr<QservMgtRequest> QservMgtRequest_pointer;
 
     /// Forward declaration for the smart reference to Request objects
     typedef std::shared_ptr<Request> Request_pointer;
@@ -117,6 +121,19 @@ public:
     virtual void saveState(Job_pointer const& job) = 0;
 
     /**
+     * Save the state of the QservMgtRequest. This operation can be called many times for
+     * a particular instance of the QservMgtRequest.
+     *
+     * NOTE: The method will convert a pointer of the base class QservMgtRequest into
+     * the final type to avoid type prolifiration through this interface.
+     *
+     * @param request - a pointer to a QservMgtRequest object
+     *
+     * @throw std::invalid_argument - if the actual request type won't match the expected one
+     */
+    virtual void saveState(QservMgtRequest_pointer const& request) = 0;
+
+    /**
      * Save the state of the Request. This operation can be called many times for
      * a particular instance of the Request.
      *
@@ -146,7 +163,7 @@ public:
     virtual bool findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
                                     bool   enabledWorkersOnly=true) const = 0;
-    
+
     /**
      * Find all replicas for the specified chunk and the database.
      *

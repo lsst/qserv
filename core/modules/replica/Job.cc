@@ -28,9 +28,12 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Common.h"            // Generators::uniqueId()
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"       // PerformanceUtils::now()
+#include "replica/QservMgtServices.h"
+#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 
 // This macro to appear witin each block which requires thread safety
@@ -59,11 +62,13 @@ std::string Job::state2string(State state) {
 std::string
 Job::state2string(ExtendedState state) {
     switch (state) {
-        case NONE:      return "NONE";
-        case SUCCESS:   return "SUCCESS";
-        case FAILED:    return "FAILED";
-        case EXPIRED:   return "EXPIRED";
-        case CANCELLED: return "CANCELLED";
+        case NONE:         return "NONE";
+        case SUCCESS:      return "SUCCESS";
+        case FAILED:       return "FAILED";
+        case QSERV_FAILED: return "QSERV_FAILED";
+        case QSERV_IN_USE: return "QSERV_IN_USE";
+        case EXPIRED:      return "EXPIRED";
+        case CANCELLED:    return "CANCELLED";
     }
     throw std::logic_error(
                 "incomplete implementation of method Job::state2string(ExtendedState)");
@@ -138,6 +143,84 @@ void Job::cancel() {
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
 
+void Job::qservAddReplica(unsigned int chunk,
+                          std::string const& databaseFamily,
+                          std::string const& worker,
+                          AddReplicaQservMgtRequest::callback_type onFinish) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "** START ** Qserv notification on ADD replica:"
+         << ", chunk="          << chunk
+         << ", databaseFamily=" << databaseFamily
+         << "  worker="         << worker);
+
+    auto self = shared_from_this();
+
+    _controller->serviceProvider()->qservMgtServices()->addReplica(
+        chunk,
+        databaseFamily,
+        worker,
+        [self,onFinish] (AddReplicaQservMgtRequest::pointer const& request) {
+
+            LOGS(_log, LOG_LVL_DEBUG, self->context()
+                 << "** FINISH ** Qserv notification on ADD replica:"
+                 << "  chunk="          << request->chunk()
+                 << ", databaseFamily=" << request->databaseFamily()
+                 << ", worker="         << request->worker()
+                 << ", state="          << request->state2string(request->state())
+                 << ", extendedState="  << request->state2string(request->extendedState())
+                 << ". serverError="    << request->serverError());
+
+            // Pass through the result to a caller
+            if (onFinish) {
+                onFinish(request);
+            }
+        },
+        _id
+    );
+}
+
+void Job::qservRemoveReplica(unsigned int chunk,
+                             std::string const& databaseFamily,
+                             std::string const& worker,
+                             bool force,
+                             RemoveReplicaQservMgtRequest::callback_type onFinish) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context()
+         << "** START ** Qserv notification on REMOVE replica:"
+         << "  chunk="          << chunk
+         << ", databaseFamily=" << databaseFamily
+         << ", worker="         << worker
+         << ", force="          << (force ? "true" : "false"));
+
+    auto self = shared_from_this();
+
+    _controller->serviceProvider()->qservMgtServices()->removeReplica(
+        chunk,
+        databaseFamily,
+        worker,
+        force,
+        [self,onFinish] (RemoveReplicaQservMgtRequest::pointer const& request) {
+
+            LOGS(_log, LOG_LVL_DEBUG, self->context()
+                 << "** FINISH ** Qserv notification on REMOVE replica:"
+                 << "  chunk="          << request->chunk()
+                 << ", databaseFamily=" << request->databaseFamily()
+                 << ", worker="         << request->worker()
+                 << ", force="          << (request->force() ? "true" : "false")
+                 << ", state="          << request->state2string(request->state())
+                 << ", extendedState="  << request->state2string(request->extendedState())
+                 << ". serverError="    << request->serverError());
+
+            // Pass through the result to the caller if requested
+            if (onFinish) {
+                onFinish(request);
+            }
+        },
+        _id
+    );
+}
+
 void Job::assertState(State state) const {
     if (state != _state) {
         throw std::logic_error(
@@ -152,11 +235,11 @@ void Job::setState(State state,
 
     _state         = state;
     _extendedState = extendedState;
-    
+
     if (_state == State::FINISHED) {
         _endTime = PerformanceUtils::now();
     }
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
-    
+
 }}} // namespace lsst::qserv::replica

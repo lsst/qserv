@@ -34,7 +34,9 @@
 #include <string>
 
 // Qserv headers
+#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Controller.h"
+#include "replica/RemoveReplicaQservMgtRequest.h"
 
 // Forward declarations
 
@@ -62,10 +64,10 @@ public:
         /// The job has been constructed, and no attempt to execute it has
         /// been made.
         CREATED,
-        
+
         /// The job is in a progress
         IN_PROGRESS,
-        
+
         /// The job is finihed. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
@@ -78,7 +80,7 @@ public:
     /// the above defined primary state.
     enum ExtendedState {
 
-        /// No extended state exists at this time        
+        /// No extended state exists at this time
         NONE,
 
         /// The job has been fully implemented
@@ -87,9 +89,15 @@ public:
         /// The job has failed
         FAILED,
 
+        /// Qserv notification failed
+        QSERV_FAILED,
+
+        /// Qserv reported that the source chunk is in use and couldn't be removed
+        QSERV_IN_USE,
+
         /// Expired due to a timeout (as per the Configuration)
         EXPIRED,
-        
+
         /// Explicitly cancelled on the client-side (similar to EXPIRED)
         CANCELLED
     };
@@ -234,6 +242,37 @@ protected:
     virtual void notify()=0;
 
     /**
+     * Notify Qserv about a new chunk added to its database.
+     *
+     * @param chunk - chunk number
+     * @param databaseFamily - the name of a database family
+     * @param worker - the name of a worker to be notified
+     * @param onFinish - optional callback funciton to be called upon completion
+     *        of the operation
+     */
+    void qservAddReplica(unsigned int chunk,
+                         std::string const& databaseFamily,
+                         std::string const& worker,
+                         AddReplicaQservMgtRequest::callback_type onFinish=nullptr);
+
+    /**
+      * Notify Qserv about a new chunk added to its database.
+      *
+      * @param chunk - chunk number
+      * @param databaseFamily - the name of a database family
+      * @param worker - the name of a worker to be notified
+      * @param force - the flag indicating of the removal should be done regardless
+      *        of the usage status of the replpica
+      * @param onFinish - optional callback funciton to be called upon completion
+      *        of the operation
+      */
+    void qservRemoveReplica(unsigned int chunk,
+                            std::string const& databaseFamily,
+                            std::string const& worker,
+                            bool force,
+                            RemoveReplicaQservMgtRequest::callback_type onFinish=nullptr);
+
+    /**
      * Ensure the object is in the deseride internal state. Throw an
      * exception otherwise.
      *
@@ -261,7 +300,7 @@ protected:
      */
     void setState(State state,
                   ExtendedState extendedState=ExtendedState::NONE);
-    
+
 protected:
 
     /// The unique identifier of the job
