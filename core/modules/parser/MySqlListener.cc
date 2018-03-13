@@ -450,7 +450,7 @@ private:
 };
 
 
-class TableSourceBaseAdapter : public Adapter, public AtomTableItemCBH{
+class TableSourceBaseAdapter : public Adapter, public AtomTableItemCBH {
 public:
     TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
@@ -618,7 +618,6 @@ public:
         }
     }
 
-
 private:
     weak_ptr<ExpressionAtomPredicateCBH> _parent;
 };
@@ -679,7 +678,6 @@ public:
             LOGS(_log, LOG_LVL_ERROR, msg.str());
             throw MySqlListener::adapter_execution_error(msg.str());
         }
-
     }
 
     void onExit() {
@@ -701,8 +699,8 @@ public:
         compPredicate->left = _left;
 
         // We need to remove the coupling between the query classes and the parser classes, in this case where
-        // the query classes use the integer token types instead of some other system. For now this switch
-        // statement allows us to go from the token string to the SqlSQL2Tokens type defined by the antlr2/3
+        // the query classes use the integer token types instead of some other system. For now this if/else
+        // block allows us to go from the token string to the SqlSQL2Tokens type defined by the antlr2/3
         // grammar and used by the query objects.
         if (_comparison.compare(string("=")) == 0) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
@@ -890,7 +888,10 @@ void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
-
+IGNORED(SqlStatements)
+IGNORED(SqlStatement)
+IGNORED(EmptyStatement)
+IGNORED(DdlStatement)
 ENTER_EXIT_PARENT(DmlStatement)
 ENTER_EXIT_PARENT(SimpleSelect)
 ENTER_EXIT_PARENT(QuerySpecification)
