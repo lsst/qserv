@@ -89,17 +89,17 @@ protected:
     virtual void enterRoot(MySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(MySqlParser::RootContext * /*ctx*/) override;
 
-//    virtual void enterSqlStatements(MySqlParser::SqlStatementsContext * /*ctx*/) override;
-//    virtual void exitSqlStatements(MySqlParser::SqlStatementsContext * /*ctx*/) override;
+    virtual void enterSqlStatements(MySqlParser::SqlStatementsContext * /*ctx*/) override;
+    virtual void exitSqlStatements(MySqlParser::SqlStatementsContext * /*ctx*/) override;
 
-//    virtual void enterSqlStatement(MySqlParser::SqlStatementContext * /*ctx*/) override;
-//    virtual void exitSqlStatement(MySqlParser::SqlStatementContext * /*ctx*/) override;
+    virtual void enterSqlStatement(MySqlParser::SqlStatementContext * /*ctx*/) override;
+    virtual void exitSqlStatement(MySqlParser::SqlStatementContext * /*ctx*/) override;
 
-//    virtual void enterEmptyStatement(MySqlParser::EmptyStatementContext * /*ctx*/) override;
-//    virtual void exitEmptyStatement(MySqlParser::EmptyStatementContext * /*ctx*/) override;
+    virtual void enterEmptyStatement(MySqlParser::EmptyStatementContext * /*ctx*/) override;
+    virtual void exitEmptyStatement(MySqlParser::EmptyStatementContext * /*ctx*/) override;
 
-//    virtual void enterDdlStatement(MySqlParser::DdlStatementContext * /*ctx*/) override;
-//    virtual void exitDdlStatement(MySqlParser::DdlStatementContext * /*ctx*/) override;
+    virtual void enterDdlStatement(MySqlParser::DdlStatementContext * /*ctx*/) override;
+    virtual void exitDdlStatement(MySqlParser::DdlStatementContext * /*ctx*/) override;
 
     virtual void enterDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
     virtual void exitDmlStatement(MySqlParser::DmlStatementContext * /*ctx*/) override;
