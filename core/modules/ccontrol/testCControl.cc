@@ -31,11 +31,25 @@
 
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
+#include "ccontrol/UserQueryFactory.h"
+#include "query/SelectStmt.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
+
+
+BOOST_AUTO_TEST_CASE(testAntlr4SelectStatement) {
+    std::string query = "SELECT objectId, ra_PS FROM Object WHERE objectId=386937898687249";
+    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query);
+    BOOST_REQUIRE(selectStatement != nullptr);
+    std::ostringstream queryStr;
+    queryStr << *selectStatement;
+    std::string expectedQueryStr = "SELECT objectId, ra_PS, (FIXME) FROM Table(.Object),  WHERE objectId=386937898687249 ";
+    BOOST_REQUIRE_EQUAL(queryStr.str(), expectedQueryStr);
+}
+
 
 BOOST_AUTO_TEST_CASE(testUserQueryType) {
     using lsst::qserv::ccontrol::UserQueryType;

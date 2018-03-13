@@ -121,6 +121,7 @@ public:
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
 
+
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
@@ -185,7 +186,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
 
-        std::shared_ptr<query::SelectStmt> stmt(a4stmt);
+        std::shared_ptr<query::SelectStmt> stmt;
         if (nullptr == stmt) {
             try {
                 auto parser = parser::SelectParser::newInstance(query);
