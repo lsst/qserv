@@ -1397,6 +1397,7 @@ protected:
     virtual void enterNullNotnull(MySqlParser::NullNotnullContext * /*ctx*/) override;
     virtual void exitNullNotnull(MySqlParser::NullNotnullContext * /*ctx*/) override;
 
+
     virtual void enterConstant(MySqlParser::ConstantContext * /*ctx*/) override;
     virtual void exitConstant(MySqlParser::ConstantContext * /*ctx*/) override;
 
