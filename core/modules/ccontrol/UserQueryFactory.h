@@ -45,12 +45,16 @@
 
 namespace lsst {
 namespace qserv {
-
+namespace query {
+class SelectStmt;
+}
 namespace czar {
 class CzarConfig;
 }
 
 namespace ccontrol {
+
+std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery);
 
 ///  UserQueryFactory breaks construction of user queries into two phases:
 ///  creation/configuration of the factory and construction of the

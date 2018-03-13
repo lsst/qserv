@@ -62,13 +62,24 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
 
 #define UNHANDLED(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "UNHANDLED"); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED"); \
     std::ostringstream msg; \
     msg << "enter" << #NAME << " not supported."; \
     throw MySqlListener::adapter_order_error(msg.str()); \
 } \
 \
 void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {}\
+
+
+#define IGNORED(NAME) \
+void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+} \
+\
+void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {\
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+} \
+
 
 
 namespace lsst {
@@ -173,30 +184,17 @@ public:
 };
 
 
-class DecimalLiteralCBH {
-public:
-    virtual ~DecimalLiteralCBH() {}
-    virtual void handleDecimalLiteral(const string& text) = 0;
-};
-
-
-class StringLiteralCBH {
-public:
-    virtual ~StringLiteralCBH() {}
-};
-
-
 class ConstantExpressionAtomCBH {
 public:
     virtual ~ConstantExpressionAtomCBH() {}
-    virtual void handleDecimalLiteral(const string& text) = 0;
+    virtual void handleConstantExpressionAtom(const string& text) = 0;
 };
 
 
 class ExpressionAtomPredicateCBH {
 public:
     virtual ~ExpressionAtomPredicateCBH() {}
-    virtual void handleValueExpr(shared_ptr<query::ValueExpr> valueExpr) = 0;
+    virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
 
 
@@ -234,6 +232,14 @@ public:
     virtual ~PredicateExpressionCBH() {}
     virtual void handleOrTerm(shared_ptr<query::OrTerm> orTerm, antlr4::ParserRuleContext* childCtx) = 0;
 };
+
+
+class ConstantCBH {
+public:
+    virtual ~ConstantCBH() {}
+    virtual void handleConstant(const std::string& val) = 0;
+};
+
 
 /// Adapter classes
 
@@ -511,37 +517,6 @@ protected:
 };
 
 
-class DecimalLiteralAdapter : public Adapter {
-public:
-    DecimalLiteralAdapter(shared_ptr<DecimalLiteralCBH> parent, MySqlParser::DecimalLiteralContext* ctx)
-    : Adapter(ctx), _parent(parent), _decimalLiteralCtx(ctx) {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-    }
-
-    void onEnter() override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        auto parent = _parent.lock();
-        if (parent) {
-            parent->handleDecimalLiteral(_decimalLiteralCtx->getText());
-        }
-    }
-
-private:
-    weak_ptr<DecimalLiteralCBH> _parent;
-    MySqlParser::DecimalLiteralContext * _decimalLiteralCtx;
-};
-
-
-class StringLiteralAdapter : public Adapter {
-public:
-    StringLiteralAdapter(shared_ptr<StringLiteralCBH> parent, antlr4::ParserRuleContext* ctx)
-    : Adapter(ctx), _parent(parent) {}
-
-private:
-    weak_ptr<StringLiteralCBH> _parent;
-};
-
-
 class FullIdAdapter : public Adapter, public UidCBH {
 public:
     FullIdAdapter(shared_ptr<FullIdCBH> parent, antlr4::ParserRuleContext* ctx)
@@ -583,15 +558,15 @@ protected:
 };
 
 
-class ConstantExpressionAtomAdapter : public Adapter, public DecimalLiteralCBH {
+class ConstantExpressionAtomAdapter : public Adapter, public ConstantCBH {
 public:
     ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    void handleDecimalLiteral(const string& text) override {
+    void handleConstant(const string& text) override {
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleDecimalLiteral(text);
+            parent->handleConstantExpressionAtom(text);
         }
     }
 
@@ -624,14 +599,14 @@ public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(ctx), _parent(parent) {}
 
-    void handleDecimalLiteral(const string& text) override {
+    void handleConstantExpressionAtom(const string& text) override {
         auto parent = _parent.lock();
         if (parent) {
             query::ValueExpr::FactorOp factorOp;
             factorOp.factor =  query::ValueFactor::newConstFactor(text);
             auto valueExpr = std::make_shared<query::ValueExpr>();
             valueExpr->getFactorOps().push_back(factorOp);
-            parent->handleValueExpr(valueExpr);
+            parent->handleExpressionAtomPredicate(valueExpr);
         }
     }
 
@@ -639,7 +614,7 @@ public:
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
-            parent->handleValueExpr(columnValueExpr);
+            parent->handleExpressionAtomPredicate(columnValueExpr);
         }
     }
 
@@ -691,7 +666,7 @@ public:
         }
     }
 
-    void handleValueExpr(shared_ptr<query::ValueExpr> valueExpr) override {
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr> valueExpr) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__);
         if (_left == nullptr) {
             _left = valueExpr;
@@ -715,7 +690,12 @@ public:
             return;
         }
 
-        // todo test that _left and _right are not null?
+        if (_left == nullptr || _right == nullptr) {
+            std::ostringstream msg;
+            msg << "unexpected call to " << __FUNCTION__ <<
+                    " when left and right values are not both populated:" << _left << ", " << _right;
+            throw MySqlListener::adapter_execution_error(msg.str());
+        }
 
         auto compPredicate = std::make_shared<query::CompPredicate>();
         compPredicate->left = _left;
@@ -758,7 +738,7 @@ public:
             MySqlParser::ComparisonOperatorContext* ctx)
     : Adapter(ctx), _parent(parent),  _comparisonOperatorCtx(ctx) {}
 
-    void onEnter() override {
+    void onExit() override {
         auto parent = _parent.lock();
         if (parent != nullptr) {
             parent->handleComparisonOperator(_comparisonOperatorCtx->getText());
@@ -793,7 +773,7 @@ public:
     UidAdapter(shared_ptr<UidCBH> parent, MySqlParser::UidContext* ctx)
     : Adapter(ctx), _parent(parent), _uidContext(ctx) {}
 
-    void onEnter() override {
+    void onExit() override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto parent = _parent.lock();
         if (parent) {
@@ -809,6 +789,25 @@ private:
     MySqlParser::UidContext* _uidContext;
 };
 
+
+class ConstantAdapter : public Adapter {
+public:
+    ConstantAdapter(shared_ptr<ConstantCBH> parent, MySqlParser::ConstantContext* ctx)
+    : Adapter(ctx), _parent(parent), _constantContext(ctx) {}
+
+    void onExit() override {
+        auto parent = _parent.lock();
+        if (parent && _constantContext) {
+            parent->handleConstant(_constantContext->getText());
+        }
+    }
+
+private:
+    weak_ptr<ConstantCBH> _parent;
+    MySqlParser::ConstantContext* _constantContext;
+};
+
+
 /// MySqlListener impl
 
 
@@ -821,7 +820,6 @@ MySqlListener::MySqlListener() {
 std::shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
     return _rootAdapter->getSelectStatement();
 }
-
 
 
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
@@ -856,7 +854,7 @@ void MySqlListener::popAdapterStack() {
         LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
                 "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
                 " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status) <<
-                " Are there out of order or unhandled listener exits?"); // todo add some type names
+                " Are there out of order or unhandled listener exits?");
         // might want to throw here...?
     }
 }
@@ -882,20 +880,14 @@ std::shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
 
 
 void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
-// root is pushed by the ctor (and popped by the dtor)
-
-//    // since there's no parent listener on the stack for a root listener, we don't use the template push
-//    // function, we just push the first item onto the stack by hand like so:
-//    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-//    _rootAdapter = pushAdapterStack<NullCBH, RootAdapter>(ctx);
+    // root is pushed by the ctor (and popped by the dtor)
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
 
 void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
-//    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-//    auto rootAdapter = adapterStackTop<RootAdapter>();
-//    popAdapterStack<RootAdapter>();
-//    _selectStatement = rootAdapter->getSelectStatement();
+    // root is pushed by the ctor (and popped by the dtor)
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
 
@@ -912,15 +904,14 @@ ENTER_EXIT_PARENT(TableName)
 ENTER_EXIT_PARENT(FullColumnName)
 ENTER_EXIT_PARENT(FullId)
 ENTER_EXIT_PARENT(Uid)
-ENTER_EXIT_PARENT(DecimalLiteral)
-ENTER_EXIT_PARENT(StringLiteral)
+IGNORED(DecimalLiteral)
+IGNORED(StringLiteral)
 ENTER_EXIT_PARENT(PredicateExpression)
 ENTER_EXIT_PARENT(ExpressionAtomPredicate)
 ENTER_EXIT_PARENT(BinaryComparasionPredicate)
 ENTER_EXIT_PARENT(ConstantExpressionAtom)
 ENTER_EXIT_PARENT(FullColumnNameExpressionAtom)
 ENTER_EXIT_PARENT(ComparisonOperator)
-
 UNHANDLED(TransactionStatement)
 UNHANDLED(ReplicationStatement)
 UNHANDLED(PreparedStatement)
@@ -1332,13 +1323,13 @@ UNHANDLED(UuidSet)
 UNHANDLED(Xid)
 UNHANDLED(XuidStringId)
 UNHANDLED(AuthPlugin)
-UNHANDLED(SimpleId)
+IGNORED(SimpleId)
 UNHANDLED(DottedId)
 UNHANDLED(FileSizeLiteral)
 UNHANDLED(BooleanLiteral)
 UNHANDLED(HexadecimalLiteral)
 UNHANDLED(NullNotnull)
-UNHANDLED(Constant)
+ENTER_EXIT_PARENT(Constant)
 UNHANDLED(StringDataType)
 UNHANDLED(DimensionDataType)
 UNHANDLED(SimpleDataType)
