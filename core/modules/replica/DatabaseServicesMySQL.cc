@@ -446,8 +446,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
     // protocol: try-insert-if-duplicate-then-update.
 
 
-    if (::in(request->type(), {"QSERV::ADD_REPLICA",
-                               "QSERV::REMOVE_REPLICA"})) {
+    if (::in(request->type(), {"QSERV:ADD_REPLICA",
+                               "QSERV:REMOVE_REPLICA"})) {
 
         // Requests which haven't started yet or the ones which aren't associated
         // with any job should be ignored.
@@ -481,14 +481,14 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
                 performance.w_finish_time,
                 performance.c_finish_time);
 
-            if (request->type() == "QSERV::ADD_REPLICA") {
+            if (request->type() == "QSERV:ADD_REPLICA") {
                 auto ptr = safeAssign<AddReplicaQservMgtRequest>(request);
                 _conn->executeInsertQuery(
                     "request_qserv_add_replica",
                     ptr->id(),
                     ptr->databaseFamily(),
                     ptr->chunk());
-            } else if (request->type() == "QSERV::REMOVE_REPLICA") {
+            } else if (request->type() == "QSERV:REMOVE_REPLICA") {
                 auto ptr = safeAssign<RemoveReplicaQservMgtRequest>(request);
                 _conn->executeInsertQuery(
                     "request_qserv_remove_replica",

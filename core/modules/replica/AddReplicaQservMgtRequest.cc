@@ -73,7 +73,7 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 AddReplicaQservMgtRequest::callback_type onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "ADD_REPLICA",
+                        "QSERV:ADD_REPLICA",
                         worker),
         _chunk(chunk),
         _databaseFamily(databaseFamily),
@@ -135,5 +135,5 @@ void AddReplicaQservMgtRequest::notify() {
         _onFinish(shared_from_base<AddReplicaQservMgtRequest>());
     }
 }
-    
+
 }}} // namespace lsst::qserv::replica
