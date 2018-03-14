@@ -97,6 +97,7 @@ public:
      *
      * @param databaseFamily - the name of a database family
      * @param controller     - for launching requests
+     * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - a callback function to be called upon a completion of the job
      * @param bestEffort     - the flag (if set) allowing to proceed with the replication effort
      *                         when some workers fail to report their cunk disposition.
@@ -113,6 +114,7 @@ public:
      */
     static pointer create(std::string const& databaseFamily,
                           Controller::pointer const& controller,
+                          std::string const& parentJobId,
                           callback_type onFinish,
                           bool bestEffort = false,
                           int  priority = 1,
@@ -138,7 +140,7 @@ public:
      * - the method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     * 
+     *
      * - the result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
@@ -169,6 +171,7 @@ protected:
      */
     FixUpJob(std::string const& databaseFamily,
              Controller::pointer const& controller,
+             std::string const& parentJobId,
              callback_type onFinish,
              bool bestEffort,
              int  priority,

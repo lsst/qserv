@@ -342,6 +342,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
             "job",
             job->id(),
             job->controller()->identity().id,
+            _conn->nullIfEmpty(job->parentJobId()),
             job->type(),
             Job::state2string(job->state()),
             Job::state2string(job->extendedState()),

@@ -59,7 +59,7 @@ namespace mysql {
 struct Error
     :   std::runtime_error {
 
-    /// Constructor   
+    /// Constructor
     explicit Error(std::string const& what)
         :   std::runtime_error(what) {
     }
@@ -72,20 +72,20 @@ struct Error
 struct DuplicateKeyError
     :   Error {
 
-    /// Constructor   
+    /// Constructor
     explicit DuplicateKeyError(std::string const& what)
         :   Error(what) {
     }
 };
 
 /**
- * Instances of this exception class are thrown on failed attempts 
+ * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result rest rows.
  */
 struct InvalidTypeError
     :   Error {
 
-    /// Constructor   
+    /// Constructor
     explicit InvalidTypeError(std::string const& what)
         :   Error(what) {
     }
@@ -98,7 +98,7 @@ struct InvalidTypeError
 struct EmptyResultSetError
     :   Error {
 
-    /// Constructor   
+    /// Constructor
     explicit EmptyResultSetError(std::string const& what)
         :   Error(what) {
     }
@@ -122,7 +122,7 @@ struct ConnectionParams {
     std::string password;
 
     /// The name of a database to be set upon the connection
-    std::string database;  
+    std::string database;
 
     /**
      * The factory method will return an instance of this structure initialized
@@ -134,7 +134,7 @@ struct ConnectionParams {
      * Note that the only mandatory parameter in that string is the name of
      * a database. Default values for other parameters (if missing in the string)
      * will be assumed.
-     * 
+     *
      * @param params          - connection parameters packed into a string
      * @param defaultHost     - default value for a host name
      * @param defaultPort     - default port number
@@ -187,10 +187,10 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  * Connection::next().
  *
  * @see Connection::next()
- * 
+ *
  */
 class Row {
-    
+
 public:
 
     /// Class Connection is allowed to initialize the valid content
@@ -205,7 +205,7 @@ public:
 
     /**
      * The default constructor will initialize invalid instances of the class.
-     * 
+     *
      * @note Any attempts to call most (but 'isValid', copy constructor,
      * assignment operator and destrctor) method of objects constracted
      * with this state will throw exception std::logic_error. So, make sure
@@ -221,7 +221,7 @@ public:
 
     /// The Assignment operator
     Row& operator=(Row const& rhs) = default;
- 
+
     /// Destructor
     ~Row() = default;
 
@@ -281,7 +281,7 @@ public:
     bool get(std::string const& columnName, double& value) const;
 
     // Other types
-    
+
     bool get(size_t columnIdx, bool& value) const;
 
     bool get(std::string const& columnName, bool&  value) const;
@@ -313,28 +313,75 @@ private:
 };
 
 /**
+ * An abstraction for SQL strings which than ordinary values of string types
+ * needs to be injected into SQL statements without being processed (excaped
+ * and quoted) as regular string values.
+ */
+class DoNotProcess {
+
+public:
+
+    /// The normal constructor
+    explicit DoNotProcess(std::string const& name_);
+
+    DoNotProcess() = delete;
+    DoNotProcess(DoNotProcess const&) = default;
+    DoNotProcess& operator=(DoNotProcess const&) = default;
+
+    virtual ~DoNotProcess() = default;
+
+public:
+    /// The exact string value as it should appear within queries. It will
+    /// be extracted by the corresponding query generators.
+    std::string name;
+};
+
+/**
+ * An abstraction for SQL keywords which needs to be processed differently
+ * than ordinary values of string types. There won't be escape processing or
+ * extra quotes of any kind added to the function name strings.
+ */
+class Keyword
+    :   public DoNotProcess {
+
+public:
+
+    // Predefined SQL keywords
+
+    /// @return the object representing the corresponding SQL keyword
+    static Keyword const SQL_NULL;
+
+    /// The normal constructor
+    explicit Keyword(std::string const& name_);
+
+    Keyword() = delete;
+    Keyword(Keyword const&) = default;
+    Keyword& operator=(Keyword const&) = default;
+
+    ~Keyword() override = default;
+};
+
+/**
  * An abstraction for SQL functions which needs to be processed differently
  * than ordinary values of string types. There won't be escape processing or
  * extra quotes of any kind added to the function name strings.
  */
-struct Function {
-    
-    /// The full SQL name of the function as it shoudl appear
-    /// within queries. This name will be extracted by the corresponding
-    /// query generators.
-    std::string name;
+class Function
+    :   public DoNotProcess {
 
-    // ---------------------------------------------    
-    // Predefined functions which have no parameters
+public:
 
-    /// Return a reference onto the SQL function object
+    /// @return the object representing the corresponding SQL function
     static Function const LAST_INSERT_ID;
 
-    // -------------------------------------
-    // For others use the normal constructor
-
-    /// The constructor
+    /// The normal constructor
     explicit Function(std::string const& name_);
+
+    Function() = delete;
+    Function(Function const&) = default;
+    Function& operator=(Function const&) = default;
+
+    ~Function() override = default;
 };
 
 /**
@@ -351,7 +398,7 @@ public:
     /**
      * Connect to the MySQL service with the specified parameters and return
      * a pointer to the Connection object.
-     * 
+     *
      * @param connectionParams - the connection parameters
      * @param autoReconnect    - automaticalluy reconnect to the service
      *                           if the dropped connection was discovered.
@@ -377,7 +424,7 @@ public:
     Connection() = delete;
     Connection(Connection const&) = delete;
     Connection& operator=(Connection const&) = delete;
- 
+
     /// Destructor
     ~Connection();
 
@@ -393,12 +440,25 @@ public:
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
     // -------------------------------------------------
-    
+
     template <typename T>
-    T           sqlValue(T const&           val) const { return val; }
-    std::string sqlValue(std::string const& val) const { return "'" + escape(val) + "'"; }
-    std::string sqlValue(char const*        val) const { return sqlValue(std::string(val)); }
-    std::string sqlValue(Function const&    val) const { return val.name; }
+    T           sqlValue(T const&            val) const { return val; }
+    std::string sqlValue(std::string const&  val) const { return "'" + escape(val) + "'"; }
+    std::string sqlValue(char const*         val) const { return sqlValue(std::string(val)); }
+    std::string sqlValue(DoNotProcess const& val) const { return val.name; }
+    std::string sqlValue(Keyword      const& val) const { return val.name; }
+    std::string sqlValue(Function     const& val) const { return val.name; }
+
+    /**
+     * The function replaces the "conditional operator" of C++ in SQL statements
+     * generators. Unlike the standard operator this function allows internal
+     * type switching while producing a result of a specific type.
+     *
+     * @return an object which doesn't require any further processing
+     */
+    DoNotProcess nullIfEmpty(std::string const& val) {
+        return val.empty() ? DoNotProcess(Keyword::SQL_NULL) : DoNotProcess(sqlValue(val));
+    }
 
     // Generator: ([value [, value [, ... ]]])
     // Where values of the string types will be surrounded with single quotes
@@ -423,7 +483,7 @@ public:
         // argument less.
         sqlValues(sql, Fargs...);
     }
-    
+
     /**
      * Turn values of variadic argumenst into a valid SQL representing a set of
      * values to be insert into a table row. Values of string types 'std::string const&'
@@ -501,32 +561,32 @@ public:
     void sqlPackPair(std::string&             sql,
                      std::pair<std::string,T> colVal,
                      Targs...                 Fargs) const {
-    
+
         std::string const& col = colVal.first;
         T const&           val = colVal.second;
-    
+
         std::ostringstream ss;
         ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
         sqlPackPair(sql, Fargs...);
     }
-    
+
 
     /// Recursive variadic function (overloaded for column names gived as char const*)
     template <typename T, typename...Targs>
     void sqlPackPair(std::string&             sql,
                      std::pair<char const*,T> colVal,
                      Targs...                 Fargs) const {
-    
+
         std::string const  col = colVal.first;
         T const&           val = colVal.second;
-    
+
         std::ostringstream ss;
         ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
         sqlPackPair(sql, Fargs...);
     }
-    
+
     /**
      * Pack pairs of column names and their new values into a string which can be
      * further used to form SQL statements of the following kind:
@@ -553,7 +613,7 @@ public:
      * @code
      *
      * @param tableName      - the name of a table
-     * @param whereCondition - the optional condition for selecting rows to be updated 
+     * @param whereCondition - the optional condition for selecting rows to be updated
      * @param Fargs          - the variadic list of values to be inserted
      */
     template <typename...Targs>
@@ -593,7 +653,7 @@ public:
      * values are passed into the method as variadic list of std::pair objects.
      *
      *   UPDATE <table> SET <packed-pairs> [WHERE <condition>]
-     * 
+     *
      * NOTES:
      * - The method allows any number of arguments and any types of value types.
      * - Values types 'std::sting' and 'char*' will be additionally escaped and
@@ -621,7 +681,7 @@ public:
      * @code
      *
      * @param tableName      - the name of a table
-     * @param whereCondition - the optional condition for selecting rows to be updated 
+     * @param whereCondition - the optional condition for selecting rows to be updated
      * @param Fargs          - the variadic list of values to be inserted
      */
     template <typename...Targs>
@@ -686,7 +746,7 @@ public:
      * The effect:
      *
      *   INSERT INTO <table> VALUES (<packed-values>)
-     * 
+     *
      * ATTENTION: the method will *NOT* start a transaction, neither it will
      * commit the one in the end. Transaction management is a responsibility
      * of a caller of the method.
@@ -695,9 +755,9 @@ public:
      *
      * @param tableName - the name of a table
      * @param Fargs     - the variadic list of values to be inserted
-     * 
+     *
      * @return - the smart pointer to self to allow chaned calles.
-     * 
+     *
      * @throws std::invalid_argument - for empty query strings
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
      * @throws Error                 - for any other MySQL specific errors
@@ -726,11 +786,11 @@ public:
      * @see Connection::sqlSimpleUpdateQuery()
      *
      * @param tableName      - the name of a table
-     * @param whereCondition - the optional condition for selecting rows to be updated 
+     * @param whereCondition - the optional condition for selecting rows to be updated
      * @param Fargs          - the variadic list of column-value pairs to be updated
-     * 
+     *
      * @return - the smart pointer to self to allow chaned calles.
-     * 
+     *
      * @throws std::invalid_argument - for empty query strings
      * @throws Error                 - for any MySQL specific errors
      */
@@ -781,7 +841,7 @@ public:
      *         // before proceeding to teh next row, etc.
      *     }
      *   @code
-     * 
+     *
      * @throws std::logic_error - if no SQL statement has ever been executed, or
      *                            if the last query failed.
      *
@@ -842,7 +902,7 @@ public:
         if ((1 == numRows) or not noMoreThanOne) { return isNotNull; }
 
         throw std::logic_error(
-                "DatabaseMySQL::executeSingleValueSelect()  result set has more than 1 row");        
+                "DatabaseMySQL::executeSingleValueSelect()  result set has more than 1 row");
     }
 
 private:
@@ -865,7 +925,7 @@ private:
 
     /**
      * The method is to ensure that the transaction is in teh desired state.
-     * 
+     *
      * @param inTransaction - the desired state of the transaction
      */
     void assertTransaction(bool inTransaction) const;

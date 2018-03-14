@@ -21,7 +21,7 @@
  */
 
 /// replica_job_replicate.cc implements a command-line tool which analyzes
-/// chunk disposition in the specified database family and (if needed) increases 
+/// chunk disposition in the specified database family and (if needed) increases
 /// the number of chunk replicas to the desider level.
 
 // System headers
@@ -74,6 +74,7 @@ bool test() {
                 databaseFamily,
                 numReplicas,
                 controller,
+                std::string(),
                 [] (replica::ReplicateJob::pointer job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
@@ -147,7 +148,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

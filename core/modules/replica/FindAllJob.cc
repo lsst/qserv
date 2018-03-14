@@ -48,6 +48,7 @@ namespace replica {
 
 FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
                                        Controller::pointer const& controller,
+                                       std::string const& parentJobId,
                                        callback_type onFinish,
                                        int  priority,
                                        bool exclusive,
@@ -55,6 +56,7 @@ FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
     return FindAllJob::pointer(
         new FindAllJob(databaseFamily,
                        controller,
+                       parentJobId,
                        onFinish,
                        priority,
                        exclusive,
@@ -63,11 +65,13 @@ FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
 
 FindAllJob::FindAllJob(std::string const& databaseFamily,
                        Controller::pointer const& controller,
+                       std::string const& parentJobId,
                        callback_type onFinish,
                        int  priority,
                        bool exclusive,
                        bool preemptable)
     :   Job(controller,
+            parentJobId,
             "FIND_ALL",
             priority,
             exclusive,
@@ -96,7 +100,7 @@ void FindAllJob::track(bool progressReport,
                        std::ostream& os) const {
 
     if (_state == State::FINISHED) { return; }
- 
+
     util::BlockPost blockPost(1000, 2000);
 
     while (_numFinished < _numLaunched) {
@@ -180,7 +184,7 @@ void FindAllJob::cancelImpl() {
         }
     }
     _requests.clear();
-    
+
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess  = 0;
@@ -207,7 +211,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
     do {
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
         // Update counters and object state if needed.
@@ -229,7 +233,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
                                                    ExtendedState::FAILED);
         }
     } while (false);
-    
+
     // Note that access to the job's public API shoul not be locked while
     // notifying a caller (if the callback function was povided) in order to avoid
     // the circular deadlocks.
@@ -289,7 +293,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
                     worker2numDatabases[worker]++;
                 }
             }
-            
+
             // Crosscheck the number of databases present on each worker
             // against the number of all databases participated within
             // the chunk and decide for which of those workers the 'colocation'
@@ -303,7 +307,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
                     _replicaData.databases[chunk].size() == numDatabases;
             }
         }
-        
+
         // Compute the 'goodness' status of each chunk
 
         for (auto const& chunk2workers: _replicaData.isColocated) {
@@ -312,7 +316,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             for (auto const& worker2collocated: chunk2workers.second) {
                 std::string const& worker      = worker2collocated.first;
                 bool        const  isColocated = worker2collocated.second;
-                
+
                 // Start with the "as good as colocated" assumption, then drill down
                 // into chunk participation in all databases on that worker to see
                 // if this will change.

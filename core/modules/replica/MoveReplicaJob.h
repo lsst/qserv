@@ -104,6 +104,7 @@ public:
      * @param destinationWorker - the name of a destination worker where the output replica will be placed
      * @param purge             - the flag indicating if the input replica should be purged
      * @param controller        - for launching requests
+     * @param parentJobId       - optional identifier of a parent job
      * @param onFinish          - a callback function to be called upon a completion of the job
      * @param priority          - set the desired job priority (larger values
      *                            mean higher priorities). A job with the highest
@@ -115,16 +116,17 @@ public:
      *                            interrupted to give a way to some other job of
      *                            high importancy.
      */
-    static pointer create(std::string const&         databaseFamily,
-                          unsigned int               chunk,
-                          std::string const&         sourceWorker,
-                          std::string const&         destinationWorker,
-                          bool                       purge,
+    static pointer create(std::string const& databaseFamily,
+                          unsigned int chunk,
+                          std::string const& sourceWorker,
+                          std::string const& destinationWorker,
+                          bool purge,
                           Controller::pointer const& controller,
-                          callback_type              onFinish,
-                          int                        priority    = -2,
-                          bool                       exclusive   = false,
-                          bool                       preemptable = true);
+                          std::string const& parentJobId,
+                          callback_type onFinish,
+                          int  priority    = -2,
+                          bool exclusive   = false,
+                          bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
@@ -157,7 +159,7 @@ public:
      * - the method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     * 
+     *
      * - the result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
@@ -186,16 +188,17 @@ protected:
      *
      * @see MoveReplicaJob::create()
      */
-    MoveReplicaJob(std::string const&         databaseFamily,
-                   unsigned int               chunk,
-                   std::string const&         sourceWorker,
-                   std::string const&         destinationWorker,
-                   bool                       purge,
+    MoveReplicaJob(std::string const& databaseFamily,
+                   unsigned int chunk,
+                   std::string const& sourceWorker,
+                   std::string const& destinationWorker,
+                   bool purge,
                    Controller::pointer const& controller,
-                   callback_type              onFinish,
-                   int                        priority,
-                   bool                       exclusive,
-                   bool                       preemptable);
+                   std::string const& parentJobId,
+                   callback_type onFinish,
+                   int  priority,
+                   bool exclusive,
+                   bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.

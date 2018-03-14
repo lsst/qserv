@@ -184,7 +184,8 @@ DROP TABLE IF EXISTS `job` ;
 CREATE TABLE IF NOT EXISTS `job` (
 
   `id`             VARCHAR(255) NOT NULL ,
-  `controller_id`  VARCHAR(255) NOT NULL ,
+  `controller_id`  VARCHAR(255) NOT NULL ,  -- all jobs must be associated with a controller
+  `parent_job_id`  VARCHAR(255)     NULL ,  -- for jobs formming a tree
 
   `type` ENUM ('FIXUP',
                'FIND_ALL',
@@ -204,8 +205,14 @@ CREATE TABLE IF NOT EXISTS `job` (
   PRIMARY KEY (`id`) ,
 
   CONSTRAINT `job_fk_1`
-    FOREIGN KEY (`controller_id` )
-    REFERENCES `controller` (`id` )
+    FOREIGN KEY (`controller_id`)
+    REFERENCES `controller` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE ,
+
+  CONSTRAINT `job_fk_2`
+    FOREIGN KEY (`parent_job_id` )
+    REFERENCES `job` (`id` )
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )

@@ -72,6 +72,7 @@ RebalanceJob::pointer RebalanceJob::create(
                             std::string const& databaseFamily,
                             bool estimateOnly,
                             Controller::pointer const& controller,
+                            std::string const& parentJobId,
                             callback_type onFinish,
                             bool bestEffort,
                             int  priority,
@@ -81,6 +82,7 @@ RebalanceJob::pointer RebalanceJob::create(
         new RebalanceJob(databaseFamily,
                          estimateOnly,
                          controller,
+                         parentJobId,
                          onFinish,
                          bestEffort,
                          priority,
@@ -91,12 +93,14 @@ RebalanceJob::pointer RebalanceJob::create(
 RebalanceJob::RebalanceJob(std::string const& databaseFamily,
                            bool estimateOnly,
                            Controller::pointer const& controller,
+                           std::string const& parentJobId,
                            callback_type onFinish,
                            bool bestEffort,
                            int  priority,
                            bool exclusive,
                            bool preemptable)
     :   Job(controller,
+            parentJobId,
             "REBALANCE",
             priority,
             exclusive,
@@ -177,6 +181,7 @@ void RebalanceJob::startImpl() {
     _findAllJob = FindAllJob::create(
         _databaseFamily,
         _controller,
+        _id,
         [self] (FindAllJob::pointer job) {
             self->onPrecursorJobFinish();
         }
@@ -239,6 +244,7 @@ void RebalanceJob::restart() {
     _findAllJob = FindAllJob::create(
         _databaseFamily,
         _controller,
+        _id,
         [self] (FindAllJob::pointer job) {
             self->onPrecursorJobFinish();
         }
@@ -264,14 +270,14 @@ void RebalanceJob::onPrecursorJobFinish() {
         // This lock will be automatically release beyon this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-    
-        // Ignore the callback if the job was cancelled   
+
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
         // under relaxed condition.
-    
+
         if (not _bestEffort and
             (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
 
@@ -306,7 +312,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                     _replicaData.totalGoodChunks++;
                 }
             }
-        }       
+        }
         if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
 
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
@@ -515,7 +521,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                     // Skip this worker if it already has this chunk
                     if (worker2chunks[destinationWorker].count(chunk)) { continue; }
 
-                    // Found the one. Update 
+                    // Found the one. Update
 
                     _replicaData.plan[chunk][sourceWorker] = destinationWorker;
                     worker2chunks[destinationWorker][chunk] = true;
@@ -527,7 +533,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             }
         }
 
-        // Finish right away if the 'estimate' mode requested.        
+        // Finish right away if the 'estimate' mode requested.
         if (_estimateOnly) {
             setState(State::FINISHED, ExtendedState::SUCCESS);
             break;
@@ -559,7 +565,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             for (auto const& sourceWorkerEntry: chunkEntry.second) {
                 std::string const& sourceWorker      = sourceWorkerEntry.first;
                 std::string const& destinationWorker = sourceWorkerEntry.second;
-                
+
                 auto job = MoveReplicaJob::create(
                     _databaseFamily,
                     chunk,
@@ -567,6 +573,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                     destinationWorker,
                     true,   /* purge */
                     _controller,
+                    _id,
                     [self](MoveReplicaJob::pointer job) {
                         self->onJobFinish(job);
                     }
@@ -591,7 +598,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         }
 
     } while (false);
-    
+
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
     if (_state == State::FINISHED) { notify(); }
@@ -599,10 +606,10 @@ void RebalanceJob::onPrecursorJobFinish() {
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
 
-    std::string  const databaseFamily    = job->databaseFamily(); 
+    std::string  const databaseFamily    = job->databaseFamily();
     unsigned int const chunk             = job->chunk();
-    std::string  const sourceWorker      = job->sourceWorker(); 
-    std::string  const destinationWorker = job->destinationWorker(); 
+    std::string  const sourceWorker      = job->sourceWorker();
+    std::string  const destinationWorker = job->destinationWorker();
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onJobFinish"
@@ -626,7 +633,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
             _controller->serviceProvider()->chunkLocker().release(chunkObj);
         }
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) {
             return;
         }
@@ -634,7 +641,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
         // Update counters and object state if needed.
 
         if (job->extendedState() == Job::ExtendedState::SUCCESS) {
-            
+
             // Copy over data from the job
 
             MoveReplicaJobResult const& replicaData = job->getReplicaData();
@@ -658,7 +665,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
                 _replicaData.deletedChunks[chunk][database][sourceWorker] = replica;
             }
         }
-        
+
         // Evaluate the status of on-going operations to see if the job
         // has finished.
 

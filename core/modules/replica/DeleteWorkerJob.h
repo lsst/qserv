@@ -120,6 +120,7 @@ public:
      * @param permanentDelete - if set to 'true' the worker record will be completelly wiped out
      *                          from the configuration
      * @param controller      - for launching requests
+     * @param parentJobId     - optional identifier of a parent job
      * @param onFinish        - a callback function to be called upon a completion of the job
      * @param bestEffort      - the flag (if set) allowing to proceed with the replication effort
      *                          when some workers fail to report their cunk disposition.
@@ -137,6 +138,7 @@ public:
     static pointer create(std::string const& worker,
                           bool permanentDelete,
                           Controller::pointer const& controller,
+                          std::string const& parentJobId,
                           callback_type onFinish,
                           bool bestEffort = false,
                           int  priority = 2,
@@ -165,7 +167,7 @@ public:
      * - the method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     * 
+     *
      * - the result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
@@ -197,6 +199,7 @@ protected:
     DeleteWorkerJob(std::string const& worker,
                     bool permanentDelete,
                     Controller::pointer const& controller,
+                    std::string const& parentJobId,
                     callback_type onFinish,
                     bool bestEffort,
                     int  priority,
@@ -228,7 +231,7 @@ protected:
      * Beging the actual sequence of actions for removing the worker
      */
     void disableWorker();
-    
+
     /**
      * The calback function to be invoked on a completion of each request.
      *
@@ -239,7 +242,7 @@ protected:
     /**
      * The calback function to be invoked on a completion of a job
      * which harvests chunk disposition accross relevant worker nodes.
-     * 
+     *
      * @param request - a pointer to a job
      */
     void onJobFinish(FindAllJob::pointer const& job);
@@ -247,7 +250,7 @@ protected:
     /**
      * The calback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
-     * 
+     *
      * @param request - a pointer to a job
      */
     void onJobFinish(ReplicateJob::pointer const& job);

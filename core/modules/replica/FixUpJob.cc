@@ -48,6 +48,7 @@ namespace replica {
 
 FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
                                    Controller::pointer const& controller,
+                                   std::string const& parentJobId,
                                    callback_type onFinish,
                                    bool bestEffort,
                                    int  priority,
@@ -56,6 +57,7 @@ FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
     return FixUpJob::pointer(
         new FixUpJob(databaseFamily,
                      controller,
+                     parentJobId,
                      onFinish,
                      bestEffort,
                      priority,
@@ -65,12 +67,14 @@ FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
 
 FixUpJob::FixUpJob(std::string const& databaseFamily,
                    Controller::pointer const& controller,
+                   std::string const& parentJobId,
                    callback_type onFinish,
                    bool bestEffort,
                    int  priority,
                    bool exclusive,
                    bool preemptable)
     :   Job(controller,
+            parentJobId,
             "FIXUP",
             priority,
             exclusive,
@@ -112,7 +116,7 @@ void FixUpJob::track (bool progressReport,
                            errorReport,
                            chunkLocksReport,
                            os);
-    
+
     util::BlockPost blockPost(1000, 2000);
 
     while (_numFinished < _numLaunched) {
@@ -159,6 +163,7 @@ void FixUpJob::startImpl() {
     _findAllJob = FindAllJob::create(
         _databaseFamily,
         _controller,
+        _id,
         [self] (FindAllJob::pointer job) {
             self->onPrecursorJobFinish();
         }
@@ -211,7 +216,7 @@ void FixUpJob::cancelImpl() {
 void FixUpJob::restart() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "restart");
-    
+
     if (_findAllJob or (_numLaunched != _numFinished)) {
         throw std::logic_error("FixUpJob::restart ()  not allowed in this object state");
     }
@@ -241,51 +246,51 @@ void FixUpJob::onPrecursorJobFinish() {
     do {
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
         // under relaxed condition.
-    
+
         if (not _bestEffort and (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
-    
+
         /////////////////////////////////////////////////////////////////
         // Analyse results and prepare a replication plan to fix chunk
         // co-location for under-represented chunks
-    
+
         FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
-    
+
         auto self = shared_from_base<FixUpJob>();
-    
+
         for (auto const& chunk2workers: replicaData.isColocated) {
             unsigned int chunk = chunk2workers.first;
-    
+
             for (auto const& worker2colocated: chunk2workers.second) {
                 std::string const& destinationWorker = worker2colocated.first;
                 bool        const  isColocated       = worker2colocated.second;
-    
+
                 if (isColocated) { continue; }
- 
+
                 // Chunk locking is mandatory. If it's not possible to do this now then
                 // the job will need to make another attempt later.
-        
+
                 if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
                     ++_numFailedLocks;
                     continue;
                 }
-    
+
                 // Iterate over all participating databases, find the ones which aren't
                 // represented on the worker, find a suitable source worker which has
                 // a complete chunk for the database and which (the worker) is not the same
                 // as the current one and submite the replication request.
-    
+
                 for (auto const& database: replicaData.databases.at(chunk)) {
                     if (not replicaData.chunks.at(chunk).at(database).count(destinationWorker)) {
-     
+
                         // Finding a source worker first
                         std::string sourceWorker;
                         for (auto const& worker: replicaData.complete.at(chunk).at(database)) {
@@ -302,10 +307,10 @@ void FixUpJob::onPrecursorJobFinish() {
                             setState(State::FINISHED, ExtendedState::FAILED);
                             break;
                         }
-    
+
                         // Finally, launch the replication request and register it for further
                         // tracking (or cancellation, should the one be requested)
-            
+
                         ReplicationRequest::pointer ptr =
                             _controller->replicate(
                                 destinationWorker,
@@ -320,7 +325,7 @@ void FixUpJob::onPrecursorJobFinish() {
                                 true,   /* allowDuplicate */
                                 _id     /* jobId */
                             );
-            
+
                         _chunk2requests[chunk][destinationWorker][database] = ptr;
                         _requests.push_back(ptr);
                         _numLaunched++;
@@ -353,8 +358,8 @@ void FixUpJob::onPrecursorJobFinish() {
 
 void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
 
-    std::string  const database = request->database(); 
-    std::string  const worker   = request->worker(); 
+    std::string  const database = request->database();
+    std::string  const worker   = request->worker();
     unsigned int const chunk    = request->chunk();
 
     LOGS(_log, LOG_LVL_DEBUG, context()
@@ -366,7 +371,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
     do {
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) {
             release(chunk);
             return;
@@ -382,7 +387,7 @@ void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
         } else {
             _replicaData.workers[worker] = false;
         }
-        
+
         // Make sure the chunk is released if this was the last
         // request in its scope.
         //

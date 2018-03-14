@@ -91,7 +91,7 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
             _fileNamesMismatch = true;
             continue;
         }
- 
+
         ReplicaInfo::FileInfo const& file1 = file2info1[name];
         ReplicaInfo::FileInfo const& file2 = file2info2[name];
 
@@ -165,15 +165,17 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
 
 VerifyJob::pointer VerifyJob::create(
                         Controller::pointer const& controller,
-                        callback_type         onFinish,
+                        std::string const& parentJobId,
+                        callback_type onFinish,
                         callback_type_on_diff onReplicaDifference,
                         size_t maxReplicas,
-                        bool   computeCheckSum,
-                        int    priority,
-                        bool   exclusive,
-                        bool   preemptable) {
+                        bool computeCheckSum,
+                        int  priority,
+                        bool exclusive,
+                        bool preemptable) {
     return VerifyJob::pointer(
         new VerifyJob(controller,
+                      parentJobId,
                       onFinish,
                       onReplicaDifference,
                       maxReplicas,
@@ -184,14 +186,16 @@ VerifyJob::pointer VerifyJob::create(
 }
 
 VerifyJob::VerifyJob(Controller::pointer const& controller,
+                     std::string const& parentJobId,
                      callback_type onFinish,
                      callback_type_on_diff onReplicaDifference,
                      size_t maxReplicas,
-                     bool   computeCheckSum,
-                     int    priority,
-                     bool   exclusive,
-                     bool   preemptable)
+                     bool computeCheckSum,
+                     int  priority,
+                     bool exclusive,
+                     bool preemptable)
     :   Job(controller,
+            parentJobId,
             "VERIFY",
             priority,
             exclusive,
@@ -208,7 +212,7 @@ void VerifyJob::track(bool progressReport,
                       std::ostream& os) const {
 
     if (_state == State::FINISHED) { return; }
- 
+
     util::BlockPost blockPost(1000, 2000);
 
     while (_state != State::FINISHED) {
@@ -236,7 +240,7 @@ void VerifyJob::startImpl() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     auto self = shared_from_base<VerifyJob>();
-    
+
     // Launch the first batch of requests
 
     std::vector<ReplicaInfo> replicas;
@@ -318,11 +322,11 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
     do {
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) return;
-    
+
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-            
+
             // TODO:
             // - check if the replica still exists. It's fine if it's gone
             //   because some jobs may chhose either to purge extra replicas
@@ -330,7 +334,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
             //   here.
 
             ;
-            
+
             // Compare new state of the replica against its older one which was
             // known to the database before this request was launched. Notify
             // a subscriber of any changes (after releasing LOCK_GUARD).
@@ -363,7 +367,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                              << diff);
                 }
             }
-            
+
         } else {
 
             // Report the error and keep going
@@ -408,7 +412,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
 
             if (not _replicas.size()) { setState(State::FINISHED); }
         }
-    
+
     } while (false);
 
     // NOTE: The callbacks are called w/o keeping a lock on the object API
