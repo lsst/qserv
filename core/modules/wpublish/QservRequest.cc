@@ -68,13 +68,21 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
     static std::string const context = "QservRequest::ProcessResponse  ";
 
     if (eInfo.hasError()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << rInfo.eMsg);
 
-        // Notify a subclass on the ubnormal condition
-        onError(rInfo.eMsg);
+        // Copy the argument before sending the upstream notification
+        // Otherwise the current object may get disposed before we even had
+        // a chance to notify XRootD/SSI by calling Finished().
+        std::string const errorStr = rInfo.eMsg;
+
+        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << errorStr);
 
         // Tell XrootD to realease all resources associated with this request
         Finished();
+
+        // Notify a subclass on the ubnormal condition
+        // WARNING: This has to be the last call as the object may get deleted
+        //          downstream.
+        onError(errorStr);
 
         return false;
     }
@@ -93,13 +101,18 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
 
         default:
 
-            // Notify a subclass on the ubnormal condition
-            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " +
-                    std::to_string(rInfo.rType));
+            // Copy the argument before sending the upstream notification
+            // Otherwise the current object may get disposed before we even had
+            // a chance to notify XRootD/SSI by calling Finished().
+            std::string const responseType = std::to_string(rInfo.rType);
 
             // Tell XrootD to realease all resources associated with this request
             Finished();
 
+            // Notify a subclass on the ubnormal condition
+            // WARNING: This has to be the last call as the object may get deleted
+            //          downstream.
+            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " + responseType);
             return false;
     }
 }
@@ -114,14 +127,24 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
 
     if (not eInfo.isOK()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << eInfo.Get()
-             << ", eInfo.GetArg(): " << eInfo.GetArg());
 
-        // Notify a subclass on the ubnormal condition
-        onError(eInfo.Get());
+        // Copy these arguments before sending the upstream notification.
+        // Otherwise the current object may get disposed before we even had
+        // a chance to notify XRootD/SSI by calling Finished().
 
-        // Tell XrootD to realease all resources associated with this request
-        Finished();
+        std::string const errorStr = eInfo.Get();
+        int         const errorNum = eInfo.GetArg();
+
+        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << errorStr
+             << ", eInfo.GetArg(): " << errorNum);
+
+         // Tell XrootD to realease all resources associated with this request
+         Finished();
+
+        // Notify a subclass on the ubnormal condition.
+        // WARNING: This has to be the last call as the object may get deleted
+        //          downstream.
+        onError(errorStr);
 
     } else {
         LOGS(_log, LOG_LVL_DEBUG, context << "blen: " << blen << ", last: " << last);
@@ -130,12 +153,15 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
         _bufSize += blen;
 
         if (last) {
-            // Ask a subclass to process the response
-            proto::FrameBufferView view(_buf, _bufSize);
-            onResponse(view);
 
             // Tell XrootD to realease all resources associated with this request
             Finished();
+
+            // Ask a subclass to process the response
+            // WARNING: This has to be the last call as the object may get deleted
+            //          downstream.
+            proto::FrameBufferView view(_buf, _bufSize);
+            onResponse(view);
 
         } else {
             // Extend the buffer and copy over its previous content into the new location

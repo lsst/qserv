@@ -76,7 +76,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 RemoveReplicaQservMgtRequest::callback_type onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
-                        "REMOVE_REPLICA",
+                        "QSERV:REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
         _databaseFamily(databaseFamily),
@@ -140,5 +140,5 @@ void RemoveReplicaQservMgtRequest::notify() {
         _onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
     }
 }
-    
+
 }}} // namespace lsst::qserv::replica
