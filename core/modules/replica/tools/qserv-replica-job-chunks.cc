@@ -66,7 +66,7 @@ void dump(replica::FindAllJobResult const& replicaData) {
         for (auto const& worker2colocated: chunk2workers.second) {
             std::string const& destinationWorker = worker2colocated.first;
             bool        const  isColocated       = worker2colocated.second;
-            
+
             OUT << "  "
                 << "  chunk: "  << std::setw(6) << chunk
                 << "  worker: " << std::setw(12) << destinationWorker
@@ -98,6 +98,7 @@ bool test() {
             replica::FindAllJob::create(
                 databaseFamily,
                 controller,
+                std::string(),
                 [] (replica::FindAllJob::pointer const& job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
@@ -227,7 +228,7 @@ int main(int argc, const char* const argv[]) {
     // compatible with the version of the headers we compiled against.
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
-    
+
     // Parse command line parameters
     try {
         util::CmdLineParser parser(
@@ -258,7 +259,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     ::test();
     return 0;
 }

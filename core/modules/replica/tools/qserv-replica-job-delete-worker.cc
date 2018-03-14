@@ -76,6 +76,7 @@ bool test() {
                 worker,
                 permanentDelete,
                 controller,
+                std::string(),
                 [] (replica::DeleteWorkerJob::pointer job) {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
@@ -88,7 +89,7 @@ bool test() {
         job->track(progressReport,
                    errorReport,
                    chunkLocksReport,
-                   std::cout);    
+                   std::cout);
 
         replica::DeleteWorkerJobResult const& jobReport = job->getReplicaData();
 
@@ -102,22 +103,22 @@ bool test() {
 
         for (auto const& databaseFamilyEntry: jobReport.chunks) {
             for (auto const& chunkEntry: databaseFamilyEntry.second) {
-    
+
                 unsigned int const& chunk = chunkEntry.first;
                 for (auto const& databaseEntry: chunkEntry.second) {
-    
+
                     std::string const& database = databaseEntry.first;
-    
+
                     std::cout
                         << " "   << std::setw(8) << chunk
                         << " | " << std::setw(8) << database
                         << " | ";
-    
+
                     for (auto const& replicaEntry: databaseEntry.second) {
-    
+
                         std::string          const& worker = replicaEntry.first;
                         replica::ReplicaInfo const& info   = replicaEntry.second;
-    
+
                         std::cout << worker << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                     }
                     std::cout << "\n";
@@ -130,7 +131,7 @@ bool test() {
 
         /////////////////////////////////////////////////
         // Orpah chunks left as a result of the operation
- 
+
         std::cout
             << "ORPHAN CHUNKS\n"
             << "-------+--------------------\n";
@@ -143,7 +144,7 @@ bool test() {
                     << " " << std::setw(6) << chunk << " | " << database << "\n";
             }
         }
-        
+
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
 
@@ -201,7 +202,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

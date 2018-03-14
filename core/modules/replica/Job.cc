@@ -75,12 +75,14 @@ Job::state2string(ExtendedState state) {
 }
 
 Job::Job(Controller::pointer const& controller,
-         std::string const&         type,
-         int                        priority,
-         bool                       exclusive,
-         bool                       preemptable)
+         std::string const& parentJobId,
+         std::string const& type,
+         int  priority,
+         bool exclusive,
+         bool preemptable)
     :   _id(Generators::uniqueId()),
         _controller(controller),
+        _parentJobId(parentJobId),
         _type(type),
         _priority(priority),
         _exclusive(exclusive),

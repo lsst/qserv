@@ -138,6 +138,7 @@ public:
      *
      * @param databaseFamily - the name of a database family
      * @param controller     - for launching requests
+     * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - a callback function to be called upon a completion of
      *                         the job
      * @param priority       - set the desired job priority (larger values
@@ -152,6 +153,7 @@ public:
      */
     static pointer create(std::string const& databaseFamily,
                           Controller::pointer const& controller,
+                          std::string const& parentJobId,
                           callback_type onFinish,
                           int  priority = 0,
                           bool exclusive = false,
@@ -176,7 +178,7 @@ public:
      * - the method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     * 
+     *
      * - the result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
@@ -207,6 +209,7 @@ protected:
      */
     FindAllJob(std::string const& databaseFamily,
                Controller::pointer const& controller,
+               std::string const& parentJobId,
                callback_type onFinish,
                int  priority,
                bool exclusive,

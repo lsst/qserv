@@ -73,6 +73,7 @@ bool run() {
         auto job =
             replica::VerifyJob::create (
                 controller,
+                std::string(),
                 [] (replica::VerifyJob::pointer const& job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
@@ -131,7 +132,7 @@ int main(int argc, const char* const argv[]) {
     // compatible with the version of the headers we compiled against.
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
-    
+
     // Parse command line parameters
     try {
         util::CmdLineParser parser(
@@ -165,7 +166,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     ::run ();
     return 0;
 }

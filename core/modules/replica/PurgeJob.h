@@ -96,6 +96,7 @@ public:
      *                         for each chunk. If the parameter is set to 0 then the corresponding
      *                         configuration option for the database family will be assumed.
      * @param controller     - for launching requests
+     * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - a callback function to be called upon a completion of the job
      * @param bestEffort     - the flag (if set) allowing to proceed with the replication effort
      *                         when some workers fail to report their cunk disposition.
@@ -110,14 +111,15 @@ public:
      *                         interrupted to give a way to some other job of
      *                         high importancy.
      */
-    static pointer create(std::string const&         databaseFamily,
-                          unsigned int               numReplicas,
+    static pointer create(std::string const& databaseFamily,
+                          unsigned int numReplicas,
                           Controller::pointer const& controller,
-                          callback_type              onFinish,
-                          bool                       bestEffort  = false,
-                          int                        priority    = -1,
-                          bool                       exclusive   = false,
-                          bool                       preemptable = true);
+                          std::string const& parentJobId,
+                          callback_type onFinish,
+                          bool bestEffort  = false,
+                          int  priority    = -1,
+                          bool exclusive   = false,
+                          bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
@@ -142,7 +144,7 @@ public:
      * - the method should be invoked only after the job has finished (primary
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     * 
+     *
      * - the result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
@@ -171,14 +173,15 @@ protected:
      *
      * @see PurgeJob::create()
      */
-    PurgeJob(std::string const&         databaseFamily,
-             unsigned int               numReplicas,
+    PurgeJob(std::string const& databaseFamily,
+             unsigned int numReplicas,
              Controller::pointer const& controller,
-             callback_type              onFinish,
-             bool                       bestEffort,
-             int                        priority,
-             bool                       exclusive,
-             bool                       preemptable);
+             std::string const& parentJobId,
+             callback_type onFinish,
+             bool bestEffort,
+             int  priority,
+             bool exclusive,
+             bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.

@@ -113,7 +113,7 @@ void JobController::run() {
     if (not isRunning()) {
 
         // Run the controller in its own thread.
-        
+
         _controller->run();
 
         JobController::pointer self = shared_from_this();
@@ -121,10 +121,10 @@ void JobController::run() {
         _thread.reset(
             new std::thread(
                 [self] () {
-        
+
                     // This will prevent the scheduler from existing unless
                     // instructed to do so
-                    
+
                     util::BlockPost blockPost(0, 1000); // values of parameters are meaningless
                                                         // in this context because the object will
                                                         // be always used to wait for a specific interval
@@ -176,7 +176,7 @@ void JobController::stop() {
 
     // LOCK_GUARD  (disabled)
 
-    // Tell the thread to finish    
+    // Tell the thread to finish
     _stop = true;
 
     // Join with the thread before clearning up the pointer
@@ -207,6 +207,7 @@ FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
         FindAllJob::create(
             databaseFamily,
             _controller,
+            std::string(),
             [self] (FindAllJob::pointer job) {
                 self->onFinish (job);
             },
@@ -220,7 +221,7 @@ FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<FindAllJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<FindAllJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -249,6 +250,7 @@ FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
         FixUpJob::create(
             databaseFamily,
             _controller,
+            std::string(),
             [self] (FixUpJob::pointer job) {
                 self->onFinish (job);
             },
@@ -262,7 +264,7 @@ FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<FixUpJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<FixUpJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -281,7 +283,7 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
                                        int  priority,
                                        bool exclusive,
                                        bool preemptable) {
-    
+
     LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
 
     JobController::pointer self = shared_from_this();
@@ -291,6 +293,7 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
             databaseFamily,
             numReplicas,
             _controller,
+            std::string(),
             [self] (PurgeJob::pointer job) {
                 self->onFinish (job);
             },
@@ -304,7 +307,7 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<PurgeJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<PurgeJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -323,7 +326,7 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
                                                int  priority,
                                                bool exclusive,
                                                bool preemptable) {
-    
+
     LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
 
     LOCK_GUARD;
@@ -335,6 +338,7 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
             databaseFamily,
             numReplicas,
             _controller,
+            std::string(),
             [self] (ReplicateJob::pointer job) {
                 self->onFinish (job);
             },
@@ -348,7 +352,7 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<ReplicateJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<ReplicateJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -376,6 +380,7 @@ VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
     VerifyJob::pointer job =
         VerifyJob::create(
             _controller,
+            std::string(),
             [self] (VerifyJob::pointer job) {
                 self->onFinish (job);
             },
@@ -390,7 +395,7 @@ VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<VerifyJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<VerifyJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -422,6 +427,7 @@ DeleteWorkerJob::pointer JobController::deleteWorker(
             worker,
             permanentDelete,
             _controller,
+            std::string(),
             [self] (DeleteWorkerJob::pointer job) {
                 self->onFinish (job);
             },
@@ -435,7 +441,7 @@ DeleteWorkerJob::pointer JobController::deleteWorker(
     // be automatically removed from the Registry.
 
     _registry[job->id()] =
-        std::make_shared<JobWrapperImpl<DeleteWorkerJob>>(job, onFinish);  
+        std::make_shared<JobWrapperImpl<DeleteWorkerJob>>(job, onFinish);
 
     // Initiate the job
     //
@@ -455,7 +461,7 @@ void JobController::runQueued() {
     LOGS(_log, LOG_LVL_DEBUG, "JobController  runQueued");
 
     LOCK_GUARD;
-    
+
     // Go through the input queue and evaluate which jobs should star
     // now based on their scheduling criteria and on the status of
     // the in-progres jobs (if any).
@@ -474,7 +480,7 @@ void JobController::runScheduled() {
     //       when calling mehods which are called later.
     {
         LOCK_GUARD;
-    
+
         // TODO:
         ;
     }

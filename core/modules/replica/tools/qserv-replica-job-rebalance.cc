@@ -148,6 +148,7 @@ bool test () {
                 databaseFamily,
                 estimateOnly,
                 controller,
+                std::string(),
                 [] (replica::RebalanceJob::pointer job) {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
@@ -159,11 +160,11 @@ bool test () {
         job->track(progressReport,
                    errorReport,
                    chunkLocksReport,
-                   std::cout);    
+                   std::cout);
 
         //////////////////////////////
         // Analyse and display results
-    
+
         replica::RebalanceJobResult const& replicaData = job->getReplicaData();
 
         printPlan(replicaData);
@@ -225,7 +226,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

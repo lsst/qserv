@@ -21,7 +21,7 @@
  */
 
 /// replica_job_purge.cc implements a command-line tool which analyzes
-/// chunk disposition in the specified database family and (if needed) reduces 
+/// chunk disposition in the specified database family and (if needed) reduces
 /// the number of chunk replicas to the desired level.
 
 // System headers
@@ -77,6 +77,7 @@ bool test() {
                 databaseFamily,
                 numReplicas,
                 controller,
+                std::string(),
                 [] (replica::PurgeJob::pointer job) {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
@@ -89,7 +90,7 @@ bool test() {
         job->track(progressReport,
                    errorReport,
                    chunkLocksReport,
-                   std::cout);    
+                   std::cout);
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -150,7 +151,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

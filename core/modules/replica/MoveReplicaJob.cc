@@ -71,16 +71,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-MoveReplicaJob::pointer MoveReplicaJob::create(std::string const&         databaseFamily,
-                                               unsigned int               chunk,
-                                               std::string const&         sourceWorker,
-                                               std::string const&         destinationWorker,
-                                               bool                       purge,
+MoveReplicaJob::pointer MoveReplicaJob::create(std::string const& databaseFamily,
+                                               unsigned int chunk,
+                                               std::string const& sourceWorker,
+                                               std::string const& destinationWorker,
+                                               bool purge,
                                                Controller::pointer const& controller,
-                                               callback_type              onFinish,
-                                               int                        priority,
-                                               bool                       exclusive,
-                                               bool                       preemptable) {
+                                               std::string const& parentJobId,
+                                               callback_type onFinish,
+                                               int  priority,
+                                               bool exclusive,
+                                               bool preemptable) {
     return MoveReplicaJob::pointer(
         new MoveReplicaJob(databaseFamily,
                            chunk,
@@ -88,23 +89,26 @@ MoveReplicaJob::pointer MoveReplicaJob::create(std::string const&         databa
                            destinationWorker,
                            purge,
                            controller,
+                           parentJobId,
                            onFinish,
                            priority,
                            exclusive,
                            preemptable));
 }
 
-MoveReplicaJob::MoveReplicaJob(std::string const&         databaseFamily,
-                               unsigned int               chunk,
-                               std::string const&         sourceWorker,
-                               std::string const&         destinationWorker,
-                               bool                       purge,
+MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
+                               unsigned int chunk,
+                               std::string const& sourceWorker,
+                               std::string const& destinationWorker,
+                               bool purge,
                                Controller::pointer const& controller,
-                               callback_type              onFinish,
-                               int                        priority,
-                               bool                       exclusive,
-                               bool                       preemptable)
+                               std::string const& parentJobId,
+                               callback_type onFinish,
+                               int  priority,
+                               bool exclusive,
+                               bool preemptable)
     :   Job(controller,
+            parentJobId,
             "MOVE_REPLICA",
             priority,
             exclusive,

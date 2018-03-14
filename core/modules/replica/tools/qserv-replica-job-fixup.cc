@@ -76,6 +76,7 @@ bool test() {
             replica::FixUpJob::create(
                 databaseFamily,
                 controller,
+                std::string(),
                 [] (replica::FixUpJob::pointer job) {
                     // Not using the callback because the completion of
                     // the request will be caught by the tracker below
@@ -91,7 +92,7 @@ bool test() {
 
         //////////////////////////////
         // Analyse and display results
-    
+
         replica::FixUpJobResult const& replicaData = job->getReplicaData();
 
         std::cout
@@ -190,7 +191,7 @@ int main(int argc, const char* const argv[]) {
     // compatible with the version of the headers we compiled against.
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
-    
+
     // Parse command line parameters
     try {
         util::CmdLineParser parser(
@@ -221,7 +222,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     ::test();
     return 0;
 }

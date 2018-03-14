@@ -119,40 +119,43 @@ public:
     /// Destructor
     virtual ~Job() = default;
 
-    /// Return a reference to the Controller,
+    /// @return a reference to the Controller,
     Controller::pointer controller() { return _controller; }
 
-    /// Return a string representing a type of a job.
+    /// @return the optional identifier of a parent job
+    std::string const& parentJobId() const { return _parentJobId; }
+
+    /// @return a string representing a type of a job.
     std::string const& type() const { return _type; }
 
-    /// Return a unique identifier of the job
+    /// @return a unique identifier of the job
     std::string const& id() const { return _id; }
 
-    /// Return the priority of the job
+    /// @return the priority of the job
     int priority() const { return _priority; }
 
-    /// Return the flag indicating of this job can't be run simultaneously
+    /// @return the flag indicating of this job can't be run simultaneously
     /// along with other jobs.
     bool exclusive() const { return _exclusive; }
 
-    /// Retun 'true' if the job is allowed to be interrupted by some
+    /// @return 'true' if the job is allowed to be interrupted by some
     /// by other jobs.
     bool preemptable() const { return _preemptable; }
 
-    /// Return the primary status of the job
+    /// @return the primary status of the job
     State state() const { return _state; }
 
     /// Return the extended state of the job when it's finished
     ExtendedState extendedState() const { return _extendedState; }
 
     /**
-     * Return a start time (milliseconds since UNIX Epoch) or 0 before method start()
+     * @return a start time (milliseconds since UNIX Epoch) or 0 before method start()
      * is called to actually begin wexecuting the job.
      */
     uint64_t beginTime() const { return _beginTime; }
 
     /**
-     * Return the end time (milliseconds since UNIX Epoch) or 0 before job
+     * @return the end time (milliseconds since UNIX Epoch) or 0 before job
      * is finished.
      */
     uint64_t endTime() const { return _endTime; }
@@ -205,6 +208,7 @@ protected:
      * Construct the request with the pointer to the services provider.
      *
      * @param controller  - for launching requests
+     * @param parentJobId - optional identifier of a parent job
      * @param type        - its type name
      * @param priority    - set the desired job priority (larger values
      *                      mean higher priorities). A job with the highest
@@ -217,6 +221,7 @@ protected:
      *                      high importancy.
      */
     Job(Controller::pointer const& controller,
+        std::string const& parentJobId,
         std::string const& type,
         int  priority,
         bool exclusive,
@@ -308,6 +313,9 @@ protected:
 
     /// The Controller for performing requests
     Controller::pointer _controller;
+
+    /// The unique identifier of the parent job
+    std::string _parentJobId;
 
     /// The type of the job
     std::string _type;

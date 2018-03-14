@@ -56,7 +56,7 @@ namespace replica {
  * of the replica diffences could be also reported.
  */
 class ReplicaDiff {
-    
+
 public:
 
     /// Default constructor create an object which exhibits "no difference"
@@ -71,7 +71,7 @@ public:
      */
     ReplicaDiff (ReplicaInfo const& replica1,
                  ReplicaInfo const& replica2);
-    
+
     /// Copy constructor
     ReplicaDiff (ReplicaDiff const&) = default;
 
@@ -126,7 +126,7 @@ private:
     bool _fileSizeMismatch;
     bool _fileCsMismatch;
     bool _fileMtimeMismatch;
-    
+
     mutable std::string _flags;     // computed firts time requested
 };
 
@@ -141,7 +141,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
   *   - file sizes
   *   - modification timestamps of files
   *   - control/check sums of files constituiting the replicas
-  * 
+  *
   * Any differences will get reported to a subscriber via a specific callback
   * function. The new status of a replica will be also recorded witin the database.
   */
@@ -167,6 +167,7 @@ public:
      * low-level pointers).
      *
      * @param controller          - for launching requests
+     * @param parentJobId         - optional identifier of a parent job
      * @param onFinish            - a callback function to be called upon a completion of the job
      @ @param onReplicaDifference - a callback function to be called when two replicas won't match
      * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
@@ -184,13 +185,14 @@ public:
      *                              high importancy.
      */
     static pointer create (Controller::pointer const& controller,
-                           callback_type              onFinish,
-                           callback_type_on_diff      onReplicaDifference,
-                           size_t                     maxReplicas=0,
-                           bool                       computeCheckSum=false,
-                           int                        priority    = 0,
-                           bool                       exclusive   = false,
-                           bool                       preemptable = true);
+                           std::string const& parentJobId,
+                           callback_type onFinish,
+                           callback_type_on_diff onReplicaDifference,
+                           size_t maxReplicas = 0,
+                           bool computeCheckSum=false,
+                           int  priority = 0,
+                           bool exclusive = false,
+                           bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
@@ -222,13 +224,14 @@ protected:
      * @see VerifyJob::create()
      */
     VerifyJob (Controller::pointer const& controller,
-               callback_type         onFinish,
+               std::string const& parentJobId,
+               callback_type onFinish,
                callback_type_on_diff onReplicaDifference,
                size_t maxReplicas,
-               bool   computeCheckSum,
-               int    priority,
-               bool   exclusive,
-               bool   preemptable);
+               bool computeCheckSum,
+               int  priority,
+               bool exclusive,
+               bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
@@ -269,7 +272,7 @@ protected:
      */
     bool nextReplicas(std::vector<ReplicaInfo>& replicas,
                       size_t numReplicas);
-    
+
 protected:
 
     /// Client-defined function to be called upon the completion of the job
@@ -287,7 +290,7 @@ protected:
     /// The current (last) batch if replicas which are being inspected.
     /// The replicas are registered by the corresponding request IDs.
     std::map<std::string, ReplicaInfo> _replicas;
- 
+
     /// The current (last) batch of requests registered by their IDs
     std::map<std::string, FindRequest::pointer> _requests;
 };

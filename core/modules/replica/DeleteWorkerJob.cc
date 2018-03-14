@@ -93,7 +93,7 @@ void track(std::list<typename T::pointer> const& collection,
         size_t const launched = std::get<0>(t);
         size_t const finished = std::get<1>(t);
         size_t const success  = std::get<1>(t);
-            
+
         if (progressReport) {
             os  << "DeleteWorkerJob::track()  " << scope << "  "
                 << "launched: " << launched << ", "
@@ -114,6 +114,7 @@ namespace replica {
 DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
                                                  bool permanentDelete,
                                                  Controller::pointer const& controller,
+                                                 std::string const& parentJobId,
                                                  callback_type onFinish,
                                                  bool bestEffort,
                                                  int  priority,
@@ -123,6 +124,7 @@ DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
         new DeleteWorkerJob(worker,
                             permanentDelete,
                             controller,
+                            parentJobId,
                             onFinish,
                             bestEffort,
                             priority,
@@ -133,12 +135,14 @@ DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
 DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
                                  bool permanentDelete,
                                  Controller::pointer const& controller,
+                                 std::string const& parentJobId,
                                  callback_type onFinish,
                                  bool bestEffort,
                                  int  priority,
                                  bool exclusive,
                                  bool preemptable)
     :   Job(controller,
+            parentJobId,
             "DELETE_WORKER",
             priority,
             exclusive,
@@ -168,7 +172,7 @@ void DeleteWorkerJob::track(bool progressReport,
                             std::ostream& os) const {
 
     if (_state == State::FINISHED) { return; }
- 
+
     ::track<FindAllRequest>(_findAllRequests, "_findAllRequests", progressReport, os);
     if (errorReport) {
 
@@ -215,7 +219,7 @@ void DeleteWorkerJob::startImpl() {
     }
     if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
         if (statusRequest->getServiceState().state == ServiceState::State::RUNNING) {
-            
+
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfeering with the current job's requests
             ServiceDrainRequest::pointer const drainRequest =
@@ -231,7 +235,7 @@ void DeleteWorkerJob::startImpl() {
             }
             if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
                 if (drainRequest->getServiceState().state == ServiceState::State::RUNNING) {
-                    
+
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
                     for (auto const& database: _controller->serviceProvider()->config()->databases()) {
@@ -256,7 +260,7 @@ void DeleteWorkerJob::startImpl() {
             }
         }
     }
-    
+
     // Since the worker is not available then go straight to a point
     // at which we'll be changing its state within the replication system
     disableWorker();
@@ -317,10 +321,10 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
         _numFinished++;
 
-        // Ignore the callback if the job was cancelled   
+        // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) {
             return;
-        }    
+        }
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
             _numSuccess++;
         }
@@ -362,6 +366,7 @@ DeleteWorkerJob::disableWorker() {
         FindAllJob::pointer job = FindAllJob::create(
             databaseFamily,
             _controller,
+            _id,
             [self] (FindAllJob::pointer job) {
                 self->onJobFinish(job);
             }
@@ -389,30 +394,31 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
 
         // Do not proceed with the rest unless running the jobs
         // under relaxed condition.
-    
+
         if (not _bestEffort and (job->extendedState() != ExtendedState::SUCCESS)) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
         if (job->extendedState() == ExtendedState::SUCCESS) {
             _numSuccess++;
-        }        
+        }
         if (_numFinished == _numLaunched) {
-    
+
             // Launch chained jobs to ensure the minimal replication level
             // which might be affected by the worker removal.
-    
+
             _numLaunched = 0;
             _numFinished = 0;
             _numSuccess  = 0;
-    
+
             auto self = shared_from_base<DeleteWorkerJob>();
-    
+
             for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
                 ReplicateJob::pointer const job = ReplicateJob::create(
                     databaseFamily,
                     0,  /* numReplicas -- pull from Configuration */
                     _controller,
+                    _id,
                     [self] (ReplicateJob::pointer job) {
                         self->onJobFinish(job);
                     }
@@ -424,7 +430,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
         }
 
     } while (false);
-    
+
     // Note that access to the job's public API should not be locked while
     // notifying a caller (if the callback function was povided) in order to avoid
     // the circular deadlocks.
@@ -451,12 +457,12 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
 
         // Do not proceed with the rest unless running the jobs
         // under relaxed condition.
-    
+
         if (!_bestEffort && (job->extendedState() != ExtendedState::SUCCESS)) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
-    
+
         if (job->extendedState() == ExtendedState::SUCCESS) {
             _numSuccess++;
 
@@ -465,7 +471,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
 
             // Merge results into the current job's result object
             _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
-        }    
+        }
         if (_numFinished == _numLaunched) {
 
             // Construct a collection of orphan replicas if possible
@@ -487,7 +493,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
                     }
                 }
             }
-            
+
             // TODO: if the list of orphan chunks is not empty then consider bringing
             // back the disabled worker (if the service still responds) in the read-only
             // mode and try using it for redistributing those chunks accross the cluster.
@@ -506,7 +512,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
         }
 
     } while (false);
-    
+
     // Note that access to the job's public API should not be locked while
     // notifying a caller (if the callback function was povided) in order to avoid
     // the circular deadlocks.

@@ -140,7 +140,7 @@ ConnectionParams ConnectionParams::parse(std::string const& params,
                 params + "'");
     }
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
-    
+
     return connectionParams;
 }
 
@@ -216,7 +216,7 @@ bool Row::get(size_t columnIdx, bool& value) const {
     return false;
 }
 
-bool Row::get(std::string const& columnName, bool&  value) const {    
+bool Row::get(std::string const& columnName, bool&  value) const {
     uint8_t number;
     if (::getAsNumber(*this, columnName, number)) {
         value = (bool) number;
@@ -254,6 +254,24 @@ Row::Cell const& Row::getDataCell(std::string const& columnName) const {
     return _index2cell.at(_name2index.at(columnName));
 }
 
+//////////////////////////////////////////////////
+//                DoNotProcess                  //
+//////////////////////////////////////////////////
+
+DoNotProcess::DoNotProcess(std::string const& name_)
+    :   name(name_) {
+}
+
+/////////////////////////////////////////////
+//                Keyword                  //
+/////////////////////////////////////////////
+
+Keyword const Keyword::SQL_NULL {"NULL"};
+
+Keyword::Keyword(std::string const& name_)
+    :   DoNotProcess(name_) {
+}
+
 /////////////////////////////////////////////
 //                Function                 //
 /////////////////////////////////////////////
@@ -261,7 +279,7 @@ Row::Cell const& Row::getDataCell(std::string const& columnName) const {
 Function const Function::LAST_INSERT_ID {"LAST_INSERT_ID()"};
 
 Function::Function(std::string const& name_)
-    :   name(name_) {
+    :   DoNotProcess(name_) {
 }
 
 ///////////////////////////////////////////////
@@ -384,7 +402,7 @@ Connection::pointer Connection::execute(std::string const& query) {
             default:           throw Error(msg);
         }
     }
-    
+
     // Fetch result set for queries which return the one
 
     if (mysql_field_count(_mysql)) {
@@ -456,7 +474,7 @@ void Connection::connect() {
     if (not (_mysql = mysql_init(_mysql))) {
         throw Error(context + "mysql_init failed");
     }
-    
+
     // Allow automatic reconnect if requested
     if (_autoReconnect) {
         my_bool reconnect = 0;
