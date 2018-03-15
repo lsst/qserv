@@ -194,7 +194,9 @@ CREATE TABLE IF NOT EXISTS `job` (
                'REBALANCE',
                'DELETE_WORKER',
                'ADD_WORKER',
-               'MOVE_REPLICA') NOT NULL ,
+               'MOVE_REPLICA',
+               'CREATE_REPLICA',
+               'DELETE_REPLICA') NOT NULL ,
 
   `state`      VARCHAR(255) NOT NULL ,
   `ext_state`  VARCHAR(255) DEFAULT '' ,
@@ -407,6 +409,55 @@ CREATE TABLE IF NOT EXISTS `job_move_replica` (
 )
 ENGINE = InnoDB;
 
+
+-- -----------------------------------------------------
+-- Table `job_create_replica`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'CREATE_REPLICA' jobs
+--
+DROP TABLE IF EXISTS `job_create_replica` ;
+
+CREATE TABLE IF NOT EXISTS `job_create_replica` (
+
+  `job_id`  VARCHAR(255) NOT NULL ,
+
+  `database_family`    VARCHAR(255) NOT NULL ,
+  `chunk`              INT UNSIGNED NOT NULL ,
+  `source_worker`      VARCHAR(255) NOT NULL ,
+  `destination_worker` VARCHAR(255) NOT NULL ,
+
+  CONSTRAINT `job_create_replica_fk_1`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+-- -----------------------------------------------------
+-- Table `job_delete_replica`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'DELETE_REPLICA' jobs
+--
+DROP TABLE IF EXISTS `job_delete_replica` ;
+
+CREATE TABLE IF NOT EXISTS `job_delete_replica` (
+
+  `job_id`  VARCHAR(255) NOT NULL ,
+
+  `database_family` VARCHAR(255) NOT NULL ,
+  `chunk`           INT UNSIGNED NOT NULL ,
+  `worker`          VARCHAR(255) NOT NULL ,
+
+  CONSTRAINT `job_delete_replica_fk_1`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- Table `request`

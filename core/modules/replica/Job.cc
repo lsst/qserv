@@ -106,10 +106,16 @@ void Job::start() {
         LOCK_GUARD;
 
         assertState(State::CREATED);
-        startImpl();
 
+        // IMPORTANT: update these before proceeding to the implementation
+        // because the later may create children jobs whose performance
+        // counters must be newer, and whose saved state within the database
+        // may depend on this job's state.
         _beginTime = PerformanceUtils::now();
         _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+
+        // Delegate the rest to the specific implementation
+        startImpl();
 
         // Allow the job to be fully accomplished right away
         if (_state == State::FINISHED) { break; }

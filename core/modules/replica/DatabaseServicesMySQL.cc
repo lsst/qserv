@@ -34,6 +34,8 @@
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/CreateReplicaJob.h"
+#include "replica/DeleteReplicaJob.h"
 #include "replica/DeleteRequest.h"
 #include "replica/DeleteWorkerJob.h"
 #include "replica/FindAllJob.h"
@@ -330,6 +332,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                                "REBALANCE",
                                "DELETE_WORKER",
                                "ADD_WORKER",
+                               "CREATE_REPLICA",
+                               "DELETE_REPLICA",
                                "MOVE_REPLICA"})) { return; }
 
     // The algorithm will first try the INSERT query. If a row with the same
@@ -407,6 +411,25 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 ptr->sourceWorker(),
                 ptr->destinationWorker(),
                 ptr->purge() ? 1 : 0);
+
+        } else if ("CREATE_REPLICA" == job->type()) {
+            auto ptr = safeAssign<CreateReplicaJob>(job);
+            _conn->executeInsertQuery(
+                "job_create_replica",
+                ptr->id(),
+                ptr->databaseFamily(),
+                ptr->chunk(),
+                ptr->sourceWorker(),
+                ptr->destinationWorker());
+
+        } else if ("DELETE_REPLICA" == job->type()) {
+            auto ptr = safeAssign<DeleteReplicaJob>(job);
+            _conn->executeInsertQuery(
+                "job_delete_replica",
+                ptr->id(),
+                ptr->databaseFamily(),
+                ptr->chunk(),
+                ptr->worker());
         }
         _conn->commit ();
 
