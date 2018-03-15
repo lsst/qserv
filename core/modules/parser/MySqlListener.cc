@@ -21,9 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "MySqlListener.h"
+#include "parser/MySqlListener.h"
+
+#include <cxxabi.h>
+#include <sstream>
+#include <vector>
 
 #include "lsst/log/Log.h"
+
+#include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
 #include "query/BoolTerm.h"
@@ -36,11 +42,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
-#include "SelectListFactory.h"
 
-#include <cxxabi.h>
-#include <sstream>
-#include <vector>
 
 using namespace std;
 
