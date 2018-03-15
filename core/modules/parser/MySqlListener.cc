@@ -635,7 +635,7 @@ public:
         // the query classes use the integer token types instead of some other system. For now this if/else
         // block allows us to go from the token string to the SqlSQL2Tokens type defined by the antlr2/3
         // grammar and used by the query objects.
-        if (_comparison.compare(string("=")) == 0) {
+        if ("=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
         } else {
             ostringstream msg;
