@@ -23,14 +23,15 @@
 #ifndef LSST_QSERV_PARSER_MYSQLLISTENER_H
 #define LSST_QSERV_PARSER_MYSQLLISTENER_H
 
-#include "parser/MySqlParser.h" // included for contexts. They *could* be forward declared.
-#include "parser/MySqlParserBaseListener.h"
-
 #include <memory>
 #include <stack>
 
+#include "parser/MySqlParser.h" // included for contexts. They *could* be forward declared.
+#include "parser/MySqlParserBaseListener.h"
+
+
 namespace antlr4 {
-    class ParserRuleContext;
+class ParserRuleContext;
 }
 
 namespace lsst {
@@ -56,17 +57,10 @@ public:
     // handling for it set up yet.
     // Any code that calls `listen` on this function should catch this exception, log the `what` message,
     // and return as though no query was entered.
-    class adapter_order_error : public std::exception {
+    class adapter_order_error : public std::runtime_error {
     public:
-        explicit adapter_order_error(std::string msg)
-        : _msg(msg) {}
-
-        virtual const char * what() const noexcept override {
-            return _msg.c_str();
-        }
-
-    private:
-        std::string _msg;
+        explicit adapter_order_error(const std::string& msg)
+        : std::runtime_error(msg) {}
     };
 
     // Thrown in the case of unexpected events during the parse. (might want to inherit from runtime error?)
