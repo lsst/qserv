@@ -54,8 +54,6 @@ class CzarConfig;
 
 namespace ccontrol {
 
-std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery);
-
 ///  UserQueryFactory breaks construction of user queries into two phases:
 ///  creation/configuration of the factory and construction of the
 ///  UserQuery. This facilitates re-use of initialized state that is usually
