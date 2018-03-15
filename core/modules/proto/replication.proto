@@ -67,7 +67,7 @@ enum ReplicationServiceRequestType {
     SERVICE_RESUME   = 1;
     SERVICE_STATUS   = 2;
     SERVICE_REQUESTS = 3;
-    SERVICE_DRAIN    = 4;  
+    SERVICE_DRAIN    = 4;
 }
 
 // Message header is sent next after the frame size request. A sender must
@@ -130,7 +130,7 @@ message ReplicationRequestFind {
     required int32  priority = 1;
     required string database = 2;
     required uint32 chunk    = 3;
-    
+
     /// Compute a check/control sum for each file
     required bool compute_cs = 4;
 }
@@ -270,7 +270,7 @@ message ReplicationFileInfo {
 
     // The following parameters are set in the relevant contexts only.
     // Otherwise they'll be set to some default value)
-  
+
     /// When the file migration started (where applies)
     optional uint64 begin_transfer_time = 5 [default = 0];
 
@@ -355,7 +355,7 @@ message ReplicationResponseDelete {
     /// stats of the replica deletion request obtained by the request
     /// management operations
     optional ReplicationPerformance target_performance = 5;
-    
+
     /// Extended information on the request
     optional ReplicationReplicaInfo replica_info = 6;
 
@@ -377,7 +377,7 @@ message ReplicationResponseFind {
     required ReplicationPerformance performance = 3;
 
     // --------------------------------------------------------------
-    // The following optional fields et upon a successfull completion
+    // The following optional fields set upon a successful completion
     // of the request
     // --------------------------------------------------------------
 
@@ -388,7 +388,7 @@ message ReplicationResponseFind {
 
     /// Extended information on the request
     optional ReplicationReplicaInfo replica_info = 5;
-    
+
     /// Parameters of the original request to which this response
     /// is related
     optional ReplicationRequestFind request = 6;
@@ -414,7 +414,7 @@ message ReplicationResponseFindAll {
     repeated ReplicationReplicaInfo replica_info_many = 5;
 
     // --------------------------------------------------------------
-    // The following optional fields et upon a successfull completion
+    // The following optional fields set upon a successful completion
     // of the request
     // --------------------------------------------------------------
 
@@ -437,7 +437,7 @@ message ReplicationServiceResponseInfo {
     required string id       = 2;
     required int32  priority = 3;
     required string database = 4;
- 
+
     // These parameters vary depending on a request type
 
     optional uint32 chunk    = 5;
@@ -472,7 +472,7 @@ message ReplicationServiceResponse {
     required uint32 num_finished_requests    = 8;
 
     // Optional (depending on a request) collections of requests in each queue
-    
+
     repeated ReplicationServiceResponseInfo new_requests         =  9;
     repeated ReplicationServiceResponseInfo in_progress_requests = 10;
     repeated ReplicationServiceResponseInfo finished_requests    = 11;
@@ -492,7 +492,7 @@ message ReplicationFileRequest {
 
     /// The name of a file (including its extention and excluding any path)
     required string file = 2;
-    
+
     /// Tell the server to begin sending file content immediatelly
     /// after sending the response message. Otherwise the server will just
     /// close a connection.

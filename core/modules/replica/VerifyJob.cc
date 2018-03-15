@@ -163,6 +163,15 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri) {
 ///                VerifyJob                  ///
 /////////////////////////////////////////////////
 
+Job::Options const& VerifyJob::defaultOptions() {
+    static Job::Options const options{
+        0,      /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 VerifyJob::pointer VerifyJob::create(
                         Controller::pointer const& controller,
                         std::string const& parentJobId,
@@ -170,9 +179,7 @@ VerifyJob::pointer VerifyJob::create(
                         callback_type_on_diff onReplicaDifference,
                         size_t maxReplicas,
                         bool computeCheckSum,
-                        int  priority,
-                        bool exclusive,
-                        bool preemptable) {
+                        Job::Options const& options) {
     return VerifyJob::pointer(
         new VerifyJob(controller,
                       parentJobId,
@@ -180,9 +187,7 @@ VerifyJob::pointer VerifyJob::create(
                       onReplicaDifference,
                       maxReplicas,
                       computeCheckSum,
-                      priority,
-                      exclusive,
-                      preemptable));
+                      options));
 }
 
 VerifyJob::VerifyJob(Controller::pointer const& controller,
@@ -191,15 +196,11 @@ VerifyJob::VerifyJob(Controller::pointer const& controller,
                      callback_type_on_diff onReplicaDifference,
                      size_t maxReplicas,
                      bool computeCheckSum,
-                     int  priority,
-                     bool exclusive,
-                     bool preemptable)
+                     Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "VERIFY",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _onFinish(onFinish),
         _onReplicaDifference(onReplicaDifference),
         _maxReplicas(maxReplicas),
@@ -253,7 +254,7 @@ void VerifyJob::startImpl() {
                 [self] (FindRequest::pointer request) {
                     self->onRequestFinish(request);
                 },
-                _priority,          /* inherited from the one of the current job */
+                options().priority, /* inherited from the one of the current job */
                 _computeCheckSum,
                 true,               /* keepTracking*/
                 _id                 /* jobId */
@@ -393,7 +394,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                     [self] (FindRequest::pointer request) {
                         self->onRequestFinish(request);
                     },
-                    _priority,          /* inherited from the one of the current job */
+                    options().priority, /* inherited from the one of the current job */
                     _computeCheckSum,
                     true,               /* keepTracking*/
                     _id                 /* jobId */

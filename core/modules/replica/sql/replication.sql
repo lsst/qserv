@@ -204,6 +204,12 @@ CREATE TABLE IF NOT EXISTS `job` (
   `begin_time`  BIGINT UNSIGNED NOT NULL ,
   `end_time`    BIGINT UNSIGNED NOT NULL ,
 
+  -- Job options
+
+  `priority`    INT     NOT NULL ,
+  `exclusive`   BOOLEAN NOT NULL ,
+  `preemptable` BOOLEAN NOT NULL ,
+
   PRIMARY KEY (`id`) ,
 
   CONSTRAINT `job_fk_1`

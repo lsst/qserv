@@ -68,26 +68,29 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& RebalanceJob::defaultOptions() {
+    static Job::Options const options{
+        -2,     /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 RebalanceJob::pointer RebalanceJob::create(
                             std::string const& databaseFamily,
                             bool estimateOnly,
                             Controller::pointer const& controller,
                             std::string const& parentJobId,
                             callback_type onFinish,
-                            bool bestEffort,
-                            int  priority,
-                            bool exclusive,
-                            bool preemptable) {
+                            Job::Options const& options) {
     return RebalanceJob::pointer(
         new RebalanceJob(databaseFamily,
                          estimateOnly,
                          controller,
                          parentJobId,
                          onFinish,
-                         bestEffort,
-                         priority,
-                         exclusive,
-                         preemptable));
+                         options));
 }
 
 RebalanceJob::RebalanceJob(std::string const& databaseFamily,
@@ -95,20 +98,14 @@ RebalanceJob::RebalanceJob(std::string const& databaseFamily,
                            Controller::pointer const& controller,
                            std::string const& parentJobId,
                            callback_type onFinish,
-                           bool bestEffort,
-                           int  priority,
-                           bool exclusive,
-                           bool preemptable)
+                           Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "REBALANCE",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish),
-        _bestEffort(bestEffort) {
+        _onFinish(onFinish) {
 }
 
 RebalanceJob::~RebalanceJob() {
@@ -278,8 +275,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         // Do not proceed with the replication effort unless running the job
         // under relaxed condition.
 
-        if (not _bestEffort and
-            (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
+        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
 
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  failed due to the precurson job failure");

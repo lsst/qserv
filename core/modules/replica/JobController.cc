@@ -29,14 +29,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/DeleteWorkerJob.h"
-#include "replica/FindAllJob.h"
-#include "replica/FixUpJob.h"
 #include "replica/Performance.h"
-#include "replica/PurgeJob.h"
-#include "replica/ReplicateJob.h"
-#include "replica/ServiceProvider.h"
-#include "replica/VerifyJob.h"
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
@@ -193,9 +186,7 @@ void JobController::join() {
 
 FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
                                            FindAllJob::callback_type onFinish,
-                                           int  priority,
-                                           bool exclusive,
-                                           bool preemptable) {
+                                           Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  findAll");
 
@@ -211,9 +202,7 @@ FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
             [self] (FindAllJob::pointer job) {
                 self->onFinish (job);
             },
-            priority,
-            exclusive,
-            preemptable
+            options
         );
 
     // Register the job (along with its callback) by its unique
@@ -236,9 +225,7 @@ FindAllJob::pointer JobController::findAll(std::string const& databaseFamily,
 
 FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
                                        FixUpJob::callback_type onFinish,
-                                       int  priority,
-                                       bool exclusive,
-                                       bool preemptable) {
+                                       Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  fixUp");
 
@@ -254,9 +241,7 @@ FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
             [self] (FixUpJob::pointer job) {
                 self->onFinish (job);
             },
-            priority,
-            exclusive,
-            preemptable
+            options
         );
 
     // Register the job (along with its callback) by its unique
@@ -280,9 +265,7 @@ FixUpJob::pointer JobController::fixUp(std::string const& databaseFamily,
 PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
                                        unsigned int numReplicas,
                                        PurgeJob::callback_type onFinish,
-                                       int  priority,
-                                       bool exclusive,
-                                       bool preemptable) {
+                                       Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  purge");
 
@@ -297,9 +280,7 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
             [self] (PurgeJob::pointer job) {
                 self->onFinish (job);
             },
-            priority,
-            exclusive,
-            preemptable
+            options
         );
 
     // Register the job (along with its callback) by its unique
@@ -323,9 +304,7 @@ PurgeJob::pointer JobController::purge(std::string const& databaseFamily,
 ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily,
                                                unsigned int numReplicas,
                                                ReplicateJob::callback_type onFinish,
-                                               int  priority,
-                                               bool exclusive,
-                                               bool preemptable) {
+                                               Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  replicate");
 
@@ -342,9 +321,7 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
             [self] (ReplicateJob::pointer job) {
                 self->onFinish (job);
             },
-            priority,
-            exclusive,
-            preemptable
+            options
         );
 
     // Register the job (along with its callback) by its unique
@@ -367,9 +344,9 @@ ReplicateJob::pointer JobController::replicate(std::string const& databaseFamily
 
 VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
                                          VerifyJob::callback_type_on_diff onReplicaDifference,
-                                         int  priority,
-                                         bool exclusive,
-                                         bool preemptable) {
+                                         size_t maxReplicas,
+                                         bool computeCheckSum,
+                                         Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  verify");
 
@@ -385,9 +362,9 @@ VerifyJob::pointer JobController::verify(VerifyJob::callback_type onFinish,
                 self->onFinish (job);
             },
             onReplicaDifference,
-            priority,
-            exclusive,
-            preemptable
+            maxReplicas,
+            computeCheckSum,
+            options
         );
 
     // Register the job (along with its callback) by its unique
@@ -412,9 +389,7 @@ DeleteWorkerJob::pointer JobController::deleteWorker(
                                             std::string const& worker,
                                             bool permanentDelete,
                                             DeleteWorkerJob::callback_type onFinish,
-                                            int  priority,
-                                            bool exclusive,
-                                            bool  preemptable) {
+                                            Job::Options const& options) {
 
     LOGS(_log, LOG_LVL_DEBUG, "JobController  deleteWorker");
 
@@ -431,9 +406,7 @@ DeleteWorkerJob::pointer JobController::deleteWorker(
             [self] (DeleteWorkerJob::pointer job) {
                 self->onFinish (job);
             },
-            priority,
-            exclusive,
-            preemptable
+            options
         );
 
     // Register the job (along with its callback) by its unique

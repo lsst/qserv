@@ -48,26 +48,29 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& ReplicateJob::defaultOptions() {
+    static Job::Options const options{
+        1,      /* priority */
+        true,   /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 ReplicateJob::pointer ReplicateJob::create(
                             std::string const& databaseFamily,
                             unsigned int numReplicas,
                             Controller::pointer const& controller,
                             std::string const& parentJobId,
                             callback_type onFinish,
-                            bool bestEffort,
-                            int  priority,
-                            bool exclusive,
-                            bool preemptable) {
+                            Job::Options const& options) {
     return ReplicateJob::pointer(
         new ReplicateJob(databaseFamily,
                          numReplicas,
                          controller,
                          parentJobId,
                          onFinish,
-                         bestEffort,
-                         priority,
-                         exclusive,
-                         preemptable));
+                         options));
 }
 
 ReplicateJob::ReplicateJob(std::string const& databaseFamily,
@@ -75,22 +78,16 @@ ReplicateJob::ReplicateJob(std::string const& databaseFamily,
                            Controller::pointer const& controller,
                            std::string const& parentJobId,
                            callback_type onFinish,
-                           bool bestEffort,
-                           int  priority,
-                           bool exclusive,
-                           bool preemptable)
+                           Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "REPLICATE",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _numReplicas(numReplicas ?
                      numReplicas :
                      controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
         _onFinish(onFinish),
-        _bestEffort(bestEffort),
         _numIterations(0),
         _numFailedLocks(0),
         _numLaunched(0),
@@ -257,11 +254,11 @@ void ReplicateJob::onPrecursorJobFinish() {
         // Ignore the callback if the job was cancelled
         if (_state == State::FINISHED) { return; }
 
-        ////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort unless running the job
-        // under relaxed condition.
+        //////////////////////////////////////////////////////////////////////
+        // Do not proceed with the replication effort if there was any problem
+        // with the precursor job.
 
-        if (not _bestEffort and (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
+        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }
@@ -461,7 +458,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                             [self] (ReplicationRequest::pointer ptr) {
                                 self->onRequestFinish(ptr);
                             },
-                            0,      /* priority */
+                            options().priority,
                             true,   /* keepTracking */
                             true,   /* allowDuplicate */
                             _id     /* jobId */

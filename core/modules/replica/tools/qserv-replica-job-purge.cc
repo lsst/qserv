@@ -49,7 +49,6 @@ namespace {
 std::string  databaseFamily;
 std::string  configUrl;
 unsigned int numReplicas;
-bool         bestEffort;
 bool         progressReport;
 bool         errorReport;
 bool         chunkLocksReport;
@@ -82,8 +81,7 @@ bool test() {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
                     ;
-                },
-                bestEffort
+                }
             );
 
         job->start();
@@ -121,7 +119,6 @@ int main(int argc, const char* const argv[]) {
             "Usage:\n"
             "  <database-family> [--config=<url>]\n"
             "                    [--replicas=<number>]\n"
-            "                    [--best-effort]\n"
             "                    [--progress-report]\n"
             "                    [--error-report]\n"
             "                    [--chunk-locks-report]\n"
@@ -135,8 +132,6 @@ int main(int argc, const char* const argv[]) {
             "  --replicas           - the minimum number of replicas\n"
             "                         [ DEFAULT: '0' which will tell the application to pull the corresponding\n"
             "                         parameter from the Configuration]\n"
-            "  --best-effort        - allowing the operation even after not getting chunk disposition from\n"
-            "                         all workers\n"
             "  --progress-report    - progress report when executing batches of requests\n"
             "  --error-report       - the flag triggering detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");
@@ -144,7 +139,6 @@ int main(int argc, const char* const argv[]) {
         ::databaseFamily   = parser.parameter<std::string>(1);
         ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
         ::numReplicas      = parser.option<unsigned int>("replicas", 0);
-        ::bestEffort       = parser.flag("best-effort");
         ::progressReport   = parser.flag("progress-report");
         ::errorReport      = parser.flag("error-report");
         ::chunkLocksReport = parser.flag("chunk-locks-report");

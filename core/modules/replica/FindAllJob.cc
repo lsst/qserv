@@ -46,36 +46,37 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& FindAllJob::defaultOptions() {
+    static Job::Options const options{
+        0,      /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 FindAllJob::pointer FindAllJob::create(std::string const& databaseFamily,
                                        Controller::pointer const& controller,
                                        std::string const& parentJobId,
                                        callback_type onFinish,
-                                       int  priority,
-                                       bool exclusive,
-                                       bool preemptable) {
+                                       Job::Options const& options) {
     return FindAllJob::pointer(
         new FindAllJob(databaseFamily,
                        controller,
                        parentJobId,
                        onFinish,
-                       priority,
-                       exclusive,
-                       preemptable));
+                       options));
 }
 
 FindAllJob::FindAllJob(std::string const& databaseFamily,
                        Controller::pointer const& controller,
                        std::string const& parentJobId,
                        callback_type onFinish,
-                       int  priority,
-                       bool exclusive,
-                       bool preemptable)
+                       Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "FIND_ALL",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _databases(controller->serviceProvider()->config()->databases(databaseFamily)),
         _onFinish(onFinish),
@@ -149,7 +150,7 @@ void FindAllJob::startImpl() {
                     [self] (FindAllRequest::pointer request) {
                         self->onRequestFinish(request);
                     },
-                    0,      /* priority */
+                    options().priority,
                     true,   /* keepTracking*/
                     _id     /* jobId */
                 )
