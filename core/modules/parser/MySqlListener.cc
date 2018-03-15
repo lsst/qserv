@@ -224,6 +224,10 @@ public:
 /// Adapter classes
 
 
+// Adapter is the base class that represents a node in the antlr4 syntax tree. There is a one-to-one
+// relationship between types of adapter subclass and each variation of enter/exit functions that are the
+// result of the grammar defined in MySqlParser.g4 and the enter/exit functions that the antlr4 code generater
+// creates in MySqlParserBaseListener.
 class Adapter {
 public:
     Adapter(shared_ptr<BaseCBH> parent, antlr4::ParserRuleContext* ctx)
