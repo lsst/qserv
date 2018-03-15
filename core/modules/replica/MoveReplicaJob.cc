@@ -43,6 +43,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& MoveReplicaJob::defaultOptions() {
+    static Job::Options const options{
+        -2,     /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 MoveReplicaJob::pointer MoveReplicaJob::create(std::string const& databaseFamily,
                                                unsigned int chunk,
                                                std::string const& sourceWorker,
@@ -51,9 +60,7 @@ MoveReplicaJob::pointer MoveReplicaJob::create(std::string const& databaseFamily
                                                Controller::pointer const& controller,
                                                std::string const& parentJobId,
                                                callback_type onFinish,
-                                               int  priority,
-                                               bool exclusive,
-                                               bool preemptable) {
+                                               Job::Options const& options) {
     return MoveReplicaJob::pointer(
         new MoveReplicaJob(databaseFamily,
                            chunk,
@@ -63,9 +70,7 @@ MoveReplicaJob::pointer MoveReplicaJob::create(std::string const& databaseFamily
                            controller,
                            parentJobId,
                            onFinish,
-                           priority,
-                           exclusive,
-                           preemptable));
+                           options));
 }
 
 MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
@@ -76,15 +81,11 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
                                Controller::pointer const& controller,
                                std::string const& parentJobId,
                                callback_type onFinish,
-                               int  priority,
-                               bool exclusive,
-                               bool preemptable)
+                               Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "MOVE_REPLICA",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _sourceWorker(sourceWorker),
@@ -145,7 +146,8 @@ void MoveReplicaJob::startImpl() {
         _id,
         [self] (CreateReplicaJob::pointer const& job) {
             self->onCreateJobFinish();
-        }
+        },
+        options()   // inherit from the current job
     );
     _createReplicaJob->start();
 
@@ -206,7 +208,8 @@ void MoveReplicaJob::onCreateJobFinish() {
                     _id,
                     [self] (DeleteReplicaJob::pointer const& job) {
                         self->onDeleteJobFinish();
-                    }
+                    },
+                    options()   // inherit from the current job
                 );
                 _deleteReplicaJob->start();
             } else {

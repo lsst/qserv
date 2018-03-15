@@ -103,7 +103,7 @@ FindRequestC::FindRequestC(ServiceProvider::pointer const& serviceProvider,
 ReplicaInfo const& FindRequestC::responseData() const {
     return _replicaInfo;
 }
-   
+
 void FindRequestC::beginProtocol() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol "
@@ -216,7 +216,7 @@ void FindRequestC::responseReceived(boost::system::error_code const& ec,
 
     size_t bytes;
     if (syncReadFrame(bytes)) { restart(); }
-           
+
     proto::ReplicationResponseFind message;
     if (syncReadMessage(bytes, message)) { restart(); }
     else                                 { analyze(message); }
@@ -227,7 +227,7 @@ void FindRequestC::wait() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
-    
+
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
@@ -358,7 +358,7 @@ void FindRequestC::statusReceived(boost::system::error_code const& ec,
 
     size_t bytes;
     if (syncReadFrame(bytes)) { restart (); }
-           
+
     proto::ReplicationResponseFind message;
     if (syncReadMessage(bytes, message)) { restart(); }
     else                                 { analyze(message); }
@@ -382,7 +382,7 @@ void FindRequestC::analyze(proto::ReplicationResponseFind const& message) {
     } else {
         _performance.update(message.performance());
     }
- 
+
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
 
@@ -393,7 +393,7 @@ void FindRequestC::analyze(proto::ReplicationResponseFind const& message) {
         _targetRequestParams = FindRequestParams(message.request());
     }
     switch (message.status()) {
- 
+
         case proto::ReplicationStatus::SUCCESS:
             finish(SUCCESS);
             break;
@@ -500,7 +500,7 @@ ReplicaInfo const& FindRequestM::responseData() const {
     return _replicaInfo;
 }
 
-    
+
 void FindRequestM::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl "
@@ -537,7 +537,7 @@ void FindRequestM::wait() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "wait");
 
     // Allways need to set the interval before launching the timer.
-    
+
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
         boost::bind(
@@ -582,6 +582,8 @@ void FindRequestM::awaken(boost::system::error_code const& ec) {
 
 void FindRequestM::send() {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << "send");
+
     auto self = shared_from_base<FindRequestM>();
 
     _messenger->send<proto::ReplicationResponseFind>(
@@ -603,7 +605,7 @@ void FindRequestM::analyze(bool success,
 
     // This guard is made on behalf of an asynchronious callback fired
     // upon a completion of the request within method send() - the only
-    // client of analyze() 
+    // client of analyze()
 
     LOCK_GUARD;
 
@@ -611,21 +613,21 @@ void FindRequestM::analyze(bool success,
 
         // Always get the latest status reported by the remote server
         _extendedServerStatus = replica::translate(message.status_ext());
-    
+
         // Performance counters are updated from either of two sources,
         // depending on the availability of the 'target' performance counters
         // filled in by the 'STATUS' queries. If the later is not available
         // then fallback to the one of the current request.
-    
+
         if (message.has_target_performance()) {
             _performance.update(message.target_performance());
         } else {
             _performance.update(message.performance());
         }
-     
+
         // Always extract extended data regardless of the completion status
         // reported by the worker service.
-    
+
         _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
         // Extract target request type-specific parameters from the response
@@ -633,38 +635,38 @@ void FindRequestM::analyze(bool success,
             _targetRequestParams = FindRequestParams(message.request());
         }
         switch (message.status()) {
-     
+
             case proto::ReplicationStatus::SUCCESS:
                 finish(SUCCESS);
                 break;
-    
+
             case proto::ReplicationStatus::QUEUED:
                 if (_keepTracking) { wait(); }
                 else               { finish(SERVER_QUEUED); }
                 break;
-    
+
             case proto::ReplicationStatus::IN_PROGRESS:
                 if (_keepTracking) { wait(); }
                 else               { finish(SERVER_IN_PROGRESS); }
                 break;
-    
+
             case proto::ReplicationStatus::IS_CANCELLING:
                 if (_keepTracking) { wait(); }
                 else               { finish(SERVER_IS_CANCELLING); }
                 break;
-    
+
             case proto::ReplicationStatus::BAD:
                 finish(SERVER_BAD);
                 break;
-    
+
             case proto::ReplicationStatus::FAILED:
                 finish(SERVER_ERROR);
                 break;
-    
+
             case proto::ReplicationStatus::CANCELLED:
                 finish(SERVER_CANCELLED);
                 break;
-    
+
             default:
                 throw std::logic_error(
                         "FindRequestM::analyze() unknown status '" +

@@ -136,15 +136,15 @@ void WorkerProcessor::run() {
                         "The value of the parameter must be greater than 0");
         }
 
-        // Create threads if needed    
+        // Create threads if needed
         if (_threads.empty()) {
             for (size_t i=0; i < numThreads; ++i) {
                 _threads.push_back(WorkerProcessorThread::create(*this));
             }
         }
-    
+
         // Tell each thread to run
-    
+
         for (auto &t: _threads) {
             t->run();
         }
@@ -159,13 +159,13 @@ void WorkerProcessor::stop() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
     if (_state == STATE_IS_RUNNING) {
-        
+
         // Tell each thread to stop.
-    
+
         for (auto &t: _threads) {
             t->stop();
         }
-        
+
         // Begin transitioning to the final state via this intermediate one.
         // The transition will finish asynchronious when all threads will report
         // desired changes in their states.
@@ -177,7 +177,7 @@ void WorkerProcessor::stop() {
 void WorkerProcessor::drain() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "drain");
-    
+
     // Collect identifiers of requests from both queues under the guard
     std::list<std::string> ids;
     {
@@ -186,7 +186,7 @@ void WorkerProcessor::drain() {
         for (auto const& ptr: _newRequests)        { ids.push_back(ptr->id()); }
         for (auto const& ptr: _inProgressRequests) { ids.push_back(ptr->id()); }
     }
-    
+
     // Dequeue requests w/o the guard to avoid a dedlock because
     // the dequeuing method will request the lock.
     for (auto const& id: ids) { dequeueOrCancelImpl(id); }
@@ -202,7 +202,7 @@ void WorkerProcessor::enqueueForReplication(
         << "  id: "     << id
         << "  db: "     << request.database()
         << "  chunk: "  << request.chunk()
-        << "  worker: " << request.worker());    
+        << "  worker: " << request.worker());
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -231,9 +231,9 @@ void WorkerProcessor::enqueueForReplication(
                 request.database(),
                 request.chunk(),
                 request.worker());
-    
+
         _newRequests.push(ptr);
-        
+
         response.set_status(proto::ReplicationStatus::QUEUED);
         response.set_status_ext(proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
@@ -285,13 +285,13 @@ void WorkerProcessor::enqueueForDeletion(std::string const&                     
                 request.priority(),
                 request.database(),
                 request.chunk());
-    
+
         _newRequests.push(ptr);
-    
+
         response.set_status(               proto::ReplicationStatus::QUEUED);
         response.set_status_ext(           proto::ReplicationStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info());
-     
+
         setInfo(ptr, response);
 
     } catch (std::invalid_argument const& ec) {
@@ -311,7 +311,8 @@ void WorkerProcessor::enqueueForFind(std::string const&                   id,
     LOGS(_log, LOG_LVL_DEBUG, context() << "enqueueForFind"
         << "  id: "    << id
         << "  db: "    << request.database()
-        << "  chunk: " << request.chunk());
+        << "  chunk: " << request.chunk()
+        << "  compute_cs: " << (request.compute_cs() ? "true" : "false"));
 
     WorkerFindRequest::pointer ptr =
         _requestFactory.createFindRequest(
@@ -364,12 +365,12 @@ WorkerRequest::pointer WorkerProcessor::dequeueOrCancelImpl(std::string const& i
     LOCK_GUARD;
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "dequeueOrCancelImpl" << "  id: " << id);
-     
+
     // Still waiting in the queue?
 
     for (auto ptr: _newRequests) {
         if (ptr->id() == id) {
-           
+
             // Cancel it and move it into the final queue in case if a client
             // won't be able to receive the desired status of the request due to
             // a protocol failure, etc.
@@ -576,7 +577,7 @@ void WorkerProcessor::setServiceResponse(
     response.set_num_new_requests(        _newRequests.size());
     response.set_num_in_progress_requests(_inProgressRequests.size());
     response.set_num_finished_requests(   _finishedRequests.size());
-    
+
     if (extendedReport) {
         for (auto const& request: _newRequests) {
             setServiceResponseInfo(request,
@@ -696,7 +697,7 @@ WorkerRequest::pointer WorkerProcessor::fetchNextForProcessing(
         }
         totalElapsedTime += blockPost.wait();
     }
-    
+
     // Return null pointer since noting has been found within the specified
     // timeout.
 
@@ -846,9 +847,10 @@ void WorkerProcessor::setInfo(WorkerRequest::pointer const&   request,
 
     auto protoRequestPtr = new proto::ReplicationRequestFind();
 
-    protoRequestPtr->set_priority(ptr->priority());
-    protoRequestPtr->set_database(ptr->database());
-    protoRequestPtr->set_chunk(   ptr->chunk());
+    protoRequestPtr->set_priority(  ptr->priority());
+    protoRequestPtr->set_database(  ptr->database());
+    protoRequestPtr->set_chunk(     ptr->chunk());
+    protoRequestPtr->set_compute_cs(ptr->computeCheckSum());
 
     response.set_allocated_request(protoRequestPtr);
 }
@@ -884,5 +886,5 @@ void WorkerProcessor::setInfo(WorkerRequest::pointer const&      request,
 
     response.set_allocated_request(protoRequestPtr);
 }
-   
+
 }}} // namespace lsst::qserv::replica

@@ -48,7 +48,6 @@ namespace {
 std::string worker;
 std::string configUrl;
 bool        permanentDelete;
-bool        bestEffort;
 bool        progressReport;
 bool        errorReport;
 bool        chunkLocksReport;
@@ -81,8 +80,7 @@ bool test() {
                     // Not using the callback because the completion of the request
                     // will be caught by the tracker below
                     ;
-                },
-                bestEffort
+                }
             );
 
         job->start();
@@ -174,7 +172,6 @@ int main(int argc, const char* const argv[]) {
             "Usage:\n"
             "  <worker> [--config=<url>]\n"
             "           [--permanent-delete]\n"
-            "           [--best-effort]\n"
             "           [--progress-report]\n"
             "           [--error-report]\n"
             "           [--chunk-locks-report]\n"
@@ -186,8 +183,6 @@ int main(int argc, const char* const argv[]) {
             "  --config             - a configuration URL (a configuration file or a set of the database\n"
             "                         connection parameters [ DEFAULT: file:replication.cfg ]\n"
             "  --permanent-delete   - permanently delete a worker from the Configuration\n"
-            "  --best-effort        - allowing the operation even after not getting chunk disposition from\n"
-            "                         all workers\n"
             "  --progress-report    - progress report when executing batches of requests\n"
             "  --error-report       - the flag triggering detailed report on failed requests\n"
             "  --chunk-locks-report - report chunks which are locked\n");
@@ -195,7 +190,6 @@ int main(int argc, const char* const argv[]) {
         ::worker           = parser.parameter<std::string>(1);
         ::configUrl        = parser.option<std::string>("config", "file:replication.cfg");
         ::permanentDelete  = parser.flag("permanent-delete");
-        ::bestEffort       = parser.flag("best-effort");
         ::progressReport   = parser.flag("progress-report");
         ::errorReport      = parser.flag("error-report");
         ::chunkLocksReport = parser.flag("chunk-locks-report");

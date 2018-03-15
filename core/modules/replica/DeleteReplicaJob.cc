@@ -71,15 +71,22 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& DeleteReplicaJob::defaultOptions() {
+    static Job::Options const options{
+        -2,     /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 DeleteReplicaJob::pointer DeleteReplicaJob::create(std::string const& databaseFamily,
                                                    unsigned int chunk,
                                                    std::string const& worker,
                                                    Controller::pointer const& controller,
                                                    std::string const& parentJobId,
                                                    callback_type onFinish,
-                                                   int  priority,
-                                                   bool exclusive,
-                                                   bool preemptable) {
+                                                   Job::Options const& options) {
     return DeleteReplicaJob::pointer(
         new DeleteReplicaJob(databaseFamily,
                              chunk,
@@ -87,9 +94,7 @@ DeleteReplicaJob::pointer DeleteReplicaJob::create(std::string const& databaseFa
                              controller,
                              parentJobId,
                              onFinish,
-                             priority,
-                             exclusive,
-                             preemptable));
+                             options));
 }
 
 DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
@@ -98,15 +103,11 @@ DeleteReplicaJob::DeleteReplicaJob(std::string const& databaseFamily,
                                    Controller::pointer const& controller,
                                    std::string const& parentJobId,
                                    callback_type onFinish,
-                                   int  priority,
-                                   bool exclusive,
-                                   bool preemptable)
+                                   Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "DELETE_REPLICA",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _worker(worker),
@@ -301,7 +302,7 @@ void DeleteReplicaJob::beginDeleteReplica() {
                 [self] (DeleteRequest::pointer ptr) {
                     self->onRequestFinish(ptr);
                 },
-                _priority,
+                options().priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 _id     /* jobId */

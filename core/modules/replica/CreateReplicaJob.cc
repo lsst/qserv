@@ -71,6 +71,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& CreateReplicaJob::defaultOptions() {
+    static Job::Options const options{
+        -2,     /* priority */
+        false,  /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 CreateReplicaJob::pointer CreateReplicaJob::create(std::string const& databaseFamily,
                                                    unsigned int chunk,
                                                    std::string const& sourceWorker,
@@ -78,9 +87,7 @@ CreateReplicaJob::pointer CreateReplicaJob::create(std::string const& databaseFa
                                                    Controller::pointer const& controller,
                                                    std::string const& parentJobId,
                                                    callback_type onFinish,
-                                                   int  priority,
-                                                   bool exclusive,
-                                                   bool preemptable) {
+                                                   Job::Options const& options) {
     return CreateReplicaJob::pointer(
         new CreateReplicaJob(databaseFamily,
                            chunk,
@@ -89,9 +96,7 @@ CreateReplicaJob::pointer CreateReplicaJob::create(std::string const& databaseFa
                            controller,
                            parentJobId,
                            onFinish,
-                           priority,
-                           exclusive,
-                           preemptable));
+                           options));
 }
 
 CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
@@ -101,15 +106,11 @@ CreateReplicaJob::CreateReplicaJob(std::string const& databaseFamily,
                                    Controller::pointer const& controller,
                                    std::string const& parentJobId,
                                    callback_type onFinish,
-                                   int  priority,
-                                   bool exclusive,
-                                   bool preemptable)
+                                   Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "CREATE_REPLICA",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _sourceWorker(sourceWorker),
@@ -253,7 +254,7 @@ void CreateReplicaJob::startImpl() {
                 [self] (ReplicationRequest::pointer ptr) {
                     self->onRequestFinish(ptr);
                 },
-                _priority,
+                options().priority,
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 _id     /* jobId */);

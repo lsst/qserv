@@ -341,6 +341,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
     // query will be executed.
 
     try {
+        Job::Options const& options = job->options();
         _conn->begin();
         _conn->executeInsertQuery(
             "job",
@@ -351,21 +352,27 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
             Job::state2string(job->state()),
             Job::state2string(job->extendedState()),
                               job->beginTime(),
-                              job->endTime());
+                              job->endTime(),
+            options.priority,
+            options.exclusive,
+            options.preemptable
+        );
 
         if ("FIXUP" == job->type()) {
             auto ptr = safeAssign<FixUpJob>(job);
             _conn->executeInsertQuery(
                 "job_fixup",
                 ptr->id(),
-                ptr->databaseFamily());
+                ptr->databaseFamily()
+            );
 
         } else if ("FIND_ALL" == job->type()) {
             auto ptr = safeAssign<FindAllJob>(job);
             _conn->executeInsertQuery(
                 "job_find_all",
                 ptr->id(),
-                ptr->databaseFamily());
+                ptr->databaseFamily()
+            );
 
         } else if ("REPLICATE" == job->type()) {
             auto ptr = safeAssign<ReplicateJob>(job);
@@ -373,7 +380,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 "job_replicate",
                 ptr->id(),
                 ptr->databaseFamily(),
-                ptr->numReplicas());
+                ptr->numReplicas()
+            );
 
         } else if ("PURGE" == job->type()) {
             auto ptr = safeAssign<PurgeJob>(job);
@@ -388,7 +396,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
             _conn->executeInsertQuery(
                 "job_rebalance",
                 ptr->id(),
-                ptr->databaseFamily());
+                ptr->databaseFamily()
+            );
 
         } else if ("DELETE_WORKER" == job->type()) {
             auto ptr = safeAssign<DeleteWorkerJob>(job);
@@ -396,7 +405,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 "job_delete_worker",
                 ptr->id(),
                 ptr->worker(),
-                ptr->permanentDelete() ? 1 : 0);
+                ptr->permanentDelete() ? 1 : 0
+            );
 
         } else if ("ADD_WORKER" == job->type()) {
             throw std::invalid_argument(context + "not implemented for job type name:" + job->type());
@@ -410,7 +420,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 ptr->chunk(),
                 ptr->sourceWorker(),
                 ptr->destinationWorker(),
-                ptr->purge() ? 1 : 0);
+                ptr->purge() ? 1 : 0
+            );
 
         } else if ("CREATE_REPLICA" == job->type()) {
             auto ptr = safeAssign<CreateReplicaJob>(job);
@@ -420,7 +431,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 ptr->databaseFamily(),
                 ptr->chunk(),
                 ptr->sourceWorker(),
-                ptr->destinationWorker());
+                ptr->destinationWorker()
+            );
 
         } else if ("DELETE_REPLICA" == job->type()) {
             auto ptr = safeAssign<DeleteReplicaJob>(job);
@@ -429,7 +441,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 ptr->id(),
                 ptr->databaseFamily(),
                 ptr->chunk(),
-                ptr->worker());
+                ptr->worker()
+            );
         }
         _conn->commit ();
 
@@ -444,7 +457,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 std::make_pair( "state",      Job::state2string (job->state())),
                 std::make_pair( "ext_state",  Job::state2string (job->extendedState())),
                 std::make_pair( "begin_time",                    job->beginTime()),
-                std::make_pair( "end_time",                      job->endTime()));
+                std::make_pair( "end_time",                      job->endTime())
+            );
             _conn->commit ();
 
         } catch (database::mysql::Error const& ex) {

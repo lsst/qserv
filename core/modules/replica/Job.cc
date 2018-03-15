@@ -25,6 +25,7 @@
 
 // System headers
 #include <stdexcept>
+#include <utility>      // std::swap
 
 // Qserv headers
 #include "lsst/log/Log.h"
@@ -77,20 +78,22 @@ Job::state2string(ExtendedState state) {
 Job::Job(Controller::pointer const& controller,
          std::string const& parentJobId,
          std::string const& type,
-         int  priority,
-         bool exclusive,
-         bool preemptable)
+         Options const& options)
     :   _id(Generators::uniqueId()),
         _controller(controller),
         _parentJobId(parentJobId),
         _type(type),
-        _priority(priority),
-        _exclusive(exclusive),
-        _preemptable(preemptable),
+        _options(options),
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
         _beginTime(0),
         _endTime(0) {
+}
+
+Job::Options Job::setOptions(Options const& newOptions) {
+    Options options(newOptions);
+    std::swap(_options, options);
+    return options;
 }
 
 std::string Job::context() const {

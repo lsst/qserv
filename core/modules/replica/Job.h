@@ -110,6 +110,21 @@ public:
         return state2string(state) + "::" +state2string(extendedState);
     }
 
+    /// The job options container
+    struct Options {
+
+        /// the priority level
+        int  priority;
+
+        /// the flag indicating of this job can't be run simultaneously
+        /// along with other jobs.
+        bool exclusive;
+
+        /// the flag indicating if the job is allowed to be interrupted by some
+        /// by other jobs.
+        bool preemptable;
+    };
+
     // Default construction and copy semantics are prohibited
 
     Job() = delete;
@@ -131,22 +146,22 @@ public:
     /// @return a unique identifier of the job
     std::string const& id() const { return _id; }
 
-    /// @return the priority of the job
-    int priority() const { return _priority; }
-
-    /// @return the flag indicating of this job can't be run simultaneously
-    /// along with other jobs.
-    bool exclusive() const { return _exclusive; }
-
-    /// @return 'true' if the job is allowed to be interrupted by some
-    /// by other jobs.
-    bool preemptable() const { return _preemptable; }
-
     /// @return the primary status of the job
     State state() const { return _state; }
 
-    /// Return the extended state of the job when it's finished
+    /// @return the extended state of the job when it's finished
     ExtendedState extendedState() const { return _extendedState; }
+
+    /// @return job options
+    Options const& options() const { return _options; }
+
+    /**
+     * Modify job options
+     *
+     * @param newOptions - new options to be set
+     * @return the previous state of the options
+     */
+    Options setOptions(Options const& newOptions);
 
     /**
      * @return a start time (milliseconds since UNIX Epoch) or 0 before method start()
@@ -223,9 +238,7 @@ protected:
     Job(Controller::pointer const& controller,
         std::string const& parentJobId,
         std::string const& type,
-        int  priority,
-        bool exclusive,
-        bool preemptable);
+        Options const& options);
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -320,11 +333,9 @@ protected:
     /// The type of the job
     std::string _type;
 
-    // Job scheduling attributes
+    // Job options
 
-    int  _priority;
-    bool _exclusive;
-    bool _preemptable;
+    Options _options;
 
     /// Primary state of the job
     State _state;
@@ -348,7 +359,7 @@ struct JobCompare {
     bool operator()(Job::pointer const& lhs,
                     Job::pointer const& rhs) const {
 
-        return lhs->priority() < rhs->priority();
+        return lhs->options().priority < rhs->options().priority;
     }
 };
 

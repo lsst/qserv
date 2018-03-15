@@ -161,6 +161,9 @@ public:
                                ReplicaDiff const&,
                                std::vector<ReplicaDiff> const&)> callback_type_on_diff;
 
+   /// @return default options object for this type of a request
+   static Job::Options const& defaultOptions();
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -168,31 +171,22 @@ public:
      *
      * @param controller          - for launching requests
      * @param parentJobId         - optional identifier of a parent job
-     * @param onFinish            - a callback function to be called upon a completion of the job
-     @ @param onReplicaDifference - a callback function to be called when two replicas won't match
-     * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
-     * @param maxReplicas         - the maximum number of replicas to process simultaneously.
+     * @param onFinish            - callback function to be called upon a completion of the job
+     @ @param onReplicaDifference - callback function to be called when two replicas won't match
+     * @param maxReplicas         - maximum number of replicas to process simultaneously.
      *                              If the parameter is set to 0 (the default value) then 1 replica
      *                              will be assumed.
-     * @param priority            - set the desired job priority (larger values
-     *                              mean higher priorities). A job with the highest
-     *                              priority will be select from an input queue by
-     *                              the JobScheduler.
-     * @param exclusive           - set to 'true' to indicate that the job can't be
-     *                              running simultaneously alongside other jobs.
-     * @param preemptable         - set to 'true' to indicate that this job can be
-     *                              interrupted to give a way to some other job of
-     *                              high importancy.
+     * @param computeCheckSum     - tell a worker server to compute check/control sum on each file
+     * @param onFinish            - callback function to be called upon a completion of the job
+     * @param options             - job options
      */
     static pointer create (Controller::pointer const& controller,
                            std::string const& parentJobId,
                            callback_type onFinish,
                            callback_type_on_diff onReplicaDifference,
                            size_t maxReplicas = 0,
-                           bool computeCheckSum=false,
-                           int  priority = 0,
-                           bool exclusive = false,
-                           bool preemptable = true);
+                           bool computeCheckSum = false,
+                           Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -229,9 +223,7 @@ protected:
                callback_type_on_diff onReplicaDifference,
                size_t maxReplicas,
                bool computeCheckSum,
-               int  priority,
-               bool exclusive,
-               bool preemptable);
+               Job::Options const& options);
 
     /**
       * Implement the corresponding method of the base class.

@@ -90,6 +90,9 @@ public:
     /// The function type for notifications on the completon of the request
     typedef std::function<void(pointer)> callback_type;
 
+    /// @return default options object for this type of a request
+    static Job::Options const& defaultOptions();
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -98,28 +101,14 @@ public:
      * @param databaseFamily - the name of a database family
      * @param controller     - for launching requests
      * @param parentJobId    - optional identifier of a parent job
-     * @param onFinish       - a callback function to be called upon a completion of the job
-     * @param bestEffort     - the flag (if set) allowing to proceed with the replication effort
-     *                         when some workers fail to report their cunk disposition.
-     *                         ATTENTION: do *NOT* use this in production!
-     * @param priority       - set the desired job priority (larger values
-     *                         mean higher priorities). A job with the highest
-     *                         priority will be select from an input queue by
-     *                         the JobScheduler.
-     * @param exclusive      - set to 'true' to indicate that the job can't be
-     *                         running simultaneously alongside other jobs.
-     * @param preemptable    - set to 'true' to indicate that this job can be
-     *                         interrupted to give a way to some other job of
-     *                         high importancy.
+     * @param onFinish       - callback function to be called upon a completion of the job
+     * @param options        - job options
      */
     static pointer create(std::string const& databaseFamily,
                           Controller::pointer const& controller,
                           std::string const& parentJobId,
                           callback_type onFinish,
-                          bool bestEffort = false,
-                          int  priority = 1,
-                          bool exclusive = true,
-                          bool preemptable = true);
+                          Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -173,10 +162,7 @@ protected:
              Controller::pointer const& controller,
              std::string const& parentJobId,
              callback_type onFinish,
-             bool bestEffort,
-             int  priority,
-             bool exclusive,
-             bool preemptable);
+             Job::Options const& options);
 
     /**
       * Implement the corresponding method of the base class.
@@ -233,10 +219,6 @@ protected:
 
     /// Client-defined function to be called upon the completion of the job
     callback_type _onFinish;
-
-    /// The flag (if set) allowing to proceed with the effort even after
-    /// not getting response on chunk disposition from all workers.
-    bool _bestEffort;
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.

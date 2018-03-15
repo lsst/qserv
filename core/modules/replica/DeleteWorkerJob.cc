@@ -111,25 +111,28 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& DeleteWorkerJob::defaultOptions() {
+    static Job::Options const options{
+        2,      /* priority */
+        true,   /* exclusive */
+        false   /* exclusive */
+    };
+    return options;
+}
+
 DeleteWorkerJob::pointer DeleteWorkerJob::create(std::string const& worker,
                                                  bool permanentDelete,
                                                  Controller::pointer const& controller,
                                                  std::string const& parentJobId,
                                                  callback_type onFinish,
-                                                 bool bestEffort,
-                                                 int  priority,
-                                                 bool exclusive,
-                                                 bool preemptable) {
+                                                 Job::Options const& options) {
     return DeleteWorkerJob::pointer(
         new DeleteWorkerJob(worker,
                             permanentDelete,
                             controller,
                             parentJobId,
                             onFinish,
-                            bestEffort,
-                            priority,
-                            exclusive,
-                            preemptable));
+                            options));
 }
 
 DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
@@ -137,20 +140,14 @@ DeleteWorkerJob::DeleteWorkerJob(std::string const& worker,
                                  Controller::pointer const& controller,
                                  std::string const& parentJobId,
                                  callback_type onFinish,
-                                 bool bestEffort,
-                                 int  priority,
-                                 bool exclusive,
-                                 bool preemptable)
+                                 Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "DELETE_WORKER",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _worker(worker),
         _permanentDelete(permanentDelete),
         _onFinish(onFinish),
-        _bestEffort(bestEffort),
         _numLaunched(0),
         _numFinished(0),
         _numSuccess(0) {
@@ -383,7 +380,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
          << " databaseFamily: " << job->databaseFamily());
 
     do {
-        // This lock will be automatically release beyon this scope
+        // This lock will be automatically released beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
@@ -392,41 +389,39 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
         // Ignore the callback if the job was cancelled (or otherwise failed)
         if (_state == State::FINISHED) { return; }
 
-        // Do not proceed with the rest unless running the jobs
-        // under relaxed condition.
+        if (job->extendedState() == ExtendedState::SUCCESS) {
 
-        if (not _bestEffort and (job->extendedState() != ExtendedState::SUCCESS)) {
+            _numSuccess++;
+
+            if (_numFinished == _numLaunched) {
+
+                // Launch chained jobs to ensure the minimal replication level
+                // which might be affected by the worker removal.
+
+                _numLaunched = 0;
+                _numFinished = 0;
+                _numSuccess  = 0;
+
+                auto self = shared_from_base<DeleteWorkerJob>();
+
+                for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
+                    ReplicateJob::pointer const job = ReplicateJob::create(
+                        databaseFamily,
+                        0,  /* numReplicas -- pull from Configuration */
+                        _controller,
+                        _id,
+                        [self] (ReplicateJob::pointer job) {
+                            self->onJobFinish(job);
+                        }
+                    );
+                    job->start();
+                    _replicateJobs.push_back(job);
+                    _numLaunched++;
+                }
+            }
+        } else {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
-        }
-        if (job->extendedState() == ExtendedState::SUCCESS) {
-            _numSuccess++;
-        }
-        if (_numFinished == _numLaunched) {
-
-            // Launch chained jobs to ensure the minimal replication level
-            // which might be affected by the worker removal.
-
-            _numLaunched = 0;
-            _numFinished = 0;
-            _numSuccess  = 0;
-
-            auto self = shared_from_base<DeleteWorkerJob>();
-
-            for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
-                ReplicateJob::pointer const job = ReplicateJob::create(
-                    databaseFamily,
-                    0,  /* numReplicas -- pull from Configuration */
-                    _controller,
-                    _id,
-                    [self] (ReplicateJob::pointer job) {
-                        self->onJobFinish(job);
-                    }
-                );
-                job->start();
-                _replicateJobs.push_back(job);
-                _numLaunched++;
-            }
         }
 
     } while (false);
@@ -455,15 +450,8 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
         // Ignore the callback if the job was cancelled (or otherwise failed)
         if (_state == State::FINISHED) return;
 
-        // Do not proceed with the rest unless running the jobs
-        // under relaxed condition.
-
-        if (!_bestEffort && (job->extendedState() != ExtendedState::SUCCESS)) {
-            setState(State::FINISHED, ExtendedState::FAILED);
-            break;
-        }
-
         if (job->extendedState() == ExtendedState::SUCCESS) {
+
             _numSuccess++;
 
             LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(ReplicateJob)  "
@@ -471,6 +459,10 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
 
             // Merge results into the current job's result object
             _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
+
+        } else {
+            setState(State::FINISHED, ExtendedState::FAILED);
+            break;
         }
         if (_numFinished == _numLaunched) {
 

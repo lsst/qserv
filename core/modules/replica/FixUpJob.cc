@@ -46,42 +46,39 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+Job::Options const& FixUpJob::defaultOptions() {
+    static Job::Options const options{
+        1,      /* priority */
+        true,   /* exclusive */
+        true    /* exclusive */
+    };
+    return options;
+}
+
 FixUpJob::pointer FixUpJob::create(std::string const& databaseFamily,
                                    Controller::pointer const& controller,
                                    std::string const& parentJobId,
                                    callback_type onFinish,
-                                   bool bestEffort,
-                                   int  priority,
-                                   bool exclusive,
-                                   bool preemptable) {
+                                   Job::Options const& options) {
     return FixUpJob::pointer(
         new FixUpJob(databaseFamily,
                      controller,
                      parentJobId,
                      onFinish,
-                     bestEffort,
-                     priority,
-                     exclusive,
-                     preemptable));
+                     options));
 }
 
 FixUpJob::FixUpJob(std::string const& databaseFamily,
                    Controller::pointer const& controller,
                    std::string const& parentJobId,
                    callback_type onFinish,
-                   bool bestEffort,
-                   int  priority,
-                   bool exclusive,
-                   bool preemptable)
+                   Job::Options const& options)
     :   Job(controller,
             parentJobId,
             "FIXUP",
-            priority,
-            exclusive,
-            preemptable),
+            options),
         _databaseFamily(databaseFamily),
         _onFinish(onFinish),
-        _bestEffort(bestEffort),
         _numIterations(0),
         _numFailedLocks(0),
         _numLaunched(0),
@@ -250,10 +247,10 @@ void FixUpJob::onPrecursorJobFinish() {
         if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
-        // Do not proceed with the replication effort unless running the job
-        // under relaxed condition.
+        // Do not proceed with the replication effort if there is a problem
+        // with the precursor job
 
-        if (not _bestEffort and (_findAllJob->extendedState() != ExtendedState::SUCCESS)) {
+        if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
             setState(State::FINISHED, ExtendedState::FAILED);
             break;
         }

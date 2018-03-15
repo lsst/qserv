@@ -81,26 +81,21 @@ public:
     /// The function type for notifications on the completon of the request
     typedef std::function<void(pointer)> callback_type;
 
+    /// @return default options object for this type of a request
+    static Job::Options const& defaultOptions();
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily    - the name of a database family involved into the operation
-     * @param chunk             - the chunk number
-     * @param worker            - the name of a worker where the affected replica is residing
-     * @param controller        - for launching requests
-     * @param parentJobId       - optional identifier of a parent job
-     * @param onFinish          - a callback function to be called upon a completion of the job
-     * @param priority          - set the desired job priority (larger values
-     *                            mean higher priorities). A job with the highest
-     *                            priority will be select from an input queue by
-     *                            the JobScheduler.
-     * @param exclusive         - set to 'true' to indicate that the job can't be
-     *                            running simultaneously alongside other jobs.
-     * @param preemptable       - set to 'true' to indicate that this job can be
-     *                            interrupted to give a way to some other job of
-     *                            high importancy.
+     * @param databaseFamily - the name of a database family involved into the operation
+     * @param chunk          - the chunk number
+     * @param worker         - the name of a worker where the affected replica is residing
+     * @param controller     - for launching requests
+     * @param parentJobId    - optional identifier of a parent job
+     * @param onFinish       - a callback function to be called upon a completion of the job
+     * @param options        - job options
      */
     static pointer create(std::string const& databaseFamily,
                           unsigned int chunk,
@@ -108,9 +103,7 @@ public:
                           Controller::pointer const& controller,
                           std::string const& parentJobId,
                           callback_type onFinish,
-                          int  priority    = -2,
-                          bool exclusive   = false,
-                          bool preemptable = true);
+                          Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -172,9 +165,7 @@ protected:
                      Controller::pointer const& controller,
                      std::string const& parentJobId,
                      callback_type onFinish,
-                     int  priority,
-                     bool exclusive,
-                     bool preemptable);
+                     Job::Options const& options);
 
     /**
       * Implement the corresponding method of the base class.
