@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,13 +19,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
-#define LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
+#ifndef LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
+#define LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
 
-/// MoveReplicaJob.h declares:
+/// CreateReplicaJob.h declares:
 ///
-/// struct MoveReplicaJobResult
-/// class  MoveReplicaJob
+/// struct CreateReplicaJobResult
+/// class  CreateReplicaJob
 ///
 /// (see individual class documentation for more information)
 
@@ -39,8 +39,7 @@
 // Qserv headers
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/CreateReplicaJob.h"
-#include "replica/DeleteReplicaJob.h"
+#include "replica/ReplicationRequest.h"
 
 // Forward declarations
 
@@ -51,44 +50,33 @@ namespace qserv {
 namespace replica {
 
 /**
- * The structure MoveReplicaJobResult represents a combined result received
+ * The structure CreateReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
-struct MoveReplicaJobResult {
+struct CreateReplicaJobResult {
 
     /// Results reported by workers upon the successfull completion
     /// of the new replica creation requests
-    std::list<ReplicaInfo> createdReplicas;
+    std::list<ReplicaInfo> replicas;
 
     /// New replica creation results groupped by: chunk number, database, worker
     std::map<unsigned int,                  // chunk
              std::map<std::string,          // database
                       std::map<std::string, // destination worker
-                               ReplicaInfo>>> createdChunks;
-
-    /// Results reported by workers upon the successfull completion
-    /// of the replica deletion requests
-    std::list<ReplicaInfo> deletedReplicas;
-
-    /// Replica deletion results groupped by: chunk number, database, worker
-    std::map<unsigned int,                  // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // source worker
-                               ReplicaInfo>>> deletedChunks;
+                               ReplicaInfo>>> chunks;
 };
 
 /**
-  * Class MoveReplicaJob represents a tool which will move a chunk replica
-  * from a source worker to some other (destination) worker. The input replica
-  * may be deleted if requested.
+  * Class CreateReplicaJob represents a tool which will copy a chunk replica
+  * from a source worker to some other (destination) worker.
   */
-class MoveReplicaJob
+class CreateReplicaJob
     :   public Job  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<MoveReplicaJob> pointer;
+    typedef std::shared_ptr<CreateReplicaJob> pointer;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(pointer)> callback_type;
@@ -102,7 +90,6 @@ public:
      * @param chunk             - the chunk number
      * @param sourceWorker      - the name of a source worker where the input replica is residing
      * @param destinationWorker - the name of a destination worker where the output replica will be placed
-     * @param purge             - the flag indicating if the input replica should be purged
      * @param controller        - for launching requests
      * @param parentJobId       - optional identifier of a parent job
      * @param onFinish          - a callback function to be called upon a completion of the job
@@ -120,22 +107,21 @@ public:
                           unsigned int chunk,
                           std::string const& sourceWorker,
                           std::string const& destinationWorker,
-                          bool purge,
                           Controller::pointer const& controller,
                           std::string const& parentJobId,
                           callback_type onFinish,
-                          int  priority = -2,
-                          bool exclusive = false,
+                          int  priority    = -2,
+                          bool exclusive   = false,
                           bool preemptable = true);
 
     // Default construction and copy semantics are prohibited
 
-    MoveReplicaJob() = delete;
-    MoveReplicaJob(MoveReplicaJob const&) = delete;
-    MoveReplicaJob& operator=(MoveReplicaJob const&) = delete;
+    CreateReplicaJob() = delete;
+    CreateReplicaJob(CreateReplicaJob const&) = delete;
+    CreateReplicaJob& operator=(CreateReplicaJob const&) = delete;
 
     /// Destructor
-    ~MoveReplicaJob() override = default;
+    ~CreateReplicaJob() override = default;
 
     /// The name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -148,9 +134,6 @@ public:
 
     /// Return the name of a destination worker where the output replica will be placed
     std::string const& destinationWorker() const { return _destinationWorker; }
-
-    /// Return the flag indicating if the input replica should be purged
-    bool purge() const { return _purge; }
 
     /**
      * Return the result of the operation.
@@ -169,7 +152,7 @@ public:
      * @throws std::logic_error - if the job dodn't finished at a time
      *                            when the method was called
      */
-    MoveReplicaJobResult const& getReplicaData() const;
+    CreateReplicaJobResult const& getReplicaData() const;
 
     /**
       * Implement the corresponding method of the base class.
@@ -186,19 +169,18 @@ protected:
     /**
      * Construct the job with the pointer to the services provider.
      *
-     * @see MoveReplicaJob::create()
+     * @see CreateReplicaJob::create()
      */
-    MoveReplicaJob(std::string const& databaseFamily,
-                   unsigned int chunk,
-                   std::string const& sourceWorker,
-                   std::string const& destinationWorker,
-                   bool purge,
-                   Controller::pointer const& controller,
-                   std::string const& parentJobId,
-                   callback_type onFinish,
-                   int  priority,
-                   bool exclusive,
-                   bool preemptable);
+    CreateReplicaJob(std::string const& databaseFamily,
+                     unsigned int chunk,
+                     std::string const& sourceWorker,
+                     std::string const& destinationWorker,
+                     Controller::pointer const& controller,
+                     std::string const& parentJobId,
+                     callback_type onFinish,
+                     int  priority,
+                     bool exclusive,
+                     bool preemptable);
 
     /**
       * Implement the corresponding method of the base class.
@@ -222,16 +204,12 @@ protected:
     void notify() override;
 
     /**
-     * The calback function to be invoked on a completion of the replica
-     * creation job.
+     * The calback function to be invoked on a completion of each replica
+     * creation request.
+     *
+     * @param request - a pointer to a request
      */
-    void onCreateJobFinish();
-
-    /**
-     * The calback function to be invoked on a completion of the replica
-     * deletion job.
-     */
-     void onDeleteJobFinish();
+    void onRequestFinish(ReplicationRequest::pointer const& request);
 
 protected:
 
@@ -247,22 +225,16 @@ protected:
     /// The name of a destination worker where the output replica will be placed
     std::string _destinationWorker;
 
-    /// The flag indicating if the input replica should be purged
-    bool _purge;
-
     /// Client-defined function to be called upon the completion of the job
     callback_type _onFinish;
 
-    /// The chained job implementing the first stage of the move
-    CreateReplicaJob::pointer _createReplicaJob;
-
-    /// The chained job implementing the second stage of the move
-    DeleteReplicaJob::pointer _deleteReplicaJob;
+    /// A collection of the replication requests implementing the operation
+    std::vector<ReplicationRequest::pointer> _requests;
 
     /// The result of the operation (gets updated as requests are finishing)
-    MoveReplicaJobResult _replicaData;
+    CreateReplicaJobResult _replicaData;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MOVE_REPLICA_JOB_H
+#endif // LSST_QSERV_REPLICA_CREATE_REPLICA_JOB_H
