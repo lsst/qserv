@@ -46,6 +46,12 @@
 
 using namespace std;
 
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
+
+}
+
 
 // This macro creates the enterXXX and exitXXX function definitions, for functions declared in
 // MySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the stack),
@@ -65,9 +71,7 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
 #define UNHANDLED(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED"); \
-    ostringstream msg; \
-    msg << "enter" << #NAME << " not supported."; \
-    throw MySqlListener::adapter_order_error(msg.str()); \
+    throw MySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
 void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {}\
@@ -87,9 +91,6 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {\
 namespace lsst {
 namespace qserv {
 namespace parser {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
-
 
 /// Callback Handler classes
 
@@ -313,7 +314,7 @@ public:
     }
 
     void onExit() override {
-        shared_ptr<query::SelectStmt> selectStatement = make_shared<query::SelectStmt>();
+        auto selectStatement = make_shared<query::SelectStmt>();
         selectStatement->setSelectList(_selectList);
         selectStatement->setFromList(_fromList);
         selectStatement->setWhereClause(_whereClause);
@@ -480,9 +481,6 @@ public:
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent()->handleTableName(string);
     }
-
-protected:
-    weak_ptr<TableNameCBH> _parent;
 };
 
 
@@ -497,9 +495,6 @@ public:
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent()->handleFullIdString(string);
     }
-
-protected:
-    weak_ptr<FullIdCBH> _parent;
 };
 
 
@@ -765,6 +760,10 @@ void MySqlListener::popAdapterStack() {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
     adapterPtr->onExit();
     _adapterStack.pop();
+    // capturing adapterPtr and casting it to the expected type is useful as a sanity check that the enter &
+    // exit functions are called in the correct order (balanced). The dynamic cast is of course not free and
+    // this code could be optionally disabled or removed entirely if the check is found to be unnecesary or
+    // adds too much of a performance penalty.
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     if (nullptr == derivedPtr) {
         int status;
@@ -774,22 +773,6 @@ void MySqlListener::popAdapterStack() {
                 " Are there out of order or unhandled listener exits?");
         // might want to throw here...?
     }
-}
-
-
-// might want to use this in popAdapterStack?
-template<typename ChildAdapter>
-shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
-    shared_ptr<Adapter> adapterPtr = _adapterStack.top();
-    shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
-    if (nullptr == derivedPtr) {
-        int status;
-        LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
-                "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
-                " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status));
-        // might want to throw here?
-    }
-    return derivedPtr;
 }
 
 
