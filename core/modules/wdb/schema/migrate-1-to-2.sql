@@ -4,4 +4,4 @@
 --  -  grant extended privileges to user 'qsmaster' for the database tables
 --
 
-GRANT ALL ON qservw_worker.* TO '{{MYSQLD_USER_QSERV}}'@'localhost';
+GRANT ALL ON qservw_worker.* TO 'qsmaster'@'localhost';
