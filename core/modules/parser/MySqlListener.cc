@@ -63,7 +63,7 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
 #define UNHANDLED(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED"); \
-    std::ostringstream msg; \
+    ostringstream msg; \
     msg << "enter" << #NAME << " not supported."; \
     throw MySqlListener::adapter_order_error(msg.str()); \
 } \
@@ -131,7 +131,7 @@ public:
 
 class TableNameCBH : public BaseCBH {
 public:
-    virtual void handleTableName(const std::string& string) = 0;
+    virtual void handleTableName(const string& string) = 0;
 };
 
 
@@ -161,13 +161,13 @@ public:
 
 class UidCBH : public BaseCBH {
 public:
-    virtual void handleUidString(const std::string& string) = 0;
+    virtual void handleUidString(const string& string) = 0;
 };
 
 
 class FullIdCBH : public BaseCBH {
 public:
-    virtual void handleFullIdString(const std::string& string) = 0;
+    virtual void handleFullIdString(const string& string) = 0;
 };
 
 
@@ -217,7 +217,7 @@ public:
 
 class ConstantCBH : public BaseCBH {
 public:
-    virtual void handleConstant(const std::string& val) = 0;
+    virtual void handleConstant(const string& val) = 0;
 };
 
 
@@ -372,7 +372,7 @@ public:
     }
 
 private:
-    std::shared_ptr<query::SelectList> _selectList{std::make_shared<query::SelectList>()};
+    shared_ptr<query::SelectList> _selectList{make_shared<query::SelectList>()};
 };
 
 
@@ -393,7 +393,7 @@ public:
         }
         if (ctx->whereExpr == childCtx) {
             if (_whereClause->getRootTerm()) {
-                std::ostringstream msg;
+                ostringstream msg;
                 msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
                 LOGS(_log, LOG_LVL_ERROR, msg.str());
                 throw MySqlListener::adapter_execution_error(msg.str());
@@ -408,7 +408,7 @@ public:
     }
 
 private:
-    shared_ptr<query::WhereClause> _whereClause{std::make_shared<query::WhereClause>()};
+    shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
 };
 
@@ -455,7 +455,7 @@ public:
     AtomTableItemAdapter(shared_ptr<AtomTableItemCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
-    void handleTableName(const std::string& string) override {
+    void handleTableName(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         _table = string;
     }
@@ -466,9 +466,9 @@ public:
     }
 
 protected:
-    std::string _db;
-    std::string _table;
-    std::string _alias;
+    string _db;
+    string _table;
+    string _alias;
 };
 
 
@@ -477,7 +477,7 @@ public:
     TableNameAdapter(shared_ptr<TableNameCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
-    void handleFullIdString(const std::string& string) override {
+    void handleFullIdString(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent<TableNameCBH>()->handleTableName(string);
     }
@@ -494,7 +494,7 @@ public:
 
     virtual ~FullIdAdapter() {}
 
-    void handleUidString(const std::string& string) override {
+    void handleUidString(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent<FullIdCBH>()->handleFullIdString(string);
     }
@@ -509,10 +509,10 @@ public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH> parent, antlr4::ParserRuleContext* ctx)
     : Adapter(parent, ctx) {}
 
-    void handleUidString(const std::string& string) override {
+    void handleUidString(const string& string) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
-        auto valueExpr = std::make_shared<query::ValueExpr>();
+        auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent<FullColumnNameCBH>()->handleFullColumnName(valueExpr);
     }
@@ -554,7 +554,7 @@ public:
     void handleConstantExpressionAtom(const string& text) override {
         query::ValueExpr::FactorOp factorOp;
         factorOp.factor =  query::ValueFactor::newConstFactor(text);
-        auto valueExpr = std::make_shared<query::ValueExpr>();
+        auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->getFactorOps().push_back(factorOp);
         lockedParent<ExpressionAtomPredicateCBH>()->handleExpressionAtomPredicate(valueExpr);
     }
@@ -599,7 +599,7 @@ public:
         if (_comparison.empty()) {
             _comparison = text;
         } else {
-            std::ostringstream msg;
+            ostringstream msg;
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when comparison value is already populated:" << _comparison;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
@@ -614,7 +614,7 @@ public:
         } else if (_right == nullptr) {
             _right = valueExpr;
         } else {
-            std::ostringstream msg;
+            ostringstream msg;
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when left and right values are already populated:" << _left << ", " << _right;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
@@ -626,13 +626,13 @@ public:
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " " << _left << " " << _comparison << " " << _right);
 
         if (_left == nullptr || _right == nullptr) {
-            std::ostringstream msg;
+            ostringstream msg;
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when left and right values are not both populated:" << _left << ", " << _right;
             throw MySqlListener::adapter_execution_error(msg.str());
         }
 
-        auto compPredicate = std::make_shared<query::CompPredicate>();
+        auto compPredicate = make_shared<query::CompPredicate>();
         compPredicate->left = _left;
 
         // We need to remove the coupling between the query classes and the parser classes, in this case where
@@ -642,7 +642,7 @@ public:
         if (_comparison.compare(string("=")) == 0) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
         } else {
-            std::ostringstream msg;
+            ostringstream msg;
             msg << "unhandled comparison operator in BinaryComparasionPredicateAdapter: " << _comparison;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
             throw MySqlListener::adapter_execution_error(msg.str());
@@ -650,10 +650,10 @@ public:
 
         compPredicate->right = _right;
 
-        auto boolFactor = std::make_shared<query::BoolFactor>();
+        auto boolFactor = make_shared<query::BoolFactor>();
         boolFactor->_terms.push_back(compPredicate);
 
-        auto orTerm = std::make_shared<query::OrTerm>();
+        auto orTerm = make_shared<query::OrTerm>();
         orTerm->_terms.push_back(boolFactor);
 
         lockedParent<BinaryComparasionPredicateCBH>()->handleOrTerm(orTerm);
@@ -728,12 +728,12 @@ private:
 
 
 MySqlListener::MySqlListener() {
-    _rootAdapter = std::make_shared<RootAdapter>();
+    _rootAdapter = make_shared<RootAdapter>();
     _adapterStack.push(_rootAdapter);
 }
 
 
-std::shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
+shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
     return _rootAdapter->getSelectStatement();
 }
 
@@ -741,18 +741,18 @@ std::shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
-std::shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(Context * ctx) {
-    auto p = std::dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
+shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(Context * ctx) {
+    auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
         int status;
-        std::ostringstream msg;
+        ostringstream msg;
         msg << "can't acquire expected Adapter " <<
                 abi::__cxa_demangle(typeid(ParentCBH).name(),0,0,&status) <<
                 " from top of listenerStack.";
         LOGS(_log, LOG_LVL_ERROR, msg.str());
         throw adapter_order_error(msg.str());
     }
-    auto childAdapter = std::make_shared<ChildAdapter>(p, ctx);
+    auto childAdapter = make_shared<ChildAdapter>(p, ctx);
     _adapterStack.push(childAdapter);
     childAdapter->onEnter();
     return childAdapter;
@@ -778,7 +778,7 @@ void MySqlListener::popAdapterStack() {
 
 // might want to use this in popAdapterStack?
 template<typename ChildAdapter>
-std::shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
+shared_ptr<ChildAdapter> MySqlListener::adapterStackTop() const {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     if (nullptr == derivedPtr) {
