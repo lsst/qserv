@@ -30,13 +30,6 @@
 #include <string>
 
 // Third-party headers
-#include "antlr4-runtime.h"
-
-// these must be included before Log.h because they have a function called LOGS
-// that conflicts with the LOGS macro defined in Log.h
-#include "parser/MySqlLexer.h"
-#include "parser/MySqlParser.h"
-
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,6 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -57,7 +51,6 @@
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
-#include "parser/MySqlListener.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
@@ -69,12 +62,6 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 
-// antlr4 C++ runtime seems to require that we use namespace antlr4; trying to use it with classes
-// results in at least one error where the `tree` decl assumes that it's already operating in the
-// antlr4 namespace. I may be wrong about this though; it needs research (before merge to master).
-// If I'm right we should see about fixing the antlr4 cpp runtime & issuing a PR to them.
-using namespace antlr4;
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 }
@@ -82,26 +69,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-
-
-std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery) {
-    try {
-        ANTLRInputStream input(userQuery);
-        MySqlLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        MySqlParser parser(&tokens);
-        tree::ParseTree *tree = parser.root();
-        LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
-        tree::ParseTreeWalker walker;
-        parser::MySqlListener listener;
-        walker.walk(&listener, tree);
-        return listener.getSelectStatement();
-    } catch (std::exception& e) {
-        LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
-        return nullptr;
-    }
-}
 
 
 /// Implementation class (PIMPL-style) for UserQueryFactory.
