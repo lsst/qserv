@@ -30,6 +30,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 // Qserv headers
+#include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryType.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "query/SelectStmt.h"
