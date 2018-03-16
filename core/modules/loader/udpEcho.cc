@@ -5,6 +5,8 @@
 #include <iostream>
 #include <thread>
 
+#if 0
+
 using boost::asio::ip::udp;
 constexpr size_t buffer_size = 4096;
 
@@ -112,3 +114,12 @@ main(int argc, char* argv[])
     thread4.join();
     return 0;
 }
+
+
+#else
+
+int main(int argc, char* argv[]) {
+    std::cerr << "Code stubbed out" << std::endl;
+}
+
+#endif

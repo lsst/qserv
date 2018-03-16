@@ -1,66 +1,22 @@
+
 #if 1
 
-//
-// async_udp_echo_server.cpp
-// ~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2008 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
+// System header
 #include <cstdlib>
 #include <iostream>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 
-using boost::asio::ip::udp;
+#include <stdio.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <arpa/inet.h>
 
-class server {
-public:
-    server(boost::asio::io_service& io_service, short port) : io_service_(io_service),
-    socket_(io_service, udp::endpoint(udp::v4(), port)) {
-        socket_.async_receive_from(
-                boost::asio::buffer(data_, max_length), sender_endpoint_,
-                boost::bind(&server::handle_receive_from, this,
-                            boost::asio::placeholders::error,
-                            boost::asio::placeholders::bytes_transferred));
-    }
+// Qserv headers
+#include "loader/ServerUdpBase.h"
 
-    void handle_receive_from(const boost::system::error_code& error, size_t bytes_recvd) {
-        if (!error && bytes_recvd > 0) {
-            std::string str(data_, bytes_recvd);
-            std::cout << "received(" << bytes_recvd << "):" << str
-                      <<", error code: " << error << ", from endpoint " << sender_endpoint_ << std::endl;
-            socket_.async_send_to(boost::asio::buffer(data_, bytes_recvd), sender_endpoint_,
-                                  boost::bind(&server::handle_send_to, this,
-                                              boost::asio::placeholders::error,
-                                              boost::asio::placeholders::bytes_transferred));
-        } else {
-            std::cout << "received error or empty bytes=" << bytes_recvd << std::endl;
-            socket_.async_receive_from(boost::asio::buffer(data_, max_length), sender_endpoint_,
-                                       boost::bind(&server::handle_receive_from, this,
-                                                   boost::asio::placeholders::error,
-                                                   boost::asio::placeholders::bytes_transferred));
-        }
-    }
-
-    void handle_send_to(const boost::system::error_code& error, size_t bytes_sent) {
-        std::cout << "  handle_send_to bytes_sent=" << bytes_sent << std::endl;
-        socket_.async_receive_from(boost::asio::buffer(data_, max_length), sender_endpoint_,
-                                   boost::bind(&server::handle_receive_from, this,
-                                               boost::asio::placeholders::error,
-                                               boost::asio::placeholders::bytes_transferred));
-    }
-
-private:
-    boost::asio::io_service& io_service_;
-    udp::socket socket_;
-    udp::endpoint sender_endpoint_;
-    enum { max_length = 1024 };
-    char data_[max_length];
-};
 
 int main(int argc, char* argv[]) {
     try {
@@ -69,13 +25,51 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        boost::asio::io_service io_service;
+        std::string host = "127.0.0.1";
 
+        struct ifaddrs* ifAddrStruct=NULL;
+        struct ifaddrs* ifa=NULL;
+        void* tmpAddrPtr=NULL;
+
+        getifaddrs(&ifAddrStruct);
+
+        for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+            if (!ifa->ifa_addr) {
+                continue;
+            }
+            if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
+                // is a valid IP4 Address
+                tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+                char addressBuffer[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+                printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+            } else if (ifa->ifa_addr->sa_family == AF_INET6) { // check it is IP6
+                // is a valid IP6 Address
+                tmpAddrPtr=&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
+                char addressBuffer[INET6_ADDRSTRLEN];
+                inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
+                printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+            }
+        }
+        if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+        /* example output of above:
+           lo IP Address 127.0.0.1
+           eth0 IP Address 134.79.208.18
+           virbr0 IP Address 192.168.122.1
+           docker0 IP Address 172.17.42.1
+           lo IP Address ::1
+           eth0 IP Address fe80::9a90:96ff:fe9e:8eb0
+           docker0 IP Address fe80::469:ecff:fe70:391e
+         */
+
+
+        boost::asio::io_service ioService;
+        //std::string host = argv[1];
         int port = std::atoi(argv[1]);
-        std::cout << "port=" << port << std::endl;
-        server s(io_service, port);
+        std::cout << "host=" << host << " port=" << port << std::endl;
+        lsst::qserv::loader::ServerUdpBase server(ioService, host, port);
 
-        io_service.run();
+        ioService.run();
     }
     catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
@@ -83,8 +77,6 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
-
 
 
 
