@@ -52,6 +52,7 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+#include "replica/VerifyJob.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -330,6 +331,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                                "REPLICATE",
                                "PURGE",
                                "REBALANCE",
+                               "VERIFY",
                                "DELETE_WORKER",
                                "ADD_WORKER",
                                "CREATE_REPLICA",
@@ -397,6 +399,15 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 "job_rebalance",
                 ptr->id(),
                 ptr->databaseFamily()
+            );
+
+        } else if ("VERIFY" == job->type()) {
+            auto ptr = safeAssign<VerifyJob>(job);
+            _conn->executeInsertQuery(
+                "job_verify",
+                ptr->id(),
+                ptr->maxReplicas(),
+                ptr->computeCheckSum()
             );
 
         } else if ("DELETE_WORKER" == job->type()) {

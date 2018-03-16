@@ -340,7 +340,7 @@ int main(int argc, const char* const argv[]) {
 
             "REPLICA_CREATE",
             "REPLICA_CREATE,CANCEL"})) {
-            
+
             ::sourceWorker = parser.parameter<std::string>(3);
             ::db           = parser.parameter<std::string>(4);
             ::chunk        = parser.parameter<int>(5);
@@ -348,11 +348,16 @@ int main(int argc, const char* const argv[]) {
         } else if (parser.in(::operation, {
 
             "REPLICA_DELETE",
-            "REPLICA_FIND",
-            "REPLICA_FIND_ALL"})) {
+            "REPLICA_FIND"})) {
 
             ::db    = parser.parameter<std::string>(3);
             ::chunk = parser.parameter<int>(4);
+
+        } else if (parser.in(::operation, {
+
+            "REPLICA_FIND_ALL"})) {
+
+            ::db = parser.parameter<std::string>(3);
 
         } else if (parser.in(::operation, {
 
