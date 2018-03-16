@@ -111,12 +111,6 @@ int main() {
             std::string info("hi There");
             client.sendToServer(scannerAddress, 10042, info);
             sleep(5);
-            /* &&&
-            boost::array<char, 128> recv_buf;
-            udp::endpoint sender_endpoint;
-            size_t sz = socket.receive_from(boost::asio::buffer(recv_buf), sender_endpoint);
-            cout.write(recv_buf.data(), sz);
-            */
             break;
         }
         case RECEIVE_ANSWER_FROM_SERVER:
