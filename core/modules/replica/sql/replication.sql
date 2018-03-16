@@ -192,6 +192,7 @@ CREATE TABLE IF NOT EXISTS `job` (
                'REPLICATE',
                'PURGE',
                'REBALANCE',
+               'VERIFY',
                'DELETE_WORKER',
                'ADD_WORKER',
                'MOVE_REPLICA',
@@ -334,6 +335,30 @@ CREATE TABLE IF NOT EXISTS `job_rebalance` (
   `database_family`  VARCHAR(255) NOT NULL ,
 
   CONSTRAINT `job_rebalance_fk_1`
+    FOREIGN KEY (`job_id` )
+    REFERENCES `job` (`id` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `job_verify`
+-- -----------------------------------------------------
+--
+-- Extended parameters of the 'VERIFY' jobs
+--
+DROP TABLE IF EXISTS `job_verify` ;
+
+CREATE TABLE IF NOT EXISTS `job_verify` (
+
+  `job_id`  VARCHAR(255) NOT NULL ,
+
+  `max_replicas`  INT     NOT NULL ,
+  `compute_cs`    BOOLEAN NOT NULL ,
+
+  CONSTRAINT `job_verify_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
     ON DELETE CASCADE

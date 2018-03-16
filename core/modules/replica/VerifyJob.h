@@ -197,6 +197,12 @@ public:
     /// Destructor
     ~VerifyJob() override = default;
 
+    /// @return maximum number of replicas to be allowed processed simultaneously
+    size_t maxReplicas() const { return _maxReplicas; }
+
+    /// @return true if file check/control sums need to be recomputed
+    bool computeCheckSum() const { return _computeCheckSum; }
+
     /**
       * Implement the corresponding method of the base class.
       *
