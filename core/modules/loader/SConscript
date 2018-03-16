@@ -15,6 +15,7 @@ path = "./"
 for f in env.Glob(os.path.join(path, "udp*.cc"), source=True, strings=True):
     print(f)
     bin_cc_files[f] = [
+        "loader",
         "XrdCl",
         "XrdSsiLib",
         "qserv_common",

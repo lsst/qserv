@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2011-2018 LSST Corporation.
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,26 +24,88 @@
 
 package lsst.qserv.proto;
 
-
-message LoaderFileRequest {
-    /// The name of a file (including its extention and excluding any path)
-    required string file = 2;
+/// Response to any maessage
+message LdrMsgReceived {
+    /// 
+    required uint64 originalid   = 1;
+    required uint32 originalkind = 2;
+    required uint32 status       = 3;
+    optional string errmsg       = 4;
+    required uint32 dataentries  = 5;
 }
 
-message LoaderFileResponse {
-
-    /// The flag indicating if the earlier requested file is available,
-    /// and it can be read by the server.
-    required bool available = 1;
-
-    /// The file size (bytes)
-    required uint64 size = 2;
-
-    /// The file content modification time in seconds (since UNIX Epoch)
-    required uint32 mtime = 3;
-
+/// Register a worker with the master.    
+message LdrNetAddress {
+    required string workerip     = 1;  // &&& change to ip
+    required uint32 workerport   = 2;  // &&& change to port
 }
 
 
+message WorkerRangeString {
+    required bool valid  = 1;
+    required string min  = 2; 
+    required string max  = 3;
+    required bool maxunlimited = 4;
+}
 
- 
+
+message WorkerRangeInt {
+    required bool valid     = 1;
+	required uint64 minint  = 2;
+	required uint64 maxint  = 3;
+	required bool maxunlimited = 4;
+}
+
+message WorkerRange {
+    optional WorkerRangeString rangeStr = 3;
+    optional WorkerRangeInt rangeInt = 4;
+}
+
+
+message WorkerListItem {
+    required uint32            name     = 1; // worker's id number
+    optional LdrNetAddress     address  = 2;
+    optional WorkerRangeString rangestr = 3; // TODO replace with WorkerRange
+}
+
+
+message LdrMastWorkerList {
+	required uint32         workercount = 1;
+    repeated WorkerListItem worker      = 2;
+}
+
+
+message KeyInfo {
+	required string key      = 1;
+	required uint32 chunk    = 2;
+	required uint32 subchunk = 3;
+	optional bool   success  = 4;
+}
+
+
+message KeyInfoInsert {
+	required LdrNetAddress requester = 1;
+	required KeyInfo       keyinfo   = 2;
+}
+
+
+message Neighbor {
+	required uint32 name   = 2;
+}	
+
+
+message WorkerKeysInfo {
+    required uint32            name       = 1;
+    required uint32            mapsize    = 2;
+    required uint32            recentadds = 3;
+    required WorkerRangeString range      = 4; // TODO replace with WorkerRange
+    optional Neighbor          left       = 5;
+    required Neighbor          right      = 6;
+}
+
+
+message WorkerImNeighbor {
+    required uint32  name     = 1;
+    required uint64  keycount = 2;
+    optional KeyInfo keyinfo  = 3; 
+ }
