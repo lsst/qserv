@@ -192,6 +192,11 @@ public:
 };
 
 
+class SelectFunctionElementCBH: public BaseCBH {
+public:
+};
+
+
 class SelectColumnElementCBH : public BaseCBH {
 public:
     virtual void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) = 0;
@@ -218,9 +223,69 @@ public:
 };
 
 
+
 class ConstantCBH : public BaseCBH {
 public:
     virtual void handleConstant(const string& val) = 0;
+};
+
+
+class AggregateFunctionCallCBH : public BaseCBH {
+public:
+};
+
+
+class UdfFunctionCallCBH : public BaseCBH {
+public:
+};
+
+class AggregateWindowedFunctionCBH : public BaseCBH {
+public:
+};
+
+
+class FunctionArgsCBH : public BaseCBH {
+public:
+};
+
+
+class LogicalExpressionCBH : public BaseCBH {
+public:
+};
+
+
+class BetweenPredicateCBH : public BaseCBH {
+public:
+};
+
+
+class UnaryExpressionAtomCBH : public BaseCBH {
+public:
+};
+
+
+class MathExpressionAtomCBH : public BaseCBH {
+public:
+};
+
+
+class FunctionCallExpressionAtomCBH : public BaseCBH {
+public:
+};
+
+
+class UnaryOperatorCBH : public BaseCBH {
+public:
+};
+
+
+class LogicalOperatorCBH : public BaseCBH {
+public:
+};
+
+
+class MathOperatorCBH : public BaseCBH {
+public:
 };
 
 
@@ -356,7 +421,9 @@ private:
 };
 
 
-class SelectElementsAdapter : public AdapterT<SelectElementsCBH>, public SelectColumnElementCBH {
+class SelectElementsAdapter : public AdapterT<SelectElementsCBH>,
+        public SelectColumnElementCBH,
+        public SelectFunctionElementCBH {
 public:
     SelectElementsAdapter(shared_ptr<SelectElementsCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -376,7 +443,10 @@ private:
 };
 
 
-class FromClauseAdapter : public AdapterT<FromClauseCBH>, public TableSourcesCBH, public PredicateExpressionCBH {
+class FromClauseAdapter : public AdapterT<FromClauseCBH>,
+        public TableSourcesCBH,
+        public PredicateExpressionCBH,
+        public LogicalExpressionCBH {
 public:
     FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -540,7 +610,11 @@ public:
 
 
 class ExpressionAtomPredicateAdapter : public AdapterT<ExpressionAtomPredicateCBH>,
-        public ConstantExpressionAtomCBH, public FullColumnNameExpressionAtomCBH {
+        public ConstantExpressionAtomCBH,
+        public FullColumnNameExpressionAtomCBH,
+        public FunctionCallExpressionAtomCBH,
+        public UnaryExpressionAtomCBH,
+        public MathExpressionAtomCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
                                    antlr4::ParserRuleContext* ctx)
@@ -562,13 +636,21 @@ public:
 
 
 class PredicateExpressionAdapter : public AdapterT<PredicateExpressionCBH>,
-        public BinaryComparasionPredicateCBH {
+        public BinaryComparasionPredicateCBH,
+        public ExpressionAtomPredicateCBH,
+        public BetweenPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
 
+    // BinaryComparisonPredicateCBH
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm) override {
         _orTerm = orTerm;
+    }
+
+    // ExpressionAtomPredicateCBH
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
+        // todo
     }
 
     void onExit() {
@@ -677,6 +759,21 @@ private:
 };
 
 
+// handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
+class SelectFunctionElementAdapter : public AdapterT<SelectFunctionElementCBH>,
+        public AggregateFunctionCallCBH,
+        public UidCBH {
+public:
+    SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
+                                 MySqlParser::SelectFunctionElementContext* ctx)
+    : AdapterT(parent, ctx) {}
+
+    void handleUidString(const string& string) override {
+        // todo
+    }
+};
+
+
 class SelectColumnElementAdapter : public AdapterT<SelectColumnElementCBH>, public FullColumnNameCBH {
 public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
@@ -717,6 +814,152 @@ public:
 
 private:
     MySqlParser::ConstantContext* _constantContext;
+};
+
+
+class AggregateFunctionCallAdapter : public AdapterT<AggregateFunctionCallCBH>,
+        public AggregateWindowedFunctionCBH {
+public:
+    AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
+                                 MySqlParser::AggregateFunctionCallContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class UdfFunctionCallAdapter : public AdapterT<UdfFunctionCallCBH>,
+        public FullIdCBH,
+        public FunctionArgsCBH {
+public:
+    UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
+                           MySqlParser::UdfFunctionCallContext * ctx)
+    : AdapterT(parent, ctx) {}
+
+    // FullIdCBH
+    void handleFullIdString(const string& string) override {
+        // todo
+    }
+};
+
+
+class AggregateWindowedFunctionAdapter : public AdapterT<AggregateWindowedFunctionCBH> {
+public:
+    AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
+                                     MySqlParser::AggregateWindowedFunctionContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class FunctionArgsAdapter : public AdapterT<FunctionArgsCBH>,
+        public ConstantCBH,
+        public PredicateExpressionCBH,
+        public FullColumnNameCBH {
+public:
+    FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
+                        MySqlParser::FunctionArgsContext * ctx)
+    : AdapterT(parent, ctx) {}
+
+    // ConstantCBH
+    void handleConstant(const string& val) override {
+        // todo
+    }
+
+    // PredicateExpressionCBH
+    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
+        // todo
+    }
+
+    // FullColumnNameCBH
+    void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
+        // todo
+    }
+
+};
+
+
+class LogicalExpressionAdapter : public AdapterT<LogicalExpressionCBH>, public LogicalExpressionCBH,
+        public PredicateExpressionCBH,
+        public LogicalOperatorCBH {
+public:
+    LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
+                             MySqlParser::LogicalExpressionContext * ctx)
+    : AdapterT(parent, ctx) {}
+
+    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
+        // todo
+    }
+};
+
+
+class BetweenPredicateAdapter : public AdapterT<BetweenPredicateCBH>,
+        public ExpressionAtomPredicateCBH {
+public:
+    BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
+                            MySqlParser::BetweenPredicateContext * ctx)
+    : AdapterT(parent, ctx) {}
+
+    // ExpressionAtomPredicateCBH
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
+        // todo
+    }
+
+};
+
+
+class UnaryExpressionAtomAdapter : public AdapterT<UnaryExpressionAtomCBH>,
+        public UnaryOperatorCBH,
+        public ConstantExpressionAtomCBH {
+public:
+    UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
+                               MySqlParser::UnaryExpressionAtomContext * ctx)
+    : AdapterT(parent, ctx) {}
+
+    // ConstantExpressionAtomCBH
+    void handleConstantExpressionAtom(const string& text) override {
+        // todo
+    }
+};
+
+
+class MathExpressionAtomAdapter : public AdapterT<MathExpressionAtomCBH>,
+        public FunctionCallExpressionAtomCBH,
+        public MathOperatorCBH {
+public:
+    MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
+                              MySqlParser::MathExpressionAtomContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class FunctionCallExpressionAtomAdapter : public AdapterT<FunctionCallExpressionAtomCBH>,
+        public UdfFunctionCallCBH {
+public:
+    FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
+                                      MySqlParser::FunctionCallExpressionAtomContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class UnaryOperatorAdapter : public AdapterT<UnaryOperatorCBH> {
+public:
+    UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
+                         MySqlParser::UnaryOperatorContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class LogicalOperatorAdapter : public AdapterT<LogicalOperatorCBH> {
+public:
+    LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
+                           MySqlParser::LogicalOperatorContext * ctx)
+    : AdapterT(parent, ctx) {}
+};
+
+
+class MathOperatorAdapter : public AdapterT<MathOperatorCBH> {
+public:
+    MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
+                        MySqlParser::MathOperatorContext * ctx)
+    : AdapterT(parent, ctx) {}
 };
 
 
@@ -1033,7 +1276,7 @@ UNHANDLED(UnionParenthesis)
 UNHANDLED(UnionStatement)
 UNHANDLED(SelectSpec)
 UNHANDLED(SelectStarElement)
-UNHANDLED(SelectFunctionElement)
+ENTER_EXIT_PARENT(SelectFunctionElement)
 UNHANDLED(SelectExpressionElement)
 UNHANDLED(SelectIntoVariables)
 UNHANDLED(SelectIntoDumpFile)
@@ -1255,9 +1498,9 @@ UNHANDLED(ExpressionOrDefault)
 UNHANDLED(IfExists)
 UNHANDLED(IfNotExists)
 UNHANDLED(SpecificFunctionCall)
-UNHANDLED(AggregateFunctionCall)
+ENTER_EXIT_PARENT(AggregateFunctionCall)
 UNHANDLED(ScalarFunctionCall)
-UNHANDLED(UdfFunctionCall)
+ENTER_EXIT_PARENT(UdfFunctionCall)
 UNHANDLED(PasswordFunctionCall)
 UNHANDLED(SimpleFunctionCall)
 UNHANDLED(DataTypeFunctionCall)
@@ -1274,37 +1517,37 @@ UNHANDLED(CaseFuncAlternative)
 UNHANDLED(LevelWeightList)
 UNHANDLED(LevelWeightRange)
 UNHANDLED(LevelInWeightListElement)
-UNHANDLED(AggregateWindowedFunction)
+ENTER_EXIT_PARENT(AggregateWindowedFunction)
 UNHANDLED(ScalarFunctionName)
 UNHANDLED(PasswordFunctionClause)
-UNHANDLED(FunctionArgs)
+ENTER_EXIT_PARENT(FunctionArgs)
 UNHANDLED(FunctionArg)
 UNHANDLED(IsExpression)
 UNHANDLED(NotExpression)
-UNHANDLED(LogicalExpression)
+ENTER_EXIT_PARENT(LogicalExpression)
 UNHANDLED(SoundsLikePredicate)
 UNHANDLED(InPredicate)
 UNHANDLED(SubqueryComparasionPredicate)
-UNHANDLED(BetweenPredicate)
+ENTER_EXIT_PARENT(BetweenPredicate)
 UNHANDLED(IsNullPredicate)
 UNHANDLED(LikePredicate)
 UNHANDLED(RegexpPredicate)
-UNHANDLED(UnaryExpressionAtom)
+ENTER_EXIT_PARENT(UnaryExpressionAtom)
 UNHANDLED(CollateExpressionAtom)
 UNHANDLED(SubqueryExpessionAtom)
 UNHANDLED(MysqlVariableExpressionAtom)
 UNHANDLED(NestedExpressionAtom)
 UNHANDLED(NestedRowExpressionAtom)
-UNHANDLED(MathExpressionAtom)
+ENTER_EXIT_PARENT(MathExpressionAtom)
 UNHANDLED(IntervalExpressionAtom)
 UNHANDLED(ExistsExpessionAtom)
-UNHANDLED(FunctionCallExpressionAtom)
+ENTER_EXIT_PARENT(FunctionCallExpressionAtom)
 UNHANDLED(BinaryExpressionAtom)
 UNHANDLED(BitExpressionAtom)
-UNHANDLED(UnaryOperator)
-UNHANDLED(LogicalOperator)
+ENTER_EXIT_PARENT(UnaryOperator)
+ENTER_EXIT_PARENT(LogicalOperator)
 UNHANDLED(BitOperator)
-UNHANDLED(MathOperator)
+ENTER_EXIT_PARENT(MathOperator)
 UNHANDLED(CharsetNameBase)
 UNHANDLED(TransactionLevelBase)
 UNHANDLED(PrivilegesBase)
