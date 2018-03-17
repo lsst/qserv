@@ -235,10 +235,10 @@ void DeleteReplicaJob::startImpl() {
                     // Otherwise set an appropriate status of the operation, finish them
                     // job and notify the caller.
                     case QservMgtRequest::ExtendedState::SERVER_IN_USE:
-                        self->setState(State::FINISHED, ExtendedState::QSERV_IN_USE);
+                        self->finish(ExtendedState::QSERV_IN_USE);
                         break;
                     default:
-                        self->setState(State::FINISHED, ExtendedState::QSERV_FAILED);
+                        self->finish(ExtendedState::QSERV_FAILED);
                         break;
                 }
                 self->notify();
@@ -272,8 +272,6 @@ void DeleteReplicaJob::cancelImpl() {
                 _id         /* jobId */);
     }
     _requests.clear();
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void DeleteReplicaJob::notify() {
@@ -344,10 +342,10 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
                              _requests);
 
         if (numFinished == numLaunched) {
-            setState(State::FINISHED,
-                     numSuccess == numLaunched ? ExtendedState::SUCCESS :
-                                                 ExtendedState::FAILED);
+            finish(numSuccess == numLaunched ? ExtendedState::SUCCESS :
+                                               ExtendedState::FAILED);
         }
+
     } while (false);
 
     // Client notification should be made from the lock-free zone

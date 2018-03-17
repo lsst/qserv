@@ -86,13 +86,13 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
 }
 
 Configuration::pointer Configuration::load(std::string const& configUrl) {
- 
+
     for (auto const& proposedPrefix: std::vector<std::string>{"file:","mysql:"}) {
- 
+
         std::string::size_type const prefixSize = proposedPrefix.size();
         std::string const            prefix = configUrl.substr(0, prefixSize);
         std::string const            suffix = configUrl.substr(prefixSize);
- 
+
         if ("file:"  == prefix) {
             return Configuration::pointer(
                 new ConfigurationFile(suffix));
@@ -120,6 +120,8 @@ unsigned int const Configuration::defaultRetryTimeoutSec             {1};
 uint16_t     const Configuration::defaultControllerHttpPort          {80};
 size_t       const Configuration::defaultControllerHttpThreads       {1};
 unsigned int const Configuration::defaultControllerRequestTimeoutSec {3600};
+unsigned int const Configuration::defaultJobTimeoutSec               {6000};
+unsigned int const Configuration::defaultJobHeartbeatTimeoutSec      {60};
 bool         const Configuration::defaultXrootdAutoNotify            {false};
 std::string  const Configuration::defaultXrootdHost                  {"localhost"};
 uint16_t     const Configuration::defaultXrootdPort                  {1094};
@@ -162,6 +164,8 @@ Configuration::Configuration()
         _controllerHttpPort           (defaultControllerHttpPort),
         _controllerHttpThreads        (defaultControllerHttpThreads),
         _controllerRequestTimeoutSec  (defaultControllerRequestTimeoutSec),
+        _jobTimeoutSec                (defaultJobTimeoutSec),
+        _jobHeartbeatTimeoutSec       (defaultJobHeartbeatTimeoutSec),
         _xrootdAutoNotify             (defaultXrootdAutoNotify),
         _xrootdHost                   (defaultXrootdHost),
         _xrootdPort                   (defaultXrootdPort),
@@ -235,7 +239,7 @@ std::vector<std::string> Configuration::databases(std::string const& family) con
     for (auto const& entry: _databaseInfo) {
         if (not family.empty() and (family != entry.second.family)) { continue; }
         names.push_back(entry.first);
-    }        
+    }
     return names;
 }
 
@@ -272,6 +276,8 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultJobTimeoutSec:                " << defaultJobTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "defaultJobHeartbeatTimeoutSec:       " << defaultJobHeartbeatTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdAutoNotify:             " << (defaultXrootdAutoNotify ? "true" : "false"));
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdHost:                   " << defaultXrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "defaultXrootdPort:                   " << defaultXrootdPort);
@@ -298,6 +304,8 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpPort:                 " << _controllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerHttpThreads:              " << _controllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_jobTimeoutSec:                      " << _jobTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context << "_jobHeartbeatTimeoutSec:             " << _jobHeartbeatTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdAutoNotify:                   " << (_xrootdAutoNotify ? "true" : "false"));
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdHost:                         " << _xrootdHost);
     LOGS(_log, LOG_LVL_DEBUG, context << "_xrootdPort:                         " << _xrootdPort);

@@ -204,8 +204,6 @@ void PurgeJob::cancelImpl() {
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess  = 0;
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void PurgeJob::restart() {
@@ -250,7 +248,7 @@ void PurgeJob::onPrecursorJobFinish() {
         // the precursor job.
 
         if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -382,7 +380,7 @@ void PurgeJob::onPrecursorJobFinish() {
                 if (targetWorker.empty() or not maxNumChunks) {
                     LOGS(_log, LOG_LVL_ERROR, context() << "onPrecursorJobFinish  "
                          << "failed to find a target worker for chunk: " << chunk);
-                    setState(State::FINISHED, ExtendedState::FAILED);
+                    finish(ExtendedState::FAILED);
                     break;
                 }
 
@@ -425,7 +423,7 @@ void PurgeJob::onPrecursorJobFinish() {
         // Finish right away if no problematic chunks found
         if (not _jobs.size()) {
             if (not _numFailedLocks) {
-                setState(State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
                 break;
             } else {
                 // Some of the chuks were locked and yet, no sigle job was
@@ -509,11 +507,11 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::pointer const& job) {
                     restart();
                     return;
                 } else {
-                    setState(State::FINISHED, ExtendedState::SUCCESS);
+                    finish(ExtendedState::SUCCESS);
                     break;
                 }
             } else {
-                setState(State::FINISHED, ExtendedState::FAILED);
+                finish(ExtendedState::FAILED);
                 break;
             }
         }

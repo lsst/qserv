@@ -33,6 +33,9 @@
 #include <ostream>
 #include <string>
 
+// THird party headers
+#include <boost/asio.hpp>
+
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Controller.h"
@@ -244,20 +247,35 @@ protected:
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
       */
-    virtual void startImpl()=0;
+    virtual void startImpl() = 0;
+
+    /**
+     * The sequence of actions to be executed when the job is transitioning into
+     * the finished state (regardless of a specific exended state).
+     *
+     * NOTES
+     * 1. normally this is mandatory metghod which is supposd to be called either
+     * internally witin this class on the job expiration (internal timer) or
+     * cancellation (as requested externally by a user).
+     * 2. the only methods which are allowed to turn objects into the FINISHED
+     * extended state are user-provided methods startImpl().
+     *
+     * @param extendedState - specific state to be set upon the completion
+     */
+    void finish(ExtendedState extendedState);
 
     /**
       * This method is supposed to be provided by subclasses
       * to finalize request processing as required by the subclass.
       */
-    virtual void cancelImpl()=0;
+    virtual void cancelImpl() = 0;
 
     /**
       * This method is supposed to be provided by subclasses
       * to notify a caller by invoking a subclass-specific callback
       * function registered for the completion of the job.
       */
-    virtual void notify()=0;
+    virtual void notify() = 0;
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -319,6 +337,37 @@ protected:
     void setState(State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
+private:
+
+    /**
+     * Start the timer (if the corresponidng Configuration parameter is set`).
+     * When the time will expire then the callback method heartbeat() which is
+     * defined below will be called.
+     */
+    void startHeartbeatTimer();
+
+    /**
+     * Job heartbeat timer's handler. The heartbeat interval (if any)
+     * is configured via the configuraton service. When the timer expires
+     * the job would update the corresponding field in a database and restart
+     * the time.
+     */
+    void heartbeat(boost::system::error_code const& ec);
+
+    /**
+     * Start the timer (if the corresponidng Configuration parameter is set`).
+     * When the time will expire then the callback method expired() which is
+     * defined below will be called.
+     */
+    void startExpirationTimer();
+
+    /**
+     * Job expiration timer's handler. The expiration interval (if any)
+     * is configured via the configuraton service. When the job expires
+     * it finishes with completion status FINISHED::EXPIRED.
+     */
+    void expired(boost::system::error_code const& ec);
+
 protected:
 
     /// The unique identifier of the job
@@ -347,6 +396,20 @@ protected:
 
     uint64_t _beginTime;
     uint64_t _endTime;
+
+    // The timer is used to update the corresponidng timestamp within
+    // the database for easier tracking of the dead jobs
+    unsigned int                _heartbeatTimerIvalSec;
+    boost::asio::deadline_timer _heartbeatTimer;
+
+    /// This timer is used (if configured) to limit the total run time
+    /// of a job. The timer starts when the job is started. And it's
+    /// explicitly finished when a job finishes (successfully or not).
+    ///
+    /// If the time has a chance to expire then the request would finish
+    /// with status: FINISHED::EXPIRED.
+    unsigned int                _expirationIvalSec;
+    boost::asio::deadline_timer _expirationTimer;
 
     /// Mutex guarding internal state
     mutable std::mutex _mtx;

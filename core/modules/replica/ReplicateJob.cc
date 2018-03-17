@@ -185,7 +185,7 @@ void ReplicateJob::cancelImpl() {
     // The algorithm will also clear resources taken by various
     // locally created objects.
 
-    if (_findAllJob && (_findAllJob->state() != State::FINISHED)) {
+    if (_findAllJob and (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
     }
     _findAllJob = nullptr;
@@ -213,8 +213,6 @@ void ReplicateJob::cancelImpl() {
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess  = 0;
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void ReplicateJob::restart() {
@@ -259,7 +257,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         // with the precursor job.
 
         if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -357,7 +355,7 @@ void ReplicateJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  not workers are available for new replicas");
 
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -397,7 +395,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                          << chunk);
 
                     release(chunk);
-                    setState(State::FINISHED, ExtendedState::FAILED);
+                    finish(ExtendedState::FAILED);
                     break;
                 }
             }
@@ -434,7 +432,7 @@ void ReplicateJob::onPrecursorJobFinish() {
                          << chunk);
 
                     release(chunk);
-                    setState(State::FINISHED, ExtendedState::FAILED);
+                    finish(ExtendedState::FAILED);
                     break;
                 }
 
@@ -482,7 +480,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         // Finish right away if no problematic chunks found
         if (not _requests.size()) {
             if (not _numFailedLocks) {
-                setState(State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
                 break;
             } else {
                 // Some of the chuks were locked and yet, no sigle request was
@@ -556,11 +554,11 @@ void ReplicateJob::onRequestFinish(ReplicationRequest::pointer const& request) {
                     restart();
                     return;
                 } else {
-                    setState(State::FINISHED, ExtendedState::SUCCESS);
+                    finish(ExtendedState::SUCCESS);
                     break;
                 }
             } else {
-                setState(State::FINISHED, ExtendedState::FAILED);
+                finish(ExtendedState::FAILED);
                 break;
             }
         }

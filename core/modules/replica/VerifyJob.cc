@@ -292,8 +292,6 @@ void VerifyJob::cancelImpl() {
     }
     _replicas.clear();
     _requests.clear();
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void VerifyJob::notify() {
@@ -411,7 +409,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
             // In any case check if no requests are in flight and finish if that's
             // the case.
 
-            if (not _replicas.size()) { setState(State::FINISHED); }
+            if (not _replicas.size()) { finish(ExtendedState::NONE); }
         }
 
     } while (false);

@@ -164,7 +164,6 @@ void MoveReplicaJob::cancelImpl() {
     if (_deleteReplicaJob and (_deleteReplicaJob->state() != Job::State::FINISHED)) {
         _deleteReplicaJob->cancel();
     }
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void MoveReplicaJob::notify() {
@@ -214,12 +213,12 @@ void MoveReplicaJob::onCreateJobFinish() {
                 _deleteReplicaJob->start();
             } else {
                 // Otherwise, we're done
-                setState(State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
             }
 
         } else {
             // Carry over a state of the child job
-            setState(State::FINISHED, _createReplicaJob->extendedState());
+            finish(_createReplicaJob->extendedState());
         }
 
     } while (false);
@@ -248,7 +247,7 @@ void MoveReplicaJob::onDeleteJobFinish() {
         }
 
         // Carry over a state of the child job
-        setState(State::FINISHED, _deleteReplicaJob->extendedState());
+        finish(_deleteReplicaJob->extendedState());
 
     } while (false);
 

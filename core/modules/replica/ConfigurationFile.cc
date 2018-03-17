@@ -56,7 +56,7 @@ void parseKeyVal(util::ConfigStore& configStore,
                  D const&           defaultVal) {
 
     std::string const str = configStore.get(key);
-    val = str.empty() ? defaultVal : boost::lexical_cast<T>(str);        
+    val = str.empty() ? defaultVal : boost::lexical_cast<T>(str);
 }
 
 /**
@@ -70,7 +70,7 @@ void parseKeyVal<bool,bool>(util::ConfigStore& configStore,
 
     unsigned int number;
     parseKeyVal(configStore, key, number, defaultVal ? 1 : 0);
-    val = (bool) number;      
+    val = (bool) number;
 }
 
 }  // namespace
@@ -95,7 +95,7 @@ WorkerInfo const& ConfigurationFile::disableWorker(std::string const& name) {
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
     if (info.isEnabled) {
-    
+
         // Then update the transient state (note this change will be also be)
         // seen via the above obtainer reference to the worker description.
         _workerInfo[info.name].isEnabled = false;
@@ -111,7 +111,7 @@ void ConfigurationFile::deleteWorker(std::string const& name) {
 
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
-    
+
     _workerInfo.erase(info.name);
 }
 
@@ -150,9 +150,11 @@ void ConfigurationFile::loadConfiguration() {
     ::parseKeyVal(configStore, "common.database_password",   _databasePassword,   defaultDatabasePassword);
     ::parseKeyVal(configStore, "common.database_name",       _databaseName,       defaultDatabaseName);
 
-    ::parseKeyVal(configStore, "controller.http_server_port",       _controllerHttpPort,           defaultControllerHttpPort);
-    ::parseKeyVal(configStore, "controller.http_server_threads",    _controllerHttpThreads,        defaultControllerHttpThreads);
-    ::parseKeyVal(configStore, "controller.request_timeout_sec",    _controllerRequestTimeoutSec,  defaultControllerRequestTimeoutSec);
+    ::parseKeyVal(configStore, "controller.http_server_port",    _controllerHttpPort,          defaultControllerHttpPort);
+    ::parseKeyVal(configStore, "controller.http_server_threads", _controllerHttpThreads,       defaultControllerHttpThreads);
+    ::parseKeyVal(configStore, "controller.request_timeout_sec", _controllerRequestTimeoutSec, defaultControllerRequestTimeoutSec);
+    ::parseKeyVal(configStore, "controller.job_timeout_sec",     _jobTimeoutSec,               defaultJobTimeoutSec);
+    ::parseKeyVal(configStore, "controller.job_heartbeat_sec",   _jobHeartbeatTimeoutSec,      defaultJobHeartbeatTimeoutSec);
 
     ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);
@@ -174,7 +176,7 @@ void ConfigurationFile::loadConfiguration() {
     ::parseKeyVal(configStore, "worker.fs_port",  commonWorkerFsPort,  defaultWorkerFsPort);
 
     std::string commonDataDir;
-    
+
     ::parseKeyVal(configStore, "worker.data_dir",  commonDataDir, defaultDataDir);
 
     // Parse optional worker-specific configuraton sections. Assume default
@@ -247,5 +249,5 @@ void ConfigurationFile::loadConfiguration() {
     }
     dumpIntoLogger ();
 }
-    
+
 }}} // namespace lsst::qserv::replica

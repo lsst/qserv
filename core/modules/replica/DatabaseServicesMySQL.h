@@ -91,6 +91,13 @@ public:
     /**
      * Implement the corresponding method defined in the base class
      *
+     * @see DatabaseServices::updateHeartbeatTime()
+     */
+     void updateHeartbeatTime(Job_pointer const& job) override;
+
+    /**
+     * Implement the corresponding method defined in the base class
+     *
      * @see DatabaseServices::saveState()
      */
     void saveState(QservMgtRequest_pointer const& request) override;

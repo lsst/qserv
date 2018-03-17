@@ -102,7 +102,7 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
 
         database::mysql::Connection::pointer conn;
         try {
-    
+
             // First update the database
             conn = database::mysql::Connection::open(_connectionParams);
             conn->begin();
@@ -111,11 +111,11 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
                 conn->sqlEqual("name", name),
                 std::make_pair("is_enabled",  0));
             conn->commit();
-    
+
             // Then update the transient state (note this change will be also be)
             // seen via the above obtainer reference to the worker description.
             _workerInfo[name].isEnabled = false;
-    
+
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR, context << ex.what());
             if (conn and conn->inTransaction()) {
@@ -144,7 +144,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
         conn->execute ("DELETE FROM config_worker WHERE " + conn->sqlEqual("name", info.name));
         conn->commit();
 
-        // Then update the transient state 
+        // Then update the transient state
         _workerInfo.erase(info.name);
 
     } catch (database::mysql::Error const& ex) {
@@ -180,13 +180,15 @@ void ConfigurationMySQL::loadConfiguration() {
     conn->execute("SELECT * FROM " + conn->sqlId("config"));
 
     while (conn->next(row)) {
-        
+
         ::tryParameter(row, "common", "request_buf_size_bytes",     _requestBufferSizeBytes) or
         ::tryParameter(row, "common", "request_retry_interval_sec", _retryTimeoutSec) or
 
         ::tryParameter(row, "controller", "http_server_port",    _controllerHttpPort) or
         ::tryParameter(row, "controller", "http_server_threads", _controllerHttpThreads) or
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
+        ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
+        ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
 
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
@@ -201,7 +203,7 @@ void ConfigurationMySQL::loadConfiguration() {
         ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
         ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir);
     }
-    
+
     // Read worker-specific configurations and construct WorkerInfo.
     // Use the above retreived common parameters as defaults where applies
 
@@ -257,10 +259,10 @@ void ConfigurationMySQL::loadConfiguration() {
 
         std::string table;
         ::readMandatoryParameter(row, "table", table);
-        
+
         bool isPartitioned;
         ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
-        
+
         if (isPartitioned) { _databaseInfo[database].partitionedTables.push_back(table); }
         else               { _databaseInfo[database].regularTables    .push_back(table); }
     }

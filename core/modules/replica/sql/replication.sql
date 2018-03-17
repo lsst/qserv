@@ -202,8 +202,9 @@ CREATE TABLE IF NOT EXISTS `job` (
   `state`      VARCHAR(255) NOT NULL ,
   `ext_state`  VARCHAR(255) DEFAULT '' ,
 
-  `begin_time`  BIGINT UNSIGNED NOT NULL ,
-  `end_time`    BIGINT UNSIGNED NOT NULL ,
+  `begin_time`     BIGINT UNSIGNED NOT NULL ,
+  `end_time`       BIGINT UNSIGNED NOT NULL ,
+  `heartbeat_time` BIGINT UNSIGNED NOT NULL ,
 
   -- Job options
 

@@ -189,8 +189,6 @@ void FindAllJob::cancelImpl() {
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess  = 0;
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void FindAllJob::notify() {
@@ -229,9 +227,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             _replicaData.workers[request->worker()] = false;
         }
         if (_numFinished == _numLaunched) {
-            setState(State::FINISHED,
-                     _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                   ExtendedState::FAILED);
+            finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
+                                                 ExtendedState::FAILED);
         }
     } while (false);
 

@@ -27,6 +27,10 @@
 #include <stdexcept>
 #include <utility>      // std::swap
 
+// Third party headers
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/AddReplicaQservMgtRequest.h"
@@ -87,7 +91,11 @@ Job::Job(Controller::pointer const& controller,
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
         _beginTime(0),
-        _endTime(0) {
+        _endTime(0),
+        _heartbeatTimerIvalSec(_controller->serviceProvider()->config()->jobHeartbeatTimeoutSec()),
+        _heartbeatTimer(_controller->io_service()),
+        _expirationIvalSec(_controller->serviceProvider()->config()->jobTimeoutSec()),
+        _expirationTimer(_controller->io_service()) {
 }
 
 Job::Options Job::setOptions(Options const& newOptions) {
@@ -123,7 +131,12 @@ void Job::start() {
         // Allow the job to be fully accomplished right away
         if (_state == State::FINISHED) { break; }
 
+        // The only other state which is allowed here
         assertState(State::IN_PROGRESS);
+
+        // Start timers if configured
+        startHeartbeatTimer();
+        startExpirationTimer();
 
     } while (false);
 
@@ -133,23 +146,36 @@ void Job::start() {
 }
 
 void Job::cancel() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
-
-    // Invoke a subclass specific cancellation sequence of actions
     {
+        // Limit the scope of this lock here to allow deadlock-free
+        // callbacks to clients.
         LOCK_GUARD;
 
-        assertState(State::IN_PROGRESS);
+        finish(ExtendedState::CANCELLED);
+    }
+    notify();
+}
+
+void Job::finish(ExtendedState extendedState) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "finish");
+
+    // Also ignore this event if the request is over
+    if (_state == State::FINISHED) { return; }
+
+    // Stop timers if they're still running
+    _heartbeatTimer.cancel();
+    _expirationTimer.cancel();
+
+    // Invoke a subclass specific cancellation sequence of actions if anything
+    // bad has happen.
+    if (extendedState != ExtendedState::SUCCESS) {
         cancelImpl();
-        assertState(State::FINISHED);
     }
 
-    // The callabacks are called w/o the lock guard to avoid deadlocking
-    // in case if subscribers will attempt to use the public API of this
-    // class or its subclasses.
-
-    notify();
+    // Set new state to make sure all event handlers will recognize
+    // this scenario and avoid making any modifications to the request's state.
+    setState(State::FINISHED, extendedState);
 
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
@@ -251,6 +277,67 @@ void Job::setState(State state,
         _endTime = PerformanceUtils::now();
     }
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
+}
+
+void Job::startHeartbeatTimer() {
+    if (_heartbeatTimerIvalSec) {
+        _heartbeatTimer.cancel();
+        _heartbeatTimer.expires_from_now(boost::posix_time::seconds(_heartbeatTimerIvalSec));
+        _heartbeatTimer.async_wait(
+            boost::bind(
+                &Job::heartbeat,
+                shared_from_this(),
+                boost::asio::placeholders::error
+            )
+        );
+    }
+}
+
+void Job::heartbeat(boost::system::error_code const& ec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "heartbeat");
+
+    LOCK_GUARD;
+
+    // Ignore this event if the timer was aborted
+    if (ec == boost::asio::error::operation_aborted) { return; }
+
+    // Also ignore this event if the request is over
+    if (_state == State::FINISHED) { return; }
+
+    // Update the job entry in the database
+    _controller->serviceProvider()->databaseServices()->updateHeartbeatTime(shared_from_this());
+
+    // Start another interval
+    startHeartbeatTimer();
+}
+
+void Job::startExpirationTimer() {
+    if (_expirationIvalSec) {
+        _expirationTimer.cancel();
+        _expirationTimer.expires_from_now(boost::posix_time::seconds(_expirationIvalSec));
+        _expirationTimer.async_wait(
+            boost::bind(
+                &Job::expired,
+                shared_from_this(),
+                boost::asio::placeholders::error
+            )
+        );
+    }
+}
+
+void Job::expired(boost::system::error_code const& ec) {
+    {
+        // Limit the scope of this lock here to allow deadlock-free
+        // callbacks to clients.
+        LOCK_GUARD;
+
+        // Ignore this event if the timer was aborted
+        if (ec == boost::asio::error::operation_aborted) { return; }
+
+        finish(ExtendedState::EXPIRED);
+    }
+    notify();
 }
 
 }}} // namespace lsst::qserv::replica

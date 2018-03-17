@@ -197,7 +197,7 @@ void Request::finish(ExtendedState extendedState) {
     // this scenario and avoid making any modifications to the request's state.
     setState(FINISHED, extendedState);
 
-    // Close all operations on BOOST ASIO if needed
+    // Stop the timer if the one is still running
     _requestExpirationTimer.cancel();
 
     // Let a subclass to run its own finalization if needed
@@ -240,5 +240,5 @@ void Request::setState(State state,
 
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
 }
-    
+
 }}} // namespace lsst::qserv::replica

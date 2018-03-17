@@ -285,8 +285,6 @@ void CreateReplicaJob::cancelImpl() {
                 _id         /* jobId */);
     }
     _requests.clear();
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void CreateReplicaJob::notify() {
@@ -347,9 +345,9 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& reques
                                     databaseFamily(),
                                     destinationWorker());
                 }
-                setState(State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
             } else {
-                setState(State::FINISHED, ExtendedState::FAILED);
+                finish(ExtendedState::FAILED);
             }
         }
 

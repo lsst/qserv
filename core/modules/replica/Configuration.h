@@ -157,9 +157,11 @@ public:
                                      bool isReadOnly=false) const;
 
     /**
-     * Return the nams of workers which are 'allowed' and which are *NOT* in
-     * the 'read-only' state. Ths method has a similar effcet as the previously
-     * defined one called with the following filter options:
+     * @return the nams of workers which are 'allowed' and which are *NOT* in
+     * the 'read-only' state.
+     *
+     * This method has a similar effcet as the previously defined one called
+     * with the following filter options:
      *   @code
      *     bool isEnabled = true;
      *     bool isReadOnly = false;
@@ -170,24 +172,30 @@ public:
         return workers(true, false);
     }
 
-    /// The maximum size of the request buffers in bytes
+    /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
 
-    /// A timeout in seconds for the network retry operations
+    /// @return timeout in seconds for the network retry operations
     unsigned int retryTimeoutSec() const { return _retryTimeoutSec; }
 
     // --------------------------------------------------------
     // -- Configuration parameters of the controller service --
     // --------------------------------------------------------
 
-    /// The port number for the controller's HTTP server
+    /// @return port number for the controller's HTTP server
     uint16_t controllerHttpPort() const { return _controllerHttpPort; }
 
-    /// The number of threads to run within the controller's HTTP server
+    /// @return number of threads to run within the controller's HTTP server
     size_t controllerHttpThreads() const { return _controllerHttpThreads; }
 
     // @return expiration timeout for requests
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
+
+    // @return expiration timeout for jobs
+    unsigned int jobTimeoutSec() const { return _jobTimeoutSec; }
+
+    /// @return timeout in seconds for the jobs' heartbeats
+    unsigned int jobHeartbeatTimeoutSec() const { return _jobHeartbeatTimeoutSec; }
 
     // --------------------------------------------------------
     // -- Qserv Worker Management Services  (via XRootD/SSI) --
@@ -210,7 +218,7 @@ public:
     // -----------------------------------------------------------
 
     std::string const& databaseTechnology() const { return _databaseTechnology; }
- 
+
     /// The DNS name or IP address of a machine where the database
     /// server runs
     std::string const& databaseHost() const { return _databaseHost; }
@@ -321,7 +329,7 @@ public:
      * @param name - the name of a worker
      *
      * @return the updated status of the worker
-     * 
+     *
      * @throw std::invalid_argument - if the specified worker was not found in
      *                                the configuration.
      */
@@ -329,7 +337,7 @@ public:
 
     /**
      * Completelly remove the specified worker from the Configuration.
-     * 
+     *
      * @param name - the name of a worker
      *
      * @throw std::invalid_argument - if the specified worker was not found in
@@ -374,6 +382,8 @@ protected:
     static uint16_t     const defaultControllerHttpPort;
     static size_t       const defaultControllerHttpThreads;
     static unsigned int const defaultControllerRequestTimeoutSec;
+    static unsigned int const defaultJobTimeoutSec;
+    static unsigned int const defaultJobHeartbeatTimeoutSec;
     static bool         const defaultXrootdAutoNotify;
     static std::string  const defaultXrootdHost;
     static uint16_t     const defaultXrootdPort;
@@ -423,6 +433,8 @@ protected:
     uint16_t     _controllerHttpPort;
     size_t       _controllerHttpThreads;
     unsigned int _controllerRequestTimeoutSec;
+    unsigned int _jobTimeoutSec;
+    unsigned int _jobHeartbeatTimeoutSec;
 
     // -- Qserv Worker Management Services  (via XRootD/SSI)
 
@@ -438,7 +450,7 @@ protected:
     size_t _workerNumProcessingThreads;
     size_t _workerNumFsProcessingThreads;
     size_t _workerFsBufferSizeBytes;
-    
+
     /// The minimum number of replicas for members of each database family
     /// Allowed values: 1..N
     std::map<std::string, size_t> _replicationLevel;
@@ -447,7 +459,7 @@ protected:
     std::map<std::string, WorkerInfo>   _workerInfo;
 
     // -- Database-specific parameters --
-    
+
     std::string _databaseTechnology;
 
     /// The DNS name or IP address of a machine where the database
@@ -465,7 +477,7 @@ protected:
 
     /// The name of a database to be set upon the connection
     std::string _databaseName;
-    
+
     // -- Parameters of the Job scheduler --
 
     unsigned int _jobSchedulerIvalSec;
