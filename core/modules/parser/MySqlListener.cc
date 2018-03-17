@@ -58,7 +58,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
 // and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << ctx->getText()); \
     pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
@@ -70,7 +70,7 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
 
 #define UNHANDLED(NAME) \
 void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED"); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED " << ctx->getText()); \
     throw MySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
