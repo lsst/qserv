@@ -32,7 +32,7 @@
 #include <mutex>
 #include <string>
 
-// THird party headers
+// Third party headers
 #include <boost/asio.hpp>
 
 // Qserv headers
@@ -71,10 +71,10 @@ public:
         /// The request has been constructed, and no attempt to execute it has
         /// been made.
         CREATED,
-        
+
         /// The request is in a progress
         IN_PROGRESS,
-        
+
         /// The request is finihed. See extended status for more details
         /// (the completion status, etc.)
         FINISHED
@@ -87,12 +87,12 @@ public:
     /// the above defined primary state.
     enum ExtendedState {
 
-        /// No extended state exists at this time        
+        /// No extended state exists at this time
         NONE,
 
         /// The request has been fully implemented
         SUCCESS,
-        
+
         /// The request could not be implemented due to an unrecoverable
         /// cliend-side error.
         CLIENT_ERROR,
@@ -118,7 +118,7 @@ public:
 
         /// Expired due to a timeout (as per the Configuration)
         EXPIRED,
-        
+
         /// Explicitly cancelled on the client-side (similar to EXPIRED)
         CANCELLED
     };
@@ -166,7 +166,7 @@ public:
 
     /// Return the primary status of the request
     State state() const { return _state; }
-    
+
     /// Return the extended state of the request when it finished.
     ExtendedState extendedState() const { return _extendedState; }
 
@@ -314,7 +314,7 @@ protected:
      * NOTES: normally this condition should never been seen unless
      *        there is a problem with the application implementation
      *        or the underlying run-time system.
-     * 
+     *
      * @throws std::logic_error
      */
     void assertState(State desiredState) const;
@@ -330,7 +330,7 @@ protected:
      */
     void setState(State state,
                   ExtendedState extendedStat);
-    
+
 protected:
 
     // Parameters of the object
@@ -350,7 +350,7 @@ protected:
 
     State         _state;
     ExtendedState _extendedState;
- 
+
     ExtendedCompletionStatus _extendedServerStatus;
 
     /// Performance counters
@@ -380,7 +380,7 @@ protected:
     /// explicitly finished when a request finishes (successfully or not).
     ///
     /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::EXPIRED.    
+    /// with status: FINISHED::EXPIRED.
     unsigned int                _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 

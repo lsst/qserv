@@ -205,8 +205,6 @@ void FixUpJob::cancelImpl() {
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess  = 0;
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 
@@ -251,7 +249,7 @@ void FixUpJob::onPrecursorJobFinish() {
         // with the precursor job
 
         if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -301,7 +299,7 @@ void FixUpJob::onPrecursorJobFinish() {
                                  << "onPrecursorJobFinish  failed to find a source worker for chunk: "
                                  << chunk << " and database: " << database);
                             release(chunk);
-                            setState(State::FINISHED, ExtendedState::FAILED);
+                            finish(ExtendedState::FAILED);
                             break;
                         }
 
@@ -337,7 +335,7 @@ void FixUpJob::onPrecursorJobFinish() {
         // Finish right away if no problematic chunks found
         if (not _requests.size()) {
             if (not _numFailedLocks) {
-                setState (State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
             } else {
                 // Some of the chuks were locked and yet, no sigle request was
                 // lunched. Hence we should start another iteration by requesting
@@ -408,11 +406,11 @@ void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
                     restart();
                     return;
                 } else {
-                    setState(State::FINISHED, ExtendedState::SUCCESS);
+                    finish(ExtendedState::SUCCESS);
                     break;
                 }
             } else {
-                setState(State::FINISHED, ExtendedState::FAILED);
+                finish(ExtendedState::FAILED);
                 break;
             }
         }

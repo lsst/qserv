@@ -290,8 +290,6 @@ void DeleteWorkerJob::cancelImpl() {
 
     for (auto const& ptr: _findAllJobs)   { ptr->cancel(); }
     for (auto const& ptr: _replicateJobs) { ptr->cancel(); }
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void DeleteWorkerJob::notify() {
@@ -420,7 +418,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
                 }
             }
         } else {
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -461,7 +459,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
             _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
 
         } else {
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
         if (_numFinished == _numLaunched) {
@@ -499,7 +497,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
             if (_permanentDelete) {
                 _controller->serviceProvider()->config()->deleteWorker (_worker);
             }
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 

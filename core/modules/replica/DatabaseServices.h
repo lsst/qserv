@@ -115,10 +115,16 @@ public:
      * the final type to avoid type prolifiration through this interface.
      *
      * @param job - a pointer to a Job object
-     *
      * @throw std::invalid_argument - if the actual job type won't match the expected one
      */
     virtual void saveState(Job_pointer const& job) = 0;
+
+    /**
+     * Update the heartbeat timestamp for the job's entry
+     *
+     * @param job - pointer to a Job object
+     */
+     virtual void updateHeartbeatTime(Job_pointer const& job) = 0;
 
     /**
      * Save the state of the QservMgtRequest. This operation can be called many times for

@@ -13,7 +13,7 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL' ;
 -- The data files (affected by the system) are located on each worker's
 -- local file system:
 --     /qserv/data/mysql
--- 
+--
 -- All worker servers are supposed to run on thess hosts:
 --     lsst-gapon-qserv-worker-[1-10]
 --
@@ -28,9 +28,11 @@ INSERT INTO `config` VALUES ('common', 'request_retry_interval_sec', '1');
 
 -- Controller-specific parameters
 
-INSERT INTO `config` VALUES ('controller', 'http_server_port',    '80');
-INSERT INTO `config` VALUES ('controller', 'http_server_threads', '1');
-INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '600');
+INSERT INTO `config` VALUES ('controller', 'http_server_port',      '80');
+INSERT INTO `config` VALUES ('controller', 'http_server_threads',    '1');
+INSERT INTO `config` VALUES ('controller', 'request_timeout_sec',  '600');
+INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '6000');
+INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',     '60');
 
 -- Connection parameters for the Qserv Management Services
 

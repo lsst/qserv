@@ -43,6 +43,7 @@
 #include "replica/FindRequest.h"
 #include "replica/FixUpJob.h"
 #include "replica/MoveReplicaJob.h"
+#include "replica/Performance.h"
 #include "replica/PurgeJob.h"
 #include "replica/QservMgtRequest.h"
 #include "replica/RebalanceJob.h"
@@ -355,6 +356,7 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
             Job::state2string(job->extendedState()),
                               job->beginTime(),
                               job->endTime(),
+            PerformanceUtils::now(),    // heartbeat
             options.priority,
             options.exclusive,
             options.preemptable
@@ -476,6 +478,29 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
             if (_conn->inTransaction()) { _conn->rollback(); }
             throw std::runtime_error(context + "failed to save the state, exception: " + ex.what());
         }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+void DatabaseServicesMySQL::updateHeartbeatTime(Job::pointer const& job) {
+
+    std::string const context = "DatabaseServicesMySQL::updateHeartbeatTime[Job::" + job->type() + "]  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    LOCK_GUARD;
+    try {
+        _conn->begin();
+        _conn->executeSimpleUpdateQuery(
+            "job",
+            _conn->sqlEqual("id", job->id()),
+            std::make_pair( "heartbeat_time", PerformanceUtils::now())
+        );
+        _conn->commit ();
+
+    } catch (database::mysql::Error const& ex) {
+        if (_conn->inTransaction()) { _conn->rollback(); }
+        throw std::runtime_error(context + "failed to update the heartbeat, exception: " + ex.what());
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }

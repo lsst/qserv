@@ -204,8 +204,6 @@ void RebalanceJob::cancelImpl() {
         ptr->cancel();
     }
     _moveReplicaJobs.clear();
-
-    setState(State::FINISHED, ExtendedState::CANCELLED);
 }
 
 void RebalanceJob::restart() {
@@ -280,7 +278,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_ERROR, context()
                  << "onPrecursorJobFinish  failed due to the precurson job failure");
 
-            setState(State::FINISHED, ExtendedState::FAILED);
+            finish(ExtendedState::FAILED);
             break;
         }
 
@@ -314,7 +312,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no eligible 'good' chunks found");
 
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 
@@ -325,7 +323,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                  << "the average number of 'good' chunks per worker is 0. "
                  << "This won't trigger the operation");
 
-            setState (State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 
@@ -408,7 +406,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no overloaded 'source' workers found");
 
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
         std::sort(
@@ -444,7 +442,7 @@ void RebalanceJob::onPrecursorJobFinish() {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish:  "
                  << "no underloaded 'destination' workers found");
 
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 
@@ -531,13 +529,13 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         // Finish right away if the 'estimate' mode requested.
         if (_estimateOnly) {
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 
         // Finish right away if no badly unbalanced workers found to trigger the operation
         if (_replicaData.plan.empty()) {
-            setState(State::FINISHED, ExtendedState::SUCCESS);
+            finish(ExtendedState::SUCCESS);
             break;
         }
 
@@ -585,7 +583,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         if (not _moveReplicaJobs.size()) {
             if (not numFailedLocks) {
-                setState(State::FINISHED, ExtendedState::SUCCESS);
+                finish(ExtendedState::SUCCESS);
             } else {
                 // Start another iteration by requesting the fresh state of
                 // chunks within the family or until it all fails.
@@ -677,7 +675,7 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
                 //       the precursor job completion code.
                 restart();
             } else {
-                setState(State::FINISHED, ExtendedState::FAILED);
+                finish(ExtendedState::FAILED);
             }
         }
 
