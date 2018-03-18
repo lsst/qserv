@@ -123,48 +123,6 @@ RebalanceJobResult const& RebalanceJob::getReplicaData() const {
         "RebalanceJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void RebalanceJob::track(bool progressReport,
-                         bool errorReport,
-                         bool chunkLocksReport,
-                         std::ostream& os) const {
-
-    util::BlockPost blockPost(1000, 2000);
-
-    while (_state != State::FINISHED) {
-
-        if (_findAllJob and (_findAllJob->state() != State::FINISHED)) {
-            _findAllJob->track(progressReport,
-                               errorReport,
-                               chunkLocksReport,
-                               os);
-        }
-        if (progressReport) {
-
-            // Need this to guarantee a consisent view onto the collection of
-            // the jobs.
-            LOCK_GUARD;
-
-            size_t numLaunched, numFinished, numSuccess;
-            ::countJobStates(numLaunched, numFinished, numSuccess, _moveReplicaJobs);
-
-            os  << "RebalanceJob::track() "
-                << " iters:"   << _replicaData.numIterations
-                << " workers:" << _replicaData.totalWorkers
-                << " chunks:"  << _replicaData.totalGoodChunks
-                << " avg:"     << _replicaData.avgChunks
-                << " jobs:"    << numLaunched
-                << " done:"    << numFinished
-                << " ok:"      << numSuccess
-                << std::endl;
-        }
-        if (chunkLocksReport) {
-            os  << "RebalanceJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider()->chunkLocker().locked(_id);
-        }
-        blockPost.wait();
-   }
-}
-
 void RebalanceJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  numIterations=" << _replicaData.numIterations);

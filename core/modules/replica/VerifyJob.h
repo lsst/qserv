@@ -203,19 +203,6 @@ public:
     /// @return true if file check/control sums need to be recomputed
     bool computeCheckSum() const { return _computeCheckSum; }
 
-    /**
-      * Implement the corresponding method of the base class.
-      *
-      * NOTE: this method has a dummy implementation which will just
-      * block a caller before the job will be finished.
-      *
-      * @see Job::track()
-      */
-    void track (bool progressReport,
-                bool errorReport,
-                bool chunkLocksReport,
-                std::ostream& os) const override;
-
 protected:
 
     /**

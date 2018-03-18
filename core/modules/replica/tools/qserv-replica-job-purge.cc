@@ -25,18 +25,18 @@
 /// the number of chunk replicas to the desired level.
 
 // System headers
-
+#include <atomic>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
 // Qserv headers
-
 #include "proto/replication.pb.h"
 #include "replica/Controller.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/PurgeJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -71,24 +71,22 @@ bool test() {
         ////////////////////
         // Start replication
 
-        auto job =
-            replica::PurgeJob::create(
-                databaseFamily,
-                numReplicas,
-                controller,
-                std::string(),
-                [] (replica::PurgeJob::pointer job) {
-                    // Not using the callback because the completion of the request
-                    // will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = replica::PurgeJob::create(
+            databaseFamily,
+            numReplicas,
+            controller,
+            std::string(),
+            [&finished] (replica::PurgeJob::pointer job) {
+                finished = true;
+            }
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   std::cout);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread

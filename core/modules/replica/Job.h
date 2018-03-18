@@ -189,28 +189,6 @@ public:
      */
     void cancel();
 
-    /**
-     * Block the calling thread while the job is being executed. Make periodic
-     * progress reports if requested. Print error reports on failed requests
-     * if reuested.
-     *
-     * NOTE: this operation will *NOT* block the request execution or request
-     *       callbacks because they'd be running in a separate thread from which
-     *       requests and jobs are launched.
-     *
-     * @param os             - an output stream for monitoring and error printouts
-     * @param progressReport - triggers periodic printout onto an output stream
-     *                         to see the overall progress of the operation
-     * @param errorReport    - trigger detailed error reporting after the completion
-     *                         of the operation
-     * @chunkLocksReport     - print a report on chunks which are still allocated by
-     *                         the job as the operation progresses.
-     */
-    virtual void track(bool progressReport,
-                       bool errorReport,
-                       bool chunkLocksReport,
-                       std::ostream& os) const=0;
-
     /// Return the context string for debugging and diagnostic printouts
     std::string context() const;
 
@@ -399,8 +377,8 @@ protected:
 
     // The timer is used to update the corresponidng timestamp within
     // the database for easier tracking of the dead jobs
-    unsigned int                _heartbeatTimerIvalSec;
-    boost::asio::deadline_timer _heartbeatTimer;
+    unsigned int _heartbeatTimerIvalSec;
+    std::unique_ptr<boost::asio::deadline_timer> _heartbeatTimerPtr;
 
     /// This timer is used (if configured) to limit the total run time
     /// of a job. The timer starts when the job is started. And it's
@@ -408,8 +386,8 @@ protected:
     ///
     /// If the time has a chance to expire then the request would finish
     /// with status: FINISHED::EXPIRED.
-    unsigned int                _expirationIvalSec;
-    boost::asio::deadline_timer _expirationTimer;
+    unsigned int _expirationIvalSec;
+    std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 
     /// Mutex guarding internal state
     mutable std::mutex _mtx;

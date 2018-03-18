@@ -71,40 +71,6 @@ std::tuple<size_t,size_t,size_t> counters(std::list<typename T::pointer> const& 
     return std::make_tuple(total, finished, success);
 }
 
-
-/**
- * Track requests or jobs
- *
- * @param collection - a collection of entries to be analyzed
- */
-template <class T>
-void track(std::list<typename T::pointer> const& collection,
-           std::string const& scope,
-           bool progressReport,
-           std::ostream& os) {
-
-    lsst::qserv::util::BlockPost blockPost(1000, 2000);
-
-    while (true) {
-        blockPost.wait();
-
-        std::tuple<size_t,size_t,size_t> t = ::counters<T>(collection);
-
-        size_t const launched = std::get<0>(t);
-        size_t const finished = std::get<1>(t);
-        size_t const success  = std::get<1>(t);
-
-        if (progressReport) {
-            os  << "DeleteWorkerJob::track()  " << scope << "  "
-                << "launched: " << launched << ", "
-                << "finished: " << finished << ", "
-                << "success: "  << success
-                << std::endl;
-        }
-        if (finished == launched) { break; }
-    }
-}
-
 } /// namespace
 
 namespace lsst {
@@ -161,36 +127,6 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 
     throw std::logic_error(
         "DeleteWorkerJob::getReplicaData()  the method can't be called while the job hasn't finished");
-}
-
-void DeleteWorkerJob::track(bool progressReport,
-                            bool errorReport,
-                            bool chunkLocksReport,
-                            std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    ::track<FindAllRequest>(_findAllRequests, "_findAllRequests", progressReport, os);
-    if (errorReport) {
-
-        std::tuple<size_t,size_t,size_t> t = ::counters<FindAllRequest>(_findAllRequests);
-        size_t const launched = std::get<0>(t);
-        size_t const success  = std::get<1>(t);
-
-        if (launched - success) {
-            replica::reportRequestState(_findAllRequests, os);
-        }
-    }
-    ::track<FindAllJob>(  _findAllJobs,   "_findAllJobs",   progressReport, os);
-    ::track<ReplicateJob>(_replicateJobs, "_replicateJobs", progressReport, os);
-
-    // The last step is needed to le the job to finalize its state after
-    // finishing all activities.
-    util::BlockPost blockPost(1000, 2000);
-    while (state() != State::FINISHED) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << "track");
-        blockPost.wait();
-    }
 }
 
 void DeleteWorkerJob::startImpl() {

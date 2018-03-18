@@ -111,50 +111,6 @@ ReplicateJobResult const& ReplicateJob::getReplicaData() const {
         "ReplicateJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void ReplicateJob::track(bool progressReport,
-                         bool errorReport,
-                         bool chunkLocksReport,
-                         std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    if (_findAllJob) {
-        _findAllJob->track(progressReport, errorReport, chunkLocksReport, os);
-    }
-    util::BlockPost blockPost(1000, 2000);
-
-    while (_numFinished < _numLaunched) {
-
-        blockPost.wait();
-
-        if (progressReport) {
-            os  << "ReplicateJob::track()  "
-                << "launched: " << _numLaunched << ", "
-                << "finished: " << _numFinished << ", "
-                << "success: "  << _numSuccess
-                << std::endl;
-        }
-        if (chunkLocksReport) {
-            os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider()->chunkLocker().locked(_id);
-        }
-    }
-    if (progressReport) {
-        os  << "ReplicateJob::track()  "
-            << "launched: " << _numLaunched << ", "
-            << "finished: " << _numFinished << ", "
-            << "success: "  << _numSuccess
-            << std::endl;
-    }
-    if (chunkLocksReport) {
-        os  << "ReplicateJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider()->chunkLocker().locked(_id);
-    }
-    if (errorReport && (_numLaunched - _numSuccess)) {
-        replica::reportRequestState(_requests, os);
-    }
-}
-
 void ReplicateJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl  _numIterations=" << _numIterations);

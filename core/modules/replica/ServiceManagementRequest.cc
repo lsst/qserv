@@ -154,183 +154,6 @@ std::ostream& operator<<(std::ostream& os, ServiceState const& ss) {
     return os;
 }
 
-////////////////////////////////////////////////////
-//         ServiceManagementRequestBaseC          //
-////////////////////////////////////////////////////
-
-ServiceState const& ServiceManagementRequestBaseC::getServiceState() const {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
-
-    switch (Request::state()) {
-        case Request::State::FINISHED:
-            switch (Request::extendedState()) {
-                case Request::ExtendedState::SUCCESS:
-                case Request::ExtendedState::SERVER_ERROR:
-                    return _serviceState;
-                default:
-                    break;
-            }
-        default:
-            break;
-    }
-    throw std::logic_error(
-                "this informationis not available in the current state of the request");
-}
-
-    
-ServiceManagementRequestBaseC::ServiceManagementRequestBaseC(
-                                    ServiceProvider::pointer const& serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    char const*              requestTypeName,
-                                    std::string const&       worker,
-                                    proto::ReplicationServiceRequestType requestType)
-    :   RequestConnection(serviceProvider,
-                          io_service,
-                          requestTypeName,
-                          worker,
-                          0,       /* priority */
-                          false,   /* keepTracking */
-                          false    /* allowDuplicate */),
-        _requestType(requestType) {
-}
-
-void ServiceManagementRequestBaseC::beginProtocol() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "beginProtocol");
-
-    // Serialize the Request message header and the request itself into
-    // the network buffer.
-
-    _bufferPtr->resize();
-
-    proto::ReplicationRequestHeader hdr;
-    hdr.set_id(id());
-    hdr.set_type(proto::ReplicationRequestHeader::SERVICE);
-    hdr.set_service_type(_requestType);
-
-    _bufferPtr->serialize(hdr);
-
-    // Send the message
-
-    boost::asio::async_write(
-        _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            _bufferPtr->size()
-        ),
-        boost::bind(
-            &ServiceManagementRequestBaseC::requestSent,
-            shared_from_base<ServiceManagementRequestBaseC>(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
-    );
-}
-
-void ServiceManagementRequestBaseC::requestSent(boost::system::error_code const& ec,
-                                                size_t bytes_transferred) {
-    LOCK_GUARD;
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "requestSent");
-
-    if (isAborted(ec)) { return; }
-
-    if (ec) { restart(); }
-    else    { receiveResponse(); }
-}
-
-void
-ServiceManagementRequestBaseC::receiveResponse() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "receiveResponse");
-
-    // Start with receiving the fixed length frame carrying
-    // the size (in bytes) the length of the subsequent message.
-    //
-    // The message itself will be read from the handler using
-    // the synchronous read method. This is based on an assumption
-    // that the worker server sends the whol emessage (its frame and
-    // the message itsef) at once.
-
-    size_t const bytes = sizeof(uint32_t);
-
-    _bufferPtr->resize(bytes);
-
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            bytes
-        ),
-        boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &ServiceManagementRequestBaseC::responseReceived,
-            shared_from_base<ServiceManagementRequestBaseC>(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
-    );
-}
-
-void ServiceManagementRequestBaseC::responseReceived(boost::system::error_code const& ec,
-                                                     size_t bytes_transferred) {
-
-    LOCK_GUARD;
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "responseReceived");
-
-    if (isAborted(ec)) { return; }
-
-    if (ec) {
-        restart();
-        return;
-    }
-
-    // All operations hereafter are synchronious because the worker
-    // is supposed to send a complete multi-message response w/o
-    // making any explicit handshake with the Controller.
-
-    if (syncReadVerifyHeader(_bufferPtr->parseLength())) { restart(); }
-
-    size_t bytes;
-    if (syncReadFrame(bytes)) { restart(); }
-           
-    proto::ReplicationServiceResponse message;
-    if (syncReadMessage(bytes, message)) { restart(); }
-    else                                 { analyze(message); }
-}
-
-void ServiceManagementRequestBaseC::analyze(proto::ReplicationServiceResponse const& message) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze");
-
-    _performance.update(message.performance());
-
-    // Capture the general status of the operation
-
-    switch (message.status()) {
- 
-        case proto::ReplicationServiceResponse::SUCCESS:
-
-            // Transfer the state of the remote service into a local data member
-            // before initiating state transition of the request object.
-    
-            _serviceState.set(message);
-
-            finish(SUCCESS);
-            break;
-
-        default:
-            finish(SERVER_ERROR);
-            break;
-    }    
-}
-
-////////////////////////////////////////////////////
-//         ServiceManagementRequestBaseM          //
-////////////////////////////////////////////////////
-
 ServiceState const& ServiceManagementRequestBaseM::getServiceState() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "getServiceState");
@@ -404,37 +227,41 @@ void ServiceManagementRequestBaseM::startImpl() {
 void ServiceManagementRequestBaseM::analyze(bool success,
                                             proto::ReplicationServiceResponse const& message) {
 
-    // This guard is made on behalf of an asynchronious callback fired
-    // upon a completion of the request within method send() - the only
-    // client of analyze() 
-    LOCK_GUARD;
+    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze  success=" << (success ? "true" : "false"));
+    {
+        // This guard is made on behalf of an asynchronious callback fired
+        // upon a completion of the request within method send() - the only
+        // client of analyze()
+        LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "analyze");
+        if (success) {
+            _performance.update(message.performance());
 
-    if (success) {
-        _performance.update(message.performance());
-    
-        // Capture the general status of the operation
-    
-        switch (message.status()) {
-     
-            case proto::ReplicationServiceResponse::SUCCESS:
-    
-                // Transfer the state of the remote service into a local data member
-                // before initiating state transition of the request object.
-        
-                _serviceState.set(message);
-    
-                finish(SUCCESS);
-                break;
-    
-            default:
-                finish(SERVER_ERROR);
-                break;
+            // Capture the general status of the operation
+
+            switch (message.status()) {
+
+                case proto::ReplicationServiceResponse::SUCCESS:
+
+                    // Transfer the state of the remote service into a local data member
+                    // before initiating state transition of the request object.
+
+                    _serviceState.set(message);
+
+                    finish(SUCCESS);
+                    break;
+
+                default:
+                    finish(SERVER_ERROR);
+                    break;
+            }
+        } else {
+            finish(CLIENT_ERROR);
         }
-    } else {
-        finish(CLIENT_ERROR);
     }
+    // The client callback is made in the lock-free zone to avoid possible
+    // deadlocks
+    if (_state == State::FINISHED) { notify(); }
 }
 
 }}} // namespace lsst::qserv::replica

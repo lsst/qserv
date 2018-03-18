@@ -21,10 +21,11 @@
  */
 
 /// replica_job_replicate.cc implements a command-line tool which analyzes
-/// chunk disposition in the specified database family and (if needed) increases 
+/// chunk disposition in the specified database family and (if needed) increases
 /// the number of chunk replicas to the required level.
 
 // System headers
+#include <atomic>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -35,6 +36,7 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -69,22 +71,19 @@ bool test() {
         ////////////////////
         // Start replication
 
-        auto job =
-            jobCtrl->replicate(
-                databaseFamily,
-                numReplicas,
-                [] (replica::ReplicateJob::pointer const& job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = jobCtrl->replicate(
+            databaseFamily,
+            numReplicas,
+            [&finished] (replica::ReplicateJob::pointer const& job) {
+                finished = true;
+            }
+        );
         if (job) {
-            job->track(progressReport,
-                       errorReport,
-                       chunkLocksReport,
-                       std::cout);
+            util::BlockPost blockPost(1000,2000);
+            while (not finished) {
+                blockPost.wait();
+            }
         }
 
         ///////////////////////////////////////////////////
@@ -142,7 +141,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    }  
+    }
     ::test();
     return 0;
 }

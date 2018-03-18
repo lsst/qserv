@@ -163,27 +163,37 @@ std::string const& Request::jobId() const {
 
 void Request::expired(boost::system::error_code const& ec) {
 
-    LOCK_GUARD;
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) { return; }
 
     // Also ignore this event if the request is over
     if (_state == State::FINISHED) { return; }
+    {
+        LOCK_GUARD;
+        LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
+        finish(EXPIRED);
+    }
 
-    // Pringt this only after those rejections made above
-    LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
-
-    finish(EXPIRED);
+    // Notifications can only be done in the deadlock-free zone
+    notify();
 }
 
 void Request::cancel() {
 
-    LOCK_GUARD;
+    // Ignore this call if the request is over
+    if (_state == FINISHED) { return; }
+    {
+        LOCK_GUARD;
+        LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+        finish(CANCELLED);
+    }
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
-
-    finish(CANCELLED);
+    // Notifications can only be done in the deadlock-free zone
+    //
+    // TODO: revisit this notification due to a possibility of running
+    //       into a deadlock situation because the notification method may go
+    //       back to the the same client which calls the request cancellation.
+    notify();
 }
 
 void Request::finish(ExtendedState extendedState) {
@@ -208,9 +218,6 @@ void Request::finish(ExtendedState extendedState) {
     _performance.setUpdateFinish();
 
     _controller->serviceProvider()->databaseServices()->saveState(shared_from_this());
-
-    // This will invoke user-defined notifiers (if any)
-    notify();
 }
 
 

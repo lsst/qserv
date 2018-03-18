@@ -25,6 +25,7 @@
 /// the number of chunk replicas to the desider level.
 
 // System headers
+#include <atomic>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -34,6 +35,7 @@
 #include "replica/Controller.h"
 #include "replica/ReplicateJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -68,24 +70,22 @@ bool test() {
         ////////////////////
         // Start replication
 
-        auto job =
-            replica::ReplicateJob::create(
-                databaseFamily,
-                numReplicas,
-                controller,
-                std::string(),
-                [] (replica::ReplicateJob::pointer job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = replica::ReplicateJob::create(
+            databaseFamily,
+            numReplicas,
+            controller,
+            std::string(),
+            [&finished] (replica::ReplicateJob::pointer job) {
+                finished = true;
+            }
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   std::cout);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread

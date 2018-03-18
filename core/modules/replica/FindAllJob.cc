@@ -95,46 +95,6 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
         "FindAllJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void FindAllJob::track(bool progressReport,
-                       bool errorReport,
-                       bool chunkLocksReport,
-                       std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    util::BlockPost blockPost(1000, 2000);
-
-    while (_numFinished < _numLaunched) {
-        blockPost.wait();
-
-        if (progressReport) {
-            os  << "FindAllJob::track()  "
-                << "launched: " << _numLaunched << ", "
-                << "finished: " << _numFinished << ", "
-                << "success: "  << _numSuccess
-                << std::endl;
-        }
-        if (chunkLocksReport) {
-            os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-                << _controller->serviceProvider()->chunkLocker().locked(_id);
-        }
-    }
-    if (progressReport) {
-        os  << "FindAllJob::track()  "
-            << "launched: " << _numLaunched << ", "
-            << "finished: " << _numFinished << ", "
-            << "success: "  << _numSuccess
-            << std::endl;
-    }
-    if (chunkLocksReport) {
-        os  << "FindAllJob::track()  <LOCKED CHUNKS>  jobId: " << _id << "\n"
-            << _controller->serviceProvider()->chunkLocker().locked(_id);
-    }
-    if (errorReport and (_numLaunched - _numSuccess)) {
-        replica::reportRequestState(_requests, os);
-    }
-}
-
 void FindAllJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
@@ -184,11 +144,11 @@ void FindAllJob::cancelImpl() {
                 _id         /* jobId */);
         }
     }
-    _requests.clear();
+    //_requests.clear();
 
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
+    //_numLaunched = 0;
+    //_numFinished = 0;
+    //_numSuccess  = 0;
 }
 
 void FindAllJob::notify() {
@@ -205,13 +165,23 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onRequestFinish  database=" << request->database()
-         << " worker=" << request->worker());
+         << " worker=" << request->worker()
+         << " state=" << request->state2string(request->state())
+         << " extendedState=" << request->state2string(request->extendedState()));
+
+    // Ignore the callback if the job was cancelled, expired, etc.``
+    if (_state == State::FINISHED) { return; }
 
     do {
+        // Note that access to the job's public API should not be locked while
+        // notifying a caller (if the callback function was povided) in order to avoid
+        // the circular deadlocks.
         LOCK_GUARD;
 
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
+        LOGS(_log, LOG_LVL_DEBUG, context()
+             << "onRequestFinish  database=" << request->database()
+             << " worker=" << request->worker()
+             << " ** LOCK_GUARD **");
 
         // Update counters and object state if needed.
         _numFinished++;
@@ -226,120 +196,125 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
         } else {
             _replicaData.workers[request->worker()] = false;
         }
+
+        LOGS(_log, LOG_LVL_DEBUG, context()
+             << "onRequestFinish  database=" << request->database()
+             << " worker=" << request->worker()
+             << " _numLaunched=" << _numLaunched
+             << " _numFinished=" << _numFinished
+             << " _numSuccess=" << _numSuccess);
+
         if (_numFinished == _numLaunched) {
             finish(_numSuccess == _numLaunched ? ExtendedState::SUCCESS :
                                                  ExtendedState::FAILED);
         }
-    } while (false);
 
-    // Note that access to the job's public API shoul not be locked while
-    // notifying a caller (if the callback function was povided) in order to avoid
-    // the circular deadlocks.
+        // Recompute the final state if this was the last requst
+        if (_state == State::FINISHED) {
 
-    if (_state == State::FINISHED) {
-
-        // Databases participating in a chunk
-        //
-        for (auto const& chunk2databases: _replicaData.chunks) {
-            unsigned int const chunk = chunk2databases.first;
-
-            for (auto const& database2workers: chunk2databases.second) {
-                std::string const& database = database2workers.first;
-
-                _replicaData.databases[chunk].push_back(database);
-            }
-        }
-
-        // Workers hosting complete chunks
-        //
-        for (auto const& chunk2databases: _replicaData.chunks) {
-            unsigned int const chunk = chunk2databases.first;
-
-            for (auto const& database2workers: chunk2databases.second) {
-                std::string const& database = database2workers.first;
-
-                for (auto const& worker2info: database2workers.second) {
-                    std::string const& worker  = worker2info.first;
-                    ReplicaInfo const& replica = worker2info.second;
-
-                    if (replica.status() == ReplicaInfo::Status::COMPLETE)
-                        _replicaData.complete[chunk][database].push_back(worker);
-                }
-            }
-        }
-
-        // Compute the 'co-location' status of chunks on all participating workers
-        //
-        // ATTENTION: this algorithm won't conider the actual status of
-        //            chunk replicas (if they're complete, corrupts, etc.).
-        //
-        for (auto const& chunk2databases: _replicaData.chunks) {
-            unsigned int const chunk = chunk2databases.first;
-
-            // Build a list of participating databases for this chunk,
-            // and build a list of databases for each worker where the chunk
-            // is present.
+            // Databases participating in a chunk
             //
-            // NOTE: Single-database chunks are always colocated. Note that
-            //       the loop over databases below has exactly one iteration.
+            for (auto const& chunk2databases: _replicaData.chunks) {
+                unsigned int const chunk = chunk2databases.first;
 
-            std::map<std::string, size_t> worker2numDatabases;
+                for (auto const& database2workers: chunk2databases.second) {
+                    std::string const& database = database2workers.first;
 
-            for (auto const& database2workers: chunk2databases.second) {
-                for (auto const& worker2info: database2workers.second) {
-                    std::string const& worker = worker2info.first;
-                    worker2numDatabases[worker]++;
+                    _replicaData.databases[chunk].push_back(database);
                 }
             }
 
-            // Crosscheck the number of databases present on each worker
-            // against the number of all databases participated within
-            // the chunk and decide for which of those workers the 'colocation'
-            // requirement is met.
+            // Workers hosting complete chunks
+            //
+            for (auto const& chunk2databases: _replicaData.chunks) {
+                unsigned int const chunk = chunk2databases.first;
 
-            for (auto const& entry: worker2numDatabases) {
-                std::string const& worker       = entry.first;
-                size_t      const  numDatabases = entry.second;
+                for (auto const& database2workers: chunk2databases.second) {
+                    std::string const& database = database2workers.first;
 
-                _replicaData.isColocated[chunk][worker] =
-                    _replicaData.databases[chunk].size() == numDatabases;
+                    for (auto const& worker2info: database2workers.second) {
+                        std::string const& worker  = worker2info.first;
+                        ReplicaInfo const& replica = worker2info.second;
+
+                        if (replica.status() == ReplicaInfo::Status::COMPLETE)
+                            _replicaData.complete[chunk][database].push_back(worker);
+                    }
+                }
             }
-        }
 
-        // Compute the 'goodness' status of each chunk
+            // Compute the 'co-location' status of chunks on all participating workers
+            //
+            // ATTENTION: this algorithm won't conider the actual status of
+            //            chunk replicas (if they're complete, corrupts, etc.).
+            //
+            for (auto const& chunk2databases: _replicaData.chunks) {
+                unsigned int const chunk = chunk2databases.first;
 
-        for (auto const& chunk2workers: _replicaData.isColocated) {
-            unsigned int const chunk = chunk2workers.first;
-
-            for (auto const& worker2collocated: chunk2workers.second) {
-                std::string const& worker      = worker2collocated.first;
-                bool        const  isColocated = worker2collocated.second;
-
-                // Start with the "as good as colocated" assumption, then drill down
-                // into chunk participation in all databases on that worker to see
-                // if this will change.
+                // Build a list of participating databases for this chunk,
+                // and build a list of databases for each worker where the chunk
+                // is present.
                 //
-                // NOTE: watch for a little optimization if the replica is not
-                //       colocated.
+                // NOTE: Single-database chunks are always colocated. Note that
+                //       the loop over databases below has exactly one iteration.
 
-                bool isGood = isColocated;
-                if (isGood) {
-                    for (auto const& chunk2databases: _replicaData.chunks[chunk]) {
-                        for (auto const& database2workers: chunk2databases.second) {
-                            if (worker == database2workers.first) {
-                                ReplicaInfo const& replica = database2workers.second;
-                                isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
+                std::map<std::string, size_t> worker2numDatabases;
+
+                for (auto const& database2workers: chunk2databases.second) {
+                    for (auto const& worker2info: database2workers.second) {
+                        std::string const& worker = worker2info.first;
+                        worker2numDatabases[worker]++;
+                    }
+                }
+
+                // Crosscheck the number of databases present on each worker
+                // against the number of all databases participated within
+                // the chunk and decide for which of those workers the 'colocation'
+                // requirement is met.
+
+                for (auto const& entry: worker2numDatabases) {
+                    std::string const& worker       = entry.first;
+                    size_t      const  numDatabases = entry.second;
+
+                    _replicaData.isColocated[chunk][worker] =
+                        _replicaData.databases[chunk].size() == numDatabases;
+                }
+            }
+
+            // Compute the 'goodness' status of each chunk
+
+            for (auto const& chunk2workers: _replicaData.isColocated) {
+                unsigned int const chunk = chunk2workers.first;
+
+                for (auto const& worker2collocated: chunk2workers.second) {
+                    std::string const& worker      = worker2collocated.first;
+                    bool        const  isColocated = worker2collocated.second;
+
+                    // Start with the "as good as colocated" assumption, then drill down
+                    // into chunk participation in all databases on that worker to see
+                    // if this will change.
+                    //
+                    // NOTE: watch for a little optimization if the replica is not
+                    //       colocated.
+
+                    bool isGood = isColocated;
+                    if (isGood) {
+                        for (auto const& chunk2databases: _replicaData.chunks[chunk]) {
+                            for (auto const& database2workers: chunk2databases.second) {
+                                if (worker == database2workers.first) {
+                                    ReplicaInfo const& replica = database2workers.second;
+                                    isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
+                                }
                             }
                         }
                     }
+                    _replicaData.isGood[chunk][worker] = isGood;
                 }
-                _replicaData.isGood[chunk][worker] = isGood;
             }
         }
+    } while (false);
 
-        // Finally, notify a caller
-        notify();
-    }
+    // Finally, notify a caller in the deadlock-free zone`
+    if (_state == State::FINISHED) { notify(); }
 }
 
 }}} // namespace lsst::qserv::replica
