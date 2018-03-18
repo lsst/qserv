@@ -56,9 +56,7 @@ namespace replica {
 // Forward declarations
 
 class ControllerImpl;
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
 class Messenger;
-#endif
 
 /**
  * The base class for implementing requests registry as a polymorphic
@@ -146,7 +144,7 @@ public:
     Controller() = delete;
     Controller(Controller const&) = delete;
     Controller& operator=(Controller const&) = delete;
- 
+
     /// Destructor
     ~Controller() = default;
 
@@ -159,8 +157,11 @@ public:
     /// Return the Service Provider used by the server
     ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
-    /// Return a reference to the I/O service
+    /// @return reference to the I/O service for ASYNC requests
     boost::asio::io_service& io_service() { return _io_service; }
+
+    /// @return reference to the I/O service for the timer queue
+    boost::asio::io_service& io_service2() { return _io_service2; }
 
     /**
      * Run the Controller in a dedicated thread unless it's already running.
@@ -428,7 +429,7 @@ public:
                                         bool keepTracking=false,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
- 
+
     /**
      * Check the on-going status of an outstanding replica deletion request.
      *
@@ -553,7 +554,7 @@ public:
                                         ServiceStatusRequest_callback_type onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
-                                                         
+
     /**
      * Request detailed info on which replication-related requests are known
      * to the worker-side service
@@ -576,7 +577,7 @@ public:
 
     /**
      * Cancel all queue or being processed replica-related requsts known
-     * to the worker-side service and return detailed info on all known requests. 
+     * to the worker-side service and return detailed info on all known requests.
      *
      * @param workerName - the name of a worker node where the service runs
      * @param onFinish   - a callback function to be called upon completion of the operation
@@ -593,7 +594,7 @@ public:
                                         ServiceDrainRequest_callback_type onFinish=nullptr,
                                         std::string const& jobId="",
                                         unsigned int requestExpirationIvalSec=0);
-                                                         
+
     /**
      * Return requests of a specific type
      *
@@ -609,7 +610,7 @@ public:
                 requests.push_back(ptr);
             }
     }
-    
+
     /**
      * Return the number of requests of a specific type
      */
@@ -662,13 +663,16 @@ private:
     /// The provider of variou services
     ServiceProvider::pointer _serviceProvider;
 
-    // BOOST ASIO communication services
+    // Two sets of BOOST ASIO communication services & threads which run
+    // them. The first set is used by requests. The second is dedicated for timers.
 
-    boost::asio::io_service                        _io_service;
+    boost::asio::io_service _io_service;
     std::unique_ptr<boost::asio::io_service::work> _work;
-
-    /// This thread will run the asynchronous prosessing of the requests
     std::unique_ptr<std::thread> _thread;
+
+    boost::asio::io_service _io_service2;
+    std::unique_ptr<boost::asio::io_service::work> _work2;
+    std::unique_ptr<std::thread> _thread2;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
@@ -676,11 +680,9 @@ private:
 
     /// The registry of the on-going requests.
     std::map<std::string,std::shared_ptr<ControllerRequestWrapper>> _registry;
-    
+
     /// Worker messenger service
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
     std::shared_ptr<Messenger> _messenger;
-#endif
 };
 
 }}} // namespace lsst::qserv::replica

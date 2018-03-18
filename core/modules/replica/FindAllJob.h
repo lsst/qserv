@@ -182,16 +182,6 @@ public:
      */
     FindAllJobResult const& getReplicaData() const;
 
-    /**
-      * Implement the corresponding method of the base class.
-      *
-      * @see Job::track()
-      */
-    void track(bool progressReport,
-               bool errorReport,
-               bool chunkLocksReport,
-               std::ostream& os) const override;
-
 protected:
 
     /**

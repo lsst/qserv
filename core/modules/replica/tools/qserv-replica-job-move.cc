@@ -26,6 +26,7 @@
 /// the source worker.
 
 // System headers
+#include <atomic>
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
@@ -37,6 +38,7 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/MoveReplicaJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -119,27 +121,25 @@ bool test() {
         ////////////////////
         // Start replication
 
-        auto job =
-            replica::MoveReplicaJob::create(
-                databaseFamily,
-                chunk,
-                sourceWorker,
-                destinationWorker,
-                purge,
-                controller,
-                std::string(),
-                [] (replica::MoveReplicaJob::pointer job) {
-                    // Not using the callback because the completion of the request
-                    // will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = replica::MoveReplicaJob::create(
+            databaseFamily,
+            chunk,
+            sourceWorker,
+            destinationWorker,
+            purge,
+            controller,
+            std::string(),
+            [&finished] (replica::MoveReplicaJob::pointer job) {
+                finished = true;
+            }
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   std::cout);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
 
         //////////////////////////////
         // Analyse and display results

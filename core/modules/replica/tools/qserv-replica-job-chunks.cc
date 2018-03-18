@@ -24,6 +24,7 @@
 /// and reports chunk disposition in the specified database family.
 
 // System headers
+#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -39,6 +40,7 @@
 #include "replica/FindAllJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -55,7 +57,6 @@ std::string configUrl;
 bool        progressReport;
 bool        errorReport;
 bool        detailedReport;
-bool        chunkLocksReport = false;
 
 void dump(replica::FindAllJobResult const& replicaData) {
     OUT << "*** DETAILED REPORTS ***\n"
@@ -94,23 +95,23 @@ bool test() {
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        auto job =
-            replica::FindAllJob::create(
-                databaseFamily,
-                controller,
-                std::string(),
-                [] (replica::FindAllJob::pointer const& job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = replica::FindAllJob::create(
+            databaseFamily,
+            controller,
+            std::string(),
+            [&finished] (replica::FindAllJob::pointer const& job) {
+                finished = true;
+            }
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   OUT);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
+        OUT << "qserv-replica-job-cunks: Job finished with state: "
+            << job->state2string(job->state(), job->extendedState()) << std::endl;
 
         //////////////////////////////
         // Analyse and display results

@@ -207,35 +207,6 @@ VerifyJob::VerifyJob(Controller::pointer const& controller,
         _computeCheckSum(computeCheckSum) {
 }
 
-void VerifyJob::track(bool progressReport,
-                      bool errorReport,
-                      bool chunkLocksReport,
-                      std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    util::BlockPost blockPost(1000, 2000);
-
-    while (_state != State::FINISHED) {
-
-        blockPost.wait();
-
-        if (progressReport) {
-
-            // Grab the lock for a consistent view onto the rehostry of
-            // replicas
-            LOCK_GUARD;
-
-            os << "VerifyJob::track()  replicas:";
-            for (auto const& entry: _replicas) {
-                ReplicaInfo const& replica = entry.second;
-                os << " " << replica;
-            }
-            os << std::endl;
-        }
-    }
-}
-
 void VerifyJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

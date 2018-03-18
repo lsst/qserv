@@ -25,6 +25,7 @@
 /// to fix chunk co-location problems if found.
 
 // System headers
+#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -39,6 +40,7 @@
 #include "replica/Controller.h"
 #include "replica/FixUpJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -72,23 +74,21 @@ bool test() {
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        auto job =
-            replica::FixUpJob::create(
-                databaseFamily,
-                controller,
-                std::string(),
-                [] (replica::FixUpJob::pointer job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
-                }
-            );
-
+        std::atomic<bool> finished{false};
+        auto job = replica::FixUpJob::create(
+            databaseFamily,
+            controller,
+            std::string(),
+            [&finished] (replica::FixUpJob::pointer job) {
+                finished = true;
+            }
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   std::cout);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
 
         //////////////////////////////
         // Analyse and display results

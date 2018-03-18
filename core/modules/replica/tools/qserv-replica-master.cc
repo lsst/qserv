@@ -25,6 +25,7 @@
 /// meant to respond to any external communications (commands, etc.)
 
 // System headers
+#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -43,6 +44,7 @@
 #include "replica/ReplicateJob.h"
 #include "replica/ServiceProvider.h"
 #include "replica/VerifyJob.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -83,7 +85,7 @@ void submitVerifyJob(replica::JobController::pointer const& jobCtrl) {
                 << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
                 << " " << selfReplicaDiff.flags2string()
                 << std::endl;
-            
+
             for (auto const& diff: otherReplicaDiff) {
                 replica::ReplicaInfo const& r1 = diff.replica1();
                 replica::ReplicaInfo const& r2 = diff.replica2();
@@ -118,18 +120,17 @@ bool run() {
         // This will also update the state of replicas within the database.
 
         for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+            std::atomic<bool> finished{false};
             replica::FindAllJob::pointer const job = jobCtrl->findAll(
                 databaseFamily,
-                [] (replica::FindAllJob::pointer const& job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
+                [&finished] (replica::FindAllJob::pointer const& job) {
+                    finished = true;
                 }
             );
-            job->track(progressReport,
-                       errorReport,
-                       chunkLocksReport,
-                       std::cout);
+            util::BlockPost blockPost(1000,2000);
+            while (not finished) {
+                blockPost.wait();
+            }
         }
 
         // Launch a never-ending replicas verification job
@@ -140,65 +141,62 @@ bool run() {
         //
         // ATTENTION: families are updated on each iteration to promptly see
         //            changes in the system configuration.
- 
+
         while (true) {
-            
+
             // Check for chunks which need to be fixed and do so if the ones
             // were found.
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                std::atomic<bool> finished{false};
                 replica::FixUpJob::pointer const job = jobCtrl->fixUp(
                     databaseFamily,
-                    [] (replica::FixUpJob::pointer const& job) {
-                        // Not using the callback because the completion of
-                        // the request will be caught by the tracker below
-                        ;
+                    [&finished] (replica::FixUpJob::pointer const& job) {
+                        finished = true;
                     }
                 );
-                job->track(progressReport,
-                           errorReport,
-                           chunkLocksReport,
-                           std::cout);
+                util::BlockPost blockPost(1000,2000);
+                while (not finished) {
+                    blockPost.wait();
+                }
             }
 
             // Check the replication level and bring the minimum number of replicas
             // to the desired level if needed
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                std::atomic<bool> finished{false};
                 replica::ReplicateJob::pointer const job = jobCtrl->replicate(
                     databaseFamily,
                     numReplicas,
-                    [] (replica::ReplicateJob::pointer const& job) {
-                        // Not using the callback because the completion of
-                        // the request will be caught by the tracker below
-                        ;
+                    [&finished] (replica::ReplicateJob::pointer const& job) {
+                        finished = true;
                     }
                 );
-                job->track(progressReport,
-                           errorReport,
-                           chunkLocksReport,
-                           std::cout);
+                util::BlockPost blockPost(1000,2000);
+                while (not finished) {
+                    blockPost.wait();
+                }
             }
 
             // Check the replication level and shave off the excess replicas
             // to the desired level if needed
 
             for (auto const& databaseFamily: provider->config()->databaseFamilies()) {
+                std::atomic<bool> finished{false};
                 replica::PurgeJob::pointer const job = jobCtrl->purge(
                     databaseFamily,
                     numReplicas,
-                    [] (replica::PurgeJob::pointer const& job) {
-                        // Not using the callback because the completion of
-                        // the request will be caught by the tracker below
-                        ;
+                    [&finished] (replica::PurgeJob::pointer const& job) {
+                        finished = true;
                     }
                 );
-                job->track(progressReport,
-                           errorReport,
-                           chunkLocksReport,
-                           std::cout);
+                util::BlockPost blockPost(1000,2000);
+                while (not finished) {
+                    blockPost.wait();
+                }
             }
-        }   
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread
@@ -219,7 +217,7 @@ int main(int argc, const char* const argv[]) {
     // compatible with the version of the headers we compiled against.
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
-    
+
     // Parse command line parameters
     try {
         util::CmdLineParser parser(
@@ -257,7 +255,7 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     ::run();
     return 0;
 }

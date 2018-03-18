@@ -131,40 +131,6 @@ DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
         "DeleteReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void DeleteReplicaJob::track(bool progressReport,
-                             bool errorReport,
-                             bool chunkLocksReport,
-                             std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    util::BlockPost blockPost(1000, 2000);
-
-    size_t numLaunched;
-    size_t numFinished;
-    size_t numSuccess;
-
-    while (true) {
-        blockPost.wait();
-
-        ::countRequestStates(numLaunched, numFinished, numSuccess,
-                             _requests);
-        if (progressReport) {
-            os  << "DeleteReplicaJob::track(deleteRequest)  "
-                << "launched: " << numLaunched << ", "
-                << "finished: " << numFinished << ", "
-                << "success: "  << numSuccess
-                << std::endl;
-        }
-        if (numLaunched == numFinished) {
-            if (errorReport and (numLaunched - numSuccess)) {
-                replica::reportRequestState(_requests, os);
-            }
-            break;
-        }
-    }
-}
-
 void DeleteReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");

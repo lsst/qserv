@@ -24,6 +24,7 @@
 /// the integrity of existing replicas.
 
 // System headers
+#include <atomic>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -35,6 +36,7 @@
 #include "replica/VerifyJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 
 namespace replica = lsst::qserv::replica;
@@ -50,7 +52,6 @@ bool        computeCheckSum;
 bool        progressReport;
 bool        errorReport;
 bool        detailedReport;
-bool        chunkLocksReport = false;
 
 /// Run the test
 bool run() {
@@ -70,48 +71,46 @@ bool run() {
         ////////////////////////////////////////
         // Find all replicas accross all workers
 
-        auto job =
-            replica::VerifyJob::create (
-                controller,
-                std::string(),
-                [] (replica::VerifyJob::pointer const& job) {
-                    // Not using the callback because the completion of
-                    // the request will be caught by the tracker below
-                    ;
-                },
-                [] (replica::VerifyJob::pointer const& job,
-                    replica::ReplicaDiff const& selfReplicaDiff,
-                    std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
+        std::atomic<bool> finished{false};
+        auto job = replica::VerifyJob::create (
+            controller,
+            std::string(),
+            [&finished] (replica::VerifyJob::pointer const& job) {
+                finished = true;
+            },
+            [] (replica::VerifyJob::pointer const& job,
+                replica::ReplicaDiff const& selfReplicaDiff,
+                std::vector<replica::ReplicaDiff> const& otherReplicaDiff) {
 
-                    replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
-                    replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
+                replica::ReplicaInfo const& r1 = selfReplicaDiff.replica1();
+                replica::ReplicaInfo const& r2 = selfReplicaDiff.replica2();
+                std::cout
+                    << "Compared with OWN previous state  "
+                    << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
+                    << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
+                    << " " << selfReplicaDiff.flags2string()
+                    << std::endl;
+
+                for (auto const& diff: otherReplicaDiff) {
+                    replica::ReplicaInfo const& r1 = diff.replica1();
+                    replica::ReplicaInfo const& r2 = diff.replica2();
                     std::cout
-                        << "Compared with OWN previous state  "
+                        << "Compared with OTHER replica state "
                         << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
                         << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                        << " " << selfReplicaDiff.flags2string()
+                        << " " << diff.flags2string()
                         << std::endl;
-
-                    for (auto const& diff: otherReplicaDiff) {
-                        replica::ReplicaInfo const& r1 = diff.replica1();
-                        replica::ReplicaInfo const& r2 = diff.replica2();
-                        std::cout
-                            << "Compared with OTHER replica state "
-                            << " " << std::setw(20) << r1.database() << " " << std::setw(12) << r1.chunk()
-                            << " " << std::setw(20) << r1.worker()   << " " << std::setw(20) << r2.worker() << " "
-                            << " " << diff.flags2string()
-                            << std::endl;
-                    }
-                },
-                maxReplicas,
-                computeCheckSum
-            );
-
+                }
+            },
+            maxReplicas,
+            computeCheckSum
+        );
         job->start();
-        job->track(progressReport,
-                   errorReport,
-                   chunkLocksReport,
-                   std::cout);
+
+        util::BlockPost blockPost(1000,2000);
+        while (not finished) {
+            blockPost.wait();
+        }
 
         ///////////////////////////////////////////////////
         // Shutdown the controller and join with its thread

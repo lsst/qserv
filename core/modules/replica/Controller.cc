@@ -92,7 +92,7 @@ struct RequestWrapperImpl
 private:
 
     // The context of the operation
-    
+
     typename T::pointer       _request;
     typename T::callback_type _onFinish;
 };
@@ -104,7 +104,7 @@ private:
 /**
  * The utiliy class implementing operations on behalf of certain
  * methods of class Controller.
- * 
+ *
  * THREAD SAFETY NOTE: Methods implemented witin the class are NOT thread-safe.
  *                     They must be called from the thread-safe code only.
  */
@@ -140,9 +140,7 @@ public:
             std::string const& targetRequestId,
             typename REQUEST_TYPE::callback_type onFinish,
             bool  keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             typename Messenger::pointer const& messenger,
-#endif
             unsigned int requestExpirationIvalSec) {
 
         controller->assertIsRunning();
@@ -157,18 +155,16 @@ public:
                     controller->finish(request->id());
                 },
                 keepTracking
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
                 ,messenger
-#endif
             );
-    
+
         // Register the request (along with its callback) by its unique
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
-    
+
         (controller->_registry)[request->id()] =
-            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);  
-    
+            std::make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);
+
         // Initiate the request
 
         request->start(controller, jobId, requestExpirationIvalSec);
@@ -190,9 +186,7 @@ public:
             std::string const& jobId,
             std::string const& workerName,
             typename REQUEST_TYPE::callback_type onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             typename Messenger::pointer const& messenger,
-#endif
             unsigned int requestExpirationIvalSec) {
 
         controller->assertIsRunning();
@@ -205,11 +199,9 @@ public:
                 [controller] (typename REQUEST_TYPE::pointer request) {
                     controller->finish(request->id());
                 }
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
                 ,messenger
-#endif
             );
-    
+
         // Register the request (along with its callback) by its unique
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
@@ -250,14 +242,18 @@ Controller::Controller(ServiceProvider::pointer const& serviceProvider)
             getpid()}),
         _startTime(PerformanceUtils::now()),
         _serviceProvider(serviceProvider),
+
         _io_service(),
         _work(nullptr),
         _thread(nullptr),
+
+        _io_service2(),
+        _work2(nullptr),
+        _thread2(nullptr),
+
         _registry() {
 
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
     _messenger = Messenger::create(_serviceProvider, _io_service);
-#endif
 
     LOGS(_log, LOG_LVL_DEBUG, "Controller  identity=" << _identity);
 
@@ -271,22 +267,39 @@ void Controller::run() {
     if (not isRunning()) {
 
         Controller::pointer controller = shared_from_this();
-     
+
         _work.reset(
             new boost::asio::io_service::work(_io_service));
-
         _thread.reset(
             new std::thread(
                 [controller] () {
-        
-                    // This will prevent the I/O service from existing the .run()
-                    // method event when it will run out of any requess to process.
+
+                    // This will prevent the I/O service from exiting the .run()
+                    // method event when it will run out of any requests to process.
                     // Unless the service will be explicitly stopped.
                     controller->_io_service.run();
-                    
+
                     // Always reset the object in a preparation for its further
                     // usage.
                     controller->_io_service.reset();
+                }
+            )
+        );
+
+        _work2.reset(
+            new boost::asio::io_service::work(_io_service2));
+        _thread2.reset(
+            new std::thread(
+                [controller] () {
+
+                    // This will prevent the I/O service from exiting the .run()
+                    // method event when it will run out of any requests to process.
+                    // Unless the service will be explicitly stopped.
+                    controller->_io_service2.run();
+
+                    // Always reset the object in a preparation for its further
+                    // usage.
+                    controller->_io_service2.reset();
                 }
             )
         );
@@ -311,9 +324,7 @@ void Controller::stop() {
 
     // LOCK_GUARD  (disabled)
 
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
     _messenger->stop();
-#endif
 
     // Destoring this object will let the I/O service to (eventually) finish
     // all on-going work and shut down the thread. In that case there is no need
@@ -322,15 +333,18 @@ void Controller::stop() {
     // would get into an unpredictanle state.)
 
     _work.reset();
+    _work2.reset();
 
     // Join with the thread before clearning up the pointer
 
     _thread->join();
+    _thread2->join();
 
     _thread.reset(nullptr);
-    
+    _thread2.reset(nullptr);
+
     // Double check that the collection of requests is empty.
-    
+
     if (not _registry.empty()) {
         throw std::logic_error(
                         "Controller::stop() the collection of outstanding requests is not empty");
@@ -339,6 +353,7 @@ void Controller::stop() {
 
 void Controller::join() {
     if (_thread) { _thread->join(); }
+    if (_thread2) { _thread2->join(); }
 }
 
 ReplicationRequest::pointer Controller::replicate(
@@ -372,9 +387,7 @@ ReplicationRequest::pointer Controller::replicate(
             priority,
             keepTracking,
             allowDuplicate
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             ,_messenger
-#endif
         );
 
     // Register the request (along with its callback) by its unique
@@ -420,9 +433,7 @@ DeleteRequest::pointer Controller::deleteReplica(
             priority,
             keepTracking,
             allowDuplicate
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             ,_messenger
-#endif
         );
 
     // Register the request (along with its callback) by its unique
@@ -468,9 +479,7 @@ FindRequest::pointer Controller::findReplica(
             priority,
             computeCheckSum,
             keepTracking
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             ,_messenger
-#endif
         );
 
     // Register the request (along with its callback) by its unique
@@ -512,9 +521,7 @@ FindAllRequest::pointer Controller::findAllReplicas(
             },
             priority,
             keepTracking
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
             ,_messenger
-#endif
         );
 
     // Register the request (along with its callback) by its unique
@@ -549,9 +556,7 @@ StopReplicationRequest::pointer Controller::stopReplication(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -573,9 +578,7 @@ StopDeleteRequest::pointer Controller::stopReplicaDelete(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -597,9 +600,7 @@ StopFindRequest::pointer Controller::stopReplicaFind(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -621,9 +622,7 @@ StopFindAllRequest::pointer Controller::stopReplicaFindAll(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -645,9 +644,7 @@ StatusReplicationRequest::pointer Controller::statusOfReplication(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -669,9 +666,7 @@ StatusDeleteRequest::pointer Controller::statusOfDelete(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -693,9 +688,7 @@ StatusFindRequest::pointer Controller::statusOfFind(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -717,9 +710,7 @@ StatusFindAllRequest::pointer Controller::statusOfFindAll(
         targetRequestId,
         onFinish,
         keepTracking,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -737,9 +728,7 @@ ServiceSuspendRequest::pointer Controller::suspendWorkerService(
         jobId,
         workerName,
         onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -757,9 +746,7 @@ ServiceResumeRequest::pointer Controller::resumeWorkerService(
         jobId,
         workerName,
         onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -777,9 +764,7 @@ ServiceStatusRequest::pointer Controller::statusOfWorkerService(
         jobId,
         workerName,
         onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -797,9 +782,7 @@ ServiceRequestsRequest::pointer Controller::requestsOfWorkerService(
         jobId,
         workerName,
         onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 
@@ -817,9 +800,7 @@ ServiceDrainRequest::pointer Controller::drainWorkerService(
         jobId,
         workerName,
         onFinish,
-#ifndef LSST_QSERV_REPLICA_REQUEST_BASE_C
         _messenger,
-#endif
         requestExpirationIvalSec);
 }
 

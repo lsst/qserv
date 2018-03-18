@@ -22,9 +22,6 @@
 #ifndef LSST_QSERV_REPLICA_COMMON_H
 #define LSST_QSERV_REPLICA_COMMON_H
 
-/// Type switch for the implementation branch of the requests
-//#define LSST_QSERV_REPLICA_REQUEST_BASE_C 1
-
 /// Common.h declares:
 ///
 /// enum ExtendedCompletionStatus
@@ -88,7 +85,7 @@ proto::ReplicationStatusExt translate (ExtendedCompletionStatus status);
 class Generators {
 
 public:
-    
+
     // No construction, copying or destruction
 
     Generators() = delete;

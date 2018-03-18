@@ -106,32 +106,6 @@ MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
         "MoveReplicaJob::getReplicaData  the method can't be called while the job hasn't finished");
 }
 
-void MoveReplicaJob::track(bool progressReport,
-                           bool errorReport,
-                           bool chunkLocksReport,
-                           std::ostream& os) const {
-
-    if (_state == State::FINISHED) { return; }
-
-    util::BlockPost blockPost(1000, 2000);
-
-    while (_state != State::FINISHED) {
-        blockPost.wait();
-        if (_createReplicaJob) {
-            _createReplicaJob->track(progressReport,
-                                     errorReport,
-                                     chunkLocksReport,
-                                     os);
-        }
-        if (_deleteReplicaJob) {
-            _deleteReplicaJob->track(progressReport,
-                                     errorReport,
-                                     chunkLocksReport,
-                                     os);
-        }
-    }
-}
-
 void MoveReplicaJob::startImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
