@@ -309,6 +309,7 @@ public:
 
 protected:
     antlr4::ParserRuleContext* _ctx;
+
 };
 
 
@@ -332,7 +333,9 @@ private:
 };
 
 
-class RootAdapter : public Adapter, public DmlStatementCBH {
+class RootAdapter :
+        public Adapter,
+        public DmlStatementCBH {
 public:
     RootAdapter() : Adapter(nullptr) {}
 
@@ -347,7 +350,9 @@ private:
 };
 
 
-class DmlStatementAdapter : public AdapterT<DmlStatementCBH>, public SimpleSelectCBH {
+class DmlStatementAdapter :
+        public AdapterT<DmlStatementCBH>,
+        public SimpleSelectCBH {
 public:
     DmlStatementAdapter(shared_ptr<DmlStatementCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -365,7 +370,9 @@ private:
 };
 
 
-class SimpleSelectAdapter : public AdapterT<SimpleSelectCBH>, public QuerySpecificationCBH {
+class SimpleSelectAdapter :
+        public AdapterT<SimpleSelectCBH>,
+        public QuerySpecificationCBH {
 public:
     SimpleSelectAdapter(shared_ptr<SimpleSelectCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -395,7 +402,10 @@ private:
 };
 
 
-class QuerySpecificationAdapter : public AdapterT<QuerySpecificationCBH>, public SelectElementsCBH, public FromClauseCBH {
+class QuerySpecificationAdapter :
+        public AdapterT<QuerySpecificationCBH>,
+        public SelectElementsCBH,
+        public FromClauseCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -421,7 +431,8 @@ private:
 };
 
 
-class SelectElementsAdapter : public AdapterT<SelectElementsCBH>,
+class SelectElementsAdapter :
+        public AdapterT<SelectElementsCBH>,
         public SelectColumnElementCBH,
         public SelectFunctionElementCBH {
 public:
@@ -443,7 +454,8 @@ private:
 };
 
 
-class FromClauseAdapter : public AdapterT<FromClauseCBH>,
+class FromClauseAdapter :
+        public AdapterT<FromClauseCBH>,
         public TableSourcesCBH,
         public PredicateExpressionCBH,
         public LogicalExpressionCBH {
@@ -483,7 +495,9 @@ private:
 };
 
 
-class TableSourcesAdapter : public AdapterT<TableSourcesCBH>, public TableSourceBaseCBH {
+class TableSourcesAdapter :
+        public AdapterT<TableSourcesCBH>,
+        public TableSourceBaseCBH {
 public:
     TableSourcesAdapter(shared_ptr<TableSourcesCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -501,7 +515,9 @@ private:
 };
 
 
-class TableSourceBaseAdapter : public AdapterT<TableSourceBaseCBH>, public AtomTableItemCBH {
+class TableSourceBaseAdapter :
+        public AdapterT<TableSourceBaseCBH>,
+        public AtomTableItemCBH {
 public:
     TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -520,7 +536,9 @@ private:
 };
 
 
-class AtomTableItemAdapter : public AdapterT<AtomTableItemCBH>, public TableNameCBH {
+class AtomTableItemAdapter :
+        public AdapterT<AtomTableItemCBH>,
+        public TableNameCBH {
 public:
     AtomTableItemAdapter(shared_ptr<AtomTableItemCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -542,7 +560,9 @@ protected:
 };
 
 
-class TableNameAdapter : public AdapterT<TableNameCBH>, public FullIdCBH {
+class TableNameAdapter :
+        public AdapterT<TableNameCBH>,
+        public FullIdCBH {
 public:
     TableNameAdapter(shared_ptr<TableNameCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -554,7 +574,9 @@ public:
 };
 
 
-class FullIdAdapter : public AdapterT<FullIdCBH>, public UidCBH {
+class FullIdAdapter :
+        public AdapterT<FullIdCBH>,
+        public UidCBH {
 public:
     FullIdAdapter(shared_ptr<FullIdCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -568,7 +590,9 @@ public:
 };
 
 
-class FullColumnNameAdapter : public AdapterT<FullColumnNameCBH>, public UidCBH {
+class FullColumnNameAdapter :
+        public AdapterT<FullColumnNameCBH>,
+        public UidCBH {
 public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -583,7 +607,9 @@ public:
 };
 
 
-class ConstantExpressionAtomAdapter : public AdapterT<ConstantExpressionAtomCBH>, public ConstantCBH {
+class ConstantExpressionAtomAdapter :
+        public AdapterT<ConstantExpressionAtomCBH>,
+        public ConstantCBH {
 public:
     ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH>& parent,
                                   antlr4::ParserRuleContext* ctx)
@@ -595,7 +621,8 @@ public:
 };
 
 
-class FullColumnNameExpressionAtomAdapter : public AdapterT<FullColumnNameExpressionAtomCBH>,
+class FullColumnNameExpressionAtomAdapter :
+        public AdapterT<FullColumnNameExpressionAtomCBH>,
         public FullColumnNameCBH {
 public:
     FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH>& parent,
@@ -609,7 +636,8 @@ public:
 };
 
 
-class ExpressionAtomPredicateAdapter : public AdapterT<ExpressionAtomPredicateCBH>,
+class ExpressionAtomPredicateAdapter :
+        public AdapterT<ExpressionAtomPredicateCBH>,
         public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
@@ -635,7 +663,8 @@ public:
 };
 
 
-class PredicateExpressionAdapter : public AdapterT<PredicateExpressionCBH>,
+class PredicateExpressionAdapter :
+        public AdapterT<PredicateExpressionCBH>,
         public BinaryComparasionPredicateCBH,
         public ExpressionAtomPredicateCBH,
         public BetweenPredicateCBH {
@@ -665,8 +694,10 @@ private:
 };
 
 
-class BinaryComparasionPredicateAdapter : public AdapterT<BinaryComparasionPredicateCBH>,
-        public ExpressionAtomPredicateCBH, public ComparisonOperatorCBH {
+class BinaryComparasionPredicateAdapter :
+        public AdapterT<BinaryComparasionPredicateCBH>,
+        public ExpressionAtomPredicateCBH,
+        public ComparisonOperatorCBH {
 public:
     BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH>& parent,
                                       antlr4::ParserRuleContext* ctx)
@@ -744,7 +775,8 @@ private:
 };
 
 
-class ComparisonOperatorAdapter : public AdapterT<ComparisonOperatorCBH> {
+class ComparisonOperatorAdapter :
+        public AdapterT<ComparisonOperatorCBH> {
 public:
     ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH>& parent,
             MySqlParser::ComparisonOperatorContext* ctx)
@@ -760,7 +792,8 @@ private:
 
 
 // handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
-class SelectFunctionElementAdapter : public AdapterT<SelectFunctionElementCBH>,
+class SelectFunctionElementAdapter :
+        public AdapterT<SelectFunctionElementCBH>,
         public AggregateFunctionCallCBH,
         public UidCBH {
 public:
@@ -774,7 +807,9 @@ public:
 };
 
 
-class SelectColumnElementAdapter : public AdapterT<SelectColumnElementCBH>, public FullColumnNameCBH {
+class SelectColumnElementAdapter :
+        public AdapterT<SelectColumnElementCBH>,
+        public FullColumnNameCBH {
 public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent, ctx) {}
@@ -785,7 +820,8 @@ public:
 };
 
 
-class UidAdapter : public AdapterT<UidCBH> {
+class UidAdapter :
+        public AdapterT<UidCBH> {
 public:
     UidAdapter(shared_ptr<UidCBH>& parent, MySqlParser::UidContext* ctx)
     : AdapterT(parent, ctx), _uidContext(ctx) {}
@@ -803,7 +839,8 @@ private:
 };
 
 
-class ConstantAdapter : public AdapterT<ConstantCBH> {
+class ConstantAdapter :
+        public AdapterT<ConstantCBH> {
 public:
     ConstantAdapter(shared_ptr<ConstantCBH>& parent, MySqlParser::ConstantContext* ctx)
     : AdapterT(parent, ctx), _constantContext(ctx) {}
@@ -817,7 +854,8 @@ private:
 };
 
 
-class AggregateFunctionCallAdapter : public AdapterT<AggregateFunctionCallCBH>,
+class AggregateFunctionCallAdapter :
+        public AdapterT<AggregateFunctionCallCBH>,
         public AggregateWindowedFunctionCBH {
 public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
@@ -826,7 +864,8 @@ public:
 };
 
 
-class UdfFunctionCallAdapter : public AdapterT<UdfFunctionCallCBH>,
+class UdfFunctionCallAdapter :
+        public AdapterT<UdfFunctionCallCBH>,
         public FullIdCBH,
         public FunctionArgsCBH {
 public:
@@ -841,7 +880,8 @@ public:
 };
 
 
-class AggregateWindowedFunctionAdapter : public AdapterT<AggregateWindowedFunctionCBH> {
+class AggregateWindowedFunctionAdapter :
+        public AdapterT<AggregateWindowedFunctionCBH> {
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
                                      MySqlParser::AggregateWindowedFunctionContext * ctx)
@@ -849,7 +889,8 @@ public:
 };
 
 
-class FunctionArgsAdapter : public AdapterT<FunctionArgsCBH>,
+class FunctionArgsAdapter :
+        public AdapterT<FunctionArgsCBH>,
         public ConstantCBH,
         public PredicateExpressionCBH,
         public FullColumnNameCBH {
@@ -876,7 +917,9 @@ public:
 };
 
 
-class LogicalExpressionAdapter : public AdapterT<LogicalExpressionCBH>, public LogicalExpressionCBH,
+class LogicalExpressionAdapter :
+        public AdapterT<LogicalExpressionCBH>,
+        public LogicalExpressionCBH,
         public PredicateExpressionCBH,
         public LogicalOperatorCBH {
 public:
@@ -890,7 +933,8 @@ public:
 };
 
 
-class BetweenPredicateAdapter : public AdapterT<BetweenPredicateCBH>,
+class BetweenPredicateAdapter :
+        public AdapterT<BetweenPredicateCBH>,
         public ExpressionAtomPredicateCBH {
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
@@ -905,7 +949,8 @@ public:
 };
 
 
-class UnaryExpressionAtomAdapter : public AdapterT<UnaryExpressionAtomCBH>,
+class UnaryExpressionAtomAdapter :
+        public AdapterT<UnaryExpressionAtomCBH>,
         public UnaryOperatorCBH,
         public ConstantExpressionAtomCBH {
 public:
@@ -920,7 +965,8 @@ public:
 };
 
 
-class MathExpressionAtomAdapter : public AdapterT<MathExpressionAtomCBH>,
+class MathExpressionAtomAdapter :
+        public AdapterT<MathExpressionAtomCBH>,
         public FunctionCallExpressionAtomCBH,
         public MathOperatorCBH {
 public:
@@ -930,7 +976,8 @@ public:
 };
 
 
-class FunctionCallExpressionAtomAdapter : public AdapterT<FunctionCallExpressionAtomCBH>,
+class FunctionCallExpressionAtomAdapter :
+        public AdapterT<FunctionCallExpressionAtomCBH>,
         public UdfFunctionCallCBH {
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
@@ -939,7 +986,8 @@ public:
 };
 
 
-class UnaryOperatorAdapter : public AdapterT<UnaryOperatorCBH> {
+class UnaryOperatorAdapter :
+        public AdapterT<UnaryOperatorCBH> {
 public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
                          MySqlParser::UnaryOperatorContext * ctx)
@@ -947,7 +995,8 @@ public:
 };
 
 
-class LogicalOperatorAdapter : public AdapterT<LogicalOperatorCBH> {
+class LogicalOperatorAdapter :
+        public AdapterT<LogicalOperatorCBH> {
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
                            MySqlParser::LogicalOperatorContext * ctx)
@@ -955,7 +1004,8 @@ public:
 };
 
 
-class MathOperatorAdapter : public AdapterT<MathOperatorCBH> {
+class MathOperatorAdapter :
+        public AdapterT<MathOperatorCBH> {
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
                         MySqlParser::MathOperatorContext * ctx)
