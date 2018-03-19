@@ -298,7 +298,7 @@ public:
 // creates in MySqlParserBaseListener.
 class Adapter {
 public:
-    Adapter(antlr4::ParserRuleContext* ctx) : _ctx(ctx) {}
+    Adapter() {}
     virtual ~Adapter() {}
 
     // onEnter is called just after the Adapter is pushed onto the context stack
@@ -306,10 +306,6 @@ public:
 
     // onExit is called just before the Adapter is popped from the context stack
     virtual void onExit() {}
-
-protected:
-    antlr4::ParserRuleContext* _ctx;
-
 };
 
 
