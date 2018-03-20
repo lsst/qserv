@@ -290,7 +290,7 @@ FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
         return fe;
     }
     fe = vf->getFuncExpr();
-    if (!fe || fe->name != "scisql_angSep" || fe->params.size() != 4) {
+    if (!fe || fe->getName() != "scisql_angSep" || fe->params.size() != 4) {
         return FuncExpr::Ptr();
     }
     return fe;
