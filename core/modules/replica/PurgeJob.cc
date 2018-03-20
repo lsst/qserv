@@ -187,19 +187,20 @@ void PurgeJob::notify() {
         auto self = shared_from_base<PurgeJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void PurgeJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyon this scope
         // to allow deadlock-free client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
 
         //////////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort in case of any problems with
@@ -407,16 +408,15 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::pointer const& job) {
          << "  worker="         << job->worker()
          << "  chunk="          << job->chunk());
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) {
+        release(job->chunk());
+        return;
+    }
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) {
-            release(job->chunk());
-            return;
-        }
 
         // Update counters and merge results of the finished job into the current
         // job's stats if the replica deletion has been a success.

@@ -248,6 +248,7 @@ void DeleteReplicaJob::notify() {
         auto self = shared_from_base<DeleteReplicaJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void DeleteReplicaJob::beginDeleteReplica() {
@@ -283,13 +284,13 @@ void DeleteReplicaJob::onRequestFinish(DeleteRequest::pointer const& request) {
          << "  worker=" << worker()
          << "  chunk=" << chunk());
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyon this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
 
         // Update stats
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {

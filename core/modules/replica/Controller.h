@@ -639,6 +639,9 @@ private:
      */
     explicit Controller(ServiceProvider::pointer const& serviceProvider);
 
+    /// @return the context string for debugging and diagnostic printouts
+    std::string context() const;
+
     /**
      * Finalize the completion of the request. This method will notify
      * a requestor on the completion of the operation and it will also

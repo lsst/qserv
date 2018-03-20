@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
+#include "replica/Configuration.h"
 #include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
@@ -94,6 +95,16 @@ MoveReplicaJob::MoveReplicaJob(std::string const& databaseFamily,
         _onFinish(onFinish),
         _createReplicaJob(nullptr),
         _deleteReplicaJob(nullptr) {
+
+    if (not _controller->serviceProvider()->config()->isKnownDatabaseFamily(_databaseFamily)) {
+        throw std::invalid_argument("MoveReplicaJob: the database family is unknown: " +
+                                    _databaseFamily);
+    }
+    _controller->serviceProvider()->assertWorkerIsValid(_sourceWorker);
+    _controller->serviceProvider()->assertWorkerIsValid(_destinationWorker);
+    if (_sourceWorker == _destinationWorker) {
+        throw std::invalid_argument("MoveReplicaJob: source and destination workers are the same");
+    }
 }
 
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
@@ -148,19 +159,20 @@ void MoveReplicaJob::notify() {
         auto self = shared_from_base<MoveReplicaJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void MoveReplicaJob::onCreateJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onCreateJobFinish");
 
+    // Ignore the callback if the job was cancelled or expired
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled or expired
-        if (_state == State::FINISHED) { return; }
 
         if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
 
@@ -206,13 +218,13 @@ void MoveReplicaJob::onDeleteJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onDeleteJobFinish()");
 
+    // Ignore the callback if the job was cancelled or expired
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled or expired
-        if (_state == State::FINISHED) { return; }
 
         // Extract stats
         if (_deleteReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {

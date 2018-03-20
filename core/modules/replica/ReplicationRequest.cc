@@ -298,6 +298,7 @@ void ReplicationRequestM::notify() {
     if (_onFinish != nullptr) {
         _onFinish(shared_from_base<ReplicationRequestM>());
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 }}} // namespace lsst::qserv::replica

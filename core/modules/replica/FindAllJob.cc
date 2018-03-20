@@ -144,11 +144,11 @@ void FindAllJob::cancelImpl() {
                 _id         /* jobId */);
         }
     }
-    //_requests.clear();
+    _requests.clear();
 
-    //_numLaunched = 0;
-    //_numFinished = 0;
-    //_numSuccess  = 0;
+    _numLaunched = 0;
+    _numFinished = 0;
+    _numSuccess  = 0;
 }
 
 void FindAllJob::notify() {
@@ -159,6 +159,7 @@ void FindAllJob::notify() {
         auto self = shared_from_base<FindAllJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {

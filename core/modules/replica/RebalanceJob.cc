@@ -213,19 +213,20 @@ void RebalanceJob::notify() {
         auto self = shared_from_base<RebalanceJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void RebalanceJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyon this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort unless running the job
@@ -558,18 +559,18 @@ void RebalanceJob::onPrecursorJobFinish() {
 
 void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
 
-    std::string  const databaseFamily    = job->databaseFamily();
-    unsigned int const chunk             = job->chunk();
-    std::string  const sourceWorker      = job->sourceWorker();
-    std::string  const destinationWorker = job->destinationWorker();
-
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "onJobFinish"
-         << "  databaseFamily="    << databaseFamily
-         << "  chunk="             << chunk
-         << "  sourceWorker="      << sourceWorker
-         << "  destinationWorker=" << destinationWorker);
+         << "  databaseFamily="    << databaseFamily()
+         << "  chunk="             << job->chunk()
+         << "  sourceWorker="      << job->sourceWorker()
+         << "  destinationWorker=" << job->destinationWorker());
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) {
+        release(job->chunk());
+        return;
+    }
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
@@ -578,16 +579,10 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
         // Make sure the chunk is released if this was the last job in
         // its scope regardless of the completion status of the job.
 
-        _chunk2jobs.at(chunk).erase(sourceWorker);
-        if (_chunk2jobs.at(chunk).empty()) {
-            _chunk2jobs.erase(chunk);
-            Chunk chunkObj {_databaseFamily, chunk};
-            _controller->serviceProvider()->chunkLocker().release(chunkObj);
-        }
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) {
-            return;
+        _chunk2jobs.at(job->chunk()).erase(job->sourceWorker());
+        if (_chunk2jobs.at(job->chunk()).empty()) {
+            _chunk2jobs.erase(job->chunk());
+            release(job->chunk());
         }
 
         // Update counters and object state if needed.
@@ -601,20 +596,20 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
             for (auto const& replica: replicaData.createdReplicas) {
                 _replicaData.createdReplicas.emplace_back(replica);
             }
-            for (auto const& databaseEntry: replicaData.createdChunks.at(chunk)) {
+            for (auto const& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
                 std::string const& database = databaseEntry.first;
-                ReplicaInfo const& replica  = databaseEntry.second.at(destinationWorker);
+                ReplicaInfo const& replica  = databaseEntry.second.at(job->destinationWorker());
 
-                _replicaData.createdChunks[chunk][database][destinationWorker] = replica;
+                _replicaData.createdChunks[job->chunk()][database][job->destinationWorker()] = replica;
             }
             for (auto const& replica: replicaData.deletedReplicas) {
                 _replicaData.deletedReplicas.emplace_back(replica);
             }
-            for (auto const& databaseEntry: replicaData.deletedChunks.at(chunk)) {
+            for (auto const& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
                 std::string const& database = databaseEntry.first;
-                ReplicaInfo const& replica  = databaseEntry.second.at(sourceWorker);
+                ReplicaInfo const& replica  = databaseEntry.second.at(job->sourceWorker());
 
-                _replicaData.deletedChunks[chunk][database][sourceWorker] = replica;
+                _replicaData.deletedChunks[job->chunk()][database][job->sourceWorker()] = replica;
             }
         }
 
@@ -642,6 +637,12 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
     // Client notification should be made from the lock-free zone
     // to avoid possible deadlocks
     if (_state == State::FINISHED) { notify (); }
+}
+
+void RebalanceJob::release(unsigned int chunk) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << "release  chunk=" << chunk);
+    Chunk chunkObj {databaseFamily(), chunk};
+    _controller->serviceProvider()->chunkLocker().release(chunkObj);
 }
 
 }}} // namespace lsst::qserv::replica

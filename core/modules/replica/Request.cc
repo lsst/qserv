@@ -78,6 +78,17 @@ std::string Request::state2string(ExtendedState state) {
                     "incomplete implementation of method Request::state2string(ExtendedState)");
 }
 
+std::string Request::state2string(State state,
+                                  ExtendedState extendedState) {
+    return state2string(state) + "::" + state2string(extendedState);
+}
+
+std::string Request::state2string(State state,
+                                  ExtendedState extendedState,
+                                  replica::ExtendedCompletionStatus serverStatus) {
+    return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
+}
+
 Request::Request(ServiceProvider::pointer const& serviceProvider,
                  boost::asio::io_service& io_service,
                  std::string const& type,
@@ -104,6 +115,11 @@ Request::Request(ServiceProvider::pointer const& serviceProvider,
         _requestExpirationTimer(io_service) {
 
         _serviceProvider->assertWorkerIsValid(worker);
+}
+std::string Request::context() const {
+    return "REQUEST " + id() + "  " + type() +
+           "  " + state2string(state(), extendedState()) +
+           "::" + replica::status2string(extendedServerStatus()) + "  ";
 }
 
 std::string const& Request::remoteId() const {
@@ -163,6 +179,9 @@ std::string const& Request::jobId() const {
 
 void Request::expired(boost::system::error_code const& ec) {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << "expired"
+         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) { return; }
 
@@ -170,7 +189,6 @@ void Request::expired(boost::system::error_code const& ec) {
     if (_state == State::FINISHED) { return; }
     {
         LOCK_GUARD;
-        LOGS(_log, LOG_LVL_DEBUG, context() << "expired");
         finish(EXPIRED);
     }
 
@@ -180,11 +198,12 @@ void Request::expired(boost::system::error_code const& ec) {
 
 void Request::cancel() {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
+
     // Ignore this call if the request is over
     if (_state == FINISHED) { return; }
     {
         LOCK_GUARD;
-        LOGS(_log, LOG_LVL_DEBUG, context() << "cancel");
         finish(CANCELLED);
     }
 

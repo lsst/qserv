@@ -92,9 +92,7 @@ std::string ConfigurationMySQL::configUrl() const {
 
 WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
 
-    std::string const context = "ConfigurationMySQL::disableWorker  ";
-
-    LOGS(_log, LOG_LVL_DEBUG, context << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name);
 
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
@@ -117,7 +115,7 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
             _workerInfo[name].isEnabled = false;
 
         } catch (database::mysql::Error const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, context << ex.what());
+            LOGS(_log, LOG_LVL_ERROR, context() << "MySQL error: " << ex.what());
             if (conn and conn->inTransaction()) {
                 conn->commit();
             }
@@ -128,9 +126,7 @@ WorkerInfo const& ConfigurationMySQL::disableWorker(std::string const& name) {
 
 void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
-    std::string const context = "ConfigurationMySQL::deleteWorker  ";
-
-    LOGS(_log, LOG_LVL_DEBUG, context << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
 
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
@@ -148,7 +144,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
         _workerInfo.erase(info.name);
 
     } catch (database::mysql::Error const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
         if (conn and conn->inTransaction()) {
             conn->commit();
         }
@@ -157,7 +153,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
 
 void ConfigurationMySQL::loadConfiguration() {
 
-    std::string const context = "ConfigurationMySQL::loadConfiguration  ";
+    LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationMySQL::loadConfiguration");
 
     // The common parameters (if any defined) of the workers will be intialize
     // from table 'config' and be used as defaults when reading worker-specific

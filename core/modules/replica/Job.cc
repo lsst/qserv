@@ -105,8 +105,8 @@ Job::Options Job::setOptions(Options const& newOptions) {
 }
 
 std::string Job::context() const {
-    return  "JOB [id=" + _id + ", type=" + _type +
-            ", state=" + state2string(_state, _extendedState) + "]  ";
+    return  "JOB     " + _id + "  " + _type +
+            "  " + state2string(_state, _extendedState) + "  ";
 }
 
 void Job::start() {
@@ -146,6 +146,11 @@ void Job::start() {
 }
 
 void Job::cancel() {
+    LOGS(_log, LOG_LVL_DEBUG, context() << "cancel"
+         << "  _state="         << state2string(_state)
+         << ", _extendedState=" << state2string(_extendedState));
+
+    if (_state == State::FINISHED) { return; }
     {
         // Limit the scope of this lock here to allow deadlock-free
         // callbacks to clients.

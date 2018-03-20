@@ -186,17 +186,18 @@ void FixUpJob::notify () {
         auto self = shared_from_base<FixUpJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void FixUpJob::onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish");
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
 
         ////////////////////////////////////////////////////////////////////
         // Do not proceed with the replication effort if there is a problem
@@ -317,14 +318,14 @@ void FixUpJob::onRequestFinish(ReplicationRequest::pointer const& request) {
          << "  worker="   << worker
          << "  chunk="    << chunk);
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) {
+        release(chunk);
+        return;
+    }
+
     do {
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) {
-            release(chunk);
-            return;
-        }
 
         // Update counters and object state if needed.
         _numFinished++;
