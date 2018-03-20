@@ -312,7 +312,7 @@ public:
 template <typename CBH>
 class AdapterT : public Adapter {
 public:
-    AdapterT(shared_ptr<CBH>& parent, antlr4::ParserRuleContext* ctx) : Adapter(ctx), _parent(parent) {}
+    AdapterT(shared_ptr<CBH>& parent) : _parent(parent) {}
 
 protected:
     shared_ptr<CBH> lockedParent() {
@@ -333,7 +333,7 @@ class RootAdapter :
         public Adapter,
         public DmlStatementCBH {
 public:
-    RootAdapter() : Adapter(nullptr) {}
+    RootAdapter() {}
 
     shared_ptr<query::SelectStmt>& getSelectStatement() { return _selectStatement; }
 
@@ -351,7 +351,7 @@ class DmlStatementAdapter :
         public SimpleSelectCBH {
 public:
     DmlStatementAdapter(shared_ptr<DmlStatementCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleSelectStatement(shared_ptr<query::SelectStmt>& selectStatement) override {
         _selectStatement = selectStatement;
@@ -371,7 +371,7 @@ class SimpleSelectAdapter :
         public QuerySpecificationCBH {
 public:
     SimpleSelectAdapter(shared_ptr<SimpleSelectCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
                                   shared_ptr<query::FromList>& fromList,
@@ -404,7 +404,7 @@ class QuerySpecificationAdapter :
         public FromClauseCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleSelectList(shared_ptr<query::SelectList>& selectList) override {
         _selectList = selectList;
@@ -433,7 +433,7 @@ class SelectElementsAdapter :
         public SelectFunctionElementCBH {
 public:
     SelectElementsAdapter(shared_ptr<SelectElementsCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " <<
@@ -456,20 +456,15 @@ class FromClauseAdapter :
         public PredicateExpressionCBH,
         public LogicalExpressionCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, MySqlParser::FromClauseContext * ctx)
+    : AdapterT(parent), _ctx(ctx) {}
 
     void handleTableSources(query::TableRefListPtr tableRefList) override {
         _tableRefList = tableRefList;
     }
 
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
-        MySqlParser::FromClauseContext* ctx = dynamic_cast<MySqlParser::FromClauseContext*>(_ctx);
-        if (nullptr == ctx) {
-            throw MySqlListener::adapter_order_error(
-                    "FromClauseAdapter's _ctx could not be cast to a FromClauseContext.");
-        }
-        if (ctx->whereExpr == childCtx) {
+        if (_ctx->whereExpr == childCtx) {
             if (_whereClause->getRootTerm()) {
                 ostringstream msg;
                 msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
@@ -488,6 +483,7 @@ public:
 private:
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
+    MySqlParser::FromClauseContext * _ctx;
 };
 
 
@@ -496,7 +492,7 @@ class TableSourcesAdapter :
         public TableSourceBaseCBH {
 public:
     TableSourcesAdapter(shared_ptr<TableSourcesCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleTableSource(shared_ptr<query::TableRef>& tableRef) override {
         _tableRefList->push_back(tableRef);
@@ -516,7 +512,7 @@ class TableSourceBaseAdapter :
         public AtomTableItemCBH {
 public:
     TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
@@ -537,7 +533,7 @@ class AtomTableItemAdapter :
         public TableNameCBH {
 public:
     AtomTableItemAdapter(shared_ptr<AtomTableItemCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleTableName(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
@@ -561,7 +557,7 @@ class TableNameAdapter :
         public FullIdCBH {
 public:
     TableNameAdapter(shared_ptr<TableNameCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleFullIdString(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
@@ -575,7 +571,7 @@ class FullIdAdapter :
         public UidCBH {
 public:
     FullIdAdapter(shared_ptr<FullIdCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     virtual ~FullIdAdapter() {}
 
@@ -591,7 +587,7 @@ class FullColumnNameAdapter :
         public UidCBH {
 public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleUidString(const string& string) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -609,7 +605,7 @@ class ConstantExpressionAtomAdapter :
 public:
     ConstantExpressionAtomAdapter(shared_ptr<ConstantExpressionAtomCBH>& parent,
                                   antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleConstant(const string& text) override {
         lockedParent()->handleConstantExpressionAtom(text);
@@ -623,7 +619,7 @@ class FullColumnNameExpressionAtomAdapter :
 public:
     FullColumnNameExpressionAtomAdapter(shared_ptr<FullColumnNameExpressionAtomCBH>& parent,
                                         antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -642,7 +638,7 @@ class ExpressionAtomPredicateAdapter :
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
                                    antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleConstantExpressionAtom(const string& text) override {
         query::ValueExpr::FactorOp factorOp;
@@ -665,8 +661,9 @@ class PredicateExpressionAdapter :
         public ExpressionAtomPredicateCBH,
         public BetweenPredicateCBH {
 public:
-    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
+            MySqlParser::PredicateExpressionContext * ctx)
+    : AdapterT(parent), _ctx(ctx) {}
 
     // BinaryComparisonPredicateCBH
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm) override {
@@ -687,6 +684,7 @@ public:
 
 private:
     shared_ptr<query::OrTerm> _orTerm;
+    MySqlParser::PredicateExpressionContext * _ctx;
 };
 
 
@@ -697,7 +695,7 @@ class BinaryComparasionPredicateAdapter :
 public:
     BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH>& parent,
                                       antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleComparisonOperator(const string& text) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << text);
@@ -776,7 +774,7 @@ class ComparisonOperatorAdapter :
 public:
     ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH>& parent,
             MySqlParser::ComparisonOperatorContext* ctx)
-    : AdapterT(parent, ctx),  _comparisonOperatorCtx(ctx) {}
+    : AdapterT(parent),  _comparisonOperatorCtx(ctx) {}
 
     void onExit() override {
         lockedParent()->handleComparisonOperator(_comparisonOperatorCtx->getText());
@@ -795,7 +793,7 @@ class SelectFunctionElementAdapter :
 public:
     SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
                                  MySqlParser::SelectFunctionElementContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleUidString(const string& string) override {
         // todo
@@ -808,7 +806,7 @@ class SelectColumnElementAdapter :
         public FullColumnNameCBH {
 public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
         lockedParent()->handleColumnElement(columnValueExpr);
@@ -820,7 +818,7 @@ class UidAdapter :
         public AdapterT<UidCBH> {
 public:
     UidAdapter(shared_ptr<UidCBH>& parent, MySqlParser::UidContext* ctx)
-    : AdapterT(parent, ctx), _uidContext(ctx) {}
+    : AdapterT(parent), _uidContext(ctx) {}
 
     void onExit() override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -839,7 +837,7 @@ class ConstantAdapter :
         public AdapterT<ConstantCBH> {
 public:
     ConstantAdapter(shared_ptr<ConstantCBH>& parent, MySqlParser::ConstantContext* ctx)
-    : AdapterT(parent, ctx), _constantContext(ctx) {}
+    : AdapterT(parent), _constantContext(ctx) {}
 
     void onExit() override {
         lockedParent()->handleConstant(_constantContext->getText());
@@ -856,7 +854,7 @@ class AggregateFunctionCallAdapter :
 public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
                                  MySqlParser::AggregateFunctionCallContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -867,7 +865,7 @@ class UdfFunctionCallAdapter :
 public:
     UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
                            MySqlParser::UdfFunctionCallContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     // FullIdCBH
     void handleFullIdString(const string& string) override {
@@ -881,7 +879,7 @@ class AggregateWindowedFunctionAdapter :
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
                                      MySqlParser::AggregateWindowedFunctionContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -893,7 +891,7 @@ class FunctionArgsAdapter :
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
                         MySqlParser::FunctionArgsContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     // ConstantCBH
     void handleConstant(const string& val) override {
@@ -921,7 +919,7 @@ class LogicalExpressionAdapter :
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
                              MySqlParser::LogicalExpressionContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
         // todo
@@ -935,7 +933,7 @@ class BetweenPredicateAdapter :
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
                             MySqlParser::BetweenPredicateContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     // ExpressionAtomPredicateCBH
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
@@ -952,7 +950,7 @@ class UnaryExpressionAtomAdapter :
 public:
     UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
                                MySqlParser::UnaryExpressionAtomContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 
     // ConstantExpressionAtomCBH
     void handleConstantExpressionAtom(const string& text) override {
@@ -968,7 +966,7 @@ class MathExpressionAtomAdapter :
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
                               MySqlParser::MathExpressionAtomContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -978,7 +976,7 @@ class FunctionCallExpressionAtomAdapter :
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
                                       MySqlParser::FunctionCallExpressionAtomContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -987,7 +985,7 @@ class UnaryOperatorAdapter :
 public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
                          MySqlParser::UnaryOperatorContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -996,7 +994,7 @@ class LogicalOperatorAdapter :
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
                            MySqlParser::LogicalOperatorContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
@@ -1005,7 +1003,7 @@ class MathOperatorAdapter :
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
                         MySqlParser::MathOperatorContext * ctx)
-    : AdapterT(parent, ctx) {}
+    : AdapterT(parent) {}
 };
 
 
