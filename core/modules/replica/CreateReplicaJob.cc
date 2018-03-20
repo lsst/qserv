@@ -261,6 +261,7 @@ void CreateReplicaJob::notify() {
         auto self = shared_from_base<CreateReplicaJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& request) {
@@ -272,13 +273,13 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& reques
          << "  sourceWorker="      << sourceWorker()
          << "  chunk="             << chunk());
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyon this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) { return; }
 
         // Update stats
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {

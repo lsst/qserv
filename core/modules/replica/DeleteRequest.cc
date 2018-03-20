@@ -294,5 +294,6 @@ void DeleteRequestM::notify() {
     if (_onFinish != nullptr) {
         _onFinish(shared_from_base<DeleteRequestM>());
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 }}} // namespace lsst::qserv::replica

@@ -259,6 +259,13 @@ protected:
      */
     void restart();
 
+    /**
+     * Unconditionally release the specified chunk
+     *
+     * @param chunk - the chunk number
+     */
+    void release(unsigned int chunk);
+
 protected:
 
     /// The name of the database

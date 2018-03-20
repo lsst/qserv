@@ -222,8 +222,7 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity) {
-    os  << "ControllerIdentity (id:'" << identity.id << "',host:'" << identity.host
-        << "', pid:" << identity.pid << ")";
+    os  << "ControllerIdentity(id=" << identity.id << ",host=" << identity.host << ",pid=" << identity.pid << ")";
     return os;
 }
 
@@ -254,13 +253,17 @@ Controller::Controller(ServiceProvider::pointer const& serviceProvider)
         _registry() {
 
     _messenger = Messenger::create(_serviceProvider, _io_service);
-
-    LOGS(_log, LOG_LVL_DEBUG, "Controller  identity=" << _identity);
-
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
+std::string Controller::context() const {
+    return "R-CONTR " + _identity.id + "  " + _identity.host +
+           "[" + std::to_string(_identity.pid) + "]  ";
+}
+
 void Controller::run() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "run");
 
     LOCK_GUARD;
 
@@ -311,6 +314,8 @@ bool Controller::isRunning() const {
 }
 
 void Controller::stop() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stop");
 
     if (not isRunning()) { return; }
 
@@ -367,6 +372,9 @@ ReplicationRequest::pointer Controller::replicate(
                                 bool allowDuplicate,
                                 std::string const& jobId,
                                 unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "replicate");
+
     LOCK_GUARD;
 
     assertIsRunning();
@@ -414,6 +422,9 @@ DeleteRequest::pointer Controller::deleteReplica(
                             bool allowDuplicate,
                             std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteReplica");
+
     LOCK_GUARD;
 
     assertIsRunning();
@@ -460,6 +471,9 @@ FindRequest::pointer Controller::findReplica(
                         bool keepTracking,
                         std::string const& jobId,
                         unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "findReplica");
+
     LOCK_GUARD;
 
     assertIsRunning();
@@ -504,6 +518,9 @@ FindAllRequest::pointer Controller::findAllReplicas(
                             bool keepTracking,
                             std::string const& jobId,
                             unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "findAllReplicas");
+
     LOCK_GUARD;
 
     assertIsRunning();
@@ -547,7 +564,7 @@ StopReplicationRequest::pointer Controller::stopReplication(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "stopReplication  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplication  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StopReplicationRequest>(
         shared_from_this(),
@@ -569,7 +586,7 @@ StopDeleteRequest::pointer Controller::stopReplicaDelete(
                                 unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "stopReplicaDelete  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaDelete  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StopDeleteRequest>(
         shared_from_this(),
@@ -591,7 +608,7 @@ StopFindRequest::pointer Controller::stopReplicaFind(
                             unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "stopReplicaFind  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaFind  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StopFindRequest>(
         shared_from_this(),
@@ -613,7 +630,7 @@ StopFindAllRequest::pointer Controller::stopReplicaFindAll(
                                 unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "stopReplicaFindAll  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "stopReplicaFindAll  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StopFindAllRequest>(
         shared_from_this(),
@@ -635,7 +652,7 @@ StatusReplicationRequest::pointer Controller::statusOfReplication(
                                         unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "statusOfReplication  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfReplication  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StatusReplicationRequest>(
         shared_from_this(),
@@ -657,7 +674,7 @@ StatusDeleteRequest::pointer Controller::statusOfDelete(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "statusOfDelete  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfDelete  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StatusDeleteRequest>(
         shared_from_this(),
@@ -679,7 +696,7 @@ StatusFindRequest::pointer Controller::statusOfFind(
                                 unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "statusOfFind  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfFind  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StatusFindRequest>(
         shared_from_this(),
@@ -701,7 +718,7 @@ StatusFindAllRequest::pointer Controller::statusOfFindAll(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "statusOfFindAll  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfFindAll  targetRequestId = " << targetRequestId);
 
     return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
         shared_from_this(),
@@ -721,7 +738,7 @@ ServiceSuspendRequest::pointer Controller::suspendWorkerService(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "suspendWorkerService  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "suspendWorkerService  workerName: " << workerName);
 
     return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest>(
         shared_from_this(),
@@ -739,7 +756,7 @@ ServiceResumeRequest::pointer Controller::resumeWorkerService(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "resumeWorkerService  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "resumeWorkerService  workerName: " << workerName);
 
     return ControllerImpl::serviceManagementOperation<ServiceResumeRequest>(
         shared_from_this(),
@@ -757,7 +774,7 @@ ServiceStatusRequest::pointer Controller::statusOfWorkerService(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "statusOfWorkerService  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "statusOfWorkerService  workerName: " << workerName);
 
     return ControllerImpl::serviceManagementOperation<ServiceStatusRequest>(
         shared_from_this(),
@@ -775,7 +792,7 @@ ServiceRequestsRequest::pointer Controller::requestsOfWorkerService(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "requestsOfWorkerService  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "requestsOfWorkerService  workerName: " << workerName);
 
     return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest>(
         shared_from_this(),
@@ -793,7 +810,7 @@ ServiceDrainRequest::pointer Controller::drainWorkerService(
                                     unsigned int requestExpirationIvalSec) {
     LOCK_GUARD;
 
-    LOGS(_log, LOG_LVL_DEBUG, "drainWorkerService  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "drainWorkerService  workerName: " << workerName);
 
     return ControllerImpl::serviceManagementOperation<ServiceDrainRequest>(
         shared_from_this(),

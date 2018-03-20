@@ -88,9 +88,7 @@ ConfigurationFile::ConfigurationFile(std::string const& configFile)
 
 WorkerInfo const& ConfigurationFile::disableWorker(std::string const& name) {
 
-    std::string const context = "ConfigurationFile::disableWorker  ";
-
-    LOGS(_log, LOG_LVL_ERROR, context << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "disableWorker  name=" << name);
 
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
@@ -105,9 +103,7 @@ WorkerInfo const& ConfigurationFile::disableWorker(std::string const& name) {
 
 void ConfigurationFile::deleteWorker(std::string const& name) {
 
-    std::string const context = "ConfigurationFile::deleteWorker  ";
-
-    LOGS(_log, LOG_LVL_ERROR, context << name);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "deleteWorker  name=" << name);
 
     // This will also throw an exception if the worker is unknown
     WorkerInfo const& info = workerInfo(name);
@@ -116,6 +112,8 @@ void ConfigurationFile::deleteWorker(std::string const& name) {
 }
 
 void ConfigurationFile::loadConfiguration() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "ConfigurationFile::loadConfiguration");
 
     util::ConfigStore configStore(_configFile);
 

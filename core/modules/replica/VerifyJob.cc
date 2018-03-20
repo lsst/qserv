@@ -273,6 +273,7 @@ void VerifyJob::notify() {
         auto self = shared_from_base<VerifyJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void VerifyJob::onRequestFinish(FindRequest::pointer request) {
@@ -281,6 +282,9 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
          << "onRequestFinish  database=" << request->database()
          << " worker=" << request->worker()
          << " chunk="  << request->chunk());
+
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) return;
 
     // The default version of the object won't have any difference
     // reported
@@ -291,9 +295,6 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
 
     do {
         LOCK_GUARD;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) return;
 
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
 

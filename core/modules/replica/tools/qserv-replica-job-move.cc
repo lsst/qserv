@@ -138,6 +138,11 @@ bool test() {
 
         util::BlockPost blockPost(1000,2000);
         while (not finished) {
+            std::cout
+                << "qserv-replica-job-move:"
+                << "  Controller::numActiveRequests: " << controller->numActiveRequests()
+                << ", MoveReplicaJob::state: " << job->state2string(job->state())
+                << std::endl;
             blockPost.wait();
         }
 

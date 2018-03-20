@@ -236,6 +236,7 @@ void DeleteWorkerJob::notify() {
         auto self = shared_from_base<DeleteWorkerJob>();
         _onFinish(self);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void DeleteWorkerJob::onRequestFinish(FindAllRequest::pointer const& request) {
@@ -245,17 +246,15 @@ void DeleteWorkerJob::onRequestFinish(FindAllRequest::pointer const& request) {
          << "  worker="   << request->worker()
          << "  database=" << request->database());
 
+    // Ignore the callback if the job was cancelled
+    if (_state == State::FINISHED) { return; }
+
     do {
-        // This lock will be automatically release beyon this scope
+        // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
         _numFinished++;
-
-        // Ignore the callback if the job was cancelled
-        if (_state == State::FINISHED) {
-            return;
-        }
         if (request->extendedState() == Request::ExtendedState::SUCCESS) {
             _numSuccess++;
         }
@@ -313,15 +312,15 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "onJobFinish(FindAllJob) "
          << " databaseFamily: " << job->databaseFamily());
 
+    // Ignore the callback if the job was cancelled (or otherwise failed)
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically released beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
         _numFinished++;
-
-        // Ignore the callback if the job was cancelled (or otherwise failed)
-        if (_state == State::FINISHED) { return; }
 
         if (job->extendedState() == ExtendedState::SUCCESS) {
 
@@ -374,15 +373,15 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
          << " numReplicas: " << job->numReplicas()
          << " state: " << Job::state2string(job->state(), job->extendedState()));
 
+    // Ignore the callback if the job was cancelled (or otherwise failed)
+    if (_state == State::FINISHED) { return; }
+
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
         LOCK_GUARD;
 
         _numFinished++;
-
-        // Ignore the callback if the job was cancelled (or otherwise failed)
-        if (_state == State::FINISHED) return;
 
         if (job->extendedState() == ExtendedState::SUCCESS) {
 

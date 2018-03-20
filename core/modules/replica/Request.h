@@ -80,7 +80,7 @@ public:
         FINISHED
     };
 
-    /// Return the string representation of the primary state
+    /// @return the string representation of the primary state
     static std::string state2string(State state) ;
 
     /// Refined public sub-state of the requiest once it's FINISHED as per
@@ -123,14 +123,17 @@ public:
         CANCELLED
     };
 
-    /// Return the string representation of the extended state
+    /// @return the string representation of the extended state
     static std::string state2string(ExtendedState state) ;
 
-    /// Return the string representation of the compbined state
+    /// @return the string representation of the compbined state
     static std::string state2string(State state,
-                                    ExtendedState extendedState) {
-        return state2string(state) + "::" +state2string(extendedState);
-    }
+                                    ExtendedState extendedState);
+
+    /// @return the string representation of the compbined state
+    static std::string state2string(State state,
+                                    ExtendedState extendedState,
+                                    ExtendedCompletionStatus extendedServerStatus);
 
     // Default construction and copy semantics are prohibited
 
@@ -141,42 +144,43 @@ public:
     /// Destructor
     virtual ~Request() = default;
 
-    /// Return a reference to the service provider,
+    /// @return reference to the service provider,
     ServiceProvider::pointer const& serviceProvider() { return _serviceProvider; }
 
-    /// Return a string representing a type of a request.
+    /// @return a string representing a type of a request.
     std::string const& type() const { return _type; }
 
-    /// Return a unique identifier of the request
+    /// @return a unique identifier of the request
     std::string const& id() const { return _id; }
 
     /**
-     * An effective identifier of a remote (worker-side) requst. Normally this is
-     * the same request as the one a request object is created with unless allowing
-     * to track duplicate requests (see constructor'x options: 'keepTracking' and
-     * 'allowDuplicate') and after the one is found.
+     * @return an effective identifier of a remote (worker-side) requst.
+     *
+     * Normally this is the same request as the one a request object is created with
+     * unless allowing to track duplicate requests (see constructor'x options: 'keepTracking'
+     * and 'allowDuplicate') and after the one is found.
      */
     std::string const& remoteId() const;
 
-    /// Return the priority level of the request
+    /// @return the priority level of the request
     int priority() const { return _priority; }
 
-    /// Return a unique identifier of the request
+    /// @return a unique identifier of the request
     std::string const& worker() const { return _worker; }
 
-    /// Return the primary status of the request
+    /// @return the primary status of the request
     State state() const { return _state; }
 
-    /// Return the extended state of the request when it finished.
+    /// @return the extended state of the request when it finished.
     ExtendedState extendedState() const { return _extendedState; }
 
-    /// Return a status code received from a worker server
+    /// @return a status code received from a worker server
     ExtendedCompletionStatus extendedServerStatus() const { return _extendedServerStatus; }
 
-    /// Return the performance info
+    /// @return the performance info
     Performance const& performance() const { return _performance; }
 
-    /// Return the Controller (if set)
+    /// @return the Controller (if set)
     std::shared_ptr<Controller> const& controller() const { return _controller; }
 
     /**
@@ -219,13 +223,8 @@ public:
      */
     void cancel();
 
-    /// Return the context string for debugging and diagnostic printouts
-    std::string context() const {
-        return id() +
-            "  " + type() +
-            "  " + state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus()) +
-            "  ";
-    }
+    /// @return the context string for debugging and diagnostic printouts
+    std::string context() const;
 
 protected:
 

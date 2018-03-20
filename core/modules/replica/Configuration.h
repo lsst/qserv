@@ -423,6 +423,9 @@ protected:
      */
     Configuration();
 
+    /// @return the context string for debugging and diagnostic printouts
+    std::string context() const;
+
 protected:
 
     // -- Cached values of parameters --
