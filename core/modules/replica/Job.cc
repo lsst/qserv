@@ -343,7 +343,6 @@ void Job::startExpirationTimer() {
             new boost::asio::deadline_timer(
                 _controller->io_service(),
                 boost::posix_time::seconds(_expirationIvalSec)));
-                //boost::posix_time::seconds(10)));
 
         _expirationTimerPtr->async_wait(
             boost::bind(

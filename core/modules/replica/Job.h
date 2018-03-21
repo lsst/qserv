@@ -105,10 +105,10 @@ public:
         CANCELLED
     };
 
-    /// Return the string representation of the extended state
+    /// @return string representation of the extended state
     static std::string state2string(ExtendedState state) ;
 
-    /// Return the string representation of the combined state
+    /// @return string representation of the combined state
     static std::string state2string(State state, ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
     }
@@ -154,6 +154,9 @@ public:
 
     /// @return the extended state of the job when it's finished
     ExtendedState extendedState() const { return _extendedState; }
+
+    /// @return string representation of the combined state of the object
+    std::string state2string() const { return state2string(_state, _extendedState); }
 
     /// @return job options
     Options const& options() const { return _options; }

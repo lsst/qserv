@@ -29,9 +29,7 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
-#include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)

@@ -77,7 +77,7 @@ public:
         FINISHED
     };
 
-    /// Return the string representation of the primary state
+    /// @return the string representation of the primary state
     static std::string state2string(State state) ;
 
     /// Refined public sub-state of the requiest once it's FINISHED as per
@@ -113,10 +113,10 @@ public:
         CANCELLED
     };
 
-    /// Return the string representation of the extended state
+    /// @return the string representation of the extended state
     static std::string state2string(ExtendedState state) ;
 
-    /// Return the string representation of the compbined state
+    /// @return the string representation of the compbined state
     static std::string state2string(State state,
                                     ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
@@ -148,6 +148,9 @@ public:
 
     /// @return extended status of the request
     ExtendedState extendedState() const { return _extendedState; }
+
+    /// @return string representation of the combined state of the object
+    std::string state2string() const { return state2string(_state, _extendedState); }
 
     /// @return error message (if any) reported by the remote service.
     /// Note that the method should only be called after the request

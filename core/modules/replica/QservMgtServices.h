@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
+#include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 
@@ -113,9 +114,8 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                   allowing to override the default value of
      *                   the corresponding parameter from the Configuration.
-     *
-     * @return pointer to the request object if the request was made. Return the null
-     * pointer otherwise.
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
      */
     AddReplicaQservMgtRequest::pointer addReplica(
                                             unsigned int chunk,
@@ -140,9 +140,8 @@ public:
      * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
      *                   allowing to override the default value of
      *                   the corresponding parameter from the Configuration.
-     *
-     * @return pointer to the request object if the request was made. Return the null
-     * pointer otherwise.
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
      */
     RemoveReplicaQservMgtRequest::pointer removeReplica(
                                             unsigned int chunk,
@@ -152,7 +151,28 @@ public:
                                             RemoveReplicaQservMgtRequest::callback_type onFinish = nullptr,
                                             std::string const& jobId="",
                                             unsigned int requestExpirationIvalSec=0);
-
+    /**
+     * Fetch replicas known to a Qserv worker
+     *
+     * @param databaseFamily  - the name of a database family
+     * @param worker          - the name of a worker
+     * @param inUseOnly       - return replicas which're presently in use
+     * @param onFinish        - callback function to be called upon request completion
+     * @param jobId           - an optional identifier of a job specifying a context
+     *                          in which a request will be executed.
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                          allowing to override the default value of
+     *                          the corresponding parameter from the Configuration.
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
+     */
+    GetReplicasQservMgtRequest::pointer getReplicas(
+                                            std::string const& databaseFamily,
+                                            std::string const& worker,
+                                            bool inUseOnly = false,
+                                            std::string const& jobId="",
+                                            GetReplicasQservMgtRequest::callback_type onFinish = nullptr,
+                                            unsigned int requestExpirationIvalSec=0);
 private:
 
     /**
