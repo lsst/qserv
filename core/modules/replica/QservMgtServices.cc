@@ -202,6 +202,52 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
     return request;
 }
 
+GetReplicasQservMgtRequest::pointer QservMgtServices::getReplicas(
+                                        std::string const& databaseFamily,
+                                        std::string const& worker,
+                                        bool inUseOnly,
+                                        std::string const& jobId,
+                                        GetReplicasQservMgtRequest::callback_type onFinish,
+                                        unsigned int requestExpirationIvalSec) {
+    LOCK_GUARD;
+
+    // Ensure we have the XROOTD/SSI service object before attempting any
+    // operations on requests
+    XrdSsiService* service = xrdSsiService();
+    if (not service) {
+        return GetReplicasQservMgtRequest::pointer();
+    }
+
+    QservMgtServices::pointer manager = shared_from_this();
+
+    GetReplicasQservMgtRequest::pointer const request =
+        GetReplicasQservMgtRequest::create(
+            _serviceProvider,
+            _io_service,
+            worker,
+            databaseFamily,
+            inUseOnly,
+            [manager] (QservMgtRequest::pointer const& request) {
+                manager->finish(request->id());
+            }
+        );
+
+    // Register the request (along with its callback) by its unique
+    // identifier in the local registry. Once it's complete it'll
+    // be automatically removed from the Registry.
+    _registry[request->id()] =
+        std::make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(
+            request, onFinish);
+
+    // Initiate the request
+    request->start(service,
+                   jobId,
+                   requestExpirationIvalSec);
+
+    return request;
+
+}
+
 void QservMgtServices::finish(std::string const& id) {
 
     // IMPORTANT:

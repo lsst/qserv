@@ -25,6 +25,7 @@
 
 // System headers
 #include <atomic>
+#include <list>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -38,6 +39,7 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/FindAllJob.h"
+#include "replica/QservGetReplicasJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -54,6 +56,7 @@ namespace {
 
 std::string databaseFamily;
 std::string configUrl;
+bool        pullQservReplicas;
 bool        progressReport;
 bool        errorReport;
 bool        detailedReport;
@@ -77,6 +80,37 @@ void dump(replica::FindAllJobResult const& replicaData) {
     }
 }
 
+/**
+ * @return a string in which participating workers are represented by some
+ * non default character at the corresponding worker position starting with
+ * index 0 (counting from the left to the right).
+ *
+ * The meaning of characters:
+ *   '-' - the default character
+ *   'R' - the worker is known to the replication system only
+ *   'Q' - the worker is known to Qserv only
+ *   'B' - th eworker is known to both the Replication system and Qserv
+ *
+ * @param worker2idx - index map for workers (worker name to its 0-basd index)
+ * @param workers    - collection of worker names participating in the operation
+ */
+std::string workers2str(std::map<std::string,size_t> const& worker2idx,
+                        std::list<std::string> const& workers) {
+
+    // Prepare a blank line using symbol '-' as a placeholder for workers
+    // at the relative 0-based positions
+    std::string result(2*worker2idx.size(), ' ');
+    for (size_t idx = 0, num = worker2idx.size(); idx < num; ++idx) {
+        result[2*idx] = '-';
+    }
+
+    // Fill-in participating workers at their positions in the line
+    for (auto const& worker: workers) {
+        result[2*worker2idx.at(worker)] = 'B';
+    }
+    return result;
+}
+
 /// Run the test
 bool test() {
 
@@ -92,33 +126,65 @@ bool test() {
 
         controller->run();
 
-        ////////////////////////////////////////
-        // Find all replicas accross all workers
+        util::BlockPost blockPost(1000,2000);
 
-        std::atomic<bool> finished{false};
-        auto job = replica::FindAllJob::create(
+        ///////////////////////////////////////////////////////////////////
+        // Start two parallel jobs, the firts one getting the latest state
+        // of replicas accross the Replication cluster, and the second one
+        // getting a list of replicas known to Qserv workers.
+
+        std::atomic<bool> replicaJobFinished{false};
+        auto findAllJob = replica::FindAllJob::create(
             databaseFamily,
             controller,
             std::string(),
-            [&finished] (replica::FindAllJob::pointer const& job) {
-                finished = true;
+            [&replicaJobFinished] (replica::FindAllJob::pointer const& job) {
+                replicaJobFinished = true;
             }
         );
-        job->start();
+        findAllJob->start();
 
-        util::BlockPost blockPost(1000,2000);
-        while (not finished) {
-            blockPost.wait();
+        replica::QservGetReplicasJob::pointer qservGetReplicasJob;
+        if (pullQservReplicas) {
+            std::atomic<bool> qservJobFinished{false};
+            bool const inUseOnly = false;
+            qservGetReplicasJob = replica::QservGetReplicasJob::create(
+                databaseFamily,
+                controller,
+                std::string(),
+                inUseOnly,
+                [&qservJobFinished] (replica::QservGetReplicasJob::pointer const& job) {
+                    qservJobFinished = true;
+                }
+            );
+            qservGetReplicasJob->start();
+
+            while (not (replicaJobFinished and qservJobFinished)) {
+                blockPost.wait();
+            }
+            OUT << "qserv-replica-job-cunks:\n"
+                << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
+                << "   QservGetReplicasJob finished: " << qservGetReplicasJob->state2string() << "\n"
+                << std::endl;
+        } else {
+            while (replicaJobFinished) {
+                blockPost.wait();
+            }
+            OUT << "qserv-replica-job-cunks:\n"
+                << "   FindAllJob          finished: " << findAllJob->state2string() << "\n"
+                << std::endl;
         }
-        OUT << "qserv-replica-job-cunks: Job finished with state: "
-            << job->state2string(job->state(), job->extendedState()) << std::endl;
 
         //////////////////////////////
         // Analyse and display results
 
-        replica::FindAllJobResult const& replicaData = job->getReplicaData();
+        replica::FindAllJobResult const& replicaData = findAllJob->getReplicaData();
         if (detailedReport) {
             dump(replicaData);
+        }
+        std::map<std::string, replica::QservReplicaCollection> worker2qservReplicas;
+        if (pullQservReplicas) {
+            worker2qservReplicas = qservGetReplicasJob->getReplicaData().replicas;
         }
 
         // Build and print a map of worker "numbers" to use them instead of
@@ -168,12 +234,16 @@ bool test() {
             << std::endl;
 
         OUT << "REPLICAS:\n"
-            << "-------------+----------+-----+-----+-----------------------------------------\n"
-            << "       chunk | database | rep | r+- | workers\n";
+            << "  LEGEND:\n"
+            << "    for the desired minimal replication 'L'evel\n"
+            << "    for numbers of replicas from different sources: 'R'eplication, 'Q'serv, 'B'oth"
+            << "-------------+----------------------+---+-----+---+-----+------------------------------------------\n"
+            << "       chunk |             database | R | R-L | Q | R-Q | replicas at workers\n"
+            << "-------------+----------------------+---+-----+---+-----+------------------------------------------\n";
 
         size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
 
-        unsigned int prevChunk  = (unsigned int) -1;
+        //unsigned int prevChunk  = (unsigned int) -1;
 
         for (auto const& chunkEntry: replicaData.chunks) {
 
@@ -186,28 +256,42 @@ bool test() {
                 long long   const  numReplicasDiff    = numReplicas - replicationLevel;
                 std::string const  numReplicasDiffStr = numReplicasDiff ? std::to_string(numReplicasDiff) : "";
 
-                if (chunk != prevChunk) {
-                    OUT << "-------------+----------+-----+-----+-----------------------------------------\n";
-                }
-                prevChunk = chunk;
+                size_t      const  numQservReplicas        = 0;
+                long long   const  numQservReplicasDiff    = numQservReplicas - numReplicas;
+                std::string const  numQservReplicasDiffStr = numQservReplicasDiff ? std::to_string(numQservReplicasDiff) : "";
+
+                //if (chunk != prevChunk) {
+                //    OUT << "-------------+----------------------+---+-----+---+-----+------------------------------------------\n";
+                //}
+                //prevChunk = chunk;
 
                 OUT << " "   << std::setw(11) << chunk
-                    << " | " << std::setw(8)  << database
-                    << " | " << std::setw(3)  << numReplicas
+                    << " | " << std::setw(20) << database
+                    << " | " << std::setw(1)  << numReplicas
                     << " | " << std::setw(3)  << numReplicasDiffStr
+                    << " | " << std::setw(1)  << numQservReplicas
+                    << " | " << std::setw(3)  << numQservReplicasDiffStr
                     << " | ";
 
+/*
                 for (auto const& replicaEntry: databaseEntry.second) {
 
-                    std::string     const& worker = replicaEntry.first;
+                    std::string          const& worker = replicaEntry.first;
                     replica::ReplicaInfo const& info   = replicaEntry.second;
 
                     OUT << worker2idx[worker] << (info.status() != replica::ReplicaInfo::Status::COMPLETE ? "(!)" : "") << " ";
                 }
+*/
+                std::list<std::string> workers;
+                for (auto const& replicaEntry: databaseEntry.second) {
+                    std::string const& worker = replicaEntry.first;
+                    workers.push_back(worker);
+                }
+                OUT << workers2str(worker2idx, workers);
                 OUT << "\n";
             }
         }
-        OUT << "-------------+----------+-----+-----+-----------------------------------------\n"
+        OUT << "-------------+----------------------+---+-----+---+-----+------------------------------------------\n"
             << std::endl;
 
         ///////////////////////////////////////////////////
@@ -248,15 +332,17 @@ int main(int argc, const char* const argv[]) {
             "Flags and options:\n"
             "  --config           - a configuration URL (a configuration file or a set of the database\n"
             "                       connection parameters [ DEFAULT: file:replication.cfg ]\n"
+            "  --qserv-replicas   - also pull replicas from Qserv workers for the analysis\n"
             "  --progress-report  - progress report when executing batches of requests\n"
             "  --error-report     - detailed report on failed requests\n"
             "  --detailed-report  - detailed report on results\n");
 
-        ::databaseFamily = parser.parameter<std::string>(1);
-        ::configUrl      = parser.option<std::string>("config", "file:replication.cfg");
-        ::progressReport = parser.flag("progress-report");
-        ::errorReport    = parser.flag("error-report");
-        ::detailedReport = parser.flag("detailed-report");
+        ::databaseFamily    = parser.parameter<std::string>(1);
+        ::configUrl         = parser.option<std::string>("config", "file:replication.cfg");
+        ::pullQservReplicas = parser.flag("qserv-replicas");
+        ::progressReport    = parser.flag("progress-report");
+        ::errorReport       = parser.flag("error-report");
+        ::detailedReport    = parser.flag("detailed-report");
 
     } catch (std::exception const& ex) {
         return 1;

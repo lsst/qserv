@@ -652,6 +652,7 @@ CREATE TABLE IF NOT EXISTS `replica` (
   `verify_time` BIGINT UNSIGNED NOT NULL ,
 
   PRIMARY KEY           (`id`) ,
+  KEY                   (`worker`,`database`) ,
   UNIQUE  KEY `replica` (`worker`,`database`,`chunk`) ,
 
 

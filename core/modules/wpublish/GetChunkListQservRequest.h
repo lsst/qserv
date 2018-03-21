@@ -27,6 +27,7 @@
 // System headers
 #include <functional>
 #include <list>
+#include <memory>
 
 // Third party headers
 
@@ -67,6 +68,9 @@ public:
 
     /// The ChunkCollection type refresens a collection of chunks
     using ChunkCollection = std::list<Chunk>;
+
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<GetChunkListQservRequest> pointer;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
