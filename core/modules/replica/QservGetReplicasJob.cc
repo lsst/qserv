@@ -181,7 +181,13 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::pointer co
         _numFinished++;
         if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
             _numSuccess++;
+
+            // Merge results of the request into the summary data collection
+            // of the job.
             _replicaData.replicas[request->worker()] = request->replicas();
+            for (auto const& replica: request->replicas()) {
+                _replicaData.chunks[replica.chunk][replica.database][request->worker()] = replica.useCount;
+            }
             _replicaData.workers[request->worker()] = true;
         } else {
             _replicaData.workers[request->worker()] = false;

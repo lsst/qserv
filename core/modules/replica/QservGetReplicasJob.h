@@ -56,10 +56,24 @@ struct QservGetReplicasJobResult {
 
     /// Per-worker flags indicating if the corresponidng replica retreival
     /// request succeeded.
+    ///
     std::map<std::string, bool> workers;
 
-    /// Results groupped workers
+    /// Results groupped by:
+    ///
+    ///   [worker]
     std::map<std::string, QservReplicaCollection> replicas;
+
+    /// Results groupped by:
+    ///
+    ///   [chunk][database][worker]
+    ///
+    /// This structure also reports the use counter for each chunks
+    ///
+    std::map<unsigned int,
+             std::map<std::string,
+                      std::map<std::string,
+                               bool>>> chunks;
 };
 
 /**
