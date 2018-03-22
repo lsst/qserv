@@ -231,6 +231,19 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     return std::shared_ptr<query::ValueFactor>();
 }
 
+
+std::shared_ptr<query::ValueFactor>
+ValueFactorFactory::newColumnFactor(std::string columnName, std::string tableName, std::string databaseName) {
+    std::shared_ptr<query::ValueFactor> vt = std::make_shared<query::ValueFactor>();
+    std::shared_ptr<query::FuncExpr> fe;
+
+    std::shared_ptr<query::ColumnRef> newColumnRef;
+    newColumnRef = std::make_shared<query::ColumnRef>(databaseName, tableName, columnName);
+    vt = query::ValueFactor::newColumnRefFactor(newColumnRef);
+    return vt;
+}
+
+
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
@@ -266,6 +279,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     fe->params.push_back(query::ValueExpr::newSimple(pvt));
     return query::ValueFactor::newAggFactor(fe);
 }
+
 
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {

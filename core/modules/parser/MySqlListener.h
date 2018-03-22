@@ -64,17 +64,10 @@ public:
     };
 
     // Thrown in the case of unexpected events during the parse. (might want to inherit from runtime error?)
-    class adapter_execution_error : public std::exception {
+    class adapter_execution_error : public std::runtime_error {
     public:
         explicit adapter_execution_error(std::string msg)
-        : _msg(msg) {}
-
-        virtual const char * what() const noexcept override {
-            return _msg.c_str();
-        }
-
-    private:
-        std::string _msg;
+        : std::runtime_error(msg) {}
     };
 
 protected:

@@ -49,6 +49,20 @@ namespace qserv {
 namespace query {
 
 
+FuncExpr::Ptr
+FuncExpr::newFuncExpr(const std::string& functionName, const std::string& parameterName) {
+    auto funcExpr = std::make_shared<query::FuncExpr>();
+    funcExpr->setName(functionName);
+    std::shared_ptr<query::ValueFactor> valueFactor;
+    if (parameterName == "*") {
+        valueFactor = query::ValueFactor::newStarFactor("");
+    } else {
+        throw std::runtime_error("newFuncExpr can only make funcs with * parameter right now.");
+    }
+    return funcExpr;
+}
+
+
 const std::string &
 FuncExpr::getName() const {
     return _name;

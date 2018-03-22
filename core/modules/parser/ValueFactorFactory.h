@@ -61,8 +61,9 @@ public:
 
     static std::shared_ptr<query::ValueFactor>
     newColumnColumnFactor(const std::string& db, const std::string& table, const std::string& column);
-    // todo
-    // ValueFactorFactory::newFunctionColumnFactor
+
+    static std::shared_ptr<query::ValueFactor>
+    newColumnFactor(std::string columnName, std::string tableName="", std::string databaseName="");
 
 private:
     std::shared_ptr<query::ValueFactor> _newColumnFactor(antlr::RefAST t);
