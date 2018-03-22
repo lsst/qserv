@@ -34,6 +34,7 @@
 #include "parser/ValueFactorFactory.h"
 #include "query/BoolTerm.h"
 #include "query/FromList.h"
+#include "query/FuncExpr.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -232,6 +233,7 @@ public:
 
 class AggregateFunctionCallCBH : public BaseCBH {
 public:
+    virtual void handleAggregateFunctionCall(string functionName, string paramete) = 0;
 };
 
 
@@ -241,6 +243,7 @@ public:
 
 class AggregateWindowedFunctionCBH : public BaseCBH {
 public:
+    virtual void handleAggregateWindowedFunction(string functionName, string parameter) = 0;
 };
 
 
@@ -793,11 +796,42 @@ class SelectFunctionElementAdapter :
 public:
     SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
                                  MySqlParser::SelectFunctionElementContext* ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleUidString(const string& string) override {
-        // todo
+        // Uid is expected to be the aliasName in `functionCall AS aliasName`
+        if (false == _asName.empty()) {
+            throw MySqlListener::adapter_execution_error("Second call to handleUidString.");
+        }
+        if (_ctx->AS() == nullptr) {
+            throw MySqlListener::adapter_execution_error("Call to handleUidString but AS is null.");
+        }
     }
+
+    void handleAggregateFunctionCall(string functionName, string parameter) override {
+        // todo block against getting called twice?
+        _functionName = functionName;
+        _parameter = parameter;
+    }
+
+    void onExit() override {
+        string table;
+        auto starFactor = query::ValueFactor::newStarFactor(table);
+        auto starParExpr = std::make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(starParExpr, starFactor);
+        auto countStarFuncExpr = query::FuncExpr::newFuncExpr(_functionName, _parameter);
+        auto aggFuncValueFactor = query::ValueFactor::newAggFactor(countStarFuncExpr);
+        auto countStarFuncAsValueExpr = std::make_shared<query::ValueExpr>();
+        countStarFuncAsValueExpr->setAlias(_asName);
+    }
+
+private:
+    string _functionName;
+    string _parameter; // todo will probably end up being a vector of string
+    string _asName;
+    MySqlParser::SelectFunctionElementContext* _ctx;
 };
 
 
@@ -855,6 +889,10 @@ public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
                                  MySqlParser::AggregateFunctionCallContext * ctx)
     : AdapterT(parent) {}
+
+    void handleAggregateWindowedFunction(string functionName, string parameter) override {
+        lockedParent()->handleAggregateFunctionCall(functionName, parameter);
+    }
 };
 
 
@@ -879,7 +917,18 @@ class AggregateWindowedFunctionAdapter :
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
                                      MySqlParser::AggregateWindowedFunctionContext * ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent), _ctx(ctx) {}
+
+    void onExit() override {
+        if (nullptr == _ctx->COUNT() || nullptr == _ctx->starArg) {
+            throw MySqlListener::adapter_execution_error(string("AggregateWindowedFunctionAdapter ") +
+                    string("currently only supports COUNT(*), can't handle ") + _ctx->getText());
+        }
+        lockedParent()->handleAggregateWindowedFunction("COUNT", "*");
+    }
+
+private:
+    MySqlParser::AggregateWindowedFunctionContext * _ctx;
 };
 
 
