@@ -184,6 +184,16 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
+std::ostream& CompPredicate::dump(std::ostream& os) const {
+    os << "CompPredicate(left:";
+    left->dbgPrint(os);
+    os << ", op:" << op;
+    os << ", right:";
+    right->dbgPrint(os);
+    os << ")";
+    return os;
+}
+
 BoolFactorTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
     if (left) p->left = left->clone();
@@ -214,12 +224,34 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+std::ostream& InPredicate::dump(std::ostream& os) const {
+    os << "InPredicate(value:";
+    value->dbgPrint(os);
+    os << ", cands:";
+    for (auto valueExpr : cands) {
+        valueExpr->dbgPrint(os);
+        os << ", ";
+    }
+    os << ")";
+    return os;
+}
+
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();
     if (minValue) p->minValue = minValue->clone();
     if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
+}
+
+std::ostream& BetweenPredicate::dump(std::ostream& os) const {
+    os << "BetweenPredicate(value:";
+    value->dbgPrint(os);
+    os << ", minValue:";
+    minValue->dbgPrint(os);
+    os << ", maxValue:";
+    maxValue->dbgPrint(os);
+    return os;
 }
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
@@ -229,11 +261,25 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+std::ostream& LikePredicate::dump(std::ostream& os) const {
+    os << "LikePredicate(value:";
+    value->dbgPrint(os);
+    os << ", charValue:" << charValue;
+    return os;
+}
+
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     NullPredicate::Ptr p = std::make_shared<NullPredicate>();
     if (value) p->value = value->clone();
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
+}
+
+std::ostream& NullPredicate::dump(std::ostream& os) const {
+    os << "NullPredicate(value:";
+    value->dbgPrint(os);
+    os << ", hasNot:" << hasNot;
+    return os;
 }
 
 }}} // namespace lsst::qserv::query
