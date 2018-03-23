@@ -206,6 +206,18 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 }
 
 
+std::ostream& WhereClause::dump(std::ostream& os) {
+    os << "WhereClause(original:" << _original << ", tree:";
+    _tree->dump(os);
+    os << "restrs";
+    for (auto restrictorPtr : (*_restrs)) {
+        os << restrictorPtr;
+    }
+    os << ")";
+    return os;
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // WhereClause (private)
 ////////////////////////////////////////////////////////////////////////
@@ -213,5 +225,6 @@ void
 WhereClause::resetRestrs() {
     _restrs = std::make_shared<QsRestrictor::PtrVector>();
 }
+
 
 }}} // namespace lsst::qserv::query

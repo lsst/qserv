@@ -109,6 +109,8 @@ public:
 
     static int lookupOp(char const* op);
 
+    std::ostream& dump(std::ostream& os) const override;
+
     ValueExprPtr left;
     int op; // Parser token type of operator
     ValueExprPtr right;
@@ -131,6 +133,8 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
+    std::ostream& dump(std::ostream& os) const override;
+
     ValueExprPtr value;
     ValueExprPtrVector cands;
 };
@@ -150,6 +154,8 @@ public:
     /// Deep copy this term.
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+
+    std::ostream& dump(std::ostream& os) const override;
 
     ValueExprPtr value;
     ValueExprPtr minValue;
@@ -173,6 +179,8 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
+    std::ostream& dump(std::ostream& os) const override;
+
     ValueExprPtr value;
     ValueExprPtr charValue;
 };
@@ -194,6 +202,8 @@ public:
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
+
+    std::ostream& dump(std::ostream& os) const override;
 
     ValueExprPtr value;
     bool hasNot;

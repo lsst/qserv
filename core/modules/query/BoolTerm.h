@@ -66,6 +66,8 @@ public:
 
     virtual void findValueExprs(ValueExprPtrVector& vector) {}
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+
+    virtual std::ostream& dump(std::ostream& os) const = 0;
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -105,6 +107,8 @@ public:
 
     virtual std::shared_ptr<BoolTerm> copySyntax() const {
         return std::shared_ptr<BoolTerm>(); }
+
+    virtual std::ostream& dump(std::ostream& os) const = 0;
 };
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
@@ -139,6 +143,8 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
+
+    std::ostream& dump(std::ostream& os) const override;
 
     BoolTerm::PtrVector _terms;
 };
@@ -175,6 +181,8 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
     BoolTerm::PtrVector _terms;
+
+    std::ostream& dump(std::ostream& os) const override;
 };
 
 /// BoolFactor is a plain factor in a BoolTerm
@@ -205,6 +213,8 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     BoolFactorTerm::PtrVector _terms;
+
+    std::ostream& dump(std::ostream& os) const override;
 private:
     bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
     bool _checkParen(BoolFactorTerm::PtrVector& terms);
@@ -218,6 +228,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
+    std::ostream& dump(std::ostream& os) const override;
 };
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
@@ -232,6 +243,8 @@ public: // text
     virtual void renderTo(QueryTemplate& qt) const;
 
     std::string _text;
+
+    std::ostream& dump(std::ostream& os) const override;
 };
 
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
@@ -243,6 +256,7 @@ public: // ( term, term, term )
     virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    std::ostream& dump(std::ostream& os) const override;
     StringVector _terms;
 };
 
@@ -264,6 +278,8 @@ public:
     virtual void findColumnRefs(ColumnRef::Vector& vector) {
         if (_term) { _term->findColumnRefs(vector); }
     }
+
+    std::ostream& dump(std::ostream& os) const override;
 
     std::shared_ptr<BoolTerm> _term;
 };

@@ -113,23 +113,27 @@ ValueExpr::ValueExpr() {
  */
 void ValueExpr::dbgPrint(std::ostream& os) {
     ColumnRef::Vector cList;
-    os << "ValueExpr:\t\"" << *this << "\"\n";
-    os << "\tAlias:\t\"" << this->_alias << "\"\n";
-    os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
-    os << "\tIsFactor:\t" << this->isFactor() << "\n";
-    os << "\tIsStar:\t" << this->isStar() << "\n";
+    os << "ValueExpr(" << "rendered:" << *this;
+    os << ", alias:" << _alias;
+    os << ", isColumnRef:" << isColumnRef();
+    os << ", isFactor:" << isFactor();
+    os << ", isStar:" << isStar();
     this->findColumnRefs(cList);
     typedef ColumnRef::Vector::const_iterator ColIter;
-    for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
-        os << "\tColumnRef:\t" << *i << "\n";
+    os << ", columnRefs(";
+    for (auto columnRef : cList) {
+        os << columnRef;
     }
+    os << ")";
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
-    for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
-            e=this->_factorOps.end(); i != e; ++i) {
-            ca(*i);
-            os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
+    os << ", factorOps(";
+    for (auto factorOp : _factorOps) {
+        ca(factorOp);
+        os << "factorOp:(" << factorOp << ", hasAgg:" << hasAgg << ")";
     }
+    os << ")"; // end factorOps
+    os << ")"; // end ValueExpr
 }
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
