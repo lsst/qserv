@@ -38,6 +38,7 @@
 
 // System headers
 #include <map>
+#include <sstream>
 
 // Third-party headers
 #include "boost/algorithm/string/predicate.hpp" // string iequal
@@ -216,6 +217,13 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     if (selectStmt._limit != -1) {
         os << "LIMIT " << selectStmt._limit;
     }
+    return os;
+}
+
+std::ostream& SelectStmt::dump(std::ostream& os) {
+    os << "SelectStmt(..., whereClause:";
+    _whereClause->dump(os);
+    os << ", ...)";
     return os;
 }
 

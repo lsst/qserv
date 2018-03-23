@@ -36,6 +36,7 @@
 #include <iostream>
 #include <memory>
 #include <stack>
+#include <sstream>
 
 // Local headers
 #include "query/BoolTerm.h"
@@ -83,15 +84,17 @@ public:
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
+    std::ostream& dump(std::ostream& os);
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
+
     friend class parser::WhereFactory;
 
     std::string _original;
     std::shared_ptr<BoolTerm> _tree;
     std::shared_ptr<QsRestrictor::PtrVector> _restrs;
-
 };
+
 
 }}} // namespace lsst::qserv::query
 

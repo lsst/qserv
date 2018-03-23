@@ -303,30 +303,83 @@ std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
+std::ostream& OrTerm::dump(std::ostream& os) const {
+    os << "OrTerm(terms:";
+    for (auto term : _terms) {
+        term->dump(os);
+        if (&term != &_terms.back())
+            os << ", ";
+    }
+    os << ")";
+    return os;
+}
 std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(at->_terms, _terms);
     return at;
+}
+std::ostream& AndTerm::dump(std::ostream& os) const {
+    os << "AndTerm(terms:";
+    for (auto term : _terms) {
+        term->dump(os);
+        if (&term != &_terms.back())
+            os << ", ";
+    }
+    os << ")";
+    return os;
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
+std::ostream& BoolFactor::dump(std::ostream& os) const {
+    os << "BoolFactor(terms:";
+    for (auto term : _terms) {
+        term->dump(os);
+        if (&term != &_terms.back())
+            os << ", ";
+    }
+    os << ")";
+    return os;
+}
+std::ostream& UnknownTerm::dump(std::ostream& os) const {
+    os << "UnknownTerm()";
+    return os;
+}
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
     p->_text = _text;
     return BoolFactorTerm::Ptr(p);
+}
+std::ostream& PassTerm::dump(std::ostream& os) const {
+    os << "PassTerm(terms:" << _text << ")";
+    return os;
 }
 BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     PassListTerm* p = new PassListTerm;
     p->_terms = _terms;
     return BoolFactorTerm::Ptr(p);
 }
+std::ostream& PassListTerm::dump(std::ostream& os) const {
+    os << "PassListTerm(terms:";
+    for (auto term : _terms) {
+        os << term;
+        if (&term != &_terms.back())
+            os << ", ";
+    }
+    os << ")";
+    return os;
+}
 BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
     if (_term) { p->_term = _term->copySyntax(); }
     return BoolFactorTerm::Ptr(p);
+}
+std::ostream& BoolTermFactor::dump(std::ostream& os) const {
+    //os << "BoolTermFactor(term:" << _term->dump(os) << ")";
+    os << "BoolTermFactor(...)";
+    return os;
 }
 
 }}} // namespace lsst::qserv::query
