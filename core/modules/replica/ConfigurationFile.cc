@@ -148,6 +148,7 @@ void ConfigurationFile::loadConfiguration() {
     ::parseKeyVal(configStore, "common.database_password",   _databasePassword,   defaultDatabasePassword);
     ::parseKeyVal(configStore, "common.database_name",       _databaseName,       defaultDatabaseName);
 
+    ::parseKeyVal(configStore, "controller.num_threads",         _controllerThreads,           defaultControllerThreads);
     ::parseKeyVal(configStore, "controller.http_server_port",    _controllerHttpPort,          defaultControllerHttpPort);
     ::parseKeyVal(configStore, "controller.http_server_threads", _controllerHttpThreads,       defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec", _controllerRequestTimeoutSec, defaultControllerRequestTimeoutSec);

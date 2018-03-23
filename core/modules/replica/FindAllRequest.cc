@@ -24,6 +24,7 @@
 #include "replica/FindAllRequest.h"
 
 // System headers
+#include <future>
 #include <stdexcept>
 
 // Third party headers
@@ -276,8 +277,17 @@ void FindAllRequestM::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish != nullptr) {
-        _onFinish(shared_from_base<FindAllRequestM>());
+        auto self = shared_from_base<FindAllRequestM>();
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
 }
 

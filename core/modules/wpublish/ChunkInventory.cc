@@ -42,8 +42,7 @@
 
 // This macro to appear witin each block which requires thread safety
 
-#define LOCK_GUARD \
-std::lock_guard<std::mutex> lock(_mtx)
+#define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
 
 namespace { // File-scope helpers
 
@@ -165,6 +164,14 @@ ChunkInventory::ChunkInventory(std::string const& name,
     _init(*sc);
 }
 
+ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap,
+                               std::string const& name,
+                               std::string const& id)
+    :   _existMap(existMap),
+        _name(name),
+        _id(id) {
+}
+
 void ChunkInventory::init(std::string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
     SqlConnection sc(mySqlConfig, true);
@@ -215,7 +222,7 @@ void ChunkInventory::add(std::string const& db, int chunk, mysql::MySqlConfig co
     };
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
-    
+
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
             std::string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
@@ -262,7 +269,7 @@ void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
 
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
-    
+
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
             std::string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
@@ -270,7 +277,7 @@ void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
             throw QueryError(error);
         }
     }
-    
+
     // If no such database or a chunk exsist in the map then simply
     // quite and make no fuss about it.
 
@@ -281,7 +288,7 @@ void ChunkInventory::remove(std::string const& db, int chunk, mysql::MySqlConfig
     auto chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return;
 
-    _existMap[db].erase(chunk);    
+    _existMap[db].erase(chunk);
 }
 
 bool ChunkInventory::has(std::string const& db, int chunk) const {
@@ -361,10 +368,10 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
         "    WHERE TABLE_SCHEMA IN (SELECT db FROM qservw_" + _name + ".Dbs)"
         "          AND TABLE_NAME REGEXP '_[0-9]*$'"
     };
-    
+
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
-    
+
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
             std::string const error =

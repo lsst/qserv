@@ -86,6 +86,7 @@ public:
 
     ChunkInventory() {}
     ChunkInventory(std::string const& name, std::shared_ptr<sql::SqlConnection> sc);
+    ChunkInventory(ExistMap const& existMap, std::string const& name, std::string const& id);
 
     void init(std::string const& name, mysql::MySqlConfig const& mysqlConfig);
 
@@ -110,13 +111,16 @@ public:
     bool has(std::string const& db, int chunk) const;
 
     /// @return a unique identifier of a worker instance
-    std::string const& id () const { return _id; }
+    std::string const& id() const { return _id; }
 
     /// Rest the identifier of the worker service
-    void resetId (std::string const& id) { _id = id; }
+    void resetId(std::string const& id) { _id = id; }
 
     /// Construct a ResourceUnit::Checker backed by this instance
     std::shared_ptr<ResourceUnit::Checker> newValidator();
+
+    /// @return the name of the inventory
+    std::string const& name() const { return _name; }
 
     /// @return a copy of the map in a thread-safe way
     ExistMap existMap() const;
@@ -139,7 +143,7 @@ private:
     std::string _id;
 
     /// The mutex is used to safeguard the methods in the multi-threaded
-    /// environment    
+    /// environment
     mutable std::mutex _mtx;
 };
 

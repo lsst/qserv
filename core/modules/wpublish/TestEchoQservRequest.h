@@ -26,6 +26,7 @@
 
 // System headers
 #include <functional>
+#include <memory>
 #include <string>
 
 // Third party headers
@@ -57,6 +58,9 @@ public:
     /// @return string representation of a status
     static std::string status2str (Status status);
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<TestEchoQservRequest> pointer;
+
     /// The callback function type to be used for notifications on
     /// the operation completion.
     using calback_type =
@@ -66,13 +70,17 @@ public:
                            std::string const&)>;    // value received (if success)
 
     /**
-     * Normal constructor
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
      *
      * @param value    - a value to be sent to the worker service
-     * @param onFinish - function to be called upon the completion of a request
+     * @param onFinish  - optional callback function to be called upon the completion
+     *                    (successful or not) of the request.
+     * @return smart pointer to the object of the class
      */
-    explicit TestEchoQservRequest(std::string const& value,
-                                  calback_type onFinish = nullptr);
+    static pointer create(std::string const& value,
+                          calback_type onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
     TestEchoQservRequest() = delete;
@@ -83,6 +91,15 @@ public:
     ~TestEchoQservRequest() override;
 
 protected:
+
+    /**
+     * Normal constructor
+     *
+     * @param value    - a value to be sent to the worker service
+     * @param onFinish - function to be called upon the completion of a request
+     */
+    TestEchoQservRequest(std::string const& value,
+                         calback_type onFinish);
 
     /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;

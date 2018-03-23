@@ -46,6 +46,7 @@
 #include "wpublish/GetChunkListCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
 #include "wpublish/ResourceMonitor.h"
+#include "wpublish/SetChunkListCommand.h"
 #include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
 
@@ -101,7 +102,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         reportError("WARNING: request to the unowned resource detected:" + _resourceName);
         return;
     }
-    
+
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
@@ -119,7 +120,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
-        
+
             if (!taskMsg->has_db() || !taskMsg->has_chunkid()
                 || (ru.db()    != taskMsg->db())
                 || (ru.chunk() != taskMsg->chunkid())) {
@@ -127,7 +128,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
-        
+
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
             // the task is handed off to another thread for processing, as there is a
@@ -146,10 +147,10 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             break;
         }
         case ResourceUnit::WORKER: {
-        
+
             wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
             if (not command) return;
-            
+
             // The buffer must be released before submitting commands for
             // further processing.
             ReleaseRequestBuffer();
@@ -182,21 +183,21 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
         // reqData has the entire request, so we can unpack it without waiting for
         // more data.
         proto::FrameBufferView view(reqData, reqSize);
-    
+
         LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
         proto::WorkerCommandH header;
         view.parse(header);
-    
+
         LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
              proto::WorkerCommandH_Command_Name(header.command()));
-    
+
         switch (header.command()) {
             case proto::WorkerCommandH::TEST_ECHO: {
 
                 LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
                 proto::WorkerCommandTestEchoM echo;
                 view.parse(echo);
-    
+
                 command = std::make_shared<wpublish::TestEchoCommand>(
                                 sendChannel,
                                 echo.value());
@@ -260,6 +261,32 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor);
+                break;
+            }
+            case proto::WorkerCommandH::SET_CHUNK_LIST: {
+
+                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandSetChunkListM");
+                proto::WorkerCommandSetChunkListM message;
+                view.parse(message);
+
+                std::vector<wpublish::SetChunkListCommand::Chunk> chunks;
+                for (int i = 0, num = message.chunks_size(); i < num; ++i) {
+                    chunks.push_back(
+                        wpublish::SetChunkListCommand::Chunk{
+                            message.chunks(i).db(),
+                            message.chunks(i).chunk()
+                        }
+                    );
+                }
+                bool const force = message.force();
+
+                command = std::make_shared<wpublish::SetChunkListCommand> (
+                                    sendChannel,
+                                    _chunkInventory,
+                                    _resourceMonitor,
+                                    _mySqlConfig,
+                                    chunks,
+                                    force);
                 break;
             }
             default:

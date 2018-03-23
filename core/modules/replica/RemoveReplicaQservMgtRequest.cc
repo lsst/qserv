@@ -24,6 +24,7 @@
 #include "replica/RemoveReplicaQservMgtRequest.h"
 
 // System headers
+#include <future>
 
 // Third party headers
 #include "XrdSsi/XrdSsiProvider.hh"
@@ -136,8 +137,20 @@ void RemoveReplicaQservMgtRequest::finishImpl() {
 }
 
 void RemoveReplicaQservMgtRequest::notify() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish) {
-        _onFinish(shared_from_base<RemoveReplicaQservMgtRequest>());
+        auto self = shared_from_base<RemoveReplicaQservMgtRequest>();
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
 }
 

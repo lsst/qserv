@@ -20,9 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// GetChunkListQservRequest.h
-#ifndef LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
+/// SetChunkListQservRequest.h
+#ifndef LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H
+#define LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H
 
 // System headers
 #include <functional>
@@ -41,10 +41,10 @@ namespace qserv {
 namespace wpublish {
 
 /**
-  * Class GetChunkListQservRequest inplements the client-side requests
+  * Class SetChunkListQservRequest inplements the client-side requests
   * the Qserv worker services for a status of chunk lists.
   */
-class GetChunkListQservRequest
+class SetChunkListQservRequest
     :    public QservRequest {
 
 public:
@@ -52,11 +52,13 @@ public:
     /// Completion status of the operation
     enum Status {
         SUCCESS,    // successful completion of a request
+        INVALID,    // invalid parameters of the request
+        IN_USE,     // request is rejected because one of the chunks is in use
         ERROR       // an error occured during command execution
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// Struct Chunk a value type encapsulating a chunk number and the name
     /// of a database
@@ -70,7 +72,7 @@ public:
     using ChunkCollection = std::list<Chunk>;
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<GetChunkListQservRequest> pointer;
+    typedef std::shared_ptr<SetChunkListQservRequest> pointer;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
@@ -78,38 +80,47 @@ public:
         std::function<void(Status,                      // completion status
                            std::string const&,          // error message
                            ChunkCollection const&)>;    // chunks (if success)
-
     /**
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param inUseOnly - only report chunks which are in use
+     * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
+     * class when used on its input.
+     *
+     * @param chunks    - collection of chunks to be transferred to the worker
+     * @param force     - force the proposed change even if the chunk is in use
      * @param onFinish  - optional callback function to be called upon the completion
      *                    (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-    static pointer create(bool inUseOnly,
-                          calback_type onFinish = nullptr);
+   static pointer create(ChunkCollection const& chunks,
+                         bool force = false,
+                         calback_type onFinish = nullptr);
 
-    // Default construction and copy semantics are prohibited
-    GetChunkListQservRequest() = delete;
-    GetChunkListQservRequest(GetChunkListQservRequest const&) = delete;
-    GetChunkListQservRequest& operator=(GetChunkListQservRequest const&) = delete;
+    // Default onstruction and copy semantics are prohibited
+    SetChunkListQservRequest() = delete;
+    SetChunkListQservRequest(SetChunkListQservRequest const&) = delete;
+    SetChunkListQservRequest& operator=(SetChunkListQservRequest const&) = delete;
 
     /// Destructor
-    ~GetChunkListQservRequest() override;
+    ~SetChunkListQservRequest() override;
 
 protected:
 
     /**
      * Normal constructor
      *
-     * @param inUseOnly - only report chunks which are in use
+     * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
+     * class when used on its input.
+     *
+     * @param chunks    - collection of chunks to be transferred to the worker
+     * @param force     - force the proposed change even if the chunk is in use
      * @param onFinish  - optional callback function to be called upon the completion
      *                    (successful or not) of the request.
      */
-    GetChunkListQservRequest(bool inUseOnly,
+    SetChunkListQservRequest(ChunkCollection const& chunks,
+                             bool force,
                              calback_type onFinish);
 
     /// Implement the corresponding method of the base class
@@ -123,7 +134,8 @@ protected:
 
 private:
 
-    bool _inUseOnly;
+    ChunkCollection _chunks;
+    bool _force;
 
     /// Optional callback function to be called upon the completion
     /// (successfull or not) of the request.
@@ -132,4 +144,4 @@ private:
 
 }}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
+#endif // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H

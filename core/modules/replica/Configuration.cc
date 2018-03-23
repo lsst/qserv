@@ -117,6 +117,7 @@ Configuration::pointer Configuration::load(std::string const& configUrl) {
 
 size_t       const Configuration::defaultRequestBufferSizeBytes      {1024};
 unsigned int const Configuration::defaultRetryTimeoutSec             {1};
+size_t       const Configuration::defaultControllerThreads           {1};
 uint16_t     const Configuration::defaultControllerHttpPort          {80};
 size_t       const Configuration::defaultControllerHttpThreads       {1};
 unsigned int const Configuration::defaultControllerRequestTimeoutSec {3600};
@@ -161,6 +162,7 @@ void Configuration::translateDataDir(std::string&       dataDir,
 Configuration::Configuration()
     :   _requestBufferSizeBytes       (defaultRequestBufferSizeBytes),
         _retryTimeoutSec              (defaultRetryTimeoutSec),
+        _controllerThreads            (defaultControllerThreads),
         _controllerHttpPort           (defaultControllerHttpPort),
         _controllerHttpThreads        (defaultControllerHttpThreads),
         _controllerRequestTimeoutSec  (defaultControllerRequestTimeoutSec),
@@ -276,6 +278,7 @@ void Configuration::dumpIntoLogger() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRequestBufferSizeBytes:       " << defaultRequestBufferSizeBytes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultRetryTimeoutSec:              " << defaultRetryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerThreads:            " << defaultControllerThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpPort:           " << defaultControllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerHttpThreads:        " << defaultControllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultControllerRequestTimeoutSec:  " << defaultControllerRequestTimeoutSec);
@@ -304,6 +307,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultReplicationLevel:             " << defaultReplicationLevel);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_requestBufferSizeBytes:             " << _requestBufferSizeBytes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_retryTimeoutSec:                    " << _retryTimeoutSec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerThreads:                  " << _controllerThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpPort:                 " << _controllerHttpPort);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerHttpThreads:              " << _controllerHttpThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_controllerRequestTimeoutSec:        " << _controllerRequestTimeoutSec);

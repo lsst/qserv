@@ -241,16 +241,15 @@ Controller::Controller(ServiceProvider::pointer const& serviceProvider)
             getpid()}),
         _startTime(PerformanceUtils::now()),
         _serviceProvider(serviceProvider),
-
+        _numThreads(serviceProvider->config()->controllerThreads()),
         _io_service(),
         _work(nullptr),
-        _thread(nullptr),
-
-        _io_service2(),
-        _work2(nullptr),
-        _thread2(nullptr),
-
         _registry() {
+
+    if (not _numThreads) {
+        throw std::runtime_error(
+            "Controller:  configuration problem, the number of threads is set to 0");
+    }
 
     _messenger = Messenger::create(_serviceProvider, _io_service);
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
@@ -269,48 +268,27 @@ void Controller::run() {
 
     if (not isRunning()) {
 
-        Controller::pointer controller = shared_from_this();
+        _work.reset(new boost::asio::io_service::work(_io_service));
 
-        _work.reset(
-            new boost::asio::io_service::work(_io_service));
-        _thread.reset(
-            new std::thread(
-                [controller] () {
+        Controller::pointer const self = shared_from_this();
 
-                    // This will prevent the I/O service from exiting the .run()
-                    // method event when it will run out of any requests to process.
-                    // Unless the service will be explicitly stopped.
-                    controller->_io_service.run();
-
-                    // Always reset the object in a preparation for its further
-                    // usage.
-                    controller->_io_service.reset();
-                }
-            )
-        );
-
-        _work2.reset(
-            new boost::asio::io_service::work(_io_service2));
-        _thread2.reset(
-            new std::thread(
-                [controller] () {
+        _threads.clear();
+        for (size_t i = 0; i < _numThreads; ++i) {
+            _threads.emplace_back(std::make_shared<std::thread>(
+                [self] () {
 
                     // This will prevent the I/O service from exiting the .run()
                     // method event when it will run out of any requests to process.
                     // Unless the service will be explicitly stopped.
-                    controller->_io_service2.run();
-
-                    // Always reset the object in a preparation for its further
-                    // usage.
-                    controller->_io_service2.reset();
+                    self->_io_service.run();
                 }
-            )
-        );
+            ));
+        }
     }
 }
 
 bool Controller::isRunning() const {
-    return _thread.get() != nullptr;
+    return _threads.size();
 }
 
 void Controller::stop() {
@@ -329,36 +307,37 @@ void Controller::stop() {
 
     // LOCK_GUARD  (disabled)
 
+    // These steps will cancel all oustanding requests
     _messenger->stop();
 
     // Destoring this object will let the I/O service to (eventually) finish
-    // all on-going work and shut down the thread. In that case there is no need
-    // to stop the service explicitly (which is not a good idea anyway because
-    // there may be outstanding synchronous requests, in which case the service
+    // all on-going work and shut down all Controller's threads. In that case there
+    // is no need to stop the service explicitly (which is not a good idea anyway
+    // because there may be outstanding synchronous requests, in which case the service
     // would get into an unpredictanle state.)
 
     _work.reset();
-    _work2.reset();
 
-    // Join with the thread before clearning up the pointer
+    // At this point all outstanding requests should finish and all threads
+    // should stop as well.
+    join();
 
-    _thread->join();
-    _thread2->join();
+    // Always do so in order to put service into a clean state. This will prepare
+    // it for further usage.
+    _io_service.reset();
 
-    _thread.reset(nullptr);
-    _thread2.reset(nullptr);
+    _threads.clear();
 
     // Double check that the collection of requests is empty.
 
     if (not _registry.empty()) {
         throw std::logic_error(
-                        "Controller::stop() the collection of outstanding requests is not empty");
+            "Controller::stop() the collection of outstanding requests is not empty");
     }
 }
 
 void Controller::join() {
-    if (_thread) { _thread->join(); }
-    if (_thread2) { _thread2->join(); }
+    for (auto& t: _threads) { t->join(); }
 }
 
 ReplicationRequest::pointer Controller::replicate(

@@ -47,6 +47,7 @@
 
 // System headers
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 
@@ -356,9 +357,18 @@ private:
      * by the base class.
      */
     void notify() final {
-        if (_onFinish != nullptr) {
+
+        // The callback is being made asynchronously in a separate thread
+        // to avoid blocking the current thread.
+
+        if (_onFinish) {
             StatusRequestM<POLICY>::pointer self = shared_from_base<StatusRequestM<POLICY>>();
-            _onFinish(self);
+            std::async(
+                std::launch::async,
+                [self]() {
+                    self->_onFinish(self);
+                }
+            );
         }
     }
 

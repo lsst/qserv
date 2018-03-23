@@ -139,14 +139,30 @@ void ChunkListQservRequest::onError(std::string const& error) {
     }
 }
 
-ReloadChunkListQservRequest::ReloadChunkListQservRequest(calback_type onFinish)
+ReloadChunkListQservRequest::pointer ReloadChunkListQservRequest::create(
+                                            ChunkListQservRequest::calback_type onFinish) {
+    return pointer(
+        new ReloadChunkListQservRequest(onFinish));
+}
+
+ReloadChunkListQservRequest::ReloadChunkListQservRequest(
+                                            ChunkListQservRequest::calback_type onFinish)
    :   ChunkListQservRequest(false,
                              true,
                              onFinish) {
 }
 
-RebuildChunkListQservRequest::RebuildChunkListQservRequest(bool reload,
-                                                           calback_type onFinish)
+RebuildChunkListQservRequest::pointer RebuildChunkListQservRequest::create(
+                                            bool reload,
+                                            ChunkListQservRequest::calback_type onFinish) {
+    return pointer(
+        new RebuildChunkListQservRequest(reload,
+                                         onFinish));
+}
+
+RebuildChunkListQservRequest::RebuildChunkListQservRequest(
+                                            bool reload,
+                                            ChunkListQservRequest::calback_type onFinish)
     :   ChunkListQservRequest(true,
                               reload,
                               onFinish) {

@@ -160,9 +160,6 @@ public:
     /// @return reference to the I/O service for ASYNC requests
     boost::asio::io_service& io_service() { return _io_service; }
 
-    /// @return reference to the I/O service for the timer queue
-    boost::asio::io_service& io_service2() { return _io_service2; }
-
     /**
      * Run the Controller in a dedicated thread unless it's already running.
      * It's safe to call this method multiple times from any thread.
@@ -666,16 +663,13 @@ private:
     /// The provider of variou services
     ServiceProvider::pointer _serviceProvider;
 
-    // Two sets of BOOST ASIO communication services & threads which run
-    // them. The first set is used by requests. The second is dedicated for timers.
+    // The BOOST ASIO communication services & threads which run them
+
+    size_t _numThreads;
 
     boost::asio::io_service _io_service;
     std::unique_ptr<boost::asio::io_service::work> _work;
-    std::unique_ptr<std::thread> _thread;
-
-    boost::asio::io_service _io_service2;
-    std::unique_ptr<boost::asio::io_service::work> _work2;
-    std::unique_ptr<std::thread> _thread2;
+    std::vector<std::shared_ptr<std::thread>> _threads;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
