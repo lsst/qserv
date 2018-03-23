@@ -1,7 +1,9 @@
 // System header
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -17,6 +19,7 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 #include "wpublish/ChunkListQservRequest.h"
 #include "wpublish/GetChunkListQservRequest.h"
+#include "wpublish/SetChunkListQservRequest.h"
 #include "wpublish/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
@@ -32,6 +35,7 @@ namespace {
 
 std::string operation;
 std::string worker;
+std::string inFileName;
 unsigned int chunk;
 std::vector<std::string> dbs;
 std::string value;
@@ -41,6 +45,33 @@ bool reload;
 bool force;
 bool printReport;
 
+void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
+
+    chunks.clear();
+
+    std::ifstream infile(inFileName);
+    if (not infile.good()) {
+        std::cerr << "failed to open file: " << inFileName << std::endl;
+        throw std::runtime_error("failed to open file: " + inFileName);
+    }
+
+    size_t lineNumber = 0;
+    std::string line;
+    while (std::getline(infile, line)) {
+        ++lineNumber;
+        std::istringstream iss(line);
+        std::string database;
+        unsigned int chunk;
+        if (not (iss >> database >> chunk)) {
+            std::cerr
+                << "failed to parse file: " << inFileName
+                << ", line: " << lineNumber << std::endl;
+            throw std::runtime_error(
+                "failed to parse file: " + inFileName + ", line: " + std::to_string(lineNumber));
+        }
+        chunks.emplace_back(wpublish::SetChunkListQservRequest::Chunk{chunk, database, 0});
+    }
+}
 
 int test() {
 
@@ -51,7 +82,7 @@ int test() {
     std::shared_ptr<wpublish::QservRequest> request = nullptr;
 
     if ("GET_CHUNK_LIST" == operation) {
-        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::GetChunkListQservRequest(
+        request = wpublish::GetChunkListQservRequest::create(
             inUseOnly,
             [&finished] (wpublish::GetChunkListQservRequest::Status status,
                          std::string const& error,
@@ -75,10 +106,42 @@ int test() {
                     }
                 }
                 finished = true;
-            }));
+            });
+
+        } else if ("SET_CHUNK_LIST" == operation) {
+
+            wpublish::SetChunkListQservRequest::ChunkCollection chunks;
+            readInFile(chunks);
+
+            request = wpublish::SetChunkListQservRequest::create(
+                chunks,
+                force,
+                [&finished] (wpublish::SetChunkListQservRequest::Status status,
+                             std::string const& error,
+                             wpublish::SetChunkListQservRequest::ChunkCollection const& chunks) {
+
+                    if (status != wpublish::SetChunkListQservRequest::Status::SUCCESS) {
+                        std::cout << "status: " << wpublish::SetChunkListQservRequest::status2str(status) << "\n"
+                                  << "error:  " << error << std::endl;
+                    } else {
+                        std::cout << "# total chunks: " << chunks.size() << "\n"
+                                  << std::endl;
+                        if (chunks.size()) {
+                            std::cout << "      chunk |                         database | in use \n"
+                                      << "------------+----------------------------------+--------\n";
+                            for (auto const& entry: chunks) {
+                                std::cout << " " << std::setw(10) << entry.chunk << " |"
+                                          << " " << std::setw(32) << entry.database << " |"
+                                          << " " << std::setw(6)  << entry.use_count << " \n";
+                            }
+                            std::cout << std::endl;
+                        }
+                    }
+                    finished = true;
+                });
 
     } else if ("REBUILD_CHUNK_LIST" == operation) {
-        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::RebuildChunkListQservRequest(
+        request = wpublish::RebuildChunkListQservRequest::create(
             reload,
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
@@ -93,10 +156,10 @@ int test() {
                               << "# chuks  removed: " << removed.size() << std::endl;
                 }
                 finished = true;
-            }));
+            });
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
-        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::ReloadChunkListQservRequest(
+        request = wpublish::ReloadChunkListQservRequest::create(
             [&finished] (wpublish::ChunkListQservRequest::Status status,
                          std::string const& error,
                          wpublish::ChunkListQservRequest::ChunkCollection const& added,
@@ -110,7 +173,7 @@ int test() {
                               << "# chuks  removed: " << removed.size() << std::endl;
                 }
                 finished = true;
-            }));
+            });
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
         request = wpublish::AddChunkGroupQservRequest::create(
@@ -142,7 +205,7 @@ int test() {
             });
 
     } else if ("TEST_ECHO" == operation) {
-        request = std::shared_ptr<wpublish::QservRequest>(new wpublish::TestEchoQservRequest(
+        request = wpublish::TestEchoQservRequest::create(
             value,
             [&finished] (wpublish::TestEchoQservRequest::Status status,
                          std::string const& error,
@@ -157,7 +220,7 @@ int test() {
                               << "value received: " << received << std::endl;
                 }
                 finished = true;
-            }));
+            });
 
     } else {
         return 1;
@@ -180,7 +243,7 @@ int test() {
     XrdSsiResource resource(global::ResourceUnit::makeWorkerPath(worker));
     serviceProvider->ProcessRequest(*request, resource);
 
-    // Block while the request is in progress 
+    // Block while the request is in progress
     util::BlockPost blockPost(1000, 2000);
     while (not finished) blockPost.wait(200);
 
@@ -211,6 +274,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Supported operations and mandatory parameters:\n"
             "    GET_CHUNK_LIST     <worker>\n"
+            "    SET_CHUNK_LIST     <worker> <infile>\n"
             "    REBUILD_CHUNK_LIST <worker>\n"
             "    RELOAD_CHUNK_LIST  <worker>\n"
             "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
@@ -226,13 +290,15 @@ int main(int argc, const char* const argv[]) {
             "  --print-report        - print \n"
             "\n"
             "Parameters:\n"
-            "  <worker> - unique identifier of a worker (example: 'worker-1')\n"
-            "  <chunk>  - chunk number\n"
-            "  <db>     - database name\n"
-            "  <value>  - arbitrary string\n");
+            "  <worker>  - unique identifier of a worker (example: 'worker-1')\n"
+            "  <infile>  - text files with space separated database and chunk names in each line\n"
+            "  <chunk>   - chunk number\n"
+            "  <db>      - database name\n"
+            "  <value>   - arbitrary string\n");
 
         ::operation = parser.parameterRestrictedBy(1, {
             "GET_CHUNK_LIST",
+            "SET_CHUNK_LIST",
             "REBUILD_CHUNK_LIST",
             "RELOAD_CHUNK_LIST",
             "ADD_CHUNK_GROUP",
@@ -242,6 +308,10 @@ int main(int argc, const char* const argv[]) {
         ::worker = parser.parameter<std::string>(2);
 
         if (parser.in(::operation, {
+            "SET_CHUNK_LIST"})) {
+            ::inFileName = parser.parameter<std::string>(3);
+
+        } else if (parser.in(::operation, {
             "ADD_CHUNK_GROUP",
             "REMOVE_CHUNK_GROUP"})) {
             ::chunk = parser.parameter<unsigned int>(3);
@@ -259,6 +329,6 @@ int main(int argc, const char* const argv[]) {
 
     } catch (std::exception const& ex) {
         return 1;
-    } 
+    }
     return ::test();
 }

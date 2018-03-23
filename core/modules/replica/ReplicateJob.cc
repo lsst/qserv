@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <future>
 #include <set>
 #include <stdexcept>
 
@@ -191,11 +192,18 @@ void ReplicateJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish) {
         auto self = shared_from_base<ReplicateJob>();
-        _onFinish(self);
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void ReplicateJob::onPrecursorJobFinish() {

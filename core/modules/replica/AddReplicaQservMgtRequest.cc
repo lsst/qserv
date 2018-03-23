@@ -24,6 +24,7 @@
 #include "replica/AddReplicaQservMgtRequest.h"
 
 // System headers
+#include <future>
 
 // Third party headers
 #include "XrdSsi/XrdSsiProvider.hh"
@@ -107,8 +108,8 @@ void AddReplicaQservMgtRequest::startImpl() {
                     break;
                 default:
                     throw std::logic_error(
-                                    "AddReplicaQservMgtRequest:  unhandled server status: " +
-                                    wpublish::ChunkGroupQservRequest::status2str(status));
+                        "AddReplicaQservMgtRequest:  unhandled server status: " +
+                        wpublish::ChunkGroupQservRequest::status2str(status));
             }
         }
     );
@@ -131,8 +132,20 @@ void AddReplicaQservMgtRequest::finishImpl() {
 }
 
 void AddReplicaQservMgtRequest::notify() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish) {
-        _onFinish(shared_from_base<AddReplicaQservMgtRequest>());
+        auto self = shared_from_base<AddReplicaQservMgtRequest>();
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
 }
 

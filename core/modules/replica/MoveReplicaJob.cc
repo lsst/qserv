@@ -24,6 +24,7 @@
 #include "replica/MoveReplicaJob.h"
 
 // System headers
+#include <future>
 #include <stdexcept>
 
 // Qserv headers
@@ -155,11 +156,18 @@ void MoveReplicaJob::notify() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
 
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish) {
         auto self = shared_from_base<MoveReplicaJob>();
-        _onFinish(self);
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
-    LOGS(_log, LOG_LVL_DEBUG, context() << "notify  ** DONE **");
 }
 
 void MoveReplicaJob::onCreateJobFinish() {

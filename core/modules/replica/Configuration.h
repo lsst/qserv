@@ -182,6 +182,9 @@ public:
     // -- Configuration parameters of the controller service --
     // --------------------------------------------------------
 
+    /// @return number of threads to launch for BOOST ASIO within the controller
+    size_t controllerThreads() const { return _controllerThreads; }
+
     /// @return port number for the controller's HTTP server
     uint16_t controllerHttpPort() const { return _controllerHttpPort; }
 
@@ -379,6 +382,7 @@ protected:
 
     static size_t       const defaultRequestBufferSizeBytes;
     static unsigned int const defaultRetryTimeoutSec;
+    static size_t       const defaultControllerThreads;
     static uint16_t     const defaultControllerHttpPort;
     static size_t       const defaultControllerHttpThreads;
     static unsigned int const defaultControllerRequestTimeoutSec;
@@ -433,6 +437,7 @@ protected:
     size_t       _requestBufferSizeBytes;
     unsigned int _retryTimeoutSec;
 
+    size_t       _controllerThreads;
     uint16_t     _controllerHttpPort;
     size_t       _controllerHttpThreads;
     unsigned int _controllerRequestTimeoutSec;

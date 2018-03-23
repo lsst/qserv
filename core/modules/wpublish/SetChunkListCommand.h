@@ -20,9 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// RemoveChunkGroupCommand.h
-#ifndef LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
-#define LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
+/// SetChunkListCommand.h
+#ifndef LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H
+#define LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H
 
 // System headers
 #include <memory>
@@ -33,6 +33,7 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/WorkerCommand.h"
+#include "wpublish/ChunkInventory.h"
 
 // Forward declarations
 namespace lsst {
@@ -46,22 +47,26 @@ namespace qserv {
 namespace wpublish {
 
 // Forward declarations
-class ChunkInventory;
 class ResourceMonitor;
 
 /**
-  * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
-  * and the worker's list of chunks.
+  * Class SetChunkListCommand sets a new list of chunks
   */
-class RemoveChunkGroupCommand
+class SetChunkListCommand
     :   public wbase::WorkerCommand {
 
 public:
 
+    /// An abstraction for a chunk to be set
+    struct Chunk {
+        std::string database;
+        unsigned int chunk;
+    };
+
     // The default construction and copy semantics are prohibited
-    RemoveChunkGroupCommand() = delete;
-    RemoveChunkGroupCommand& operator=(const RemoveChunkGroupCommand&) = delete;
-    RemoveChunkGroupCommand(const RemoveChunkGroupCommand&) = delete;
+    SetChunkListCommand& operator=(const SetChunkListCommand&) = delete;
+    SetChunkListCommand(const SetChunkListCommand&) = delete;
+    SetChunkListCommand() = delete;
 
     /**
      * The normal constructor of the class
@@ -70,20 +75,18 @@ public:
      * @param chunkInventory  - chunks known to the application
      * @param resourceMonitor - counters of resources which are being used
      * @param mySqlConfig     - database connection parameters
-     * @param chunk           - chunk number
-     * @param dbs             - names of databases in the group
-     * @param force           - force chunk removal even if this chunk is in use
+     * @param chunks          - collection of chunks to replace the current one
+     * @param force           - force chunks removal even if chunks are in use
      */
-    RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                            std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
-                            mysql::MySqlConfig                  const& mySqlConfig,
-                            int chunk,
-                            std::vector<std::string> const& dbs,
-                            bool force);
+    SetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                        std::shared_ptr<ChunkInventory>     const& chunkInventory,
+                        std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
+                        mysql::MySqlConfig                  const& mySqlConfig,
+                        std::vector<Chunk>                  const& chunks,
+                        bool                                       force);
 
     /// The destructor
-    ~RemoveChunkGroupCommand() override = default;
+    ~SetChunkListCommand() override = default;
 
     /**
      * Implement the corresponding method of the base class
@@ -95,25 +98,34 @@ public:
 private:
 
     /**
+     * Set the chunk list in the reply
+     * @param reply - message to be initialized
+     * @param prevExistMap - previous state of the ChunkList
+     */
+    void setChunks(proto::WorkerCommandSetChunkListR& reply,
+                   ChunkInventory::ExistMap const& prevExistMap);
+
+    /**
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
-     * @param status  - error status
-     * @param message - message to be reported
+     * @param status       - error status
+     * @param message      - message to be reported
+     * @param prevExistMap - previous state of the ChunkList
      */
-    void reportError(proto::WorkerCommandChunkGroupR::Status status,
-                     std::string const& message);
+    void reportError(proto::WorkerCommandSetChunkListR::Status status,
+                     std::string const& message,
+                     ChunkInventory::ExistMap const& prevExistMap);
 
 private:
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
     mysql::MySqlConfig _mySqlConfig;
-    int _chunk;
-    std::vector<std::string> _dbs;
+    std::vector<Chunk> _chunks;
     bool _force;
 };
 
 }}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
+#endif // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H

@@ -27,6 +27,7 @@
 // System headers
 #include <functional>
 #include <list>
+#include <memory>
 
 // Third party headers
 
@@ -129,12 +130,28 @@ class ReloadChunkListQservRequest
 
 public:
 
-    // Copy semantics is prohibited
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<ReloadChunkListQservRequest> pointer;
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param onFinish - optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
+     */
+    static pointer create(calback_type onFinish = nullptr);
+
+    // Default construction and copy semantics are prohibited
+    ReloadChunkListQservRequest() = delete;
     ReloadChunkListQservRequest(ReloadChunkListQservRequest const&) = delete;
     ReloadChunkListQservRequest& operator=(ReloadChunkListQservRequest const&) = delete;
 
     /// Destructor
     ~ReloadChunkListQservRequest() override = default;
+
+protected:
 
     /**
      * Normal constructor
@@ -142,7 +159,7 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-     explicit ReloadChunkListQservRequest(calback_type onFinish = nullptr);
+     ReloadChunkListQservRequest(calback_type onFinish);
 };
 
 /**
@@ -154,6 +171,21 @@ class RebuildChunkListQservRequest
 
 public:
 
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<RebuildChunkListQservRequest> pointer;
+
+    /*
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param reload   - reload the list in worker's memory
+     * @param onFinish - optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
+     */
+    static pointer create(bool reload,
+                          calback_type onFinish = nullptr);
+
     // Default construction and copy semantics are prohibited
     RebuildChunkListQservRequest() = delete;
     RebuildChunkListQservRequest(RebuildChunkListQservRequest const&) = delete;
@@ -162,6 +194,8 @@ public:
     /// Destructor
     ~RebuildChunkListQservRequest() override = default;
 
+protected:
+
     /**
      * Normal constructor
      *
@@ -169,8 +203,8 @@ public:
      * @param onFinish - optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    explicit RebuildChunkListQservRequest(bool reload,
-                                          calback_type onFinish = nullptr);
+    RebuildChunkListQservRequest(bool reload,
+                                 calback_type onFinish);
 };
 
 }}} // namespace lsst::qserv::wpublish

@@ -24,6 +24,7 @@
 #include "replica/GetReplicasQservMgtRequest.h"
 
 // System headers
+#include <future>
 #include <set>
 #include <stdexcept>
 
@@ -119,7 +120,7 @@ void GetReplicasQservMgtRequest::startImpl() {
     GetReplicasQservMgtRequest::pointer const& request =
         shared_from_base<GetReplicasQservMgtRequest>();
 
-    _qservRequest = std::make_shared<wpublish::GetChunkListQservRequest>(
+    _qservRequest = wpublish::GetChunkListQservRequest::create(
         _inUseOnly,
         [request] (wpublish::GetChunkListQservRequest::Status status,
                    std::string const& error,
@@ -159,9 +160,20 @@ void GetReplicasQservMgtRequest::finishImpl() {
 }
 
 void GetReplicasQservMgtRequest::notify() {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << "notify");
+
+    // The callback is being made asynchronously in a separate thread
+    // to avoid blocking the current thread.
+
     if (_onFinish) {
-        _onFinish(shared_from_base<GetReplicasQservMgtRequest>());
+        auto self = shared_from_base<GetReplicasQservMgtRequest>();
+        std::async(
+            std::launch::async,
+            [self]() {
+                self->_onFinish(self);
+            }
+        );
     }
 }
-
 }}} // namespace lsst::qserv::replica

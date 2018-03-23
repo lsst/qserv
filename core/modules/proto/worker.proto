@@ -83,7 +83,7 @@ message ProtoHeader {
     optional fixed32 protocol = 1;
     required sfixed32 size = 2; // protobufs discourages messages > megabytes
     optional bytes md5 = 3;
-    optional string wname = 4; 
+    optional string wname = 4;
     required bool largeresult = 5;
 }
 
@@ -135,7 +135,7 @@ message Result {
 // All requests sent to worker management resources should start with
 // sending this message carrying an identifier of a command. Specific
 // commands may require additional parameters which should be sent as
-// separate messages (of the correspoding types).
+// separate messages (of the corresponding types).
 //
 message WorkerCommandH {
 
@@ -157,6 +157,9 @@ message WorkerCommandH {
 
         // Return a list of chunks known to a worker
         GET_CHUNK_LIST = 5;
+
+        // Set a new list of chunks
+        SET_CHUNK_LIST = 6;
     }
     required Command command = 1;
 }
@@ -178,13 +181,13 @@ message WorkerCommandTestEchoR {
     // Completion status of the operation
     enum Status {
         SUCCESS = 1;    // successful completion of a request
-        ERROR   = 2;    // an error occured during command execution
+        ERROR   = 2;    // an error occurred during command execution
     }
     required Status status = 1;
 
-    // Optional error message (depenidng on the status)
+    // Optional error message (depending on the status)
     optional string error = 2 [default = ""];
-    
+
     // The original value returned by the operation
     required string value = 3;
 }
@@ -211,11 +214,11 @@ message WorkerCommandChunkGroupR {
         SUCCESS = 1;    // successful completion of a request
         INVALID = 2;    // invalid parameters of the request
         IN_USE  = 3;    // request is rejected because one of the chunks is in use
-        ERROR   = 4;    // an error occured during command execution
+        ERROR   = 4;    // an error occurred during command execution
     }
     required Status status = 1;
 
-    // Optional error message (depenidng on the status)
+    // Optional error message (depending on the status)
     optional string error = 2 [default = ""];
 }
 
@@ -239,11 +242,11 @@ message WorkerCommandUpdateChunkListR {
     // Completion status of the operation
     enum Status {
         SUCCESS = 1;    // successful completion of a request
-        ERROR   = 2;    // an error occured during command execution
+        ERROR   = 2;    // an error occurred during command execution
     }
     required Status status = 1;
 
-    // Optional error message (depenidng on the status)
+    // Optional error message (depending on the status)
     optional string error = 2 [default = ""];
 
     message Chunk {
@@ -252,7 +255,6 @@ message WorkerCommandUpdateChunkListR {
     }
     repeated Chunk added   = 3;   // chunks which have been added
     repeated Chunk removed = 4;   // chunks which have been removed
-
 }
 
 // The message to be sent back in response to the 'GET_CHUNK_LIST'
@@ -263,11 +265,11 @@ message WorkerCommandGetChunkListR {
     // Completion status of the operation
     enum Status {
         SUCCESS = 1;    // successful completion of a request
-        ERROR   = 2;    // an error occured during command execution
+        ERROR   = 2;    // an error occurred during command execution
     }
     required Status status = 1;
 
-    // Optional error message (depenidng on the status)
+    // Optional error message (depending on the status)
     optional string error = 2 [default = ""];
 
     message Chunk {
@@ -276,5 +278,44 @@ message WorkerCommandGetChunkListR {
         required uint32 use_count = 3;
     }
     repeated Chunk chunks = 3;
+}
 
+// This message must be sent after the command header for the 'SET_CHUNK_LIST'
+// to tell the service which chunks needs to be set.
+//
+message WorkerCommandSetChunkListM {
+
+    message Chunk {
+        required string db    = 1;
+        required uint32 chunk = 2;
+    }
+    repeated Chunk chunks = 1;
+
+   optional bool force = 2 [ default = false];
+}
+
+// The message to be sent back in response to the 'SET_CHUNK_LIST'
+// command.
+//
+message WorkerCommandSetChunkListR {
+
+    // Completion status of the operation
+    enum Status {
+        SUCCESS = 1;    // successful completion of a request
+        INVALID = 2;    // invalid parameters of the request
+        IN_USE  = 3;    // request is rejected because one of the chunks is in use
+        ERROR   = 4;    // an error occurred during command execution
+    }
+    required Status status = 1;
+
+    // Optional error message (depending on the status)
+    optional string error = 2 [default = ""];
+
+    // The previous list of chunks
+    message Chunk {
+        required string db        = 1;
+        required uint32 chunk     = 2;
+        required uint32 use_count = 3;
+    }
+    repeated Chunk chunks = 3;
 }

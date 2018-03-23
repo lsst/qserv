@@ -58,7 +58,7 @@ public:
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
