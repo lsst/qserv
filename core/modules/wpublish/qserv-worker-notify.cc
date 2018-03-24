@@ -3,7 +3,6 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -45,6 +44,20 @@ bool reload;
 bool force;
 bool printReport;
 
+/**
+ * Read and parse a space/newline separated stream of pairs from the input
+ * file and fill replica entries into the collection. Each pair has
+ * the following format:
+ *
+ *   <database>:<chunk>
+ *
+ * For example:
+ *
+ *   LSST:123 LSST:124 LSST:23456
+ *   LSST:0
+ *
+ * @param chunk - collection to be initialize
+ */
 void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
 
     chunks.clear();
@@ -55,21 +68,27 @@ void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
         throw std::runtime_error("failed to open file: " + inFileName);
     }
 
-    size_t lineNumber = 0;
-    std::string line;
-    while (std::getline(infile, line)) {
-        ++lineNumber;
-        std::istringstream iss(line);
-        std::string database;
-        unsigned int chunk;
-        if (not (iss >> database >> chunk)) {
-            std::cerr
-                << "failed to parse file: " << inFileName
-                << ", line: " << lineNumber << std::endl;
+    std::string databaseAndChunk;
+    while (infile >> databaseAndChunk) {
+
+        if (databaseAndChunk.empty()) { continue; }
+
+        std::string::size_type const pos = databaseAndChunk.rfind(':');
+        if ((pos == std::string::npos) or
+            (pos == 0) or (pos == databaseAndChunk.size() - 1)) {
             throw std::runtime_error(
-                "failed to parse file: " + inFileName + ", line: " + std::to_string(lineNumber));
+                "failed to parse file: " + inFileName + ", illegal <database>::<chunk> pair: '" +
+                databaseAndChunk + "'");
         }
-        chunks.emplace_back(wpublish::SetChunkListQservRequest::Chunk{chunk, database, 0});
+        unsigned long const chunk    = std::stoul(databaseAndChunk.substr(pos + 1));
+        std::string   const database = databaseAndChunk.substr(0, pos);
+        chunks.emplace_back(
+            wpublish::SetChunkListQservRequest::Chunk{
+                (unsigned int)chunk,
+                database,
+                0   /* use_count (UNUSED) */
+            }
+        );
     }
 }
 
@@ -291,7 +310,7 @@ int main(int argc, const char* const argv[]) {
             "\n"
             "Parameters:\n"
             "  <worker>  - unique identifier of a worker (example: 'worker-1')\n"
-            "  <infile>  - text files with space separated database and chunk names in each line\n"
+            "  <infile>  - text file with space or newline separated pairs of <database>:<chunk>\n"
             "  <chunk>   - chunk number\n"
             "  <db>      - database name\n"
             "  <value>   - arbitrary string\n");

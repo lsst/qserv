@@ -37,6 +37,7 @@
 #include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SetReplicasQservMgtRequest.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -172,6 +173,32 @@ public:
                                             bool inUseOnly = false,
                                             std::string const& jobId="",
                                             GetReplicasQservMgtRequest::callback_type onFinish = nullptr,
+                                            unsigned int requestExpirationIvalSec=0);
+
+
+
+    /**
+     * Set new replicas at the new replicas at a Qserv worker
+     *
+     * @param worker          - the name of a worker
+     * @param newReplicas     - collection of new replicas (NOTE: useCount field is ignored)
+     * @param force           - proceed with the operation even if some replicas affceted by
+     *                          the operation are in use.
+     * @param onFinish        - callback function to be called upon request completion
+     * @param jobId           - an optional identifier of a job specifying a context
+     *                          in which a request will be executed.
+     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
+     *                          allowing to override the default value of
+     *                          the corresponding parameter from the Configuration.
+     * @return pointer to the request object if the request was made. Return
+     *         nullptr otherwise.
+     */
+    SetReplicasQservMgtRequest::pointer setReplicas(
+                                            std::string const& worker,
+                                            QservReplicaCollection const& newReplicas,
+                                            bool force = false,
+                                            std::string const& jobId="",
+                                            SetReplicasQservMgtRequest::callback_type onFinish = nullptr,
                                             unsigned int requestExpirationIvalSec=0);
 private:
 
