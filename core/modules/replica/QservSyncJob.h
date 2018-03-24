@@ -19,13 +19,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
-#define LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
+#ifndef LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H
+#define LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H
 
-/// QservGetReplicasJob.h declares:
+/// QservSyncJob.h declares:
 ///
-/// struct QservGetReplicasJobResult
-/// class  QservGetReplicasJob
+/// struct QservSyncJobResult
+/// class  QservSyncJob
 ///
 /// (see individual class documentation for more information)
 
@@ -37,9 +37,8 @@
 #include <string>
 
 // Qserv headers
-#include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/Job.h"
-#include "replica/ReplicaInfo.h"
+#include "replica/SetReplicasQservMgtRequest.h"
 
 // Forward declarations
 
@@ -50,44 +49,44 @@ namespace qserv {
 namespace replica {
 
 /**
- * The structure QservGetReplicasJobResult represents a combined result received
- * from the Qserv worker management services upon a completion of the job.
+ * The structure QservSyncJobResult represents a combined result received
+ * from worker services upon a completion of the job.
  */
-struct QservGetReplicasJobResult {
+struct QservSyncJobResult {
 
-    /// Per-worker flags indicating if the corresponidng replica retreival
-    /// request succeeded.
+    /// Per-worker flags indicating if the teh synchronization request sent
+    /// to the corresponding worker has succeeded.
     ///
     std::map<std::string, bool> workers;
 
-    /// Results groupped by:
+    /// Previous replica disposition as reported by workers upon the successfull
+    /// completion of the corresponidng requests
     ///
-    ///   [worker]
-    std::map<std::string, QservReplicaCollection> replicas;
+    std::map<std::string, QservReplicaCollection> prevReplicas;
 
-    /// Results groupped by:
+    /// New replica disposition pushed to workers upon the successfull completion
+    /// of the corresponidng requests
     ///
-    ///   [chunk][database][worker]
-    ///
-    /// This structure also reports the use counter for each chunks
-    ///
-    std::map<unsigned int,
-             std::map<std::string,
-                      std::map<std::string,
-                               bool>>> chunks;
+    std::map<std::string, QservReplicaCollection> newReplicas;
 };
 
 /**
-  * Class QservGetReplicasJob represents a tool which will find all replicas
-  * of all chunks on all worker nodes.
+  * Class QservSyncJob represents a tool which will configure Qserv workers
+  * to be in sync with the "good" replicas which are known to the Replication
+  * system. The job will contact all workers. And the scope of the job is
+  * is limited to a database family.
+  *
+  * ATTENTION: The current implementation of the job's algorithm assumes
+  * that the latest state of replicas is already recorded in the Replication
+  * System's database.
   */
-class QservGetReplicasJob
+class QservSyncJob
     :   public Job  {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<QservGetReplicasJob> pointer;
+    typedef std::shared_ptr<QservSyncJob> pointer;
 
     /// The function type for notifications on the completon of the request
     typedef std::function<void(pointer)> callback_type;
@@ -103,34 +102,35 @@ public:
      * @param databaseFamily - name of a database family
      * @param controller     - for launching requests
      * @param parentJobId    - optional identifier of a parent job
-     * @param inUseOnly      - return replicas which're presently in use
+     * @param force          - proceed with the operation even if some replicas affceted by
+     *                         the operation are in use.
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
      */
     static pointer create(std::string const& databaseFamily,
                           Controller::pointer const& controller,
                           std::string const& parentJobId,
-                          bool inUseOnly,
-                          callback_type onFinish,
-                          Job::Options const& options=defaultOptions());
+                          bool force = false,
+                          callback_type onFinish = nullptr,
+                          Job::Options const& options = defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
-    QservGetReplicasJob() = delete;
-    QservGetReplicasJob(QservGetReplicasJob const&) = delete;
-    QservGetReplicasJob& operator=(QservGetReplicasJob const&) = delete;
+    QservSyncJob() = delete;
+    QservSyncJob(QservSyncJob const&) = delete;
+    QservSyncJob& operator=(QservSyncJob const&) = delete;
 
     /// Destructor
-    ~QservGetReplicasJob() override = default;
+    ~QservSyncJob() override = default;
 
-    /// @return the name of a database family defining a scope of the operation
+    /// @return name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
 
-    /// @return flag indicating (if set) to report a subset of chunks which are in use
-    bool inUseOnly() const { return _inUseOnly; }
+    /// @return flag indicating (if set) the 'force' mode of the operation
+    bool force() const { return _force; }
 
     /**
-     * @return the result of the operation (when the job finishes)
+     * Return the result of the operation.
      *
      * IMPORTANT NOTES:
      * - the method should be invoked only after the job has finished (primary
@@ -141,24 +141,26 @@ public:
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
      *
+     * @return the data structure to be filled upon the completin of the job.
+     *
      * @throws std::logic_error - if the job dodn't finished at a time
-     *         when the method was called
+     *                            when the method was called
      */
-    QservGetReplicasJobResult const& getReplicaData() const;
+    QservSyncJobResult const& getReplicaData() const;
 
 protected:
 
     /**
      * Construct the job with the pointer to the services provider.
      *
-     * @see QservGetReplicasJob::create()
+     * @see QservSyncJob::create()
      */
-    QservGetReplicasJob(std::string const& databaseFamily,
-                        Controller::pointer const& controller,
-                        std::string const& parentJobId,
-                        bool inUseOnly,
-                        callback_type onFinish,
-                        Job::Options const& options);
+    QservSyncJob(std::string const& databaseFamily,
+                 Controller::pointer const& controller,
+                 std::string const& parentJobId,
+                 bool force,
+                 callback_type onFinish,
+                 Job::Options const& options);
 
     /**
       * Implement the corresponding method of the base class.
@@ -186,21 +188,21 @@ protected:
      *
      * @param request - a pointer to a request
      */
-    void onRequestFinish(GetReplicasQservMgtRequest::pointer const& request);
+    void onRequestFinish(SetReplicasQservMgtRequest::pointer const& request);
 
 protected:
 
     /// The name of the database family
     std::string _databaseFamily;
 
-    /// Flag indicating to report (if set) a subset of chunks which are in use
-    bool _inUseOnly;
+    /// Flag indicating to report (if set) the 'force' mode of the operation
+    bool _force;
 
     /// Client-defined function to be called upon the completion of the job
     callback_type _onFinish;
 
     /// A collection of requests implementing the operation
-    std::list<GetReplicasQservMgtRequest::pointer> _requests;
+    std::list<SetReplicasQservMgtRequest::pointer> _requests;
 
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
@@ -211,9 +213,9 @@ protected:
     std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
-    QservGetReplicasJobResult _replicaData;
+    QservSyncJobResult _replicaData;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_GET_REPLICAS_JOB_H
+#endif // LSST_QSERV_REPLICA_QSERV_SYNC_JOB_H

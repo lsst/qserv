@@ -46,11 +46,13 @@
 #include "replica/Performance.h"
 #include "replica/PurgeJob.h"
 #include "replica/QservMgtRequest.h"
+#include "replica/QservSyncJob.h"
 #include "replica/RebalanceJob.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicateJob.h"
 #include "replica/ReplicationRequest.h"
+#include "replica/SetReplicasQservMgtRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "replica/VerifyJob.h"
@@ -268,6 +270,20 @@ void updateFileAttr(database::mysql::Connection::pointer const& conn,
         "    AND " + conn->sqlEqual("name", file));
 }
 
+/**
+ * Serialize a collection of replicas into a text string. Replicas will
+ * be represented as space-separated pairs of database names and chunk
+ * numbers:
+ *   <database1>:<chunk1> <database2>:<chunk2> ...
+ */
+std::string toString(QservReplicaCollection const& replicas) {
+    std::ostringstream ss;
+    for (auto const& replica: replicas) {
+        ss << replica.database << ":" << replica.chunk << " ";
+    }
+    return ss.str();
+}
+
 } /// namespace
 
 
@@ -337,7 +353,8 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                                "ADD_WORKER",
                                "CREATE_REPLICA",
                                "DELETE_REPLICA",
-                               "MOVE_REPLICA"})) { return; }
+                               "MOVE_REPLICA",
+                               "QSERV:SYNC"})) { return; }
 
     // The algorithm will first try the INSERT query. If a row with the same
     // primary key (Job id) already exists in the table then the UPDATE
@@ -456,6 +473,14 @@ void DatabaseServicesMySQL::saveState(Job::pointer const& job) {
                 ptr->chunk(),
                 ptr->worker()
             );
+        } else if ("QSERV:SYNC" == job->type()) {
+            auto ptr = safeAssign<QservSyncJob>(job);
+            _conn->executeInsertQuery(
+                "job_qserv_sync",
+                ptr->id(),
+                ptr->databaseFamily(),
+                ptr->force()
+            );
         }
         _conn->commit ();
 
@@ -521,7 +546,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
 
 
     if (::in(request->type(), {"QSERV:ADD_REPLICA",
-                               "QSERV:REMOVE_REPLICA"})) {
+                               "QSERV:REMOVE_REPLICA",
+                               "QSERV:SET_REPLICAS"})) {
 
         // Requests which haven't started yet or the ones which aren't associated
         // with any job should be ignored.
@@ -569,6 +595,13 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
                     ptr->id(),
                     ptr->databaseFamily(),
                     ptr->chunk(),
+                    ptr->force());
+            } else if (request->type() == "QSERV:SET_REPLICAS") {
+                auto ptr = safeAssign<SetReplicasQservMgtRequest>(request);
+                _conn->executeInsertQuery(
+                    "request_qserv_set_replicas",
+                    ptr->id(),
+                    ::toString(ptr->newReplicas()),
                     ptr->force());
             }
             _conn->commit ();
@@ -867,6 +900,25 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
             throw std::logic_error(context + "NULL value is not allowed in this context");
         }
+
+        // --------------------------------------------------------
+        // Completelly replace the replica using the recursive call
+        // --------------------------------------------------------
+
+        _conn->execute(
+            "DELETE FROM " + _conn->sqlId(   "replica") +
+            "  WHERE " +     _conn->sqlEqual("id",replicaId));
+
+        saveReplicaInfo(info);
+
+        return;
+
+        // --------------------------------------------------------------------------
+        // ATTENTION: The alternative approach (presented below) would be to update
+        // existing records. In practice this method is approximatelly 2 times slower
+        // then the previous one (deleting replicas and staring them from scratch).
+        // --------------------------------------------------------------------------
+
         uint64_t const verifyTime = info.verifyTime();
         if (verifyTime) {
             _conn->executeSimpleUpdateQuery(
@@ -943,6 +995,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
     for (auto const& info: infoCollection) {
         saveReplicaInfo(info);
     }
+    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }
 
 bool DatabaseServicesMySQL::findOldestReplicas(std::vector<ReplicaInfo>& replicas,
@@ -1015,7 +1068,7 @@ bool DatabaseServicesMySQL::findWorkerReplicasNoLock(std::vector<ReplicaInfo>& r
                                                      std::string const& database) const {
     std::string const context =
          "DatabaseServicesMySQL::findWorkerReplicasNoLock  worker: " + worker +
-         " database: " + database;
+         " database: " + database + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1035,6 +1088,7 @@ bool DatabaseServicesMySQL::findWorkerReplicasNoLock(std::vector<ReplicaInfo>& r
         LOGS(_log, LOG_LVL_ERROR, context << "failed to find replicas");
         return false;
     }
+    LOGS(_log, LOG_LVL_DEBUG, context << "replicas.size(): " << replicas.size());
     return true;
 }
 

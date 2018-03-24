@@ -99,7 +99,7 @@ public:
         INCOMPLETE,
         COMPLETE
     };
-    
+
     /// Return the string representation of the status
     static std::string status2string(Status status);
 
@@ -195,14 +195,14 @@ public:
 private:
 
     // Data members
-    
+
     Status _status;
 
     std::string _worker;
     std::string _database;
 
     unsigned int _chunk;
-    
+
     uint64_t _verifyTime;
 
     FileInfoCollection _fileInfo;
@@ -219,6 +219,21 @@ typedef std::vector<ReplicaInfo> ReplicaInfoCollection;
 
 /// Overloaded streaming operator for type ReplicaInfoCollection
 std::ostream& operator<<(std::ostream& os, ReplicaInfoCollection const& ric);
+
+
+/**
+ * Structure QservReplica represents replica entries used in communications
+ * with Qserv workers management servies.
+ */
+struct QservReplica {
+    unsigned int chunk;
+    std::string database;
+    unsigned int useCount;
+};
+
+/// The type definition for a collection of Qserv replicas
+typedef std::vector<QservReplica> QservReplicaCollection;
+
 
 }}} // namespace lsst::qserv::replica
 
