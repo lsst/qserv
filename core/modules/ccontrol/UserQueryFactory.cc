@@ -163,6 +163,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                 return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
             }
             LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+            std::ostringstream stmtHierarchy;
+            stmt->dump(stmtHierarchy);
+            LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << stmtHierarchy.str());
         }
 
         // handle special database/table names
