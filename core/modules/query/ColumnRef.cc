@@ -41,6 +41,14 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
+void ColumnRef::dbgPrint(std::ostream& os) const {
+    os << "ColumnRef(";
+    os << "db:" << db;
+    os << ", table:" << table;
+    os << ", column:" << column;
+    os << ")";
+}
+
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     return os << "(" << cr.db << "," << cr.table << "," << cr.column << ")";
 }
