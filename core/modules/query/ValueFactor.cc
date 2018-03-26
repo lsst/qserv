@@ -96,7 +96,7 @@ ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
-void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
+void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     switch(_type) {
     case COLUMNREF:
         vector.push_back(_columnRef);
@@ -178,5 +178,27 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     }
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
+
+std::ostream& ValueFactor::dbgPrint(std::ostream& os) const {
+    os << "ValueFactor(";
+    os << "type:" << ValueFactor::getTypeString(_type);
+    if (_columnRef) {
+        os << ", columnRef:";
+        _columnRef->dbgPrint(os);
+    }
+    if (_funcExpr) {
+        os << ", funcExpr:";
+        _funcExpr->dbgPrint(os);
+    }
+    if (_valueExpr) {
+        os << ", valueExpr:";
+        _valueExpr->dbgPrint(os);
+    }
+    os << ", alias:" << _alias;
+    os << ", tableStar:" << _tableStar; // Reused as const val (no tablestar)
+    os << ")";
+    return os;
+}
+
 
 }}} // namespace lsst::qserv::query

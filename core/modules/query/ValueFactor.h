@@ -81,7 +81,7 @@ public:
     std::string const& getTableStar() const { return _tableStar; }
     void setTableStar(std::string const& a) { _tableStar = a; }
 
-    void findColumnRefs(ColumnRef::Vector& vector);
+    void findColumnRefs(ColumnRef::Vector& vector) const;
 
     ValueFactorPtr clone() const;
 
@@ -97,6 +97,9 @@ public:
 
     class render;
     friend class render;
+
+    std::ostream& dbgPrint(std::ostream& os) const;
+
 private:
     Type _type;
     std::shared_ptr<ColumnRef> _columnRef;
