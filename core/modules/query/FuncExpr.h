@@ -52,9 +52,6 @@ class FuncExpr {
 public:
     typedef std::shared_ptr<FuncExpr> Ptr;
 
-    static FuncExpr::Ptr newFuncExpr(const std::string& functionName,
-                                     const std::string& parameterName);
-
     const std::string& getName() const;
     ValueExprPtrVector getParams() const;
 
@@ -78,6 +75,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
     void renderTo(QueryTemplate& qt) const;
 
+    void dbgPrint(std::ostream& os) const;
 private:
     std::string _name;
 };
