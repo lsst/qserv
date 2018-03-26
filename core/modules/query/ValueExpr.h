@@ -69,6 +69,7 @@ public:
         FactorOp() : op(NONE) {}
         std::shared_ptr<ValueFactor> factor;
         Op op;
+        void dbgPrint(std::ostream& os) const;
     };
     typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
@@ -86,7 +87,7 @@ public:
      *
      * @param os output stream
      */
-    void dbgPrint(std::ostream& os);
+    void dbgPrint(std::ostream& os) const;
 
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
@@ -95,7 +96,7 @@ public:
     template<typename T>
     T copyAsType(T const& defaultValue) const;
 
-    void findColumnRefs(ColumnRef::Vector& vector);
+    void findColumnRefs(ColumnRef::Vector& vector) const;
 
     /*
      * Check if at least one of the FactorOps of the
