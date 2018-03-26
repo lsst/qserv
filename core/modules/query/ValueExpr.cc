@@ -88,6 +88,24 @@ operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
     return os;
 }
 
+void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
+    os << "FactorOp(op:";
+    switch(op) {
+    case ValueExpr::NONE: os << "NONE"; break;
+    case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
+    case ValueExpr::PLUS: os << "PLUS"; break;
+    case ValueExpr::MINUS: os << "MINUS"; break;
+    case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
+    case ValueExpr::DIVIDE: os << "DIVIDE"; break;
+    default: throw std::runtime_error("unhandled op"); break;
+    }
+    if (factor) {
+        os << ", factor:";
+        factor->dbgPrint(os);
+    }
+    os << ")";
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
@@ -111,26 +129,21 @@ ValueExpr::ValueExpr() {
  * @param out
  * @return void
  */
-void ValueExpr::dbgPrint(std::ostream& os) {
+void ValueExpr::dbgPrint(std::ostream& os) const {
     ColumnRef::Vector cList;
     os << "ValueExpr(" << "rendered:" << *this;
     os << ", alias:" << _alias;
     os << ", isColumnRef:" << isColumnRef();
     os << ", isFactor:" << isFactor();
     os << ", isStar:" << isStar();
-    this->findColumnRefs(cList);
-    typedef ColumnRef::Vector::const_iterator ColIter;
-    os << ", columnRefs(";
-    for (auto columnRef : cList) {
-        os << columnRef;
-    }
-    os << ")";
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
     os << ", factorOps(";
     for (auto factorOp : _factorOps) {
         ca(factorOp);
-        os << "factorOp:(" << factorOp << ", hasAgg:" << hasAgg << ")";
+        factorOp.dbgPrint(os);
+        if (&factorOp != &_factorOps.back())
+            os << ", ";
     }
     os << ")"; // end factorOps
     os << ")"; // end ValueExpr
@@ -180,11 +193,10 @@ double ValueExpr::copyAsType<double>(double const& defaultValue) const;
 template int ValueExpr::copyAsType<int>(int const&) const;
 
 
-void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) {
-    for(FactorOpVector::iterator i=_factorOps.begin();
-        i != _factorOps.end(); ++i) {
-        assert(i->factor); // FactorOps should never have null ValueFactors
-        i->factor->findColumnRefs(vector);
+void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
+    for (auto factorOp : _factorOps){
+        assert(factorOp.factor); // FactorOps should never have null ValueFactors
+        factorOp.factor->findColumnRefs(vector);
     }
 }
 
