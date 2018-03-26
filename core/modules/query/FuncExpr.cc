@@ -38,29 +38,24 @@
 
 // Third-party headers
 
+
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.FuncExpr");
+
+}
+
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-FuncExpr::Ptr
-FuncExpr::newFuncExpr(const std::string& functionName, const std::string& parameterName) {
-    auto funcExpr = std::make_shared<query::FuncExpr>();
-    funcExpr->setName(functionName);
-    std::shared_ptr<query::ValueFactor> valueFactor;
-    if (parameterName == "*") {
-        valueFactor = query::ValueFactor::newStarFactor("");
-    } else {
-        throw std::runtime_error("newFuncExpr can only make funcs with * parameter right now.");
-    }
-    return funcExpr;
-}
 
 
 const std::string &
@@ -78,6 +73,7 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " name:" << newName << " arg1:" << arg1);
     std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","",arg1);
     return newArg1(newName,
                    ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
@@ -85,6 +81,7 @@ FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " name:" << newName << " with a ValueExprPtr.");
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->setName(newName);
     e->params.push_back(ve);
@@ -112,6 +109,21 @@ FuncExpr::clone() const {
     e->setName(getName());
     cloneValueExprPtrVector(e->params, params);
     return e;
+}
+
+void FuncExpr::dbgPrint(std::ostream& os) const {
+    os << "FuncExpr(";
+    os << "name:" << _name;
+    os << ", params(";
+    for (auto param : params) {
+        param->dbgPrint(os);
+        if (&param != &params.back()) {
+            os << ", ";
+        }
+    }
+    os << ")"; // close the parens on params
+    os << ")"; // close the parens on FuncExpr:
+
 }
 
 std::ostream&
