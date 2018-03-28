@@ -149,6 +149,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<query::SelectStmt> a4stmt = a4NewUserQuery(query);
         if (a4stmt) {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
+            std::ostringstream stmtHierarchy;
+            a4stmt->dump(stmtHierarchy);
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " << stmtHierarchy.str());
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
