@@ -17,10 +17,10 @@ antlrTgts = env.Antlr(['SqlSQL2.g'],
                       ANTLR_OUT='.',
                       )
 
-antlr4LexerTgt = env.Antlr4(['MySqlLexer.g4'], ANTLR4_OUT='.')
-# The exuction of the antlr4 tool on MySqlLexer.g4 (on the line above) generates
-# `MySqlLexer.tokens` (used on the line below).
-antlr4ParserTgt = env.Antlr4(['MySqlLexer.tokens', 'MySqlParser.g4'], ANTLR4_OUT='.')
+antlr4LexerTgt = env.Antlr4(['QSMySqlLexer.g4'], ANTLR4_OUT='.')
+# The exuction of the antlr4 tool on QSMySqlLexer.g4 (on the line above) generates
+# `QSMySqlLexer.tokens` (used on the line below).
+antlr4ParserTgt = env.Antlr4(['QSMySqlLexer.tokens', 'QSMySqlParser.g4'], ANTLR4_OUT='.')
                   
 antlrSrcs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_CCSUFFIX'))]
 antlrHdrs = [f for f in antlrTgts if str(f).endswith(env.subst('$ANTLR_HSUFFIX'))]
