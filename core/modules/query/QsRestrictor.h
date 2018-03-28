@@ -73,6 +73,8 @@ public:
         QueryTemplate& qt;
     };
 
+    void dbgPrint(std::ostream& os) const;
+
     std::string _name;
     StringVector _params;
 };
