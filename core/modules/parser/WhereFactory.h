@@ -66,6 +66,12 @@ public:
 
     std::shared_ptr<query::WhereClause> getProduct();
     static std::shared_ptr<query::WhereClause> newEmpty();
+
+    static void
+    addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClause,
+                       const std::string& function,
+                       const std::vector<std::string>& parameters);
+
 private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
