@@ -243,7 +243,7 @@ WhereFactory::addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClaus
         LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
     }
     restrictor->_name = insensitiveFunction;
-    whereClause->_restrs.push_back(restrictor);
+    whereClause->_restrs->push_back(restrictor);
 }
 
 void
