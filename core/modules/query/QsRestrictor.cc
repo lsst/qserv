@@ -50,6 +50,18 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
 }
 
 
+void QsRestrictor::dbgPrint(std::ostream& os) const {
+    os << "QsRestrictor(name:" << _name << ", _params:";
+    for (auto param : _params) {
+        os << param;
+        if (&param != &_params.back()) {
+            os << ", ";
+        }
+    }
+    os << ")";
+}
+
+
 void QsRestrictor::render::applyToQT(QsRestrictor::Ptr const& p) {
     if (p != nullptr) {
         qt.append(p->_name);
