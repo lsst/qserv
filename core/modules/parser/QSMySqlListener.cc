@@ -338,7 +338,7 @@ public:
     virtual void onEnter() {}
 
     // onExit is called just before the Adapter is popped from the context stack
-    virtual void onExit() {}
+    virtual void onExit() = 0;
 };
 
 
@@ -373,6 +373,8 @@ public:
     void handleDmlStatement(shared_ptr<query::SelectStmt>& selectStatement) override {
         _selectStatement = selectStatement;
     }
+
+    void onExit() override {}
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -606,6 +608,8 @@ public:
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent()->handleTableName(string);
     }
+
+    void onExit() override {}
 };
 
 
@@ -621,6 +625,8 @@ public:
     void handleUidString(const string& string) override {
         lockedParent()->handleFullId(string);
     }
+
+    void onExit() override {}
 };
 
 
@@ -635,6 +641,8 @@ public:
         auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
         lockedParent()->handleFullColumnName(valueFactor);
     }
+
+    void onExit() override {}
 };
 
 
@@ -649,6 +657,8 @@ public:
     void handleConstant(const string& text) override {
         lockedParent()->handleConstantExpressionAtom(text);
     }
+
+    void onExit() override {}
 };
 
 
@@ -664,6 +674,10 @@ public:
         CHECK_EXECUTION_CONDITION(false, "when is this called?");
 //        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 //        lockedParent()->handleFullColumnName(columnValueExpr);
+    }
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 };
 
@@ -698,6 +712,8 @@ public:
 //        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 //        lockedParent()->handleExpressionAtomPredicate(columnValueExpr);
     }
+
+    void onExit() override {}
 
 private:
     QSMySqlParser::ExpressionAtomPredicateContext* _ctx;
@@ -956,6 +972,8 @@ public:
         ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent()->handleColumnElement(valueExpr);
     }
+
+    void onExit() override {}
 };
 
 
@@ -1024,6 +1042,8 @@ public:
     void handleAggregateWindowedFunction(string functionName, string parameter) override {
         lockedParent()->handleAggregateFunctionCall(functionName, parameter);
     }
+
+    void onExit() override {}
 };
 
 
@@ -1137,6 +1157,8 @@ public:
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
+
+    void onExit() override {}
 };
 
 
@@ -1197,6 +1219,8 @@ public:
     void handleConstantExpressionAtom(const string& text) override {
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
+
+    void onExit() override {}
 };
 
 
@@ -1207,6 +1231,10 @@ public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
                               QSMySqlParser::MathExpressionAtomContext * ctx)
     : AdapterT(parent) {}
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
 };
 
 
@@ -1244,6 +1272,10 @@ public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
                          QSMySqlParser::UnaryOperatorContext * ctx)
     : AdapterT(parent) {}
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
 };
 
 
@@ -1253,6 +1285,10 @@ public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
                            QSMySqlParser::LogicalOperatorContext * ctx)
     : AdapterT(parent) {}
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
 };
 
 
@@ -1262,6 +1298,10 @@ public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
                         QSMySqlParser::MathOperatorContext * ctx)
     : AdapterT(parent) {}
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
 };
 
 
