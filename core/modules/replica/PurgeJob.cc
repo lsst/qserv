@@ -275,10 +275,13 @@ void PurgeJob::onPrecursorJobFinish() {
         //
         std::map<std::string, size_t> worker2occupancy;
 
-        for (auto const& chunk2databases: replicaData.chunks) {
-            for (auto const& database2workers: chunk2databases.second) {
-                for (auto const& worker2info: database2workers.second) {
-                    std::string const& worker = worker2info.first;
+        for (auto chunk: replicaData.chunks.chunkNumbers()) {
+            auto chunkMap = replicaData.chunks.chunk(chunk);
+
+            for (auto database: chunkMap.databaseNames()) {
+                auto databaseMap = chunkMap.database(database);
+
+                for (auto worker: databaseMap.workerNames()) {
                     worker2occupancy[worker]++;
                 }
             }

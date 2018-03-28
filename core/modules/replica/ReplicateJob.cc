@@ -292,13 +292,13 @@ void ReplicateJob::onPrecursorJobFinish() {
         //
         std::map<std::string, std::set<unsigned int>> worker2chunks;
 
-        for (auto const& chunk2databases     : replicaData.chunks) {
-            for (auto const& database2workers: chunk2databases.second) {
-                for (auto const& worker2info : database2workers.second) {
+        for (auto chunk: replicaData.chunks.chunkNumbers()) {
+            auto chunkMap = replicaData.chunks.chunk(chunk);
 
-                    unsigned int const   chunk = chunk2databases.first;
-                    std::string  const& worker = worker2info.first;
+            for (auto database: chunkMap.databaseNames()) {
+                auto databaseMap = chunkMap.database(database);
 
+                for (auto worker: databaseMap.workerNames()) {
                     worker2occupancy[worker]++;
                     worker2chunks   [worker].insert(chunk);
                 }

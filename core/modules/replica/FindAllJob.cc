@@ -196,8 +196,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             _numSuccess++;
             ReplicaInfoCollection const& infoCollection = request->responseData();
             _replicaData.replicas.emplace_back (infoCollection);
-            for (auto const& info: infoCollection) {
-                _replicaData.chunks[info.chunk()][info.database()][info.worker()] = info;
+            for (auto info: infoCollection) {
+                _replicaData.chunks.atChunk(info.chunk())
+                                   .atDatabase(info.database())
+                                   .atWorker(info.worker()) = info;
             }
             _replicaData.workers[request->worker()] = true;
         } else {
@@ -221,30 +223,26 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
             // Databases participating in a chunk
             //
-            for (auto const& chunk2databases: _replicaData.chunks) {
-                unsigned int const chunk = chunk2databases.first;
-
-                for (auto const& database2workers: chunk2databases.second) {
-                    std::string const& database = database2workers.first;
-
+            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+                for (auto database: _replicaData.chunks.chunk(chunk).databaseNames()) {
                     _replicaData.databases[chunk].push_back(database);
                 }
             }
 
             // Workers hosting complete chunks
             //
-            for (auto const& chunk2databases: _replicaData.chunks) {
-                unsigned int const chunk = chunk2databases.first;
+            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+                auto chunkMap = _replicaData.chunks.chunk(chunk);
 
-                for (auto const& database2workers: chunk2databases.second) {
-                    std::string const& database = database2workers.first;
+                for (auto database: chunkMap.databaseNames()) {
+                    auto databaseMap = chunkMap.database(database);
 
-                    for (auto const& worker2info: database2workers.second) {
-                        std::string const& worker  = worker2info.first;
-                        ReplicaInfo const& replica = worker2info.second;
+                    for (auto worker: databaseMap.workerNames()) {
+                        ReplicaInfo const& replica = databaseMap.worker(worker);
 
-                        if (replica.status() == ReplicaInfo::Status::COMPLETE)
+                        if (replica.status() == ReplicaInfo::Status::COMPLETE) {
                             _replicaData.complete[chunk][database].push_back(worker);
+                        }
                     }
                 }
             }
@@ -254,8 +252,8 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             // ATTENTION: this algorithm won't conider the actual status of
             //            chunk replicas (if they're complete, corrupts, etc.).
             //
-            for (auto const& chunk2databases: _replicaData.chunks) {
-                unsigned int const chunk = chunk2databases.first;
+            for (auto chunk: _replicaData.chunks.chunkNumbers()) {
+                auto chunkMap = _replicaData.chunks.chunk(chunk);
 
                 // Build a list of participating databases for this chunk,
                 // and build a list of databases for each worker where the chunk
@@ -266,9 +264,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
                 std::map<std::string, size_t> worker2numDatabases;
 
-                for (auto const& database2workers: chunk2databases.second) {
-                    for (auto const& worker2info: database2workers.second) {
-                        std::string const& worker = worker2info.first;
+                for (auto database: chunkMap.databaseNames()) {
+                    auto databaseMap = chunkMap.database(database);
+
+                    for (auto worker: databaseMap.workerNames()) {
                         worker2numDatabases[worker]++;
                     }
                 }
@@ -293,7 +292,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
                 unsigned int const chunk = chunk2workers.first;
 
                 for (auto const& worker2collocated: chunk2workers.second) {
-                    std::string const& worker      = worker2collocated.first;
+                    std::string const& worker = worker2collocated.first;
                     bool        const  isColocated = worker2collocated.second;
 
                     // Start with the "as good as colocated" assumption, then drill down
@@ -305,10 +304,15 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
                     bool isGood = isColocated;
                     if (isGood) {
-                        for (auto const& chunk2databases: _replicaData.chunks[chunk]) {
-                            for (auto const& database2workers: chunk2databases.second) {
-                                if (worker == database2workers.first) {
-                                    ReplicaInfo const& replica = database2workers.second;
+
+                        auto chunkMap = _replicaData.chunks.chunk(chunk);
+
+                        for (auto database: chunkMap.databaseNames()) {
+                            auto databaseMap = chunkMap.database(database);
+
+                            for (auto thisWorker: databaseMap.workerNames()) {
+                                if (worker == thisWorker) {
+                                    ReplicaInfo const& replica = databaseMap.worker(thisWorker);
                                     isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
                                 }
                             }
