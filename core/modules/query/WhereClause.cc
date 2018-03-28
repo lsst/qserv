@@ -209,9 +209,12 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 std::ostream& WhereClause::dump(std::ostream& os) {
     os << "WhereClause(original:" << _original << ", tree:";
     _tree->dump(os);
-    os << "restrs";
+    os << ", restrs:";
     for (auto restrictorPtr : (*_restrs)) {
-        os << restrictorPtr;
+        restrictorPtr->dbgPrint(os);
+        if (&restrictorPtr != &_restrs->back()) {
+            os << ", ";
+        }
     }
     os << ")";
     return os;
