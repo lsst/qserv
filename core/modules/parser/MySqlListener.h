@@ -1537,6 +1537,9 @@ protected:
     virtual void enterPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
     virtual void exitPredicateExpression(MySqlParser::PredicateExpressionContext * /*ctx*/) override;
 
+    virtual void enterQservFunctionSpec(MySqlParser::QservFunctionSpecContext * /*ctx*/) override;
+    virtual void exitQservFunctionSpec(MySqlParser::QservFunctionSpecContext * /*ctx*/) override;
+
     virtual void enterSoundsLikePredicate(MySqlParser::SoundsLikePredicateContext * /*ctx*/) override;
     virtual void exitSoundsLikePredicate(MySqlParser::SoundsLikePredicateContext * /*ctx*/) override;
 

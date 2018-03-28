@@ -32,6 +32,7 @@
 #include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
+#include "parser/WhereFactory.h"
 #include "query/BoolTerm.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
@@ -88,6 +89,17 @@ void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {\
 } \
 
 
+#define CHECK_EXECUTION_CONDITION(CONDITION, MESSAGE) \
+if (false == (CONDITION)) { \
+    { \
+        ostringstream msg; \
+        int status; \
+        msg << abi::__cxa_demangle(typeid(this).name(),0,0,&status) << "::" << __FUNCTION__; \
+        msg << " " << MESSAGE; \
+        throw MySqlListener::adapter_execution_error(msg.str()); \
+    } \
+} \
+
 
 namespace lsst {
 namespace qserv {
@@ -129,7 +141,7 @@ public:
 
 class FullColumnNameCBH : public BaseCBH {
 public:
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) = 0;
+    virtual void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) = 0;
 };
 
 
@@ -171,7 +183,7 @@ public:
 
 class FullIdCBH : public BaseCBH {
 public:
-    virtual void handleFullIdString(const string& string) = 0;
+    virtual void handleFullId(const string& string) = 0;
 };
 
 
@@ -183,7 +195,14 @@ public:
 
 class ExpressionAtomPredicateCBH : public BaseCBH {
 public:
-    virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) = 0;
+    virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* childCtx) = 0;
+};
+
+
+class QservFunctionSpecCBH : public BaseCBH {
+public:
+    virtual void handleQservFunctionSpec(const string& functionName, const vector<string>& args) = 0;
 };
 
 
@@ -195,6 +214,7 @@ public:
 
 class SelectFunctionElementCBH: public BaseCBH {
 public:
+    virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) = 0;
 };
 
 
@@ -206,7 +226,7 @@ public:
 
 class FullColumnNameExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) = 0;
+    virtual void handleFullColumnName(shared_ptr<query::ValueFactor>& columnValueExpr) = 0;
 
 };
 
@@ -224,10 +244,15 @@ public:
 };
 
 
-
 class ConstantCBH : public BaseCBH {
 public:
     virtual void handleConstant(const string& val) = 0;
+};
+
+
+class ConstantsCBH : public BaseCBH {
+public:
+    virtual void handleConstants(const vector<string>& val) = 0;
 };
 
 
@@ -239,6 +264,7 @@ public:
 
 class UdfFunctionCallCBH : public BaseCBH {
 public:
+    virtual void handleUdfFunctionCall(shared_ptr<query::FuncExpr> valueExpr) = 0;
 };
 
 class AggregateWindowedFunctionCBH : public BaseCBH {
@@ -249,16 +275,19 @@ public:
 
 class FunctionArgsCBH : public BaseCBH {
 public:
+    virtual void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
-
 
 class LogicalExpressionCBH : public BaseCBH {
 public:
+    // pass thru to parent for qserv function spec
+    virtual void handleQservFunctionSpec(const string& functionName, const vector<string>& args) = 0;
 };
 
 
 class BetweenPredicateCBH : public BaseCBH {
 public:
+    virtual void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) = 0;
 };
 
 
@@ -274,6 +303,7 @@ public:
 
 class FunctionCallExpressionAtomCBH : public BaseCBH {
 public:
+    virtual void handleFunctionCallExpressionAtom(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
 
 
@@ -444,6 +474,11 @@ public:
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
+    void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) override {
+        SelectListFactory::addSelectAggFunction(_selectList, selectFunction);
+    }
+
+
     void onExit() override {
         lockedParent()->handleSelectList(_selectList);
     }
@@ -457,7 +492,8 @@ class FromClauseAdapter :
         public AdapterT<FromClauseCBH>,
         public TableSourcesCBH,
         public PredicateExpressionCBH,
-        public LogicalExpressionCBH {
+        public LogicalExpressionCBH,
+        public QservFunctionSpecCBH {
 public:
     FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, MySqlParser::FromClauseContext * ctx)
     : AdapterT(parent), _ctx(ctx) {}
@@ -476,6 +512,11 @@ public:
             }
             _whereClause->setRootTerm(orTerm);
         }
+    }
+
+    void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
+        CHECK_EXECUTION_CONDITION(_whereClause->_restrs != nullptr, "restrictors ptr is null");
+        WhereFactory::addQservRestrictor(*_whereClause->_restrs, functionName, args);
     }
 
     void onExit() override {
@@ -562,7 +603,7 @@ public:
     TableNameAdapter(shared_ptr<TableNameCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullIdString(const string& string) override {
+    void handleFullId(const string& string) override {
         LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent()->handleTableName(string);
     }
@@ -579,8 +620,7 @@ public:
     virtual ~FullIdAdapter() {}
 
     void handleUidString(const string& string) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
-        lockedParent()->handleFullIdString(string);
+        lockedParent()->handleFullId(string);
     }
 };
 
@@ -593,11 +633,8 @@ public:
     : AdapterT(parent) {}
 
     void handleUidString(const string& string) override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
-        auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
-        lockedParent()->handleFullColumnName(valueExpr);
+        lockedParent()->handleFullColumnName(valueFactor);
     }
 };
 
@@ -624,9 +661,10 @@ public:
                                         antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        lockedParent()->handleFullColumnName(columnValueExpr);
+    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+        CHECK_EXECUTION_CONDITION(false, "when is this called?");
+//        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+//        lockedParent()->handleFullColumnName(columnValueExpr);
     }
 };
 
@@ -640,21 +678,71 @@ class ExpressionAtomPredicateAdapter :
         public MathExpressionAtomCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
-                                   antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+                                   MySqlParser::ExpressionAtomPredicateContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
     void handleConstantExpressionAtom(const string& text) override {
         query::ValueExpr::FactorOp factorOp;
         factorOp.factor =  query::ValueFactor::newConstFactor(text);
         auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->getFactorOps().push_back(factorOp);
-        lockedParent()->handleExpressionAtomPredicate(valueExpr);
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-        lockedParent()->handleExpressionAtomPredicate(columnValueExpr);
+    void handleFunctionCallExpressionAtom(shared_ptr<query::ValueExpr> valueExpr) override {
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
+
+    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+        CHECK_EXECUTION_CONDITION(false, "when is this called?");
+//        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+//        lockedParent()->handleExpressionAtomPredicate(columnValueExpr);
+    }
+
+private:
+    MySqlParser::ExpressionAtomPredicateContext* _ctx;
+};
+
+
+class QservFunctionSpecAdapter :
+        public AdapterT<QservFunctionSpecCBH>,
+        public ConstantsCBH {
+public:
+    QservFunctionSpecAdapter(shared_ptr<QservFunctionSpecCBH> & parent,
+            MySqlParser::QservFunctionSpecContext * ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void handleConstants(const vector<string>& args) override {
+        CHECK_EXECUTION_CONDITION(_args.empty(), "args should be empty.");
+        _args = args;
+    }
+
+    void onExit() override {
+        lockedParent()->handleQservFunctionSpec(_functionName, _args);
+    }
+
+private:
+    string getFunctionName() {
+        if (_ctx->QSERV_AREASPEC_CIRCLE() != nullptr){
+            return _ctx->QSERV_AREASPEC_CIRCLE()->getSymbol()->getText();
+        }
+        if (_ctx->QSERV_AREASPEC_ELLIPSE() != nullptr){
+            return _ctx->QSERV_AREASPEC_ELLIPSE()->getSymbol()->getText();
+        }
+        if (_ctx->QSERV_AREASPEC_POLY() != nullptr){
+            return _ctx->QSERV_AREASPEC_POLY()->getSymbol()->getText();
+        }
+        if (_ctx->QSERV_AREASPEC_HULL() != nullptr){
+            return _ctx->QSERV_AREASPEC_HULL()->getSymbol()->getText();
+        }
+        CHECK_EXECUTION_CONDITION(false, "could not get qserv function name.");
+    }
+
+    MySqlParser::QservFunctionSpecContext * _ctx;
+    string _functionName;
+    vector<string> _args;
 };
 
 
@@ -674,14 +762,27 @@ public:
     }
 
     // ExpressionAtomPredicateCBH
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
-        // todo
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* ctx) override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
+
+
+    void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
+
+        // todo/next
+        // this needs to get handled but it's not obvious how.
+        // I examined the enter/exit tree. I see there is a enter that is (probably) getting ignored:
+        // `MySqlListener.cc:1843) - enterLogicalOperator AND`
+        // and from the top of the old-hierarchy dump there are AndTerm and OrTerm that need to receive
+        // the logical operator AND etc. This is probably the place to start; figure out where in the tree
+        // the AND should get cached, and then trickle other stuff up to it.
+
     }
 
     void onExit() {
-        if (!_orTerm) {
-            return; // todo; raise here?
-        }
+        CHECK_EXECUTION_CONDITION(_orTerm != nullptr, "an OrTerm was not generated.")
         lockedParent()->handleOrTerm(_orTerm, _ctx);
     }
 
@@ -713,7 +814,8 @@ public:
         }
     }
 
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* ctx) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__);
         if (_left == nullptr) {
             _left = valueExpr;
@@ -808,23 +910,31 @@ public:
         if (_ctx->AS() == nullptr) {
             throw MySqlListener::adapter_execution_error("Call to handleUidString but AS is null.");
         }
+        _asName = string;
     }
 
     void handleAggregateFunctionCall(string functionName, string parameter) override {
-        // todo block against getting called twice?
+        CHECK_EXECUTION_CONDITION(_functionName.empty() && _parameter.empty(), "should only be called once.");
         _functionName = functionName;
         _parameter = parameter;
     }
 
     void onExit() override {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
+
+        // handle this in aggregateWindowedFunction
         string table;
         auto starFactor = query::ValueFactor::newStarFactor(table);
         auto starParExpr = std::make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(starParExpr, starFactor);
-        auto countStarFuncExpr = query::FuncExpr::newFuncExpr(_functionName, _parameter);
+        auto countStarFuncExpr = query::FuncExpr::newArg1(_functionName, starParExpr);
+
+        // this probably wants to be in aggregateFunctionCall (because it makes an aggregate function value factor)
         auto aggFuncValueFactor = query::ValueFactor::newAggFactor(countStarFuncExpr);
         auto countStarFuncAsValueExpr = std::make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(countStarFuncAsValueExpr, aggFuncValueFactor);
         countStarFuncAsValueExpr->setAlias(_asName);
+        lockedParent()->handleSelectFunctionElement(countStarFuncAsValueExpr);
     }
 
 private:
@@ -842,8 +952,10 @@ public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
-        lockedParent()->handleColumnElement(columnValueExpr);
+    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent()->handleColumnElement(valueExpr);
     }
 };
 
@@ -882,6 +994,26 @@ private:
 };
 
 
+class ConstantsAdapter :
+        public AdapterT<ConstantsCBH>,
+        public ConstantCBH {
+public:
+    ConstantsAdapter(shared_ptr<ConstantsCBH>& parent, MySqlParser::ConstantsContext* ctx)
+    : AdapterT(parent) {}
+
+    void handleConstant(const string& val) override {
+        vals.push_back(val);
+    }
+
+    void onExit() override {
+        lockedParent()->handleConstants(vals);
+    }
+
+private:
+    vector<string> vals;
+};
+
+
 class AggregateFunctionCallAdapter :
         public AdapterT<AggregateFunctionCallCBH>,
         public AggregateWindowedFunctionCBH {
@@ -905,10 +1037,32 @@ public:
                            MySqlParser::UdfFunctionCallContext * ctx)
     : AdapterT(parent) {}
 
-    // FullIdCBH
-    void handleFullIdString(const string& string) override {
-        // todo
+    void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) override {
+        // This is only expected to be called once.
+        // Of course the valueExpr may have more than one valueFactor.
+        CHECK_EXECUTION_CONDITION(nullptr == _args, "Args already assigned.");
+        _args = valueExpr;
     }
+
+    // FullIdCBH
+    void handleFullId(const string& string) override {
+        if (false == _functionName.empty()) {
+            throw MySqlListener::adapter_execution_error("Function name already assigned.");
+        }
+        _functionName = string;
+    }
+
+    void onExit() override {
+        if (_functionName.empty() || nullptr == _args) {
+            throw MySqlListener::adapter_execution_error("Function name & args must be populated");
+        }
+        auto funcExpr = query::FuncExpr::newArg1(_functionName, _args);
+        lockedParent()->handleUdfFunctionCall(funcExpr);
+    }
+
+private:
+    shared_ptr<query::ValueExpr> _args;
+    string _functionName;
 };
 
 
@@ -944,19 +1098,25 @@ public:
 
     // ConstantCBH
     void handleConstant(const string& val) override {
-        // todo
+        auto argFactor = parser::ValueFactorFactory::newColumnFactor(val, "", "");
+        ValueExprFactory::addValueFactor(_args, argFactor);
     }
 
     // PredicateExpressionCBH
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
-        // todo
+        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
-    // FullColumnNameCBH
-    void handleFullColumnName(shared_ptr<query::ValueExpr>& columnValueExpr) override {
-        // todo
+    void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
+        ValueExprFactory::addValueFactor(_args, columnName);
     }
 
+    void onExit() override {
+        lockedParent()->handleFunctionArgs(_args);
+    }
+
+private:
+    shared_ptr<query::ValueExpr> _args {make_shared<query::ValueExpr>()};
 };
 
 
@@ -964,14 +1124,19 @@ class LogicalExpressionAdapter :
         public AdapterT<LogicalExpressionCBH>,
         public LogicalExpressionCBH,
         public PredicateExpressionCBH,
-        public LogicalOperatorCBH {
+        public LogicalOperatorCBH,
+        public QservFunctionSpecCBH {
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
                              MySqlParser::LogicalExpressionContext * ctx)
     : AdapterT(parent) {}
 
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
-        // todo
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
+
+    void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
+        lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 };
 
@@ -982,13 +1147,41 @@ class BetweenPredicateAdapter :
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
                             MySqlParser::BetweenPredicateContext * ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
     // ExpressionAtomPredicateCBH
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr) override {
-        // todo
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* childCtx) override {
+        if (childCtx == _ctx->val) {
+            CHECK_EXECUTION_CONDITION(nullptr == _val, "val should be set exactly once.");
+            _val = valueExpr;
+            return;
+        }
+        if (childCtx == _ctx->min) {
+            CHECK_EXECUTION_CONDITION(nullptr == _min, "min should be set exactly once.");
+            _min = valueExpr;
+            return;
+        }
+        if (childCtx == _ctx->max) {
+            CHECK_EXECUTION_CONDITION(nullptr == _max, "max should be set exactly once.");
+            _max = valueExpr;
+            return;
+        }
     }
 
+    void onExit() {
+        CHECK_EXECUTION_CONDITION(nullptr != _val && nullptr != _min && nullptr != _max,
+                "val, min, and max must all be set.");
+        auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max);
+        lockedParent()->handleBetweenPredicate(betweenPredicate);
+    }
+
+private:
+    MySqlParser::BetweenPredicateContext * _ctx;
+    shared_ptr<query::ValueExpr> _val;
+    shared_ptr<query::ValueExpr> _min;
+    shared_ptr<query::ValueExpr> _max;
 };
 
 
@@ -1003,14 +1196,13 @@ public:
 
     // ConstantExpressionAtomCBH
     void handleConstantExpressionAtom(const string& text) override {
-        // todo
+        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 };
 
 
 class MathExpressionAtomAdapter :
         public AdapterT<MathExpressionAtomCBH>,
-        public FunctionCallExpressionAtomCBH,
         public MathOperatorCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
@@ -1026,6 +1218,24 @@ public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
                                       MySqlParser::FunctionCallExpressionAtomContext * ctx)
     : AdapterT(parent) {}
+
+    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
+        CHECK_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.")
+        _funcExpr = funcExpr;
+    }
+
+    // someday: the `AS uid` part should be handled by making this a UID CBH,
+    // it will set the alias in the generated valueFactor
+
+    void onExit() {
+        auto valueFactor = query::ValueFactor::newFuncFactor(_funcExpr);
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent()->handleFunctionCallExpressionAtom(valueExpr);
+    }
+
+private:
+    shared_ptr<query::FuncExpr> _funcExpr;
 };
 
 
@@ -1147,6 +1357,7 @@ IGNORED(DecimalLiteral)
 IGNORED(StringLiteral)
 ENTER_EXIT_PARENT(PredicateExpression)
 ENTER_EXIT_PARENT(ExpressionAtomPredicate)
+ENTER_EXIT_PARENT(QservFunctionSpec)
 ENTER_EXIT_PARENT(BinaryComparasionPredicate)
 ENTER_EXIT_PARENT(ConstantExpressionAtom)
 ENTER_EXIT_PARENT(FullColumnNameExpressionAtom)
@@ -1583,7 +1794,7 @@ UNHANDLED(Tables)
 UNHANDLED(IndexColumnNames)
 UNHANDLED(Expressions)
 UNHANDLED(ExpressionsWithDefaults)
-UNHANDLED(Constants)
+ENTER_EXIT_PARENT(Constants)
 UNHANDLED(SimpleStrings)
 UNHANDLED(UserVariables)
 UNHANDLED(DefaultValue)
