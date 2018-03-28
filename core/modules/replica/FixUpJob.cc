@@ -247,7 +247,10 @@ void FixUpJob::onPrecursorJobFinish() {
                 // as the current one and submite the replication request.
 
                 for (auto const& database: replicaData.databases.at(chunk)) {
-                    if (not replicaData.chunks.at(chunk).at(database).count(destinationWorker)) {
+
+                    if (not replicaData.chunks.chunk(chunk)
+                                              .database(database)
+                                              .workerExists(destinationWorker)) {
 
                         // Finding a source worker first
                         std::string sourceWorker;

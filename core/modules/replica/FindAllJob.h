@@ -40,6 +40,7 @@
 #include "replica/Job.h"
 #include "replica/FindAllRequest.h"
 #include "replica/ReplicaInfo.h"
+#include "replica/SemanticMaps.h"
 
 // Forward declarations
 
@@ -69,10 +70,13 @@ struct FindAllJobResult {
     ///
     ///      [chunk][database][worker]
     ///
+    /*
     std::map<unsigned int,
              std::map<std::string,
                       std::map<std::string,
                                ReplicaInfo>>> chunks;
+    */
+    ChunkDatabaseWorkerMap<ReplicaInfo> chunks;
 
     /// [ALL CHUNKS]  The participating databases for a chunk.
     ///

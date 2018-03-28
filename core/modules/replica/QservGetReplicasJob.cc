@@ -194,7 +194,9 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::pointer co
             // of the job.
             _replicaData.replicas[request->worker()] = request->replicas();
             for (auto const& replica: request->replicas()) {
-                _replicaData.chunks[replica.chunk][replica.database][request->worker()] = replica.useCount;
+                _replicaData.useCount.atChunk(replica.chunk)
+                                     .atDatabase(replica.database)
+                                     .atWorker(request->worker()) = replica.useCount;
             }
             _replicaData.workers[request->worker()] = true;
         } else {

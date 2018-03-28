@@ -40,6 +40,7 @@
 #include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
+#include "replica/SemanticMaps.h"
 
 // Forward declarations
 
@@ -71,10 +72,7 @@ struct QservGetReplicasJobResult {
     ///
     /// This structure also reports the use counter for each chunks
     ///
-    std::map<unsigned int,
-             std::map<std::string,
-                      std::map<std::string,
-                               bool>>> chunks;
+    ChunkDatabaseWorkerMap<size_t> useCount;
 };
 
 /**

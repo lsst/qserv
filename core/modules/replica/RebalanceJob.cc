@@ -313,11 +313,13 @@ void RebalanceJob::onPrecursorJobFinish() {
                 worker2chunks[worker] = std::map<unsigned int,bool>();
             }
         }
-        for (auto const& chunkEntry: replicaData.chunks) {
-            unsigned int const chunk = chunkEntry.first;
-            for (auto const& databaseEntry: chunkEntry.second) {
-                for (auto const& workerEntry: databaseEntry.second) {
-                    std::string const& worker = workerEntry.first;
+        for (auto chunk: replicaData.chunks.chunkNumbers()) {
+            auto chunkMap = replicaData.chunks.chunk(chunk);
+
+            for (auto database: chunkMap.databaseNames()) {
+                auto databaseMap = chunkMap.database(database);
+
+                for (auto worker: databaseMap.workerNames()) {
                     worker2chunks[worker][chunk] = true;
                 }
             }
