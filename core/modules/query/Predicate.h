@@ -142,6 +142,9 @@ public:
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
+    BetweenPredicate() {}
+    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue)
+    : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     virtual ~BetweenPredicate() {}
