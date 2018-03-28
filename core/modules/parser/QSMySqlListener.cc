@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "parser/MySqlListener.h"
+#include "parser/QSMySqlListener.h"
 
 #include <cxxabi.h>
 #include <sstream>
@@ -50,41 +50,41 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.MySqlListener");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
 
 }
 
 
 // This macro creates the enterXXX and exitXXX function definitions, for functions declared in
-// MySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the stack),
-// and the exit function pops the adapter from the top of the stack.
+// QSMySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
+// stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
-void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << ctx->getText()); \
     pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
-void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
     popAdapterStack<NAME##Adapter>(); \
 } \
 
 
 #define UNHANDLED(NAME) \
-void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED " << ctx->getText()); \
-    throw MySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
+    throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
-void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {}\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {}\
 
 
 #define IGNORED(NAME) \
-void MySqlListener::enter##NAME(MySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 \
-void MySqlListener::exit##NAME(MySqlParser::NAME##Context * ctx) {\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {\
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 
@@ -96,7 +96,7 @@ if (false == (CONDITION)) { \
         int status; \
         msg << abi::__cxa_demangle(typeid(this).name(),0,0,&status) << "::" << __FUNCTION__; \
         msg << " " << MESSAGE; \
-        throw MySqlListener::adapter_execution_error(msg.str()); \
+        throw QSMySqlListener::adapter_execution_error(msg.str()); \
     } \
 } \
 
@@ -327,7 +327,7 @@ public:
 
 // Adapter is the base class that represents a node in the antlr4 syntax tree. There is a one-to-one
 // relationship between types of adapter subclass and each variation of enter/exit functions that are the
-// result of the grammar defined in MySqlParser.g4 and the enter/exit functions that the antlr4 code generater
+// result of the grammar defined in QSMySqlParser.g4 and the enter/exit functions that the antlr4 code generater
 // creates in MySqlParserBaseListener.
 class Adapter {
 public:
@@ -351,7 +351,7 @@ protected:
     shared_ptr<CBH> lockedParent() {
         shared_ptr<CBH> parent = _parent.lock();
         if (nullptr == parent) {
-            throw MySqlListener::adapter_execution_error(
+            throw QSMySqlListener::adapter_execution_error(
                     "Locking weak ptr to parent callback handler returned null");
         }
         return parent;
@@ -495,7 +495,7 @@ class FromClauseAdapter :
         public LogicalExpressionCBH,
         public QservFunctionSpecCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, MySqlParser::FromClauseContext * ctx)
+    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext * ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void handleTableSources(query::TableRefListPtr tableRefList) override {
@@ -508,15 +508,14 @@ public:
                 ostringstream msg;
                 msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
                 LOGS(_log, LOG_LVL_ERROR, msg.str());
-                throw MySqlListener::adapter_execution_error(msg.str());
+                throw QSMySqlListener::adapter_execution_error(msg.str());
             }
             _whereClause->setRootTerm(orTerm);
         }
     }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
-        CHECK_EXECUTION_CONDITION(_whereClause->_restrs != nullptr, "restrictors ptr is null");
-        WhereFactory::addQservRestrictor(*_whereClause->_restrs, functionName, args);
+        WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
 
     void onExit() override {
@@ -527,7 +526,7 @@ public:
 private:
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
-    MySqlParser::FromClauseContext * _ctx;
+    QSMySqlParser::FromClauseContext * _ctx;
 };
 
 
@@ -678,7 +677,7 @@ class ExpressionAtomPredicateAdapter :
         public MathExpressionAtomCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
-                                   MySqlParser::ExpressionAtomPredicateContext* ctx)
+                                   QSMySqlParser::ExpressionAtomPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -701,7 +700,7 @@ public:
     }
 
 private:
-    MySqlParser::ExpressionAtomPredicateContext* _ctx;
+    QSMySqlParser::ExpressionAtomPredicateContext* _ctx;
 };
 
 
@@ -710,7 +709,7 @@ class QservFunctionSpecAdapter :
         public ConstantsCBH {
 public:
     QservFunctionSpecAdapter(shared_ptr<QservFunctionSpecCBH> & parent,
-            MySqlParser::QservFunctionSpecContext * ctx)
+            QSMySqlParser::QservFunctionSpecContext * ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -740,7 +739,7 @@ private:
         CHECK_EXECUTION_CONDITION(false, "could not get qserv function name.");
     }
 
-    MySqlParser::QservFunctionSpecContext * _ctx;
+    QSMySqlParser::QservFunctionSpecContext * _ctx;
     string _functionName;
     vector<string> _args;
 };
@@ -753,7 +752,7 @@ class PredicateExpressionAdapter :
         public BetweenPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
-            MySqlParser::PredicateExpressionContext * ctx)
+            QSMySqlParser::PredicateExpressionContext * ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     // BinaryComparisonPredicateCBH
@@ -774,7 +773,7 @@ public:
         // todo/next
         // this needs to get handled but it's not obvious how.
         // I examined the enter/exit tree. I see there is a enter that is (probably) getting ignored:
-        // `MySqlListener.cc:1843) - enterLogicalOperator AND`
+        // `QSMySqlListener.cc:1843) - enterLogicalOperator AND`
         // and from the top of the old-hierarchy dump there are AndTerm and OrTerm that need to receive
         // the logical operator AND etc. This is probably the place to start; figure out where in the tree
         // the AND should get cached, and then trickle other stuff up to it.
@@ -788,7 +787,7 @@ public:
 
 private:
     shared_ptr<query::OrTerm> _orTerm;
-    MySqlParser::PredicateExpressionContext * _ctx;
+    QSMySqlParser::PredicateExpressionContext * _ctx;
 };
 
 
@@ -810,7 +809,7 @@ public:
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when comparison value is already populated:" << _comparison;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw MySqlListener::adapter_execution_error(msg.str());
+            throw QSMySqlListener::adapter_execution_error(msg.str());
         }
     }
 
@@ -826,7 +825,7 @@ public:
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when left and right values are already populated:" << _left << ", " << _right;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw MySqlListener::adapter_execution_error(msg.str());
+            throw QSMySqlListener::adapter_execution_error(msg.str());
         }
     }
 
@@ -837,7 +836,7 @@ public:
             ostringstream msg;
             msg << "unexpected call to " << __FUNCTION__ <<
                     " when left and right values are not both populated:" << _left << ", " << _right;
-            throw MySqlListener::adapter_execution_error(msg.str());
+            throw QSMySqlListener::adapter_execution_error(msg.str());
         }
 
         auto compPredicate = make_shared<query::CompPredicate>();
@@ -853,7 +852,7 @@ public:
             ostringstream msg;
             msg << "unhandled comparison operator in BinaryComparasionPredicateAdapter: " << _comparison;
             LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw MySqlListener::adapter_execution_error(msg.str());
+            throw QSMySqlListener::adapter_execution_error(msg.str());
         }
 
         compPredicate->right = _right;
@@ -878,7 +877,7 @@ class ComparisonOperatorAdapter :
         public AdapterT<ComparisonOperatorCBH> {
 public:
     ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH>& parent,
-            MySqlParser::ComparisonOperatorContext* ctx)
+            QSMySqlParser::ComparisonOperatorContext* ctx)
     : AdapterT(parent),  _comparisonOperatorCtx(ctx) {}
 
     void onExit() override {
@@ -886,7 +885,7 @@ public:
     }
 
 private:
-    MySqlParser::ComparisonOperatorContext * _comparisonOperatorCtx;
+    QSMySqlParser::ComparisonOperatorContext * _comparisonOperatorCtx;
 };
 
 
@@ -897,7 +896,7 @@ class SelectFunctionElementAdapter :
         public UidCBH {
 public:
     SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
-                                 MySqlParser::SelectFunctionElementContext* ctx)
+                                 QSMySqlParser::SelectFunctionElementContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -905,10 +904,10 @@ public:
     void handleUidString(const string& string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName`
         if (false == _asName.empty()) {
-            throw MySqlListener::adapter_execution_error("Second call to handleUidString.");
+            throw QSMySqlListener::adapter_execution_error("Second call to handleUidString.");
         }
         if (_ctx->AS() == nullptr) {
-            throw MySqlListener::adapter_execution_error("Call to handleUidString but AS is null.");
+            throw QSMySqlListener::adapter_execution_error("Call to handleUidString but AS is null.");
         }
         _asName = string;
     }
@@ -941,7 +940,7 @@ private:
     string _functionName;
     string _parameter; // todo will probably end up being a vector of string
     string _asName;
-    MySqlParser::SelectFunctionElementContext* _ctx;
+    QSMySqlParser::SelectFunctionElementContext* _ctx;
 };
 
 
@@ -963,26 +962,26 @@ public:
 class UidAdapter :
         public AdapterT<UidCBH> {
 public:
-    UidAdapter(shared_ptr<UidCBH>& parent, MySqlParser::UidContext* ctx)
+    UidAdapter(shared_ptr<UidCBH>& parent, QSMySqlParser::UidContext* ctx)
     : AdapterT(parent), _uidContext(ctx) {}
 
     void onExit() override {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
-        // (see MySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
+        // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
         lockedParent()->handleUidString(_uidContext->getText());
     }
 
 private:
-    MySqlParser::UidContext* _uidContext;
+    QSMySqlParser::UidContext* _uidContext;
 };
 
 
 class ConstantAdapter :
         public AdapterT<ConstantCBH> {
 public:
-    ConstantAdapter(shared_ptr<ConstantCBH>& parent, MySqlParser::ConstantContext* ctx)
+    ConstantAdapter(shared_ptr<ConstantCBH>& parent, QSMySqlParser::ConstantContext* ctx)
     : AdapterT(parent), _constantContext(ctx) {}
 
     void onExit() override {
@@ -990,7 +989,7 @@ public:
     }
 
 private:
-    MySqlParser::ConstantContext* _constantContext;
+    QSMySqlParser::ConstantContext* _constantContext;
 };
 
 
@@ -998,7 +997,7 @@ class ConstantsAdapter :
         public AdapterT<ConstantsCBH>,
         public ConstantCBH {
 public:
-    ConstantsAdapter(shared_ptr<ConstantsCBH>& parent, MySqlParser::ConstantsContext* ctx)
+    ConstantsAdapter(shared_ptr<ConstantsCBH>& parent, QSMySqlParser::ConstantsContext* ctx)
     : AdapterT(parent) {}
 
     void handleConstant(const string& val) override {
@@ -1019,7 +1018,7 @@ class AggregateFunctionCallAdapter :
         public AggregateWindowedFunctionCBH {
 public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
-                                 MySqlParser::AggregateFunctionCallContext * ctx)
+                                 QSMySqlParser::AggregateFunctionCallContext * ctx)
     : AdapterT(parent) {}
 
     void handleAggregateWindowedFunction(string functionName, string parameter) override {
@@ -1034,7 +1033,7 @@ class UdfFunctionCallAdapter :
         public FunctionArgsCBH {
 public:
     UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
-                           MySqlParser::UdfFunctionCallContext * ctx)
+                           QSMySqlParser::UdfFunctionCallContext * ctx)
     : AdapterT(parent) {}
 
     void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) override {
@@ -1047,14 +1046,14 @@ public:
     // FullIdCBH
     void handleFullId(const string& string) override {
         if (false == _functionName.empty()) {
-            throw MySqlListener::adapter_execution_error("Function name already assigned.");
+            throw QSMySqlListener::adapter_execution_error("Function name already assigned.");
         }
         _functionName = string;
     }
 
     void onExit() override {
         if (_functionName.empty() || nullptr == _args) {
-            throw MySqlListener::adapter_execution_error("Function name & args must be populated");
+            throw QSMySqlListener::adapter_execution_error("Function name & args must be populated");
         }
         auto funcExpr = query::FuncExpr::newArg1(_functionName, _args);
         lockedParent()->handleUdfFunctionCall(funcExpr);
@@ -1070,19 +1069,19 @@ class AggregateWindowedFunctionAdapter :
         public AdapterT<AggregateWindowedFunctionCBH> {
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
-                                     MySqlParser::AggregateWindowedFunctionContext * ctx)
+                                     QSMySqlParser::AggregateWindowedFunctionContext * ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
         if (nullptr == _ctx->COUNT() || nullptr == _ctx->starArg) {
-            throw MySqlListener::adapter_execution_error(string("AggregateWindowedFunctionAdapter ") +
+            throw QSMySqlListener::adapter_execution_error(string("AggregateWindowedFunctionAdapter ") +
                     string("currently only supports COUNT(*), can't handle ") + _ctx->getText());
         }
         lockedParent()->handleAggregateWindowedFunction("COUNT", "*");
     }
 
 private:
-    MySqlParser::AggregateWindowedFunctionContext * _ctx;
+    QSMySqlParser::AggregateWindowedFunctionContext * _ctx;
 };
 
 
@@ -1093,7 +1092,7 @@ class FunctionArgsAdapter :
         public FullColumnNameCBH {
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
-                        MySqlParser::FunctionArgsContext * ctx)
+                        QSMySqlParser::FunctionArgsContext * ctx)
     : AdapterT(parent) {}
 
     // ConstantCBH
@@ -1128,7 +1127,7 @@ class LogicalExpressionAdapter :
         public QservFunctionSpecCBH {
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
-                             MySqlParser::LogicalExpressionContext * ctx)
+                             QSMySqlParser::LogicalExpressionContext * ctx)
     : AdapterT(parent) {}
 
     void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
@@ -1146,7 +1145,7 @@ class BetweenPredicateAdapter :
         public ExpressionAtomPredicateCBH {
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
-                            MySqlParser::BetweenPredicateContext * ctx)
+                            QSMySqlParser::BetweenPredicateContext * ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1178,7 +1177,7 @@ public:
     }
 
 private:
-    MySqlParser::BetweenPredicateContext * _ctx;
+    QSMySqlParser::BetweenPredicateContext * _ctx;
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
     shared_ptr<query::ValueExpr> _max;
@@ -1191,7 +1190,7 @@ class UnaryExpressionAtomAdapter :
         public ConstantExpressionAtomCBH {
 public:
     UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-                               MySqlParser::UnaryExpressionAtomContext * ctx)
+                               QSMySqlParser::UnaryExpressionAtomContext * ctx)
     : AdapterT(parent) {}
 
     // ConstantExpressionAtomCBH
@@ -1206,7 +1205,7 @@ class MathExpressionAtomAdapter :
         public MathOperatorCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
-                              MySqlParser::MathExpressionAtomContext * ctx)
+                              QSMySqlParser::MathExpressionAtomContext * ctx)
     : AdapterT(parent) {}
 };
 
@@ -1216,7 +1215,7 @@ class FunctionCallExpressionAtomAdapter :
         public UdfFunctionCallCBH {
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
-                                      MySqlParser::FunctionCallExpressionAtomContext * ctx)
+                                      QSMySqlParser::FunctionCallExpressionAtomContext * ctx)
     : AdapterT(parent) {}
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
@@ -1243,7 +1242,7 @@ class UnaryOperatorAdapter :
         public AdapterT<UnaryOperatorCBH> {
 public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
-                         MySqlParser::UnaryOperatorContext * ctx)
+                         QSMySqlParser::UnaryOperatorContext * ctx)
     : AdapterT(parent) {}
 };
 
@@ -1252,7 +1251,7 @@ class LogicalOperatorAdapter :
         public AdapterT<LogicalOperatorCBH> {
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
-                           MySqlParser::LogicalOperatorContext * ctx)
+                           QSMySqlParser::LogicalOperatorContext * ctx)
     : AdapterT(parent) {}
 };
 
@@ -1261,21 +1260,21 @@ class MathOperatorAdapter :
         public AdapterT<MathOperatorCBH> {
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
-                        MySqlParser::MathOperatorContext * ctx)
+                        QSMySqlParser::MathOperatorContext * ctx)
     : AdapterT(parent) {}
 };
 
 
-/// MySqlListener impl
+/// QSMySqlListener impl
 
 
-MySqlListener::MySqlListener() {
+QSMySqlListener::QSMySqlListener() {
     _rootAdapter = make_shared<RootAdapter>();
     _adapterStack.push(_rootAdapter);
 }
 
 
-shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
+shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
     return _rootAdapter->getSelectStatement();
 }
 
@@ -1283,7 +1282,7 @@ shared_ptr<query::SelectStmt> MySqlListener::getSelectStatement() const {
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
-shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(Context * ctx) {
+shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context * ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     if (nullptr == p) {
         int status;
@@ -1302,7 +1301,7 @@ shared_ptr<ChildAdapter> MySqlListener::pushAdapterStack(Context * ctx) {
 
 
 template<typename ChildAdapter>
-void MySqlListener::popAdapterStack() {
+void QSMySqlListener::popAdapterStack() {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
     adapterPtr->onExit();
     _adapterStack.pop();
@@ -1322,16 +1321,16 @@ void MySqlListener::popAdapterStack() {
 }
 
 
-// MySqlListener class methods
+// QSMySqlListener class methods
 
 
-void MySqlListener::enterRoot(MySqlParser::RootContext * ctx) {
+void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
     // root is pushed by the ctor (and popped by the dtor)
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
 
-void MySqlListener::exitRoot(MySqlParser::RootContext * ctx) {
+void QSMySqlListener::exitRoot(QSMySqlParser::RootContext * ctx) {
     // root is pushed by the ctor (and popped by the dtor)
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
