@@ -85,6 +85,7 @@ public:
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
     std::ostream& dump(std::ostream& os);
+
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
 
@@ -92,7 +93,7 @@ private:
 
     std::string _original;
     std::shared_ptr<BoolTerm> _tree;
-    std::shared_ptr<QsRestrictor::PtrVector> _restrs;
+    std::shared_ptr<QsRestrictor::PtrVector> _restrs{std::make_shared<query::QsRestrictor::PtrVector>()};
 };
 
 
