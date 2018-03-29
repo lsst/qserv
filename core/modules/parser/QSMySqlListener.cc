@@ -234,13 +234,13 @@ public:
 class BinaryComparasionPredicateCBH : public BaseCBH {
 public:
     virtual ~BinaryComparasionPredicateCBH() {}
-    virtual void handleOrTerm(shared_ptr<query::OrTerm>& orTerm) = 0;
+    virtual void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) = 0;
 };
 
 
 class PredicateExpressionCBH : public BaseCBH {
 public:
-    virtual void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) = 0;
+    virtual void handlePredicateExpression(/*todo*/) = 0;
 };
 
 
@@ -314,6 +314,10 @@ public:
 
 class LogicalOperatorCBH : public BaseCBH {
 public:
+    enum OperatorType {
+        AND,
+    };
+    virtual void handleLogicalOperator(OperatorType operatorType) = 0;
 };
 
 
@@ -504,17 +508,21 @@ public:
         _tableRefList = tableRefList;
     }
 
-    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
-        if (_ctx->whereExpr == childCtx) {
-            if (_whereClause->getRootTerm()) {
-                ostringstream msg;
-                msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
-                LOGS(_log, LOG_LVL_ERROR, msg.str());
-                throw QSMySqlListener::adapter_execution_error(msg.str());
-            }
-            _whereClause->setRootTerm(orTerm);
-        }
+    void handlePredicateExpression() override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
     }
+
+//    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
+//        if (_ctx->whereExpr == childCtx) {
+//            if (_whereClause->getRootTerm()) {
+//                ostringstream msg;
+//                msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
+//                LOGS(_log, LOG_LVL_ERROR, msg.str());
+//                throw QSMySqlListener::adapter_execution_error(msg.str());
+//            }
+//            _whereClause->setRootTerm(orTerm);
+//        }
+//    }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
@@ -526,6 +534,8 @@ public:
     }
 
 private:
+    // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
+    // TODO figure out exactly where to do that.
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
     QSMySqlParser::FromClauseContext * _ctx;
@@ -771,9 +781,9 @@ public:
             QSMySqlParser::PredicateExpressionContext * ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    // BinaryComparisonPredicateCBH
-    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm) override {
-        _orTerm = orTerm;
+    // BinaryComparasionPredicateCBH
+    void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
+        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
     // ExpressionAtomPredicateCBH
@@ -797,12 +807,11 @@ public:
     }
 
     void onExit() {
-        CHECK_EXECUTION_CONDITION(_orTerm != nullptr, "an OrTerm was not generated.")
-        lockedParent()->handleOrTerm(_orTerm, _ctx);
+        CHECK_EXECUTION_CONDITION(false, "todo")
+        lockedParent()->handlePredicateExpression();
     }
 
 private:
-    shared_ptr<query::OrTerm> _orTerm;
     QSMySqlParser::PredicateExpressionContext * _ctx;
 };
 
@@ -817,43 +826,24 @@ public:
     : AdapterT(parent) {}
 
     void handleComparisonOperator(const string& text) override {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << text);
-        if (_comparison.empty()) {
-            _comparison = text;
-        } else {
-            ostringstream msg;
-            msg << "unexpected call to " << __FUNCTION__ <<
-                    " when comparison value is already populated:" << _comparison;
-            LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw QSMySqlListener::adapter_execution_error(msg.str());
-        }
+        CHECK_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.");
+        _comparison = text;
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* ctx) override {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__);
         if (_left == nullptr) {
             _left = valueExpr;
         } else if (_right == nullptr) {
             _right = valueExpr;
         } else {
-            ostringstream msg;
-            msg << "unexpected call to " << __FUNCTION__ <<
-                    " when left and right values are already populated:" << _left << ", " << _right;
-            LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw QSMySqlListener::adapter_execution_error(msg.str());
+            CHECK_EXECUTION_CONDITION(false, "left and right values must be set only once.")
         }
     }
 
     void onExit() {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " " << _left << " " << _comparison << " " << _right);
-
-        if (_left == nullptr || _right == nullptr) {
-            ostringstream msg;
-            msg << "unexpected call to " << __FUNCTION__ <<
-                    " when left and right values are not both populated:" << _left << ", " << _right;
-            throw QSMySqlListener::adapter_execution_error(msg.str());
-        }
+        CHECK_EXECUTION_CONDITION(_left != nullptr && _right != nullptr,
+                "left and right values must both be populated");
 
         auto compPredicate = make_shared<query::CompPredicate>();
         compPredicate->left = _left;
@@ -865,21 +855,12 @@ public:
         if ("=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
         } else {
-            ostringstream msg;
-            msg << "unhandled comparison operator in BinaryComparasionPredicateAdapter: " << _comparison;
-            LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw QSMySqlListener::adapter_execution_error(msg.str());
+            CHECK_EXECUTION_CONDITION(false, "unhandled comparison operator type" << _comparison);;
         }
 
         compPredicate->right = _right;
 
-        auto boolFactor = make_shared<query::BoolFactor>();
-        boolFactor->_terms.push_back(compPredicate);
-
-        auto orTerm = make_shared<query::OrTerm>();
-        orTerm->_terms.push_back(boolFactor);
-
-        lockedParent()->handleOrTerm(orTerm);
+        lockedParent()->handleBinaryComparasionPredicate(compPredicate);
     }
 
 private:
@@ -1121,8 +1102,7 @@ public:
         ValueExprFactory::addValueFactor(_args, argFactor);
     }
 
-    // PredicateExpressionCBH
-    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
+    void handlePredicateExpression() override {
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
@@ -1150,15 +1130,34 @@ public:
                              QSMySqlParser::LogicalExpressionContext * ctx)
     : AdapterT(parent) {}
 
-    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
+    void handlePredicateExpression() override {
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
+        // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
+        // handles the rest of the where clause, pass the function straight up to the parent.
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
-    void onExit() override {}
+    void handleLogicalOperator(LogicalOperatorCBH::OperatorType operatorType) {
+        switch (operatorType) {
+        default:
+            CHECK_EXECUTION_CONDITION(false, "unhandled operator type");
+            break;
+
+        case LogicalOperatorCBH::AND:
+            CHECK_EXECUTION_CONDITION(nullptr == logicalOperator, "logical operator must be set only once.");
+            logicalOperator = make_shared<query::AndTerm>();
+        }
+    }
+
+    void onExit() override {
+
+    }
+
+private:
+    shared_ptr<query::BoolTerm> logicalOperator;
 };
 
 
@@ -1284,11 +1283,19 @@ class LogicalOperatorAdapter :
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
                            QSMySqlParser::LogicalOperatorContext * ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        if (_ctx->AND() != nullptr) {
+            lockedParent()->handleLogicalOperator(LogicalOperatorCBH::AND);
+        } else {
+            CHECK_EXECUTION_CONDITION(false, "undhandled logical operator");
+        }
     }
+
+private:
+    QSMySqlParser::LogicalOperatorContext * _ctx;
 };
 
 
