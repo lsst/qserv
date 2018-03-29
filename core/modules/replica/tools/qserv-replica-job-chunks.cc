@@ -259,7 +259,7 @@ bool test() {
             << "    for the desired minimal replication 'L'evel\n"
             << "    for numbers of chunk replicas from different sources: 'R'eplication, 'Q'serv\n"
             << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n"
-            << "       chunk |             database |   R |  R-L |   Q |  R-Q | replicas at workers\n"
+            << "       chunk |             database |   R |  R-L |   Q |  Q-R | replicas at workers\n"
             << "-------------+----------------------+-----+------+-----+------+------------------------------------------\n";
 
         size_t const replicationLevel = provider->config()->replicationLevel(databaseFamily);
