@@ -138,7 +138,7 @@ void ValueExpr::dbgPrint(std::ostream& os) const {
     os << ", isStar:" << isStar();
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
-    os << ", factorOps(";
+    os << ", factorOps:(";
     for (auto factorOp : _factorOps) {
         ca(factorOp);
         factorOp.dbgPrint(os);

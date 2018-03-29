@@ -112,9 +112,9 @@ FuncExpr::clone() const {
 }
 
 void FuncExpr::dbgPrint(std::ostream& os) const {
-    os << "FuncExpr(";
+    os << "FuncExpr:(";
     os << "name:" << _name;
-    os << ", params(";
+    os << ", params:(";
     for (auto param : params) {
         param->dbgPrint(os);
         if (&param != &params.back()) {
