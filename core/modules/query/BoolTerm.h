@@ -113,8 +113,19 @@ public:
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
 
+class LogicalTerm : public BoolTerm {
+public:
+    void addBoolTerm(BoolTerm::Ptr& boolTerm) {
+        _terms.push_back(boolTerm);
+    }
+
+    // todo make this private?
+    BoolTerm::PtrVector _terms;
+};
+
+
 /// OrTerm is a set of OR-connected BoolTerms
-class OrTerm : public BoolTerm {
+class OrTerm : public LogicalTerm {
 public:
     typedef std::shared_ptr<OrTerm> Ptr;
 
@@ -145,12 +156,10 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     std::ostream& dump(std::ostream& os) const override;
-
-    BoolTerm::PtrVector _terms;
 };
 
 /// AndTerm is a set of AND-connected BoolTerms
-class AndTerm : public BoolTerm {
+class AndTerm : public LogicalTerm {
 public:
     typedef std::shared_ptr<AndTerm> Ptr;
 
@@ -180,7 +189,6 @@ public:
 
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
-    BoolTerm::PtrVector _terms;
 
     std::ostream& dump(std::ostream& os) const override;
 };
@@ -191,6 +199,10 @@ public:
     typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
+
+    void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm) {
+        _terms.push_back(boolFactorTerm);
+    }
 
     virtual void findValueExprs(ValueExprPtrVector& vector) {
         typedef BoolFactorTerm::PtrVector::iterator Iter;
