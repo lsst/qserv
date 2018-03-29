@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <atomic>
 #include <future>
 #include <stdexcept>
 #include <tuple>
@@ -140,14 +141,18 @@ void DeleteWorkerJob::startImpl() {
 
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
-    ServiceStatusRequest::pointer const statusRequest =
-        _controller->statusOfWorkerService(
-            _worker,
-            nullptr,    /* onFinish  -- not needed here because tracking the request -- */
-            _id,        /* jobId */
-            10          /* requestExpirationIvalSec */);
 
-    while (statusRequest->state() != Request::State::FINISHED) {
+    std::atomic<bool> statusRequestFinished{false};
+
+    auto const statusRequest = _controller->statusOfWorkerService(
+        _worker,
+        [&statusRequestFinished](ServiceStatusRequest::pointer const& request) {
+            statusRequestFinished = true;
+        },
+        _id,    /* jobId */
+        60      /* requestExpirationIvalSec */
+    );
+    while (not statusRequestFinished) {
         LOGS(_log, LOG_LVL_DEBUG, context() << "wait for worker service status");
         blockPost.wait();
     }
@@ -156,14 +161,18 @@ void DeleteWorkerJob::startImpl() {
 
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfeering with the current job's requests
-            ServiceDrainRequest::pointer const drainRequest =
-                _controller->drainWorkerService(
-                    _worker,
-                    nullptr,    /* onFinish  -- not needed here because tracking the request -- */
-                    _id,        /* jobId */
-                    10          /* requestExpirationIvalSec */);
 
-            while (drainRequest->state() != Request::State::FINISHED) {
+            std::atomic<bool> drainRequestFinished{false};
+
+            auto const drainRequest = _controller->drainWorkerService(
+                _worker,
+                [&drainRequestFinished](ServiceDrainRequest::pointer const& request) {
+                    drainRequestFinished = true;
+                },
+                _id,    /* jobId */
+                60      /* requestExpirationIvalSec */
+            );
+            while (not drainRequestFinished) {
                 LOGS(_log, LOG_LVL_DEBUG, context() << "wait for worker service drain");
                 blockPost.wait();
             }
@@ -172,15 +181,15 @@ void DeleteWorkerJob::startImpl() {
 
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
+
                     for (auto const& database: _controller->serviceProvider()->config()->databases()) {
-                        FindAllRequest::pointer const request =
-                            _controller->findAllReplicas(
-                                _worker,
-                                database,
-                                [self] (FindAllRequest::pointer ptr) {
-                                    self->onRequestFinish (ptr);
-                                }
-                            );
+                        auto const request = _controller->findAllReplicas(
+                            _worker,
+                            database,
+                            [self] (FindAllRequest::pointer const& request) {
+                                self->onRequestFinish(request);
+                            }
+                        );
                         _findAllRequests.push_back(request);
                         _numLaunched++;
                     }
@@ -289,6 +298,7 @@ DeleteWorkerJob::disableWorker() {
     // Temporary disable this worker from the configuration. If it's requsted
     // to be permanently deleted this will be done only after all other relevamnt
     // operations of this job will be done.
+
     _controller->serviceProvider()->config()->disableWorker(_worker);
 
     // Launch the chained jobs to get chunk disposition within the rest
@@ -326,6 +336,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
     do {
         // This lock will be automatically released beyond this scope
         // to allow client notifications (see the end of the method)
+
         LOCK_GUARD;
 
         _numFinished++;
@@ -387,6 +398,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
     do {
         // This lock will be automatically release beyond this scope
         // to allow client notifications (see the end of the method)
+
         LOCK_GUARD;
 
         _numFinished++;
@@ -438,7 +450,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
             // Do this only if requested, and only in case of the successful
             // completion of the job
             if (_permanentDelete) {
-                _controller->serviceProvider()->config()->deleteWorker (_worker);
+                _controller->serviceProvider()->config()->deleteWorker(_worker);
             }
             finish(ExtendedState::SUCCESS);
             break;

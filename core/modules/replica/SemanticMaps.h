@@ -346,7 +346,7 @@ public:
 /**
  * 3-layered map template for any value type
  *
- * chunk(number).database(name).worker(name) -> T
+ *   .chunk(number).database(name).worker(name) -> T
  */
 template<typename T>
 using ChunkDatabaseWorkerMap =
@@ -357,13 +357,44 @@ using ChunkDatabaseWorkerMap =
 /**
  * 3-layered map template for any value type
  *
- * .worker(name).chunk(number).database(name) -> T
+ *   .worker(name).chunk(number).database(name) -> T
  */
 template<typename T>
 using WorkerChunkDatabaseMap =
         detail::WorkerMap<
             detail::ChunkMap<
                 detail::DatabaseMap<T>>>;
+
+/**
+ * Merge algorithm for the 3-layered map template for any
+ * value type:
+ *
+ *   .chunk(number).database(name).worker(name) -> T
+ *
+ * @param dst - destination collection to be extended
+ * @param src - input collection whose content is to be merged
+ *              into the destinaton
+ * @param ignoreDuplicateKeys - ignore duplicate keys if 'true'.
+ *              NOTE: the 'key' in this context is a composite
+ *              key of all levels of a map.
+ *
+ * @throws std::invalid_argument - on attempts to merge a collection with itself
+ * @throws std::range_error - on duplicate keys if ignoreDuplicateKeys is 'false'
+ */
+ template<typename T>
+ void mergeMap(ChunkDatabaseWorkerMap<T>& dst,
+               ChunkDatabaseWorkerMap<T> const& src,
+               bool ignoreDuplicateKeys = false) {
+
+     for (auto chunk: src.chunkNumbers()) {
+         auto const& srcChunkMap = src.chunk(chunk);
+         for (auto database: srcChunkMap.databaseNames()) {
+             dst.atChunk(chunk).atDatabase(database).merge(
+                 srcChunkMap.database(database),
+                 ignoreDuplicateKeys);
+         }
+     }
+ }
 
 }}} // namespace lsst::qserv::replica
 

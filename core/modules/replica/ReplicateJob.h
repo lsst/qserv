@@ -37,10 +37,10 @@
 #include <string>
 
 // Qserv headers
+#include "replica/CreateReplicaJob.h"
 #include "replica/Job.h"
 #include "replica/FindAllJob.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ReplicationRequest.h"
 
 // Forward declarations
 
@@ -57,7 +57,7 @@ namespace replica {
 struct ReplicateJobResult {
 
     /// Results reported by workers upon the successfull completion
-    /// of the corresponidng requests
+    /// of the corresponidng replica creation jobs
     std::list<ReplicaInfo> replicas;
 
     /// Results groupped by: chunk number, database, worker
@@ -66,8 +66,8 @@ struct ReplicateJobResult {
                       std::map<std::string, // worker
                                ReplicaInfo>>> chunks;
 
-    /// Per-worker flags indicating if the corresponidng replica retreival
-    /// request succeeded.
+    /// Per-worker flags indicating if the corresponidng replica creation
+    /// job succeeded.
     std::map<std::string, bool> workers;
 };
 
@@ -83,10 +83,10 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicateJob> pointer;
 
-    /// The function type for notifications on the completon of the request
+    /// The function type for notifications on the completon of the job
     typedef std::function<void(pointer)> callback_type;
 
-    /// @return default options object for this type of a request
+    /// @return default options object for this type of a job
     static Job::Options const& defaultOptions();
 
     /**
@@ -98,7 +98,7 @@ public:
      * @param numReplicas    - optional (if not 0) override for the minimum number of replicas
      *                         for each chunk. If the parameter is set to 0 then the corresponding
      *                         configuration option for the database family will be assumed.
-     * @param controller     - for launching requests
+     * @param controller     - for launching jobs
      * @param parentJobId    - optional identifier of a parent job
      * @param onFinish       - callback function to be called upon a completion of the job
      * @param options        - job options
@@ -134,9 +134,9 @@ public:
      *   status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
      *
-     * - the result will be extracted from requests which have successfully
+     * - the result will be extracted from the replica creation which have successfully
      *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     *   to ensure that all jobs have finished.
      *
      * @return the data structure to be filled upon the completin of the job.
      *
@@ -187,11 +187,11 @@ protected:
     void onPrecursorJobFinish();
 
     /**
-     * The calback function to be invoked on a completion of each request.
+     * The calback function to be invoked on a completion of each replication job
      *
-     * @param request - a pointer to a request
+     * @param job - pointer to a job
      */
-    void onRequestFinish(ReplicationRequest::pointer const& request);
+    void onCreateJobFinish(CreateReplicaJob::pointer const& job);
 
     /**
      * Restart the job from scratch. This method will reset object context
@@ -227,36 +227,35 @@ protected:
 
     /// The number of chunks which require the replication but couldn't be locked
     /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last request, and if it were found not empty another iteraton
-    /// of the job will be undertaken
+    /// of the last replica creation job, and if it were found not empty another
+    /// iteration of the job will be undertaken
     size_t _numFailedLocks;
 
-    /// A collection of requests groupped by the corresponidng chunk
+    /// A collection of jobs groupped by the corresponidng chunk
     /// number. The main idea is simplify tracking the completion status
     /// of the operation on each chunk. Requests will be added to the
     /// corresponding group as they're launched, and removed when they
     /// finished. This allows releasing (unlocking) chunks before
     /// the whole job finishes.
     ///
-    /// [chunk][worker][database]
+    /// [chunk][worker]
     //
     std::map<unsigned int,
              std::map<std::string,
-                      std::map<std::string,
-                               ReplicationRequest::pointer>>> _chunk2requests;
+                      CreateReplicaJob::pointer>> _chunk2jobs;
 
-    /// A collection of requests implementing the operation
-    std::list<ReplicationRequest::pointer> _requests;
+    /// A collection of replica creation jobs implementing the operation
+    std::list<CreateReplicaJob::pointer> _jobs;
 
-    // The counter of requests which will be updated. They need to be atomic
+    // The counter of jobs which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
     // the Controller's thread and this thread.
 
-    std::atomic<size_t> _numLaunched;   ///< the total number of requests launched
-    std::atomic<size_t> _numFinished;   ///< the total number of finished requests
-    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
+    std::atomic<size_t> _numLaunched;   ///< the total number of replica creation jobs launched
+    std::atomic<size_t> _numFinished;   ///< the total number of finished jobs
+    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed jobs
 
-    /// The result of the operation (gets updated as requests are finishing)
+    /// The result of the operation (gets updated as jobs are finishing)
     ReplicateJobResult _replicaData;
 };
 

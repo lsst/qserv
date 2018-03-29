@@ -70,12 +70,6 @@ struct FindAllJobResult {
     ///
     ///      [chunk][database][worker]
     ///
-    /*
-    std::map<unsigned int,
-             std::map<std::string,
-                      std::map<std::string,
-                               ReplicaInfo>>> chunks;
-    */
     ChunkDatabaseWorkerMap<ReplicaInfo> chunks;
 
     /// [ALL CHUNKS]  The participating databases for a chunk.
