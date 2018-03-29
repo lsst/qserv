@@ -52,6 +52,29 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
 
+template <typename T>
+class DumpHelper;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, DumpHelper<T> const& dumpHelper) {
+    if (dumpHelper._dumpee != nullptr) {
+        dumpHelper._dumpee->dump(os);
+    } else {
+        os << "nullptr";
+    }
+    return os;
+}
+
+template <typename T>
+class DumpHelper {
+public:
+    DumpHelper(const shared_ptr<T>& dumpee)
+    : _dumpee(dumpee) {}
+
+    const shared_ptr<T> _dumpee;
+};
+
+
 }
 
 
@@ -240,7 +263,7 @@ public:
 
 class PredicateExpressionCBH : public BaseCBH {
 public:
-    virtual void handlePredicateExpression(/*todo*/) = 0;
+    virtual void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) = 0;
 };
 
 
@@ -282,6 +305,9 @@ class LogicalExpressionCBH : public BaseCBH {
 public:
     // pass thru to parent for qserv function spec
     virtual void handleQservFunctionSpec(const string& functionName, const vector<string>& args) = 0;
+
+    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+            antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 
@@ -508,9 +534,21 @@ public:
         _tableRefList = tableRefList;
     }
 
-    void handlePredicateExpression() override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
+
+    void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        if (_ctx->whereExpr == childCtx) {
+            auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
+            _rootTerm->addBoolTerm(boolTerm);
+            return;
+        }
+
+        CHECK_EXECUTION_CONDITION(false, "todo");
+    }
+
 
 //    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
 //        if (_ctx->whereExpr == childCtx) {
@@ -530,14 +568,15 @@ public:
 
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
+        _whereClause->setRootTerm(_rootTerm);
         lockedParent()->handleFromClause(fromList, _whereClause);
     }
 
 private:
     // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
-    // TODO figure out exactly where to do that.
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
+    shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
     QSMySqlParser::FromClauseContext * _ctx;
 };
 
@@ -771,6 +810,7 @@ private:
 };
 
 
+// PredicateExpressionAdapter gathers BoolFactors into a BoolFactor (which is a BoolTerm).
 class PredicateExpressionAdapter :
         public AdapterT<PredicateExpressionCBH>,
         public BinaryComparasionPredicateCBH,
@@ -794,24 +834,15 @@ public:
 
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
-
-        // todo/next
-        // this needs to get handled but it's not obvious how.
-        // I examined the enter/exit tree. I see there is a enter that is (probably) getting ignored:
-        // `QSMySqlListener.cc:1843) - enterLogicalOperator AND`
-        // and from the top of the old-hierarchy dump there are AndTerm and OrTerm that need to receive
-        // the logical operator AND etc. This is probably the place to start; figure out where in the tree
-        // the AND should get cached, and then trickle other stuff up to it.
-
+        _boolFactor->addBoolFactorTerm(betweenPredicate);
     }
 
     void onExit() {
-        CHECK_EXECUTION_CONDITION(false, "todo")
-        lockedParent()->handlePredicateExpression();
+        lockedParent()->handlePredicateExpression(_boolFactor);
     }
 
 private:
+    shared_ptr<query::BoolFactor> _boolFactor {make_shared<query::BoolFactor>()};
     QSMySqlParser::PredicateExpressionContext * _ctx;
 };
 
@@ -1102,7 +1133,7 @@ public:
         ValueExprFactory::addValueFactor(_args, argFactor);
     }
 
-    void handlePredicateExpression() override {
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
@@ -1128,15 +1159,20 @@ class LogicalExpressionAdapter :
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
                              QSMySqlParser::LogicalExpressionContext * ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
-    void handlePredicateExpression() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+        _setNextTerm(boolFactor);
     }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
         // handles the rest of the where clause, pass the function straight up to the parent.
+        CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator && nullptr == _leftTerm &&
+                nullptr == _rightTerm && false == _leftHandled,
+                "qserv function should be the first term to be set one or more terms is set; " << *this);
+        _setNextTerm();
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
@@ -1147,18 +1183,74 @@ public:
             break;
 
         case LogicalOperatorCBH::AND:
-            CHECK_EXECUTION_CONDITION(nullptr == logicalOperator, "logical operator must be set only once.");
-            logicalOperator = make_shared<query::AndTerm>();
+            // We capture the AndTerm into a base class so we can pass by reference into the setter.
+            shared_ptr<query::LogicalTerm> logicalTerm = make_shared<query::AndTerm>();
+            _setLogicalOperator(logicalTerm);
         }
     }
 
-    void onExit() override {
+    virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
+            antlr4::ParserRuleContext* childCtx) {
+        _setNextTerm(logicalTerm);
+    }
 
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(_logicalOperator != nullptr && true == _leftHandled
+                && _rightTerm != nullptr,
+                "one or more terms is not set; " << *this);
+        if (_leftTerm != nullptr) {
+            _logicalOperator->addBoolTerm(_leftTerm);
+        }
+        _logicalOperator->addBoolTerm(_rightTerm);
+        lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
     }
 
 private:
-    shared_ptr<query::BoolTerm> logicalOperator;
+    void _setLogicalOperator(shared_ptr<query::LogicalTerm>& logicalTerm) {
+        CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator,
+                "logical operator must be set only once. existing:" << *this <<
+                ", new:" << DumpHelper<query::LogicalTerm>(logicalTerm));
+        _logicalOperator = logicalTerm;
+    }
+
+    void _setNextTerm(shared_ptr<query::BoolTerm> term = nullptr) {
+        if (false == _leftHandled) {
+            _leftTerm = term;
+            _leftHandled = true;
+        } else if (nullptr == _rightTerm) {
+            CHECK_EXECUTION_CONDITION(nullptr != term, "Only the left term can be null");
+            _rightTerm = term;
+        } else {
+            CHECK_EXECUTION_CONDITION(false, "The left and right terms can only be set once each, " <<
+                    "they are already set; " << *this);
+        }
+    }
+
+    friend ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter);
+
+    // a qserv restrictor fucntion can be the left side of a predicate (currently it can only be the left
+    // side; that is to say, it can only be the first term in the WHERE clause. If `handleQservFunctionSpec`
+    // is called and _leftTerm is null (as well as _rightTerm and _logicalOperator, then _leftHandled is set
+    // to true to indicate that the left term has been handled. This allows onExit to put only one term into
+    // the logicalOperator and know that it was ok (the qserv IR accepts an AndTerm with only one factor).
+    // This mechanism does not fully proect against qserv restrictors that may be the left side of a
+    // subsequent logical expression. TBD if that's really an issue.
+    bool _leftHandled {false};
+    shared_ptr<query::BoolTerm> _leftTerm;
+    shared_ptr<query::LogicalTerm> _logicalOperator;
+    shared_ptr<query::BoolTerm> _rightTerm;
+    QSMySqlParser::LogicalExpressionContext * _ctx;
 };
+
+
+ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter) {
+    os << "LogicalExpressionAdapter(left:" << DumpHelper<query::BoolTerm>(logicalExpressionAdapter._leftTerm)
+            << ", right:" << DumpHelper<query::BoolTerm>(logicalExpressionAdapter._rightTerm)
+            << ", logicalOperator:"
+            << DumpHelper<query::LogicalTerm>(logicalExpressionAdapter._logicalOperator)
+            << ")";
+    return os;
+}
 
 
 class BetweenPredicateAdapter :
