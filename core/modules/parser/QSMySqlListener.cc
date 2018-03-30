@@ -74,6 +74,28 @@ public:
     const shared_ptr<T> _dumpee;
 };
 
+template <typename T>
+class DbgPrintHelper;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, DbgPrintHelper<T> const& dbgPrintHelper) {
+    if (dbgPrintHelper._dumpee != nullptr) {
+        dbgPrintHelper._dumpee->dbgPrint(os);
+    } else {
+        os << "nullptr";
+    }
+    return os;
+}
+
+template <typename T>
+class DbgPrintHelper {
+public:
+    DbgPrintHelper(const shared_ptr<T>& dumpee)
+    : _dumpee(dumpee) {}
+
+    const shared_ptr<T> _dumpee;
+};
+
 
 }
 
@@ -324,12 +346,13 @@ public:
 
 class MathExpressionAtomCBH : public BaseCBH {
 public:
+    virtual void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
 
 
 class FunctionCallExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleFunctionCallExpressionAtom(shared_ptr<query::ValueExpr> valueExpr) = 0;
+    virtual void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) = 0;
 };
 
 
@@ -349,6 +372,10 @@ public:
 
 class MathOperatorCBH : public BaseCBH {
 public:
+    enum OperatorType {
+        SUBTRACT,
+    };
+    virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
 
 
@@ -752,7 +779,14 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleFunctionCallExpressionAtom(shared_ptr<query::ValueExpr> valueExpr) override {
+    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
+        auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
+    }
+
+    void handleMathExpressionAtomAdapter(shared_ptr<query::ValueExpr> valueExpr) override {
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -760,6 +794,11 @@ public:
         CHECK_EXECUTION_CONDITION(false, "when is this called?");
 //        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 //        lockedParent()->handleExpressionAtomPredicate(columnValueExpr);
+    }
+
+    void onEnter() override {
+        CHECK_EXECUTION_CONDITION(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported");
+        CHECK_EXECUTION_CONDITION(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported");
     }
 
     void onExit() override {}
@@ -1172,7 +1211,6 @@ public:
         CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator && nullptr == _leftTerm &&
                 nullptr == _rightTerm && false == _leftHandled,
                 "qserv function should be the first term to be set one or more terms is set; " << *this);
-        _setNextTerm();
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
@@ -1196,12 +1234,14 @@ public:
 
     void onExit() override {
         CHECK_EXECUTION_CONDITION(_logicalOperator != nullptr && true == _leftHandled
-                && _rightTerm != nullptr,
+                , // && _rightTerm != nullptr, // it's ok for the right term to not be set.
                 "one or more terms is not set; " << *this);
         if (_leftTerm != nullptr) {
             _logicalOperator->addBoolTerm(_leftTerm);
         }
-        _logicalOperator->addBoolTerm(_rightTerm);
+        if (_rightTerm != nullptr) {
+            _logicalOperator->addBoolTerm(_rightTerm);
+        }
         lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
     }
 
@@ -1235,7 +1275,7 @@ private:
     // the logicalOperator and know that it was ok (the qserv IR accepts an AndTerm with only one factor).
     // This mechanism does not fully proect against qserv restrictors that may be the left side of a
     // subsequent logical expression. TBD if that's really an issue.
-    bool _leftHandled {false};
+    bool _leftHandled {false}; // todo I think this needs to be removed and all the handling cleaned up.
     shared_ptr<query::BoolTerm> _leftTerm;
     shared_ptr<query::LogicalTerm> _logicalOperator;
     shared_ptr<query::BoolTerm> _rightTerm;
@@ -1317,16 +1357,57 @@ public:
 
 class MathExpressionAtomAdapter :
         public AdapterT<MathExpressionAtomCBH>,
-        public MathOperatorCBH {
+        public MathOperatorCBH,
+        public FunctionCallExpressionAtomCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
                               QSMySqlParser::MathExpressionAtomContext * ctx)
     : AdapterT(parent) {}
 
-    void onExit() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+    void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
+        _setNextFuncExpr(funcExpr);
     }
+
+    void handleMathOperator(MathOperatorCBH::OperatorType operatorType) override {
+        // need to make:
+        // FactorOp(MINUS, factor:ValueFactor(type:Function, funcExpr)
+        CHECK_EXECUTION_CONDITION(MathOperatorCBH::SUBTRACT == operatorType,
+                "Currenty only subtract is supported.");
+        _op = query::ValueExpr::MINUS;
+    }
+
+    void onExit() override {
+        CHECK_EXECUTION_CONDITION(query::ValueExpr::NONE != _op && nullptr != _left && nullptr != _right,
+                "Not all fields are set:" << *this);
+        auto valueExpr = ValueExprFactory::newOperationFuncExpr(_left, _op, _right);
+        lockedParent()->handleMathExpressionAtomAdapter(valueExpr);
+    }
+
+private:
+    friend ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter);
+
+    void _setNextFuncExpr(shared_ptr<query::FuncExpr> funcExpr) {
+        if (nullptr == _left) {
+            _left = funcExpr;
+        } else if (nullptr == _right) {
+            _right = funcExpr;
+        } else {
+            CHECK_EXECUTION_CONDITION(false, "left and right are both already set:" << *this);
+        }
+    }
+
+    query::ValueExpr::Op _op {query::ValueExpr::NONE};
+    shared_ptr<query::FuncExpr> _left;
+    shared_ptr<query::FuncExpr> _right;
 };
+
+
+ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter) {
+os << "MathExpressionAtomAdapter(left:" << DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._left)
+        << ", right:" << DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._right)
+        << ")";
+return os;
+}
 
 
 class FunctionCallExpressionAtomAdapter :
@@ -1346,10 +1427,10 @@ public:
     // it will set the alias in the generated valueFactor
 
     void onExit() {
-        auto valueFactor = query::ValueFactor::newFuncFactor(_funcExpr);
-        auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
-        lockedParent()->handleFunctionCallExpressionAtom(valueExpr);
+//        auto valueFactor = query::ValueFactor::newFuncFactor(_funcExpr);
+//        auto valueExpr = make_shared<query::ValueExpr>();
+//        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent()->handleFunctionCallExpressionAtom(_funcExpr);
     }
 
 private:
@@ -1396,11 +1477,17 @@ class MathOperatorAdapter :
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
                         QSMySqlParser::MathOperatorContext * ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        if (_ctx->getText() == "-") {
+            lockedParent()->handleMathOperator(MathOperatorCBH::SUBTRACT);
+        }
     }
+
+private:
+    QSMySqlParser::MathOperatorContext * _ctx;
 };
 
 
