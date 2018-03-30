@@ -38,12 +38,15 @@
 // Third-party headers
 #include <antlr/AST.hpp>
 
+#include "query/ValueExpr.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
-    class ValueExpr;
+    class FuncExpr;
     class ValueFactor;
+
 }
 namespace parser {
     class ColumnRefNodeMap;
@@ -63,6 +66,18 @@ public:
 
     ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap);
     std::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
+
+    // make a ValueExpr that represents an operaton eg.
+    // `scisql_fluxToAbMag ( gFlux_PS ) - scisql_fluxToAbMag ( rFlux_PS )`
+    // Right now this only supports FuncExpr for the lhs & rhs, but could be expanded to support constant
+    // values, column names, etc. (I think it will either require major polymorphism to support all the
+    // combinations of types for the two sides, because FuncExpr, ColumnRef, and ValueExpr are not related,
+    // or these 3 unrelated types may need to become related via a common base class or boost::variant, or
+    // something. It's not needed right now (for DM-13460) so for now this is Good Enough.
+    static std::shared_ptr<query::ValueExpr> newOperationFuncExpr(std::shared_ptr<query::FuncExpr> lhs,
+                                                                  query::ValueExpr::Op op,
+                                                                  std::shared_ptr<query::FuncExpr> rhs);
+
 
 private:
     std::shared_ptr<ValueFactorFactory> _valueFactorFactory;
