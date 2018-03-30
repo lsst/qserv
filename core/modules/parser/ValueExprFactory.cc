@@ -71,6 +71,25 @@ ValueExprFactory::ValueExprFactory(std::shared_ptr<ColumnRefNodeMap> cMap)
     : _valueFactorFactory(new ValueFactorFactory(cMap, *this)) {
 }
 
+
+std::shared_ptr<query::ValueExpr>
+ValueExprFactory::newOperationFuncExpr(std::shared_ptr<query::FuncExpr> lhs,
+                                       query::ValueExpr::Op op,
+                                       std::shared_ptr<query::FuncExpr> rhs) {
+    auto valueExpr = std::make_shared<query::ValueExpr>();
+    query::ValueExpr::FactorOp lhsFactorOp;
+    lhsFactorOp.op = op;
+    lhsFactorOp.factor = query::ValueFactor::newFuncFactor(lhs);
+    valueExpr->_factorOps.push_back(lhsFactorOp);
+    query::ValueExpr::FactorOp rhsFactorOp;
+    rhsFactorOp.op = query::ValueExpr::NONE;
+    rhsFactorOp.factor = query::ValueFactor::newFuncFactor(rhs);
+    valueExpr->_factorOps.push_back(rhsFactorOp);
+    return valueExpr;
+}
+
+
+
 // VALUE_EXP                     //
 // |      \                      //
 // TERM   (TERM_OP TERM)*        //
