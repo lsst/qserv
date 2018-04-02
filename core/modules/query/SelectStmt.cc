@@ -53,7 +53,7 @@
 #include "query/OrderByClause.h"
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
-
+#include "util/PointerCompare.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
@@ -219,6 +219,20 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     }
     return os;
 }
+
+
+bool SelectStmt::operator==(const SelectStmt& rhs) {
+    return (util::pointerCompare(_fromList, rhs._fromList) &&
+            util::pointerCompare(_selectList, rhs._selectList) &&
+            util::pointerCompare(_whereClause, rhs._whereClause) &&
+            util::pointerCompare(_orderBy, rhs._orderBy) &&
+            util::pointerCompare(_groupBy, rhs._groupBy) &&
+            util::pointerCompare(_having, rhs._having) &&
+            _hasDistinct == rhs._hasDistinct &&
+            _limit == rhs._limit &&
+            OutputMods == rhs.OutputMods);
+}
+
 
 std::ostream& SelectStmt::dump(std::ostream& os) {
     os << "SelectStmt(..., whereClause:";

@@ -76,6 +76,8 @@ public:
     void renderTo(QueryTemplate& qt) const;
 
     void dbgPrint(std::ostream& os) const;
+
+    bool operator==(const FuncExpr& rhs) const;
 private:
     std::string _name;
 };

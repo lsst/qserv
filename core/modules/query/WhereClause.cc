@@ -44,6 +44,7 @@
 #include "global/Bug.h"
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
 
 namespace {
 
@@ -218,6 +219,12 @@ std::ostream& WhereClause::dump(std::ostream& os) {
     }
     os << ")";
     return os;
+}
+
+bool WhereClause::operator==(WhereClause& rhs) const {
+    return (_original == rhs._original &&
+            util::pointerCompare(_tree, rhs._tree) &&
+            util::pointerCompare(_restrs, rhs._restrs));
 }
 
 

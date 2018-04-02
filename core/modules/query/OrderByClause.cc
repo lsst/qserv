@@ -44,6 +44,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/PointerCompare.h"
 
 namespace {
 
@@ -114,6 +115,13 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
     return os;
 }
 
+bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
+    return util::pointerCompare(_expr, rhs._expr) &&
+            _order == rhs._order &&
+            _collate == rhs._collate;
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
@@ -162,5 +170,10 @@ void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
         list.push_back(i->getExpr());
     }
 }
+
+bool OrderByClause::operator==(const OrderByClause& rhs) const {
+    return util::pointerCompare(_terms, rhs._terms);
+}
+
 
 }}} // namespace lsst::qserv::query

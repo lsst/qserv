@@ -39,6 +39,7 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -86,5 +87,10 @@ void
 HavingClause::findValueExprs(ValueExprPtrVector& list) {
     if (_tree) { _tree->findValueExprs(list); }
 }
+
+bool HavingClause::operator==(const HavingClause& rhs) const {
+    return util::pointerCompare(_tree, rhs._tree);
+}
+
 
 }}} // namespace lsst::qserv::query

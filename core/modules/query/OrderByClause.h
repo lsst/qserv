@@ -71,6 +71,8 @@ public:
     Order getOrder() const;
     void renderTo(QueryTemplate& qt) const;
 
+    bool operator==(const OrderByTerm& rhs) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
     friend class render;
@@ -97,6 +99,8 @@ public:
     std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
 
     void findValueExprs(ValueExprPtrVector& list);
+
+    bool operator==(const OrderByClause& rhs) const;
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend class parser::ModFactory;

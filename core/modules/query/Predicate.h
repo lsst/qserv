@@ -37,6 +37,7 @@
 // Local headers
 #include "query/typedefs.h"
 #include "query/BoolTerm.h"
+#include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
@@ -111,6 +112,16 @@ public:
 
     std::ostream& dump(std::ostream& os) const override;
 
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsCompPredicate = dynamic_cast<CompPredicate const * const>(&rhs);
+        if (nullptr == rhsCompPredicate) {
+            return false;
+        }
+        return util::pointerCompare(left, rhsCompPredicate->left) &&
+               op == rhsCompPredicate->op &&
+               util::pointerCompare(right, rhsCompPredicate->right);
+    }
+
     ValueExprPtr left;
     int op; // Parser token type of operator
     ValueExprPtr right;
@@ -134,6 +145,15 @@ public:
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
     std::ostream& dump(std::ostream& os) const override;
+
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsInPredicate = dynamic_cast<InPredicate const * const>(&rhs);
+        if (nullptr == rhsInPredicate) {
+            return false;
+        }
+        return util::pointerCompare(value, rhsInPredicate->value) &&
+               util::vectorPointerCompare(cands, rhsInPredicate->cands);
+    }
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
@@ -160,6 +180,16 @@ public:
 
     std::ostream& dump(std::ostream& os) const override;
 
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const * const>(&rhs);
+        if (nullptr == rhsBetweenPredicate) {
+            return false;
+        }
+        return util::pointerCompare(value, rhsBetweenPredicate->value) &&
+               util::pointerCompare(minValue, rhsBetweenPredicate->minValue) &&
+               util::pointerCompare(maxValue, rhsBetweenPredicate->maxValue);
+    }
+
     ValueExprPtr value;
     ValueExprPtr minValue;
     ValueExprPtr maxValue;
@@ -184,6 +214,15 @@ public:
 
     std::ostream& dump(std::ostream& os) const override;
 
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsLikePredicate = dynamic_cast<LikePredicate const * const>(&rhs);
+        if (nullptr == rhsLikePredicate) {
+            return false;
+        }
+        return util::pointerCompare(value, rhsLikePredicate->value) &&
+               util::pointerCompare(charValue, rhsLikePredicate->charValue);
+    }
+
     ValueExprPtr value;
     ValueExprPtr charValue;
 };
@@ -207,6 +246,14 @@ public:
     static int reverseOp(int op); // Reverses operator token
 
     std::ostream& dump(std::ostream& os) const override;
+
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsNullPredicate = dynamic_cast<NullPredicate const * const>(&rhs);
+        if (nullptr == rhsNullPredicate) {
+            return false;
+        }
+        return hasNot == rhsNullPredicate->hasNot && util::pointerCompare(value, rhsNullPredicate->value);
+    }
 
     ValueExprPtr value;
     bool hasNot;

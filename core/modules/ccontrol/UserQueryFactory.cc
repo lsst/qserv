@@ -171,6 +171,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << stmtHierarchy.str());
         }
 
+        bool theyMatch(*a4stmt == *stmt);
+        LOGS(_log, LOG_LVL_DEBUG, "they match:" << theyMatch);
+
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();
         if (tblRefList.size() == 1) {

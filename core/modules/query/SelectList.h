@@ -80,6 +80,8 @@ public:
     }
 
     friend class parser::SelectListFactory;
+
+    bool operator==(const SelectList& rhs);
 private:
 
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);

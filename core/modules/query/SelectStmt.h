@@ -153,6 +153,8 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
+    bool operator==(const SelectStmt& rhs);
+
     std::ostream& dump(std::ostream& os);
 
 private:
