@@ -37,6 +37,9 @@
 
 // Third-party headers
 
+
+#include "util/PointerCompare.h"
+
 namespace lsst {
 namespace qserv {
 namespace query {
@@ -128,6 +131,10 @@ FromList::clone() const {
         newL->_tableRefs->push_back((*i)->clone());
     }
     return newL;
+}
+
+bool FromList::operator==(const FromList& rhs) {
+    return util::pointerCompare(_tableRefs, rhs._tableRefs);
 }
 
 }}} // namespace lsst::qserv::query

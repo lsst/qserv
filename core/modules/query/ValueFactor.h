@@ -98,6 +98,8 @@ public:
     class render;
     friend class render;
 
+    bool operator==(const ValueFactor& rhs) const;
+
     std::ostream& dbgPrint(std::ostream& os) const;
 
 private:

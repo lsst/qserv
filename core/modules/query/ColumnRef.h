@@ -65,6 +65,8 @@ public:
     void renderTo(QueryTemplate& qt) const;
 
     void dbgPrint(std::ostream& os) const;
+
+    bool operator==(const ColumnRef& rhs) const;
 };
 
 }}} // namespace lsst::qserv::query
