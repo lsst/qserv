@@ -38,6 +38,7 @@
 // Local headers
 #include "query/ColumnRef.h"
 #include "query/typedefs.h"
+#include "util/PointerCompare.h"
 
 
 // Forward declarations
@@ -70,6 +71,7 @@ public:
         std::shared_ptr<ValueFactor> factor;
         Op op;
         void dbgPrint(std::ostream& os) const;
+        bool operator==(const FactorOp& rhs) const;
     };
     typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
@@ -129,10 +131,16 @@ public:
     friend class parser::ValueExprFactory;
     class render;
     friend class render;
+
 private:
+    friend bool operator==(const ValueExpr& lhs, const ValueExpr& rhs);
     std::string _alias;
     FactorOpVector _factorOps;
 };
+
+bool operator==(const ValueExpr& lhs, const ValueExpr& rhs);
+
+
 /// A helper functor for rendering to QueryTemplates
 class ValueExpr::render {
 public:

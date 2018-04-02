@@ -106,6 +106,11 @@ void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
+bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
+    return (util::pointerCompare(factor, rhs.factor) && op == rhs.op);
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
@@ -327,6 +332,11 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
+bool operator==(const ValueExpr& lhs, const ValueExpr& rhs) {
+    return (lhs._alias == rhs._alias &&
+            lhs._factorOps == rhs._factorOps);
+}
+
 // Miscellaneous
 struct _copyValueExpr {
     ValueExprPtr operator()(ValueExprPtr const& p) {
@@ -340,4 +350,6 @@ void cloneValueExprPtrVector(ValueExprPtrVector& dest,
                    dest.begin(),
                    _copyValueExpr());
 }
+
+
 }}} // namespace lsst::qserv::query
