@@ -72,6 +72,11 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
     return os;
 }
 
+bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
+    return util::pointerCompare(_expr, rhs._expr) &&
+            _collate == rhs._collate;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // GroupByClause
 ////////////////////////////////////////////////////////////////////////
@@ -125,6 +130,10 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
     for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
         list.push_back(i->getExpr());
     }
+}
+
+bool GroupByClause::operator==(const GroupByClause& rhs) const {
+    return util::pointerCompare(_terms, rhs._terms);
 }
 
 }}} // namespace lsst::qserv::query

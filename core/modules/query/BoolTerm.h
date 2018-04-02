@@ -33,6 +33,7 @@
   */
 
 // System headers
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -45,6 +46,7 @@
 #include "global/stringTypes.h"
 #include "query/ColumnRef.h"
 #include "typedefs.h"
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -68,6 +70,11 @@ public:
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 
     virtual std::ostream& dump(std::ostream& os) const = 0;
+    virtual bool equal(const BoolFactorTerm& rhs) const = 0;
+
+    bool operator==(const BoolFactorTerm& rhs) const {
+        return equal(rhs);
+    }
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -109,9 +116,16 @@ public:
         return std::shared_ptr<BoolTerm>(); }
 
     virtual std::ostream& dump(std::ostream& os) const = 0;
+
+    virtual bool equal(const BoolTerm& rhs) const = 0;
+
+    bool operator==(const BoolTerm& rhs) {
+        return equal(rhs);
+    }
 };
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
+
 
 class LogicalTerm : public BoolTerm {
 public:
@@ -156,7 +170,16 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     std::ostream& dump(std::ostream& os) const override;
+
+    bool equal(const BoolTerm& rhs) const override {
+        auto rhsOrTerm = dynamic_cast<OrTerm const * const>(&rhs);
+        if (nullptr == rhsOrTerm) {
+            return false;
+        }
+        return util::vectorPointerCompare(_terms, rhsOrTerm->_terms);
+    }
 };
+
 
 /// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public LogicalTerm {
@@ -191,7 +214,16 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     std::ostream& dump(std::ostream& os) const override;
+
+    bool equal(const BoolTerm& rhs) const override {
+        auto rhsAndTerm = dynamic_cast<AndTerm const * const>(&rhs);
+        if (nullptr == rhsAndTerm) {
+            return false;
+        }
+        return util::vectorPointerCompare(_terms, rhsAndTerm->_terms);
+    }
 };
+
 
 /// BoolFactor is a plain factor in a BoolTerm
 class BoolFactor : public BoolTerm {
@@ -224,6 +256,18 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
+    bool operator==(const BoolFactor& rhs) const {
+        return util::vectorPointerCompare(_terms, rhs._terms);
+    }
+
+    bool equal(const BoolTerm& rhs) const override{
+        auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
+        if (nullptr == rhsBoolFactor) {
+            return false;
+        }
+        return *this == *rhsBoolFactor;
+    }
+
     BoolFactorTerm::PtrVector _terms;
 
     std::ostream& dump(std::ostream& os) const override;
@@ -231,6 +275,7 @@ private:
     bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
     bool _checkParen(BoolFactorTerm::PtrVector& terms);
 };
+
 
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
 /// syntax that is not analyzed, modified, or manipulated in Qserv.
@@ -241,7 +286,10 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     std::ostream& dump(std::ostream& os) const override;
+    bool operator==(const UnknownTerm& rhs) { return true; }
+    bool equal(const BoolTerm& rhs) const override { return true; }
 };
+
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
@@ -257,7 +305,16 @@ public: // text
     std::string _text;
 
     std::ostream& dump(std::ostream& os) const override;
+
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsPassTerm = dynamic_cast<PassTerm const * const>(&rhs);
+        if (nullptr == rhsPassTerm) {
+            return false;
+        }
+        return _text == rhsPassTerm->_text;
+    }
 };
+
 
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BoolFactorTerm {
@@ -270,7 +327,15 @@ public: // ( term, term, term )
     virtual void renderTo(QueryTemplate& qt) const;
     std::ostream& dump(std::ostream& os) const override;
     StringVector _terms;
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsTerm = dynamic_cast<PassListTerm const * const>(&rhs);
+        if (nullptr == rhsTerm) {
+            return false;
+        }
+        return _terms == rhsTerm->_terms;
+    }
 };
+
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
 /// when parentheses are used within a bool term. The parenthetical group is an
@@ -293,8 +358,17 @@ public:
 
     std::ostream& dump(std::ostream& os) const override;
 
+    bool equal(const BoolFactorTerm& rhs) const override {
+        auto rhsTerm = dynamic_cast<BoolTermFactor const * const>(&rhs);
+        if (nullptr == rhsTerm) {
+            return false;
+        }
+        return util::pointerCompare(_term, rhsTerm->_term);
+    }
+
     std::shared_ptr<BoolTerm> _term;
 };
+
 
 }}} // namespace lsst::qserv::query
 

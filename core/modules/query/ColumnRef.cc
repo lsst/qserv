@@ -61,4 +61,12 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 
+bool ColumnRef::operator==(const ColumnRef& rhs) const {
+    return db == rhs.db &&
+            table == rhs.table &&
+            column == rhs.column;
+
+}
+
+
 }}} // namespace lsst::qserv::query

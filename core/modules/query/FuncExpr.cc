@@ -147,4 +147,9 @@ FuncExpr::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
+bool FuncExpr::operator==(const FuncExpr& rhs) const {
+    return _name == rhs._name &&
+            params == rhs.params;
+}
+
 }}} // namespace lsst::qserv::query

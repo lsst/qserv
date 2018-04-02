@@ -200,5 +200,14 @@ std::ostream& ValueFactor::dbgPrint(std::ostream& os) const {
     return os;
 }
 
+bool ValueFactor::operator==(const ValueFactor& rhs) const {
+    return (_type == rhs._type &&
+            util::pointerCompare(_columnRef, rhs._columnRef) &&
+            util::pointerCompare(_funcExpr, rhs._funcExpr) &&
+            util::pointerCompare(_valueExpr, rhs._valueExpr) &&
+            _alias == rhs._alias &&
+            _tableStar == rhs._tableStar);
+}
+
 
 }}} // namespace lsst::qserv::query

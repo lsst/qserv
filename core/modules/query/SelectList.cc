@@ -58,6 +58,7 @@
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "query/ValueFactor.h"
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -138,6 +139,10 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
     newS->_valueExprList = std::make_shared<ValueExprPtrVector>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
+}
+
+bool SelectList::operator==(const SelectList& rhs) {
+    return util::pointerCompare(_valueExprList, rhs._valueExprList);
 }
 
 }}} // namespace lsst::qserv::query
