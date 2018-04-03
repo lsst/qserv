@@ -38,6 +38,7 @@
 // Third-party headers
 
 
+#include "util/DbgPrintHelper.h"
 #include "util/PointerCompare.h"
 
 namespace lsst {
@@ -136,6 +137,12 @@ FromList::clone() const {
 bool FromList::operator==(const FromList& rhs) {
     return util::pointerCompare(_tableRefs, rhs._tableRefs);
 }
+
+void FromList::dbgPrint(std::ostream& os) const {
+    os << "FromList(tableRefs:";
+    os << util::DbgPrintPtrVectorHelper<TableRef>(_tableRefs);
+}
+
 
 }}} // namespace lsst::qserv::query
 

@@ -84,7 +84,7 @@ public:
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
-    std::ostream& dump(std::ostream& os);
+    void dbgPrint(std::ostream& os);
 
     bool operator==(WhereClause& rhs) const;
 

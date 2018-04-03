@@ -155,7 +155,7 @@ public:
 
     bool operator==(const SelectStmt& rhs);
 
-    std::ostream& dump(std::ostream& os);
+    void dbgPrint(std::ostream& os);
 
 private:
     // Declarations

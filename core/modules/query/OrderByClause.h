@@ -101,6 +101,8 @@ public:
     void findValueExprs(ValueExprPtrVector& list);
 
     bool operator==(const OrderByClause& rhs) const;
+    void dbgPrint(std::ostream& os);
+
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend class parser::ModFactory;
