@@ -42,6 +42,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/DbgPrintPtrH.h"
 
 namespace lsst {
 namespace qserv {
@@ -75,6 +76,12 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
 bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
     return util::pointerCompare(_expr, rhs._expr) &&
             _collate == rhs._collate;
+}
+
+void GroupByTerm::dbgPrint(std::ostream& os) const {
+    os << "GroupByTerm(expr:" << util::DbgPrintPtrH<ValueExpr>(_expr);
+    os << ", collate:" << _collate;
+    os << ")";
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -135,5 +142,10 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
 bool GroupByClause::operator==(const GroupByClause& rhs) const {
     return util::pointerCompare(_terms, rhs._terms);
 }
+
+void GroupByClause::dbgPrint(std::ostream& os) const {
+    os <<"GroupByClause(terms:" << util::DbgPrintPtrDequeH<GroupByTerm>(_terms) << ")";
+}
+
 
 }}} // namespace lsst::qserv::query
