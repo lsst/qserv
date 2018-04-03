@@ -29,6 +29,7 @@
 
 #include "lsst/log/Log.h"
 
+#include "../util/DbgPrintPtrH.h"
 #include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
@@ -44,7 +45,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
-#include "util/DbgPrintHelper.h"
+#include "util/DbgPrintPtrH.h"
 
 
 using namespace std;
@@ -52,28 +53,6 @@ using namespace std;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
-
-template <typename T>
-class DumpHelper;
-
-template <typename T>
-std::ostream& operator<<(std::ostream& os, DumpHelper<T> const& dumpHelper) {
-    if (dumpHelper._dumpee != nullptr) {
-        dumpHelper._dumpee->dump(os);
-    } else {
-        os << "nullptr";
-    }
-    return os;
-}
-
-template <typename T>
-class DumpHelper {
-public:
-    DumpHelper(const shared_ptr<T>& dumpee)
-    : _dumpee(dumpee) {}
-
-    const shared_ptr<T> _dumpee;
-};
 
 }
 
@@ -786,11 +765,14 @@ public:
     }
 
     void onExit() override {
-        lockedParent()->handleQservFunctionSpec(_functionName, _args);
+        lockedParent()->handleQservFunctionSpec(getFunctionName(), _args);
     }
 
 private:
     string getFunctionName() {
+        if (_ctx->QSERV_AREASPEC_BOX() != nullptr){
+            return _ctx->QSERV_AREASPEC_BOX()->getSymbol()->getText();
+        }
         if (_ctx->QSERV_AREASPEC_CIRCLE() != nullptr){
             return _ctx->QSERV_AREASPEC_CIRCLE()->getSymbol()->getText();
         }
@@ -807,7 +789,6 @@ private:
     }
 
     QSMySqlParser::QservFunctionSpecContext * _ctx;
-    string _functionName;
     vector<string> _args;
 };
 
@@ -1212,7 +1193,7 @@ private:
     void _setLogicalOperator(shared_ptr<query::LogicalTerm>& logicalTerm) {
         CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator,
                 "logical operator must be set only once. existing:" << *this <<
-                ", new:" << DumpHelper<query::LogicalTerm>(logicalTerm));
+                ", new:" << util::DbgPrintPtrH<query::LogicalTerm>(logicalTerm));
         _logicalOperator = logicalTerm;
     }
 
@@ -1247,11 +1228,12 @@ private:
 
 
 ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter) {
-    os << "LogicalExpressionAdapter(left:" << DumpHelper<query::BoolTerm>(logicalExpressionAdapter._leftTerm)
-            << ", right:" << DumpHelper<query::BoolTerm>(logicalExpressionAdapter._rightTerm)
-            << ", logicalOperator:"
-            << DumpHelper<query::LogicalTerm>(logicalExpressionAdapter._logicalOperator)
-            << ")";
+    os << "LogicalExpressionAdapter(";
+    os << "left:" << util::DbgPrintPtrH<query::BoolTerm>(logicalExpressionAdapter._leftTerm);
+    os << ", right:" << util::DbgPrintPtrH<query::BoolTerm>(logicalExpressionAdapter._rightTerm);
+    os << ", logicalOperator:" <<
+        util::DbgPrintPtrH<query::LogicalTerm>(logicalExpressionAdapter._logicalOperator);
+    os << ")";
     return os;
 }
 
@@ -1366,8 +1348,8 @@ private:
 
 
 ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter) {
-os << "MathExpressionAtomAdapter(left:" << util::DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._left)
-        << ", right:" << util::DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._right)
+os << "MathExpressionAtomAdapter(left:" << util::DbgPrintPtrH<query::FuncExpr>(mathExpressionAtomAdapter._left)
+        << ", right:" << util::DbgPrintPtrH<query::FuncExpr>(mathExpressionAtomAdapter._right)
         << ")";
 return os;
 }

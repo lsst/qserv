@@ -65,6 +65,9 @@ public:
     void findValueExprs(ValueExprPtrVector& list);
 
     bool operator==(const HavingClause& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);
     friend class parser::ModFactory;

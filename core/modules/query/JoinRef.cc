@@ -26,6 +26,9 @@
 
  // Third-party headers
 
+
+#include "util/DbgPrintPtrH.h"
+
 namespace lsst {
 namespace qserv {
 namespace query {
@@ -75,6 +78,25 @@ std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
 
 std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
     return js->putStream(os);
+}
+
+void JoinRef::dbgPrint(std::ostream& os) const {
+    os << "JoinRef(";
+    os << "right:" << util::DbgPrintPtrH<TableRef>(_right);
+    os << ", joinType:";
+    switch (_joinType) {
+    default: os << "!!unhandled!!"; break;
+    case DEFAULT: os << "DEFAULT"; break;
+    case INNER: os << "INNER"; break;
+    case LEFT: os << "LEFT"; break;
+    case RIGHT: os << "RIGHT"; break;
+    case FULL: os << "FULL"; break;
+    case CROSS: os << "CROSS"; break;
+    case UNION: os << "UNION"; break;
+    }
+    os << ", isNatural:" << _isNatural;
+    os << util::DbgPrintPtrH<JoinSpec>(_spec);
+    os << ")";
 }
 
 }}} // lsst::qserv::query

@@ -110,7 +110,7 @@ public:
 
     static int lookupOp(char const* op);
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsCompPredicate = dynamic_cast<CompPredicate const * const>(&rhs);
@@ -144,7 +144,7 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsInPredicate = dynamic_cast<InPredicate const * const>(&rhs);
@@ -178,7 +178,7 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const * const>(&rhs);
@@ -212,7 +212,7 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsLikePredicate = dynamic_cast<LikePredicate const * const>(&rhs);
@@ -245,7 +245,7 @@ public:
 
     static int reverseOp(int op); // Reverses operator token
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsNullPredicate = dynamic_cast<NullPredicate const * const>(&rhs);

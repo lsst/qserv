@@ -34,6 +34,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+#include "../util/DbgPrintPtrH.h"
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
@@ -61,7 +62,6 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
-#include "util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -151,7 +151,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         if (a4stmt) {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " <<
-                    util::DbgPrintHelper<query::SelectStmt>(a4stmt));
+                    util::DbgPrintPtrH<query::SelectStmt>(a4stmt));
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
@@ -167,11 +167,13 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             }
             LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
             LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " <<
-                    util::DbgPrintHelper<query::SelectStmt>(stmt));
+                    util::DbgPrintPtrH<query::SelectStmt>(stmt));
         }
 
-        bool theyMatch(*a4stmt == *stmt);
-        LOGS(_log, LOG_LVL_DEBUG, "they match:" << theyMatch);
+        if (a4stmt && stmt) {
+            bool theyMatch(*a4stmt == *stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "they match:" << theyMatch);
+        }
 
         // handle special database/table names
         auto&& tblRefList = stmt->getFromList().getTableRefList();

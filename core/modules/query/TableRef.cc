@@ -40,6 +40,7 @@
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
+#include "util/DbgPrintPtrH.h"
 
 namespace {
 lsst::qserv::query::JoinRef::Ptr
@@ -130,18 +131,8 @@ void TableRef::dbgPrint(std::ostream& os) const {
     os << "alias:" << _alias;
     os << ", db:" << _db;
     os << ", table:" << _table;
-    os << "JoinRefs:";
-    if (_joinRefs == nullptr) {
-        os << "nullptr";
-    } else {
-        for (auto joinRefPtr : _joinRefs) {
-            os << util::DbgPrintHelper(joinRefPtr);
-            if (joinRefPtr != _joinRefs->back()) {
-                os << ", ";
-            }
-        }
-        os << ")";
-    }
+    os << "JoinRefs:" << util::DbgPrintVectorPtrH<JoinRef>(_joinRefs);
+    os << ")";
 }
 
 

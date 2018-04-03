@@ -35,10 +35,10 @@
 #include <algorithm>
 #include <iterator>
 
+#include "../util/DbgPrintPtrH.h"
 // Third-party headers
 
 
-#include "util/DbgPrintHelper.h"
 #include "util/PointerCompare.h"
 
 namespace lsst {
@@ -139,8 +139,7 @@ bool FromList::operator==(const FromList& rhs) {
 }
 
 void FromList::dbgPrint(std::ostream& os) const {
-    os << "FromList(tableRefs:";
-    os << util::DbgPrintPtrVectorHelper<TableRef>(_tableRefs);
+    os << "FromList(tableRefs:" << util::DbgPrintPtrVectorPtrH<TableRef>(_tableRefs) << ")";
 }
 
 

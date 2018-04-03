@@ -45,6 +45,7 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
+#include "util/DbgPrintPtrH.h"
 
 namespace {
 
@@ -208,15 +209,9 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 
 
 void WhereClause::dbgPrint(std::ostream& os) {
-    os << "WhereClause(original:" << _original << ", tree:";
-    _tree->dump(os);
-    os << ", restrs:";
-    for (auto restrictorPtr : (*_restrs)) {
-        restrictorPtr->dbgPrint(os);
-        if (&restrictorPtr != &_restrs->back()) {
-            os << ", ";
-        }
-    }
+    os << "WhereClause(original:" << _original;
+    os << ", tree:" << util::DbgPrintPtrH<BoolTerm>(_tree);
+    os << ", restrs:" << util:: DbgPrintPtrVectorPtrH<QsRestrictor>(_restrs);
     os << ")";
 }
 
