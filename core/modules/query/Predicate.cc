@@ -39,6 +39,7 @@
 #include "query/QueryTemplate.h"
 #include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
+#include "util/DbgPrintPtrH.h"
 
 
 namespace lsst {
@@ -184,14 +185,11 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
-std::ostream& CompPredicate::dump(std::ostream& os) const {
-    os << "CompPredicate(left:";
-    left->dbgPrint(os);
+void CompPredicate::dbgPrint(std::ostream& os) const {
+    os << "CompPredicate(left:" << util::DbgPrintPtrH<ValueExpr>(left);
     os << ", op:" << op;
-    os << ", right:";
-    right->dbgPrint(os);
+    os << ", right:" << util::DbgPrintPtrH<ValueExpr>(right);
     os << ")";
-    return os;
 }
 
 BoolFactorTerm::Ptr CompPredicate::clone() const {
@@ -224,16 +222,10 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
-std::ostream& InPredicate::dump(std::ostream& os) const {
-    os << "InPredicate(value:";
-    value->dbgPrint(os);
-    os << ", cands:";
-    for (auto valueExpr : cands) {
-        valueExpr->dbgPrint(os);
-        os << ", ";
-    }
+void InPredicate::dbgPrint(std::ostream& os) const {
+    os << "InPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", cands:" << util::DbgPrintVectorPtrH<ValueExpr>(cands);
     os << ")";
-    return os;
 }
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
@@ -244,14 +236,11 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
-std::ostream& BetweenPredicate::dump(std::ostream& os) const {
-    os << "BetweenPredicate(value:";
-    value->dbgPrint(os);
-    os << ", minValue:";
-    minValue->dbgPrint(os);
-    os << ", maxValue:";
-    maxValue->dbgPrint(os);
-    return os;
+void BetweenPredicate::dbgPrint(std::ostream& os) const {
+    os << "BetweenPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << "minValue:" << util::DbgPrintPtrH<ValueExpr>(minValue);
+    os << "maxValue:" << util::DbgPrintPtrH<ValueExpr>(maxValue);
+    os << ")";
 }
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
@@ -261,11 +250,10 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
-std::ostream& LikePredicate::dump(std::ostream& os) const {
-    os << "LikePredicate(value:";
-    value->dbgPrint(os);
-    os << ", charValue:" << charValue;
-    return os;
+void LikePredicate::dbgPrint(std::ostream& os) const {
+    os << "LikePredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", charValue:" << util::DbgPrintPtrH<ValueExpr>(charValue);
+    os << ")";
 }
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {
@@ -275,11 +263,10 @@ BoolFactorTerm::Ptr NullPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
-std::ostream& NullPredicate::dump(std::ostream& os) const {
-    os << "NullPredicate(value:";
-    value->dbgPrint(os);
+void NullPredicate::dbgPrint(std::ostream& os) const {
+    os << "NullPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
     os << ", hasNot:" << hasNot;
-    return os;
+    os << ")";
 }
 
 }}} // namespace lsst::qserv::query

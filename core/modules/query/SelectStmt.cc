@@ -46,6 +46,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+#include "../util/DbgPrintPtrH.h"
 // Qserv headers
 #include "query/FromList.h"
 #include "query/GroupByClause.h"
@@ -54,7 +55,6 @@
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
 #include "util/PointerCompare.h"
-#include "util/DbgPrintHelper.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
@@ -237,12 +237,12 @@ bool SelectStmt::operator==(const SelectStmt& rhs) {
 
 void SelectStmt::dbgPrint(std::ostream& os) {
     os << "SelectStmt(";
-    os << "fromList:" << util::DbgPrintHelper<FromList>(_fromList);
-    os << ", selectList:" << util::DbgPrintHelper<SelectList>(_selectList);
-    os << ", whereClause:" << util::DbgPrintHelper<WhereClause>(_whereClause);
-    os << ", orderBy:" << util::DbgPrintHelper<OrderByClause>(_orderBy);
-    os << ", groupBy:" << util::DbgPrintHelper<GroupByClause>(_groupBy);
-    os << ", having:" << util::DbgPrintHelper<HavingClause>(_having);
+    os << "fromList:" << util::DbgPrintPtrH<FromList>(_fromList);
+    os << ", selectList:" << util::DbgPrintPtrH<SelectList>(_selectList);
+    os << ", whereClause:" << util::DbgPrintPtrH<WhereClause>(_whereClause);
+    os << ", orderBy:" << util::DbgPrintPtrH<OrderByClause>(_orderBy);
+    os << ", groupBy:" << util::DbgPrintPtrH<GroupByClause>(_groupBy);
+    os << ", having:" << util::DbgPrintPtrH<HavingClause>(_having);
     os << ")";
 }
 
