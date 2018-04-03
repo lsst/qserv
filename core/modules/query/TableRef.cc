@@ -124,4 +124,25 @@ TableRef::Ptr TableRef::clone() const {
     return newCopy;
 }
 
+
+void TableRef::dbgPrint(std::ostream& os) const {
+    os << "TableRef(";
+    os << "alias:" << _alias;
+    os << ", db:" << _db;
+    os << ", table:" << _table;
+    os << "JoinRefs:";
+    if (_joinRefs == nullptr) {
+        os << "nullptr";
+    } else {
+        for (auto joinRefPtr : _joinRefs) {
+            os << util::DbgPrintHelper(joinRefPtr);
+            if (joinRefPtr != _joinRefs->back()) {
+                os << ", ";
+            }
+        }
+        os << ")";
+    }
+}
+
+
 }}} // Namespace lsst::qserv::query

@@ -44,6 +44,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
+#include "util/DbgPrintHelper.h"
 
 
 using namespace std;
@@ -73,29 +74,6 @@ public:
 
     const shared_ptr<T> _dumpee;
 };
-
-template <typename T>
-class DbgPrintHelper;
-
-template <typename T>
-std::ostream& operator<<(std::ostream& os, DbgPrintHelper<T> const& dbgPrintHelper) {
-    if (dbgPrintHelper._dumpee != nullptr) {
-        dbgPrintHelper._dumpee->dbgPrint(os);
-    } else {
-        os << "nullptr";
-    }
-    return os;
-}
-
-template <typename T>
-class DbgPrintHelper {
-public:
-    DbgPrintHelper(const shared_ptr<T>& dumpee)
-    : _dumpee(dumpee) {}
-
-    const shared_ptr<T> _dumpee;
-};
-
 
 }
 
@@ -576,19 +554,6 @@ public:
         CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
-
-//    void handleOrTerm(shared_ptr<query::OrTerm>& orTerm, antlr4::ParserRuleContext* childCtx) override {
-//        if (_ctx->whereExpr == childCtx) {
-//            if (_whereClause->getRootTerm()) {
-//                ostringstream msg;
-//                msg << "unexpected call to " << __FUNCTION__ << " when orTerm is already populated.";
-//                LOGS(_log, LOG_LVL_ERROR, msg.str());
-//                throw QSMySqlListener::adapter_execution_error(msg.str());
-//            }
-//            _whereClause->setRootTerm(orTerm);
-//        }
-//    }
-
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
@@ -748,8 +713,6 @@ public:
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
         CHECK_EXECUTION_CONDITION(false, "when is this called?");
-//        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-//        lockedParent()->handleFullColumnName(columnValueExpr);
     }
 
     void onExit() override {
@@ -1403,8 +1366,8 @@ private:
 
 
 ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter) {
-os << "MathExpressionAtomAdapter(left:" << DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._left)
-        << ", right:" << DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._right)
+os << "MathExpressionAtomAdapter(left:" << util::DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._left)
+        << ", right:" << util::DbgPrintHelper<query::FuncExpr>(mathExpressionAtomAdapter._right)
         << ")";
 return os;
 }
