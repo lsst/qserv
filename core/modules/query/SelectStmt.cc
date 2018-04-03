@@ -54,6 +54,7 @@
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
 #include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
@@ -234,11 +235,15 @@ bool SelectStmt::operator==(const SelectStmt& rhs) {
 }
 
 
-std::ostream& SelectStmt::dump(std::ostream& os) {
-    os << "SelectStmt(..., whereClause:";
-    _whereClause->dump(os);
-    os << ", ...)";
-    return os;
+void SelectStmt::dbgPrint(std::ostream& os) {
+    os << "SelectStmt(";
+    os << "fromList:" << util::DbgPrintHelper<FromList>(_fromList);
+    os << ", selectList:" << util::DbgPrintHelper<SelectList>(_selectList);
+    os << ", whereClause:" << util::DbgPrintHelper<WhereClause>(_whereClause);
+    os << ", orderBy:" << util::DbgPrintHelper<OrderByClause>(_orderBy);
+    os << ", groupBy:" << util::DbgPrintHelper<GroupByClause>(_groupBy);
+    os << ", having:" << util::DbgPrintHelper<HavingClause>(_having);
+    os << ")";
 }
 
 }}} // namespace lsst::qserv::query
