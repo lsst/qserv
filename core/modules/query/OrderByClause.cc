@@ -175,5 +175,8 @@ bool OrderByClause::operator==(const OrderByClause& rhs) const {
     return util::pointerCompare(_terms, rhs._terms);
 }
 
+void OrderByClause::dbgPrint(std::ostream& os) {
+
+}
 
 }}} // namespace lsst::qserv::query

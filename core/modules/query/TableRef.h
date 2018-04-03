@@ -34,6 +34,7 @@
 // System headers
 #include <iostream>
 #include <memory>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -98,6 +99,8 @@ public:
     void apply(FuncC& f) const;
 
     TableRef::Ptr clone() const;
+
+    void dbgPrint(std::ostream& os) const;
 
     class render;
 private:
