@@ -69,7 +69,7 @@ public:
     virtual void findValueExprs(ValueExprPtrVector& vector) {}
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 
-    virtual std::ostream& dump(std::ostream& os) const = 0;
+    virtual void dbgPrint(std::ostream& os) const = 0;
     virtual bool equal(const BoolFactorTerm& rhs) const = 0;
 
     bool operator==(const BoolFactorTerm& rhs) const {
@@ -115,7 +115,7 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const {
         return std::shared_ptr<BoolTerm>(); }
 
-    virtual std::ostream& dump(std::ostream& os) const = 0;
+    virtual void dbgPrint(std::ostream& os) const = 0;
 
     virtual bool equal(const BoolTerm& rhs) const = 0;
 
@@ -169,7 +169,7 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolTerm& rhs) const override {
         auto rhsOrTerm = dynamic_cast<OrTerm const * const>(&rhs);
@@ -213,7 +213,7 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolTerm& rhs) const override {
         auto rhsAndTerm = dynamic_cast<AndTerm const * const>(&rhs);
@@ -270,7 +270,7 @@ public:
 
     BoolFactorTerm::PtrVector _terms;
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 private:
     bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
     bool _checkParen(BoolFactorTerm::PtrVector& terms);
@@ -285,7 +285,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
     bool operator==(const UnknownTerm& rhs) { return true; }
     bool equal(const BoolTerm& rhs) const override { return true; }
 };
@@ -304,7 +304,7 @@ public: // text
 
     std::string _text;
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsPassTerm = dynamic_cast<PassTerm const * const>(&rhs);
@@ -325,7 +325,7 @@ public: // ( term, term, term )
     virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
     StringVector _terms;
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsTerm = dynamic_cast<PassListTerm const * const>(&rhs);
@@ -356,7 +356,7 @@ public:
         if (_term) { _term->findColumnRefs(vector); }
     }
 
-    std::ostream& dump(std::ostream& os) const override;
+    void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolFactorTerm& rhs) const override {
         auto rhsTerm = dynamic_cast<BoolTermFactor const * const>(&rhs);
