@@ -35,3 +35,8 @@ qservFunctionSpec
     | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
     ;
  
+ 
+ decimalLiteral
+    : MINUS? DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
+    ;
+ 
