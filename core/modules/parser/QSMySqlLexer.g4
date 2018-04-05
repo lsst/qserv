@@ -8,7 +8,3 @@ QSERV_AREASPEC_CIRCLE:              'qserv_areaspec_circle';
 QSERV_AREASPEC_ELLIPSE:             'qserv_areaspec_ellipse'; 
 QSERV_AREASPEC_POLY:                'qserv_areaspec_poly';
 QSERV_AREASPEC_HULL:                'qserv_areaspec_hull'; 
-
-
-// override the MySqlListener defintion, adds option for negative value:
-DECIMAL_LITERAL:                     '-'?DEC_DIGIT+;
