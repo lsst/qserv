@@ -45,7 +45,7 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.BoolTerm");

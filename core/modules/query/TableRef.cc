@@ -40,7 +40,7 @@
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 #include "util/PointerCompare.h"
 
 namespace {
