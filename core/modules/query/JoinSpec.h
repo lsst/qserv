@@ -78,6 +78,8 @@ public:
     void putTemplate(QueryTemplate& qt) const;
     Ptr clone() const;
 
+    bool operator==(const JoinSpec& rhs) const;
+
     void dbgPrint(std::ostream& os) const;
 
 private:

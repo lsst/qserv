@@ -50,6 +50,12 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
 }
 
 
+bool QsRestrictor::operator==(const QsRestrictor& rhs) const {
+    return _name == rhs._name &&
+           _params == rhs._params;
+}
+
+
 void QsRestrictor::dbgPrint(std::ostream& os) const {
     os << "QsRestrictor(name:" << _name << ", _params:";
     for (auto param : _params) {

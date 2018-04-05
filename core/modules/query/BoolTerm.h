@@ -115,6 +115,13 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const {
         return std::shared_ptr<BoolTerm>(); }
 
+    /// Merge is implemented in subclasses; if they are of the same type (that is, if the subclass instance is
+    /// e.g. an AndTerm and `other` is also an AndTerm, then the _terms of the other AndTerm can be added to
+    /// this and the other AndTerm can be thrown away (by the caller, if they desire).
+    /// Returns true if the terms were merged, and false if not (this could happen e.g. if this is an AndTerm
+    /// and other is an OrTerm, or for any other reason implemented by subclass's merge function.
+    virtual bool merge(const BoolTerm& other) { return false; }
+
     virtual void dbgPrint(std::ostream& os) const = 0;
 
     virtual bool equal(const BoolTerm& rhs) const = 0;
@@ -169,6 +176,8 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
+    bool merge(const BoolTerm& other) override;
+
     void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolTerm& rhs) const override {
@@ -176,7 +185,7 @@ public:
         if (nullptr == rhsOrTerm) {
             return false;
         }
-        return util::vectorPointerCompare(_terms, rhsOrTerm->_terms);
+        return util::vectorPtrCompare<BoolTerm>(_terms, rhsOrTerm->_terms);
     }
 };
 
@@ -213,6 +222,8 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
+    bool merge(const BoolTerm& other) override;
+
     void dbgPrint(std::ostream& os) const override;
 
     bool equal(const BoolTerm& rhs) const override {
@@ -220,7 +231,7 @@ public:
         if (nullptr == rhsAndTerm) {
             return false;
         }
-        return util::vectorPointerCompare(_terms, rhsAndTerm->_terms);
+        return util::vectorPtrCompare<BoolTerm>(_terms, rhsAndTerm->_terms);
     }
 };
 
@@ -257,7 +268,7 @@ public:
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
     bool operator==(const BoolFactor& rhs) const {
-        return util::vectorPointerCompare(_terms, rhs._terms);
+        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhs._terms);
     }
 
     bool equal(const BoolTerm& rhs) const override{
@@ -363,7 +374,7 @@ public:
         if (nullptr == rhsTerm) {
             return false;
         }
-        return util::pointerCompare(_term, rhsTerm->_term);
+        return util::ptrCompare<BoolTerm>(_term, rhsTerm->_term);
     }
 
     std::shared_ptr<BoolTerm> _term;

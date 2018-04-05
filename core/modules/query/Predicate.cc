@@ -238,8 +238,8 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << "BetweenPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
-    os << "minValue:" << util::DbgPrintPtrH<ValueExpr>(minValue);
-    os << "maxValue:" << util::DbgPrintPtrH<ValueExpr>(maxValue);
+    os << ", minValue:" << util::DbgPrintPtrH<ValueExpr>(minValue);
+    os << ", maxValue:" << util::DbgPrintPtrH<ValueExpr>(maxValue);
     os << ")";
 }
 

@@ -36,37 +36,82 @@
 #ifndef LSST_QSERV_UTIL_POINTER_COMPARE_H
 #define LSST_QSERV_UTIL_POINTER_COMPARE_H
 
+#include <deque>
+#include <vector>
+#include <memory>
+
 namespace lsst {
 namespace qserv {
 namespace util {
 
 
 template <typename T>
-bool pointerCompare(T lhs, T rhs) {
-    if (lhs == nullptr) {
-        if (rhs == nullptr) {
-            return true;
-        }
+bool ptrCompare(const std::shared_ptr<T> & lhs, const std::shared_ptr<T> & rhs) {
+    if (lhs == nullptr && rhs == nullptr) {
+        return true;
+    }
+    if (rhs == nullptr || lhs == nullptr) {
         return false;
     }
-    if (rhs == nullptr && lhs != nullptr) {
-        return false;
+    if (*lhs == *rhs) {
+        return true;
     }
-    return *lhs == *rhs;
+    return false;
 }
 
 
 template <typename T>
-bool vectorPointerCompare(T lhs, T rhs) {
+bool vectorPtrCompare(const std::vector<std::shared_ptr<T>> & lhs,
+                      const std::vector<std::shared_ptr<T>> & rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
     }
-    for (unsigned int i=0; i<lhs.size(); ++i) {
-        if (false == pointerCompare(lhs[i], rhs[i])) {
-            return false;
-        }
+    if (std::equal(lhs.begin(), lhs.end(), rhs.begin(), ptrCompare<T>)) {
+        return true;
     }
-    return true;
+    return false;
+}
+
+
+template <typename T>
+bool ptrVectorCompare(const std::shared_ptr<std::vector<T>> & lhs,
+                      const std::shared_ptr<std::vector<T>> & rhs) {
+    if (nullptr == lhs && nullptr == rhs) {
+        return true;
+    } else if (nullptr == lhs || nullptr == rhs) {
+        return false;
+    }
+    if (*lhs == *rhs) {
+        return true;
+    }
+    return false;
+}
+
+
+template <typename T>
+bool ptrVectorPtrCompare(const std::shared_ptr<std::vector<std::shared_ptr<T>>> & lhs,
+                         const std::shared_ptr<std::vector<std::shared_ptr<T>>> & rhs) {
+    if (nullptr == lhs && nullptr == rhs) {
+        return true;
+    } else if (nullptr == lhs || nullptr == rhs) {
+        return false;
+    }
+    return vectorPtrCompare<T>(*lhs, *rhs);
+}
+
+
+template <typename T>
+bool ptrDequeCompare(const std::shared_ptr<std::deque<T>> & lhs,
+                     const std::shared_ptr<std::deque<T>> & rhs) {
+    if (nullptr == lhs && nullptr == rhs) {
+        return true;
+    } else if (nullptr == lhs || nullptr == rhs) {
+        return false;
+    }
+    if (*lhs == *rhs) {
+        return true;
+    }
+    return false;
 }
 
 

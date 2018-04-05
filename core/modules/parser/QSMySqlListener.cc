@@ -494,7 +494,6 @@ public:
         SelectListFactory::addSelectAggFunction(_selectList, selectFunction);
     }
 
-
     void onExit() override {
         lockedParent()->handleSelectList(_selectList);
     }
@@ -540,6 +539,7 @@ public:
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
         _whereClause->setRootTerm(_rootTerm);
+
         lockedParent()->handleFromClause(fromList, _whereClause);
     }
 
@@ -547,6 +547,7 @@ private:
     // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
+
     shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
     QSMySqlParser::FromClauseContext * _ctx;
 };
@@ -1152,9 +1153,6 @@ public:
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
         // handles the rest of the where clause, pass the function straight up to the parent.
-        CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator && nullptr == _leftTerm &&
-                nullptr == _rightTerm && false == _leftHandled,
-                "qserv function should be the first term to be set one or more terms is set; " << *this);
         lockedParent()->handleQservFunctionSpec(functionName, args);
     }
 
@@ -1168,23 +1166,27 @@ public:
             // We capture the AndTerm into a base class so we can pass by reference into the setter.
             shared_ptr<query::LogicalTerm> logicalTerm = make_shared<query::AndTerm>();
             _setLogicalOperator(logicalTerm);
+            break;
         }
     }
 
     virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
             antlr4::ParserRuleContext* childCtx) {
+        if (_logicalOperator != nullptr && _logicalOperator->merge(*logicalTerm)) {
+            return;
+        }
         _setNextTerm(logicalTerm);
     }
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(_logicalOperator != nullptr && true == _leftHandled
-                , // && _rightTerm != nullptr, // it's ok for the right term to not be set.
-                "one or more terms is not set; " << *this);
-        if (_leftTerm != nullptr) {
-            _logicalOperator->addBoolTerm(_leftTerm);
-        }
-        if (_rightTerm != nullptr) {
-            _logicalOperator->addBoolTerm(_rightTerm);
+        CHECK_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set; " << *this);
+        // Since this is a logical expression e.g. `a AND b` (per the grammar) and `a` or `b` may also be a
+        // logical expression, we try to merge each term, e.g. if this is an AND (query::AndTerm) and the
+        // BoolTerm in the terms list is also an AND term they can be merged.
+        for (auto term : _terms) {
+            if (false == _logicalOperator->merge(*term)) {
+                _logicalOperator->addBoolTerm(term);
+            }
         }
         lockedParent()->handleLogicalExpression(_logicalOperator, _ctx);
     }
@@ -1197,20 +1199,11 @@ private:
         _logicalOperator = logicalTerm;
     }
 
-    void _setNextTerm(shared_ptr<query::BoolTerm> term = nullptr) {
-        if (false == _leftHandled) {
-            _leftTerm = term;
-            _leftHandled = true;
-        } else if (nullptr == _rightTerm) {
-            CHECK_EXECUTION_CONDITION(nullptr != term, "Only the left term can be null");
-            _rightTerm = term;
-        } else {
-            CHECK_EXECUTION_CONDITION(false, "The left and right terms can only be set once each, " <<
-                    "they are already set; " << *this);
-        }
+    void _setNextTerm(shared_ptr<query::BoolTerm> term) {
+        _terms.push_back(term);
     }
 
-    friend ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter);
+    friend ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicaAndlExpressionAdapter);
 
     // a qserv restrictor fucntion can be the left side of a predicate (currently it can only be the left
     // side; that is to say, it can only be the first term in the WHERE clause. If `handleQservFunctionSpec`
@@ -1219,21 +1212,15 @@ private:
     // the logicalOperator and know that it was ok (the qserv IR accepts an AndTerm with only one factor).
     // This mechanism does not fully proect against qserv restrictors that may be the left side of a
     // subsequent logical expression. TBD if that's really an issue.
-    bool _leftHandled {false}; // todo I think this needs to be removed and all the handling cleaned up.
-    shared_ptr<query::BoolTerm> _leftTerm;
+    vector<shared_ptr<query::BoolTerm>> _terms;
     shared_ptr<query::LogicalTerm> _logicalOperator;
-    shared_ptr<query::BoolTerm> _rightTerm;
     QSMySqlParser::LogicalExpressionContext * _ctx;
 };
 
 
 ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter) {
     os << "LogicalExpressionAdapter(";
-    os << "left:" << util::DbgPrintPtrH<query::BoolTerm>(logicalExpressionAdapter._leftTerm);
-    os << ", right:" << util::DbgPrintPtrH<query::BoolTerm>(logicalExpressionAdapter._rightTerm);
-    os << ", logicalOperator:" <<
-        util::DbgPrintPtrH<query::LogicalTerm>(logicalExpressionAdapter._logicalOperator);
-    os << ")";
+    os << "terms:" << util::DbgPrintVectorPtrH<query::BoolTerm>(logicalExpressionAdapter._terms);
     return os;
 }
 
