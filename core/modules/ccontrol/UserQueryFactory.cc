@@ -109,6 +109,14 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
+std::shared_ptr<query::SelectStmt>
+UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
+    auto parser = parser::SelectParser::newInstance(query);
+    parser->setup();
+    return parser->getSelectStmt();
+}
+
+
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -157,19 +165,16 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         }
 
         std::shared_ptr<query::SelectStmt> stmt;
-        if (nullptr == stmt) {
-            try {
-                auto parser = parser::SelectParser::newInstance(query);
-                parser->setup();
-                stmt = parser->getSelectStmt();
-            } catch(parser::ParseException const& e) {
-                return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
-            LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " <<
-                    util::DbgPrintPtrH<query::SelectStmt>(stmt));
+        try {
+            stmt = antlr2NewSelectStmt(query);
+        } catch(parser::ParseException const& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " <<
+                util::DbgPrintPtrH<query::SelectStmt>(stmt));
 
+        // TEMP while developing the antlr4 parser listener
         if (a4stmt && stmt) {
             bool theyMatch(*a4stmt == *stmt);
             LOGS(_log, LOG_LVL_DEBUG, "they match:" << theyMatch);
