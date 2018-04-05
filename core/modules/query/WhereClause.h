@@ -93,7 +93,6 @@ private:
 
     friend class parser::WhereFactory;
 
-    std::string _original;
     std::shared_ptr<BoolTerm> _tree;
     std::shared_ptr<QsRestrictor::PtrVector> _restrs{std::make_shared<query::QsRestrictor::PtrVector>()};
 };

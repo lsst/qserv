@@ -107,7 +107,7 @@ void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
 }
 
 bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
-    return (util::pointerCompare(factor, rhs.factor) && op == rhs.op);
+    return (util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op);
 }
 
 

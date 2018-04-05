@@ -117,7 +117,7 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
 }
 
 bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
-    return util::pointerCompare(_expr, rhs._expr) &&
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
             _order == rhs._order &&
             _collate == rhs._collate;
 }
@@ -186,7 +186,7 @@ void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
 }
 
 bool OrderByClause::operator==(const OrderByClause& rhs) const {
-    return util::pointerCompare(_terms, rhs._terms);
+    return util::ptrVectorCompare<OrderByTerm>(_terms, rhs._terms);
 }
 
 void OrderByClause::dbgPrint(std::ostream& os) const {

@@ -149,7 +149,7 @@ FuncExpr::renderTo(QueryTemplate& qt) const {
 
 bool FuncExpr::operator==(const FuncExpr& rhs) const {
     return _name == rhs._name &&
-            params == rhs.params;
+           util::vectorPtrCompare<ValueExpr>(params, rhs.params);
 }
 
 }}} // namespace lsst::qserv::query
