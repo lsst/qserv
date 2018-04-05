@@ -24,7 +24,7 @@
 // Class header
 #include "query/JoinRef.h"
 
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 #include "util/PointerCompare.h"
 
 namespace lsst {

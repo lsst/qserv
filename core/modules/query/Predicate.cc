@@ -39,7 +39,7 @@
 #include "query/QueryTemplate.h"
 #include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 
 namespace lsst {

@@ -34,7 +34,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-#include "../util/DbgPrintPtrH.h"
+#include "../util/DbgPrintHelper.h"
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"

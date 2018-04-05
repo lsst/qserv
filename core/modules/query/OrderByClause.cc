@@ -45,7 +45,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "util/PointerCompare.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 namespace {
 

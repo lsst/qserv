@@ -36,7 +36,7 @@
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {

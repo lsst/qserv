@@ -46,7 +46,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-#include "../util/DbgPrintPtrH.h"
 // Qserv headers
 #include "query/FromList.h"
 #include "query/GroupByClause.h"
@@ -55,6 +54,7 @@
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
 #include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous

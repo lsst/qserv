@@ -29,7 +29,6 @@
 
 #include "lsst/log/Log.h"
 
-#include "../util/DbgPrintPtrH.h"
 #include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/ValueFactorFactory.h"
@@ -45,7 +44,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 
 using namespace std;

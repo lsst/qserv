@@ -42,7 +42,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
-#include "util/DbgPrintPtrH.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
