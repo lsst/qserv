@@ -90,7 +90,7 @@ HavingClause::findValueExprs(ValueExprPtrVector& list) {
 }
 
 bool HavingClause::operator==(const HavingClause& rhs) const {
-    return util::pointerCompare(_tree, rhs._tree);
+    return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
 }
 
 void HavingClause::dbgPrint(std::ostream& os) const {

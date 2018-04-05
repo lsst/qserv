@@ -4,6 +4,7 @@ import MySqlParser;
 
 options { tokenVocab=QSMySqlLexer; }
 
+// same as MySqlParser, adds qservFunctionSpec
 // Simplified approach for expression
 expression
     : notOperator=(NOT | '!') expression                            #notExpression

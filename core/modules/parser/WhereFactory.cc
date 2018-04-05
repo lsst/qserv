@@ -312,7 +312,6 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     walkTreeVisit(a, p);
     BoolTermFactory f(_vf);
     _clause->_tree = f.newOrTerm(a);
-    _clause->_original = p.result;
     // FIXME: Store template.
     // Template must allow table substitution.
     // For now, reuse old templating scheme.

@@ -135,7 +135,7 @@ FromList::clone() const {
 }
 
 bool FromList::operator==(const FromList& rhs) {
-    return util::pointerCompare(_tableRefs, rhs._tableRefs);
+    return util::ptrVectorPtrCompare<TableRef>(_tableRefs, rhs._tableRefs);
 }
 
 void FromList::dbgPrint(std::ostream& os) const {

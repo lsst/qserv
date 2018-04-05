@@ -89,6 +89,12 @@ JoinSpec::Ptr JoinSpec::clone() const {
 }
 
 
+bool JoinSpec::operator==(const JoinSpec& rhs) const {
+    return util::ptrCompare<ColumnRef>(_usingColumn, rhs._usingColumn) &&
+           util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
+}
+
+
 void JoinSpec::dbgPrint(std::ostream& os) const {
     os << "JoinSpec(";
     os << util::DbgPrintPtrH<ColumnRef>(_usingColumn);

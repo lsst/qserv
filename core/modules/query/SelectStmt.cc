@@ -223,12 +223,12 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
 
 
 bool SelectStmt::operator==(const SelectStmt& rhs) {
-    return (util::pointerCompare(_fromList, rhs._fromList) &&
-            util::pointerCompare(_selectList, rhs._selectList) &&
-            util::pointerCompare(_whereClause, rhs._whereClause) &&
-            util::pointerCompare(_orderBy, rhs._orderBy) &&
-            util::pointerCompare(_groupBy, rhs._groupBy) &&
-            util::pointerCompare(_having, rhs._having) &&
+    return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
+            util::ptrCompare<SelectList>(_selectList, rhs._selectList) &&
+            util::ptrCompare<WhereClause>(_whereClause, rhs._whereClause) &&
+            util::ptrCompare<OrderByClause>(_orderBy, rhs._orderBy) &&
+            util::ptrCompare<GroupByClause>(_groupBy, rhs._groupBy) &&
+            util::ptrCompare<HavingClause>(_having, rhs._having) &&
             _hasDistinct == rhs._hasDistinct &&
             _limit == rhs._limit &&
             OutputMods == rhs.OutputMods);

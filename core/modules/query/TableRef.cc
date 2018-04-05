@@ -41,6 +41,7 @@
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 #include "util/DbgPrintPtrH.h"
+#include "util/PointerCompare.h"
 
 namespace {
 lsst::qserv::query::JoinRef::Ptr
@@ -133,6 +134,14 @@ void TableRef::dbgPrint(std::ostream& os) const {
     os << ", table:" << _table;
     os << "JoinRefs:" << util::DbgPrintVectorPtrH<JoinRef>(_joinRefs);
     os << ")";
+}
+
+
+bool TableRef::operator==(const TableRef& rhs) const {
+    return _alias == rhs._alias &&
+           _db == rhs._db &&
+           _table == rhs._table &&
+           util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
 }
 
 

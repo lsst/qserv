@@ -117,9 +117,9 @@ public:
         if (nullptr == rhsCompPredicate) {
             return false;
         }
-        return util::pointerCompare(left, rhsCompPredicate->left) &&
+        return util::ptrCompare<ValueExpr>(left, rhsCompPredicate->left) &&
                op == rhsCompPredicate->op &&
-               util::pointerCompare(right, rhsCompPredicate->right);
+               util::ptrCompare<ValueExpr>(right, rhsCompPredicate->right);
     }
 
     ValueExprPtr left;
@@ -151,8 +151,8 @@ public:
         if (nullptr == rhsInPredicate) {
             return false;
         }
-        return util::pointerCompare(value, rhsInPredicate->value) &&
-               util::vectorPointerCompare(cands, rhsInPredicate->cands);
+        return util::ptrCompare<ValueExpr>(value, rhsInPredicate->value) &&
+               util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands);
     }
 
     ValueExprPtr value;
@@ -185,9 +185,9 @@ public:
         if (nullptr == rhsBetweenPredicate) {
             return false;
         }
-        return util::pointerCompare(value, rhsBetweenPredicate->value) &&
-               util::pointerCompare(minValue, rhsBetweenPredicate->minValue) &&
-               util::pointerCompare(maxValue, rhsBetweenPredicate->maxValue);
+        return util::ptrCompare<ValueExpr>(value, rhsBetweenPredicate->value) &&
+               util::ptrCompare<ValueExpr>(minValue, rhsBetweenPredicate->minValue) &&
+               util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
     }
 
     ValueExprPtr value;
@@ -219,8 +219,8 @@ public:
         if (nullptr == rhsLikePredicate) {
             return false;
         }
-        return util::pointerCompare(value, rhsLikePredicate->value) &&
-               util::pointerCompare(charValue, rhsLikePredicate->charValue);
+        return util::ptrCompare<ValueExpr>(value, rhsLikePredicate->value) &&
+               util::ptrCompare<ValueExpr>(charValue, rhsLikePredicate->charValue);
     }
 
     ValueExprPtr value;
@@ -252,7 +252,8 @@ public:
         if (nullptr == rhsNullPredicate) {
             return false;
         }
-        return hasNot == rhsNullPredicate->hasNot && util::pointerCompare(value, rhsNullPredicate->value);
+        return hasNot == rhsNullPredicate->hasNot &&
+               util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
     }
 
     ValueExprPtr value;

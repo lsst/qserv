@@ -24,10 +24,8 @@
 // Class header
 #include "query/JoinRef.h"
 
- // Third-party headers
-
-
 #include "util/DbgPrintPtrH.h"
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -79,6 +77,14 @@ std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
 std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
     return js->putStream(os);
 }
+
+bool JoinRef::operator==(const JoinRef& rhs) const {
+    return  util::ptrCompare<TableRef>(_right, rhs._right) &&
+            _joinType == rhs._joinType &&
+            _isNatural == rhs._isNatural &&
+            util::ptrCompare<JoinSpec>(_spec, rhs._spec);
+}
+
 
 void JoinRef::dbgPrint(std::ostream& os) const {
     os << "JoinRef(";

@@ -142,7 +142,7 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
 }
 
 bool SelectList::operator==(const SelectList& rhs) {
-    return util::pointerCompare(_valueExprList, rhs._valueExprList);
+    return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
 
 }}} // namespace lsst::qserv::query

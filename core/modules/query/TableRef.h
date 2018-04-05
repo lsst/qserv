@@ -102,6 +102,8 @@ public:
 
     void dbgPrint(std::ostream& os) const;
 
+    bool operator==(const TableRef& rhs) const;
+
     class render;
 private:
 
