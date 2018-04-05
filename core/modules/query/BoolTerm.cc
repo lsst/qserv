@@ -304,6 +304,14 @@ std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
+bool OrTerm::merge(const BoolTerm& other) {
+    auto otherOr = dynamic_cast<const OrTerm*>(&other);
+    if (nullptr == otherOr) {
+        return false;
+    }
+    _terms.insert(_terms.end(), otherOr->_terms.begin(), otherOr->_terms.end());
+    return true;
+}
 void OrTerm::dbgPrint(std::ostream& os) const {
     os << "OrTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
 }
@@ -311,6 +319,14 @@ std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(at->_terms, _terms);
     return at;
+}
+bool AndTerm::merge(const BoolTerm& other) {
+    auto otherAnd = dynamic_cast<const AndTerm*>(&other);
+    if (nullptr == otherAnd) {
+        return false;
+    }
+    _terms.insert(_terms.end(), otherAnd->_terms.begin(), otherAnd->_terms.end());
+    return true;
 }
 void AndTerm::dbgPrint(std::ostream& os) const {
     os << "AndTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";

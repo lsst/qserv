@@ -209,16 +209,14 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 
 
 void WhereClause::dbgPrint(std::ostream& os) {
-    os << "WhereClause(original:" << _original;
-    os << ", tree:" << util::DbgPrintPtrH<BoolTerm>(_tree);
+    os << "WhereClause(tree:" << util::DbgPrintPtrH<BoolTerm>(_tree);
     os << ", restrs:" << util:: DbgPrintPtrVectorPtrH<QsRestrictor>(_restrs);
     os << ")";
 }
 
 bool WhereClause::operator==(WhereClause& rhs) const {
-    return (_original == rhs._original &&
-            util::pointerCompare(_tree, rhs._tree) &&
-            util::pointerCompare(_restrs, rhs._restrs));
+    return (util::ptrCompare<BoolTerm>(_tree, rhs._tree) &&
+            util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
 }
 
 

@@ -74,7 +74,7 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
 }
 
 bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
-    return util::pointerCompare(_expr, rhs._expr) &&
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
             _collate == rhs._collate;
 }
 
@@ -140,7 +140,7 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
 }
 
 bool GroupByClause::operator==(const GroupByClause& rhs) const {
-    return util::pointerCompare(_terms, rhs._terms);
+    return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
 }
 
 void GroupByClause::dbgPrint(std::ostream& os) const {
