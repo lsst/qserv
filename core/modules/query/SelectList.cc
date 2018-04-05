@@ -59,6 +59,7 @@
 #include "query/typedefs.h"
 #include "query/ValueFactor.h"
 #include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -92,12 +93,7 @@ SelectList::dbgPrint(std::ostream& os) const {
     if (!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
-        e = _valueExprList->end();
-        viter != e;
-        ++viter) {
-        (*viter)->dbgPrint(os);
-    }
+    os << "SelectList(valueExprList:" << util::DbgPrintPtrVectorPtrH<ValueExpr>(_valueExprList) << ")";
 }
 
 std::ostream&

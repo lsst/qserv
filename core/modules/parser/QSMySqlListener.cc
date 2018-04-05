@@ -227,8 +227,7 @@ public:
 
 class FullColumnNameExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleFullColumnName(shared_ptr<query::ValueFactor>& columnValueExpr) = 0;
-
+    virtual void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) = 0;
 };
 
 
@@ -517,7 +516,11 @@ public:
     }
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        shared_ptr<query::AndTerm> andTerm = make_shared<query::AndTerm>();
+        shared_ptr<query::BoolTerm> boolTerm = boolFactor;
+        andTerm->addBoolTerm(boolTerm);
+        shared_ptr<query::BoolTerm> andBoolTerm = andTerm;
+        _rootTerm->addBoolTerm(andBoolTerm);
     }
 
     void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
@@ -691,12 +694,10 @@ public:
     : AdapterT(parent) {}
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
-        CHECK_EXECUTION_CONDITION(false, "when is this called?");
+        lockedParent()->HandleFullColumnNameExpressionAtom(valueFactor);
     }
 
-    void onExit() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
-    }
+    void onExit() override {}
 };
 
 
@@ -732,10 +733,10 @@ public:
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
-    void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
-        CHECK_EXECUTION_CONDITION(false, "when is this called?");
-//        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-//        lockedParent()->handleExpressionAtomPredicate(columnValueExpr);
+    void HandleFullColumnNameExpressionAtom(shared_ptr<query::ValueFactor>& valueFactor) override {
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
     void onEnter() override {
@@ -806,7 +807,7 @@ public:
 
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        _boolFactor->addBoolFactorTerm(comparisonPredicate);
     }
 
     // ExpressionAtomPredicateCBH
@@ -979,7 +980,6 @@ public:
     : AdapterT(parent), _uidContext(ctx) {}
 
     void onExit() override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
         // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
         // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
@@ -1483,13 +1483,11 @@ void QSMySqlListener::popAdapterStack() {
 
 void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
     // root is pushed by the ctor (and popped by the dtor)
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
 
 void QSMySqlListener::exitRoot(QSMySqlParser::RootContext * ctx) {
     // root is pushed by the ctor (and popped by the dtor)
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
 }
 
 IGNORED(SqlStatements)
