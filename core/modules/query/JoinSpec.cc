@@ -36,6 +36,7 @@
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -85,7 +86,21 @@ JoinSpec::Ptr JoinSpec::clone() const {
     } else {
         return std::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
-
 }
+
+
+bool JoinSpec::operator==(const JoinSpec& rhs) const {
+    return util::ptrCompare<ColumnRef>(_usingColumn, rhs._usingColumn) &&
+           util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
+}
+
+
+void JoinSpec::dbgPrint(std::ostream& os) const {
+    os << "JoinSpec(";
+    os << util::DbgPrintPtrH<ColumnRef>(_usingColumn);
+    os << util::DbgPrintPtrH<BoolTerm>(_onTerm);
+    os << ")";
+}
+
 
 }}} // lsst::qserv::query

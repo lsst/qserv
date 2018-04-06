@@ -71,6 +71,10 @@ public:
     Order getOrder() const;
     void renderTo(QueryTemplate& qt) const;
 
+    bool operator==(const OrderByTerm& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
     friend class render;
@@ -97,12 +101,16 @@ public:
     std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
 
     void findValueExprs(ValueExprPtrVector& list);
+
+    bool operator==(const OrderByClause& rhs) const;
+    void dbgPrint(std::ostream& os) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
-    std::shared_ptr<OrderByTermVector> _terms;
+    std::shared_ptr<std::vector<OrderByTerm>> _terms;
 };
 
 }}} // namespace lsst::qserv::query

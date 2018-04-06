@@ -71,6 +71,10 @@ public:
     /// Shallow copy this node, sharing its linked objects.
     std::shared_ptr<FromList> copySyntax();
 
+    bool operator==(const FromList& rhs);
+
+    void dbgPrint(std::ostream& os) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, FromList const& fl);
     friend class parser::FromFactory;

@@ -88,6 +88,29 @@ operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
     return os;
 }
 
+void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
+    os << "FactorOp(op:";
+    switch(op) {
+    case ValueExpr::NONE: os << "NONE"; break;
+    case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
+    case ValueExpr::PLUS: os << "PLUS"; break;
+    case ValueExpr::MINUS: os << "MINUS"; break;
+    case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
+    case ValueExpr::DIVIDE: os << "DIVIDE"; break;
+    default: throw std::runtime_error("unhandled op"); break;
+    }
+    if (factor) {
+        os << ", factor:";
+        factor->dbgPrint(os);
+    }
+    os << ")";
+}
+
+bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
+    return (util::ptrCompare<ValueFactor>(factor, rhs.factor) && op == rhs.op);
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
@@ -111,25 +134,24 @@ ValueExpr::ValueExpr() {
  * @param out
  * @return void
  */
-void ValueExpr::dbgPrint(std::ostream& os) {
+void ValueExpr::dbgPrint(std::ostream& os) const {
     ColumnRef::Vector cList;
-    os << "ValueExpr:\t\"" << *this << "\"\n";
-    os << "\tAlias:\t\"" << this->_alias << "\"\n";
-    os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
-    os << "\tIsFactor:\t" << this->isFactor() << "\n";
-    os << "\tIsStar:\t" << this->isStar() << "\n";
-    this->findColumnRefs(cList);
-    typedef ColumnRef::Vector::const_iterator ColIter;
-    for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
-        os << "\tColumnRef:\t" << *i << "\n";
-    }
+    os << "ValueExpr(" << "rendered:" << *this;
+    os << ", alias:" << _alias;
+    os << ", isColumnRef:" << isColumnRef();
+    os << ", isFactor:" << isFactor();
+    os << ", isStar:" << isStar();
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
-    for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
-            e=this->_factorOps.end(); i != e; ++i) {
-            ca(*i);
-            os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
+    os << ", factorOps:(";
+    for (auto factorOp : _factorOps) {
+        ca(factorOp);
+        factorOp.dbgPrint(os);
+        if (&factorOp != &_factorOps.back())
+            os << ", ";
     }
+    os << ")"; // end factorOps
+    os << ")"; // end ValueExpr
 }
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
@@ -176,11 +198,10 @@ double ValueExpr::copyAsType<double>(double const& defaultValue) const;
 template int ValueExpr::copyAsType<int>(int const&) const;
 
 
-void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) {
-    for(FactorOpVector::iterator i=_factorOps.begin();
-        i != _factorOps.end(); ++i) {
-        assert(i->factor); // FactorOps should never have null ValueFactors
-        i->factor->findColumnRefs(vector);
+void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
+    for (auto factorOp : _factorOps){
+        assert(factorOp.factor); // FactorOps should never have null ValueFactors
+        factorOp.factor->findColumnRefs(vector);
     }
 }
 
@@ -311,6 +332,11 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
+bool ValueExpr::operator==(const ValueExpr& rhs) const {
+    return (_alias == rhs._alias &&
+            _factorOps == rhs._factorOps);
+}
+
 // Miscellaneous
 struct _copyValueExpr {
     ValueExprPtr operator()(ValueExprPtr const& p) {
@@ -324,4 +350,6 @@ void cloneValueExprPtrVector(ValueExprPtrVector& dest,
                    dest.begin(),
                    _copyValueExpr());
 }
+
+
 }}} // namespace lsst::qserv::query

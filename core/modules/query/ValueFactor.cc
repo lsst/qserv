@@ -46,6 +46,7 @@
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -96,7 +97,7 @@ ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
-void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
+void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     switch(_type) {
     case COLUMNREF:
         vector.push_back(_columnRef);
@@ -178,5 +179,27 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     }
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
+
+std::ostream& ValueFactor::dbgPrint(std::ostream& os) const {
+    os << "ValueFactor(";
+    os << "type:" << ValueFactor::getTypeString(_type);
+    os << ", columnRef:" << util::DbgPrintPtrH<ColumnRef>(_columnRef);
+    os << ", funcExpr:" << util::DbgPrintPtrH<FuncExpr>(_funcExpr);
+    os << ", valueExpr:" << util::DbgPrintPtrH<ValueExpr>(_valueExpr);
+    os << ", alias:" << _alias;
+    os << ", tableStar:" << _tableStar; // Reused as const val (no tablestar)
+    os << ")";
+    return os;
+}
+
+bool ValueFactor::operator==(const ValueFactor& rhs) const {
+    return (_type == rhs._type &&
+            util::ptrCompare<ColumnRef>(_columnRef, rhs._columnRef) &&
+            util::ptrCompare<FuncExpr>(_funcExpr, rhs._funcExpr) &&
+            util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) &&
+            _alias == rhs._alias &&
+            _tableStar == rhs._tableStar);
+}
+
 
 }}} // namespace lsst::qserv::query

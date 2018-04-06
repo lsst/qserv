@@ -35,7 +35,11 @@
 #include <algorithm>
 #include <iterator>
 
+#include "util/DbgPrintHelper.h"
 // Third-party headers
+
+
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -129,6 +133,15 @@ FromList::clone() const {
     }
     return newL;
 }
+
+bool FromList::operator==(const FromList& rhs) {
+    return util::ptrVectorPtrCompare<TableRef>(_tableRefs, rhs._tableRefs);
+}
+
+void FromList::dbgPrint(std::ostream& os) const {
+    os << "FromList(tableRefs:" << util::DbgPrintPtrVectorPtrH<TableRef>(_tableRefs) << ")";
+}
+
 
 }}} // namespace lsst::qserv::query
 

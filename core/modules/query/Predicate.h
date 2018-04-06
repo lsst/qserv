@@ -37,6 +37,7 @@
 // Local headers
 #include "query/typedefs.h"
 #include "query/BoolTerm.h"
+#include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
@@ -109,6 +110,12 @@ public:
 
     static int lookupOp(char const* op);
 
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const CompPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr left;
     int op; // Parser token type of operator
     ValueExprPtr right;
@@ -131,6 +138,12 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone();}
 
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const InPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     ValueExprPtrVector cands;
 };
@@ -138,6 +151,9 @@ public:
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
+    BetweenPredicate() {}
+    BetweenPredicate(ValueExprPtr iValue, ValueExprPtr iMinValue, ValueExprPtr iMaxValue)
+    : value(iValue), minValue(iMinValue), maxValue(iMaxValue) {}
     typedef std::shared_ptr<BetweenPredicate> Ptr;
 
     virtual ~BetweenPredicate() {}
@@ -150,6 +166,12 @@ public:
     /// Deep copy this term.
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
+
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const BetweenPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr minValue;
@@ -173,6 +195,12 @@ public:
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const LikePredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
+
     ValueExprPtr value;
     ValueExprPtr charValue;
 };
@@ -194,6 +222,12 @@ public:
     virtual BoolFactorTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
+
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const NullPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     bool hasNot;

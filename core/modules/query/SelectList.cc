@@ -58,6 +58,8 @@
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "query/ValueFactor.h"
+#include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -91,12 +93,7 @@ SelectList::dbgPrint(std::ostream& os) const {
     if (!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
-        e = _valueExprList->end();
-        viter != e;
-        ++viter) {
-        (*viter)->dbgPrint(os);
-    }
+    os << "SelectList(valueExprList:" << util::DbgPrintPtrVectorPtrH<ValueExpr>(_valueExprList) << ")";
 }
 
 std::ostream&
@@ -138,6 +135,10 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
     newS->_valueExprList = std::make_shared<ValueExprPtrVector>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
+}
+
+bool SelectList::operator==(const SelectList& rhs) {
+    return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
 
 }}} // namespace lsst::qserv::query

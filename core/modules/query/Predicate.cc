@@ -39,6 +39,8 @@
 #include "query/QueryTemplate.h"
 #include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
+#include "util/DbgPrintHelper.h"
+#include "util/PointerCompare.h"
 
 
 namespace lsst {
@@ -184,6 +186,27 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
+void CompPredicate::dbgPrint(std::ostream& os) const {
+    os << "CompPredicate(left:" << util::DbgPrintPtrH<ValueExpr>(left);
+    os << ", op:" << op;
+    os << ", right:" << util::DbgPrintPtrH<ValueExpr>(right);
+    os << ")";
+}
+
+bool CompPredicate::operator==(const CompPredicate& rhs) const {
+    return util::ptrCompare<ValueExpr>(left, rhs.left) &&
+           op == rhs.op &&
+           util::ptrCompare<ValueExpr>(right, rhs.right);
+}
+
+bool CompPredicate::equal(const BoolFactorTerm& rhs) const {
+    auto rhsCompPredicate = dynamic_cast<CompPredicate const * const>(&rhs);
+    if (nullptr == rhsCompPredicate) {
+        return false;
+    }
+    return *this == *rhsCompPredicate;
+}
+
 BoolFactorTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
     if (left) p->left = left->clone();
@@ -214,12 +237,52 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+void InPredicate::dbgPrint(std::ostream& os) const {
+    os << "InPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", cands:" << util::DbgPrintVectorPtrH<ValueExpr>(cands);
+    os << ")";
+}
+
+bool InPredicate::operator==(const InPredicate& rhs) const {
+    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
+           util::vectorPtrCompare<ValueExpr>(cands, rhs.cands);
+}
+
+bool InPredicate::equal(const BoolFactorTerm& rhs) const {
+    auto rhsInPredicate = dynamic_cast<InPredicate const * const>(&rhs);
+    if (nullptr == rhsInPredicate) {
+        return false;
+    }
+    return *this == *rhsInPredicate;
+}
+
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
     if (value) p->value = value->clone();
     if (minValue) p->minValue = minValue->clone();
     if (maxValue) p->maxValue = maxValue->clone();
     return BoolFactorTerm::Ptr(p);
+}
+
+void BetweenPredicate::dbgPrint(std::ostream& os) const {
+    os << "BetweenPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", minValue:" << util::DbgPrintPtrH<ValueExpr>(minValue);
+    os << ", maxValue:" << util::DbgPrintPtrH<ValueExpr>(maxValue);
+    os << ")";
+}
+
+bool BetweenPredicate::operator==(const BetweenPredicate& rhs) const {
+    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
+           util::ptrCompare<ValueExpr>(minValue, rhs.minValue) &&
+           util::ptrCompare<ValueExpr>(maxValue, rhs.maxValue);
+}
+
+bool BetweenPredicate::equal(const BoolFactorTerm& rhs) const {
+    auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const * const>(&rhs);
+    if (nullptr == rhsBetweenPredicate) {
+        return false;
+    }
+    return *this == *rhsBetweenPredicate;
 }
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
@@ -229,11 +292,49 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
     return BoolFactorTerm::Ptr(p);
 }
 
+void LikePredicate::dbgPrint(std::ostream& os) const {
+    os << "LikePredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", charValue:" << util::DbgPrintPtrH<ValueExpr>(charValue);
+    os << ")";
+}
+
+bool LikePredicate::operator==(const LikePredicate& rhs) const {
+    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
+           util::ptrCompare<ValueExpr>(charValue, rhs.charValue);
+}
+
+bool LikePredicate::equal(const BoolFactorTerm& rhs) const {
+    auto rhsLikePredicate = dynamic_cast<LikePredicate const * const>(&rhs);
+    if (nullptr == rhsLikePredicate) {
+        return false;
+    }
+    return *this == *rhsLikePredicate;
+}
+
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     NullPredicate::Ptr p = std::make_shared<NullPredicate>();
     if (value) p->value = value->clone();
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
+}
+
+void NullPredicate::dbgPrint(std::ostream& os) const {
+    os << "NullPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << ", hasNot:" << hasNot;
+    os << ")";
+}
+
+bool NullPredicate::operator==(const NullPredicate& rhs) const {
+    return hasNot == rhs.hasNot &&
+           util::ptrCompare<ValueExpr>(value, rhs.value);
+}
+
+bool NullPredicate::equal(const BoolFactorTerm& rhs) const {
+    auto rhsNullPredicate = dynamic_cast<NullPredicate const * const>(&rhs);
+    if (nullptr == rhsNullPredicate) {
+        return false;
+    }
+    return *this == *rhsNullPredicate;
 }
 
 }}} // namespace lsst::qserv::query

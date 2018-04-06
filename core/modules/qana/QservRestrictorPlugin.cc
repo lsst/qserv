@@ -342,7 +342,7 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
                                  StringPair const& chunkColumns,
                                  C& c) {
     query::FuncExpr::Ptr fe = std::make_shared<query::FuncExpr>();
-    fe->name = UDF_PREFIX + fName;
+    fe->setName(UDF_PREFIX + fName);
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
                   std::make_shared<query::ColumnRef>(

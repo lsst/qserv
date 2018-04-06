@@ -29,6 +29,10 @@
 #define BOOST_TEST_MODULE CControl_1
 #include "boost/test/included/unit_test.hpp"
 
+#include <boost/test/included/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/array.hpp>
+
 // Qserv headers
 #include "ccontrol/A4UserQueryFactory.h"
 #include "ccontrol/UserQueryType.h"
@@ -40,15 +44,21 @@ using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
+static const boost::array< std::string, 2 > QUERIES = {
+    "SELECT objectId, ra_PS FROM Object WHERE objectId=386937898687249",
+    "SELECT COUNT ( * ) AS OBJ_COUNT FROM Object WHERE qserv_areaspec_box ( 0.1 , - 6 , 4 , 6 ) AND scisql_fluxToAbMag ( zFlux_PS ) BETWEEN 20 AND 24 AND scisql_fluxToAbMag ( gFlux_PS ) - scisql_fluxToAbMag ( rFlux_PS ) BETWEEN 0.1 AND 0.9 AND scisql_fluxToAbMag ( iFlux_PS ) - scisql_fluxToAbMag ( zFlux_PS ) BETWEEN 0.1 AND 1.0;"
+};
 
-BOOST_AUTO_TEST_CASE(testAntlr4SelectStatement) {
-    std::string query = "SELECT objectId, ra_PS FROM Object WHERE objectId=386937898687249";
-    std::shared_ptr<query::SelectStmt> selectStatement = ccontrol::a4NewUserQuery(query);
-    BOOST_REQUIRE(selectStatement != nullptr);
-    std::ostringstream queryStr;
-    queryStr << *selectStatement;
-    std::string expectedQueryStr = "SELECT objectId, ra_PS, (FIXME) FROM Table(.Object),  WHERE objectId=386937898687249 ";
-    BOOST_REQUIRE_EQUAL(queryStr.str(), expectedQueryStr);
+BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
+    auto a4SelectStatement = ccontrol::a4NewUserQuery(query);
+    BOOST_REQUIRE(a4SelectStatement != nullptr);
+    std::ostringstream a4QueryStr;
+    a4QueryStr << *a4SelectStatement;
+
+    auto a2SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);
+    std::ostringstream a2QueryStr;
+    a2QueryStr << *a2SelectStatement;
+    BOOST_REQUIRE_EQUAL(a4QueryStr.str(), a2QueryStr.str());
 }
 
 

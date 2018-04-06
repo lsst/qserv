@@ -33,6 +33,7 @@
   */
 
 // System headers
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -45,6 +46,7 @@
 #include "global/stringTypes.h"
 #include "query/ColumnRef.h"
 #include "typedefs.h"
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -66,6 +68,13 @@ public:
 
     virtual void findValueExprs(ValueExprPtrVector& vector) {}
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
+
+    virtual void dbgPrint(std::ostream& os) const = 0;
+    virtual bool equal(const BoolFactorTerm& rhs) const = 0;
+
+    bool operator==(const BoolFactorTerm& rhs) const {
+        return equal(rhs);
+    }
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -105,12 +114,38 @@ public:
 
     virtual std::shared_ptr<BoolTerm> copySyntax() const {
         return std::shared_ptr<BoolTerm>(); }
+
+    /// Merge is implemented in subclasses; if they are of the same type (that is, if the subclass instance is
+    /// e.g. an AndTerm and `other` is also an AndTerm, then the _terms of the other AndTerm can be added to
+    /// this and the other AndTerm can be thrown away (by the caller, if they desire).
+    /// Returns true if the terms were merged, and false if not (this could happen e.g. if this is an AndTerm
+    /// and other is an OrTerm, or for any other reason implemented by subclass's merge function.
+    virtual bool merge(const BoolTerm& other) { return false; }
+
+    virtual void dbgPrint(std::ostream& os) const = 0;
+
+    virtual bool equal(const BoolTerm& rhs) const = 0;
+
+    bool operator==(const BoolTerm& rhs) {
+        return equal(rhs);
+    }
 };
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
 
+
+class LogicalTerm : public BoolTerm {
+public:
+    void addBoolTerm(BoolTerm::Ptr& boolTerm) {
+        _terms.push_back(boolTerm);
+    }
+
+    BoolTerm::PtrVector _terms;
+};
+
+
 /// OrTerm is a set of OR-connected BoolTerms
-class OrTerm : public BoolTerm {
+class OrTerm : public LogicalTerm {
 public:
     typedef std::shared_ptr<OrTerm> Ptr;
 
@@ -140,11 +175,18 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    BoolTerm::PtrVector _terms;
+    bool merge(const BoolTerm& other) override;
+
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const OrTerm& rhs) const;
+
+    bool equal(const BoolTerm& rhs) const override;
 };
 
+
 /// AndTerm is a set of AND-connected BoolTerms
-class AndTerm : public BoolTerm {
+class AndTerm : public LogicalTerm {
 public:
     typedef std::shared_ptr<AndTerm> Ptr;
 
@@ -174,8 +216,16 @@ public:
 
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
-    BoolTerm::PtrVector _terms;
+
+    bool merge(const BoolTerm& other) override;
+
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const AndTerm& rhs) const;
+
+    bool equal(const BoolTerm& rhs) const override;
 };
+
 
 /// BoolFactor is a plain factor in a BoolTerm
 class BoolFactor : public BoolTerm {
@@ -183,6 +233,10 @@ public:
     typedef std::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
+
+    void addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm) {
+        _terms.push_back(boolFactorTerm);
+    }
 
     virtual void findValueExprs(ValueExprPtrVector& vector) {
         typedef BoolFactorTerm::PtrVector::iterator Iter;
@@ -204,11 +258,26 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
+    bool operator==(const BoolFactor& rhs) const {
+        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhs._terms);
+    }
+
+    bool equal(const BoolTerm& rhs) const override{
+        auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
+        if (nullptr == rhsBoolFactor) {
+            return false;
+        }
+        return *this == *rhsBoolFactor;
+    }
+
     BoolFactorTerm::PtrVector _terms;
+
+    void dbgPrint(std::ostream& os) const override;
 private:
     bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
     bool _checkParen(BoolFactorTerm::PtrVector& terms);
 };
+
 
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
 /// syntax that is not analyzed, modified, or manipulated in Qserv.
@@ -218,7 +287,11 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
+    void dbgPrint(std::ostream& os) const override;
+    bool operator==(const UnknownTerm& rhs) { return true; }
+    bool equal(const BoolTerm& rhs) const override { return true; }
 };
+
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
@@ -232,7 +305,14 @@ public: // text
     virtual void renderTo(QueryTemplate& qt) const;
 
     std::string _text;
+
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const PassTerm& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 };
+
 
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BoolFactorTerm {
@@ -243,8 +323,12 @@ public: // ( term, term, term )
     virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    void dbgPrint(std::ostream& os) const override;
+    bool operator==(const PassListTerm& rhs) const;
+    bool equal(const BoolFactorTerm& rhs) const override;
     StringVector _terms;
 };
+
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
 /// when parentheses are used within a bool term. The parenthetical group is an
@@ -265,8 +349,15 @@ public:
         if (_term) { _term->findColumnRefs(vector); }
     }
 
+    void dbgPrint(std::ostream& os) const override;
+
+    bool operator==(const BoolTermFactor& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
+
     std::shared_ptr<BoolTerm> _term;
 };
+
 
 }}} // namespace lsst::qserv::query
 

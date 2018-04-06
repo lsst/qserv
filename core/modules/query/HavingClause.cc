@@ -39,6 +39,8 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -85,6 +87,14 @@ HavingClause::copySyntax() {
 void
 HavingClause::findValueExprs(ValueExprPtrVector& list) {
     if (_tree) { _tree->findValueExprs(list); }
+}
+
+bool HavingClause::operator==(const HavingClause& rhs) const {
+    return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
+}
+
+void HavingClause::dbgPrint(std::ostream& os) const {
+    os << "HavingClause(tree:" << util::DbgPrintPtrH<BoolTerm>(_tree) << ")";
 }
 
 }}} // namespace lsst::qserv::query

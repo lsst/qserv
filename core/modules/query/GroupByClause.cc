@@ -42,6 +42,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -70,6 +71,17 @@ std::ostream& operator<<(std::ostream& os, GroupByTerm const& t) {
     os << *(t._expr);
     if (!t._collate.empty()) os << " COLLATE " << t._collate;
     return os;
+}
+
+bool GroupByTerm::operator==(const GroupByTerm& rhs) const {
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
+            _collate == rhs._collate;
+}
+
+void GroupByTerm::dbgPrint(std::ostream& os) const {
+    os << "GroupByTerm(expr:" << util::DbgPrintPtrH<ValueExpr>(_expr);
+    os << ", collate:" << _collate;
+    os << ")";
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -126,5 +138,14 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
         list.push_back(i->getExpr());
     }
 }
+
+bool GroupByClause::operator==(const GroupByClause& rhs) const {
+    return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
+}
+
+void GroupByClause::dbgPrint(std::ostream& os) const {
+    os <<"GroupByClause(terms:" << util::DbgPrintPtrDequeH<GroupByTerm>(_terms) << ")";
+}
+
 
 }}} // namespace lsst::qserv::query

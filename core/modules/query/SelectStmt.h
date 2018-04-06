@@ -153,7 +153,11 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
- private:
+    bool operator==(const SelectStmt& rhs);
+
+    void dbgPrint(std::ostream& os);
+
+private:
     // Declarations
     friend class parser::SelectFactory;
 
@@ -171,6 +175,7 @@ public:
     StringVector OutputMods; // Output modifiers (order, grouping,
                              // sort, limit
 };
+
 
 }}} // namespace lsst::qserv::query
 

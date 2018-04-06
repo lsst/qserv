@@ -66,6 +66,10 @@ public:
 
     GroupByTerm& operator=(GroupByTerm const& gb);
 
+    bool operator==(const GroupByTerm& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
+
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
     friend class parser::ModFactory;
@@ -89,6 +93,10 @@ public:
     std::shared_ptr<GroupByClause> copySyntax();
 
     void findValueExprs(ValueExprPtrVector& list);
+
+    bool operator==(const GroupByClause& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);

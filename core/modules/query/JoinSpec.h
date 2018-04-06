@@ -77,6 +77,11 @@ public:
     std::ostream& putStream(std::ostream& os) const;
     void putTemplate(QueryTemplate& qt) const;
     Ptr clone() const;
+
+    bool operator==(const JoinSpec& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
+
 private:
     std::shared_ptr<ColumnRef> _usingColumn;
     std::shared_ptr<BoolTerm> _onTerm;

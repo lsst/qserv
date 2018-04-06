@@ -44,6 +44,8 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 namespace {
 
@@ -114,6 +116,26 @@ operator<<(std::ostream& os, OrderByTerm const& t) {
     return os;
 }
 
+bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
+            _order == rhs._order &&
+            _collate == rhs._collate;
+}
+
+void OrderByTerm::dbgPrint(std::ostream& os) const {
+    os << "OrderByTerm(";
+    os << "expr:" << util::DbgPrintPtrH<ValueExpr>(_expr);
+    os << ", order:";
+    switch (_order) {
+    case DEFAULT: os << "DEFAULT"; break;
+    case ASC: os << "ASC"; break;
+    case DESC: os << "DESC"; break;
+    default: os << "!!unhandled!!"; break;
+    }
+    os << ", collate:" <<  _collate;
+    os << ")";
+}
+
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
@@ -161,6 +183,14 @@ void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
     for (OrderByTermVector::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
         list.push_back(i->getExpr());
     }
+}
+
+bool OrderByClause::operator==(const OrderByClause& rhs) const {
+    return util::ptrVectorCompare<OrderByTerm>(_terms, rhs._terms);
+}
+
+void OrderByClause::dbgPrint(std::ostream& os) const {
+    os << "OrderByClause(terms:" << util::DbgPrintPtrVectorH<OrderByTerm>(_terms) << ")";
 }
 
 }}} // namespace lsst::qserv::query

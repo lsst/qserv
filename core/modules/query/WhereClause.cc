@@ -44,6 +44,8 @@
 #include "global/Bug.h"
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 namespace {
 
@@ -206,6 +208,18 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
 }
 
 
+void WhereClause::dbgPrint(std::ostream& os) {
+    os << "WhereClause(tree:" << util::DbgPrintPtrH<BoolTerm>(_tree);
+    os << ", restrs:" << util:: DbgPrintPtrVectorPtrH<QsRestrictor>(_restrs);
+    os << ")";
+}
+
+bool WhereClause::operator==(WhereClause& rhs) const {
+    return (util::ptrCompare<BoolTerm>(_tree, rhs._tree) &&
+            util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // WhereClause (private)
 ////////////////////////////////////////////////////////////////////////
@@ -213,5 +227,6 @@ void
 WhereClause::resetRestrs() {
     _restrs = std::make_shared<QsRestrictor::PtrVector>();
 }
+
 
 }}} // namespace lsst::qserv::query

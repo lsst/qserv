@@ -73,6 +73,10 @@ public:
         QueryTemplate& qt;
     };
 
+    bool operator==(const QsRestrictor& rhs) const;
+
+    void dbgPrint(std::ostream& os) const;
+
     std::string _name;
     StringVector _params;
 };

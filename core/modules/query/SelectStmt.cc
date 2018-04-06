@@ -38,6 +38,7 @@
 
 // System headers
 #include <map>
+#include <sstream>
 
 // Third-party headers
 #include "boost/algorithm/string/predicate.hpp" // string iequal
@@ -52,7 +53,8 @@
 #include "query/OrderByClause.h"
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
-
+#include "util/PointerCompare.h"
+#include "util/DbgPrintHelper.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
@@ -217,6 +219,31 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
         os << "LIMIT " << selectStmt._limit;
     }
     return os;
+}
+
+
+bool SelectStmt::operator==(const SelectStmt& rhs) {
+    return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
+            util::ptrCompare<SelectList>(_selectList, rhs._selectList) &&
+            util::ptrCompare<WhereClause>(_whereClause, rhs._whereClause) &&
+            util::ptrCompare<OrderByClause>(_orderBy, rhs._orderBy) &&
+            util::ptrCompare<GroupByClause>(_groupBy, rhs._groupBy) &&
+            util::ptrCompare<HavingClause>(_having, rhs._having) &&
+            _hasDistinct == rhs._hasDistinct &&
+            _limit == rhs._limit &&
+            OutputMods == rhs.OutputMods);
+}
+
+
+void SelectStmt::dbgPrint(std::ostream& os) {
+    os << "SelectStmt(";
+    os << "fromList:" << util::DbgPrintPtrH<FromList>(_fromList);
+    os << ", selectList:" << util::DbgPrintPtrH<SelectList>(_selectList);
+    os << ", whereClause:" << util::DbgPrintPtrH<WhereClause>(_whereClause);
+    os << ", orderBy:" << util::DbgPrintPtrH<OrderByClause>(_orderBy);
+    os << ", groupBy:" << util::DbgPrintPtrH<GroupByClause>(_groupBy);
+    os << ", having:" << util::DbgPrintPtrH<HavingClause>(_having);
+    os << ")";
 }
 
 }}} // namespace lsst::qserv::query

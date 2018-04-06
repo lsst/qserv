@@ -61,6 +61,7 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+#include "/util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -108,6 +109,14 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 }
 
 
+std::shared_ptr<query::SelectStmt>
+UserQueryFactory::antlr2NewSelectStmt(const std::string& query) {
+    auto parser = parser::SelectParser::newInstance(query);
+    parser->setup();
+    return parser->getSelectStmt();
+}
+
+
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
@@ -149,20 +158,26 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<query::SelectStmt> a4stmt = a4NewUserQuery(query);
         if (a4stmt) {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " <<
+                    util::DbgPrintPtrH<query::SelectStmt>(a4stmt));
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
 
         std::shared_ptr<query::SelectStmt> stmt;
-        if (nullptr == stmt) {
-            try {
-                auto parser = parser::SelectParser::newInstance(query);
-                parser->setup();
-                stmt = parser->getSelectStmt();
-            } catch(parser::ParseException const& e) {
-                return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+        try {
+            stmt = antlr2NewSelectStmt(query);
+        } catch(parser::ParseException const& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " <<
+                util::DbgPrintPtrH<query::SelectStmt>(stmt));
+
+        // TEMP while developing the antlr4 parser listener
+        if (a4stmt && stmt) {
+            bool theyMatch(*a4stmt == *stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "they match:" << theyMatch);
         }
 
         // handle special database/table names

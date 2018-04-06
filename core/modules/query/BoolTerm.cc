@@ -45,6 +45,7 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.BoolTerm");
@@ -303,30 +304,118 @@ std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
+bool OrTerm::merge(const BoolTerm& other) {
+    auto otherOr = dynamic_cast<const OrTerm*>(&other);
+    if (nullptr == otherOr) {
+        return false;
+    }
+    _terms.insert(_terms.end(), otherOr->_terms.begin(), otherOr->_terms.end());
+    return true;
+}
+void OrTerm::dbgPrint(std::ostream& os) const {
+    os << "OrTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
+}
+bool OrTerm::operator==(const OrTerm& rhs) const {
+    return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
+}
+bool OrTerm::equal(const BoolTerm& rhs) const {
+    auto rhsOrTerm = dynamic_cast<OrTerm const * const>(&rhs);
+    if (nullptr == rhsOrTerm) {
+        return false;
+    }
+    return *this == *rhsOrTerm;
+}
 std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(at->_terms, _terms);
     return at;
+}
+bool AndTerm::merge(const BoolTerm& other) {
+    auto otherAnd = dynamic_cast<const AndTerm*>(&other);
+    if (nullptr == otherAnd) {
+        return false;
+    }
+    _terms.insert(_terms.end(), otherAnd->_terms.begin(), otherAnd->_terms.end());
+    return true;
+}
+void AndTerm::dbgPrint(std::ostream& os) const {
+    os << "AndTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
+}
+bool AndTerm::operator==(const AndTerm& rhs) const {
+    return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
+}
+bool AndTerm::equal(const BoolTerm& rhs) const {
+    auto rhsAndTerm = dynamic_cast<AndTerm const * const>(&rhs);
+    if (nullptr == rhsAndTerm) {
+        return false;
+    }
+    return *this == *rhsAndTerm;
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
     copyTerms<BoolFactorTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
+void BoolFactor::dbgPrint(std::ostream& os) const {
+    os << "BoolFactor(terms:" << util::DbgPrintVectorPtrH<BoolFactorTerm>(_terms) << ")";
+}
+void UnknownTerm::dbgPrint(std::ostream& os) const {
+    os << "UnknownTerm()";
+}
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
     p->_text = _text;
     return BoolFactorTerm::Ptr(p);
+}
+void PassTerm::dbgPrint(std::ostream& os) const {
+    os << "PassTerm(terms:" << _text << ")";
+}
+bool PassTerm::operator==(const PassTerm& rhs) const {
+    return _text == rhs._text;
+}
+bool PassTerm::equal(const BoolFactorTerm& rhs) const {
+    auto rhsPassTerm = dynamic_cast<PassTerm const * const>(&rhs);
+    if (nullptr == rhsPassTerm) {
+        return false;
+    }
+    return *this == *rhsPassTerm;
 }
 BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     PassListTerm* p = new PassListTerm;
     p->_terms = _terms;
     return BoolFactorTerm::Ptr(p);
 }
+void PassListTerm::dbgPrint(std::ostream& os) const {
+    os << "PassListTerm(terms:" << util::DbgPrintVectorH<std::string>(_terms) << ")";
+}
+bool PassListTerm::operator==(const PassListTerm& rhs) const {
+    return _terms == rhs._terms;
+}
+bool PassListTerm::equal(const BoolFactorTerm& rhs) const {
+    auto rhsTerm = dynamic_cast<PassListTerm const * const>(&rhs);
+    if (nullptr == rhsTerm) {
+        return false;
+    }
+    return *this == *rhsTerm;
+}
 BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
     if (_term) { p->_term = _term->copySyntax(); }
     return BoolFactorTerm::Ptr(p);
 }
+void BoolTermFactor::dbgPrint(std::ostream& os) const {
+    os << "BoolTermFactor(term:" << util::DbgPrintPtrH<BoolTerm>(_term) << ")";
+}
+bool BoolTermFactor::operator==(const BoolTermFactor& rhs) const {
+    return util::ptrCompare<BoolTerm>(_term, rhs._term);
+}
+bool BoolTermFactor::equal(const BoolFactorTerm& rhs) const {
+    auto rhsTerm = dynamic_cast<BoolTermFactor const * const>(&rhs);
+    if (nullptr == rhsTerm) {
+        return false;
+    }
+    return *this == *rhsTerm;
+}
+
 
 }}} // namespace lsst::qserv::query

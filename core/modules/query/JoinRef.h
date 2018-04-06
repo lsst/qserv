@@ -76,6 +76,11 @@ public:
     std::ostream& putStream(std::ostream& os) const;
     void putTemplate(QueryTemplate& qt) const;
     Ptr clone() const;
+
+    void dbgPrint(std::ostream& os) const;
+
+    bool operator==(const JoinRef& rhs) const;
+
 private:
     void _putJoinTemplate(QueryTemplate& qt) const;
     TableRef::Ptr _right;
