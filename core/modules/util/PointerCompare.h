@@ -25,9 +25,10 @@
  *
  * @ingroup util
  *
- * @brief pointerCompare is a function for comparing the value of 2 pointers of the same type.
- * If both pointers are null it returns true.
- * If one pointer is null but the other is not it returns false.
+ * @brief functions for comparing the value of 2 pointers of the same type, and containers of pointers, and
+ * pointers to containers of objects, and pointers to containers of pointers, etc.
+ * If both pointers are null the function evaluates to true.
+ * If one pointer is null but the other is not it evaluates to false.
  * Otherwise it checks for equality (operator==) on the objects pointed to by the pointers.
  *
  * @author Nathan Pease, SLAC

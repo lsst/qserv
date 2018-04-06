@@ -46,6 +46,7 @@
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -182,18 +183,9 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
 std::ostream& ValueFactor::dbgPrint(std::ostream& os) const {
     os << "ValueFactor(";
     os << "type:" << ValueFactor::getTypeString(_type);
-    if (_columnRef) {
-        os << ", columnRef:";
-        _columnRef->dbgPrint(os);
-    }
-    if (_funcExpr) {
-        os << ", funcExpr:";
-        _funcExpr->dbgPrint(os);
-    }
-    if (_valueExpr) {
-        os << ", valueExpr:";
-        _valueExpr->dbgPrint(os);
-    }
+    os << ", columnRef:" << util::DbgPrintPtrH<ColumnRef>(_columnRef);
+    os << ", funcExpr:" << util::DbgPrintPtrH<FuncExpr>(_funcExpr);
+    os << ", valueExpr:" << util::DbgPrintPtrH<ValueExpr>(_valueExpr);
     os << ", alias:" << _alias;
     os << ", tableStar:" << _tableStar; // Reused as const val (no tablestar)
     os << ")";

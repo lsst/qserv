@@ -332,9 +332,9 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
-bool operator==(const ValueExpr& lhs, const ValueExpr& rhs) {
-    return (lhs._alias == rhs._alias &&
-            lhs._factorOps == rhs._factorOps);
+bool ValueExpr::operator==(const ValueExpr& rhs) const {
+    return (_alias == rhs._alias &&
+            _factorOps == rhs._factorOps);
 }
 
 // Miscellaneous

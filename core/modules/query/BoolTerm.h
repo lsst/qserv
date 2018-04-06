@@ -140,7 +140,6 @@ public:
         _terms.push_back(boolTerm);
     }
 
-    // todo make this private?
     BoolTerm::PtrVector _terms;
 };
 
@@ -180,13 +179,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolTerm& rhs) const override {
-        auto rhsOrTerm = dynamic_cast<OrTerm const * const>(&rhs);
-        if (nullptr == rhsOrTerm) {
-            return false;
-        }
-        return util::vectorPtrCompare<BoolTerm>(_terms, rhsOrTerm->_terms);
-    }
+    bool operator==(const OrTerm& rhs) const;
+
+    bool equal(const BoolTerm& rhs) const override;
 };
 
 
@@ -226,13 +221,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolTerm& rhs) const override {
-        auto rhsAndTerm = dynamic_cast<AndTerm const * const>(&rhs);
-        if (nullptr == rhsAndTerm) {
-            return false;
-        }
-        return util::vectorPtrCompare<BoolTerm>(_terms, rhsAndTerm->_terms);
-    }
+    bool operator==(const AndTerm& rhs) const;
+
+    bool equal(const BoolTerm& rhs) const override;
 };
 
 
@@ -317,13 +308,9 @@ public: // text
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsPassTerm = dynamic_cast<PassTerm const * const>(&rhs);
-        if (nullptr == rhsPassTerm) {
-            return false;
-        }
-        return _text == rhsPassTerm->_text;
-    }
+    bool operator==(const PassTerm& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 };
 
 
@@ -337,14 +324,9 @@ public: // ( term, term, term )
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     void dbgPrint(std::ostream& os) const override;
+    bool operator==(const PassListTerm& rhs) const;
+    bool equal(const BoolFactorTerm& rhs) const override;
     StringVector _terms;
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsTerm = dynamic_cast<PassListTerm const * const>(&rhs);
-        if (nullptr == rhsTerm) {
-            return false;
-        }
-        return _terms == rhsTerm->_terms;
-    }
 };
 
 
@@ -369,13 +351,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsTerm = dynamic_cast<BoolTermFactor const * const>(&rhs);
-        if (nullptr == rhsTerm) {
-            return false;
-        }
-        return util::ptrCompare<BoolTerm>(_term, rhsTerm->_term);
-    }
+    bool operator==(const BoolTermFactor& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     std::shared_ptr<BoolTerm> _term;
 };

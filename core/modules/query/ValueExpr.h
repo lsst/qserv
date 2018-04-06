@@ -132,13 +132,12 @@ public:
     class render;
     friend class render;
 
+    bool operator==(const ValueExpr& rhs) const;
+
 private:
-    friend bool operator==(const ValueExpr& lhs, const ValueExpr& rhs);
     std::string _alias;
     FactorOpVector _factorOps;
 };
-
-bool operator==(const ValueExpr& lhs, const ValueExpr& rhs);
 
 
 /// A helper functor for rendering to QueryTemplates

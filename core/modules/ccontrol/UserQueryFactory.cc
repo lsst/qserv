@@ -34,7 +34,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-#include "../util/DbgPrintHelper.h"
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
@@ -62,6 +61,7 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+#include "/util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
