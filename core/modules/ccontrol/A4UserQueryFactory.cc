@@ -53,22 +53,17 @@ namespace ccontrol {
 
 
 std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery) {
-    try {
-        ANTLRInputStream input(userQuery);
-        QSMySqlLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        QSMySqlParser parser(&tokens);
-        tree::ParseTree *tree = parser.root();
-        LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
-        tree::ParseTreeWalker walker;
-        parser::QSMySqlListener listener;
-        walker.walk(&listener, tree);
-        return listener.getSelectStatement();
-    } catch (std::exception& e) {
-        LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
-        return nullptr;
-    }
+    ANTLRInputStream input(userQuery);
+    QSMySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    QSMySqlParser parser(&tokens);
+    tree::ParseTree *tree = parser.root();
+    LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
+    tree::ParseTreeWalker walker;
+    parser::QSMySqlListener listener;
+    walker.walk(&listener, tree);
+    return listener.getSelectStatement();
 }
 
 
