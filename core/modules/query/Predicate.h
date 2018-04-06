@@ -112,15 +112,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsCompPredicate = dynamic_cast<CompPredicate const * const>(&rhs);
-        if (nullptr == rhsCompPredicate) {
-            return false;
-        }
-        return util::ptrCompare<ValueExpr>(left, rhsCompPredicate->left) &&
-               op == rhsCompPredicate->op &&
-               util::ptrCompare<ValueExpr>(right, rhsCompPredicate->right);
-    }
+    bool operator==(const CompPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr left;
     int op; // Parser token type of operator
@@ -146,14 +140,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsInPredicate = dynamic_cast<InPredicate const * const>(&rhs);
-        if (nullptr == rhsInPredicate) {
-            return false;
-        }
-        return util::ptrCompare<ValueExpr>(value, rhsInPredicate->value) &&
-               util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands);
-    }
+    bool operator==(const InPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
@@ -180,15 +169,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const * const>(&rhs);
-        if (nullptr == rhsBetweenPredicate) {
-            return false;
-        }
-        return util::ptrCompare<ValueExpr>(value, rhsBetweenPredicate->value) &&
-               util::ptrCompare<ValueExpr>(minValue, rhsBetweenPredicate->minValue) &&
-               util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
-    }
+    bool operator==(const BetweenPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr minValue;
@@ -214,14 +197,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsLikePredicate = dynamic_cast<LikePredicate const * const>(&rhs);
-        if (nullptr == rhsLikePredicate) {
-            return false;
-        }
-        return util::ptrCompare<ValueExpr>(value, rhsLikePredicate->value) &&
-               util::ptrCompare<ValueExpr>(charValue, rhsLikePredicate->charValue);
-    }
+    bool operator==(const LikePredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr charValue;
@@ -247,14 +225,9 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool equal(const BoolFactorTerm& rhs) const override {
-        auto rhsNullPredicate = dynamic_cast<NullPredicate const * const>(&rhs);
-        if (nullptr == rhsNullPredicate) {
-            return false;
-        }
-        return hasNot == rhsNullPredicate->hasNot &&
-               util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
-    }
+    bool operator==(const NullPredicate& rhs) const;
+
+    bool equal(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     bool hasNot;
