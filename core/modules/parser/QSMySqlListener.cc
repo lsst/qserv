@@ -378,7 +378,9 @@ class RootAdapter :
         public Adapter,
         public DmlStatementCBH {
 public:
-    RootAdapter() {}
+    RootAdapter()
+    : _ctx(nullptr)
+    {}
 
     shared_ptr<query::SelectStmt>& getSelectStatement() { return _selectStatement; }
 
@@ -386,10 +388,18 @@ public:
         _selectStatement = selectStatement;
     }
 
-    void onExit() override {}
+    void onEnter(QSMySqlParser::RootContext * ctx) {
+        _ctx = ctx;
+    }
+
+    void onExit() override {
+        auto txt = _ctx->getStart()->getInputStream()->getText(antlr4::misc::Interval(_ctx->getStart()->getStartIndex(), _ctx->getStop()->getStopIndex()));
+        CHECK_EXECUTION_CONDITION(_selectStatement != nullptr, "Could not parse query:" << txt);
+    }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
+    QSMySqlParser::RootContext * _ctx;
 };
 
 
@@ -1426,8 +1436,6 @@ private:
 
 
 QSMySqlListener::QSMySqlListener() {
-    _rootAdapter = make_shared<RootAdapter>();
-    _adapterStack.push(_rootAdapter);
 }
 
 
@@ -1467,14 +1475,11 @@ void QSMySqlListener::popAdapterStack() {
     // this code could be optionally disabled or removed entirely if the check is found to be unnecesary or
     // adds too much of a performance penalty.
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
-    if (nullptr == derivedPtr) {
-        int status;
-        LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
-                "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
-                " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status) <<
-                " Are there out of order or unhandled listener exits?");
-        // might want to throw here...?
-    }
+    int status;
+    CHECK_EXECUTION_CONDITION(derivedPtr != nullptr, "Top of listenerStack was not of expected type. " <<
+        "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
+        ", Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status) <<
+        ", Are there out of order or unhandled listener exits?");
 }
 
 
@@ -1482,12 +1487,15 @@ void QSMySqlListener::popAdapterStack() {
 
 
 void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
-    // root is pushed by the ctor (and popped by the dtor)
+    CHECK_EXECUTION_CONDITION(_adapterStack.empty(), "RootAdatper should be the first entry on the stack.");
+    _rootAdapter = make_shared<RootAdapter>();
+    _adapterStack.push(_rootAdapter);
+    _rootAdapter->onEnter(ctx);
 }
 
 
 void QSMySqlListener::exitRoot(QSMySqlParser::RootContext * ctx) {
-    // root is pushed by the ctor (and popped by the dtor)
+    popAdapterStack<RootAdapter>();
 }
 
 IGNORED(SqlStatements)
