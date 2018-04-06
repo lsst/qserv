@@ -808,7 +808,6 @@ private:
 class PredicateExpressionAdapter :
         public AdapterT<PredicateExpressionCBH>,
         public BinaryComparasionPredicateCBH,
-        public ExpressionAtomPredicateCBH,
         public BetweenPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
@@ -819,13 +818,6 @@ public:
     void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
         _boolFactor->addBoolFactorTerm(comparisonPredicate);
     }
-
-    // ExpressionAtomPredicateCBH
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
-            antlr4::ParserRuleContext* ctx) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
-    }
-
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
         _boolFactor->addBoolFactorTerm(betweenPredicate);
@@ -1113,7 +1105,6 @@ private:
 class FunctionArgsAdapter :
         public AdapterT<FunctionArgsCBH>,
         public ConstantCBH,
-        public PredicateExpressionCBH,
         public FullColumnNameCBH {
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
@@ -1124,10 +1115,6 @@ public:
     void handleConstant(const string& val) override {
         auto argFactor = parser::ValueFactorFactory::newColumnFactor(val, "", "");
         ValueExprFactory::addValueFactor(_args, argFactor);
-    }
-
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
