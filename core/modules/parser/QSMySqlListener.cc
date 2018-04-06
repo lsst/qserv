@@ -555,9 +555,10 @@ public:
             auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
             _rootTerm->addBoolTerm(boolTerm);
             return;
+        } else if (_ctx->havingExpr == childCtx) {
+            CHECK_EXECUTION_CONDITION(false, "The HAVING expression is not yet supported.", _ctx);
         }
-
-        CHECK_EXECUTION_CONDITION(false, "todo", _ctx);
+        CHECK_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
     }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
