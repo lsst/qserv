@@ -65,7 +65,7 @@ bool isValidPartitionedTable(
             std::string const& str,
             lsst::qserv::replica::DatabaseInfo const& databaseInfo) {
 
-    for (auto const& table: databaseInfo.partitionedTables) {
+    for (auto&& table: databaseInfo.partitionedTables) {
         if (str == table) { return true; }
         if (str == table + "FullOverlap") { return true; }
     }
@@ -89,14 +89,14 @@ std::vector<std::string> FileUtils::partitionedFiles(DatabaseInfo const& databas
 
     std::string const chunkSuffix = "_" + std::to_string(chunk);
 
-    for (auto const& table: databaseInfo.partitionedTables) {
-        
+    for (auto&& table: databaseInfo.partitionedTables) {
+
         std::string const file = table + chunkSuffix;
-        for (auto const& ext: ::extensions) {
+        for (auto&& ext: ::extensions) {
             result.push_back(file + "." + ext);
         }
         std::string const fileOverlap = table + "FullOverlap" + chunkSuffix;
-        for (auto const &ext: ::extensions) {
+        for (auto&& ext: ::extensions) {
             result.push_back(fileOverlap + "." + ext);
         }
     }
@@ -107,9 +107,9 @@ std::vector<std::string> FileUtils::regularFiles(DatabaseInfo const& databaseInf
 
     std::vector<std::string> result;
 
-    for (auto const& table : databaseInfo.regularTables) {
+    for (auto&& table : databaseInfo.regularTables) {
         std::string const filename = table;
-        for (auto const &ext: ::extensions) {
+        for (auto&& ext: ::extensions) {
             result.push_back(filename + "." + ext);
         }
     }
@@ -243,29 +243,29 @@ bool FileCsComputeEngine::execute() {
         }
         return false;
     }
-    
+
     // I/O error?
     if (std::ferror(_fp)) {
         const std::string err =
             std::string("FileCsComputeEngine:  file read error: ") + std::strerror(errno) +
             std::string(", file: ") + _fileName;
- 
+
         fclose(_fp);
         _fp = nullptr;
- 
+
         delete [] _buf;
         _buf = nullptr;
- 
+
         throw std::runtime_error(err);
     }
 
     // EOF
     std::fclose(_fp);
     _fp = nullptr;
- 
+
     delete [] _buf;
     _buf = nullptr;
- 
+
     return true;
 }
 
@@ -335,7 +335,7 @@ bool MultiFileCsComputeEngine::execute() {
         // Move to the next file if any. If no more files then finish.
         ++_currentFileItr;
         if (_fileNames.end() == _currentFileItr) { return true;}
- 
+
         // Open that file and expect it to be read at the next iteration
         // of this loop
         _processed[*_currentFileItr].reset(

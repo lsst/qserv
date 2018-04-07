@@ -150,7 +150,7 @@ void PurgeJob::cancelImpl() {
     }
     _findAllJob = nullptr;
 
-    for (auto const& ptr: _jobs) {
+    for (auto&& ptr: _jobs) {
         if (ptr->state() != Job::State::FINISHED) {
             ptr->cancel();
         }
@@ -248,7 +248,7 @@ void PurgeJob::onPrecursorJobFinish() {
         //
         std::map<unsigned int,int> chunk2numReplicas2delete;
 
-        for (auto const& chunk2workers: replicaData.isGood) {
+        for (auto&& chunk2workers: replicaData.isGood) {
             unsigned int const  chunk    = chunk2workers.first;
             auto         const& replicas = chunk2workers.second;
 
@@ -278,15 +278,15 @@ void PurgeJob::onPrecursorJobFinish() {
         for (auto chunk: replicaData.chunks.chunkNumbers()) {
             auto chunkMap = replicaData.chunks.chunk(chunk);
 
-            for (auto database: chunkMap.databaseNames()) {
+            for (auto&& database: chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
-                for (auto worker: databaseMap.workerNames()) {
+                for (auto&& worker: databaseMap.workerNames()) {
                     worker2occupancy[worker]++;
                 }
             }
         }
-        for (auto const& entry: worker2occupancy) {
+        for (auto&& entry: worker2occupancy) {
             LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
                  << "  worker=" << entry.first
                  << ", occupancy=" << entry.second);
@@ -298,7 +298,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
         auto self = shared_from_base<PurgeJob>();
 
-        for (auto const& chunk2replicas: chunk2numReplicas2delete) {
+        for (auto&& chunk2replicas: chunk2numReplicas2delete) {
 
             unsigned int const chunk              = chunk2replicas.first;
             int                numReplicas2delete = chunk2replicas.second;
@@ -320,7 +320,7 @@ void PurgeJob::onPrecursorJobFinish() {
 
             // This list of workers will be reduced as the replica will get deleted
             std::list<std::string> goodWorkersOfThisChunk;
-            for (auto const& entry: replicaData.isGood.at(chunk)) {
+            for (auto&& entry: replicaData.isGood.at(chunk)) {
                 std::string const& worker = entry.first;
                 goodWorkersOfThisChunk.push_back(worker);
                 LOGS(_log, LOG_LVL_DEBUG, context() << "onPrecursorJobFinish"
@@ -341,7 +341,7 @@ void PurgeJob::onPrecursorJobFinish() {
                 size_t      maxNumChunks = 0;   // will get updated witin the next loop
                 std::string targetWorker;       // will be set to the best worker inwhen the loop is over
 
-                for (auto const& worker: goodWorkersOfThisChunk) {
+                for (auto&& worker: goodWorkersOfThisChunk) {
                     if (targetWorker.empty() or (worker2occupancy[worker] > maxNumChunks)) {
                         maxNumChunks = worker2occupancy[worker];
                         targetWorker = worker;
@@ -446,7 +446,7 @@ void PurgeJob::onDeleteJobFinish(DeleteReplicaJob::pointer const& job) {
                                          jobReplicaData.replicas.end());
 
             // Merge the replica infos into the dictionary
-            for (auto const& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
+            for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
                 std::string const& database = databaseEntry.first;
                 _replicaData.chunks[job->chunk()][database][job->worker()] =
                     jobReplicaData.chunks.at(job->chunk()).at(database).at(job->worker());

@@ -104,11 +104,11 @@ void GetReplicasQservMgtRequest::setReplicas(
 
     // Filter resuls by atabases participating in the family
     std::set<std::string> databases;
-    for (auto const& database: _serviceProvider->config()->databases(_databaseFamily)) {
+    for (auto&& database: _serviceProvider->config()->databases(_databaseFamily)) {
         databases.insert(database);
     }
     _replicas.clear();
-    for (auto const& replica: collection) {
+    for (auto&& replica: collection) {
         if (databases.count(replica.database)) {
             _replicas.emplace_back(QservReplica{replica.chunk, replica.database, replica.use_count});
         }

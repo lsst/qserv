@@ -56,7 +56,7 @@ void countRequestStates(size_t& numLaunched,
     numFinished = 0;
     numSuccess  = 0;
 
-    for (auto const& ptr: collection) {
+    for (auto&& ptr: collection) {
         if (ptr->state() == Request::State::FINISHED) {
             numFinished++;
             if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -228,7 +228,7 @@ void DeleteReplicaJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
             _controller->stopReplicaDelete(
@@ -266,7 +266,7 @@ void DeleteReplicaJob::beginDeleteReplica() {
     // VERY IMPORTANT: the requests are sent for participating databases
     // only because some catalogs may not have a full coverage
 
-    for (auto const& replica: _replicas) {
+    for (auto&& replica: _replicas) {
         DeleteRequest::pointer ptr =
             _controller->deleteReplica(
                 worker(),

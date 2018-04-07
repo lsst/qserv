@@ -109,7 +109,7 @@ public:
         if (this == &coll) {
             throw std::invalid_argument("attempted to merge the collection with itself");
         }
-        for (auto const& entry: coll._coll) {
+        for (auto&& entry: coll._coll) {
             K const& k = entry.first;
             V const& v = entry.second;
             if ((not ignoreDuplicateKeys) and exists(k)) {
@@ -131,7 +131,7 @@ public:
     std::vector<K> keys() const {
         std::vector<K> result;
         result.reserve(_coll.size());
-        for (auto const& entry: _coll) {
+        for (auto&& entry: _coll) {
             result.push_back(entry.first);
         }
         return result;
@@ -386,9 +386,9 @@ using WorkerChunkDatabaseMap =
                ChunkDatabaseWorkerMap<T> const& src,
                bool ignoreDuplicateKeys = false) {
 
-     for (auto chunk: src.chunkNumbers()) {
+     for (auto const chunk: src.chunkNumbers()) {
          auto const& srcChunkMap = src.chunk(chunk);
-         for (auto database: srcChunkMap.databaseNames()) {
+         for (auto&& database: srcChunkMap.databaseNames()) {
              dst.atChunk(chunk).atDatabase(database).merge(
                  srcChunkMap.database(database),
                  ignoreDuplicateKeys);

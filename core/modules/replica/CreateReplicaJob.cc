@@ -56,7 +56,7 @@ void countRequestStates(size_t& numLaunched,
     numFinished = 0;
     numSuccess  = 0;
 
-    for (auto const& ptr: collection) {
+    for (auto&& ptr: collection) {
         if (ptr->state() == Request::State::FINISHED) {
             numFinished++;
             if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
@@ -211,7 +211,7 @@ void CreateReplicaJob::startImpl() {
 
     auto self = shared_from_base<CreateReplicaJob>();
 
-    for (auto const& replica: sourceReplicas) {
+    for (auto&& replica: sourceReplicas) {
         ReplicationRequest::pointer const ptr =
             _controller->replicate(
                 destinationWorker(),
@@ -225,7 +225,7 @@ void CreateReplicaJob::startImpl() {
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 _id     /* jobId */);
-        _requests.emplace_back(ptr);
+        _requests.push_back(ptr);
     }
     setState(State::IN_PROGRESS);
 }
@@ -241,7 +241,7 @@ void CreateReplicaJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
             _controller->stopReplication(

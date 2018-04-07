@@ -82,7 +82,7 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1,
     std::map<std::string,ReplicaInfo::FileInfo> file2info1 = replica1.fileInfoMap();
     std::map<std::string,ReplicaInfo::FileInfo> file2info2 = replica2.fileInfoMap();
 
-    for (auto const& f: file2info1) {
+    for (auto&& f: file2info1) {
 
         // Check if each file is present in both collections
         std::string const& name = f.first;
@@ -250,7 +250,7 @@ void VerifyJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& entry: _requests) {
+    for (auto&& entry: _requests) {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
@@ -337,7 +337,7 @@ void VerifyJob::onRequestFinish(FindRequest::pointer request) {
                                                                     otherReplicas,
                                                                     oldReplica.chunk(),
                                                                     oldReplica.database());
-            for (auto const& replica: otherReplicas) {
+            for (auto&& replica: otherReplicas) {
                 ReplicaDiff diff(request->responseData(), replica);
                 if (not diff.isSelf()) {
                     otherReplicaDiff.emplace_back(diff);

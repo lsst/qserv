@@ -1,4 +1,4 @@
-/*
+    /*
  * LSST Data Management System
  * Copyright 2018 LSST Corporation.
  *
@@ -108,12 +108,12 @@ void QservSyncJob::startImpl() {
     auto const qservMgtServices = _controller->serviceProvider()->qservMgtServices();
     auto const self             = shared_from_base<QservSyncJob>();
 
-    for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
+    for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
 
         // Pull replicas from the database for the worker
 
         QservReplicaCollection newReplicas;
-        for (auto const& database: databases) {
+        for (auto&& database: databases) {
 
             std::vector<ReplicaInfo> replicas;
             if (not databaseServices->findWorkerReplicas(replicas,
@@ -129,7 +129,7 @@ void QservSyncJob::startImpl() {
 
                 return;
             }
-            for (auto const& info: replicas) {
+            for (auto&& info: replicas) {
                 newReplicas.emplace_back(
                     QservReplica{
                         info.chunk(),
@@ -166,7 +166,7 @@ void QservSyncJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
     }
     _requests.clear();

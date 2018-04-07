@@ -61,7 +61,7 @@ std::tuple<size_t,size_t,size_t> counters(std::list<typename T::pointer> const& 
     size_t total    = 0;
     size_t finished = 0;
     size_t success  = 0;
-    for (auto const& ptr: collection) {
+    for (auto&& ptr: collection) {
         total++;
         if (ptr->state() == T::State::FINISHED) {
             finished++;
@@ -182,7 +182,7 @@ void DeleteWorkerJob::startImpl() {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
 
-                    for (auto const& database: _controller->serviceProvider()->config()->databases()) {
+                    for (auto&& database: _controller->serviceProvider()->config()->databases()) {
                         auto const request = _controller->findAllReplicas(
                             _worker,
                             database,
@@ -220,7 +220,7 @@ void DeleteWorkerJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& ptr: _findAllRequests) {
+    for (auto&& ptr: _findAllRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
             _controller->stopReplicaFindAll(
@@ -234,8 +234,8 @@ void DeleteWorkerJob::cancelImpl() {
 
     // Stop chained jobs (if any) as well
 
-    for (auto const& ptr: _findAllJobs)   { ptr->cancel(); }
-    for (auto const& ptr: _replicateJobs) { ptr->cancel(); }
+    for (auto&& ptr: _findAllJobs)   { ptr->cancel(); }
+    for (auto&& ptr: _replicateJobs) { ptr->cancel(); }
 }
 
 void DeleteWorkerJob::notify() {
@@ -310,7 +310,7 @@ DeleteWorkerJob::disableWorker() {
 
     auto self = shared_from_base<DeleteWorkerJob>();
 
-    for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
+    for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
         FindAllJob::pointer job = FindAllJob::create(
             databaseFamily,
             _controller,
@@ -356,7 +356,7 @@ void DeleteWorkerJob::onJobFinish(FindAllJob::pointer const& job) {
 
                 auto self = shared_from_base<DeleteWorkerJob>();
 
-                for (auto const& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
+                for (auto&& databaseFamily: _controller->serviceProvider()->config()->databaseFamilies()) {
                     ReplicateJob::pointer const job = ReplicateJob::create(
                         databaseFamily,
                         0,  /* numReplicas -- pull from Configuration */
@@ -428,7 +428,7 @@ void DeleteWorkerJob::onJobFinish(ReplicateJob::pointer const& job) {
                     std::string const& database = replica.database();
 
                     bool replicated = false;
-                    for (auto const& databaseFamilyEntry: _replicaData.chunks) {
+                    for (auto&& databaseFamilyEntry: _replicaData.chunks) {
                         auto const& chunks = databaseFamilyEntry.second;
                         replicated = replicated or
                             (chunks.count(chunk) and chunks.at(chunk).count(database));

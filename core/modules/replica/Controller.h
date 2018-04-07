@@ -601,7 +601,7 @@ public:
     void requestsOfType(std::vector<typename REQUEST_TYPE::pointer>& requests) const {
         std::lock_guard<std::mutex> lock(_mtx);
         requests.clear();
-        for (auto const itr: _registry)
+        for (auto&& itr: _registry)
             if (typename REQUEST_TYPE::pointer ptr =
                 std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) {
                 requests.push_back(ptr);
@@ -615,7 +615,7 @@ public:
     size_t numRequestsOfType() const {
         std::lock_guard<std::mutex> lock(_mtx);
         size_t result {0};
-        for (auto const itr: _registry) {
+        for (auto&& itr: _registry) {
             if (typename REQUEST_TYPE::pointer request =
                 std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) { ++result; }
         }

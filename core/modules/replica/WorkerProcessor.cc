@@ -145,7 +145,7 @@ void WorkerProcessor::run() {
 
         // Tell each thread to run
 
-        for (auto &t: _threads) {
+        for (auto&& t: _threads) {
             t->run();
         }
         _state = STATE_IS_RUNNING;
@@ -162,7 +162,7 @@ void WorkerProcessor::stop() {
 
         // Tell each thread to stop.
 
-        for (auto &t: _threads) {
+        for (auto&& t: _threads) {
             t->stop();
         }
 
@@ -183,13 +183,13 @@ void WorkerProcessor::drain() {
     {
         LOCK_GUARD;
 
-        for (auto const& ptr: _newRequests)        { ids.push_back(ptr->id()); }
-        for (auto const& ptr: _inProgressRequests) { ids.push_back(ptr->id()); }
+        for (auto&& ptr: _newRequests)        { ids.push_back(ptr->id()); }
+        for (auto&& ptr: _inProgressRequests) { ids.push_back(ptr->id()); }
     }
 
     // Dequeue requests w/o the guard to avoid a dedlock because
     // the dequeuing method will request the lock.
-    for (auto const& id: ids) { dequeueOrCancelImpl(id); }
+    for (auto&& id: ids) { dequeueOrCancelImpl(id); }
 }
 
 void WorkerProcessor::enqueueForReplication(
@@ -208,12 +208,12 @@ void WorkerProcessor::enqueueForReplication(
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
     // the completed is that this replica may have already been deleted from this worker.
 
-    for (auto ptr: _newRequests) {
+    for (auto&& ptr: _newRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
                                  request)) { return; }
     }
-    for (auto ptr: _inProgressRequests) {
+    for (auto&& ptr: _inProgressRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
                                  request)) { return; }
@@ -263,12 +263,12 @@ void WorkerProcessor::enqueueForDeletion(std::string const&                     
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
     // the completed is that this replica may have already been deleted from this worker.
 
-    for (auto ptr : _newRequests) {
+    for (auto&& ptr : _newRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
                                  request)) { return; }
     }
-    for (auto ptr : _inProgressRequests) {
+    for (auto&& ptr : _inProgressRequests) {
         if (::ifDuplicateRequest(response,
                                  ptr,
                                  request)) { return; }
@@ -368,7 +368,7 @@ WorkerRequest::pointer WorkerProcessor::dequeueOrCancelImpl(std::string const& i
 
     // Still waiting in the queue?
 
-    for (auto ptr: _newRequests) {
+    for (auto&& ptr: _newRequests) {
         if (ptr->id() == id) {
 
             // Cancel it and move it into the final queue in case if a client
@@ -396,7 +396,7 @@ WorkerRequest::pointer WorkerProcessor::dequeueOrCancelImpl(std::string const& i
 
     // Is it already being processed?
 
-    for (auto ptr: _inProgressRequests) {
+    for (auto&& ptr: _inProgressRequests) {
         if (ptr->id() == id) {
 
             // Tell the request to begin the cancelling protocol. The protocol
@@ -438,7 +438,7 @@ WorkerRequest::pointer WorkerProcessor::dequeueOrCancelImpl(std::string const& i
 
     // Has it finished?
 
-    for (auto ptr: _finishedRequests) {
+    for (auto&& ptr: _finishedRequests) {
         if (ptr->id() == id) {
 
             // There is nothing else we can do here other than just
@@ -472,7 +472,7 @@ WorkerRequest::pointer WorkerProcessor::checkStatusImpl(std::string const& id) {
 
     // Still waiting in the queue?
 
-    for (auto ptr: _newRequests) {
+    for (auto&& ptr: _newRequests) {
         if (ptr->id() == id) {
             switch (ptr->status()) {
 
@@ -490,7 +490,7 @@ WorkerRequest::pointer WorkerProcessor::checkStatusImpl(std::string const& id) {
 
     // Is it already being processed?
 
-    for (auto ptr: _inProgressRequests) {
+    for (auto&& ptr: _inProgressRequests) {
         if (ptr->id() == id) {
             switch (ptr->status()) {
 
@@ -524,7 +524,7 @@ WorkerRequest::pointer WorkerProcessor::checkStatusImpl(std::string const& id) {
 
     // Has it finished?
 
-    for (auto ptr: _finishedRequests) {
+    for (auto&& ptr: _finishedRequests) {
         if (ptr->id() == id) {
             switch (ptr->status()) {
 
@@ -579,15 +579,15 @@ void WorkerProcessor::setServiceResponse(
     response.set_num_finished_requests(   _finishedRequests.size());
 
     if (extendedReport) {
-        for (auto const& request: _newRequests) {
+        for (auto&& request: _newRequests) {
             setServiceResponseInfo(request,
                                    response.add_new_requests());
         }
-        for (auto const& request: _inProgressRequests) {
+        for (auto&& request: _inProgressRequests) {
             setServiceResponseInfo(request,
                                    response.add_in_progress_requests());
         }
-        for (auto const& request: _finishedRequests) {
+        for (auto&& request: _finishedRequests) {
             setServiceResponseInfo(request,
                                    response.add_finished_requests());
         }
@@ -753,7 +753,7 @@ void WorkerProcessor::processorThreadStopped(
 
         // Complete state transition if all threds are stopped
 
-        for (auto &t: _threads) {
+        for (auto&& t: _threads) {
             if (t->isRunning()) { return; }
         }
         _state = STATE_IS_STOPPED;
@@ -872,7 +872,7 @@ void WorkerProcessor::setInfo(WorkerRequest::pointer const&      request,
     // the 'replica_info_many' series at each step of the iteration below.
     // The protobuf runtime will take care of deleting those objects.
 
-    for (auto const& replicaInfo: ptr->replicaInfoCollection()) {
+    for (auto&& replicaInfo: ptr->replicaInfoCollection()) {
         proto::ReplicationReplicaInfo* info = response.add_replica_info_many();
         replicaInfo.setInfo(info);
     }

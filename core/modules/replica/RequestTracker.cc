@@ -77,11 +77,11 @@ void RequestTrackerBase::track() const {
 }
 
 void RequestTrackerBase::cancel(bool propagateToServers) {
-    
+
     auto onFinish     = nullptr;
     bool keepTracking = false;
 
-    for (auto const& ptr: getRequests()) {
+    for (auto&& ptr: getRequests()) {
 
         if (ptr->state() != Request::State::FINISHED) {
             ptr->cancel();
