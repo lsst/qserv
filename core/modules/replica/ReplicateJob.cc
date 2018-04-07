@@ -147,7 +147,7 @@ void ReplicateJob::cancelImpl() {
     }
     _findAllJob = nullptr;
 
-    for (auto const& ptr: _jobs) {
+    for (auto&& ptr: _jobs) {
         ptr->cancel();
     }
     _chunk2jobs.clear();
@@ -247,7 +247,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         //
         std::map<unsigned int,int> chunk2numReplicas2create;
 
-        for (auto const& chunk2workers: replicaData.isGood) {
+        for (auto&& chunk2workers: replicaData.isGood) {
             unsigned int const  chunk    = chunk2workers.first;
             auto         const& replicas = chunk2workers.second;
 
@@ -267,8 +267,8 @@ void ReplicateJob::onPrecursorJobFinish() {
 
         std::map<std::string, size_t> worker2occupancy;
 
-        for (auto chunkEntry: replicaData.isGood) {
-            for (auto workerEntry: chunkEntry.second) {
+        for (auto&& chunkEntry: replicaData.isGood) {
+            for (auto&& workerEntry: chunkEntry.second) {
                 auto worker = workerEntry.first;
                 bool const isGood = workerEntry.second;
                 if (isGood) {
@@ -290,10 +290,10 @@ void ReplicateJob::onPrecursorJobFinish() {
         for (auto chunk: replicaData.chunks.chunkNumbers()) {
             auto chunkMap = replicaData.chunks.chunk(chunk);
 
-            for (auto database: chunkMap.databaseNames()) {
+            for (auto&& database: chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
-                for (auto worker: databaseMap.workerNames()) {
+                for (auto&& worker: databaseMap.workerNames()) {
                     worker2chunks[worker].insert(chunk);
                 }
             }
@@ -304,7 +304,7 @@ void ReplicateJob::onPrecursorJobFinish() {
         // for the new replicas.
 
         std::vector<std::string> workers;
-        for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
+        for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
             if (replicaData.workers.at(worker)) {
                 workers.push_back(worker);
             }
@@ -324,7 +324,7 @@ void ReplicateJob::onPrecursorJobFinish() {
 
         auto self = shared_from_base<ReplicateJob>();
 
-        for (auto const& chunk2replicas: chunk2numReplicas2create) {
+        for (auto&& chunk2replicas: chunk2numReplicas2create) {
 
             unsigned int const chunk              = chunk2replicas.first;
             int          const numReplicas2create = chunk2replicas.second;
@@ -342,7 +342,7 @@ void ReplicateJob::onPrecursorJobFinish() {
             // chunk
 
             std::string sourceWorker;
-            for (auto const& workerEntry: replicaData.isGood.at(chunk)) {
+            for (auto&& workerEntry: replicaData.isGood.at(chunk)) {
                 std::string const& worker = workerEntry.first;
                 bool const isGood = workerEntry.second;
                 if (isGood) {
@@ -484,16 +484,16 @@ void ReplicateJob::onCreateJobFinish(CreateReplicaJob::pointer const& job) {
         if (job->extendedState() == Job::ExtendedState::SUCCESS) {
             _numSuccess++;
             auto replicaData = job->getReplicaData();
-            for (auto replica: replicaData.replicas) {
+            for (auto&& replica: replicaData.replicas) {
                 _replicaData.replicas.push_back(replica);
             }
-            for (auto chunkEntry: replicaData.chunks) {
+            for (auto&& chunkEntry: replicaData.chunks) {
                 auto chunk = chunkEntry.first;
 
-                for (auto databaseEntry: chunkEntry.second) {
+                for (auto&& databaseEntry: chunkEntry.second) {
                     auto database = databaseEntry.first;
 
-                    for (auto workerEntry: databaseEntry.second) {
+                    for (auto&& workerEntry: databaseEntry.second) {
                         auto worker  = workerEntry.first;
                         auto replica = workerEntry.second;
 

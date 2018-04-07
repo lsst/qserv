@@ -105,7 +105,7 @@ void QservGetReplicasJob::startImpl() {
 
     auto self = shared_from_base<QservGetReplicasJob>();
 
-    for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
+    for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
         auto const request = _controller->serviceProvider()->qservMgtServices()->getReplicas(
             _databaseFamily,
             worker,
@@ -135,7 +135,7 @@ void QservGetReplicasJob::cancelImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << "cancelImpl");
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
     }
     _requests.clear();
@@ -193,7 +193,7 @@ void QservGetReplicasJob::onRequestFinish(GetReplicasQservMgtRequest::pointer co
             // Merge results of the request into the summary data collection
             // of the job.
             _replicaData.replicas[request->worker()] = request->replicas();
-            for (auto const& replica: request->replicas()) {
+            for (auto&& replica: request->replicas()) {
                 _replicaData.useCount.atChunk(replica.chunk)
                                      .atDatabase(replica.database)
                                      .atWorker(request->worker()) = replica.useCount;

@@ -51,7 +51,7 @@ Messenger::pointer Messenger::create(ServiceProvider::pointer const& serviceProv
 Messenger::Messenger(ServiceProvider::pointer const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
-    for (auto const& worker: serviceProvider->config()->workers()){
+    for (auto&& worker: serviceProvider->config()->workers()){
         _connector[worker] = MessengerConnector::create(serviceProvider,
                                                         io_service,
                                                         worker);
@@ -59,7 +59,7 @@ Messenger::Messenger(ServiceProvider::pointer const& serviceProvider,
 }
 
 void Messenger::stop() {
-    for (auto const& entry: _connector) {
+    for (auto&& entry: _connector) {
         entry.second->stop();
     }
 }
@@ -77,7 +77,7 @@ bool Messenger::exists(std::string const& worker,
     // Forward the request to the corresponidng worker
     return connector(worker)->exists(id);
 }
-    
+
 MessengerConnector::pointer const& Messenger::connector(std::string const& worker)  const {
 
     if (!_connector.count(worker))

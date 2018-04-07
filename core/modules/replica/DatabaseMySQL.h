@@ -162,8 +162,8 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
 
 /**
  * Class Row represens the current row obtained from the last result set.
- * It provides an interface for obtainig values if fields and translating
- * them from the internal MySQL representation into the corresponding C++ type
+ * It provides an interface for obtainig values of fields and translating
+ * them from the internal MySQL representation into the proposed C++ type
  * system.
  *
  * All type-specific 'get' methods defined in this class will return 'true' and
@@ -206,8 +206,8 @@ public:
     /**
      * The default constructor will initialize invalid instances of the class.
      *
-     * @note Any attempts to call most (but 'isValid', copy constructor,
-     * assignment operator and destrctor) method of objects constracted
+     * @note any attempts to call most (but 'isValid', copy constructor,
+     * assignment operator and desturctor) methods of objects constracted
      * with this state will throw exception std::logic_error. So, make sure
      * the object is properly set by passing it for initialization to method
      * Connection::next() when iterating over a result set.
@@ -225,12 +225,10 @@ public:
     /// Destructor
     ~Row() = default;
 
-    /// Return 'true' of the object has meaningful content
+    /// @return 'true' of the object has meaningful content
     bool isValid() const { return _isValid; }
 
-    /**
-     * Return the width of the row
-     */
+    /// @return width of the row
     size_t numColumns() const;
 
     // These methods will return 'true' if the specified field is NULL
@@ -287,15 +285,13 @@ public:
     bool get(std::string const& columnName, bool&  value) const;
 
     /**
-     * Return a reference to the data cell for the column
-     *
+     * @return reference to the data cell for the column
      * @param columnIdx - the index of a column
      */
     Cell const& getDataCell(size_t columnIdx) const;
 
     /**
-     * Return a reference to the data cell for the column
-     *
+     * @return reference to the data cell for the column
      * @param columnName - the name of a column
      */
     Cell const& getDataCell(std::string const& columnName) const;
@@ -331,6 +327,7 @@ public:
     virtual ~DoNotProcess() = default;
 
 public:
+
     /// The exact string value as it should appear within queries. It will
     /// be extracted by the corresponding query generators.
     std::string name;
@@ -641,7 +638,7 @@ public:
         std::ostringstream ss;
         ss << sqlId(col) << " IN (";
         int num=0;
-        for (auto const& val: values)
+        for (auto&& val: values)
             ss << (num++ ? "," : "") << sqlValue(val);
         ss << ")";
         return ss.str();

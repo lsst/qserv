@@ -111,7 +111,7 @@ ReplicaInfo WorkerReplicationRequest::replicaInfo() const {
 
     return info;
 }
-    
+
 bool WorkerReplicationRequest::execute() {
 
    LOGS(_log, LOG_LVL_DEBUG, context() << "execute"
@@ -218,7 +218,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
 
     std::map<fs::path,std::time_t> inFile2mtime;
 
-    for (auto const& file: files) {
+    for (auto&& file: files) {
 
         fs::path const inFile = inDir / file;
         inFiles.push_back(inFile);
@@ -244,7 +244,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
 
         // Check for a presence of input files and calculate space requirement
 
-        for (auto const& file: inFiles) {
+        for (auto&& file: inFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
@@ -287,7 +287,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         // The files with canonical(!) names should NOT exist at the destination
         // folder.
 
-        for (auto const& file: outFiles) {
+        for (auto&& file: outFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
@@ -303,7 +303,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         // Check if there are any files with the temporary names at the destination
         // folder and if so then get rid of them.
 
-        for (auto const& file: tmpFiles) {
+        for (auto&& file: tmpFiles) {
             fs::file_status const stat = fs::status(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
@@ -345,7 +345,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
     // Begin copying files into the destination folder under their
     // temporary names w/o acquring the directory lock.
 
-    for (auto const& file: files) {
+    for (auto&& file: files) {
 
         fs::path const inFile  = file2inFile [file];
         fs::path const tmpFile = file2tmpFile[file];
@@ -374,7 +374,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
         //            remove empty files. Not sure if this should be treated
         //            in a special way?
 
-        for (auto const& file: files) {
+        for (auto&& file: files) {
 
             fs::path const inFile  = file2inFile [file];
             fs::path const tmpFile = file2tmpFile[file];
@@ -496,16 +496,16 @@ bool WorkerReplicationRequestFS::execute () {
     ///////////////////////////////////////////////////////
     //       Initialization phase (runs only once)       //
     ///////////////////////////////////////////////////////
- 
+
     if (not _initialized) {
         _initialized = true;
 
         fs::path const outDir = fs::path(_outWorkerInfo.dataDir) / database();
-    
+
         std::vector<fs::path> tmpFiles;
         std::vector<fs::path> outFiles;
-    
-        for (auto const& file: _files) {
+
+        for (auto&& file: _files) {
 
             fs::path const tmpFile = outDir / ("_" + file);
             tmpFiles.push_back(tmpFile);
@@ -522,20 +522,20 @@ bool WorkerReplicationRequestFS::execute () {
             _file2descr[file].beginTransferTime = 0;
             _file2descr[file].endTransferTime   = 0;
         }
-    
+
         // Check input files, check and sanitize the destination folder
-    
+
         boost::system::error_code ec;
         {
             LOCK_DATA_FOLDER;
-    
+
             // Check for a presence of input files and calculate space requirement
-    
+
             uintmax_t totalBytes = 0;                   // the total number of bytes in all input files to be moved
             std::map<std::string,uintmax_t> file2size;  // the number of bytes in each file
-    
-            for (auto const& file: _files) {
-    
+
+            for (auto&& file: _files) {
+
                 // Open the file on the remote server in the no-content-read mode
                 FileClient::pointer inFilePtr = FileClient::stat(_serviceProvider,
                                                                  _inWorkerInfo.name,
@@ -548,20 +548,20 @@ bool WorkerReplicationRequestFS::execute () {
                         "failed to open input file on remote worker: " + _inWorkerInfo.name +
                         ", database: " + _databaseInfo.name +
                         ", file: " + file);
-        
+
                 if (errorContext.failed) {
                     setStatus(STATUS_FAILED, errorContext.extendedStatus);
                     return true;
                 }
                 file2size[file] = inFilePtr->size();
                 totalBytes     += inFilePtr->size();
-                
+
                 _file2descr[file].inSizeBytes = inFilePtr->size();
                 _file2descr[file].mtime       = inFilePtr->mtime();
             }
-    
+
             // Check and sanitize the output directory
-    
+
             bool const outDirExists = fs::exists(outDir, ec);
             errorContext = errorContext
                 or reportErrorIf(
@@ -572,11 +572,11 @@ bool WorkerReplicationRequestFS::execute () {
                         not outDirExists,
                         ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                         "the output directory doesn't exist: " + outDir.string());
-    
+
             // The files with canonical(!) names should NOT exist at the destination
             // folder.
-    
-            for (auto const& file: outFiles) {
+
+            for (auto&& file: outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext
                     or reportErrorIf(
@@ -588,18 +588,18 @@ bool WorkerReplicationRequestFS::execute () {
                             ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS,
                             "the output file already exists: " + file.string());
             }
-    
+
             // Check if there are any files with the temporary names at the destination
             // folder and if so then get rid of them.
-    
-            for (auto const& file: tmpFiles) {
+
+            for (auto&& file: tmpFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext
                     or reportErrorIf(
                             stat.type() == fs::status_error,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                             "failed to check the status of temporary file: " + file.string());
-    
+
                 if (fs::exists(stat)) {
                     fs::remove(file, ec);
                     errorContext = errorContext
@@ -609,12 +609,12 @@ bool WorkerReplicationRequestFS::execute () {
                                 "failed to remove temporary file: " + file.string());
                 }
             }
-    
+
             // Make sure a file system at the destination has enough space
             // to accomodate new files
             //
             // NOTE: this operation runs after cleaning up temporary files
-    
+
             fs::space_info const space = fs::space(outDir, ec);
             errorContext = errorContext
                 or reportErrorIf(
@@ -625,16 +625,16 @@ bool WorkerReplicationRequestFS::execute () {
                         space.available < totalBytes,
                         ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
                         "not enough free space availble at output folder: " + outDir.string());
-    
+
             // Precreate temporary files with the final size to assert disk space
             // availability before filling these files with the actual payload.
-    
-            for (auto const& file: _files) {
-                
+
+            for (auto&& file: _files) {
+
                 fs::path const tmpFile = _file2descr[file].tmpFile;
-    
+
                 // Create a file of size 0
-    
+
                 std::FILE* tmpFilePtr = std::fopen(tmpFile.string().c_str(), "wb");
                 errorContext = errorContext
                     or reportErrorIf(
@@ -646,9 +646,9 @@ bool WorkerReplicationRequestFS::execute () {
                     std::fflush(tmpFilePtr);
                     std::fclose(tmpFilePtr);
                 }
-     
+
                 // Resize the file (will be filled with \0)
-    
+
                 fs::resize_file(tmpFile, file2size[file], ec);
                 errorContext = errorContext
                     or reportErrorIf(
@@ -661,7 +661,7 @@ bool WorkerReplicationRequestFS::execute () {
             setStatus(STATUS_FAILED, errorContext.extendedStatus);
             return true;
         }
-        
+
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
         if (not _buf) {
@@ -684,7 +684,7 @@ bool WorkerReplicationRequestFS::execute () {
     while (_files.end() != _fileItr) {
 
         // Copy the next record if any is available
- 
+
         size_t num = 0;
         try {
             num = _inFilePtr->read(_buf, _bufSize);
@@ -712,7 +712,7 @@ bool WorkerReplicationRequestFS::execute () {
                         "failed to write into temporary file: " + _file2descr[*_fileItr].tmpFile.string() +
                         ", error: " + std::strerror(errno));
             }
-                
+
         } catch (FileClientError const& ex) {
             errorContext = errorContext
                 or reportErrorIf(
@@ -837,7 +837,7 @@ bool WorkerReplicationRequestFS::finalize () {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
 
-    for (auto const& file: _files) {
+    for (auto&& file: _files) {
 
         fs::path const tmpFile = _file2descr[file].tmpFile;
         fs::path const outFile = _file2descr[file].outFile;
@@ -871,7 +871,7 @@ void WorkerReplicationRequestFS::updateInfo() {
     size_t totalOutSizeBytes = 0;
 
     ReplicaInfo::FileInfoCollection fileInfoCollection;
-    for (auto const& file: _files) {
+    for (auto&& file: _files) {
         fileInfoCollection.emplace_back(
             ReplicaInfo::FileInfo({
                 file,

@@ -114,7 +114,7 @@ protected:
     /**
      * The method to be implemented by a subclass in order to print
      * type-specific report.
-     * 
+     *
      * @param os - an output stream for the printout
      */
     virtual void printErrorReport(std::ostream& os) const=0;
@@ -146,7 +146,7 @@ protected:
 
 private:
 
-    // Parameters of the object    
+    // Parameters of the object
 
     std::ostream& _os;
 
@@ -212,7 +212,7 @@ public:
     }
 
 protected:
-    
+
     /**
      * Implement the corresponding method defined in the base class.
      *
@@ -229,7 +229,7 @@ protected:
      */
     std::list<Request::pointer> getRequests() const override {
         std::list<Request::pointer> result;
-        for (auto const& ptr: requests) { result.push_back(ptr); }
+        for (auto&& ptr: requests) { result.push_back(ptr); }
         return result;
     }
 
@@ -243,7 +243,7 @@ protected:
     }
 
 public:
-    
+
     /// All requests launched
     std::list<typename T::pointer> requests;
 };
@@ -291,7 +291,7 @@ public:
     void add(Request::pointer const& ptr);
 
 protected:
-    
+
     /**
      * Implement the corresponding method defined in the base class.
      *
@@ -314,7 +314,7 @@ protected:
     void resetImpl() override;
 
 public:
-    
+
     /// All requests launched
     std::list<Request::pointer> requests;
 };

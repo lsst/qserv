@@ -97,8 +97,8 @@ void SetReplicasQservMgtRequest::setReplicas(
         wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
 
     _replicas.clear();
-    for (auto const& replica: collection) {
-        _replicas.emplace_back(
+    for (auto&& replica: collection) {
+        _replicas.push_back(
             QservReplica{
                 replica.chunk,
                 replica.database,
@@ -111,8 +111,8 @@ void SetReplicasQservMgtRequest::setReplicas(
 void SetReplicasQservMgtRequest::startImpl() {
 
     wpublish::SetChunkListQservRequest::ChunkCollection chunks;
-    for (auto const& chunkEntry: _newReplicas) {
-        chunks.emplace_back(
+    for (auto&& chunkEntry: _newReplicas) {
+        chunks.push_back(
             wpublish::SetChunkListQservRequest::Chunk{
                 chunkEntry.chunk,
                 chunkEntry.database,

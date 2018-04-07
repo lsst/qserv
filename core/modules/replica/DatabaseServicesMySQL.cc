@@ -278,7 +278,7 @@ void updateFileAttr(database::mysql::Connection::pointer const& conn,
  */
 std::string toString(QservReplicaCollection const& replicas) {
     std::ostringstream ss;
-    for (auto const& replica: replicas) {
+    for (auto&& replica: replicas) {
         ss << replica.database << ":" << replica.chunk << " ";
     }
     return ss.str();
@@ -854,7 +854,7 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
                 info.chunk(),
                 info.verifyTime());
 
-            for (auto const& f: info.fileInfo()) {
+            for (auto&& f: info.fileInfo()) {
                 _conn->executeInsertQuery(
                     "replica_file",
                     database::mysql::Function::LAST_INSERT_ID,  /* FK -> PK of the above insert row */
@@ -926,7 +926,7 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
                 _conn->sqlEqual("id",          replicaId),
                 std::make_pair( "verify_time", verifyTime));
         }
-        for (auto const& f: info.fileInfo()) {
+        for (auto&& f: info.fileInfo()) {
             ::updateFileAttr(_conn, replicaId, f.name, "begin_create_time", f.beginTransferTime);
             ::updateFileAttr(_conn, replicaId, f.name, "end_create_time",   f.endTransferTime);
             ::updateFileAttr(_conn, replicaId, f.name, "size",              f.size);
@@ -950,7 +950,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
                       std::map<unsigned int,    // chunk
                                bool>>> newReplicas;
 
-    for (auto const& info: infoCollection) {
+    for (auto&& info: infoCollection) {
         newReplicas[info.worker()][info.database()][info.chunk()] = true;
     }
 
@@ -992,7 +992,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(std::string const& worker,
 
     // Finally push new (or update existing) replicas info into the database
     // (some of those replicas will be brand new, others - will need to be updated)
-    for (auto const& info: infoCollection) {
+    for (auto&& info: infoCollection) {
         saveReplicaInfo(info);
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");

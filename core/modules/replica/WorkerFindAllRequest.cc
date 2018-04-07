@@ -164,7 +164,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
     std::map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
         LOCK_DATA_FOLDER;
-        
+
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
         errorContext = errorContext
@@ -240,7 +240,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
     size_t const numFilesPerChunkRequired =
         FileUtils::partitionedFiles(databaseInfo, 0).size();
 
-    for (auto &entry: chunk2fileInfoCollection) {
+    for (auto&& entry: chunk2fileInfoCollection) {
         unsigned int const chunk    = entry.first;
         size_t       const numFiles = entry.second.size();
         _replicaInfoCollection.emplace_back(

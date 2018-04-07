@@ -53,7 +53,7 @@ void countJobStates(size_t& numLaunched,
     numFinished = 0;
     numSuccess  = 0;
 
-    for (auto const& ptr: collection) {
+    for (auto&& ptr: collection) {
         if (ptr->state() == Job::State::FINISHED) {
             numFinished++;
             if (ptr->extendedState() == Job::ExtendedState::SUCCESS) {
@@ -159,7 +159,7 @@ void RebalanceJob::cancelImpl() {
     }
     _findAllJob = nullptr;
 
-    for (auto const& ptr: _moveReplicaJobs) {
+    for (auto&& ptr: _moveReplicaJobs) {
         ptr->cancel();
     }
     _moveReplicaJobs.clear();
@@ -260,14 +260,14 @@ void RebalanceJob::onPrecursorJobFinish() {
         _replicaData.totalWorkers    = 0;     // not counting workers which failed to report chunks
         _replicaData.totalGoodChunks = 0;     // good chunks reported by the precursor job
 
-        for (auto const& entry: replicaData.workers) {
+        for (auto&& entry: replicaData.workers) {
             bool const  reported = entry.second;
             if (reported) {
                 _replicaData.totalWorkers++;
             }
         }
-        for (auto const& chunkEntry: replicaData.isGood) {
-            for (auto const& workerEntry: chunkEntry.second) {
+        for (auto&& chunkEntry: replicaData.isGood) {
+            for (auto&& workerEntry: chunkEntry.second) {
                 bool const  isGood = workerEntry.second;
                 if (isGood) {
                     _replicaData.totalGoodChunks++;
@@ -306,7 +306,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                  std::map<unsigned int,         // chunk
                           bool>> worker2chunks;
 
-        for (auto const& entry: replicaData.workers) {
+        for (auto&& entry: replicaData.workers) {
             std::string const& worker   = entry.first;
             bool        const  reported = entry.second;
             if (reported) {
@@ -316,10 +316,10 @@ void RebalanceJob::onPrecursorJobFinish() {
         for (auto chunk: replicaData.chunks.chunkNumbers()) {
             auto chunkMap = replicaData.chunks.chunk(chunk);
 
-            for (auto database: chunkMap.databaseNames()) {
+            for (auto&& database: chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
-                for (auto worker: databaseMap.workerNames()) {
+                for (auto&& worker: databaseMap.workerNames()) {
                     worker2chunks[worker][chunk] = true;
                 }
             }
@@ -336,16 +336,16 @@ void RebalanceJob::onPrecursorJobFinish() {
         std::map<std::string,
                  std::vector<unsigned int>> worker2goodChunks;
 
-        for (auto const& entry: replicaData.workers) {
+        for (auto&& entry: replicaData.workers) {
             std::string const& worker   = entry.first;
             bool        const  reported = entry.second;
             if (reported) {
                 worker2goodChunks[worker] = std::vector<unsigned int>();
             }
         }
-        for (auto const& chunkEntry: replicaData.isGood) {
+        for (auto&& chunkEntry: replicaData.isGood) {
             unsigned int const chunk = chunkEntry.first;
-            for (auto const& workerEntry: chunkEntry.second) {
+            for (auto&& workerEntry: chunkEntry.second) {
                 std::string const& worker = workerEntry.first;
                 bool        const  isGood = workerEntry.second;
                 if (isGood) {
@@ -364,7 +364,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         std::vector<std::pair<std::string,
                               std::vector<unsigned int>>> sourceWorkers;
 
-        for (auto const& entry: worker2goodChunks) {
+        for (auto&& entry: worker2goodChunks) {
             size_t const numChunks = entry.second.size();
             if (numChunks > _replicaData.avgChunks) {
                 sourceWorkers.push_back(entry);
@@ -396,7 +396,7 @@ void RebalanceJob::onPrecursorJobFinish() {
         std::vector<std::pair<std::string,
                               size_t>> destinationWorkers;
 
-        for (auto const& entry: worker2goodChunks) {
+        for (auto&& entry: worker2goodChunks) {
             std::string const worker    = entry.first;
             size_t      const numChunks = entry.second.size();
 
@@ -441,7 +441,7 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         _replicaData.plan.clear();
 
-        for (auto const& sourceWorkerEntry: sourceWorkers) {
+        for (auto&& sourceWorkerEntry: sourceWorkers) {
 
             std::string               const& sourceWorker   = sourceWorkerEntry.first;
             std::vector<unsigned int> const& chunks         = sourceWorkerEntry.second;
@@ -474,7 +474,7 @@ void RebalanceJob::onPrecursorJobFinish() {
                 // IMPLEMENTTION NOTES: using non-const references in the loop to allow
                 // updates to the number of slots
 
-                for (auto& destinationWorkerEntry: destinationWorkers) {
+                for (auto&& destinationWorkerEntry: destinationWorkers) {
                     std::string const& destinationWorker = destinationWorkerEntry.first;
                     size_t&            numSlots          = destinationWorkerEntry.second;
 
@@ -519,13 +519,13 @@ void RebalanceJob::onPrecursorJobFinish() {
 
         size_t numFailedLocks = 0;
 
-        for (auto const& chunkEntry: _replicaData.plan) {
+        for (auto&& chunkEntry: _replicaData.plan) {
             unsigned int const chunk = chunkEntry.first;
             if (not _controller->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, _id)) {
                 ++_numFailedLocks;
                 continue;
             }
-            for (auto const& sourceWorkerEntry: chunkEntry.second) {
+            for (auto&& sourceWorkerEntry: chunkEntry.second) {
                 std::string const& sourceWorker      = sourceWorkerEntry.first;
                 std::string const& destinationWorker = sourceWorkerEntry.second;
 
@@ -603,19 +603,19 @@ void RebalanceJob::onJobFinish(MoveReplicaJob::pointer const& job) {
 
             MoveReplicaJobResult const& replicaData = job->getReplicaData();
 
-            for (auto const& replica: replicaData.createdReplicas) {
+            for (auto&& replica: replicaData.createdReplicas) {
                 _replicaData.createdReplicas.emplace_back(replica);
             }
-            for (auto const& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
+            for (auto&& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
                 std::string const& database = databaseEntry.first;
                 ReplicaInfo const& replica  = databaseEntry.second.at(job->destinationWorker());
 
                 _replicaData.createdChunks[job->chunk()][database][job->destinationWorker()] = replica;
             }
-            for (auto const& replica: replicaData.deletedReplicas) {
+            for (auto&& replica: replicaData.deletedReplicas) {
                 _replicaData.deletedReplicas.emplace_back(replica);
             }
-            for (auto const& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
+            for (auto&& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
                 std::string const& database = databaseEntry.first;
                 ReplicaInfo const& replica  = databaseEntry.second.at(job->sourceWorker());
 

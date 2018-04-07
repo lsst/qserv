@@ -141,7 +141,7 @@ void FixUpJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
             _controller->stopReplication(
@@ -224,10 +224,10 @@ void FixUpJob::onPrecursorJobFinish() {
 
         auto self = shared_from_base<FixUpJob>();
 
-        for (auto const& chunk2workers: replicaData.isColocated) {
+        for (auto&& chunk2workers: replicaData.isColocated) {
             unsigned int chunk = chunk2workers.first;
 
-            for (auto const& worker2colocated: chunk2workers.second) {
+            for (auto&& worker2colocated: chunk2workers.second) {
                 std::string const& destinationWorker = worker2colocated.first;
                 bool        const  isColocated       = worker2colocated.second;
 
@@ -246,7 +246,7 @@ void FixUpJob::onPrecursorJobFinish() {
                 // a complete chunk for the database and which (the worker) is not the same
                 // as the current one and submite the replication request.
 
-                for (auto const& database: replicaData.databases.at(chunk)) {
+                for (auto&& database: replicaData.databases.at(chunk)) {
 
                     if (not replicaData.chunks.chunk(chunk)
                                               .database(database)
@@ -254,7 +254,7 @@ void FixUpJob::onPrecursorJobFinish() {
 
                         // Finding a source worker first
                         std::string sourceWorker;
-                        for (auto const& worker: replicaData.complete.at(chunk).at(database)) {
+                        for (auto&& worker: replicaData.complete.at(chunk).at(database)) {
                             if (worker != destinationWorker) {
                                 sourceWorker = worker;
                                 break;

@@ -337,7 +337,7 @@ void Controller::stop() {
 }
 
 void Controller::join() {
-    for (auto& t: _threads) { t->join(); }
+    for (auto&& t: _threads) { t->join(); }
 }
 
 ReplicationRequest::pointer Controller::replicate(

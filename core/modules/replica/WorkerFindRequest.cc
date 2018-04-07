@@ -189,14 +189,14 @@ bool WorkerFindRequestPOSIX::execute() {
 
         WorkerInfo   const& workerInfo   = _serviceProvider->config()->workerInfo(worker());
         DatabaseInfo const& databaseInfo = _serviceProvider->config()->databaseInfo(database());
-    
+
         // Check if the data directory exists and it can be read
-    
+
         LOCK_DATA_FOLDER;
-    
+
         fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
-    
+
         errorContext = errorContext
             or reportErrorIf(
                     stat.type() == fs::status_error,
@@ -206,15 +206,15 @@ bool WorkerFindRequestPOSIX::execute() {
                     not fs::exists(stat),
                     ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
-    
+
         if (errorContext.failed) {
             setStatus(STATUS_FAILED, errorContext.extendedStatus);
             return true;
         }
-    
+
         // For each file associated with the chunk check if the file is present in
         // the data directory.
-        // 
+        //
         // - not finding a file is not a failrure for this operation. Just reporting
         //   those files which are present.
         //
@@ -222,22 +222,22 @@ bool WorkerFindRequestPOSIX::execute() {
         //
         // - assume the successfull completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
-    
-        
+
+
         ReplicaInfo::FileInfoCollection fileInfoCollection; // file info if not using the incremental processing
         std::vector<std::string>        files;              // file paths registered for the incremental processing
 
-        for (auto const& file: FileUtils::partitionedFiles(databaseInfo, chunk())) {
-    
+        for (auto&& file: FileUtils::partitionedFiles(databaseInfo, chunk())) {
+
             fs::path        const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
-    
+
             errorContext = errorContext
                 or reportErrorIf(
                         stat.type() == fs::status_error,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
                         "failed to check the status of file: " + path.string());
-    
+
             if (fs::exists(stat)) {
 
                 if (not _computeCheckSum) {
@@ -257,7 +257,7 @@ bool WorkerFindRequestPOSIX::execute() {
                                 ec,
                                 ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                                 "failed to read file mtime: " + path.string());
-                        
+
                     fileInfoCollection.emplace_back(
                         ReplicaInfo::FileInfo({
                             file,
@@ -270,7 +270,7 @@ bool WorkerFindRequestPOSIX::execute() {
                         })
                     );
                 } else {
-    
+
                     // Register this file for the incremental processing
                     files.push_back(path.string());
                 }
@@ -291,7 +291,7 @@ bool WorkerFindRequestPOSIX::execute() {
                                         chunk()).size() == fileInfoCollection.size() ?
                                             ReplicaInfo::Status::COMPLETE :
                                             ReplicaInfo::Status::INCOMPLETE;
-          
+
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(
                 status,
@@ -300,16 +300,16 @@ bool WorkerFindRequestPOSIX::execute() {
                 chunk(),
                 PerformanceUtils::now(),
                 fileInfoCollection);
-        
+
             setStatus(STATUS_SUCCEEDED);
-        
+
             return true;
         }
-        
-        // Otherwise proceed with the incremental approach         
+
+        // Otherwise proceed with the incremental approach
         _csComputeEnginePtr.reset(new MultiFileCsComputeEngine(files));
     }
-    
+
     // Next (or the first) iteration in the incremental approach
     bool finished = true;
     try {
@@ -321,9 +321,9 @@ bool WorkerFindRequestPOSIX::execute() {
             ReplicaInfo::FileInfoCollection fileInfoCollection;
 
             auto const fileNames = _csComputeEnginePtr->fileNames();
-            for (auto const& file: fileNames) {
+            for (auto&& file: fileNames) {
 
-                const fs::path path(file); 
+                const fs::path path(file);
 
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
 
@@ -333,7 +333,7 @@ bool WorkerFindRequestPOSIX::execute() {
                             ec,
                             ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
                             "failed to read file mtime: " + path.string());
-                        
+
                 fileInfoCollection.emplace_back(
                     ReplicaInfo::FileInfo({
                         path.filename().string(),
@@ -363,8 +363,8 @@ bool WorkerFindRequestPOSIX::execute() {
                                         chunk()).size() == fileNames.size() ?
                                             ReplicaInfo::Status::COMPLETE :
                                             ReplicaInfo::Status::INCOMPLETE;
-          
-            // Fill in the info on the chunk before finishing the operation    
+
+            // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(
                 status,
                 worker(),
@@ -372,7 +372,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 chunk(),
                 PerformanceUtils::now(),
                 fileInfoCollection);
-        
+
             setStatus(STATUS_SUCCEEDED);
         }
 
@@ -386,7 +386,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         setStatus(STATUS_FAILED, errorContext.extendedStatus);
     }
-    
+
     // If done (either way) then get rid of the engine right away because
     // it may still have allocated buffers
     if (finished) { _csComputeEnginePtr.reset(); }

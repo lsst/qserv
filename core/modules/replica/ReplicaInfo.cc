@@ -54,7 +54,7 @@ void setInfoImpl(replica::ReplicaInfo const& ri,
     info->set_chunk(ri.chunk());
     info->set_verify_time(ri.verifyTime());
 
-    for (auto const& fi: ri.fileInfo()) {
+    for (auto&& fi: ri.fileInfo()) {
         proto::ReplicationFileInfo* fileInfo = info->add_file_info_many();
         fileInfo->set_name(fi.name);
         fileInfo->set_size(fi.size);
@@ -63,7 +63,7 @@ void setInfoImpl(replica::ReplicaInfo const& ri,
         fileInfo->set_begin_transfer_time(fi.beginTransferTime);
         fileInfo->set_end_transfer_time(fi.endTransferTime);
         fileInfo->set_in_size(fi.inSize);
-    }  
+    }
 }
 }  // namespace
 
@@ -141,7 +141,7 @@ ReplicaInfo::ReplicaInfo(proto::ReplicationReplicaInfo const* info) {
 
 uint64_t ReplicaInfo::beginTransferTime() const {
     uint64_t t = 0;
-    for (auto const& f: _fileInfo) {
+    for (auto&& f: _fileInfo) {
         t = t ? std::min(t, f.beginTransferTime) : f.beginTransferTime;
     }
     return t;
@@ -149,7 +149,7 @@ uint64_t ReplicaInfo::beginTransferTime() const {
 
 uint64_t ReplicaInfo::endTransferTime() const {
     uint64_t t = 0;
-    for (auto const& f: _fileInfo) {
+    for (auto&& f: _fileInfo) {
         t = std::max(t, f.endTransferTime);
     }
     return t;
@@ -167,7 +167,7 @@ void ReplicaInfo::setInfo(lsst::qserv::proto::ReplicationReplicaInfo* info) cons
 
 std::map<std::string,ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
     std::map<std::string,ReplicaInfo::FileInfo> result;
-    for (auto const& f: _fileInfo) {
+    for (auto&& f: _fileInfo) {
         result[f.name] = f;
     }
     return result;
@@ -204,7 +204,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri) {
         << " chunk: "      << ri.chunk()
         << " verifyTime: " << ri.verifyTime()
         << " files: ";
-    for (auto const& fi: ri.fileInfo()) {
+    for (auto&& fi: ri.fileInfo()) {
         os << "\n   (" << fi << ")";
     }
     return os;
@@ -213,7 +213,7 @@ std::ostream& operator<<(std::ostream& os, ReplicaInfo const& ri) {
 std::ostream& operator<<(std::ostream &os, ReplicaInfoCollection const& ric) {
 
     os << "ReplicaInfoCollection";
-    for (auto const& ri: ric) {
+    for (auto&& ri: ric) {
         os << "\n (" << ri << ")";
     }
     return os;

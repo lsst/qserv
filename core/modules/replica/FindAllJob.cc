@@ -100,8 +100,8 @@ void FindAllJob::startImpl() {
 
     auto self = shared_from_base<FindAllJob>();
 
-    for (auto const& worker: _controller->serviceProvider()->config()->workers()) {
-        for (auto const& database: _databases) {
+    for (auto&& worker: _controller->serviceProvider()->config()->workers()) {
+        for (auto&& database: _databases) {
             _requests.push_back(
                 _controller->findAllReplicas(
                     worker,
@@ -132,7 +132,7 @@ void FindAllJob::cancelImpl() {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto const& ptr: _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
             _controller->stopReplicaFindAll(
@@ -196,7 +196,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             _numSuccess++;
             ReplicaInfoCollection const& infoCollection = request->responseData();
             _replicaData.replicas.emplace_back (infoCollection);
-            for (auto info: infoCollection) {
+            for (auto&& info: infoCollection) {
                 _replicaData.chunks.atChunk(info.chunk())
                                    .atDatabase(info.database())
                                    .atWorker(info.worker()) = info;
@@ -224,7 +224,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             // Databases participating in a chunk
             //
             for (auto chunk: _replicaData.chunks.chunkNumbers()) {
-                for (auto database: _replicaData.chunks.chunk(chunk).databaseNames()) {
+                for (auto&& database: _replicaData.chunks.chunk(chunk).databaseNames()) {
                     _replicaData.databases[chunk].push_back(database);
                 }
             }
@@ -234,10 +234,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
             for (auto chunk: _replicaData.chunks.chunkNumbers()) {
                 auto chunkMap = _replicaData.chunks.chunk(chunk);
 
-                for (auto database: chunkMap.databaseNames()) {
+                for (auto&& database: chunkMap.databaseNames()) {
                     auto databaseMap = chunkMap.database(database);
 
-                    for (auto worker: databaseMap.workerNames()) {
+                    for (auto &&worker: databaseMap.workerNames()) {
                         ReplicaInfo const& replica = databaseMap.worker(worker);
 
                         if (replica.status() == ReplicaInfo::Status::COMPLETE) {
@@ -264,10 +264,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
                 std::map<std::string, size_t> worker2numDatabases;
 
-                for (auto database: chunkMap.databaseNames()) {
+                for (auto&& database: chunkMap.databaseNames()) {
                     auto databaseMap = chunkMap.database(database);
 
-                    for (auto worker: databaseMap.workerNames()) {
+                    for (auto&& worker: databaseMap.workerNames()) {
                         worker2numDatabases[worker]++;
                     }
                 }
@@ -277,7 +277,7 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
                 // the chunk and decide for which of those workers the 'colocation'
                 // requirement is met.
 
-                for (auto const& entry: worker2numDatabases) {
+                for (auto&& entry: worker2numDatabases) {
                     std::string const& worker       = entry.first;
                     size_t      const  numDatabases = entry.second;
 
@@ -288,10 +288,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
             // Compute the 'goodness' status of each chunk
 
-            for (auto const& chunk2workers: _replicaData.isColocated) {
+            for (auto&& chunk2workers: _replicaData.isColocated) {
                 unsigned int const chunk = chunk2workers.first;
 
-                for (auto const& worker2collocated: chunk2workers.second) {
+                for (auto&& worker2collocated: chunk2workers.second) {
                     std::string const& worker = worker2collocated.first;
                     bool        const  isColocated = worker2collocated.second;
 
@@ -307,10 +307,10 @@ void FindAllJob::onRequestFinish(FindAllRequest::pointer const& request) {
 
                         auto chunkMap = _replicaData.chunks.chunk(chunk);
 
-                        for (auto database: chunkMap.databaseNames()) {
+                        for (auto&& database: chunkMap.databaseNames()) {
                             auto databaseMap = chunkMap.database(database);
 
-                            for (auto thisWorker: databaseMap.workerNames()) {
+                            for (auto&& thisWorker: databaseMap.workerNames()) {
                                 if (worker == thisWorker) {
                                     ReplicaInfo const& replica = databaseMap.worker(thisWorker);
                                     isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);

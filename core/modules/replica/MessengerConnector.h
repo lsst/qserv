@@ -58,15 +58,15 @@ class WorkerInfo;
  * reconnects.
  *
  * NOTES ON THREAD SAFETY:
- * 
+ *
  * - in the implementation of this class a mutex is used to prevent race conditions
  *   when performing internal state transitions.
- *   
+ *
  * - to avoid deadlocks, only externally called methods of the public API (such
  *   as the ones for sending or cancelling requests) and assynchronious callbacks
  *   are locking on the mutex. Those methods are NOT allowed to call each other.
  *   Otherwise deadlocks are imminent.
- *   
+ *
  * - other implementatin-specific methods are supposed to be invoked from either
  *   of the above mentioned methods.
  */
@@ -84,11 +84,11 @@ public:
     public:
 
         // Default construction and copy semantics are prohibited
-    
+
         WrapperBase() = delete;
         WrapperBase(WrapperBase const&) = delete;
         WrapperBase& operator=(WrapperBase const&) = delete;
-    
+
         /// Destructor
         virtual ~WrapperBase() = default;
 
@@ -143,17 +143,17 @@ public:
                                    RESPONSE_TYPE const&)> callback_type;
 
         // Default construction and copy semantics are prohibited
-    
+
         Wrapper() = delete;
         Wrapper(Wrapper const&) = delete;
         Wrapper& operator=(Wrapper const&) = delete;
-    
+
         /// Destructor
         ~Wrapper() override = default;
 
         /**
          * The constructor
-         * 
+         *
          * @param id                          - a unique identifier of the request
          * @param requestBufferPtr            - a request serielized into a network buffer
          * @param responseBufferCapacityBytes - the initial size of the response buffer
@@ -187,7 +187,7 @@ public:
         /// the transaction.
         callback_type _onFinish;
     };
-    
+
     /// The pointer type for the base class of the request wrappers
     typedef std::shared_ptr<WrapperBase> WrapperBase_pointer;
 
@@ -202,7 +202,7 @@ public:
 
     /**
      * Create a new connector with specified parameters.
-     * 
+     *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
@@ -228,7 +228,7 @@ public:
      * of the transaction. The method may throw exception std::logic_error if
      * the MessangerConnector already has another transaction registered with the same
      * transaction 'id'.
-     * 
+     *
      * @param id                - a unique identifier of a request
      * @param requestBufferPtr  - a request serielized into a network buffer
      * @param onFinish          - an asynchronious callback function called upon a completion
@@ -253,7 +253,7 @@ public:
      *
      * If this call succeeds there won't be any 'onFinish' callback made
      * as provided to the 'onFinish' method in method 'send'.
-     * 
+     *
      * The method may throw std::logic_error if the Messanger doesn't have
      * a transaction registered with the specified transaction 'id'.
      *
@@ -287,12 +287,12 @@ private:
      */
     void sendImpl(std::string const& id,
                   WrapperBase_pointer const& ptr);
-    
+
     /// State transitions for the connector object
     enum State {
         STATE_INITIAL,      // no communication is happening
-        STATE_CONNECTING,   // attempting to connecto to a worker service
-        STATE_COMMUNICATING // sending and receiven messages
+        STATE_CONNECTING,   // attempting to connect to a worker service
+        STATE_COMMUNICATING // sending or receiving messages
     };
 
     /// Return the string representation of the connector's state
@@ -303,7 +303,7 @@ private:
      *
      * Cancel any asynchronous operation(s) if not in the initial state
      * w/o notifying a subscriber.
-     * 
+     *
      * NOTE: This method is called internally when there is a doubt that
      * it's possible to do a clean recovery from a failure.
      */

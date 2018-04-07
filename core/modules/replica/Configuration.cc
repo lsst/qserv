@@ -193,16 +193,16 @@ std::string Configuration::context() const {
 std::vector<std::string> Configuration::workers(bool isEnabled,
                                                 bool isReadOnly) const {
     std::vector<std::string> names;
-    for (auto const& entry: _workerInfo) {
+    for (auto&& entry: _workerInfo) {
         auto const& name = entry.first;
         auto const& info = entry.second;
         if (isEnabled) {
             if (info.isEnabled and (isReadOnly == info.isReadOnly)) {
-                names.push_back (name);
+                names.push_back(name);
             }
         } else {
             if (not info.isEnabled) {
-                names.push_back (name);
+                names.push_back(name);
             }
         }
     }
@@ -212,12 +212,12 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
 std::vector<std::string> Configuration::databaseFamilies() const {
 
     std::map<std::string, size_t> family2num;
-    for (auto const& elem: _databaseInfo) {
+    for (auto&& elem: _databaseInfo) {
         family2num[elem.second.family]++;
     }
     std::vector<std::string> families;
     for (auto const& elem: family2num) {
-        families.emplace_back (elem.first);
+        families.push_back(elem.first);
     }
     return families;
 }
@@ -243,7 +243,7 @@ std::vector<std::string> Configuration::databases(std::string const& family) con
                 family + "'");
     }
     std::vector<std::string> names;
-    for (auto const& entry: _databaseInfo) {
+    for (auto&& entry: _databaseInfo) {
         if (not family.empty() and (family != entry.second.family)) { continue; }
         names.push_back(entry.first);
     }
@@ -328,13 +328,13 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databasePassword:                   " << "*****");
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseName:                       " << _databaseName);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_jobSchedulerIvalSec:                " << _jobSchedulerIvalSec);
-    for (auto const& elem: _workerInfo) {
+    for (auto&& elem: _workerInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }
-    for (auto const& elem: _databaseInfo) {
+    for (auto&& elem: _databaseInfo) {
         LOGS(_log, LOG_LVL_DEBUG, context() << elem.second);
     }
-    for (auto const& elem: _replicationLevel) {
+    for (auto&& elem: _replicationLevel) {
         LOGS(_log, LOG_LVL_DEBUG, context()
              << "replicationLevel["<< elem.first << "]: " << elem.second);
     }
