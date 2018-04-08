@@ -89,9 +89,8 @@ message ProtoHeader {
 
 message ColumnSchema {
     optional string name = 1; // Optional to allow type-only transmission
-    required bool hasdefault = 2; // unambiguous flag--
-    // has_defaultvalue() often tests true even after clear_defaultvalue()
-    optional bytes defaultvalue = 3;
+    required bool deprecated_hasdefault = 2; // DEPRECATED (but 'required', so will have to continue to be set)
+    optional bytes deprecated_defaultvalue = 3; // DEPRECATED
     required string sqltype = 4;
     optional int32 mysqltype = 5;
 }
