@@ -207,14 +207,7 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
         cs->set_name(i->name);
-        if (i->hasDefault) {
-            cs->set_hasdefault(true);
-            cs->set_defaultvalue(i->defaultValue);
-            LOGS(_log, LOG_LVL_DEBUG, i->name << " has default.");
-        } else {
-            cs->set_hasdefault(false);
-            cs->clear_defaultvalue();
-        }
+        cs->set_deprecated_hasdefault(false); // still need to set deprecated but 'required' protobuf field
         cs->set_sqltype(i->colType.sqlType);
         cs->set_mysqltype(i->colType.mysqlType);
     }

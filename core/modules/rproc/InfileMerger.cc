@@ -488,12 +488,6 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
             proto::ColumnSchema const& cs = rs.columnschema(i);
             sql::ColSchema scs;
             scs.name = cs.name();
-            if (cs.hasdefault()) {
-                scs.defaultValue = cs.defaultvalue();
-                scs.hasDefault = true;
-            } else {
-                scs.hasDefault = false;
-            }
             if (cs.has_mysqltype()) {
                 scs.colType.mysqlType = cs.mysqltype();
             }
@@ -515,7 +509,6 @@ bool InfileMerger::_setupTable(proto::WorkerResponse const& response) {
         {
             sql::ColSchema scs;
             scs.name              = _jobIdColName;
-            scs.hasDefault        = false;
             scs.colType.mysqlType = _jobIdMysqlType;
             scs.colType.sqlType   = _jobIdSqlType;
             schema.columns.push_back(scs);

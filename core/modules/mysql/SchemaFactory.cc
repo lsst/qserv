@@ -147,33 +147,6 @@ private:
 /// Set a ColSchema according to the contents of a MYSQL_FIELD
 void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
     cs.name = f.name;
-    cs.hasDefault = false;
-    if (f.def_length) {
-        // If there is a default value stored, record it.
-        // There is probably a default value.
-        cs.defaultValue = std::string(f.def, f.def_length);
-        cs.hasDefault = true;
-        // (I hope I don't need to escape this string--if I do, then I
-        // need a MYSQL*, which is ridiculous, but
-        // mysql_real_escape_string needs one so it can peek inside
-        // for the charset, rather than allowing you to specify a
-        // charset externally. -danielw )
-    }
-    // ...but BLOBs can't have default values
-    switch(f.type) {
-    case MYSQL_TYPE_TINY_BLOB:
-    case MYSQL_TYPE_MEDIUM_BLOB:
-    case MYSQL_TYPE_LONG_BLOB:
-    case MYSQL_TYPE_BLOB:
-        cs.hasDefault = false;
-        break;
-    default:
-        break;
-    }
-    // ...and if the flag is set, then you really can't have a default value.
-    if (f.flags & NO_DEFAULT_VALUE_FLAG) {
-        cs.hasDefault = false;
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -171,7 +171,6 @@ void UserQueryProcessList::submit() {
         createTable += " ";
         createTable += col.colType.sqlType;
         if (col.colType.sqlType == "TIMESTAMP") createTable += " NULL";
-        if (col.hasDefault) createTable += " DEFAULT '" + col.defaultValue + "'";
     }
     createTable += ')';
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);

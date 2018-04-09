@@ -114,7 +114,6 @@ void ProtoRowBuffer::_initSchema() {
     // Set jobId and attemptCount
     sql::ColSchema jobIdCol;
     jobIdCol.name = _jobIdColName;
-    jobIdCol.hasDefault = false;
     jobIdCol.colType.sqlType = _jobIdSqlType;
     jobIdCol.colType.mysqlType = _jobIdMysqlType;
     _schema.columns.push_back(jobIdCol);
@@ -125,10 +124,6 @@ void ProtoRowBuffer::_initSchema() {
         sql::ColSchema cs;
         if (pcs.has_name()) {
             cs.name = pcs.name();
-        }
-        cs.hasDefault = pcs.has_defaultvalue();
-        if (cs.hasDefault) {
-            cs.defaultValue = pcs.defaultvalue();
         }
         cs.colType.sqlType = pcs.sqltype();
         if (pcs.has_mysqltype()) {
@@ -143,7 +138,6 @@ std::string ProtoRowBuffer::dump() const {
     std::string str("ProtoRowBuffer schema(");
     for (auto sCol : _schema.columns) {
         str += "(Name=" + sCol.name;
-        str += ",defaultValue=" + sCol.defaultValue;
         str += ",colType=" + sCol.colType.sqlType + ":" + std::to_string(sCol.colType.mysqlType) + ")";
     }
     str += ") ";
