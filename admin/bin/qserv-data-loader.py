@@ -142,7 +142,7 @@ class Loader(object):
                            'partitioned but still loaded into a single table.')
 
         group = parser.add_argument_group('CSS options', 'Options controlling CSS metadata')
-        parser.set_defaults(cssConn='mysql://qsmaster@127.0.0.1:13306/qservCssData')
+        parser.set_defaults(cssConn='mysql://qsmaster@127.0.0.1:3306/qservCssData')
         group.add_argument('-c', '--css-conn', dest='cssConn',
                            help='Connection string for CSS, def: %(default)s.')
         group.add_argument('-r', '--css-remove', dest='cssClear', default=False, action='store_true',
