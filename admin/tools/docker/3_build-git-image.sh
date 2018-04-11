@@ -18,7 +18,7 @@ Usage: $(basename "$0") [options] [local-path]
 Available options:
   -R git-ref    Use remote git branch/tag for the build
                 (from https://github.com/lsst/qserv)
-				Example: 'tickets/DM-6444'
+                Example: 'tickets/DM-6444'
   -h            This message
   -L            Do not push image to Docker Hub
   -T            Prefix for the name of the produced images,
@@ -85,12 +85,17 @@ fi
 
 printf "Using branch/tag %s from %s\n" "$GIT_REF" "$GIT_REPO"
 
-if [ -n "$DOCKERDIR/src/qserv" ]; then
-	rm -rf "$DOCKERDIR/src/qserv"
+BUILD_DIR="$DOCKERDIR/build"
+
+mkdir -p "$BUILD_DIR"
+
+if [ -d "$BUILD_DIR/qserv" ]; then
+   rm -rf $BUILD_DIR/qserv
 fi
 
+git clone -b "$GIT_REF" --single-branch --depth=1 "$GIT_REPO" "$BUILD_DIR/qserv"
+
 # Put source code inside Docker build directory
-git clone -b "$GIT_REF" --single-branch --depth=1 "$GIT_REPO" "$DOCKERDIR/src/qserv"
 
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
@@ -112,4 +117,4 @@ if [ "$PUSH_TO_HUB" = "true" ]; then
     printf "Image %s pushed successfully\n" "$TAG"
 fi
 
-rm -rf "$DOCKERDIR/src/qserv"
+rm -rf $BUILD_DIR/qserv
