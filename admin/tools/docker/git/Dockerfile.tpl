@@ -38,6 +38,17 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
              qserv-configure.py --init --force --qserv-run-dir "$QSERV_RUN_DIR" && \
              qserv-configure.py --etc --qserv-run-dir "$QSERV_RUN_DIR" --force "
 
+RUN bash -c ". /qserv/stack/loadLSST.bash && \
+    GIT_REF='tickets/DM-13979' && \
+    GIT_REPO='https://github.com/lsst/qserv_testdata.git' && \
+    BUILD_DIR='/tmp/build' && \
+    git clone -b \"\$GIT_REF\" --single-branch --depth=1 \"\$GIT_REPO\" \"\$BUILD_DIR\" && \
+    cd \"\$BUILD_DIR\" && \
+    setup -r . -t qserv-dev && \
+    eupspkg -er install && \
+    eupspkg -er decl -t qserv-dev && \
+    rm -rf \"\$BUILD_DIR\""
+
 # Allow install of additional packages in pods and ease install scripts
 # execution
 USER root
