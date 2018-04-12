@@ -36,7 +36,6 @@
 #include <iostream>
 #include <memory>
 #include <stack>
-#include <sstream>
 
 // Local headers
 #include "query/BoolTerm.h"
