@@ -112,9 +112,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const CompPredicate& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr left;
     int op; // Parser token type of operator
@@ -140,9 +138,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const InPredicate& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtrVector cands;
@@ -169,9 +165,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const BetweenPredicate& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr minValue;
@@ -197,9 +191,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const LikePredicate& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     ValueExprPtr charValue;
@@ -225,9 +217,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const NullPredicate& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     ValueExprPtr value;
     bool hasNot;
