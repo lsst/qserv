@@ -4,7 +4,7 @@ MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
 USER root
 
-COPY src/qserv /home/qserv/src/qserv
+COPY build/qserv /home/qserv/src/qserv
 RUN chown -R qserv:qserv /home/qserv/src/qserv
 
 USER qserv
@@ -29,19 +29,6 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && \
     eupspkg -er install && \
     eupspkg -er decl -t qserv-dev && \
     rm -rf /tmp/qserv"
-
-RUN bash -c ". /qserv/stack/loadLSST.bash && \
-    GIT_REF='tickets/DM-13979' && \
-    GIT_REPO='https://github.com/lsst/qserv_testdata.git' && \
-    BUILD_DIR='/tmp/build' && \
-    git clone -b \"\$GIT_REF\" --single-branch --depth=1 \"\$GIT_REPO\" \"\$BUILD_DIR\" && \
-    cd \"\$BUILD_DIR\" && \
-    GIT_HASH=\$(git rev-parse --verify HEAD) && \
-    echo \"Git hash \$GIT_HASH\" && \
-    setup -r . -t qserv-dev && \
-    eupspkg -er install && \
-    eupspkg -er decl -t qserv-dev && \
-    rm -rf \"\$BUILD_DIR\""
 
 # Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
 # required by k8s setup
