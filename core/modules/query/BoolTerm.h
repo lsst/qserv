@@ -70,11 +70,8 @@ public:
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 
     virtual void dbgPrint(std::ostream& os) const = 0;
-    virtual bool equal(const BoolFactorTerm& rhs) const = 0;
 
-    bool operator==(const BoolFactorTerm& rhs) const {
-        return equal(rhs);
-    }
+    virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -124,11 +121,7 @@ public:
 
     virtual void dbgPrint(std::ostream& os) const = 0;
 
-    virtual bool equal(const BoolTerm& rhs) const = 0;
-
-    bool operator==(const BoolTerm& rhs) const {
-        return equal(rhs);
-    }
+    virtual bool operator==(const BoolTerm& rhs) const = 0;
 };
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
@@ -179,9 +172,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const OrTerm& rhs) const;
-
-    bool equal(const BoolTerm& rhs) const override;
+    bool operator==(const BoolTerm& rhs) const override;
 };
 
 
@@ -221,9 +212,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const AndTerm& rhs) const;
-
-    bool equal(const BoolTerm& rhs) const override;
+    bool operator==(const BoolTerm& rhs) const;
 };
 
 
@@ -258,16 +247,12 @@ public:
     virtual std::shared_ptr<BoolTerm> clone() const;
     virtual std::shared_ptr<BoolTerm> copySyntax() const;
 
-    bool operator==(const BoolFactor& rhs) const {
-        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhs._terms);
-    }
-
-    bool equal(const BoolTerm& rhs) const override{
+    bool operator==(const BoolTerm& rhs) const {
         auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
         if (nullptr == rhsBoolFactor) {
             return false;
         }
-        return *this == *rhsBoolFactor;
+        return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
     }
 
     BoolFactorTerm::PtrVector _terms;
@@ -288,8 +273,7 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
     void dbgPrint(std::ostream& os) const override;
-    bool operator==(const UnknownTerm& rhs) { return true; }
-    bool equal(const BoolTerm& rhs) const override { return true; }
+    bool operator==(const BoolTerm& rhs) const override;
 };
 
 
@@ -308,9 +292,7 @@ public: // text
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const PassTerm& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 };
 
 
@@ -324,8 +306,7 @@ public: // ( term, term, term )
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     void dbgPrint(std::ostream& os) const override;
-    bool operator==(const PassListTerm& rhs) const;
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
     StringVector _terms;
 };
 
@@ -351,9 +332,7 @@ public:
 
     void dbgPrint(std::ostream& os) const override;
 
-    bool operator==(const BoolTermFactor& rhs) const;
-
-    bool equal(const BoolFactorTerm& rhs) const override;
+    bool operator==(const BoolFactorTerm& rhs) const override;
 
     std::shared_ptr<BoolTerm> _term;
 };
