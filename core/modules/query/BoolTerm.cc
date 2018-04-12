@@ -315,15 +315,12 @@ bool OrTerm::merge(const BoolTerm& other) {
 void OrTerm::dbgPrint(std::ostream& os) const {
     os << "OrTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
 }
-bool OrTerm::operator==(const OrTerm& rhs) const {
-    return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
-}
-bool OrTerm::equal(const BoolTerm& rhs) const {
+bool OrTerm::operator==(const BoolTerm& rhs) const {
     auto rhsOrTerm = dynamic_cast<OrTerm const *>(&rhs);
     if (nullptr == rhsOrTerm) {
         return false;
     }
-    return *this == *rhsOrTerm;
+    return util::vectorPtrCompare<BoolTerm>(_terms, rhsOrTerm->_terms);
 }
 std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
@@ -341,15 +338,12 @@ bool AndTerm::merge(const BoolTerm& other) {
 void AndTerm::dbgPrint(std::ostream& os) const {
     os << "AndTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
 }
-bool AndTerm::operator==(const AndTerm& rhs) const {
-    return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
-}
-bool AndTerm::equal(const BoolTerm& rhs) const {
+bool AndTerm::operator==(const BoolTerm& rhs) const {
     auto rhsAndTerm = dynamic_cast<AndTerm const *>(&rhs);
     if (nullptr == rhsAndTerm) {
         return false;
     }
-    return *this == *rhsAndTerm;
+    return util::vectorPtrCompare<BoolTerm>(_terms, rhsAndTerm->_terms);
 }
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     std::shared_ptr<BoolFactor> bf = std::make_shared<BoolFactor>();
@@ -362,6 +356,9 @@ void BoolFactor::dbgPrint(std::ostream& os) const {
 void UnknownTerm::dbgPrint(std::ostream& os) const {
     os << "UnknownTerm()";
 }
+bool UnknownTerm::operator==(const BoolTerm& rhs) const {
+    return true;
+}
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
     p->_text = _text;
@@ -370,15 +367,12 @@ BoolFactorTerm::Ptr PassTerm::copySyntax() const {
 void PassTerm::dbgPrint(std::ostream& os) const {
     os << "PassTerm(terms:" << _text << ")";
 }
-bool PassTerm::operator==(const PassTerm& rhs) const {
-    return _text == rhs._text;
-}
-bool PassTerm::equal(const BoolFactorTerm& rhs) const {
+bool PassTerm::operator==(const BoolFactorTerm& rhs) const {
     auto rhsPassTerm = dynamic_cast<PassTerm const *>(&rhs);
     if (nullptr == rhsPassTerm) {
         return false;
     }
-    return *this == *rhsPassTerm;
+    return _text == rhsPassTerm->_text;
 }
 BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     PassListTerm* p = new PassListTerm;
@@ -388,15 +382,12 @@ BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
 void PassListTerm::dbgPrint(std::ostream& os) const {
     os << "PassListTerm(terms:" << util::DbgPrintVectorH<std::string>(_terms) << ")";
 }
-bool PassListTerm::operator==(const PassListTerm& rhs) const {
-    return _terms == rhs._terms;
-}
-bool PassListTerm::equal(const BoolFactorTerm& rhs) const {
+bool PassListTerm::operator==(const BoolFactorTerm& rhs) const {
     auto rhsTerm = dynamic_cast<PassListTerm const *>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }
-    return *this == *rhsTerm;
+    return _terms == rhsTerm->_terms;
 }
 BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
@@ -406,15 +397,12 @@ BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
 void BoolTermFactor::dbgPrint(std::ostream& os) const {
     os << "BoolTermFactor(term:" << util::DbgPrintPtrH<BoolTerm>(_term) << ")";
 }
-bool BoolTermFactor::operator==(const BoolTermFactor& rhs) const {
-    return util::ptrCompare<BoolTerm>(_term, rhs._term);
-}
-bool BoolTermFactor::equal(const BoolFactorTerm& rhs) const {
+bool BoolTermFactor::operator==(const BoolFactorTerm& rhs) const {
     auto rhsTerm = dynamic_cast<BoolTermFactor const *>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }
-    return *this == *rhsTerm;
+    return util::ptrCompare<BoolTerm>(_term, rhsTerm->_term);
 }
 
 

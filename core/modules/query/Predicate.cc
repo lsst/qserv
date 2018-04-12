@@ -193,18 +193,14 @@ void CompPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-bool CompPredicate::operator==(const CompPredicate& rhs) const {
-    return util::ptrCompare<ValueExpr>(left, rhs.left) &&
-           op == rhs.op &&
-           util::ptrCompare<ValueExpr>(right, rhs.right);
-}
-
-bool CompPredicate::equal(const BoolFactorTerm& rhs) const {
+bool CompPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsCompPredicate = dynamic_cast<CompPredicate const *>(&rhs);
     if (nullptr == rhsCompPredicate) {
         return false;
     }
-    return *this == *rhsCompPredicate;
+    return util::ptrCompare<ValueExpr>(left, rhsCompPredicate->left) &&
+           op == rhsCompPredicate->op &&
+           util::ptrCompare<ValueExpr>(right, rhsCompPredicate->right);
 }
 
 BoolFactorTerm::Ptr CompPredicate::clone() const {
@@ -243,17 +239,13 @@ void InPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-bool InPredicate::operator==(const InPredicate& rhs) const {
-    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
-           util::vectorPtrCompare<ValueExpr>(cands, rhs.cands);
-}
-
-bool InPredicate::equal(const BoolFactorTerm& rhs) const {
+bool InPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsInPredicate = dynamic_cast<InPredicate const *>(&rhs);
     if (nullptr == rhsInPredicate) {
         return false;
     }
-    return *this == *rhsInPredicate;
+    return util::ptrCompare<ValueExpr>(value, rhsInPredicate->value) &&
+           util::vectorPtrCompare<ValueExpr>(cands, rhsInPredicate->cands);
 }
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
@@ -271,18 +263,14 @@ void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-bool BetweenPredicate::operator==(const BetweenPredicate& rhs) const {
-    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
-           util::ptrCompare<ValueExpr>(minValue, rhs.minValue) &&
-           util::ptrCompare<ValueExpr>(maxValue, rhs.maxValue);
-}
-
-bool BetweenPredicate::equal(const BoolFactorTerm& rhs) const {
+bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const *>(&rhs);
     if (nullptr == rhsBetweenPredicate) {
         return false;
     }
-    return *this == *rhsBetweenPredicate;
+    return util::ptrCompare<ValueExpr>(value, rhsBetweenPredicate->value) &&
+           util::ptrCompare<ValueExpr>(minValue, rhsBetweenPredicate->minValue) &&
+           util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }
 
 BoolFactorTerm::Ptr LikePredicate::clone() const {
@@ -298,17 +286,13 @@ void LikePredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-bool LikePredicate::operator==(const LikePredicate& rhs) const {
-    return util::ptrCompare<ValueExpr>(value, rhs.value) &&
-           util::ptrCompare<ValueExpr>(charValue, rhs.charValue);
-}
-
-bool LikePredicate::equal(const BoolFactorTerm& rhs) const {
+bool LikePredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsLikePredicate = dynamic_cast<LikePredicate const *>(&rhs);
     if (nullptr == rhsLikePredicate) {
         return false;
     }
-    return *this == *rhsLikePredicate;
+    return util::ptrCompare<ValueExpr>(value, rhsLikePredicate->value) &&
+           util::ptrCompare<ValueExpr>(charValue, rhsLikePredicate->charValue);
 }
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {
@@ -324,17 +308,14 @@ void NullPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-bool NullPredicate::operator==(const NullPredicate& rhs) const {
-    return hasNot == rhs.hasNot &&
-           util::ptrCompare<ValueExpr>(value, rhs.value);
-}
-
-bool NullPredicate::equal(const BoolFactorTerm& rhs) const {
+bool NullPredicate::operator==(const BoolFactorTerm& rhs) const {
     auto rhsNullPredicate = dynamic_cast<NullPredicate const *>(&rhs);
     if (nullptr == rhsNullPredicate) {
         return false;
     }
-    return *this == *rhsNullPredicate;
+    return hasNot == rhsNullPredicate->hasNot &&
+           util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
 }
+
 
 }}} // namespace lsst::qserv::query
