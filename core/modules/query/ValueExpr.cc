@@ -97,7 +97,7 @@ void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
     case ValueExpr::MINUS: os << "MINUS"; break;
     case ValueExpr::MULTIPLY: os << "MULTIPLY"; break;
     case ValueExpr::DIVIDE: os << "DIVIDE"; break;
-    default: throw std::runtime_error("unhandled op"); break;
+    default: os << "!!unhandled!!"; break;
     }
     if (factor) {
         os << ", factor:";
@@ -199,7 +199,7 @@ template int ValueExpr::copyAsType<int>(int const&) const;
 
 
 void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
-    for (auto factorOp : _factorOps){
+    for (const auto& factorOp : _factorOps){
         assert(factorOp.factor); // FactorOps should never have null ValueFactors
         factorOp.factor->findColumnRefs(vector);
     }
