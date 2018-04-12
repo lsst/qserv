@@ -22,6 +22,7 @@
  */
 
 // System headers
+#include <array>
 #include <string>
 #include <unistd.h>
 
@@ -31,7 +32,6 @@
 
 #include <boost/test/included/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
-#include <boost/array.hpp>
 
 // Qserv headers
 #include "ccontrol/A4UserQueryFactory.h"
@@ -44,7 +44,7 @@ using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-static const boost::array< std::string, 2 > QUERIES = {
+static const std::array< std::string, 2 > QUERIES = {
     "SELECT objectId, ra_PS FROM Object WHERE objectId=386937898687249",
     "SELECT COUNT ( * ) AS OBJ_COUNT FROM Object WHERE qserv_areaspec_box ( 0.1 , - 6 , 4 , 6 ) AND scisql_fluxToAbMag ( zFlux_PS ) BETWEEN 20 AND 24 AND scisql_fluxToAbMag ( gFlux_PS ) - scisql_fluxToAbMag ( rFlux_PS ) BETWEEN 0.1 AND 0.9 AND scisql_fluxToAbMag ( iFlux_PS ) - scisql_fluxToAbMag ( zFlux_PS ) BETWEEN 0.1 AND 1.0;"
 };

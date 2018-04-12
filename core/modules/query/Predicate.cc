@@ -200,7 +200,7 @@ bool CompPredicate::operator==(const CompPredicate& rhs) const {
 }
 
 bool CompPredicate::equal(const BoolFactorTerm& rhs) const {
-    auto rhsCompPredicate = dynamic_cast<CompPredicate const * const>(&rhs);
+    auto rhsCompPredicate = dynamic_cast<CompPredicate const *>(&rhs);
     if (nullptr == rhsCompPredicate) {
         return false;
     }
@@ -249,7 +249,7 @@ bool InPredicate::operator==(const InPredicate& rhs) const {
 }
 
 bool InPredicate::equal(const BoolFactorTerm& rhs) const {
-    auto rhsInPredicate = dynamic_cast<InPredicate const * const>(&rhs);
+    auto rhsInPredicate = dynamic_cast<InPredicate const *>(&rhs);
     if (nullptr == rhsInPredicate) {
         return false;
     }
@@ -278,7 +278,7 @@ bool BetweenPredicate::operator==(const BetweenPredicate& rhs) const {
 }
 
 bool BetweenPredicate::equal(const BoolFactorTerm& rhs) const {
-    auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const * const>(&rhs);
+    auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const *>(&rhs);
     if (nullptr == rhsBetweenPredicate) {
         return false;
     }
@@ -304,7 +304,7 @@ bool LikePredicate::operator==(const LikePredicate& rhs) const {
 }
 
 bool LikePredicate::equal(const BoolFactorTerm& rhs) const {
-    auto rhsLikePredicate = dynamic_cast<LikePredicate const * const>(&rhs);
+    auto rhsLikePredicate = dynamic_cast<LikePredicate const *>(&rhs);
     if (nullptr == rhsLikePredicate) {
         return false;
     }
@@ -330,7 +330,7 @@ bool NullPredicate::operator==(const NullPredicate& rhs) const {
 }
 
 bool NullPredicate::equal(const BoolFactorTerm& rhs) const {
-    auto rhsNullPredicate = dynamic_cast<NullPredicate const * const>(&rhs);
+    auto rhsNullPredicate = dynamic_cast<NullPredicate const *>(&rhs);
     if (nullptr == rhsNullPredicate) {
         return false;
     }

@@ -126,7 +126,7 @@ public:
 
     virtual bool equal(const BoolTerm& rhs) const = 0;
 
-    bool operator==(const BoolTerm& rhs) {
+    bool operator==(const BoolTerm& rhs) const {
         return equal(rhs);
     }
 };

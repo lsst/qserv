@@ -149,8 +149,8 @@ SelectListFactory::importStar(RefAST selectRoot) {
 }
 
 void
-SelectListFactory::addSelectAggFunction(std::shared_ptr<query::SelectList>& selectList,
-                                        std::shared_ptr<query::ValueExpr>& func) {
+SelectListFactory::addSelectAggFunction(std::shared_ptr<query::SelectList> const& selectList,
+                                        std::shared_ptr<query::ValueExpr> const& func) {
     if (nullptr == selectList) {
         throw std::runtime_error("null selectList ptr");
     }

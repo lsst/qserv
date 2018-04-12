@@ -319,7 +319,7 @@ bool OrTerm::operator==(const OrTerm& rhs) const {
     return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
 }
 bool OrTerm::equal(const BoolTerm& rhs) const {
-    auto rhsOrTerm = dynamic_cast<OrTerm const * const>(&rhs);
+    auto rhsOrTerm = dynamic_cast<OrTerm const *>(&rhs);
     if (nullptr == rhsOrTerm) {
         return false;
     }
@@ -345,7 +345,7 @@ bool AndTerm::operator==(const AndTerm& rhs) const {
     return util::vectorPtrCompare<BoolTerm>(_terms, rhs._terms);
 }
 bool AndTerm::equal(const BoolTerm& rhs) const {
-    auto rhsAndTerm = dynamic_cast<AndTerm const * const>(&rhs);
+    auto rhsAndTerm = dynamic_cast<AndTerm const *>(&rhs);
     if (nullptr == rhsAndTerm) {
         return false;
     }
@@ -374,7 +374,7 @@ bool PassTerm::operator==(const PassTerm& rhs) const {
     return _text == rhs._text;
 }
 bool PassTerm::equal(const BoolFactorTerm& rhs) const {
-    auto rhsPassTerm = dynamic_cast<PassTerm const * const>(&rhs);
+    auto rhsPassTerm = dynamic_cast<PassTerm const *>(&rhs);
     if (nullptr == rhsPassTerm) {
         return false;
     }
@@ -392,7 +392,7 @@ bool PassListTerm::operator==(const PassListTerm& rhs) const {
     return _terms == rhs._terms;
 }
 bool PassListTerm::equal(const BoolFactorTerm& rhs) const {
-    auto rhsTerm = dynamic_cast<PassListTerm const * const>(&rhs);
+    auto rhsTerm = dynamic_cast<PassListTerm const *>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }
@@ -410,7 +410,7 @@ bool BoolTermFactor::operator==(const BoolTermFactor& rhs) const {
     return util::ptrCompare<BoolTerm>(_term, rhs._term);
 }
 bool BoolTermFactor::equal(const BoolFactorTerm& rhs) const {
-    auto rhsTerm = dynamic_cast<BoolTermFactor const * const>(&rhs);
+    auto rhsTerm = dynamic_cast<BoolTermFactor const *>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }

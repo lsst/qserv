@@ -227,15 +227,8 @@ WhereFactory::addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClaus
                                  const std::string& function,
                                  const std::vector<std::string>& parameters) {
     auto restrictor = std::make_shared<query::QsRestrictor>();
-
-    std::copy(parameters.begin(), parameters.end(), std::back_inserter(restrictor->_params));
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        std::stringstream ss;
-        std::copy(restrictor->_params.begin(), restrictor->_params.end(),
-                  std::ostream_iterator<std::string>(ss, ", "));
-    }
-    // Add case insensitive behavior
-    // in order to mimic MySQL functions/procedures
+    restrictor->_params = parameters;
+    // Add case insensitive behavior in order to mimic MySQL functions/procedures
     std::string insensitiveFunction(function);
     if (insensitiveFunction != "sIndex") {
         std::transform(insensitiveFunction.begin(), insensitiveFunction.end(), insensitiveFunction.begin(),
