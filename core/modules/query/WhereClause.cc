@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 
 // Third-party headers

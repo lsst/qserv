@@ -39,4 +39,3 @@ qservFunctionSpec
  decimalLiteral
     : MINUS? DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
     ;
- 
