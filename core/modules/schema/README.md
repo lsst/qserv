@@ -65,7 +65,7 @@ Dump schema information
 
 Running script without any option will dump some useful info, for example:
 
-    $  qserv-smig.py -c mysql://root:***@127.0.0.1:13306/qservMeta qmeta
+    $  qserv-smig.py -c mysql://root:***@127.0.0.1:3306/qservMeta qmeta
     Current schema version: 0
     Latest schema version: 1
     Known migrations:
@@ -86,7 +86,7 @@ Check schema version
 To check that migration is needed for current setup `--check` option
 could be used:
 
-    $  qserv-smig.py --check -c mysql://root:***@127.0.0.1:13306/qservMeta qmeta
+    $  qserv-smig.py --check -c mysql://root:***@127.0.0.1:3306/qservMeta qmeta
 
 This will print the same info but will also return code to the shell,
 code 0 means that schema does not need migration, code 1 means that schema
@@ -97,7 +97,7 @@ Migrating schema
 
 Actual migration is only performed if option `-m` appears on command line:
 
-    $  qserv-smig.py -m -c mysql://root:***@127.0.0.1:13306/qservMeta qmeta
+    $  qserv-smig.py -m -c mysql://root:***@127.0.0.1:3306/qservMeta qmeta
     Current schema version: 0
     Latest schema version: 1
     Known migrations:
@@ -110,7 +110,7 @@ It prints the same info but last line now says that schema was updated. Use
 Normally `smig` tries to update schema to the latest version, but it is
 possible to stop migration process at specific version by using `-n` option:
 
-    $  qserv-smig.py -m -n 100 -c mysql://root:***@127.0.0.1:13306/qservMeta qmeta
+    $  qserv-smig.py -m -n 100 -c mysql://root:***@127.0.0.1:3306/qservMeta qmeta
 
 this will stop migration after version 100 even if there migration scripts
 for later versions.

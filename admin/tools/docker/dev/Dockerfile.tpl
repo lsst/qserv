@@ -10,13 +10,6 @@ RUN bash -c ". /qserv/stack/loadLSST.bash && eups distrib install qserv_distrib 
 
 ENV QSERV_RUN_DIR /qserv/run
 
-# Generate /qserv/run/sysconfig/qserv and /qserv/run/etc/init.d/qserv-functions
-# required by k8s setup
-RUN bash -c ". /qserv/stack/loadLSST.bash && \
-             setup qserv -t qserv-dev && \
-             qserv-configure.py --init --force --qserv-run-dir "$QSERV_RUN_DIR" && \
-             qserv-configure.py --etc --qserv-run-dir "$QSERV_RUN_DIR" --force "
-
 # Allow install of additional packages in pods and ease install scripts
 # execution
 USER root
