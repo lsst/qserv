@@ -1,7 +1,7 @@
 FROM debian:jessie
 MAINTAINER Fabrice Jammes <fabrice.jammes@in2p3.fr>
 
-# RUN echo "deb http://ftp.debian.org/debian stretch-backports main" >> /etc/apt/sources.list
+RUN sh -c "echo \"BUILD ID: $(date '+%Y%m%d_%H%M%S')\" > /BUILD_ID"
 
 # Start with this long step not to re-run it on
 # each Dockerfile update
