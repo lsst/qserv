@@ -109,4 +109,8 @@ fi
 
 docker push "$TAG"
 
+DATE_TAG=$(date '+%Y%m%d_%H%M%S')
+docker tag "$TAG" "$DATE_TAG"
+docker push "$DATE_TAG"
+
 printf "Image %s built successfully\n" "$TAG"
