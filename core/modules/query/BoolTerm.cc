@@ -45,7 +45,7 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.BoolTerm");
@@ -59,7 +59,12 @@ namespace query {
 // BoolTerm section
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
-    return bt.putStream(os);
+    bt.dbgPrint(os);
+    return os;
+}
+std::ostream& operator<<(std::ostream& os, BoolTerm const* bt) {
+    (nullptr == bt) ? os << "nullptr" : os << *bt;
+    return os;
 }
 std::ostream& OrTerm::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
@@ -313,7 +318,7 @@ bool OrTerm::merge(const BoolTerm& other) {
     return true;
 }
 void OrTerm::dbgPrint(std::ostream& os) const {
-    os << "OrTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
+    os << "OrTerm(terms:" << util::printable(_terms) << ")";
 }
 bool OrTerm::operator==(const BoolTerm& rhs) const {
     auto rhsOrTerm = dynamic_cast<OrTerm const *>(&rhs);
@@ -336,7 +341,7 @@ bool AndTerm::merge(const BoolTerm& other) {
     return true;
 }
 void AndTerm::dbgPrint(std::ostream& os) const {
-    os << "AndTerm(terms:" << util::DbgPrintVectorPtrH<BoolTerm>(_terms) << ")";
+    os << "AndTerm(terms:" << util::printable(_terms) << ")";
 }
 bool AndTerm::operator==(const BoolTerm& rhs) const {
     auto rhsAndTerm = dynamic_cast<AndTerm const *>(&rhs);
@@ -351,7 +356,7 @@ std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     return bf;
 }
 void BoolFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolFactor(terms:" << util::DbgPrintVectorPtrH<BoolFactorTerm>(_terms) << ")";
+    os << "BoolFactor(terms:" << util::printable(_terms) << ")";
 }
 void UnknownTerm::dbgPrint(std::ostream& os) const {
     os << "UnknownTerm()";
@@ -380,7 +385,7 @@ BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     return BoolFactorTerm::Ptr(p);
 }
 void PassListTerm::dbgPrint(std::ostream& os) const {
-    os << "PassListTerm(terms:" << util::DbgPrintVectorH<std::string>(_terms) << ")";
+    os << "PassListTerm(terms:" << util::printable(_terms) << ")";
 }
 bool PassListTerm::operator==(const BoolFactorTerm& rhs) const {
     auto rhsTerm = dynamic_cast<PassListTerm const *>(&rhs);
@@ -395,7 +400,7 @@ BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     return BoolFactorTerm::Ptr(p);
 }
 void BoolTermFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolTermFactor(term:" << util::DbgPrintPtrH<BoolTerm>(_term) << ")";
+    os << "BoolTermFactor(term:" << _term << ")";
 }
 bool BoolTermFactor::operator==(const BoolFactorTerm& rhs) const {
     auto rhsTerm = dynamic_cast<BoolTermFactor const *>(&rhs);

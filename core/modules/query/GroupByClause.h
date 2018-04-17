@@ -68,8 +68,6 @@ public:
 
     bool operator==(const GroupByTerm& rhs) const;
 
-    void dbgPrint(std::ostream& os) const;
-
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
     friend class parser::ModFactory;
@@ -96,10 +94,9 @@ public:
 
     bool operator==(const GroupByClause& rhs) const;
 
-    void dbgPrint(std::ostream& os) const;
-
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);
+    friend std::ostream& operator<<(std::ostream& os, GroupByClause const* gc);
     friend class parser::ModFactory;
 
     void _addTerm(GroupByTerm const& t) { _terms->push_back(t); }

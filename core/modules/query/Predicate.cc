@@ -39,13 +39,19 @@
 #include "query/QueryTemplate.h"
 #include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
+std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
+    bt.dbgPrint(os);
+    return os;
+}
+
 
 void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) {
     if (left) { left->findColumnRefs(vector); }
@@ -187,9 +193,9 @@ int CompPredicate::lookupOp(char const* op) {
 }
 
 void CompPredicate::dbgPrint(std::ostream& os) const {
-    os << "CompPredicate(left:" << util::DbgPrintPtrH<ValueExpr>(left);
+    os << "CompPredicate(left:" << left;
     os << ", op:" << op;
-    os << ", right:" << util::DbgPrintPtrH<ValueExpr>(right);
+    os << ", right:" << right;
     os << ")";
 }
 
@@ -234,8 +240,8 @@ BoolFactorTerm::Ptr InPredicate::clone() const {
 }
 
 void InPredicate::dbgPrint(std::ostream& os) const {
-    os << "InPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
-    os << ", cands:" << util::DbgPrintVectorPtrH<ValueExpr>(cands);
+    os << "InPredicate(value:" << value;
+    os << ", cands:" << util::printable(cands);
     os << ")";
 }
 
@@ -257,9 +263,9 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
 }
 
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
-    os << "BetweenPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
-    os << ", minValue:" << util::DbgPrintPtrH<ValueExpr>(minValue);
-    os << ", maxValue:" << util::DbgPrintPtrH<ValueExpr>(maxValue);
+    os << "BetweenPredicate(value:" << value;
+    os << ", minValue:" << minValue;
+    os << ", maxValue:" << maxValue;
     os << ")";
 }
 
@@ -281,8 +287,8 @@ BoolFactorTerm::Ptr LikePredicate::clone() const {
 }
 
 void LikePredicate::dbgPrint(std::ostream& os) const {
-    os << "LikePredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
-    os << ", charValue:" << util::DbgPrintPtrH<ValueExpr>(charValue);
+    os << "LikePredicate(value:" << value;
+    os << ", charValue:" << charValue;
     os << ")";
 }
 
@@ -303,7 +309,7 @@ BoolFactorTerm::Ptr NullPredicate::clone() const {
 }
 
 void NullPredicate::dbgPrint(std::ostream& os) const {
-    os << "NullPredicate(value:" << util::DbgPrintPtrH<ValueExpr>(value);
+    os << "NullPredicate(value:" << value;
     os << ", hasNot:" << hasNot;
     os << ")";
 }

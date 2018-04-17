@@ -33,6 +33,7 @@
 // System headers
 #include <array>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -88,6 +89,105 @@ BOOST_AUTO_TEST_CASE(Array) {
 
     output << formatable;
     BOOST_REQUIRE(output.is_equal(R"("3"; "4"; "5"; "6")"));
+}
+
+class PrintableObj {
+public:
+    PrintableObj(int val) : _val(val) {}
+
+    friend std::ostream& operator<<(std::ostream& os, PrintableObj const& self) {
+        os << self._val;
+        return os;
+    }
+
+private:
+    int _val;
+};
+
+
+/** @test
+ * Print a vector of objects
+ */
+BOOST_AUTO_TEST_CASE(Vector_of_object) {
+    test::output_test_stream output;
+    std::vector<PrintableObj> iterable { {PrintableObj(1), PrintableObj(2), PrintableObj(3),
+        PrintableObj(4), PrintableObj(5), PrintableObj(6)} };
+    auto formatable = util::printable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[1, 2, 3, 4, 5, 6]"));
+}
+
+/** @test
+ * Print a vector of objects owned by shared_ptr
+ */
+BOOST_AUTO_TEST_CASE(Vector_of_ptr_to_object) {
+    test::output_test_stream output;
+    std::vector<std::shared_ptr<PrintableObj>> iterable { {
+        std::make_shared<PrintableObj>(1),
+        std::make_shared<PrintableObj>(2),
+        std::make_shared<PrintableObj>(3),
+        std::make_shared<PrintableObj>(4),
+        std::make_shared<PrintableObj>(5),
+        std::make_shared<PrintableObj>(6)} };
+    auto formatable = util::printable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[1, 2, 3, 4, 5, 6]"));
+}
+
+/** @test
+ * Print a vector of shared_ptr with a null ptr
+ */
+BOOST_AUTO_TEST_CASE(Vector_of_ptr_to_null_object) {
+    test::output_test_stream output;
+    std::vector<std::shared_ptr<PrintableObj>> iterable { {
+        nullptr,
+        std::make_shared<PrintableObj>(2),
+        std::make_shared<PrintableObj>(3),
+        std::make_shared<PrintableObj>(4),
+        std::make_shared<PrintableObj>(5),
+        std::make_shared<PrintableObj>(6)} };
+    auto formatable = util::printable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[nullptr, 2, 3, 4, 5, 6]"));
+}
+
+/** @test
+ * Print a vector of objects owned by shared_ptr
+ */
+BOOST_AUTO_TEST_CASE(Pointer_to_vector_of_object) {
+    test::output_test_stream output;
+    auto iterable = std::make_shared<std::vector<PrintableObj>>();
+    iterable->push_back(PrintableObj(1));
+    iterable->push_back(PrintableObj(2));
+    iterable->push_back(PrintableObj(3));
+    iterable->push_back(PrintableObj(4));
+    iterable->push_back(PrintableObj(5));
+    iterable->push_back(PrintableObj(6));
+    auto formatable = util::ptrPrintable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[1, 2, 3, 4, 5, 6]"));
+}
+
+/** @test
+ * Print a pointer to a vector of pointer
+ */
+BOOST_AUTO_TEST_CASE(Ptr_to_vector_of_ptr_to_object) {
+    test::output_test_stream output;
+    auto iterable = std::make_shared<std::vector<std::shared_ptr<PrintableObj>>>();
+    iterable->push_back(std::make_shared<PrintableObj>(1));
+    iterable->push_back(std::make_shared<PrintableObj>(2));
+    iterable->push_back(std::make_shared<PrintableObj>(3));
+    iterable->push_back(std::make_shared<PrintableObj>(4));
+    iterable->push_back(std::make_shared<PrintableObj>(5));
+    iterable->push_back(std::make_shared<PrintableObj>(6));
+    auto formatable = util::ptrPrintable(iterable);
+
+    output << formatable;
+    BOOST_REQUIRE(output.is_equal("[1, 2, 3, 4, 5, 6]"));
 }
 
 /** @test

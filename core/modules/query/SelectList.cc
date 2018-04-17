@@ -59,7 +59,7 @@
 #include "query/typedefs.h"
 #include "query/ValueFactor.h"
 #include "util/PointerCompare.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -88,20 +88,16 @@ SelectList::addStar(std::string const& table) {
     _valueExprList->push_back(ve);
 }
 
-void
-SelectList::dbgPrint(std::ostream& os) const {
-    if (!_valueExprList) {
-        throw std::logic_error("Corrupt SelectList object");
-    }
-    os << "SelectList(valueExprList:" << util::DbgPrintPtrVectorPtrH<ValueExpr>(_valueExprList) << ")";
-}
 
 std::ostream&
 operator<<(std::ostream& os, SelectList const& sl) {
-    os << "SELECT ";
-    std::copy(sl._valueExprList->begin(), sl._valueExprList->end(),
-                  std::ostream_iterator<ValueExprPtr>(os,", "));
-    os << "(FIXME)";
+    os << "SelectList(valueExprList:" << util::ptrPrintable(sl._valueExprList) << ")";
+    return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, SelectList const* sl) {
+    (nullptr == sl) ? os << "nullptr" : os << *sl;
     return os;
 }
 

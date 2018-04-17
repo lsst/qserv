@@ -46,7 +46,6 @@
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
-#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -132,27 +131,19 @@ ValueFactorPtr ValueFactor::clone() const{
 }
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
-    switch(ve._type) {
-    case ValueFactor::COLUMNREF: os << "CREF: " << *(ve._columnRef); break;
-    case ValueFactor::FUNCTION: os << "FUNC: " << *(ve._funcExpr); break;
-    case ValueFactor::AGGFUNC: os << "AGGFUNC: " << *(ve._funcExpr); break;
-    case ValueFactor::STAR:
-        os << "<";
-        if (!ve._tableStar.empty()) os << ve._tableStar << ".";
-        os << "*>";
-        break;
-    case ValueFactor::CONST:
-        os << "CONST: " << ve._tableStar;
-        break;
-    case ValueFactor::EXPR: os << "EXPR: " << *(ve._valueExpr); break;
-    default: os << "UnknownFactor"; break;
-    }
-    if (!ve._alias.empty()) { os << " [" << ve._alias << "]"; }
+    os << "ValueFactor(";
+    os << "type:" << ValueFactor::getTypeString(ve._type);
+    os << ", columnRef:" << ve._columnRef;
+    os << ", funcExpr:" << ve._funcExpr;
+    os << ", valueExpr:" << ve._valueExpr;
+    os << ", alias:" << ve._alias;
+    os << ", tableStar:" << ve._tableStar; // Reused as const val (no tablestar)
+    os << ")";
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
-    if (!ve) return os << "<NULL>";
+    if (!ve) return os << "nullptr";
     return os << *ve;
 }
 
@@ -178,18 +169,6 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     default: break;
     }
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
-}
-
-std::ostream& ValueFactor::dbgPrint(std::ostream& os) const {
-    os << "ValueFactor(";
-    os << "type:" << ValueFactor::getTypeString(_type);
-    os << ", columnRef:" << util::DbgPrintPtrH<ColumnRef>(_columnRef);
-    os << ", funcExpr:" << util::DbgPrintPtrH<FuncExpr>(_funcExpr);
-    os << ", valueExpr:" << util::DbgPrintPtrH<ValueExpr>(_valueExpr);
-    os << ", alias:" << _alias;
-    os << ", tableStar:" << _tableStar; // Reused as const val (no tablestar)
-    os << ")";
-    return os;
 }
 
 bool ValueFactor::operator==(const ValueFactor& rhs) const {
