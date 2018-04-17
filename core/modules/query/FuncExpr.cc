@@ -46,7 +46,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 
@@ -110,24 +110,19 @@ FuncExpr::clone() const {
     return e;
 }
 
-void FuncExpr::dbgPrint(std::ostream& os) const {
-    os << "FuncExpr(";
-    os << "name:" << _name;
-    os << ", params:" << util::DbgPrintVectorPtrH<ValueExpr>(params);
-    os << ")";
-}
-
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const& fe) {
-    os << "(" << fe.getName() << ",";
-    output(os, fe.params);
+    os << "FuncExpr(";
+    os << "name:" << fe._name;
+    os << ", params:" << util::printable(fe.params);
     os << ")";
     return os;
 }
 
 std::ostream&
 operator<<(std::ostream& os, FuncExpr const* fe) {
-    return os << *fe;
+    (nullptr == fe) ? os << "nullptr" : os << *fe;
+    return os;
 }
 
 void

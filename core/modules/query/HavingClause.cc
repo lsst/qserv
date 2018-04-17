@@ -40,7 +40,6 @@
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
-#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,18 +50,23 @@ namespace query {
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
 operator<<(std::ostream& os, HavingClause const& c) {
-    if (c._tree.get()) {
-        std::string generated = c.getGenerated();
-        if (!generated.empty()) { os << "HAVING " << generated; }
-    }
+    os << "HavingClause(tree:" << c._tree << ")";
     return os;
 }
+
+std::ostream&
+operator<<(std::ostream& os, HavingClause const* c) {
+    (nullptr == c) ? os << "nullptr" : os << *c;
+    return os;
+}
+
 std::string
 HavingClause::getGenerated() const {
     QueryTemplate qt;
     renderTo(qt);
     return qt.sqlFragment();
 }
+
 void
 HavingClause::renderTo(QueryTemplate& qt) const {
     if (_tree.get()) {
@@ -91,10 +95,6 @@ HavingClause::findValueExprs(ValueExprPtrVector& list) {
 
 bool HavingClause::operator==(const HavingClause& rhs) const {
     return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
-}
-
-void HavingClause::dbgPrint(std::ostream& os) const {
-    os << "HavingClause(tree:" << util::DbgPrintPtrH<BoolTerm>(_tree) << ")";
 }
 
 }}} // namespace lsst::qserv::query

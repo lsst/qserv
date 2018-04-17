@@ -73,8 +73,6 @@ public:
 
     bool operator==(const OrderByTerm& rhs) const;
 
-    void dbgPrint(std::ostream& os) const;
-
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
     friend class render;
@@ -103,10 +101,10 @@ public:
     void findValueExprs(ValueExprPtrVector& list);
 
     bool operator==(const OrderByClause& rhs) const;
-    void dbgPrint(std::ostream& os) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
+    friend std::ostream& operator<<(std::ostream& os, OrderByClause const* oc);
     friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }

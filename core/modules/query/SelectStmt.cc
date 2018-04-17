@@ -53,8 +53,8 @@
 #include "query/OrderByClause.h"
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
+#include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
-#include "util/DbgPrintHelper.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
@@ -174,55 +174,7 @@ void SelectStmt::setFromListAsTable(std::string const& t) {
     _fromList = std::make_shared<FromList>(tr);
 }
 
-////////////////////////////////////////////////////////////////////////
-// class SelectStmt (private)
-////////////////////////////////////////////////////////////////////////
-namespace {
-
-template <typename OS, typename T>
-inline OS& print(OS& os, char const label[], std::shared_ptr<T> t) {
-    if (t.get()) {
-        os << label << ": " << *t << std::endl;
-    }
-    return os;
-}
-template <typename OS, typename T>
-inline OS& generate(OS& os, char const label[], std::shared_ptr<T> t) {
-    if (t.get()) {
-        os << label << " " << t->getGenerated() << std::endl;
-    }
-    return os;
-}
-
-template<class T>
-void nil_string_helper(std::ostream& oss,
-                       const std::shared_ptr<T> &ptr) {
-    if (ptr) oss << *ptr << " ";
-}
-
-} // anonymous
-
-// Output operator for SelectStmt
-std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
-    //_selectList->getColumnRefList()->printRefs();
-
-    nil_string_helper(os, selectStmt._selectList);
-    nil_string_helper(os, selectStmt._fromList);
-    if (selectStmt._hasDistinct) {
-        os << "DISTINCT ";
-    }
-    nil_string_helper(os, selectStmt._whereClause);
-    nil_string_helper(os, selectStmt._groupBy);
-    nil_string_helper(os, selectStmt._having);
-    nil_string_helper(os, selectStmt._orderBy);
-    if (selectStmt._limit != -1) {
-        os << "LIMIT " << selectStmt._limit;
-    }
-    return os;
-}
-
-
-bool SelectStmt::operator==(const SelectStmt& rhs) {
+bool SelectStmt::operator==(const SelectStmt& rhs) const {
     return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
             util::ptrCompare<SelectList>(_selectList, rhs._selectList) &&
             util::ptrCompare<WhereClause>(_whereClause, rhs._whereClause) &&
@@ -234,16 +186,16 @@ bool SelectStmt::operator==(const SelectStmt& rhs) {
             OutputMods == rhs.OutputMods);
 }
 
-
-void SelectStmt::dbgPrint(std::ostream& os) {
+std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << "SelectStmt(";
-    os << "fromList:" << util::DbgPrintPtrH<FromList>(_fromList);
-    os << ", selectList:" << util::DbgPrintPtrH<SelectList>(_selectList);
-    os << ", whereClause:" << util::DbgPrintPtrH<WhereClause>(_whereClause);
-    os << ", orderBy:" << util::DbgPrintPtrH<OrderByClause>(_orderBy);
-    os << ", groupBy:" << util::DbgPrintPtrH<GroupByClause>(_groupBy);
-    os << ", having:" << util::DbgPrintPtrH<HavingClause>(_having);
+    os << "fromList:" << selectStmt._fromList;
+    os << ", selectList:" << selectStmt._selectList;
+    os << ", whereClause:" << selectStmt._whereClause;
+    os << ", orderBy:" << selectStmt._orderBy;
+    os << ", groupBy:" << selectStmt._groupBy;
+    os << ", having:" << selectStmt._having;
     os << ")";
+    return os;
 }
 
 }}} // namespace lsst::qserv::query

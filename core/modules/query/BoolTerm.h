@@ -69,9 +69,18 @@ public:
     virtual void findValueExprs(ValueExprPtrVector& vector) {}
     virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 
-    virtual void dbgPrint(std::ostream& os) const = 0;
-
     virtual bool operator==(const BoolFactorTerm& rhs) const = 0;
+
+protected:
+    friend std::ostream& operator<<(std::ostream& os, BoolFactorTerm const& bft) {
+        bft.dbgPrint(os);
+        return os;
+    }
+    friend std::ostream& operator<<(std::ostream& os, BoolFactorTerm const* bft) {
+        (nullptr == bft) ? os << "nullptr" : os << *bft;
+        return os;
+    }
+    virtual void dbgPrint(std::ostream& os) const = 0;
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
@@ -119,12 +128,16 @@ public:
     /// and other is an OrTerm, or for any other reason implemented by subclass's merge function.
     virtual bool merge(const BoolTerm& other) { return false; }
 
-    virtual void dbgPrint(std::ostream& os) const = 0;
 
     virtual bool operator==(const BoolTerm& rhs) const = 0;
+
+    friend std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
+    friend std::ostream& operator<<(std::ostream& os, BoolTerm const* bt);
+
+protected:
+    virtual void dbgPrint(std::ostream& os) const = 0;
 };
 
-std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
 
 
 class LogicalTerm : public BoolTerm {
@@ -170,9 +183,10 @@ public:
 
     bool merge(const BoolTerm& other) override;
 
-    void dbgPrint(std::ostream& os) const override;
-
     bool operator==(const BoolTerm& rhs) const override;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 
@@ -210,9 +224,10 @@ public:
 
     bool merge(const BoolTerm& other) override;
 
-    void dbgPrint(std::ostream& os) const override;
-
     bool operator==(const BoolTerm& rhs) const;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 
@@ -257,7 +272,9 @@ public:
 
     BoolFactorTerm::PtrVector _terms;
 
+protected:
     void dbgPrint(std::ostream& os) const override;
+
 private:
     bool _reduceTerms(BoolFactorTerm::PtrVector& newTerms, BoolFactorTerm::PtrVector& oldTerms);
     bool _checkParen(BoolFactorTerm::PtrVector& terms);
@@ -272,8 +289,10 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual std::shared_ptr<BoolTerm> clone() const;
-    void dbgPrint(std::ostream& os) const override;
     bool operator==(const BoolTerm& rhs) const override;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 
@@ -290,9 +309,10 @@ public: // text
 
     std::string _text;
 
-    void dbgPrint(std::ostream& os) const override;
-
     bool operator==(const BoolFactorTerm& rhs) const override;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 
@@ -305,9 +325,11 @@ public: // ( term, term, term )
     virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    void dbgPrint(std::ostream& os) const override;
     bool operator==(const BoolFactorTerm& rhs) const override;
     StringVector _terms;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 
@@ -330,11 +352,12 @@ public:
         if (_term) { _term->findColumnRefs(vector); }
     }
 
-    void dbgPrint(std::ostream& os) const override;
-
     bool operator==(const BoolFactorTerm& rhs) const override;
 
     std::shared_ptr<BoolTerm> _term;
+
+protected:
+    void dbgPrint(std::ostream& os) const override;
 };
 
 

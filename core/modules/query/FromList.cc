@@ -35,8 +35,7 @@
 #include <algorithm>
 #include <iterator>
 
-#include "util/DbgPrintHelper.h"
-// Third-party headers
+#include "util/IterableFormatter.h"
 
 
 #include "util/PointerCompare.h"
@@ -44,19 +43,6 @@
 namespace lsst {
 namespace qserv {
 namespace query {
-
-std::ostream&
-operator<<(std::ostream& os, FromList const& fl) {
-    os << "FROM ";
-    if (fl._tableRefs.get() && fl._tableRefs->size() > 0) {
-        TableRefList const& refList = *(fl._tableRefs);
-        std::copy(refList.begin(), refList.end(),
-                  std::ostream_iterator<TableRef::Ptr>(os,", "));
-    } else {
-        os << "(empty)";
-    }
-    return os;
-}
 
 bool
 FromList::isJoin() const {
@@ -138,9 +124,22 @@ bool FromList::operator==(const FromList& rhs) {
     return util::ptrVectorPtrCompare<TableRef>(_tableRefs, rhs._tableRefs);
 }
 
-void FromList::dbgPrint(std::ostream& os) const {
-    os << "FromList(tableRefs:" << util::DbgPrintPtrVectorPtrH<TableRef>(_tableRefs) << ")";
+std::ostream& operator<<(std::ostream& os, FromList const& fromList) {
+    os << "FromList(tableRefs:";
+    if (nullptr == fromList._tableRefs) {
+        os << "nullptr";
+    } else {
+        os << util::printable(*fromList._tableRefs);
+    }
+    os << ")";
+    return os;
 }
+
+std::ostream& operator<<(std::ostream& os, FromList const* fromList) {
+    (nullptr == fromList) ? os << "nullptr" : os << *fromList;
+    return os;
+}
+
 
 
 }}} // namespace lsst::qserv::query

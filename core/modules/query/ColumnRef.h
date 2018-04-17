@@ -64,8 +64,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;
 
-    void dbgPrint(std::ostream& os) const;
-
     bool operator==(const ColumnRef& rhs) const;
 };
 

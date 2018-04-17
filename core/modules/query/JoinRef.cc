@@ -24,7 +24,6 @@
 // Class header
 #include "query/JoinRef.h"
 
-#include "util/DbgPrintHelper.h"
 #include "util/PointerCompare.h"
 
 namespace lsst {
@@ -71,7 +70,23 @@ void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
     qt.append("JOIN");
 }
 std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
-    return js.putStream(os);
+    os << "JoinRef(";
+    os << "right:" << js._right;
+    os << ", joinType:";
+    switch (js._joinType) {
+    default: os << "!!unhandled!!"; break;
+    case JoinRef::DEFAULT: os << "DEFAULT"; break;
+    case JoinRef::INNER: os << "INNER"; break;
+    case JoinRef::LEFT: os << "LEFT"; break;
+    case JoinRef::RIGHT: os << "RIGHT"; break;
+    case JoinRef::FULL: os << "FULL"; break;
+    case JoinRef::CROSS: os << "CROSS"; break;
+    case JoinRef::UNION: os << "UNION"; break;
+    }
+    os << ", isNatural:" << js._isNatural;
+    os << js._spec;
+    os << ")";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
@@ -83,26 +98,6 @@ bool JoinRef::operator==(const JoinRef& rhs) const {
             _joinType == rhs._joinType &&
             _isNatural == rhs._isNatural &&
             util::ptrCompare<JoinSpec>(_spec, rhs._spec);
-}
-
-
-void JoinRef::dbgPrint(std::ostream& os) const {
-    os << "JoinRef(";
-    os << "right:" << util::DbgPrintPtrH<TableRef>(_right);
-    os << ", joinType:";
-    switch (_joinType) {
-    default: os << "!!unhandled!!"; break;
-    case DEFAULT: os << "DEFAULT"; break;
-    case INNER: os << "INNER"; break;
-    case LEFT: os << "LEFT"; break;
-    case RIGHT: os << "RIGHT"; break;
-    case FULL: os << "FULL"; break;
-    case CROSS: os << "CROSS"; break;
-    case UNION: os << "UNION"; break;
-    }
-    os << ", isNatural:" << _isNatural;
-    os << util::DbgPrintPtrH<JoinSpec>(_spec);
-    os << ")";
 }
 
 }}} // lsst::qserv::query

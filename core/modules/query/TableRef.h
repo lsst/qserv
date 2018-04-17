@@ -99,12 +99,12 @@ public:
 
     TableRef::Ptr clone() const;
 
-    void dbgPrint(std::ostream& os) const;
-
     bool operator==(const TableRef& rhs) const;
 
     class render;
 private:
+    friend std::ostream& operator<<(std::ostream& os, TableRef const& refN);
+    friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
     std::string _alias;
     std::string _db;
@@ -123,8 +123,6 @@ public:
     int _count;
 };
 
-std::ostream& operator<<(std::ostream& os, TableRef const& refN);
-std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
 // Containers
 typedef std::vector<TableRef::Ptr> TableRefList;

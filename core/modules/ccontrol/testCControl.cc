@@ -53,11 +53,12 @@ BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     auto a4SelectStatement = ccontrol::a4NewUserQuery(query);
     BOOST_REQUIRE(a4SelectStatement != nullptr);
     std::ostringstream a4QueryStr;
-    a4QueryStr << *a4SelectStatement;
+    a4QueryStr << a4SelectStatement->getQueryTemplate();
 
     auto a2SelectStatement = ccontrol::UserQueryFactory::antlr2NewSelectStmt(query);
+    BOOST_REQUIRE(a2SelectStatement != nullptr);
     std::ostringstream a2QueryStr;
-    a2QueryStr << *a2SelectStatement;
+    a2QueryStr << a2SelectStatement->getQueryTemplate();
     BOOST_REQUIRE_EQUAL(a4QueryStr.str(), a2QueryStr.str());
 }
 

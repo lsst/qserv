@@ -911,7 +911,7 @@ bool RelationGraph::_validate()
 RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) :
     _query(&stmt)
 {
-    LOGS(_log, LOG_LVL_DEBUG, "RG: stmt=" << stmt);
+    LOGS(_log, LOG_LVL_DEBUG, "RG: stmt=" << stmt.getQueryTemplate());
 
     // Check that at least one thing is being selected.
     if (!stmt.getSelectList().getValueExprList() ||

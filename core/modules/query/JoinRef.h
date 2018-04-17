@@ -77,19 +77,18 @@ public:
     void putTemplate(QueryTemplate& qt) const;
     Ptr clone() const;
 
-    void dbgPrint(std::ostream& os) const;
-
     bool operator==(const JoinRef& rhs) const;
 
 private:
+    friend std::ostream& operator<<(std::ostream& os, JoinRef const& js);
+    friend std::ostream& operator<<(std::ostream& os, JoinRef const* js);
+
     void _putJoinTemplate(QueryTemplate& qt) const;
     TableRef::Ptr _right;
     Type _joinType;
     bool _isNatural;
     std::shared_ptr<JoinSpec> _spec;
 };
-std::ostream& operator<<(std::ostream& os, JoinRef const& js);
-std::ostream& operator<<(std::ostream& os, JoinRef const* js);
 
 }}} // namespace lsst::qserv::query
 

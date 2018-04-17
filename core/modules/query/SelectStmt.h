@@ -148,14 +148,10 @@ public:
      *  @param selectStmt: SelectStmt to output
      *
      *  @return std::ostream containing selectStmt output
-     *
-     *  @warning this function always add a trailing whitespace
      */
     friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
-    bool operator==(const SelectStmt& rhs);
-
-    void dbgPrint(std::ostream& os);
+    bool operator==(const SelectStmt& rhs) const;
 
 private:
     // Declarations

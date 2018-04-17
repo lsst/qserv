@@ -80,15 +80,14 @@ public:
 
     bool operator==(const JoinSpec& rhs) const;
 
-    void dbgPrint(std::ostream& os) const;
+    friend std::ostream& operator<<(std::ostream& os, JoinSpec const& js);
+    friend std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 
 private:
     std::shared_ptr<ColumnRef> _usingColumn;
     std::shared_ptr<BoolTerm> _onTerm;
 };
 
-std::ostream& operator<<(std::ostream& os, JoinSpec const& js);
-std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 
 }}} // namespace lsst::qserv::query
 

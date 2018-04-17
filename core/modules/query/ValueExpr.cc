@@ -49,6 +49,7 @@
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -71,26 +72,10 @@ renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr::FactorOp
 ////////////////////////////////////////////////////////////////////////
-std::ostream&
-operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
-    os << "FACT:" << fo.factor << " OP:";
-    char const* opStr;
-    switch(fo.op) {
-    case ValueExpr::NONE: opStr = "NONE"; break;
-    case ValueExpr::UNKNOWN: opStr = "UNKNOWN"; break;
-    case ValueExpr::PLUS: opStr = "PLUS"; break;
-    case ValueExpr::MINUS: opStr = "MINUS"; break;
-    case ValueExpr::MULTIPLY: opStr = "MULTIPLY"; break;
-    case ValueExpr::DIVIDE: opStr = "DIVIDE"; break;
-    default: opStr = "broken"; break;
-    }
-    os << opStr;
-    return os;
-}
 
-void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
+std::ostream& operator<<(std::ostream& os, const ValueExpr::FactorOp& factorOp) {
     os << "FactorOp(op:";
-    switch(op) {
+    switch(factorOp.op) {
     case ValueExpr::NONE: os << "NONE"; break;
     case ValueExpr::UNKNOWN: os << "UNKNOWN"; break;
     case ValueExpr::PLUS: os << "PLUS"; break;
@@ -99,11 +84,9 @@ void ValueExpr::FactorOp::dbgPrint(std::ostream& os) const {
     case ValueExpr::DIVIDE: os << "DIVIDE"; break;
     default: os << "!!unhandled!!"; break;
     }
-    if (factor) {
-        os << ", factor:";
-        factor->dbgPrint(os);
-    }
+    os << ", factor:" << factorOp.factor;
     os << ")";
+    return os;
 }
 
 bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
@@ -127,31 +110,6 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
 // ValueExpr
 ////////////////////////////////////////////////////////////////////////
 ValueExpr::ValueExpr() {
-}
-
-/** Print a string representation of the object
- *
- * @param out
- * @return void
- */
-void ValueExpr::dbgPrint(std::ostream& os) const {
-    ColumnRef::Vector cList;
-    os << "ValueExpr(" << "rendered:" << *this;
-    os << ", alias:" << _alias;
-    os << ", isColumnRef:" << isColumnRef();
-    os << ", isFactor:" << isFactor();
-    os << ", isStar:" << isStar();
-    bool hasAgg = false;
-    qana::CheckAggregation ca(hasAgg);
-    os << ", factorOps:(";
-    for (auto factorOp : _factorOps) {
-        ca(factorOp);
-        factorOp.dbgPrint(os);
-        if (&factorOp != &_factorOps.back())
-            os << ", ";
-    }
-    os << ")"; // end factorOps
-    os << ")"; // end ValueExpr
 }
 
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
@@ -279,23 +237,32 @@ ValueExprPtr ValueExpr::clone() const {
  * @return a string representation of the object
  */
 std::string ValueExpr::sqlFragment() const {
-    std::ostringstream oss;
-
-    oss << *this;
-    return oss.str();
-}
-
-std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt;
     ValueExpr::render render(qt, false);
-    render.applyToQT(ve);
+    render.applyToQT(this);
+    std::ostringstream os;
     os << qt;
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
+    os << "ValueExpr(";
+    os << "alias:" << ve._alias;
+    os << ", isColumnRef:" << ve.isColumnRef();
+    os << ", isFactor:" << ve.isFactor();
+    os << ", isStar:" << ve.isStar();
+    bool hasAgg = false;
+    qana::CheckAggregation ca(hasAgg);
+    os << ", hasAgg:" << hasAgg;
+    os << ", factorOps:(";
+    os << util::printable(ve._factorOps);
+    os << ")";
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
-    if (!ve) return os << "<NULL>";
+    if (!ve) return os << "nullptr";
     return os << *ve;
 }
 ////////////////////////////////////////////////////////////////////////
