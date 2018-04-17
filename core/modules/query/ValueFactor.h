@@ -100,8 +100,6 @@ public:
 
     bool operator==(const ValueFactor& rhs) const;
 
-    std::ostream& dbgPrint(std::ostream& os) const;
-
 private:
     Type _type;
     std::shared_ptr<ColumnRef> _columnRef;

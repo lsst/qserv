@@ -61,7 +61,6 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
-#include "util/DbgPrintHelper.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -157,9 +156,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // Parse SELECT
         std::shared_ptr<query::SelectStmt> a4stmt = a4NewUserQuery(query);
         if (a4stmt) {
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << *a4stmt);
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " <<
-                    util::DbgPrintPtrH<query::SelectStmt>(a4stmt));
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " << *a4stmt);
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
@@ -170,9 +168,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         } catch(parser::ParseException const& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << *stmt);
-        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " <<
-                util::DbgPrintPtrH<query::SelectStmt>(stmt));
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style generated select statement: " << stmt->getQueryTemplate());
+        LOGS(_log, LOG_LVL_DEBUG, "Old-style Hierarchy: " << *stmt);
 
         // TEMP while developing the antlr4 parser listener
         if (a4stmt && stmt) {

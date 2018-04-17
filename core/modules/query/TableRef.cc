@@ -40,7 +40,7 @@
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
 namespace {
@@ -58,10 +58,22 @@ namespace query {
 // TableRef
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
-    return ref.putStream(os);
+    os << "TableRef(";
+    os << "alias:" << ref._alias;
+    os << ", db:" << ref._db;
+    os << ", table:" << ref._table;
+    os << "JoinRefs:" << util::printable(ref._joinRefs);
+    os << ")";
+    return os;
 }
+
 std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
-    return ref->putStream(os);
+    if (nullptr == ref) {
+        os << "nullptr";
+    } else {
+        os << *ref;
+    }
+    return os;
 }
 
 void TableRef::render::applyToQT(TableRef const& ref) {
@@ -125,17 +137,6 @@ TableRef::Ptr TableRef::clone() const {
                    std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;
 }
-
-
-void TableRef::dbgPrint(std::ostream& os) const {
-    os << "TableRef(";
-    os << "alias:" << _alias;
-    os << ", db:" << _db;
-    os << ", table:" << _table;
-    os << "JoinRefs:" << util::DbgPrintVectorPtrH<JoinRef>(_joinRefs);
-    os << ")";
-}
-
 
 bool TableRef::operator==(const TableRef& rhs) const {
     return _alias == rhs._alias &&

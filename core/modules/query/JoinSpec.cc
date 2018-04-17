@@ -36,7 +36,6 @@
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
-#include "util/DbgPrintHelper.h"
 
 namespace lsst {
 namespace qserv {
@@ -47,12 +46,18 @@ inline bool isInconsistent(JoinSpec const& s) {
 }
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
-    return js.putStream(os);
+    os << "JoinSpec(";
+    os << js._usingColumn;
+    os << js._onTerm;
+    os << ")";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
-    return js->putStream(os);
+    (nullptr == js) ? os << "nullptr" : os << *js;
+    return os;
 }
+
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
     QueryTemplate qt;
@@ -92,14 +97,6 @@ JoinSpec::Ptr JoinSpec::clone() const {
 bool JoinSpec::operator==(const JoinSpec& rhs) const {
     return util::ptrCompare<ColumnRef>(_usingColumn, rhs._usingColumn) &&
            util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
-}
-
-
-void JoinSpec::dbgPrint(std::ostream& os) const {
-    os << "JoinSpec(";
-    os << util::DbgPrintPtrH<ColumnRef>(_usingColumn);
-    os << util::DbgPrintPtrH<BoolTerm>(_onTerm);
-    os << ")";
 }
 
 

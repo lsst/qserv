@@ -44,7 +44,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 
 
 using namespace std;
@@ -1194,7 +1194,7 @@ private:
     void _setLogicalOperator(shared_ptr<query::LogicalTerm>& logicalTerm) {
         CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator,
                 "logical operator must be set only once. existing:" << *this <<
-                ", new:" << util::DbgPrintPtrH<query::LogicalTerm>(logicalTerm));
+                ", new:" << logicalTerm);
         _logicalOperator = logicalTerm;
     }
 
@@ -1219,7 +1219,7 @@ private:
 
 ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressionAdapter) {
     os << "LogicalExpressionAdapter(";
-    os << "terms:" << util::DbgPrintVectorPtrH<query::BoolTerm>(logicalExpressionAdapter._terms);
+    os << "terms:" << util::printable(logicalExpressionAdapter._terms);
     return os;
 }
 
@@ -1334,8 +1334,8 @@ private:
 
 
 ostream& operator<<(ostream& os, const MathExpressionAtomAdapter& mathExpressionAtomAdapter) {
-os << "MathExpressionAtomAdapter(left:" << util::DbgPrintPtrH<query::FuncExpr>(mathExpressionAtomAdapter._left)
-        << ", right:" << util::DbgPrintPtrH<query::FuncExpr>(mathExpressionAtomAdapter._right)
+os << "MathExpressionAtomAdapter(left:" << mathExpressionAtomAdapter._left
+        << ", right:" << mathExpressionAtomAdapter._right
         << ")";
 return os;
 }
