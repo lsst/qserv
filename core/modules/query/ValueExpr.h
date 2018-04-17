@@ -70,7 +70,6 @@ public:
         FactorOp() : op(NONE) {}
         std::shared_ptr<ValueFactor> factor;
         Op op;
-        void dbgPrint(std::ostream& os) const;
         bool operator==(const FactorOp& rhs) const;
     };
     typedef std::vector<FactorOp> FactorOpVector;
@@ -83,13 +82,6 @@ public:
     FactorOpVector& getFactorOps() { return _factorOps; }
     /// @return a const list of ValueFactor-Op
     FactorOpVector const& getFactorOps() const { return _factorOps; }
-
-    /**
-     * Output ValueExpr for debugging purpose
-     *
-     * @param os output stream
-     */
-    void dbgPrint(std::ostream& os) const;
 
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 

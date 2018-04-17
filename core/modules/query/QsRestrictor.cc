@@ -35,7 +35,7 @@
 
 // Qserv headers
 #include "query/QueryTemplate.h"
-#include "util/DbgPrintHelper.h"
+#include "util/IterableFormatter.h"
 
 namespace lsst {
 namespace qserv {
@@ -43,9 +43,8 @@ namespace query {
 
 
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
-    os << "Restrictor " << q._name << "(";
-    std::copy(q._params.begin(), q._params.end(),
-              std::ostream_iterator<std::string>(os, ","));
+    os << "QsRestrictor(name:" << q._name;
+    os << ", params:" << util::printable(q._params);
     os << ")";
     return os;
 }
@@ -54,13 +53,6 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
 bool QsRestrictor::operator==(const QsRestrictor& rhs) const {
     return _name == rhs._name &&
            _params == rhs._params;
-}
-
-
-void QsRestrictor::dbgPrint(std::ostream& os) const {
-    os << "QsRestrictor(name:" << _name;
-    os << ", params:" << util::DbgPrintVectorH<std::string>(_params);
-    os << ")";
 }
 
 

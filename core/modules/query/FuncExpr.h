@@ -71,19 +71,16 @@ public:
 
     // Fields
     ValueExprPtrVector params;
-    friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
-    friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
     void renderTo(QueryTemplate& qt) const;
-
-    void dbgPrint(std::ostream& os) const;
 
     bool operator==(const FuncExpr& rhs) const;
 private:
+    friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
+    friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
+
     std::string _name;
 };
 
-std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
-std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
 
 // output helpers
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);

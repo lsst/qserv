@@ -83,12 +83,11 @@ public:
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);
 
-    void dbgPrint(std::ostream& os);
-
     bool operator==(WhereClause& rhs) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
+    friend std::ostream& operator<<(std::ostream& os, WhereClause const* wc);
 
     friend class parser::WhereFactory;
 
