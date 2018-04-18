@@ -109,7 +109,7 @@ fi
 
 docker push "$TAG"
 
-DATE_TAG=$(date '+%Y%m%d_%H%M%S')
+DATE_TAG="$DOCKER_REPO:$(date '+%Y%m%d_%H%M%S')"
 docker tag "$TAG" "$DATE_TAG"
 docker push "$DATE_TAG"
 
