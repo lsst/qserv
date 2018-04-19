@@ -73,10 +73,13 @@ public:
         QueryTemplate& qt;
     };
 
+    bool operator==(const QsRestrictor& rhs) const;
+
+    friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
+
     std::string _name;
     StringVector _params;
 };
-std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
 
 }}} // namespace lsst::qserv::query
 

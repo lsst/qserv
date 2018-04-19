@@ -46,12 +46,18 @@ inline bool isInconsistent(JoinSpec const& s) {
 }
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
-    return js.putStream(os);
+    os << "JoinSpec(";
+    os << js._usingColumn;
+    os << js._onTerm;
+    os << ")";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
-    return js->putStream(os);
+    (nullptr == js) ? os << "nullptr" : os << *js;
+    return os;
 }
+
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
     QueryTemplate qt;
@@ -85,7 +91,13 @@ JoinSpec::Ptr JoinSpec::clone() const {
     } else {
         return std::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
-
 }
+
+
+bool JoinSpec::operator==(const JoinSpec& rhs) const {
+    return util::ptrCompare<ColumnRef>(_usingColumn, rhs._usingColumn) &&
+           util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
+}
+
 
 }}} // lsst::qserv::query

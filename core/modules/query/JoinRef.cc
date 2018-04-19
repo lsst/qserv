@@ -24,7 +24,7 @@
 // Class header
 #include "query/JoinRef.h"
 
- // Third-party headers
+#include "util/PointerCompare.h"
 
 namespace lsst {
 namespace qserv {
@@ -70,11 +70,34 @@ void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
     qt.append("JOIN");
 }
 std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
-    return js.putStream(os);
+    os << "JoinRef(";
+    os << "right:" << js._right;
+    os << ", joinType:";
+    switch (js._joinType) {
+    default: os << "!!unhandled!!"; break;
+    case JoinRef::DEFAULT: os << "DEFAULT"; break;
+    case JoinRef::INNER: os << "INNER"; break;
+    case JoinRef::LEFT: os << "LEFT"; break;
+    case JoinRef::RIGHT: os << "RIGHT"; break;
+    case JoinRef::FULL: os << "FULL"; break;
+    case JoinRef::CROSS: os << "CROSS"; break;
+    case JoinRef::UNION: os << "UNION"; break;
+    }
+    os << ", isNatural:" << js._isNatural;
+    os << js._spec;
+    os << ")";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
     return js->putStream(os);
+}
+
+bool JoinRef::operator==(const JoinRef& rhs) const {
+    return  util::ptrCompare<TableRef>(_right, rhs._right) &&
+            _joinType == rhs._joinType &&
+            _isNatural == rhs._isNatural &&
+            util::ptrCompare<JoinSpec>(_spec, rhs._spec);
 }
 
 }}} // lsst::qserv::query

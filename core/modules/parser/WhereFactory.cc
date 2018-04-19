@@ -201,7 +201,6 @@ WhereFactory::attachTo(SqlSQL2Parser& p) {
 void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = std::make_shared<query::WhereClause>();
-    _clause->_restrs = std::make_shared<query::QsRestrictor::PtrVector>();
     if (a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
@@ -222,6 +221,24 @@ WhereFactory::_import(antlr::RefAST a) {
         _addOrSibs(first->getFirstChild());
     }
 }
+
+void
+WhereFactory::addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClause,
+                                 const std::string& function,
+                                 const std::vector<std::string>& parameters) {
+    auto restrictor = std::make_shared<query::QsRestrictor>();
+    restrictor->_params = parameters;
+    // Add case insensitive behavior in order to mimic MySQL functions/procedures
+    std::string insensitiveFunction(function);
+    if (insensitiveFunction != "sIndex") {
+        std::transform(insensitiveFunction.begin(), insensitiveFunction.end(), insensitiveFunction.begin(),
+                ::tolower);
+        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+    }
+    restrictor->_name = insensitiveFunction;
+    whereClause->_restrs->push_back(restrictor);
+}
+
 void
 WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     std::string r(a->getText()); // e.g. qserv_areaspec_box
@@ -288,7 +305,6 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     walkTreeVisit(a, p);
     BoolTermFactory f(_vf);
     _clause->_tree = f.newOrTerm(a);
-    _clause->_original = p.result;
     // FIXME: Store template.
     // Template must allow table substitution.
     // For now, reuse old templating scheme.

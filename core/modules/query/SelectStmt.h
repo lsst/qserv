@@ -148,12 +148,12 @@ public:
      *  @param selectStmt: SelectStmt to output
      *
      *  @return std::ostream containing selectStmt output
-     *
-     *  @warning this function always add a trailing whitespace
      */
     friend std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt);
 
- private:
+    bool operator==(const SelectStmt& rhs) const;
+
+private:
     // Declarations
     friend class parser::SelectFactory;
 
@@ -171,6 +171,7 @@ public:
     StringVector OutputMods; // Output modifiers (order, grouping,
                              // sort, limit
 };
+
 
 }}} // namespace lsst::qserv::query
 

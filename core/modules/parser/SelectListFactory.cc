@@ -149,6 +149,15 @@ SelectListFactory::importStar(RefAST selectRoot) {
 }
 
 void
+SelectListFactory::addSelectAggFunction(std::shared_ptr<query::SelectList> const& selectList,
+                                        std::shared_ptr<query::ValueExpr> const& func) {
+    if (nullptr == selectList) {
+        throw std::runtime_error("null selectList ptr");
+    }
+    selectList->_valueExprList->push_back(func);
+}
+
+void
 SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
     // std::cout << "SelectCol Type of:" << expr->getText()

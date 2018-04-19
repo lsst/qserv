@@ -44,6 +44,8 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+#include "util/PointerCompare.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 
@@ -98,45 +100,70 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
 }
 
 std::string OrderByTerm::sqlFragment() const {
-    std::ostringstream oss;
-    oss << *this;
-    return oss.str();
+    std::string str;
+    str += _expr->sqlFragment();
+    if (!_collate.empty()) {
+        str += " COLLATE " + _collate;
+    }
+    char const* orderStr = getOrderStr(_order);
+    if (orderStr && orderStr[0] != '\0') {
+        str += std::string(" ") + orderStr;
+    }
+    return str;
 }
 
 std::ostream&
 operator<<(std::ostream& os, OrderByTerm const& t) {
-    os << *(t._expr);
-    if (!t._collate.empty()) os << " COLLATE " << t._collate;
-    char const* orderStr = getOrderStr(t._order);
-    if (orderStr && orderStr[0] != '\0') {
-        os << " " << orderStr;
+    os << "OrderByTerm(";
+    os << "expr:" << t._expr;
+    os << ", order:";
+    switch (t._order) {
+    case OrderByTerm::DEFAULT: os << "DEFAULT"; break;
+    case OrderByTerm::ASC: os << "ASC"; break;
+    case OrderByTerm::DESC: os << "DESC"; break;
+    default: os << "!!unhandled!!"; break;
     }
+    os << ", collate:" <<  t._collate;
+    os << ")";
     return os;
 }
+
+bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
+            _order == rhs._order &&
+            _collate == rhs._collate;
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
-operator<<(std::ostream& out, OrderByClause const& clause) {
-    if (clause._terms) {
-        auto const& terms = *(clause._terms);
-        if (not terms.empty()) {
-            out << "ORDER BY ";
-            if (terms.size() > 1) {
-                std::ostream_iterator<OrderByTerm> string_it(out, ", ");
-                std::copy(terms.begin(), terms.end()-1, string_it);
-            }
-            out << terms.back();
-        }
-    }
-    return out;
+operator<<(std::ostream& os, OrderByClause const& clause) {
+    os << "OrderByClause(terms:" << util::ptrPrintable(clause._terms) << ")";
+    return os;
+}
+
+std::ostream&
+operator<<(std::ostream& os, OrderByClause const* clause) {
+    (nullptr == clause) ? os << "nullptr" : os << *clause;
+    return os;
 }
 
 std::string OrderByClause::sqlFragment() const {
-    std::ostringstream oss;
-    oss << *this;
-    return oss.str();
+    std::string str;
+    if (_terms != nullptr) {
+        if (false == _terms->empty()) {
+            str += "ORDER BY ";
+            for (auto termsItr = _terms->begin(); termsItr != _terms->end(); ++termsItr) {
+                if (termsItr != _terms->begin()) {
+                    str += ", ";
+                }
+                str += termsItr->sqlFragment();
+            }
+        }
+    }
+    return str;
 }
 
 void
@@ -162,5 +189,10 @@ void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
         list.push_back(i->getExpr());
     }
 }
+
+bool OrderByClause::operator==(const OrderByClause& rhs) const {
+    return util::ptrVectorCompare<OrderByTerm>(_terms, rhs._terms);
+}
+
 
 }}} // namespace lsst::qserv::query

@@ -27,12 +27,12 @@
 
 // these must be included before Log.h because they have a function called LOGS
 // that conflicts with the LOGS macro defined in Log.h
-#include "parser/MySqlLexer.h"
-#include "parser/MySqlParser.h"
+#include "parser/QSMySqlLexer.h"
+#include "parser/QSMySqlParser.h"
 
 #include "lsst/log/Log.h"
 
-#include "parser/MySqlListener.h"
+#include "parser/QSMySqlListener.h"
 #include "query/SelectStmt.h"
 
 
@@ -55,14 +55,14 @@ namespace ccontrol {
 std::shared_ptr<query::SelectStmt> a4NewUserQuery(const std::string& userQuery) {
     try {
         ANTLRInputStream input(userQuery);
-        MySqlLexer lexer(&input);
+        QSMySqlLexer lexer(&input);
         CommonTokenStream tokens(&lexer);
         tokens.fill();
-        MySqlParser parser(&tokens);
+        QSMySqlParser parser(&tokens);
         tree::ParseTree *tree = parser.root();
         LOGS(_log, LOG_LVL_DEBUG, "New user query, antlr4 string tree: " << tree->toStringTree(&parser));
         tree::ParseTreeWalker walker;
-        parser::MySqlListener listener;
+        parser::QSMySqlListener listener;
         walker.walk(&listener, tree);
         return listener.getSelectStatement();
     } catch (std::exception& e) {

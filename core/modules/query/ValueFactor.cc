@@ -96,7 +96,7 @@ ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
-void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
+void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     switch(_type) {
     case COLUMNREF:
         vector.push_back(_columnRef);
@@ -131,27 +131,19 @@ ValueFactorPtr ValueFactor::clone() const{
 }
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
-    switch(ve._type) {
-    case ValueFactor::COLUMNREF: os << "CREF: " << *(ve._columnRef); break;
-    case ValueFactor::FUNCTION: os << "FUNC: " << *(ve._funcExpr); break;
-    case ValueFactor::AGGFUNC: os << "AGGFUNC: " << *(ve._funcExpr); break;
-    case ValueFactor::STAR:
-        os << "<";
-        if (!ve._tableStar.empty()) os << ve._tableStar << ".";
-        os << "*>";
-        break;
-    case ValueFactor::CONST:
-        os << "CONST: " << ve._tableStar;
-        break;
-    case ValueFactor::EXPR: os << "EXPR: " << *(ve._valueExpr); break;
-    default: os << "UnknownFactor"; break;
-    }
-    if (!ve._alias.empty()) { os << " [" << ve._alias << "]"; }
+    os << "ValueFactor(";
+    os << "type:" << ValueFactor::getTypeString(ve._type);
+    os << ", columnRef:" << ve._columnRef;
+    os << ", funcExpr:" << ve._funcExpr;
+    os << ", valueExpr:" << ve._valueExpr;
+    os << ", alias:" << ve._alias;
+    os << ", tableStar:" << ve._tableStar; // Reused as const val (no tablestar)
+    os << ")";
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
-    if (!ve) return os << "<NULL>";
+    if (!ve) return os << "nullptr";
     return os << *ve;
 }
 
@@ -178,5 +170,15 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     }
     if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
+
+bool ValueFactor::operator==(const ValueFactor& rhs) const {
+    return (_type == rhs._type &&
+            util::ptrCompare<ColumnRef>(_columnRef, rhs._columnRef) &&
+            util::ptrCompare<FuncExpr>(_funcExpr, rhs._funcExpr) &&
+            util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) &&
+            _alias == rhs._alias &&
+            _tableStar == rhs._tableStar);
+}
+
 
 }}} // namespace lsst::qserv::query

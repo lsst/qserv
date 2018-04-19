@@ -195,7 +195,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
         fe = std::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
-        fe->name = getSiblingStringBounded(child, last);
+        fe->setName(getSiblingStringBounded(child, last));
         last = last->getNextSibling(); // Advance to LEFT_PAREN
         if (!last.get()) {
             throw ParseException("Expected LEFT_PAREN", last);
@@ -231,6 +231,15 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     return std::shared_ptr<query::ValueFactor>();
 }
 
+
+std::shared_ptr<query::ValueFactor>
+ValueFactorFactory::newColumnFactor(std::string columnName, std::string tableName, std::string databaseName) {
+    auto newColumnRef = std::make_shared<query::ColumnRef>(databaseName, tableName, columnName);
+    auto vt = query::ValueFactor::newColumnRefFactor(newColumnRef);
+    return vt;
+}
+
+
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
@@ -240,7 +249,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     if (!nNode.get()) {
         throw ParseException("Missing name node of function spec", expr);
     }
-    fe->name = nNode->getText();
+    fe->setName(nNode->getText());
     // Now fill params.
     antlr::RefAST current = nNode->getFirstChild();
     // Aggregation functions can only have one param.
@@ -267,6 +276,7 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     return query::ValueFactor::newAggFactor(fe);
 }
 
+
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     assert(_columnRefNodeMap);
@@ -275,7 +285,7 @@ ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
     if (!nNode.get()) {
         throw ParseException("Missing name node of function spec", fspec);
     }
-    fe->name = nNode->getText();
+    fe->setName(nNode->getText());
     // Now fill params.
     antlr::RefAST current = nNode->getNextSibling();
     // Aggregation functions can only have one param.

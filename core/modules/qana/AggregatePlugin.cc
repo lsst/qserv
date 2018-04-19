@@ -128,7 +128,7 @@ private:
                     throw std::logic_error("Missing FuncExpr in AggRecord");
                 }
                 query::AggRecord::Ptr p =
-                    aMgr.applyOp(newFactor->getFuncExpr()->name, *newFactor);
+                    aMgr.applyOp(newFactor->getFuncExpr()->getName(), *newFactor);
                 if (!p) {
                     throw std::logic_error("Couldn't process AggRecord");
                 }

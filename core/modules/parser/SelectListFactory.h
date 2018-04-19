@@ -66,6 +66,11 @@ public:
     std::shared_ptr<query::SelectList> getProduct();
     void import(antlr::RefAST selectRoot);
     void importStar(antlr::RefAST asterisk);
+
+    /// adds func to selectList
+    static void addSelectAggFunction(std::shared_ptr<query::SelectList> const& selectList,
+                                     std::shared_ptr<query::ValueExpr> const& func);
+
 private:
     friend class SelectFactory;
 
