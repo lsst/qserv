@@ -519,8 +519,6 @@ public:
     : AdapterT(parent) {}
 
     void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) override {
-        LOGS(_log, LOG_LVL_DEBUG, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " <<
-                columnElement);
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
 
@@ -620,7 +618,6 @@ public:
     : AdapterT(parent) {}
 
     void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << tableRef);
         _tableRef = tableRef;
     }
 
@@ -641,7 +638,6 @@ public:
     : AdapterT(parent) {}
 
     void handleTableName(const string& string) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         _table = string;
     }
 
@@ -665,7 +661,6 @@ public:
     : AdapterT(parent) {}
 
     void handleFullId(const string& string) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << " " << string);
         lockedParent()->handleTableName(string);
     }
 
@@ -977,8 +972,6 @@ public:
     }
 
     void onExit() override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
-
         // handle this in aggregateWindowedFunction
         string table;
         auto starFactor = query::ValueFactor::newStarFactor(table);
