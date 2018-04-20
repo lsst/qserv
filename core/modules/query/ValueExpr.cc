@@ -255,7 +255,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
     os << ", hasAgg:" << hasAgg;
-    os << ", factorOps:(";
+    os << ", factorOps:";
     os << util::printable(ve._factorOps);
     os << ")";
     return os;

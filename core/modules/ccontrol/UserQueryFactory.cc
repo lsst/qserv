@@ -163,7 +163,6 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             a4stmt = a4NewUserQuery(query);
         } catch (std::exception& e) {
             LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
         if (a4stmt) {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
