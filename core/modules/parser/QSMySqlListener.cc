@@ -1050,23 +1050,23 @@ public:
         } else if (_ctx->stringLiteral()) {
             valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _ctx->getText());
         } else if (_ctx->hexadecimalLiteral()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: hexadecimalLiteral", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: hexadecimalLiteral", _ctx);
         } else if (_ctx->booleanLiteral()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: booleanLiteral", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: booleanLiteral", _ctx);
         } else if (_ctx->REAL_LITERAL()) {
             valueFactor = query::ValueFactor::newConstFactor(_ctx->getText());
         } else if (_ctx->BIT_STRING()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: BIT_STRING", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: BIT_STRING", _ctx);
         } else if (_ctx->NULL_LITERAL()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NULL_LITERAL", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NULL_LITERAL", _ctx);
         } else if (_ctx->NULL_SPEC_LITERAL()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NULL_SPEC_LITERAL", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NULL_SPEC_LITERAL", _ctx);
         } else if (_ctx->NOT()) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NOT", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: NOT", _ctx);
         } else if (_ctx->nullLiteral) {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type: nullliteral", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type: nullliteral", _ctx);
         } else {
-            CHECK_EXECUTION_CONDITION(false, "Unhandled type.", _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled type.", _ctx);
         }
         lockedParent()->handleConstant(valueFactor);
     }
@@ -1333,7 +1333,7 @@ public:
 
 //    // todo this is directly copied from ExpressionAtomPredicateAdapter. Maybe it wants to be a factory func?
 //    void handleConstantExpressionAtom(const string& text) override {
-//        CHECK_EXECUTION_CONDITION(nullptr == _predicate, "predicate should be set exactly once.", _ctx);
+//        ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "predicate should be set exactly once.", _ctx);
 //        query::ValueExpr::FactorOp factorOp;
 //        factorOp.factor =  query::ValueFactor::newConstFactor(text);
 //        auto valueExpr = make_shared<query::ValueExpr>();
@@ -1342,17 +1342,17 @@ public:
 
      void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
              antlr4::ParserRuleContext* childCtx) {
-         CHECK_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
+         ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
          // .. todo
      }
 
     void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
-        CHECK_EXECUTION_CONDITION(_expressions.empty(), "expressions should be set exactly once.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_expressions.empty(), "expressions should be set exactly once.", _ctx);
         _expressions = valueExprs;
     }
 
     void onExit() {
-        CHECK_EXECUTION_CONDITION(false == _expressions.empty() && _predicate != nullptr,
+        ASSERT_EXECUTION_CONDITION(false == _expressions.empty() && _predicate != nullptr,
                 "InPredicateAdapter was not fully populated:" << *this, _ctx);
         auto inPredicate = std::make_shared<query::InPredicate>();
         inPredicate->value = _predicate;
