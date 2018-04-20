@@ -53,50 +53,67 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
 
+std::string getQueryString(antlr4::ParserRuleContext* ctx) {
+    return ctx->getStart()->getInputStream()->getText(
+           antlr4::misc::Interval(ctx->getStart()->getStartIndex(), ctx->getStop()->getStopIndex()));
 }
+
+template <typename T>
+std::string getTypeName() {
+    int status;
+    return abi::__cxa_demangle(typeid(T).name(),0,0,&status);
+}
+
+template <typename T>
+std::string getTypeName(T obj) {
+    int status;
+    return abi::__cxa_demangle(typeid(obj).name(),0,0,&status);
+}
+
+} // end namespace
 
 
 // This macro creates the enterXXX and exitXXX function definitions, for functions declared in
 // QSMySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << ctx->getText()); \
     pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
-    popAdapterStack<NAME##Adapter>(); \
+    popAdapterStack<NAME##Adapter>(ctx); \
 } \
 
 
 #define UNHANDLED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED " << ctx->getText()); \
     throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {}\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
 
 
 #define IGNORED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 
 
-#define CHECK_EXECUTION_CONDITION(CONDITION, MESSAGE) \
+#define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
     { \
         ostringstream msg; \
-        int status; \
-        msg << abi::__cxa_demangle(typeid(this).name(),0,0,&status) << "::" << __FUNCTION__; \
-        msg << " " << MESSAGE; \
+        msg << getTypeName(this) << "::" << __FUNCTION__; \
+        msg << " messsage:\"" << MESSAGE << "\""; \
+        msg << ", in or around query segment:" << getQueryString(CTX); \
         throw QSMySqlListener::adapter_execution_error(msg.str()); \
     } \
 } \
@@ -378,7 +395,9 @@ class RootAdapter :
         public Adapter,
         public DmlStatementCBH {
 public:
-    RootAdapter() {}
+    RootAdapter()
+    : _ctx(nullptr)
+    {}
 
     shared_ptr<query::SelectStmt>& getSelectStatement() { return _selectStatement; }
 
@@ -386,10 +405,17 @@ public:
         _selectStatement = selectStatement;
     }
 
-    void onExit() override {}
+    void onEnter(QSMySqlParser::RootContext* ctx) {
+        _ctx = ctx;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_selectStatement != nullptr, "Could not parse query.", _ctx);
+    }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
+    QSMySqlParser::RootContext* _ctx;
 };
 
 
@@ -508,7 +534,7 @@ class FromClauseAdapter :
         public LogicalExpressionCBH,
         public QservFunctionSpecCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext * ctx)
+    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void handleTableSources(query::TableRefListPtr tableRefList) override {
@@ -529,9 +555,10 @@ public:
             auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
             _rootTerm->addBoolTerm(boolTerm);
             return;
+        } else if (_ctx->havingExpr == childCtx) {
+            ASSERT_EXECUTION_CONDITION(false, "The HAVING expression is not yet supported.", _ctx);
         }
-
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
     }
 
     void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
@@ -551,7 +578,7 @@ private:
     query::TableRefListPtr _tableRefList;
 
     shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
-    QSMySqlParser::FromClauseContext * _ctx;
+    QSMySqlParser::FromClauseContext* _ctx;
 };
 
 
@@ -740,8 +767,8 @@ public:
     }
 
     void onEnter() override {
-        CHECK_EXECUTION_CONDITION(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported");
-        CHECK_EXECUTION_CONDITION(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported");
+        ASSERT_EXECUTION_CONDITION(_ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
+        ASSERT_EXECUTION_CONDITION(_ctx->VAR_ASSIGN() == nullptr, "VAR_ASSIGN is not supported", _ctx);
     }
 
     void onExit() override {}
@@ -756,12 +783,12 @@ class QservFunctionSpecAdapter :
         public ConstantsCBH {
 public:
     QservFunctionSpecAdapter(shared_ptr<QservFunctionSpecCBH> & parent,
-            QSMySqlParser::QservFunctionSpecContext * ctx)
+            QSMySqlParser::QservFunctionSpecContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
     void handleConstants(const vector<string>& args) override {
-        CHECK_EXECUTION_CONDITION(_args.empty(), "args should be empty.");
+        ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be empty.", _ctx);
         _args = args;
     }
 
@@ -786,10 +813,10 @@ private:
         if (_ctx->QSERV_AREASPEC_HULL() != nullptr){
             return _ctx->QSERV_AREASPEC_HULL()->getSymbol()->getText();
         }
-        CHECK_EXECUTION_CONDITION(false, "could not get qserv function name.");
+        ASSERT_EXECUTION_CONDITION(false, "could not get qserv function name.", _ctx);
     }
 
-    QSMySqlParser::QservFunctionSpecContext * _ctx;
+    QSMySqlParser::QservFunctionSpecContext* _ctx;
     vector<string> _args;
 };
 
@@ -798,24 +825,16 @@ private:
 class PredicateExpressionAdapter :
         public AdapterT<PredicateExpressionCBH>,
         public BinaryComparasionPredicateCBH,
-        public ExpressionAtomPredicateCBH,
         public BetweenPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
-            QSMySqlParser::PredicateExpressionContext * ctx)
+            QSMySqlParser::PredicateExpressionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
         _boolFactor->addBoolFactorTerm(comparisonPredicate);
     }
-
-    // ExpressionAtomPredicateCBH
-    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
-            antlr4::ParserRuleContext* ctx) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
-    }
-
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
         _boolFactor->addBoolFactorTerm(betweenPredicate);
@@ -827,7 +846,7 @@ public:
 
 private:
     shared_ptr<query::BoolFactor> _boolFactor {make_shared<query::BoolFactor>()};
-    QSMySqlParser::PredicateExpressionContext * _ctx;
+    QSMySqlParser::PredicateExpressionContext* _ctx;
 };
 
 
@@ -837,11 +856,13 @@ class BinaryComparasionPredicateAdapter :
         public ComparisonOperatorCBH {
 public:
     BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH>& parent,
-                                      antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+            QSMySqlParser::BinaryComparasionPredicateContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleComparisonOperator(const string& text) override {
-        CHECK_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.");
+        ASSERT_EXECUTION_CONDITION(_comparison.empty(), "comparison must be set only once.", _ctx);
         _comparison = text;
     }
 
@@ -852,13 +873,13 @@ public:
         } else if (_right == nullptr) {
             _right = valueExpr;
         } else {
-            CHECK_EXECUTION_CONDITION(false, "left and right values must be set only once.")
+            ASSERT_EXECUTION_CONDITION(false, "left and right values must be set only once.", _ctx)
         }
     }
 
     void onExit() {
-        CHECK_EXECUTION_CONDITION(_left != nullptr && _right != nullptr,
-                "left and right values must both be populated");
+        ASSERT_EXECUTION_CONDITION(_left != nullptr && _right != nullptr,
+                "left and right values must both be populated", _ctx);
 
         auto compPredicate = make_shared<query::CompPredicate>();
         compPredicate->left = _left;
@@ -870,7 +891,7 @@ public:
         if ("=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
         } else {
-            CHECK_EXECUTION_CONDITION(false, "unhandled comparison operator type" << _comparison);;
+            ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type" << _comparison, _ctx);
         }
 
         compPredicate->right = _right;
@@ -882,6 +903,7 @@ private:
     shared_ptr<query::ValueExpr> _left;
     string _comparison;
     shared_ptr<query::ValueExpr> _right;
+    QSMySqlParser::BinaryComparasionPredicateContext* _ctx;
 };
 
 
@@ -890,14 +912,16 @@ class ComparisonOperatorAdapter :
 public:
     ComparisonOperatorAdapter(shared_ptr<ComparisonOperatorCBH>& parent,
             QSMySqlParser::ComparisonOperatorContext* ctx)
-    : AdapterT(parent),  _comparisonOperatorCtx(ctx) {}
+    : AdapterT(parent)
+    ,  _ctx(ctx)
+    {}
 
     void onExit() override {
-        lockedParent()->handleComparisonOperator(_comparisonOperatorCtx->getText());
+        lockedParent()->handleComparisonOperator(_ctx->getText());
     }
 
 private:
-    QSMySqlParser::ComparisonOperatorContext * _comparisonOperatorCtx;
+    QSMySqlParser::ComparisonOperatorContext* _ctx;
 };
 
 
@@ -925,7 +949,8 @@ public:
     }
 
     void handleAggregateFunctionCall(string functionName, string parameter) override {
-        CHECK_EXECUTION_CONDITION(_functionName.empty() && _parameter.empty(), "should only be called once.");
+        ASSERT_EXECUTION_CONDITION(_functionName.empty() && _parameter.empty(), "should only be called once.",
+                _ctx);
         _functionName = functionName;
         _parameter = parameter;
     }
@@ -1031,7 +1056,7 @@ class AggregateFunctionCallAdapter :
         public AggregateWindowedFunctionCBH {
 public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
-                                 QSMySqlParser::AggregateFunctionCallContext * ctx)
+                                 QSMySqlParser::AggregateFunctionCallContext* ctx)
     : AdapterT(parent) {}
 
     void handleAggregateWindowedFunction(string functionName, string parameter) override {
@@ -1048,13 +1073,15 @@ class UdfFunctionCallAdapter :
         public FunctionArgsCBH {
 public:
     UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
-                           QSMySqlParser::UdfFunctionCallContext * ctx)
-    : AdapterT(parent) {}
+                           QSMySqlParser::UdfFunctionCallContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) override {
         // This is only expected to be called once.
         // Of course the valueExpr may have more than one valueFactor.
-        CHECK_EXECUTION_CONDITION(nullptr == _args, "Args already assigned.");
+        ASSERT_EXECUTION_CONDITION(nullptr == _args, "Args already assigned.", _ctx);
         _args = valueExpr;
     }
 
@@ -1077,6 +1104,7 @@ public:
 private:
     shared_ptr<query::ValueExpr> _args;
     string _functionName;
+    QSMySqlParser::UdfFunctionCallContext* _ctx;
 };
 
 
@@ -1084,7 +1112,7 @@ class AggregateWindowedFunctionAdapter :
         public AdapterT<AggregateWindowedFunctionCBH> {
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
-                                     QSMySqlParser::AggregateWindowedFunctionContext * ctx)
+                                     QSMySqlParser::AggregateWindowedFunctionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
@@ -1096,28 +1124,23 @@ public:
     }
 
 private:
-    QSMySqlParser::AggregateWindowedFunctionContext * _ctx;
+    QSMySqlParser::AggregateWindowedFunctionContext* _ctx;
 };
 
 
 class FunctionArgsAdapter :
         public AdapterT<FunctionArgsCBH>,
         public ConstantCBH,
-        public PredicateExpressionCBH,
         public FullColumnNameCBH {
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
-                        QSMySqlParser::FunctionArgsContext * ctx)
+                        QSMySqlParser::FunctionArgsContext* ctx)
     : AdapterT(parent) {}
 
     // ConstantCBH
     void handleConstant(const string& val) override {
         auto argFactor = parser::ValueFactorFactory::newColumnFactor(val, "", "");
         ValueExprFactory::addValueFactor(_args, argFactor);
-    }
-
-    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
     }
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
@@ -1141,7 +1164,7 @@ class LogicalExpressionAdapter :
         public QservFunctionSpecCBH {
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
-                             QSMySqlParser::LogicalExpressionContext * ctx)
+                             QSMySqlParser::LogicalExpressionContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1158,7 +1181,7 @@ public:
     void handleLogicalOperator(LogicalOperatorCBH::OperatorType operatorType) {
         switch (operatorType) {
         default:
-            CHECK_EXECUTION_CONDITION(false, "unhandled operator type");
+            ASSERT_EXECUTION_CONDITION(false, "unhandled operator type", _ctx);
             break;
 
         case LogicalOperatorCBH::AND:
@@ -1178,7 +1201,7 @@ public:
     }
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set; " << *this);
+        ASSERT_EXECUTION_CONDITION(_logicalOperator != nullptr, "logicalOperator is not set; " << *this, _ctx);
         // Since this is a logical expression e.g. `a AND b` (per the grammar) and `a` or `b` may also be a
         // logical expression, we try to merge each term, e.g. if this is an AND (query::AndTerm) and the
         // BoolTerm in the terms list is also an AND term they can be merged.
@@ -1192,9 +1215,9 @@ public:
 
 private:
     void _setLogicalOperator(shared_ptr<query::LogicalTerm>& logicalTerm) {
-        CHECK_EXECUTION_CONDITION(nullptr == _logicalOperator,
+        ASSERT_EXECUTION_CONDITION(nullptr == _logicalOperator,
                 "logical operator must be set only once. existing:" << *this <<
-                ", new:" << logicalTerm);
+                ", new:" << logicalTerm, _ctx);
         _logicalOperator = logicalTerm;
     }
 
@@ -1213,7 +1236,7 @@ private:
     // subsequent logical expression. TBD if that's really an issue.
     vector<shared_ptr<query::BoolTerm>> _terms;
     shared_ptr<query::LogicalTerm> _logicalOperator;
-    QSMySqlParser::LogicalExpressionContext * _ctx;
+    QSMySqlParser::LogicalExpressionContext* _ctx;
 };
 
 
@@ -1229,7 +1252,7 @@ class BetweenPredicateAdapter :
         public ExpressionAtomPredicateCBH {
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
-                            QSMySqlParser::BetweenPredicateContext * ctx)
+                            QSMySqlParser::BetweenPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1237,31 +1260,31 @@ public:
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         if (childCtx == _ctx->val) {
-            CHECK_EXECUTION_CONDITION(nullptr == _val, "val should be set exactly once.");
+            ASSERT_EXECUTION_CONDITION(nullptr == _val, "val should be set exactly once.", _ctx);
             _val = valueExpr;
             return;
         }
         if (childCtx == _ctx->min) {
-            CHECK_EXECUTION_CONDITION(nullptr == _min, "min should be set exactly once.");
+            ASSERT_EXECUTION_CONDITION(nullptr == _min, "min should be set exactly once.", _ctx);
             _min = valueExpr;
             return;
         }
         if (childCtx == _ctx->max) {
-            CHECK_EXECUTION_CONDITION(nullptr == _max, "max should be set exactly once.");
+            ASSERT_EXECUTION_CONDITION(nullptr == _max, "max should be set exactly once.", _ctx);
             _max = valueExpr;
             return;
         }
     }
 
     void onExit() {
-        CHECK_EXECUTION_CONDITION(nullptr != _val && nullptr != _min && nullptr != _max,
-                "val, min, and max must all be set.");
+        ASSERT_EXECUTION_CONDITION(nullptr != _val && nullptr != _min && nullptr != _max,
+                "val, min, and max must all be set.", _ctx);
         auto betweenPredicate = make_shared<query::BetweenPredicate>(_val, _min, _max);
         lockedParent()->handleBetweenPredicate(betweenPredicate);
     }
 
 private:
-    QSMySqlParser::BetweenPredicateContext * _ctx;
+    QSMySqlParser::BetweenPredicateContext* _ctx;
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
     shared_ptr<query::ValueExpr> _max;
@@ -1274,15 +1297,20 @@ class UnaryExpressionAtomAdapter :
         public ConstantExpressionAtomCBH {
 public:
     UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-                               QSMySqlParser::UnaryExpressionAtomContext * ctx)
-    : AdapterT(parent) {}
+                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     // ConstantExpressionAtomCBH
     void handleConstantExpressionAtom(const string& text) override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        ASSERT_EXECUTION_CONDITION(false, "can't handle ConstantExpressionAtom" << text, _ctx);
     }
 
     void onExit() override {}
+
+private:
+    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
 };
 
 
@@ -1292,8 +1320,10 @@ class MathExpressionAtomAdapter :
         public FunctionCallExpressionAtomCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
-                              QSMySqlParser::MathExpressionAtomContext * ctx)
-    : AdapterT(parent) {}
+                              QSMySqlParser::MathExpressionAtomContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleFunctionCallExpressionAtom(shared_ptr<query::FuncExpr> funcExpr) override {
         _setNextFuncExpr(funcExpr);
@@ -1302,14 +1332,14 @@ public:
     void handleMathOperator(MathOperatorCBH::OperatorType operatorType) override {
         // need to make:
         // FactorOp(MINUS, factor:ValueFactor(type:Function, funcExpr)
-        CHECK_EXECUTION_CONDITION(MathOperatorCBH::SUBTRACT == operatorType,
-                "Currenty only subtract is supported.");
+        ASSERT_EXECUTION_CONDITION(MathOperatorCBH::SUBTRACT == operatorType,
+                "Currenty only subtract is supported.", _ctx);
         _op = query::ValueExpr::MINUS;
     }
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(query::ValueExpr::NONE != _op && nullptr != _left && nullptr != _right,
-                "Not all fields are set:" << *this);
+        ASSERT_EXECUTION_CONDITION(query::ValueExpr::NONE != _op && nullptr != _left && nullptr != _right,
+                "Not all fields are set:" << *this, _ctx);
         auto valueExpr = ValueExprFactory::newOperationFuncExpr(_left, _op, _right);
         lockedParent()->handleMathExpressionAtomAdapter(valueExpr);
     }
@@ -1323,13 +1353,14 @@ private:
         } else if (nullptr == _right) {
             _right = funcExpr;
         } else {
-            CHECK_EXECUTION_CONDITION(false, "left and right are both already set:" << *this);
+            ASSERT_EXECUTION_CONDITION(false, "left and right are both already set:" << *this, _ctx);
         }
     }
 
     query::ValueExpr::Op _op {query::ValueExpr::NONE};
     shared_ptr<query::FuncExpr> _left;
     shared_ptr<query::FuncExpr> _right;
+    QSMySqlParser::MathExpressionAtomContext* _ctx;
 };
 
 
@@ -1346,11 +1377,13 @@ class FunctionCallExpressionAtomAdapter :
         public UdfFunctionCallCBH {
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
-                                      QSMySqlParser::FunctionCallExpressionAtomContext * ctx)
-    : AdapterT(parent) {}
+                                      QSMySqlParser::FunctionCallExpressionAtomContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
-        CHECK_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.")
+        ASSERT_EXECUTION_CONDITION(_funcExpr == nullptr, "the funcExpr must be set only once.", _ctx)
         _funcExpr = funcExpr;
     }
 
@@ -1358,14 +1391,12 @@ public:
     // it will set the alias in the generated valueFactor
 
     void onExit() {
-//        auto valueFactor = query::ValueFactor::newFuncFactor(_funcExpr);
-//        auto valueExpr = make_shared<query::ValueExpr>();
-//        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent()->handleFunctionCallExpressionAtom(_funcExpr);
     }
 
 private:
     shared_ptr<query::FuncExpr> _funcExpr;
+    QSMySqlParser::FunctionCallExpressionAtomContext* _ctx;
 };
 
 
@@ -1373,12 +1404,17 @@ class UnaryOperatorAdapter :
         public AdapterT<UnaryOperatorCBH> {
 public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
-                         QSMySqlParser::UnaryOperatorContext * ctx)
-    : AdapterT(parent) {}
+                         QSMySqlParser::UnaryOperatorContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void onExit() override {
-        CHECK_EXECUTION_CONDITION(false, "todo");
+        ASSERT_EXECUTION_CONDITION(false, "UnaryOperatorAdapter is not yet handling anything.", _ctx);
     }
+
+private:
+    QSMySqlParser::UnaryOperatorContext* _ctx;
 };
 
 
@@ -1386,7 +1422,7 @@ class LogicalOperatorAdapter :
         public AdapterT<LogicalOperatorCBH> {
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
-                           QSMySqlParser::LogicalOperatorContext * ctx)
+                           QSMySqlParser::LogicalOperatorContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1394,12 +1430,12 @@ public:
         if (_ctx->AND() != nullptr) {
             lockedParent()->handleLogicalOperator(LogicalOperatorCBH::AND);
         } else {
-            CHECK_EXECUTION_CONDITION(false, "undhandled logical operator");
+            ASSERT_EXECUTION_CONDITION(false, "undhandled logical operator", _ctx);
         }
     }
 
 private:
-    QSMySqlParser::LogicalOperatorContext * _ctx;
+    QSMySqlParser::LogicalOperatorContext* _ctx;
 };
 
 
@@ -1407,7 +1443,7 @@ class MathOperatorAdapter :
         public AdapterT<MathOperatorCBH> {
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
-                        QSMySqlParser::MathOperatorContext * ctx)
+                        QSMySqlParser::MathOperatorContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1418,7 +1454,7 @@ public:
     }
 
 private:
-    QSMySqlParser::MathOperatorContext * _ctx;
+    QSMySqlParser::MathOperatorContext* _ctx;
 };
 
 
@@ -1426,8 +1462,6 @@ private:
 
 
 QSMySqlListener::QSMySqlListener() {
-    _rootAdapter = make_shared<RootAdapter>();
-    _adapterStack.push(_rootAdapter);
 }
 
 
@@ -1439,17 +1473,12 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
-shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context * ctx) {
+shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
-    if (nullptr == p) {
-        int status;
-        ostringstream msg;
-        msg << "can't acquire expected Adapter " <<
-                abi::__cxa_demangle(typeid(ParentCBH).name(),0,0,&status) <<
-                " from top of listenerStack.";
-        LOGS(_log, LOG_LVL_ERROR, msg.str());
-        throw adapter_order_error(msg.str());
-    }
+    ASSERT_EXECUTION_CONDITION(p != nullptr, "can't acquire expected Adapter `" <<
+            getTypeName<ParentCBH>() <<
+            "` from top of listenerStack.",
+            ctx);
     auto childAdapter = make_shared<ChildAdapter>(p, ctx);
     _adapterStack.push(childAdapter);
     childAdapter->onEnter();
@@ -1458,7 +1487,7 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context * ctx) {
 
 
 template<typename ChildAdapter>
-void QSMySqlListener::popAdapterStack() {
+void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
     adapterPtr->onExit();
     _adapterStack.pop();
@@ -1467,27 +1496,28 @@ void QSMySqlListener::popAdapterStack() {
     // this code could be optionally disabled or removed entirely if the check is found to be unnecesary or
     // adds too much of a performance penalty.
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
-    if (nullptr == derivedPtr) {
-        int status;
-        LOGS(_log, LOG_LVL_ERROR, "Top of listenerStack was not of expected type. " <<
-                "Expected: " << abi::__cxa_demangle(typeid(ChildAdapter).name(),0,0,&status) <<
-                " Actual: " << abi::__cxa_demangle(typeid(adapterPtr).name(),0,0,&status) <<
-                " Are there out of order or unhandled listener exits?");
-        // might want to throw here...?
-    }
+    ASSERT_EXECUTION_CONDITION(derivedPtr != nullptr, "Top of listenerStack was not of expected type. " <<
+        "Expected: " << getTypeName<ChildAdapter>() <<
+        ", Actual: " << getTypeName(adapterPtr) <<
+        ", Are there out of order or unhandled listener exits?",
+        ctx);
 }
 
 
 // QSMySqlListener class methods
 
 
-void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
-    // root is pushed by the ctor (and popped by the dtor)
+void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
+    ASSERT_EXECUTION_CONDITION(_adapterStack.empty(), "RootAdatper should be the first entry on the stack.",
+            ctx);
+    _rootAdapter = make_shared<RootAdapter>();
+    _adapterStack.push(_rootAdapter);
+    _rootAdapter->onEnter(ctx);
 }
 
 
-void QSMySqlListener::exitRoot(QSMySqlParser::RootContext * ctx) {
-    // root is pushed by the ctor (and popped by the dtor)
+void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
+    popAdapterStack<RootAdapter>(ctx);
 }
 
 IGNORED(SqlStatements)
