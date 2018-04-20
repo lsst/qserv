@@ -207,7 +207,7 @@ public:
 
 class ConstantExpressionAtomCBH : public BaseCBH {
 public:
-    virtual void handleConstantExpressionAtom(const string& text) = 0;
+    virtual void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) = 0;
 };
 
 
@@ -263,13 +263,19 @@ public:
 
 class ConstantCBH : public BaseCBH {
 public:
-    virtual void handleConstant(const string& val) = 0;
+    virtual void handleConstant(shared_ptr<query::ValueFactor> const & val) = 0;
+};
+
+
+class ExpressionsCBH : public BaseCBH {
+public:
+    virtual void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) = 0;
 };
 
 
 class ConstantsCBH : public BaseCBH {
 public:
-    virtual void handleConstants(const vector<string>& val) = 0;
+    virtual void handleConstants(const vector<string>& valueFactor) = 0;
 };
 
 
@@ -304,6 +310,10 @@ public:
             antlr4::ParserRuleContext* childCtx) = 0;
 };
 
+class InPredicateCBH : public BaseCBH {
+public :
+    virtual void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) = 0;
+};
 
 class BetweenPredicateCBH : public BaseCBH {
 public:
@@ -509,7 +519,7 @@ public:
     : AdapterT(parent) {}
 
     void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) override {
-        LOGS(_log, LOG_LVL_ERROR, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " <<
+        LOGS(_log, LOG_LVL_DEBUG, __PRETTY_FUNCTION__ << "adding column to the ValueExprPtrVector: " <<
                 columnElement);
         SelectListFactory::addValueExpr(_selectList, columnElement);
     }
@@ -704,8 +714,8 @@ public:
                                   antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
 
-    void handleConstant(const string& text) override {
-        lockedParent()->handleConstantExpressionAtom(text);
+    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        lockedParent()->handleConstantExpressionAtom(valueFactor);
     }
 
     void onExit() override {}
@@ -741,9 +751,9 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleConstantExpressionAtom(const string& text) override {
+    void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
         query::ValueExpr::FactorOp factorOp;
-        factorOp.factor =  query::ValueFactor::newConstFactor(text);
+        factorOp.factor = valueFactor;
         auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->getFactorOps().push_back(factorOp);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
@@ -825,7 +835,9 @@ private:
 class PredicateExpressionAdapter :
         public AdapterT<PredicateExpressionCBH>,
         public BinaryComparasionPredicateCBH,
-        public BetweenPredicateCBH {
+        public BetweenPredicateCBH,
+        public InPredicateCBH,
+        public ExpressionAtomPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
             QSMySqlParser::PredicateExpressionContext* ctx)
@@ -838,6 +850,15 @@ public:
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
         _boolFactor->addBoolFactorTerm(betweenPredicate);
+    }
+
+    void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) override {
+        _boolFactor->addBoolFactorTerm(inPredicate);
+    }
+
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* childCtx) {
+        // todo
     }
 
     void onExit() {
@@ -1020,14 +1041,68 @@ class ConstantAdapter :
         public AdapterT<ConstantCBH> {
 public:
     ConstantAdapter(shared_ptr<ConstantCBH>& parent, QSMySqlParser::ConstantContext* ctx)
-    : AdapterT(parent), _constantContext(ctx) {}
+    : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
-        lockedParent()->handleConstant(_constantContext->getText());
+        std::shared_ptr<query::ValueFactor> valueFactor;
+        if (_ctx->decimalLiteral()) {
+            valueFactor = query::ValueFactor::newConstFactor(_ctx->getText());
+        } else if (_ctx->stringLiteral()) {
+            valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _ctx->getText());
+        } else if (_ctx->hexadecimalLiteral()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: hexadecimalLiteral", _ctx);
+        } else if (_ctx->booleanLiteral()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: booleanLiteral", _ctx);
+        } else if (_ctx->REAL_LITERAL()) {
+            valueFactor = query::ValueFactor::newConstFactor(_ctx->getText());
+        } else if (_ctx->BIT_STRING()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: BIT_STRING", _ctx);
+        } else if (_ctx->NULL_LITERAL()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NULL_LITERAL", _ctx);
+        } else if (_ctx->NULL_SPEC_LITERAL()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NULL_SPEC_LITERAL", _ctx);
+        } else if (_ctx->NOT()) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: NOT", _ctx);
+        } else if (_ctx->nullLiteral) {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type: nullliteral", _ctx);
+        } else {
+            CHECK_EXECUTION_CONDITION(false, "Unhandled type.", _ctx);
+        }
+        lockedParent()->handleConstant(valueFactor);
     }
 
 private:
-    QSMySqlParser::ConstantContext* _constantContext;
+    QSMySqlParser::ConstantContext* _ctx;
+};
+
+
+class ExpressionsAdapter :
+        public AdapterT<ExpressionsCBH>,
+        public PredicateExpressionCBH {
+public:
+    ExpressionsAdapter(shared_ptr<ExpressionsCBH>& parent, QSMySqlParser::ExpressionsContext* ctx)
+    : AdapterT(parent) {}
+
+//    // todo most of this is directly copied from ExpressionAtomPredicateAdapter. Maybe it wants to be a factory func?
+//    void handleConstantExpressionAtom(const string& text) override {
+//        query::ValueExpr::FactorOp factorOp;
+//        factorOp.factor =  query::ValueFactor::newConstFactor(text);
+//        auto valueExpr = make_shared<query::ValueExpr>();
+//        valueExpr->getFactorOps().push_back(factorOp);
+//
+//        _expressions.push_back(valueExpr);
+//    }
+
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+        // todo
+    }
+
+    void onExit() {
+        lockedParent()->handleExpressions(_expressions);
+    }
+
+private:
+    vector<shared_ptr<query::ValueExpr>> _expressions;
 };
 
 
@@ -1038,16 +1113,16 @@ public:
     ConstantsAdapter(shared_ptr<ConstantsCBH>& parent, QSMySqlParser::ConstantsContext* ctx)
     : AdapterT(parent) {}
 
-    void handleConstant(const string& val) override {
-        vals.push_back(val);
+    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        valueFactors.push_back(valueFactor);
     }
 
     void onExit() override {
-        lockedParent()->handleConstants(vals);
+// todo        lockedParent()->handleConstants(vals);
     }
 
 private:
-    vector<string> vals;
+    vector<shared_ptr<query::ValueFactor>> valueFactors;
 };
 
 
@@ -1138,9 +1213,8 @@ public:
     : AdapterT(parent) {}
 
     // ConstantCBH
-    void handleConstant(const string& val) override {
-        auto argFactor = parser::ValueFactorFactory::newColumnFactor(val, "", "");
-        ValueExprFactory::addValueFactor(_args, argFactor);
+    void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
+        ValueExprFactory::addValueFactor(_args, valueFactor);
     }
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
@@ -1247,6 +1321,59 @@ ostream& operator<<(ostream& os, const LogicalExpressionAdapter& logicalExpressi
 }
 
 
+class InPredicateAdapter :
+        public AdapterT<InPredicateCBH>,
+        public ExpressionAtomPredicateCBH,
+        public ExpressionsCBH {
+public:
+    InPredicateAdapter(shared_ptr<InPredicateCBH> parent,
+                            QSMySqlParser::InPredicateContext * ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+//    // todo this is directly copied from ExpressionAtomPredicateAdapter. Maybe it wants to be a factory func?
+//    void handleConstantExpressionAtom(const string& text) override {
+//        CHECK_EXECUTION_CONDITION(nullptr == _predicate, "predicate should be set exactly once.", _ctx);
+//        query::ValueExpr::FactorOp factorOp;
+//        factorOp.factor =  query::ValueFactor::newConstFactor(text);
+//        auto valueExpr = make_shared<query::ValueExpr>();
+//        valueExpr->getFactorOps().push_back(factorOp);
+//    }
+
+     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+             antlr4::ParserRuleContext* childCtx) {
+         CHECK_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
+         // .. todo
+     }
+
+    void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
+        CHECK_EXECUTION_CONDITION(_expressions.empty(), "expressions should be set exactly once.", _ctx);
+        _expressions = valueExprs;
+    }
+
+    void onExit() {
+        CHECK_EXECUTION_CONDITION(false == _expressions.empty() && _predicate != nullptr,
+                "InPredicateAdapter was not fully populated:" << *this, _ctx);
+        auto inPredicate = std::make_shared<query::InPredicate>();
+        inPredicate->value = _predicate;
+        inPredicate->cands = _expressions;
+        lockedParent()->handleInPredicate(inPredicate);
+    }
+
+    friend ostream& operator<<(ostream& os, const InPredicateAdapter& inPredicateAdapter) {
+        os << "InPredicateAdapter(";
+        os << "predicate:" << inPredicateAdapter._predicate;
+        os << ", expressions:" << util::printable(inPredicateAdapter._expressions);
+        return os;
+    }
+
+private:
+    QSMySqlParser::InPredicateContext * _ctx;
+    shared_ptr<query::ValueExpr> _predicate;
+    vector<shared_ptr<query::ValueExpr>> _expressions;
+};
+
+
 class BetweenPredicateAdapter :
         public AdapterT<BetweenPredicateCBH>,
         public ExpressionAtomPredicateCBH {
@@ -1293,8 +1420,7 @@ private:
 
 class UnaryExpressionAtomAdapter :
         public AdapterT<UnaryExpressionAtomCBH>,
-        public UnaryOperatorCBH,
-        public ConstantExpressionAtomCBH {
+        public UnaryOperatorCBH {
 public:
     UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
                                QSMySqlParser::UnaryExpressionAtomContext* ctx)
@@ -1302,12 +1428,9 @@ public:
     , _ctx(ctx)
     {}
 
-    // ConstantExpressionAtomCBH
-    void handleConstantExpressionAtom(const string& text) override {
-        ASSERT_EXECUTION_CONDITION(false, "can't handle ConstantExpressionAtom" << text, _ctx);
+    void onExit() override {
+        // todo
     }
-
-    void onExit() override {}
 
 private:
     QSMySqlParser::UnaryExpressionAtomContext* _ctx;
@@ -1976,7 +2099,7 @@ UNHANDLED(LengthTwoOptionalDimension)
 UNHANDLED(UidList)
 UNHANDLED(Tables)
 UNHANDLED(IndexColumnNames)
-UNHANDLED(Expressions)
+ENTER_EXIT_PARENT(Expressions)
 UNHANDLED(ExpressionsWithDefaults)
 ENTER_EXIT_PARENT(Constants)
 UNHANDLED(SimpleStrings)
@@ -2014,7 +2137,7 @@ UNHANDLED(IsExpression)
 UNHANDLED(NotExpression)
 ENTER_EXIT_PARENT(LogicalExpression)
 UNHANDLED(SoundsLikePredicate)
-UNHANDLED(InPredicate)
+ENTER_EXIT_PARENT(InPredicate)
 UNHANDLED(SubqueryComparasionPredicate)
 ENTER_EXIT_PARENT(BetweenPredicate)
 UNHANDLED(IsNullPredicate)
