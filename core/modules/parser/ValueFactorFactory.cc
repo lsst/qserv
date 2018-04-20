@@ -149,9 +149,8 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
 std::shared_ptr<query::ValueFactor>
 ValueFactorFactory::newColumnColumnFactor(const std::string& db, const std::string& table,
         const std::string& column) {
-    std::shared_ptr<query::ValueFactor> valueFactor = std::make_shared<query::ValueFactor>();
     std::shared_ptr<query::ColumnRef> newColumnRef = std::make_shared<query::ColumnRef>(db, table, column);
-    valueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+    auto valueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
     return valueFactor;
 }
 
