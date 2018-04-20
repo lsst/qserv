@@ -53,7 +53,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.QSMySqlListener");
 
-std::string getQueryString(antlr4::ParserRuleContext * ctx) {
+std::string getQueryString(antlr4::ParserRuleContext* ctx) {
     return ctx->getStart()->getInputStream()->getText(
            antlr4::misc::Interval(ctx->getStart()->getStartIndex(), ctx->getStop()->getStopIndex()));
 }
@@ -77,32 +77,32 @@ std::string getTypeName(T obj) {
 // QSMySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << ctx->getText()); \
     pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__); \
     popAdapterStack<NAME##Adapter>(ctx); \
 } \
 
 
 #define UNHANDLED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED " << ctx->getText()); \
     throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {}\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
 
 
 #define IGNORED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context * ctx) { \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context * ctx) {\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 
@@ -405,7 +405,7 @@ public:
         _selectStatement = selectStatement;
     }
 
-    void onEnter(QSMySqlParser::RootContext * ctx) {
+    void onEnter(QSMySqlParser::RootContext* ctx) {
         _ctx = ctx;
     }
 
@@ -415,7 +415,7 @@ public:
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
-    QSMySqlParser::RootContext * _ctx;
+    QSMySqlParser::RootContext* _ctx;
 };
 
 
@@ -534,7 +534,7 @@ class FromClauseAdapter :
         public LogicalExpressionCBH,
         public QservFunctionSpecCBH {
 public:
-    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext * ctx)
+    FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void handleTableSources(query::TableRefListPtr tableRefList) override {
@@ -578,7 +578,7 @@ private:
     query::TableRefListPtr _tableRefList;
 
     shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
-    QSMySqlParser::FromClauseContext * _ctx;
+    QSMySqlParser::FromClauseContext* _ctx;
 };
 
 
@@ -783,7 +783,7 @@ class QservFunctionSpecAdapter :
         public ConstantsCBH {
 public:
     QservFunctionSpecAdapter(shared_ptr<QservFunctionSpecCBH> & parent,
-            QSMySqlParser::QservFunctionSpecContext * ctx)
+            QSMySqlParser::QservFunctionSpecContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -816,7 +816,7 @@ private:
         CHECK_EXECUTION_CONDITION(false, "could not get qserv function name.", _ctx);
     }
 
-    QSMySqlParser::QservFunctionSpecContext * _ctx;
+    QSMySqlParser::QservFunctionSpecContext* _ctx;
     vector<string> _args;
 };
 
@@ -828,7 +828,7 @@ class PredicateExpressionAdapter :
         public BetweenPredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
-            QSMySqlParser::PredicateExpressionContext * ctx)
+            QSMySqlParser::PredicateExpressionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     // BinaryComparasionPredicateCBH
@@ -846,7 +846,7 @@ public:
 
 private:
     shared_ptr<query::BoolFactor> _boolFactor {make_shared<query::BoolFactor>()};
-    QSMySqlParser::PredicateExpressionContext * _ctx;
+    QSMySqlParser::PredicateExpressionContext* _ctx;
 };
 
 
@@ -856,7 +856,7 @@ class BinaryComparasionPredicateAdapter :
         public ComparisonOperatorCBH {
 public:
     BinaryComparasionPredicateAdapter(shared_ptr<BinaryComparasionPredicateCBH>& parent,
-            QSMySqlParser::BinaryComparasionPredicateContext * ctx)
+            QSMySqlParser::BinaryComparasionPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -903,7 +903,7 @@ private:
     shared_ptr<query::ValueExpr> _left;
     string _comparison;
     shared_ptr<query::ValueExpr> _right;
-    QSMySqlParser::BinaryComparasionPredicateContext * _ctx;
+    QSMySqlParser::BinaryComparasionPredicateContext* _ctx;
 };
 
 
@@ -921,7 +921,7 @@ public:
     }
 
 private:
-    QSMySqlParser::ComparisonOperatorContext * _ctx;
+    QSMySqlParser::ComparisonOperatorContext* _ctx;
 };
 
 
@@ -1056,7 +1056,7 @@ class AggregateFunctionCallAdapter :
         public AggregateWindowedFunctionCBH {
 public:
     AggregateFunctionCallAdapter(shared_ptr<AggregateFunctionCallCBH>& parent,
-                                 QSMySqlParser::AggregateFunctionCallContext * ctx)
+                                 QSMySqlParser::AggregateFunctionCallContext* ctx)
     : AdapterT(parent) {}
 
     void handleAggregateWindowedFunction(string functionName, string parameter) override {
@@ -1073,7 +1073,7 @@ class UdfFunctionCallAdapter :
         public FunctionArgsCBH {
 public:
     UdfFunctionCallAdapter(shared_ptr<UdfFunctionCallCBH>& parent,
-                           QSMySqlParser::UdfFunctionCallContext * ctx)
+                           QSMySqlParser::UdfFunctionCallContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -1104,7 +1104,7 @@ public:
 private:
     shared_ptr<query::ValueExpr> _args;
     string _functionName;
-    QSMySqlParser::UdfFunctionCallContext * _ctx;
+    QSMySqlParser::UdfFunctionCallContext* _ctx;
 };
 
 
@@ -1112,7 +1112,7 @@ class AggregateWindowedFunctionAdapter :
         public AdapterT<AggregateWindowedFunctionCBH> {
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
-                                     QSMySqlParser::AggregateWindowedFunctionContext * ctx)
+                                     QSMySqlParser::AggregateWindowedFunctionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
     void onExit() override {
@@ -1124,7 +1124,7 @@ public:
     }
 
 private:
-    QSMySqlParser::AggregateWindowedFunctionContext * _ctx;
+    QSMySqlParser::AggregateWindowedFunctionContext* _ctx;
 };
 
 
@@ -1134,7 +1134,7 @@ class FunctionArgsAdapter :
         public FullColumnNameCBH {
 public:
     FunctionArgsAdapter(shared_ptr<FunctionArgsCBH>& parent,
-                        QSMySqlParser::FunctionArgsContext * ctx)
+                        QSMySqlParser::FunctionArgsContext* ctx)
     : AdapterT(parent) {}
 
     // ConstantCBH
@@ -1164,7 +1164,7 @@ class LogicalExpressionAdapter :
         public QservFunctionSpecCBH {
 public:
     LogicalExpressionAdapter(shared_ptr<LogicalExpressionCBH> parent,
-                             QSMySqlParser::LogicalExpressionContext * ctx)
+                             QSMySqlParser::LogicalExpressionContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1236,7 +1236,7 @@ private:
     // subsequent logical expression. TBD if that's really an issue.
     vector<shared_ptr<query::BoolTerm>> _terms;
     shared_ptr<query::LogicalTerm> _logicalOperator;
-    QSMySqlParser::LogicalExpressionContext * _ctx;
+    QSMySqlParser::LogicalExpressionContext* _ctx;
 };
 
 
@@ -1252,7 +1252,7 @@ class BetweenPredicateAdapter :
         public ExpressionAtomPredicateCBH {
 public:
     BetweenPredicateAdapter(shared_ptr<BetweenPredicateCBH> parent,
-                            QSMySqlParser::BetweenPredicateContext * ctx)
+                            QSMySqlParser::BetweenPredicateContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1284,7 +1284,7 @@ public:
     }
 
 private:
-    QSMySqlParser::BetweenPredicateContext * _ctx;
+    QSMySqlParser::BetweenPredicateContext* _ctx;
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
     shared_ptr<query::ValueExpr> _max;
@@ -1297,7 +1297,7 @@ class UnaryExpressionAtomAdapter :
         public ConstantExpressionAtomCBH {
 public:
     UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-                               QSMySqlParser::UnaryExpressionAtomContext * ctx)
+                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -1310,7 +1310,7 @@ public:
     void onExit() override {}
 
 private:
-    QSMySqlParser::UnaryExpressionAtomContext * _ctx;
+    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
 };
 
 
@@ -1320,7 +1320,7 @@ class MathExpressionAtomAdapter :
         public FunctionCallExpressionAtomCBH {
 public:
     MathExpressionAtomAdapter(shared_ptr<MathExpressionAtomCBH> parent,
-                              QSMySqlParser::MathExpressionAtomContext * ctx)
+                              QSMySqlParser::MathExpressionAtomContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -1360,7 +1360,7 @@ private:
     query::ValueExpr::Op _op {query::ValueExpr::NONE};
     shared_ptr<query::FuncExpr> _left;
     shared_ptr<query::FuncExpr> _right;
-    QSMySqlParser::MathExpressionAtomContext * _ctx;
+    QSMySqlParser::MathExpressionAtomContext* _ctx;
 };
 
 
@@ -1377,7 +1377,7 @@ class FunctionCallExpressionAtomAdapter :
         public UdfFunctionCallCBH {
 public:
     FunctionCallExpressionAtomAdapter(shared_ptr<FunctionCallExpressionAtomCBH> parent,
-                                      QSMySqlParser::FunctionCallExpressionAtomContext * ctx)
+                                      QSMySqlParser::FunctionCallExpressionAtomContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -1396,7 +1396,7 @@ public:
 
 private:
     shared_ptr<query::FuncExpr> _funcExpr;
-    QSMySqlParser::FunctionCallExpressionAtomContext * _ctx;
+    QSMySqlParser::FunctionCallExpressionAtomContext* _ctx;
 };
 
 
@@ -1404,7 +1404,7 @@ class UnaryOperatorAdapter :
         public AdapterT<UnaryOperatorCBH> {
 public:
     UnaryOperatorAdapter(shared_ptr<UnaryOperatorCBH> parent,
-                         QSMySqlParser::UnaryOperatorContext * ctx)
+                         QSMySqlParser::UnaryOperatorContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx)
     {}
@@ -1414,7 +1414,7 @@ public:
     }
 
 private:
-    QSMySqlParser::UnaryOperatorContext * _ctx;
+    QSMySqlParser::UnaryOperatorContext* _ctx;
 };
 
 
@@ -1422,7 +1422,7 @@ class LogicalOperatorAdapter :
         public AdapterT<LogicalOperatorCBH> {
 public:
     LogicalOperatorAdapter(shared_ptr<LogicalOperatorCBH> parent,
-                           QSMySqlParser::LogicalOperatorContext * ctx)
+                           QSMySqlParser::LogicalOperatorContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1435,7 +1435,7 @@ public:
     }
 
 private:
-    QSMySqlParser::LogicalOperatorContext * _ctx;
+    QSMySqlParser::LogicalOperatorContext* _ctx;
 };
 
 
@@ -1443,7 +1443,7 @@ class MathOperatorAdapter :
         public AdapterT<MathOperatorCBH> {
 public:
     MathOperatorAdapter(shared_ptr<MathOperatorCBH> parent,
-                        QSMySqlParser::MathOperatorContext * ctx)
+                        QSMySqlParser::MathOperatorContext* ctx)
     : AdapterT(parent)
     , _ctx(ctx) {}
 
@@ -1454,7 +1454,7 @@ public:
     }
 
 private:
-    QSMySqlParser::MathOperatorContext * _ctx;
+    QSMySqlParser::MathOperatorContext* _ctx;
 };
 
 
@@ -1473,7 +1473,7 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
-shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context * ctx) {
+shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.top());
     CHECK_EXECUTION_CONDITION(p != nullptr, "can't acquire expected Adapter `" <<
             getTypeName<ParentCBH>() <<
@@ -1487,7 +1487,7 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context * ctx) {
 
 
 template<typename ChildAdapter>
-void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext * ctx) {
+void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     shared_ptr<Adapter> adapterPtr = _adapterStack.top();
     adapterPtr->onExit();
     _adapterStack.pop();
@@ -1507,7 +1507,7 @@ void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext * ctx) {
 // QSMySqlListener class methods
 
 
-void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
+void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
     CHECK_EXECUTION_CONDITION(_adapterStack.empty(), "RootAdatper should be the first entry on the stack.",
             ctx);
     _rootAdapter = make_shared<RootAdapter>();
@@ -1516,7 +1516,7 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext * ctx) {
 }
 
 
-void QSMySqlListener::exitRoot(QSMySqlParser::RootContext * ctx) {
+void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
     popAdapterStack<RootAdapter>(ctx);
 }
 
