@@ -62,7 +62,7 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = STAR;
     if (!table.empty()) {
-        term->_tableStar = table;
+        term->_constVal = table;
     }
     return term;
 }
@@ -84,7 +84,7 @@ ValueFactorPtr
 ValueFactor::newConstFactor(std::string const& alnum) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = CONST;
-    term->_tableStar = alnum;
+    term->_constVal = alnum;
     return term;
 }
 
@@ -137,7 +137,7 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     os << ", funcExpr:" << ve._funcExpr;
     os << ", valueExpr:" << ve._valueExpr;
     os << ", alias:" << ve._alias;
-    os << ", tableStar:" << ve._tableStar; // Reused as const val (no tablestar)
+    os << ", constVal:" << ve._constVal;
     os << ")";
     return os;
 }
@@ -154,13 +154,13 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::STAR:
-        if (!ve._tableStar.empty()) {
-            _qt.append(ColumnRef("",ve._tableStar, "*"));
+        if (!ve._constVal.empty()) {
+            _qt.append(ColumnRef("",ve._constVal, "*"));
         } else {
             _qt.append("*");
         }
         break;
-    case ValueFactor::CONST: _qt.append(ve._tableStar); break;
+    case ValueFactor::CONST: _qt.append(ve._constVal); break;
     case ValueFactor::EXPR:
         { ValueExpr::render r(_qt, false);
             r.applyToQT(ve._valueExpr);
@@ -177,7 +177,7 @@ bool ValueFactor::operator==(const ValueFactor& rhs) const {
             util::ptrCompare<FuncExpr>(_funcExpr, rhs._funcExpr) &&
             util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) &&
             _alias == rhs._alias &&
-            _tableStar == rhs._tableStar);
+            _constVal == rhs._constVal);
 }
 
 

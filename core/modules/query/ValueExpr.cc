@@ -132,7 +132,7 @@ std::string ValueExpr::copyAsLiteral() const{
     std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     if (factor->getType() != ValueFactor::CONST) { return s; }
-    return factor->getTableStar();
+    return factor->getConstVal();
 }
 
 template<typename T>

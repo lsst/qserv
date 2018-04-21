@@ -215,10 +215,10 @@ private:
     void _patchStar(query::ValueFactor& vt) {
         // TODO: No support for <db>.<table>.* in framework
         // Only <table>.* is supported.
-        std::string newAlias = _getAlias("", vt.getTableStar());
+        std::string newAlias = _getAlias("", vt.getConstVal());
         if (newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
-        else { vt.setTableStar(newAlias); }
+        else { vt.setConstVal(newAlias); }
     }
 
     std::string _getAlias(std::string const& db,
