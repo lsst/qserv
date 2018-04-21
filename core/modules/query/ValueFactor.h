@@ -77,9 +77,9 @@ public:
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
-    // TableStar is used for CONST literals as well.
-    std::string const& getTableStar() const { return _tableStar; }
-    void setTableStar(std::string const& a) { _tableStar = a; }
+
+    std::string const& getConstVal() const { return _constVal; }
+    void setConstVal(std::string const& a) { _constVal = a; }
 
     void findColumnRefs(ColumnRef::Vector& vector) const;
 
@@ -106,7 +106,10 @@ private:
     std::shared_ptr<FuncExpr> _funcExpr;
     std::shared_ptr<ValueExpr> _valueExpr;
     std::string _alias;
-    std::string _tableStar; // Reused as const val (no tablestar)
+    std::string _constVal;  // formerly named "tablestar"
+                            // seems to often contain a string representation of a number. Can also contain
+                            // `*` (presumably as in `SELECT *`. It would probably be good to factor it so
+                            // so that `constVal` is exclusivly a string number and `*` is a different field.
 };
 
 
