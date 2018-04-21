@@ -53,6 +53,7 @@ namespace query {
 
 namespace lsst {
 namespace qserv {
+namespace query { class ValueFactor; }
 namespace parser {
 
 /// WhereFactory is a factory for WhereClause parsed elements.
@@ -70,7 +71,7 @@ public:
     static void
     addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClause,
                        const std::string& function,
-                       const std::vector<std::string>& parameters);
+                       const std::vector<std::shared_ptr<query::ValueFactor>>& parameters);
 
 private:
     void attachTo(SqlSQL2Parser& p);
