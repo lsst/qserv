@@ -269,8 +269,8 @@ double getNumericConst(ValueExprPtr const& ve) {
         return std::numeric_limits<double>::quiet_NaN();
     }
     char *e = nullptr;
-    double a = std::strtod(vf->getTableStar().c_str(), &e);
-    if (e == vf->getTableStar().c_str()) {
+    double a = std::strtod(vf->getConstVal().c_str(), &e);
+    if (e == vf->getConstVal().c_str()) {
         // conversion error - non-numeric constant
         return std::numeric_limits<double>::quiet_NaN();
     }
