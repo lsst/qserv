@@ -51,7 +51,6 @@ static const std::vector< std::string > QUERIES = {
 //     "SELECT ra_Ps, decl_PS FROM Object WHERE objectId IN (390034570102582, 396210733076852, 393126946553816, 390030275138483)"
 };
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( antlr_compare, 1 )
 
 BOOST_DATA_TEST_CASE(antlr_compare, QUERIES, query) {
     auto a4SelectStatement = ccontrol::a4NewUserQuery(query);

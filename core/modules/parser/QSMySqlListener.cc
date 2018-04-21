@@ -220,7 +220,8 @@ public:
 
 class QservFunctionSpecCBH : public BaseCBH {
 public:
-    virtual void handleQservFunctionSpec(const string& functionName, const vector<string>& args) = 0;
+    virtual void handleQservFunctionSpec(const string& functionName,
+            const vector<shared_ptr<query::ValueFactor>>& args) = 0;
 };
 
 
@@ -275,7 +276,7 @@ public:
 
 class ConstantsCBH : public BaseCBH {
 public:
-    virtual void handleConstants(const vector<string>& valueFactor) = 0;
+    virtual void handleConstants(const vector<shared_ptr<query::ValueFactor>>& valueFactors) = 0;
 };
 
 
@@ -304,7 +305,8 @@ public:
 class LogicalExpressionCBH : public BaseCBH {
 public:
     // pass thru to parent for qserv function spec
-    virtual void handleQservFunctionSpec(const string& functionName, const vector<string>& args) = 0;
+    virtual void handleQservFunctionSpec(const string& functionName,
+            const vector<shared_ptr<query::ValueFactor>>& args) = 0;
 
     virtual void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
             antlr4::ParserRuleContext* childCtx) = 0;
@@ -569,7 +571,8 @@ public:
         ASSERT_EXECUTION_CONDITION(false, "This logical expression is not yet supported.", _ctx);
     }
 
-    void handleQservFunctionSpec(const string& functionName, const vector<string>& args) {
+    void handleQservFunctionSpec(const string& functionName,
+            const vector<shared_ptr<query::ValueFactor>>& args) {
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
 
@@ -792,9 +795,9 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    void handleConstants(const vector<string>& args) override {
-        ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be empty.", _ctx);
-        _args = args;
+    void handleConstants(const vector<shared_ptr<query::ValueFactor>>& valueFactors) override {
+        ASSERT_EXECUTION_CONDITION(_args.empty(), "args should be set exactly once.", _ctx);
+        _args = valueFactors;
     }
 
     void onExit() override {
@@ -822,7 +825,7 @@ private:
     }
 
     QSMySqlParser::QservFunctionSpecContext* _ctx;
-    vector<string> _args;
+    vector<shared_ptr<query::ValueFactor>> _args;
 };
 
 
@@ -853,7 +856,7 @@ public:
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* childCtx) {
-        // todo
+        todo next
     }
 
     void onExit() {
@@ -1111,7 +1114,7 @@ public:
     }
 
     void onExit() override {
-// todo        lockedParent()->handleConstants(vals);
+        lockedParent()->handleConstants(valueFactors);
     }
 
 private:
@@ -1239,7 +1242,8 @@ public:
         _setNextTerm(boolFactor);
     }
 
-    void handleQservFunctionSpec(const string& functionName, const vector<string>& args) override {
+    void handleQservFunctionSpec(const string& functionName,
+            const vector<shared_ptr<query::ValueFactor>>& args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
         // handles the rest of the where clause, pass the function straight up to the parent.
         lockedParent()->handleQservFunctionSpec(functionName, args);
