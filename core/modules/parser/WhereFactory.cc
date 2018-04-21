@@ -51,6 +51,7 @@
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
 
@@ -225,9 +226,19 @@ WhereFactory::_import(antlr::RefAST a) {
 void
 WhereFactory::addQservRestrictor(std::shared_ptr<query::WhereClause>& whereClause,
                                  const std::string& function,
-                                 const std::vector<std::string>& parameters) {
+                                 const std::vector<std::shared_ptr<query::ValueFactor>>& parameters) {
+
+    // Here we extract the args from a vector of ValueFactor::ColumnRef
+    // This is a side effect of the current IR, where in most cases a constant string is represented as
+    // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a string.
     auto restrictor = std::make_shared<query::QsRestrictor>();
-    restrictor->_params = parameters;
+    for (auto const valueFactor : parameters) {
+        if (query::ValueFactor::CONST != valueFactor->getType()) {
+            throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
+        }
+        restrictor->_params.push_back(valueFactor->getConstVal());
+    }
+
     // Add case insensitive behavior in order to mimic MySQL functions/procedures
     std::string insensitiveFunction(function);
     if (insensitiveFunction != "sIndex") {
