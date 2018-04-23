@@ -259,6 +259,7 @@ public:
 class PredicateExpressionCBH : public BaseCBH {
 public:
     virtual void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) = 0;
+    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr>& ValueExpr) = 0;
 };
 
 
@@ -559,6 +560,10 @@ public:
         _rootTerm->addBoolTerm(andBoolTerm);
     }
 
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& ValueExpr) override {
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled valueExpr predicateExpression.", _ctx);
+    }
+
     void handleLogicalExpression(shared_ptr<query::LogicalTerm>& logicalTerm,
             antlr4::ParserRuleContext* childCtx) override {
         if (_ctx->whereExpr == childCtx) {
@@ -750,10 +755,7 @@ public:
     , _ctx(ctx) {}
 
     void handleConstantExpressionAtom(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        query::ValueExpr::FactorOp factorOp;
-        factorOp.factor = valueFactor;
-        auto valueExpr = make_shared<query::ValueExpr>();
-        valueExpr->getFactorOps().push_back(factorOp);
+        auto valueExpr = query::ValueExpr::newSimple(valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
     }
 
@@ -843,28 +845,56 @@ public:
 
     // BinaryComparasionPredicateCBH
     void handleBinaryComparasionPredicate(shared_ptr<query::CompPredicate>& comparisonPredicate) override {
+        _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(comparisonPredicate);
     }
 
     void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) override {
+        _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(betweenPredicate);
     }
 
     void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) override {
+        _prepBoolFactor();
         _boolFactor->addBoolFactorTerm(inPredicate);
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* childCtx) {
-        todo next
+        _prepValueExpr();
+        _valueExpr = valueExpr;
     }
 
     void onExit() {
-        lockedParent()->handlePredicateExpression(_boolFactor);
+        ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr || nullptr != _boolFactor,
+                "PredicateExpressionAdapter was not populated.", _ctx);
+        if (_boolFactor != nullptr) {
+            lockedParent()->handlePredicateExpression(_boolFactor);
+        } else if (_valueExpr != nullptr) {
+            lockedParent()->handlePredicateExpression(_valueExpr);
+        } else {
+
+        }
     }
 
 private:
-    shared_ptr<query::BoolFactor> _boolFactor {make_shared<query::BoolFactor>()};
+
+    void _prepBoolFactor() {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can't use PredicateExpressionAdapter for " <<
+                "BoolFactor and ValueExpr at the same time.", _ctx);
+        if (nullptr == _boolFactor) {
+            _boolFactor = make_shared<query::BoolFactor>();
+        }
+    }
+
+    void _prepValueExpr() {
+        ASSERT_EXECUTION_CONDITION(nullptr == _boolFactor, "Can't use PredicateExpressionAdapter for " <<
+                "BoolFactor and ValueExpr at the same time.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "Can only set _valueExpr once.", _ctx);
+    }
+
+    shared_ptr<query::BoolFactor> _boolFactor;
+    shared_ptr<query::ValueExpr> _valueExpr;
     QSMySqlParser::PredicateExpressionContext* _ctx;
 };
 
@@ -1077,20 +1107,16 @@ class ExpressionsAdapter :
         public PredicateExpressionCBH {
 public:
     ExpressionsAdapter(shared_ptr<ExpressionsCBH>& parent, QSMySqlParser::ExpressionsContext* ctx)
-    : AdapterT(parent) {}
-
-//    // todo most of this is directly copied from ExpressionAtomPredicateAdapter. Maybe it wants to be a factory func?
-//    void handleConstantExpressionAtom(const string& text) override {
-//        query::ValueExpr::FactorOp factorOp;
-//        factorOp.factor =  query::ValueFactor::newConstFactor(text);
-//        auto valueExpr = make_shared<query::ValueExpr>();
-//        valueExpr->getFactorOps().push_back(factorOp);
-//
-//        _expressions.push_back(valueExpr);
-//    }
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
-        // todo
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with BoolFactor.", _ctx);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+        _expressions.push_back(valueExpr);
     }
 
     void onExit() {
@@ -1098,6 +1124,7 @@ public:
     }
 
 private:
+    QSMySqlParser::ExpressionsContext* _ctx;
     vector<shared_ptr<query::ValueExpr>> _expressions;
 };
 
@@ -1242,6 +1269,10 @@ public:
         _setNextTerm(boolFactor);
     }
 
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+    }
+
     void handleQservFunctionSpec(const string& functionName,
             const vector<shared_ptr<query::ValueFactor>>& args) override {
         // qserv query IR handles qserv restrictor functions differently than the and/or bool tree that
@@ -1328,19 +1359,11 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-//    // todo this is directly copied from ExpressionAtomPredicateAdapter. Maybe it wants to be a factory func?
-//    void handleConstantExpressionAtom(const string& text) override {
-//        ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "predicate should be set exactly once.", _ctx);
-//        query::ValueExpr::FactorOp factorOp;
-//        factorOp.factor =  query::ValueFactor::newConstFactor(text);
-//        auto valueExpr = make_shared<query::ValueExpr>();
-//        valueExpr->getFactorOps().push_back(factorOp);
-//    }
-
      void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
              antlr4::ParserRuleContext* childCtx) {
          ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
-         // .. todo
+         ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
+         _predicate = valueExpr;
      }
 
     void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
@@ -2132,6 +2155,7 @@ ENTER_EXIT_PARENT(FunctionArgs)
 UNHANDLED(FunctionArg)
 UNHANDLED(IsExpression)
 UNHANDLED(NotExpression)
+UNHANDLED(QservFunctionSpecExpression)
 ENTER_EXIT_PARENT(LogicalExpression)
 UNHANDLED(SoundsLikePredicate)
 ENTER_EXIT_PARENT(InPredicate)
