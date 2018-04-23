@@ -44,7 +44,7 @@ namespace parser {
 class Adapter;
 class RootAdapter;
 
-class QSMySqlListener : public QSMySqlParserBaseListener {
+class QSMySqlListener : public QSMySqlParserListener {
 public:
     QSMySqlListener();
     virtual ~QSMySqlListener() {}
@@ -1383,7 +1383,6 @@ protected:
     virtual void enterNullNotnull(QSMySqlParser::NullNotnullContext * /*ctx*/) override;
     virtual void exitNullNotnull(QSMySqlParser::NullNotnullContext * /*ctx*/) override;
 
-
     virtual void enterConstant(QSMySqlParser::ConstantContext * /*ctx*/) override;
     virtual void exitConstant(QSMySqlParser::ConstantContext * /*ctx*/) override;
 
@@ -1531,6 +1530,9 @@ protected:
     virtual void enterNotExpression(QSMySqlParser::NotExpressionContext * /*ctx*/) override;
     virtual void exitNotExpression(QSMySqlParser::NotExpressionContext * /*ctx*/) override;
 
+    virtual void enterQservFunctionSpecExpression(QSMySqlParser::QservFunctionSpecExpressionContext *ctx) override;
+    virtual void exitQservFunctionSpecExpression(QSMySqlParser::QservFunctionSpecExpressionContext *ctx) override;
+
     virtual void enterLogicalExpression(QSMySqlParser::LogicalExpressionContext * /*ctx*/) override;
     virtual void exitLogicalExpression(QSMySqlParser::LogicalExpressionContext * /*ctx*/) override;
 
@@ -1645,6 +1647,10 @@ protected:
     virtual void enterFunctionNameBase(QSMySqlParser::FunctionNameBaseContext * /*ctx*/) override;
     virtual void exitFunctionNameBase(QSMySqlParser::FunctionNameBaseContext * /*ctx*/) override;
 
+    virtual void enterEveryRule(antlr4::ParserRuleContext * /*ctx*/) override { }
+    virtual void exitEveryRule(antlr4::ParserRuleContext * /*ctx*/) override { }
+    virtual void visitTerminal(antlr4::tree::TerminalNode * /*node*/) override { }
+    virtual void visitErrorNode(antlr4::tree::ErrorNode * /*node*/) override { }
 
 private:
     // Adapter is a base class for a stack of adapter objects. Adapters implement appropriate API for
