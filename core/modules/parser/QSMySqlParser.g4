@@ -4,7 +4,7 @@ import MySqlParser;
 
 options { tokenVocab=QSMySqlLexer; }
 
-// same as MySqlParser, adds qservFunctionSpec
+// same as MySqlParser, adds qservFunctionSpecExpression
 // Simplified approach for expression
 expression
     : notOperator=(NOT | '!') expression                            #notExpression
@@ -14,7 +14,6 @@ expression
     | qservFunctionSpec                                             #qservFunctionSpecExpression
     ;
     
-// todo this probably wants to be in its own derived grammar file
 qservFunctionSpec
 	: (	QSERV_AREASPEC_BOX | QSERV_AREASPEC_CIRCLE  
 	  | QSERV_AREASPEC_ELLIPSE | QSERV_AREASPEC_POLY   	
