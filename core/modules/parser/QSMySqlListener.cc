@@ -518,8 +518,13 @@ class SelectElementsAdapter :
         public SelectColumnElementCBH,
         public SelectFunctionElementCBH {
 public:
-    SelectElementsAdapter(shared_ptr<SelectElementsCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    SelectElementsAdapter(shared_ptr<SelectElementsCBH>& parent, QSMySqlParser::SelectElementsContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {
+        if (_ctx->star != nullptr) {
+            SelectListFactory::addStarFactor(_selectList);
+        }
+    }
 
     void handleColumnElement(shared_ptr<query::ValueExpr>& columnElement) override {
         SelectListFactory::addValueExpr(_selectList, columnElement);
@@ -535,6 +540,7 @@ public:
 
 private:
     shared_ptr<query::SelectList> _selectList{make_shared<query::SelectList>()};
+    QSMySqlParser::SelectElementsContext* _ctx;
 };
 
 

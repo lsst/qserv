@@ -54,6 +54,11 @@ void SelectListFactory::addValueExpr(std::shared_ptr<query::SelectList> selectLi
     selectList->_valueExprList->push_back(valueExpr);
 }
 
+void SelectListFactory::addStarFactor(std::shared_ptr<query::SelectList> selectList) {
+    selectList->_valueExprList->push_back(
+        query::ValueExpr::newSimple(query::ValueFactor::newStarFactor("")));
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // SelectListFactory::SelectStarH

@@ -166,7 +166,7 @@ RIGHT:                               'RIGHT';
 RLIKE:                               'RLIKE';
 SCHEMA:                              'SCHEMA';
 SCHEMAS:                             'SCHEMAS';
-SELECT:                              'SELECT';
+SELECT:                              'SELECT' | 'select';
 SET:                                 'SET';
 SEPARATOR:                           'SEPARATOR';
 SHOW:                                'SHOW';
