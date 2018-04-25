@@ -36,6 +36,7 @@
 #include "query/BoolTerm.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
+#include "query/JoinRef.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -231,9 +232,21 @@ public:
 };
 
 
+class InnerJoinCBH : public BaseCBH {
+public:
+    virtual void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) = 0;
+};
+
+
 class SelectFunctionElementCBH: public BaseCBH {
 public:
     virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) = 0;
+};
+
+
+class DottedIdCBH: public BaseCBH {
+public:
+    virtual void handleDottedId(const string& dot_id) = 0;
 };
 
 
@@ -268,6 +281,11 @@ public:
     virtual void handleConstant(shared_ptr<query::ValueFactor> const & val) = 0;
 };
 
+
+class UidListCBH : public BaseCBH {
+public:
+    virtual void handleUidList(const vector<string>& strings) = 0;
+};
 
 class ExpressionsCBH : public BaseCBH {
 public:
@@ -626,33 +644,53 @@ private:
 
 class TableSourceBaseAdapter :
         public AdapterT<TableSourceBaseCBH>,
-        public AtomTableItemCBH {
+        public AtomTableItemCBH,
+        public InnerJoinCBH {
 public:
-    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    TableSourceBaseAdapter(shared_ptr<TableSourceBaseCBH>& parent,
+            QSMySqlParser::TableSourceBaseContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
         _tableRef = tableRef;
     }
 
+    void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) override {
+        _joinRef = joinRef;
+    }
+
     void onExit() override {
+        if (_joinRef != nullptr) {
+            _tableRef->addJoin(_joinRef);
+        }
         lockedParent()->handleTableSource(_tableRef);
     }
 
 private:
+    QSMySqlParser::TableSourceBaseContext* _ctx;
     shared_ptr<query::TableRef> _tableRef;
+    shared_ptr<query::JoinRef> _joinRef;
 };
 
 
 class AtomTableItemAdapter :
         public AdapterT<AtomTableItemCBH>,
-        public TableNameCBH {
+        public TableNameCBH,
+        public UidCBH {
 public:
-    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    AtomTableItemAdapter(shared_ptr<AtomTableItemCBH>& parent, QSMySqlParser::AtomTableItemContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleTableName(const string& string) override {
         _table = string;
+    }
+
+    void handleUidString(const string& string) override {
+        _alias = string;
     }
 
     void onExit() override {
@@ -661,6 +699,7 @@ public:
     }
 
 protected:
+    QSMySqlParser::AtomTableItemContext* _ctx;
     string _db;
     string _table;
     string _alias;
@@ -701,17 +740,40 @@ public:
 
 class FullColumnNameAdapter :
         public AdapterT<FullColumnNameCBH>,
-        public UidCBH {
+        public UidCBH,
+        public DottedIdCBH {
 public:
     FullColumnNameAdapter(shared_ptr<FullColumnNameCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleUidString(const string& string) override {
-        auto valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", string);
+        _strings.push_back(string);
+    }
+
+    void handleDottedId(const string& dot_id) override {
+        _strings.push_back(dot_id);
+    }
+
+    void onExit() override {
+        std::shared_ptr<query::ValueFactor> valueFactor;
+        switch(_strings.size()) {
+        case 1:
+            valueFactor = ValueFactorFactory::newColumnColumnFactor("", "", _strings[0]);
+            break;
+        case 2:
+            valueFactor = ValueFactorFactory::newColumnColumnFactor("", _strings[0], _strings[1]);
+            break;
+        default:
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
+        }
         lockedParent()->handleFullColumnName(valueFactor);
     }
 
-    void onExit() override {}
+private:
+    vector<string> _strings;
+    antlr4::ParserRuleContext* _ctx;
 };
 
 
@@ -980,6 +1042,49 @@ private:
 };
 
 
+class InnerJoinAdapter :
+        public AdapterT<InnerJoinCBH>,
+        public AtomTableItemCBH,
+        public UidListCBH {
+public:
+    InnerJoinAdapter(shared_ptr<InnerJoinCBH>& parent,
+            QSMySqlParser::InnerJoinContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {
+        ASSERT_EXECUTION_CONDITION(nullptr == _ctx->INNER() && nullptr == _ctx->CROSS(),
+                "INNER and CROSS join are not currently supported by the parser.", _ctx);
+    }
+
+    void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
+        _tableRef = tableRef;
+    }
+
+    void handleUidList(const vector<string>& strings) override {
+        ASSERT_EXECUTION_CONDITION(strings.size() == 1,
+            "Current intermediate representation can only handle 1 `using` string.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _using, "_using should be set exactly once.", _ctx);
+        _using = make_shared<query::ColumnRef>("", "", strings[0]);
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_using != nullptr, "`using` was not set.", _ctx);
+
+
+        auto joinSpec = make_shared<query::JoinSpec>(_using);
+        // todo where does type get defined?
+        auto joinRef = make_shared<query::JoinRef>(_tableRef, query::JoinRef::DEFAULT, false, joinSpec);
+        lockedParent()->handleInnerJoin(joinRef);
+    }
+
+private:
+    QSMySqlParser::InnerJoinContext* _ctx;
+    shared_ptr<query::ColumnRef> _using;
+    shared_ptr<query::TableRef> _tableRef;
+};
+
+
 // handles `functionCall (AS? uid)?` e.g. "COUNT AS object_count"
 class SelectFunctionElementAdapter :
         public AdapterT<SelectFunctionElementCBH>,
@@ -1031,6 +1136,32 @@ private:
     string _parameter; // todo will probably end up being a vector of string
     string _asName;
     QSMySqlParser::SelectFunctionElementContext* _ctx;
+};
+
+
+class DottedIdAdapter :
+        public AdapterT<DottedIdCBH> {
+public:
+    DottedIdAdapter(shared_ptr<DottedIdCBH>& parent, QSMySqlParser::DottedIdContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void onExit() override {
+        // currently the on kind of callback we receive here seems to be the `: DOT_ID` form, which is defined
+        // as `'.' ID_LITERAL;`. This means that we have to extract the value from the DOT_ID; we will not be
+        //called by a child with the string portion, the ID_LITERAL.
+        // I suppose at some point the antlr4 evaulation will try to use the `'.' uid` form, at which point
+        // this will have to become a UidCBH. At that point some checking shoudl be applied; we would not
+        // expect both forms to be used in one instantiation of this adapter. In the meantime, we only attempt
+        // to extract the ID_LITERAL and call our parent with that.
+        string txt = _ctx->getText();
+        ASSERT_EXECUTION_CONDITION(txt.find('.') == 0, "DottedId text is expected to start with a dot", _ctx);
+        txt.erase(0, 1);
+        lockedParent()->handleDottedId(txt);
+    }
+
+private:
+    QSMySqlParser::DottedIdContext* _ctx;
 };
 
 
@@ -1105,6 +1236,29 @@ public:
 
 private:
     QSMySqlParser::ConstantContext* _ctx;
+};
+
+
+class UidListAdapter :
+        public AdapterT<UidListCBH>,
+        public UidCBH {
+public:
+    UidListAdapter(shared_ptr<UidListCBH>& parent, QSMySqlParser::UidListContext* ctx)
+    : AdapterT(parent), _ctx(ctx) {}
+
+    void handleUidString(const string& string) override {
+        _strings.push_back(string);
+    }
+
+    void onExit() override {
+        if (false == _strings.empty()) {
+            lockedParent()->handleUidList(_strings);
+        }
+    }
+
+private:
+    QSMySqlParser::UidListContext* _ctx;
+    vector<string> _strings;
 };
 
 
@@ -1902,7 +2056,7 @@ UNHANDLED(SubqueryTableItem)
 UNHANDLED(TableSourcesItem)
 UNHANDLED(IndexHint)
 UNHANDLED(IndexHintType)
-UNHANDLED(InnerJoin)
+ENTER_EXIT_PARENT(InnerJoin)
 UNHANDLED(StraightJoin)
 UNHANDLED(OuterJoin)
 UNHANDLED(NaturalJoin)
@@ -2107,7 +2261,7 @@ UNHANDLED(Xid)
 UNHANDLED(XuidStringId)
 UNHANDLED(AuthPlugin)
 IGNORED(SimpleId)
-UNHANDLED(DottedId)
+ENTER_EXIT_PARENT(DottedId)
 UNHANDLED(FileSizeLiteral)
 UNHANDLED(BooleanLiteral)
 UNHANDLED(HexadecimalLiteral)
@@ -2122,7 +2276,7 @@ UNHANDLED(ConvertedDataType)
 UNHANDLED(LengthOneDimension)
 UNHANDLED(LengthTwoDimension)
 UNHANDLED(LengthTwoOptionalDimension)
-UNHANDLED(UidList)
+ENTER_EXIT_PARENT(UidList)
 UNHANDLED(Tables)
 UNHANDLED(IndexColumnNames)
 ENTER_EXIT_PARENT(Expressions)

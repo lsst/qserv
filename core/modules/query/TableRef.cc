@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "alias:" << ref._alias;
     os << ", db:" << ref._db;
     os << ", table:" << ref._table;
-    os << "JoinRefs:" << util::printable(ref._joinRefs);
+    os << ", joinRefs:" << util::printable(ref._joinRefs);
     os << ")";
     return os;
 }
