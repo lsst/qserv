@@ -62,6 +62,7 @@ typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 class SelectListFactory {
 public:
     static void addValueExpr(std::shared_ptr<query::SelectList> selectList, ValueExprPtr valueExpr);
+    static void addStarFactor(std::shared_ptr<query::SelectList> selectList);
 
     std::shared_ptr<query::SelectList> getProduct();
     void import(antlr::RefAST selectRoot);
