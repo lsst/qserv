@@ -47,8 +47,8 @@ inline bool isInconsistent(JoinSpec const& s) {
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     os << "JoinSpec(";
-    os << js._usingColumn;
-    os << js._onTerm;
+    os << "usingColumn:" << js._usingColumn;
+    os << ", onTerm:" << js._onTerm;
     os << ")";
     return os;
 }

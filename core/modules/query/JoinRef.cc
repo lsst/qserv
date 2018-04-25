@@ -84,7 +84,7 @@ std::ostream& operator<<(std::ostream& os, JoinRef const& js) {
     case JoinRef::UNION: os << "UNION"; break;
     }
     os << ", isNatural:" << js._isNatural;
-    os << js._spec;
+    os << ", joinSpec:" << js._spec;
     os << ")";
     return os;
 }
