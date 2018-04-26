@@ -370,7 +370,7 @@ BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     return BoolFactorTerm::Ptr(p);
 }
 void PassTerm::dbgPrint(std::ostream& os) const {
-    os << "PassTerm(terms:" << _text << ")";
+    os << "PassTerm(text:'" << _text << "')";
 }
 bool PassTerm::operator==(const BoolFactorTerm& rhs) const {
     auto rhsPassTerm = dynamic_cast<PassTerm const *>(&rhs);

@@ -139,11 +139,21 @@ protected:
 };
 
 
+class BoolFactor;
+
 
 class LogicalTerm : public BoolTerm {
 public:
-    void addBoolTerm(BoolTerm::Ptr& boolTerm) {
+    void addBoolTerm(BoolTerm::Ptr boolTerm) {
         _terms.push_back(boolTerm);
+    }
+
+    void setBoolTerms(const BoolTerm::PtrVector& terms) {
+        _terms = terms;
+    }
+
+    void setBoolTerms(const std::vector<std::shared_ptr<BoolFactor>>& terms) {
+        std::copy(terms.begin(), terms.end(), std::back_inserter(_terms));
     }
 
     BoolTerm::PtrVector _terms;
@@ -302,6 +312,9 @@ class PassTerm : public BoolFactorTerm {
 public: // text
     typedef std::shared_ptr<PassTerm> Ptr;
 
+    PassTerm() {}
+    PassTerm(const std::string& text) : _text(text) {}
+
     virtual BoolFactorTerm::Ptr clone() const { return copySyntax(); }
     virtual BoolFactorTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -339,6 +352,9 @@ protected:
 class BoolTermFactor : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<BoolTermFactor> Ptr;
+
+    BoolTermFactor() {}
+    BoolTermFactor(std::shared_ptr<BoolTerm> term) : _term(term) {}
 
     virtual BoolFactorTerm::Ptr clone() const;
     virtual BoolFactorTerm::Ptr copySyntax() const;
