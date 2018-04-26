@@ -60,8 +60,12 @@ public:
 
     OrderByTerm() : _order(DEFAULT) {}
     OrderByTerm(std::shared_ptr<ValueExpr> val,
-                Order _order,
-                std::string _collate);
+                Order order,
+                std::string collate)
+    : _expr(val)
+    , _order(order)
+    , _collate(collate)
+    {}
 
     ~OrderByTerm() {}
 
@@ -97,6 +101,7 @@ public:
     std::shared_ptr<OrderByClause> clone() const;
     std::shared_ptr<OrderByClause> copySyntax();
     std::shared_ptr<OrderByTermVector> getTerms() { return _terms; }
+    void addTerm(const OrderByTerm& term) { _terms->push_back(term); }
 
     void findValueExprs(ValueExprPtrVector& list);
 

@@ -37,6 +37,7 @@
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/JoinRef.h"
+#include "query/OrderByClause.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -148,7 +149,8 @@ class QuerySpecificationCBH : public BaseCBH {
 public:
     virtual void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
                                           shared_ptr<query::FromList>& fromList,
-                                          shared_ptr<query::WhereClause>& whereClause) = 0;
+                                          shared_ptr<query::WhereClause>& whereClause,
+                                          shared_ptr<query::OrderByClause>& orderByClause) = 0;
 };
 
 
@@ -232,6 +234,17 @@ public:
 };
 
 
+class OrderByClauseCBH : public BaseCBH {
+public:
+    virtual void handleOrderByClause(const shared_ptr<query::OrderByClause>& orderByClause) = 0;
+};
+
+
+class OrderByExpressionCBH : public BaseCBH {
+public:
+    virtual void handleOrderByExpression(const query::OrderByTerm& orderByTerm) = 0;
+};
+
 class InnerJoinCBH : public BaseCBH {
 public:
     virtual void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) = 0;
@@ -272,7 +285,7 @@ public:
 class PredicateExpressionCBH : public BaseCBH {
 public:
     virtual void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) = 0;
-    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr>& ValueExpr) = 0;
+    virtual void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) = 0;
 };
 
 
@@ -479,10 +492,12 @@ public:
 
     void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
                                   shared_ptr<query::FromList>& fromList,
-                                  shared_ptr<query::WhereClause>& whereClause) override {
+                                  shared_ptr<query::WhereClause>& whereClause,
+                                  shared_ptr<query::OrderByClause>& orderByClause) override {
         _selectList = selectList;
         _fromList = fromList;
         _whereClause = whereClause;
+        _orderByClause = orderByClause;
     }
 
     void onExit() override {
@@ -491,6 +506,7 @@ public:
         selectStatement->setFromList(_fromList);
         selectStatement->setWhereClause(_whereClause);
         selectStatement->setLimit(_limit);
+        selectStatement->setOrderBy(_orderByClause);
         lockedParent()->handleSelectStatement(selectStatement);
     }
 
@@ -498,6 +514,7 @@ private:
     shared_ptr<query::SelectList> _selectList;
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::WhereClause> _whereClause;
+    shared_ptr<query::OrderByClause> _orderByClause;
     int _limit{lsst::qserv::NOTSET};
 };
 
@@ -505,7 +522,8 @@ private:
 class QuerySpecificationAdapter :
         public AdapterT<QuerySpecificationCBH>,
         public SelectElementsCBH,
-        public FromClauseCBH {
+        public FromClauseCBH,
+        public OrderByClauseCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
@@ -520,14 +538,19 @@ public:
         _whereClause = whereClause;
     }
 
+    void handleOrderByClause(const shared_ptr<query::OrderByClause>& orderByClause) {
+        _orderByClause = orderByClause;
+    }
+
     void onExit() override {
-        lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause);
+        lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause);
     }
 
 private:
     shared_ptr<query::WhereClause> _whereClause;
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::SelectList> _selectList;
+    shared_ptr<query::OrderByClause> _orderByClause;
 };
 
 
@@ -584,7 +607,7 @@ public:
         _rootTerm->addBoolTerm(andBoolTerm);
     }
 
-    void handlePredicateExpression(shared_ptr<query::ValueExpr>& ValueExpr) override {
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
         ASSERT_EXECUTION_CONDITION(false, "Unhandled valueExpr predicateExpression.", _ctx);
     }
 
@@ -1039,6 +1062,63 @@ public:
 
 private:
     QSMySqlParser::ComparisonOperatorContext* _ctx;
+};
+
+
+class OrderByClauseAdapter :
+        public AdapterT<OrderByClauseCBH>,
+        public OrderByExpressionCBH {
+public:
+    OrderByClauseAdapter(shared_ptr<OrderByClauseCBH>& parent,
+            QSMySqlParser::OrderByClauseContext* ctx)
+    : AdapterT(parent)
+    ,  _ctx(ctx)
+    {}
+
+    void handleOrderByExpression(const query::OrderByTerm& orderByTerm) {
+        _orderByClause->addTerm(orderByTerm);
+    }
+
+    void onExit() override {
+        lockedParent()->handleOrderByClause(_orderByClause);
+    }
+
+private:
+    QSMySqlParser::OrderByClauseContext* _ctx;
+    shared_ptr<query::OrderByClause> _orderByClause { make_shared<query::OrderByClause>() };
+};
+
+
+class OrderByExpressionAdapter :
+        public AdapterT<OrderByExpressionCBH>,
+        public PredicateExpressionCBH {
+public:
+    OrderByExpressionAdapter(shared_ptr<OrderByExpressionCBH>& parent,
+            QSMySqlParser::OrderByExpressionContext* ctx)
+    : AdapterT(parent)
+    ,  _ctx(ctx)
+    {
+        ASSERT_EXECUTION_CONDITION(_ctx->ASC() == nullptr && _ctx->DESC() == nullptr,
+                "Can't handle ASC or DESC specificer yet.", _ctx);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+        ASSERT_EXECUTION_CONDITION(false, "unexpected BoolFactor callback", _ctx);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
+        _valueExpr = valueExpr;
+    }
+
+    void onExit() override {
+        query::OrderByTerm orderByTerm(_valueExpr, query::OrderByTerm::DEFAULT, "");
+        lockedParent()->handleOrderByExpression(orderByTerm);
+    }
+
+private:
+    QSMySqlParser::OrderByExpressionContext* _ctx;
+    shared_ptr<query::ValueExpr> _valueExpr;
 };
 
 
@@ -2049,8 +2129,8 @@ UNHANDLED(HandlerReadStatement)
 UNHANDLED(HandlerCloseStatement)
 UNHANDLED(SingleUpdateStatement)
 UNHANDLED(MultipleUpdateStatement)
-UNHANDLED(OrderByClause)
-UNHANDLED(OrderByExpression)
+ENTER_EXIT_PARENT(OrderByClause)
+ENTER_EXIT_PARENT(OrderByExpression)
 UNHANDLED(TableSourceNested)
 UNHANDLED(SubqueryTableItem)
 UNHANDLED(TableSourcesItem)
