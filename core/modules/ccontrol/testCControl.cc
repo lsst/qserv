@@ -56,16 +56,16 @@ static const std::vector< std::string > QUERIES = {
     "SELECT offset, mjdRef, drift FROM LeapSeconds where offset = 10", // case01/queries/0005_nonReplicatedTable.sql
     //"SELECT v.objectId, v.ra, v.decl FROM   Object v, Object o WHERE  o.objectId = :objectId AND spDist(v.ra, v.decl, o.ra, o.decl, :dist) AND v.variability > 0.8 AND o.extendedParameter > 0.8", // case01/queries/0006_transientVarObjNearGalaxy.sql.FIXME
     "SELECT sourceId, objectId FROM Source WHERE objectId = 386942193651348 ORDER BY sourceId;", // case01/queries/0007.1_fetchSourceByObjId.sql
-//    //"SELECT sourceId, objectId, blobField FROM Source WHERE objectId = 386942193651348 ORDER BY sourceId;", // case01/queries/0007.2_fetchSourceByObjIdSelectBLOB.sql.FIXME
-//    "SELECT sourceId, objectId FROM Source WHERE objectId = 386942193651348 ORDER BY sourceId;", // case01/queries/0007_fetchSourceByObjId.sql
-//    "SELECT sourceId, objectId FROM Source WHERE objectId IN (1234) ORDER BY sourceId;", // case01/queries/0008.1_fetchSourceByObjIdIN_noRes.sql
-//    "SELECT sourceId, objectId FROM Source WHERE objectId IN (386942193651348) ORDER BY sourceId;", // case01/queries/0008.2_fetchSourceByObjIdIN_withRes.sql
-//    "select COUNT(*) AS N FROM Source WHERE objectId IN (386950783579546, 386942193651348)", // case01/queries/0008.3_fetchSourceByObjIdIN.sql
-//    "select COUNT(*) AS N FROM Source WHERE objectId BETWEEN 386942193651348 AND 386950783579546", // case01/queries/0008.4_fetchSourceByObjIdBETWEEN.sql
-//    "SELECT sourceId, objectId FROM Source WHERE objectId IN (386942193651348) ORDER BY sourceId;", // case01/queries/0008_fetchSourceByObjIdIN_withRes.sql
-//    //"SELECT offset, mjdRef, drift FROM LeapSeconds WHERE whenUtc = ( SELECT MAX(whenUtc) FROM LeapSeconds WHERE whenUtc <=  NAME_CONST('nsecs_',39900600000000000000000000) )", // case01/queries/0010_leapSec.sql.FIXME
-//    //"SELECT sdqa_metricId FROM   sdqa_Metric WHERE  metricName = NAME_CONST('metricName_',_latin1'ip.isr.numSaturatedPixels' COLLATE 'latin1_swedish_ci')", // case01/queries/0011_sdqaMetric.sql.FIXME
-//    "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%') ORDER BY filterId", // case01/queries/0012.1_raftAndCcd.sql
+    //"SELECT sourceId, objectId, blobField FROM Source WHERE objectId = 386942193651348 ORDER BY sourceId;", // case01/queries/0007.2_fetchSourceByObjIdSelectBLOB.sql.FIXME
+    "SELECT sourceId, objectId FROM Source WHERE objectId = 386942193651348 ORDER BY sourceId;", // case01/queries/0007_fetchSourceByObjId.sql
+    "SELECT sourceId, objectId FROM Source WHERE objectId IN (1234) ORDER BY sourceId;", // case01/queries/0008.1_fetchSourceByObjIdIN_noRes.sql
+    "SELECT sourceId, objectId FROM Source WHERE objectId IN (386942193651348) ORDER BY sourceId;", // case01/queries/0008.2_fetchSourceByObjIdIN_withRes.sql
+    "select COUNT(*) AS N FROM Source WHERE objectId IN (386950783579546, 386942193651348)", // case01/queries/0008.3_fetchSourceByObjIdIN.sql
+    "select COUNT(*) AS N FROM Source WHERE objectId BETWEEN 386942193651348 AND 386950783579546", // case01/queries/0008.4_fetchSourceByObjIdBETWEEN.sql
+    "SELECT sourceId, objectId FROM Source WHERE objectId IN (386942193651348) ORDER BY sourceId;", // case01/queries/0008_fetchSourceByObjIdIN_withRes.sql
+    //"SELECT offset, mjdRef, drift FROM LeapSeconds WHERE whenUtc = ( SELECT MAX(whenUtc) FROM LeapSeconds WHERE whenUtc <=  NAME_CONST('nsecs_',39900600000000000000000000) )", // case01/queries/0010_leapSec.sql.FIXME
+    //"SELECT sdqa_metricId FROM   sdqa_Metric WHERE  metricName = NAME_CONST('metricName_',_latin1'ip.isr.numSaturatedPixels' COLLATE 'latin1_swedish_ci')", // case01/queries/0011_sdqaMetric.sql.FIXME
+    "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%') ORDER BY filterId", // case01/queries/0012.1_raftAndCcd.sql
 //    "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%') ORDER BY filterId LIMIT 5", // case01/queries/0012.2_raftAndCcd.sql
 //    "SELECT sce.filterId, sce.filterName FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%')", // case01/queries/0012_raftAndCcd.sql
 //    "SELECT COUNT(*) as OBJ_COUNT FROM   Object WHERE qserv_areaspec_box(0.1, -6, 4, 6) AND scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) BETWEEN 0.1 AND 0.9 AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) BETWEEN 0.1 AND 1.0", // case01/queries/1002_coneMagColor.sql
