@@ -218,6 +218,9 @@ class ExpressionAtomPredicateCBH : public BaseCBH {
 public:
     virtual void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* childCtx) = 0;
+
+    virtual void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 
@@ -354,9 +357,19 @@ public:
     virtual void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) = 0;
 };
 
+class LikePredicateCBH : public BaseCBH {
+public:
+    virtual void handleLikePredicate(const shared_ptr<query::LikePredicate>& likePredicate) = 0;
+};
 
 class UnaryExpressionAtomCBH : public BaseCBH {
 public:
+};
+
+
+class NestedExpressionAtomCBH : public BaseCBH {
+public:
+    virtual void handleNestedExpressionAtom(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm) = 0;
 };
 
 
@@ -838,6 +851,7 @@ class ExpressionAtomPredicateAdapter :
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
         public UnaryExpressionAtomCBH,
+        public NestedExpressionAtomCBH,
         public MathExpressionAtomCBH {
 public:
     ExpressionAtomPredicateAdapter(shared_ptr<ExpressionAtomPredicateCBH>& parent,
@@ -865,6 +879,10 @@ public:
         auto valueExpr = make_shared<query::ValueExpr>();
         ValueExprFactory::addValueFactor(valueExpr, valueFactor);
         lockedParent()->handleExpressionAtomPredicate(valueExpr, _ctx);
+    }
+
+    void handleNestedExpressionAtom(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm) override {
+        lockedParent()->handleExpressionAtomPredicate(boolFactorTerm, _ctx);
     }
 
     void onEnter() override {
@@ -928,7 +946,8 @@ class PredicateExpressionAdapter :
         public BinaryComparasionPredicateCBH,
         public BetweenPredicateCBH,
         public InPredicateCBH,
-        public ExpressionAtomPredicateCBH {
+        public ExpressionAtomPredicateCBH,
+        public LikePredicateCBH {
 public:
     PredicateExpressionAdapter(shared_ptr<PredicateExpressionCBH>& parent,
             QSMySqlParser::PredicateExpressionContext* ctx)
@@ -951,9 +970,20 @@ public:
     }
 
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
-            antlr4::ParserRuleContext* childCtx) {
+            antlr4::ParserRuleContext* childCtx) override {
         _prepValueExpr();
         _valueExpr = valueExpr;
+    }
+
+    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        _prepBoolFactor();
+        _boolFactor->addBoolFactorTerm(boolFactorTerm);
+    }
+
+    void handleLikePredicate(const shared_ptr<query::LikePredicate>& likePredicate) override {
+        _prepBoolFactor();
+        _boolFactor->addBoolFactorTerm(likePredicate);
     }
 
     void onExit() {
@@ -1015,6 +1045,11 @@ public:
         } else {
             ASSERT_EXECUTION_CONDITION(false, "left and right values must be set only once.", _ctx)
         }
+    }
+
+    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
     }
 
     void onExit() {
@@ -1599,12 +1634,17 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
-             antlr4::ParserRuleContext* childCtx) {
-         ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
-         ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
-         _predicate = valueExpr;
-     }
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(_ctx->predicate() == childCtx, "callback from unexpected element.", _ctx);
+        ASSERT_EXECUTION_CONDITION(nullptr == _predicate, "Predicate should be set exactly once.", _ctx);
+        _predicate = valueExpr;
+    }
+
+    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
+    }
 
     void handleExpressions(vector<shared_ptr<query::ValueExpr>> const& valueExprs) override {
         ASSERT_EXECUTION_CONDITION(_expressions.empty(), "expressions should be set exactly once.", _ctx);
@@ -1643,7 +1683,6 @@ public:
     : AdapterT(parent)
     , _ctx(ctx) {}
 
-    // ExpressionAtomPredicateCBH
     void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
             antlr4::ParserRuleContext* childCtx) override {
         if (childCtx == _ctx->val) {
@@ -1663,6 +1702,11 @@ public:
         }
     }
 
+    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(false, "unhandled ExpressionAtomPredicate BoolFactor callback.", _ctx);
+    }
+
     void onExit() {
         ASSERT_EXECUTION_CONDITION(nullptr != _val && nullptr != _min && nullptr != _max,
                 "val, min, and max must all be set.", _ctx);
@@ -1675,6 +1719,49 @@ private:
     shared_ptr<query::ValueExpr> _val;
     shared_ptr<query::ValueExpr> _min;
     shared_ptr<query::ValueExpr> _max;
+};
+
+
+class LikePredicateAdapter :
+        public AdapterT<LikePredicateCBH>,
+        public ExpressionAtomPredicateCBH {
+public:
+    LikePredicateAdapter(shared_ptr<LikePredicateCBH> parent,
+                               QSMySqlParser::LikePredicateContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
+
+    void handleExpressionAtomPredicate(shared_ptr<query::ValueExpr>& valueExpr,
+            antlr4::ParserRuleContext* childCtx) override {
+        if (nullptr == _valueExprA) {
+            _valueExprA = valueExpr;
+        } else if (nullptr == _valueExprB) {
+            _valueExprB = valueExpr;
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "Expected to be called back exactly twice.", _ctx);
+        }
+    }
+
+    void handleExpressionAtomPredicate(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm,
+            antlr4::ParserRuleContext* childCtx) override {
+        ASSERT_EXECUTION_CONDITION(false,
+                "Unhandled BoolFactorTerm callback.", _ctx);
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_valueExprA != nullptr && _valueExprB != nullptr,
+                "LikePredicateAdapter was not fully populated.", _ctx);
+        auto likePredicate = make_shared<query::LikePredicate>();
+        likePredicate->value = _valueExprA;
+        likePredicate->charValue = _valueExprB;
+        lockedParent()->handleLikePredicate(likePredicate);
+    }
+
+private:
+    QSMySqlParser::LikePredicateContext* _ctx;
+    shared_ptr<query::ValueExpr> _valueExprA;
+    shared_ptr<query::ValueExpr> _valueExprB;
 };
 
 
@@ -1694,6 +1781,44 @@ public:
 
 private:
     QSMySqlParser::UnaryExpressionAtomContext* _ctx;
+};
+
+
+class NestedExpressionAtomAdapter :
+        public AdapterT<NestedExpressionAtomCBH>,
+        public UnaryOperatorCBH,
+        public PredicateExpressionCBH {
+public:
+    NestedExpressionAtomAdapter(shared_ptr<NestedExpressionAtomCBH> parent,
+                                QSMySqlParser::NestedExpressionAtomContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
+
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+        _boolFactors.push_back(boolFactor);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+        ASSERT_EXECUTION_CONDITION(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_boolFactors.empty() == false,
+                "NestedExpressionAtomAdapter not populated.", _ctx)
+        auto andTerm = make_shared<query::AndTerm>();
+        andTerm->setBoolTerms(_boolFactors);
+        auto orTerm = make_shared<query::OrTerm>();
+        orTerm->addBoolTerm(andTerm);
+        lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>("("));
+        lockedParent()->handleNestedExpressionAtom(make_shared<query::BoolTermFactor>(orTerm));
+        lockedParent()->handleNestedExpressionAtom(make_shared<query::PassTerm>(")"));
+    }
+
+private:
+
+    QSMySqlParser::NestedExpressionAtomContext* _ctx;
+    vector<shared_ptr<query::BoolFactor>> _boolFactors;
 };
 
 
@@ -2402,13 +2527,13 @@ ENTER_EXIT_PARENT(InPredicate)
 UNHANDLED(SubqueryComparasionPredicate)
 ENTER_EXIT_PARENT(BetweenPredicate)
 UNHANDLED(IsNullPredicate)
-UNHANDLED(LikePredicate)
+ENTER_EXIT_PARENT(LikePredicate)
 UNHANDLED(RegexpPredicate)
 ENTER_EXIT_PARENT(UnaryExpressionAtom)
 UNHANDLED(CollateExpressionAtom)
 UNHANDLED(SubqueryExpessionAtom)
 UNHANDLED(MysqlVariableExpressionAtom)
-UNHANDLED(NestedExpressionAtom)
+ENTER_EXIT_PARENT(NestedExpressionAtom)
 UNHANDLED(NestedRowExpressionAtom)
 ENTER_EXIT_PARENT(MathExpressionAtom)
 UNHANDLED(IntervalExpressionAtom)
