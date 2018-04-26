@@ -199,7 +199,7 @@ USE:                                 'USE';
 USING:                               'USING';
 VALUES:                              'VALUES';
 WHEN:                                'WHEN';
-WHERE:                               'WHERE';
+WHERE:                               'WHERE' | 'where';
 WHILE:                               'WHILE';
 WITH:                                'WITH';
 WRITE:                               'WRITE';
