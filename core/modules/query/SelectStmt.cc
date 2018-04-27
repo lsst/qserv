@@ -194,6 +194,9 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << ", orderBy:" << selectStmt._orderBy;
     os << ", groupBy:" << selectStmt._groupBy;
     os << ", having:" << selectStmt._having;
+    os << ", distinct:" << selectStmt._hasDistinct;
+    os << ", limit:" << selectStmt._limit;
+    os << ", outputMods" << util::printable(selectStmt.OutputMods);
     os << ")";
     return os;
 }

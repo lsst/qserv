@@ -150,7 +150,8 @@ public:
     virtual void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
                                           shared_ptr<query::FromList>& fromList,
                                           shared_ptr<query::WhereClause>& whereClause,
-                                          shared_ptr<query::OrderByClause>& orderByClause) = 0;
+                                          shared_ptr<query::OrderByClause>& orderByClause,
+                                          int limit) = 0;
 };
 
 
@@ -257,6 +258,12 @@ public:
 class SelectFunctionElementCBH: public BaseCBH {
 public:
     virtual void handleSelectFunctionElement(shared_ptr<query::ValueExpr> selectFunction) = 0;
+};
+
+
+class LimitClauseCBH: public BaseCBH {
+public:
+    virtual void handleLimitClause(int limit) = 0;
 };
 
 
@@ -506,11 +513,13 @@ public:
     void handleQuerySpecification(shared_ptr<query::SelectList>& selectList,
                                   shared_ptr<query::FromList>& fromList,
                                   shared_ptr<query::WhereClause>& whereClause,
-                                  shared_ptr<query::OrderByClause>& orderByClause) override {
+                                  shared_ptr<query::OrderByClause>& orderByClause,
+                                  int limit) override {
         _selectList = selectList;
         _fromList = fromList;
         _whereClause = whereClause;
         _orderByClause = orderByClause;
+        _limit = limit;
     }
 
     void onExit() override {
@@ -536,7 +545,8 @@ class QuerySpecificationAdapter :
         public AdapterT<QuerySpecificationCBH>,
         public SelectElementsCBH,
         public FromClauseCBH,
-        public OrderByClauseCBH {
+        public OrderByClauseCBH,
+        public LimitClauseCBH {
 public:
     QuerySpecificationAdapter(shared_ptr<QuerySpecificationCBH>& parent, antlr4::ParserRuleContext* ctx)
     : AdapterT(parent) {}
@@ -555,8 +565,13 @@ public:
         _orderByClause = orderByClause;
     }
 
+    void handleLimitClause(int limit) override {
+        _limit = limit;
+    }
+
     void onExit() override {
-        lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause);
+        lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
+                _limit);
     }
 
 private:
@@ -564,6 +579,7 @@ private:
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::SelectList> _selectList;
     shared_ptr<query::OrderByClause> _orderByClause;
+    int _limit{lsst::qserv::NOTSET};
 };
 
 
@@ -1253,6 +1269,23 @@ private:
     QSMySqlParser::SelectFunctionElementContext* _ctx;
 };
 
+
+class LimitClauseAdapter :
+        public AdapterT<LimitClauseCBH> {
+public:
+    LimitClauseAdapter(shared_ptr<LimitClauseCBH>& parent, QSMySqlParser::LimitClauseContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_ctx->limit != nullptr,
+                "Could not get a decimalLiteral context to read limit.", _ctx);
+        lockedParent()->handleLimitClause(atoi(_ctx->limit->getText().c_str()));
+    }
+
+private:
+    QSMySqlParser::LimitClauseContext* _ctx;
+};
 
 class DottedIdAdapter :
         public AdapterT<DottedIdCBH> {
@@ -2280,7 +2313,7 @@ UNHANDLED(SelectIntoTextFile)
 UNHANDLED(SelectFieldsInto)
 UNHANDLED(SelectLinesInto)
 UNHANDLED(GroupByItem)
-UNHANDLED(LimitClause)
+ENTER_EXIT_PARENT(LimitClause)
 UNHANDLED(StartTransaction)
 UNHANDLED(BeginWork)
 UNHANDLED(CommitWork)
