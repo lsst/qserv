@@ -110,7 +110,7 @@ QservMgtServices::QservMgtServices(ServiceProvider::pointer const& serviceProvid
 
 AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
                                         unsigned int chunk,
-                                        std::string const& databaseFamily,
+                                        std::vector<std::string> const& databases,
                                         std::string const& worker,
                                         AddReplicaQservMgtRequest::callback_type onFinish,
                                         std::string const& jobId,
@@ -132,7 +132,7 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
             _io_service,
             worker,
             chunk,
-            databaseFamily,
+            databases,
             [manager] (QservMgtRequest::pointer const& request) {
                 manager->finish(request->id());
             }
@@ -157,7 +157,7 @@ AddReplicaQservMgtRequest::pointer QservMgtServices::addReplica(
 
 RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
                                         unsigned int chunk,
-                                        std::string const& databaseFamily,
+                                        std::vector<std::string> const& databases,
                                         std::string const& worker,
                                         bool force,
                                         RemoveReplicaQservMgtRequest::callback_type onFinish,
@@ -180,7 +180,7 @@ RemoveReplicaQservMgtRequest::pointer QservMgtServices::removeReplica(
             _io_service,
             worker,
             chunk,
-            databaseFamily,
+            databases,
             force,
             [manager] (QservMgtRequest::pointer const& request) {
                 manager->finish(request->id());

@@ -308,16 +308,23 @@ void CreateReplicaJob::onRequestFinish(ReplicationRequest::pointer const& reques
         if (numFinished == numLaunched) {
             if (numSuccess == numLaunched) {
 
-                // Notify Qserv about the change in a disposposition of replicas
+                // Notify Qserv about the change in a disposposition of replicas.
+                //
+                // ATTENTION: only for ACTUALLY participating databases
                 //
                 // NOTE: The current implementation will not be affected by a result
                 //       of the operation. Neither any upstream notifications will be
                 //       sent to a requestor of this job.
 
+                std::vector<std::string> databases;
+                for (auto&& databaseEntry: _replicaData.chunks[chunk()]) {
+                    databases.push_back(databaseEntry.first);
+                }
+
                 ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
                 if (serviceProvider->config()->xrootdAutoNotify()) {
                     qservAddReplica(chunk(),
-                                    databaseFamily(),
+                                    databases,
                                     destinationWorker());
                 }
                 finish(ExtendedState::SUCCESS);

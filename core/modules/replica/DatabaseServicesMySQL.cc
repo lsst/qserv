@@ -284,6 +284,16 @@ std::string toString(QservReplicaCollection const& replicas) {
     return ss.str();
 }
 
+std::string vector2str(std::vector<std::string> const& names) {
+    std::ostringstream ss;
+    ss << "[";
+    for (auto&& name: names) {
+        ss << " " << name;
+    }
+    ss << " ]";
+    return ss.str();
+}
+
 } /// namespace
 
 
@@ -586,14 +596,14 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest::pointer const& request) {
                 _conn->executeInsertQuery(
                     "request_qserv_add_replica",
                     ptr->id(),
-                    ptr->databaseFamily(),
+                    ::vector2str(ptr->databases()),
                     ptr->chunk());
             } else if (request->type() == "QSERV:REMOVE_REPLICA") {
                 auto ptr = safeAssign<RemoveReplicaQservMgtRequest>(request);
                 _conn->executeInsertQuery(
                     "request_qserv_remove_replica",
                     ptr->id(),
-                    ptr->databaseFamily(),
+                    ::vector2str(ptr->databases()),
                     ptr->chunk(),
                     ptr->force());
             } else if (request->type() == "QSERV:SET_REPLICAS") {

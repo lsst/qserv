@@ -171,9 +171,16 @@ void DeleteReplicaJob::startImpl() {
 
     // Notify Qserv about the change in a disposposition of replicas
     // if the notification is required vefore actually deleting the replica.
+    //
+    // ATTENTION: only for ACTUALLY participating databases
 
     ServiceProvider::pointer const serviceProvider = _controller->serviceProvider();
     if (serviceProvider->config()->xrootdAutoNotify()) {
+
+        std::vector<std::string> databases;
+        for (auto&& replica: _replicas) {
+            databases.push_back(replica.database());
+        }
 
         auto self = shared_from_base<DeleteReplicaJob>();
 
@@ -184,7 +191,7 @@ void DeleteReplicaJob::startImpl() {
                                     // that service's context.
         qservRemoveReplica(
             chunk(),
-            databaseFamily(),
+            databases,
             worker(),
             force,
             [self] (RemoveReplicaQservMgtRequest::pointer const& request) {

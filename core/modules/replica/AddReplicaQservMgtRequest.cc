@@ -54,14 +54,14 @@ AddReplicaQservMgtRequest::pointer AddReplicaQservMgtRequest::create(
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
-                                        std::string const& databaseFamily,
+                                        std::vector<std::string> const& databases,
                                         AddReplicaQservMgtRequest::callback_type onFinish) {
     return AddReplicaQservMgtRequest::pointer(
         new AddReplicaQservMgtRequest(serviceProvider,
                                       io_service,
                                       worker,
                                       chunk,
-                                      databaseFamily,
+                                      databases,
                                       onFinish));
 }
 
@@ -70,14 +70,14 @@ AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
-                                std::string const& databaseFamily,
+                                std::vector<std::string> const& databases,
                                 AddReplicaQservMgtRequest::callback_type onFinish)
     :   QservMgtRequest(serviceProvider,
                         io_service,
                         "QSERV:ADD_REPLICA",
                         worker),
         _chunk(chunk),
-        _databaseFamily(databaseFamily),
+        _databases(databases),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
 }
@@ -89,7 +89,7 @@ void AddReplicaQservMgtRequest::startImpl() {
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
         _chunk,
-        _serviceProvider->config()->databases(_databaseFamily),
+        _databases,
         [request] (wpublish::ChunkGroupQservRequest::Status status,
                    std::string const& error) {
 

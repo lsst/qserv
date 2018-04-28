@@ -30,6 +30,7 @@
 // System headers
 #include <memory>
 #include <string>
+#include <vector>
 
 // Third party headers
 
@@ -81,21 +82,21 @@ public:
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
-     * @param databaseFamily  - the name of a database family
+     * @param databases       - the names of databases
      * @param onFinish        - callback function to be called upon request completion
      */
     static pointer create(ServiceProvider::pointer const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           unsigned int chunk,
-                          std::string const& databaseFamily,
+                          std::vector<std::string> const& databases,
                           callback_type onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
 
-    /// @return name of a database family
-    std::string const& databaseFamily() const { return _databaseFamily; }
+    /// @return names of databases
+    std::vector<std::string> const& databases() const { return _databases; }
 
 private:
 
@@ -106,14 +107,14 @@ private:
      * @param io_service      - BOOST ASIO service
      * @param worker          - the name of a worker
      * @param chunk           - the chunk number
-     * @param databaseFamily  - the name of a database family
+     * @param databases       - the names of databases
      * @param onFinish        - callback function to be called upon request completion
      */
     AddReplicaQservMgtRequest(ServiceProvider::pointer const& serviceProvider,
                               boost::asio::io_service& io_service,
                               std::string const& worker,
                               unsigned int chunk,
-                              std::string const& databaseFamily,
+                              std::vector<std::string> const& databases,
                               callback_type onFinish);
 
     /**
@@ -142,8 +143,8 @@ private:
     /// The number of a chunk
     unsigned int _chunk;
 
-    /// The name of a database family
-    std::string _databaseFamily;
+    /// The names of databases
+    std::vector<std::string> _databases;
 
     /// The callback function for sending a notification upon request completion
     callback_type _onFinish;

@@ -618,8 +618,8 @@ CREATE TABLE IF NOT EXISTS `request_qserv_add_replica` (
 
   `request_id`  VARCHAR(255) NOT NULL ,
 
-  `database_family` VARCHAR(255) NOT NULL ,
-  `chunk`           INT UNSIGNED NOT NULL ,
+  `databases`   LONGTEXT     NOT NULL ,
+  `chunk`       INT UNSIGNED NOT NULL ,
 
   CONSTRAINT `request_qserv_add_replica_fk_1`
     FOREIGN KEY (`request_id` )
@@ -642,9 +642,9 @@ CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
 
   `request_id`  VARCHAR(255) NOT NULL ,
 
-  `database_family` VARCHAR(255) NOT NULL ,
-  `chunk`           INT UNSIGNED NOT NULL ,
-  `force`           BOOLEAN      NOT NULL ,
+  `databases`   LONGTEXT     NOT NULL ,
+  `chunk`       INT UNSIGNED NOT NULL ,
+  `force`       BOOLEAN      NOT NULL ,
 
   CONSTRAINT `request_qserv_remove_replica_fk_1`
     FOREIGN KEY (`request_id` )
