@@ -24,6 +24,7 @@
 #include "replica/Job.h"
 
 // System headers
+#include <sstream>
 #include <stdexcept>
 #include <utility>      // std::swap
 
@@ -47,6 +48,16 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
+
+std::string vector2str(std::vector<std::string> const& names) {
+    std::ostringstream ss;
+    ss << "[";
+    for (auto&& name: names) {
+        ss << " " << name;
+    }
+    ss << " ]";
+    return ss.str();
+}
 
 } /// namespace
 
@@ -189,32 +200,32 @@ void Job::finish(ExtendedState extendedState) {
 }
 
 void Job::qservAddReplica(unsigned int chunk,
-                          std::string const& databaseFamily,
+                          std::vector<std::string> const& databases,
                           std::string const& worker,
                           AddReplicaQservMgtRequest::callback_type onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on ADD replica:"
-         << ", chunk="          << chunk
-         << ", databaseFamily=" << databaseFamily
-         << "  worker="         << worker);
+         << ", chunk="     << chunk
+         << ", databases=" << ::vector2str(databases)
+         << "  worker="    << worker);
 
     auto self = shared_from_this();
 
     _controller->serviceProvider()->qservMgtServices()->addReplica(
         chunk,
-        databaseFamily,
+        databases,
         worker,
         [self,onFinish] (AddReplicaQservMgtRequest::pointer const& request) {
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on ADD replica:"
-                 << "  chunk="          << request->chunk()
-                 << ", databaseFamily=" << request->databaseFamily()
-                 << ", worker="         << request->worker()
-                 << ", state="          << request->state2string(request->state())
-                 << ", extendedState="  << request->state2string(request->extendedState())
-                 << ". serverError="    << request->serverError());
+                 << "  chunk="         << request->chunk()
+                 << ", databases="     << ::vector2str(request->databases())
+                 << ", worker="        << request->worker()
+                 << ", state="         << request->state2string(request->state())
+                 << ", extendedState=" << request->state2string(request->extendedState())
+                 << ". serverError="   << request->serverError());
 
             // Pass through the result to a caller
             if (onFinish) {
@@ -226,36 +237,36 @@ void Job::qservAddReplica(unsigned int chunk,
 }
 
 void Job::qservRemoveReplica(unsigned int chunk,
-                             std::string const& databaseFamily,
+                             std::vector<std::string> const& databases,
                              std::string const& worker,
                              bool force,
                              RemoveReplicaQservMgtRequest::callback_type onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on REMOVE replica:"
-         << "  chunk="          << chunk
-         << ", databaseFamily=" << databaseFamily
-         << ", worker="         << worker
-         << ", force="          << (force ? "true" : "false"));
+         << "  chunk="     << chunk
+         << ", databases=" << ::vector2str(databases)
+         << ", worker="    << worker
+         << ", force="     << (force ? "true" : "false"));
 
     auto self = shared_from_this();
 
     _controller->serviceProvider()->qservMgtServices()->removeReplica(
         chunk,
-        databaseFamily,
+        databases,
         worker,
         force,
         [self,onFinish] (RemoveReplicaQservMgtRequest::pointer const& request) {
 
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on REMOVE replica:"
-                 << "  chunk="          << request->chunk()
-                 << ", databaseFamily=" << request->databaseFamily()
-                 << ", worker="         << request->worker()
-                 << ", force="          << (request->force() ? "true" : "false")
-                 << ", state="          << request->state2string(request->state())
-                 << ", extendedState="  << request->state2string(request->extendedState())
-                 << ". serverError="    << request->serverError());
+                 << "  chunk="         << request->chunk()
+                 << ", databases="     << ::vector2str(request->databases())
+                 << ", worker="        << request->worker()
+                 << ", force="         << (request->force() ? "true" : "false")
+                 << ", state="         << request->state2string(request->state())
+                 << ", extendedState=" << request->state2string(request->extendedState())
+                 << ". serverError="   << request->serverError());
 
             // Pass through the result to the caller if requested
             if (onFinish) {

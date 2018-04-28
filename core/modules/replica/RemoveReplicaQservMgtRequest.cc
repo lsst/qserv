@@ -54,7 +54,7 @@ RemoveReplicaQservMgtRequest::pointer RemoveReplicaQservMgtRequest::create(
                                         boost::asio::io_service& io_service,
                                         std::string const& worker,
                                         unsigned int chunk,
-                                        std::string const& databaseFamily,
+                                        std::vector<std::string> const& databases,
                                         bool force,
                                         RemoveReplicaQservMgtRequest::callback_type onFinish) {
     return RemoveReplicaQservMgtRequest::pointer(
@@ -62,7 +62,7 @@ RemoveReplicaQservMgtRequest::pointer RemoveReplicaQservMgtRequest::create(
                                          io_service,
                                          worker,
                                          chunk,
-                                         databaseFamily,
+                                         databases,
                                          force,
                                          onFinish));
 }
@@ -72,7 +72,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                                 boost::asio::io_service& io_service,
                                 std::string const& worker,
                                 unsigned int chunk,
-                                std::string const& databaseFamily,
+                                std::vector<std::string> const& databases,
                                 bool force,
                                 RemoveReplicaQservMgtRequest::callback_type onFinish)
     :   QservMgtRequest(serviceProvider,
@@ -80,7 +80,7 @@ RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
                         "QSERV:REMOVE_REPLICA",
                         worker),
         _chunk(chunk),
-        _databaseFamily(databaseFamily),
+        _databases(databases),
         _force(force),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
@@ -93,7 +93,7 @@ void RemoveReplicaQservMgtRequest::startImpl() {
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
         _chunk,
-        _serviceProvider->config()->databases(_databaseFamily),
+        _databases,
         _force,
         [request] (wpublish::ChunkGroupQservRequest::Status status,
                    std::string const& error) {

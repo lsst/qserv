@@ -32,6 +32,7 @@
 #include <mutex>
 #include <ostream>
 #include <string>
+#include <vector>
 
 // THird party headers
 #include <boost/asio.hpp>
@@ -261,30 +262,30 @@ protected:
     /**
      * Notify Qserv about a new chunk added to its database.
      *
-     * @param chunk - chunk number
-     * @param databaseFamily - the name of a database family
-     * @param worker - the name of a worker to be notified
-     * @param onFinish - optional callback funciton to be called upon completion
-     *        of the operation
+     * @param chunk     - chunk number
+     * @param databases - the names of databases
+     * @param worker    - the name of a worker to be notified
+     * @param onFinish  - optional callback funciton to be called upon completion
+     *                    of the operation
      */
     void qservAddReplica(unsigned int chunk,
-                         std::string const& databaseFamily,
+                         std::vector<std::string> const& databases,
                          std::string const& worker,
                          AddReplicaQservMgtRequest::callback_type onFinish=nullptr);
 
     /**
       * Notify Qserv about a new chunk added to its database.
       *
-      * @param chunk - chunk number
-      * @param databaseFamily - the name of a database family
-      * @param worker - the name of a worker to be notified
-      * @param force - the flag indicating of the removal should be done regardless
-      *        of the usage status of the replpica
+      * @param chunk     - chunk number
+      * @param databases - the names of databases
+      * @param worker    - the name of a worker to be notified
+      * @param force     - the flag indicating of the removal should be done regardless
+      *                    of the usage status of the replpica
       * @param onFinish - optional callback funciton to be called upon completion
-      *        of the operation
+      *                   of the operation
       */
     void qservRemoveReplica(unsigned int chunk,
-                            std::string const& databaseFamily,
+                            std::vector<std::string> const& databases,
                             std::string const& worker,
                             bool force,
                             RemoveReplicaQservMgtRequest::callback_type onFinish=nullptr);

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <vector>
 
 #include "proto/replication.pb.h"
 #include "replica/AddReplicaQservMgtRequest.h"
@@ -26,6 +27,7 @@ namespace {
 
 std::string  operation;
 std::string  worker;
+std::string  database;
 std::string  databaseFamily;
 std::string  inFileName;
 unsigned int chunk;
@@ -165,9 +167,13 @@ void test() {
             );
 
         } else if (operation == "ADD_REPLICA") {
+
+            std::vector<std::string> databases;
+            databases.push_back(database);
+
             provider->qservMgtServices()->addReplica(
                 chunk,
-                databaseFamily,
+                databases,
                 worker,
                 [&finished] (replica::AddReplicaQservMgtRequest::pointer const& request) {
                     std::cout
@@ -179,9 +185,13 @@ void test() {
             );
 
         } else if (operation == "REMOVE_REPLICA") {
+
+            std::vector<std::string> databases;
+            databases.push_back(database);
+
             provider->qservMgtServices()->removeReplica(
                 chunk,
-                databaseFamily,
+                databases,
                 worker,
                 force,
                 [&finished] (replica::RemoveReplicaQservMgtRequest::pointer const& request) {
@@ -225,14 +235,15 @@ int main(int argc, const char* const argv[]) {
             "Usage:                                      \n"
             "  <operation> <parameters> [--config=<url>] \n"
             "\n"
-            "Supported operations & their parameters:                            \n"
-            "  ADD_REPLICA    <worker> <database-family> <chunk>                 \n"
-            "  REMOVE_REPLICA <worker> <database-family> <chunk> [--force]       \n"
-            "  GET_REPLICAS   <worker> <database-family>         [--in-use-only] \n"
-            "  SET_REPLICAS   <worker> <filename>                [--force]       \n"
+            "Supported operations & their parameters:                     \n"
+            "  ADD_REPLICA    <worker> <database> <chunk>                 \n"
+            "  REMOVE_REPLICA <worker> <database> <chunk> [--force]       \n"
+            "  GET_REPLICAS   <worker> <database-family>  [--in-use-only] \n"
+            "  SET_REPLICAS   <worker> <filename>         [--force]       \n"
             "\n"
             "Parameters:                                                                               \n"
             "  <worker>          - the worker name (identifier)                                        \n"
+            "  <database>        - the name of a database                                              \n"
             "  <database-family> - the name of a database family                                       \n"
             "  <filename>        - the name of a file with space-separated pairs of <database>:<chunk> \n"
             "  <chunk>           - the chunk number\n"
@@ -250,6 +261,7 @@ int main(int argc, const char* const argv[]) {
             "GET_REPLICAS", "SET_REPLICAS"});
 
         ::worker         = parser.parameter<std::string>(2);
+        ::database       =
         ::databaseFamily =
         ::inFileName     = parser.parameter<std::string>(3);
 
