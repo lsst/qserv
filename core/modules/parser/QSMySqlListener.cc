@@ -36,6 +36,7 @@
 #include "query/BoolTerm.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
+#include "query/GroupByClause.h"
 #include "query/JoinRef.h"
 #include "query/OrderByClause.h"
 #include "query/Predicate.h"
@@ -151,7 +152,8 @@ public:
                                           shared_ptr<query::FromList>& fromList,
                                           shared_ptr<query::WhereClause>& whereClause,
                                           shared_ptr<query::OrderByClause>& orderByClause,
-                                          int limit) = 0;
+                                          int limit,
+                                          shared_ptr<query::GroupByClause>& groupByClause) = 0;
 };
 
 
@@ -176,7 +178,8 @@ public:
 class FromClauseCBH : public BaseCBH {
 public:
     virtual void handleFromClause(shared_ptr<query::FromList>& fromList,
-                                  shared_ptr<query::WhereClause>& whereClause) = 0;
+                                  shared_ptr<query::WhereClause>& whereClause,
+                                  const shared_ptr<query::GroupByClause>& groupByClause) = 0;
 };
 
 
@@ -261,6 +264,12 @@ public:
 };
 
 
+class GroupByItemCBH : public BaseCBH {
+public:
+    virtual void handleGroupByItem(const shared_ptr<query::ValueExpr>& valueExpr) = 0;
+};
+
+
 class LimitClauseCBH: public BaseCBH {
 public:
     virtual void handleLimitClause(int limit) = 0;
@@ -324,7 +333,7 @@ public:
 
 class AggregateFunctionCallCBH : public BaseCBH {
 public:
-    virtual void handleAggregateFunctionCall(string functionName, string paramete) = 0;
+    virtual void handleAggregateFunctionCall(const shared_ptr<query::ValueFactor>& aggValueFactor) = 0;
 };
 
 
@@ -335,7 +344,7 @@ public:
 
 class AggregateWindowedFunctionCBH : public BaseCBH {
 public:
-    virtual void handleAggregateWindowedFunction(string functionName, string parameter) = 0;
+    virtual void handleAggregateWindowedFunction(const shared_ptr<query::ValueFactor>& aggValueFactor) = 0;
 };
 
 
@@ -343,6 +352,13 @@ class FunctionArgsCBH : public BaseCBH {
 public:
     virtual void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) = 0;
 };
+
+
+class FunctionArgCBH : public BaseCBH {
+public:
+    virtual void handleFunctionArg(const shared_ptr<query::ValueFactor>& valueFactor) = 0;
+};
+
 
 class LogicalExpressionCBH : public BaseCBH {
 public:
@@ -354,24 +370,28 @@ public:
             antlr4::ParserRuleContext* childCtx) = 0;
 };
 
+
 class InPredicateCBH : public BaseCBH {
 public :
     virtual void handleInPredicate(shared_ptr<query::InPredicate>& inPredicate) = 0;
 };
+
 
 class BetweenPredicateCBH : public BaseCBH {
 public:
     virtual void handleBetweenPredicate(shared_ptr<query::BetweenPredicate>& betweenPredicate) = 0;
 };
 
+
 class LikePredicateCBH : public BaseCBH {
 public:
     virtual void handleLikePredicate(const shared_ptr<query::LikePredicate>& likePredicate) = 0;
 };
 
-class UnaryExpressionAtomCBH : public BaseCBH {
-public:
-};
+
+//class UnaryExpressionAtomCBH : public BaseCBH {
+//public:
+//};
 
 
 class NestedExpressionAtomCBH : public BaseCBH {
@@ -514,12 +534,14 @@ public:
                                   shared_ptr<query::FromList>& fromList,
                                   shared_ptr<query::WhereClause>& whereClause,
                                   shared_ptr<query::OrderByClause>& orderByClause,
-                                  int limit) override {
+                                  int limit,
+                                  shared_ptr<query::GroupByClause>& groupByClause) override {
         _selectList = selectList;
         _fromList = fromList;
         _whereClause = whereClause;
         _orderByClause = orderByClause;
         _limit = limit;
+        _groupByClause = groupByClause;
     }
 
     void onExit() override {
@@ -529,6 +551,7 @@ public:
         selectStatement->setWhereClause(_whereClause);
         selectStatement->setLimit(_limit);
         selectStatement->setOrderBy(_orderByClause);
+        selectStatement->setGroupBy(_groupByClause);
         lockedParent()->handleSelectStatement(selectStatement);
     }
 
@@ -537,6 +560,7 @@ private:
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::WhereClause> _whereClause;
     shared_ptr<query::OrderByClause> _orderByClause;
+    shared_ptr<query::GroupByClause> _groupByClause;
     int _limit{lsst::qserv::NOTSET};
 };
 
@@ -556,9 +580,11 @@ public:
     }
 
     void handleFromClause(shared_ptr<query::FromList>& fromList,
-                          shared_ptr<query::WhereClause>& whereClause) override {
+                          shared_ptr<query::WhereClause>& whereClause,
+                          const shared_ptr<query::GroupByClause>& groupByClause) override {
         _fromList = fromList;
         _whereClause = whereClause;
+        _groupByClause = groupByClause;
     }
 
     void handleOrderByClause(const shared_ptr<query::OrderByClause>& orderByClause) {
@@ -571,7 +597,7 @@ public:
 
     void onExit() override {
         lockedParent()->handleQuerySpecification(_selectList, _fromList, _whereClause, _orderByClause,
-                _limit);
+                _limit, _groupByClause);
     }
 
 private:
@@ -579,6 +605,7 @@ private:
     shared_ptr<query::FromList> _fromList;
     shared_ptr<query::SelectList> _selectList;
     shared_ptr<query::OrderByClause> _orderByClause;
+    shared_ptr<query::GroupByClause> _groupByClause;
     int _limit{lsst::qserv::NOTSET};
 };
 
@@ -619,7 +646,8 @@ class FromClauseAdapter :
         public TableSourcesCBH,
         public PredicateExpressionCBH,
         public LogicalExpressionCBH,
-        public QservFunctionSpecCBH {
+        public QservFunctionSpecCBH,
+        public GroupByItemCBH {
 public:
     FromClauseAdapter(shared_ptr<FromClauseCBH>& parent, QSMySqlParser::FromClauseContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
@@ -657,19 +685,26 @@ public:
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
 
+    void handleGroupByItem(const shared_ptr<query::ValueExpr>& valueExpr) {
+        if (nullptr == _groupByClause) {
+            _groupByClause = make_shared<query::GroupByClause>();
+        }
+        _groupByClause->addTerm(query::GroupByTerm(valueExpr, ""));
+    }
+
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
         _whereClause->setRootTerm(_rootTerm);
 
-        lockedParent()->handleFromClause(fromList, _whereClause);
+        lockedParent()->handleFromClause(fromList, _whereClause, _groupByClause);
     }
 
 private:
     // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
     shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
     query::TableRefListPtr _tableRefList;
-
     shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
+    shared_ptr<query::GroupByClause> _groupByClause;
     QSMySqlParser::FromClauseContext* _ctx;
 };
 
@@ -866,7 +901,7 @@ class ExpressionAtomPredicateAdapter :
         public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
-        public UnaryExpressionAtomCBH,
+        // public UnaryExpressionAtomCBH,
         public NestedExpressionAtomCBH,
         public MathExpressionAtomCBH {
 public:
@@ -1239,34 +1274,53 @@ public:
         _asName = string;
     }
 
-    void handleAggregateFunctionCall(string functionName, string parameter) override {
-        ASSERT_EXECUTION_CONDITION(_functionName.empty() && _parameter.empty(), "should only be called once.",
+    void handleAggregateFunctionCall(const shared_ptr<query::ValueFactor>& aggValueFactor) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
                 _ctx);
-        _functionName = functionName;
-        _parameter = parameter;
+        _functionValueFactor = aggValueFactor;
     }
 
     void onExit() override {
-        // handle this in aggregateWindowedFunction
-        string table;
-        auto starFactor = query::ValueFactor::newStarFactor(table);
-        auto starParExpr = std::make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(starParExpr, starFactor);
-        auto countStarFuncExpr = query::FuncExpr::newArg1(_functionName, starParExpr);
-
-        // this probably wants to be in aggregateFunctionCall (because it makes an aggregate function value factor)
-        auto aggFuncValueFactor = query::ValueFactor::newAggFactor(countStarFuncExpr);
-        auto countStarFuncAsValueExpr = std::make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(countStarFuncAsValueExpr, aggFuncValueFactor);
-        countStarFuncAsValueExpr->setAlias(_asName);
-        lockedParent()->handleSelectFunctionElement(countStarFuncAsValueExpr);
+        ASSERT_EXECUTION_CONDITION(nullptr != _functionValueFactor,
+                "function value factor not populated.", _ctx);
+        auto valueExpr = std::make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, _functionValueFactor);
+        valueExpr->setAlias(_asName);
+        lockedParent()->handleSelectFunctionElement(valueExpr);
     }
 
 private:
-    string _functionName;
-    string _parameter; // todo will probably end up being a vector of string
     string _asName;
+    shared_ptr<query::ValueFactor> _functionValueFactor;
     QSMySqlParser::SelectFunctionElementContext* _ctx;
+};
+
+
+class GroupByItemAdapter :
+        public AdapterT<GroupByItemCBH>,
+        public PredicateExpressionCBH {
+public:
+    GroupByItemAdapter(shared_ptr<GroupByItemCBH>& parent, QSMySqlParser::GroupByItemContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
+        ASSERT_EXECUTION_CONDITION(false, "Unexpected GroupByItemAdapter boolFactor callback.", _ctx);
+    }
+
+    void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
+        _valueExpr = valueExpr;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_valueExpr != nullptr, "GroupByItemAdapter not populated.", _ctx);
+        lockedParent()->handleGroupByItem(_valueExpr);
+    }
+
+private:
+    QSMySqlParser::GroupByItemContext* _ctx;
+    shared_ptr<query::ValueExpr> _valueExpr;
+
 };
 
 
@@ -1465,8 +1519,8 @@ public:
                                  QSMySqlParser::AggregateFunctionCallContext* ctx)
     : AdapterT(parent) {}
 
-    void handleAggregateWindowedFunction(string functionName, string parameter) override {
-        lockedParent()->handleAggregateFunctionCall(functionName, parameter);
+    void handleAggregateWindowedFunction(const shared_ptr<query::ValueFactor>& aggValueFactor) override {
+        lockedParent()->handleAggregateFunctionCall(aggValueFactor);
     }
 
     void onExit() override {}
@@ -1515,21 +1569,42 @@ private:
 
 
 class AggregateWindowedFunctionAdapter :
-        public AdapterT<AggregateWindowedFunctionCBH> {
+        public AdapterT<AggregateWindowedFunctionCBH>,
+        public FunctionArgCBH {
 public:
     AggregateWindowedFunctionAdapter(shared_ptr<AggregateWindowedFunctionCBH>& parent,
                                      QSMySqlParser::AggregateWindowedFunctionContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
+    void handleFunctionArg(const shared_ptr<query::ValueFactor>& valueFactor) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
+                "currently ValueFactor can only be set once.", _ctx);
+        _valueFactor = valueFactor;
+    }
+
     void onExit() override {
-        if (nullptr == _ctx->COUNT() || nullptr == _ctx->starArg) {
-            throw QSMySqlListener::adapter_execution_error(string("AggregateWindowedFunctionAdapter ") +
-                    string("currently only supports COUNT(*), can't handle ") + _ctx->getText());
+        shared_ptr<query::FuncExpr> funcExpr;
+        if (_ctx->COUNT() && _ctx->starArg) {
+            string table;
+            auto starFactor = query::ValueFactor::newStarFactor(table);
+            auto starParExpr = std::make_shared<query::ValueExpr>();
+            ValueExprFactory::addValueFactor(starParExpr, starFactor);
+            funcExpr = query::FuncExpr::newArg1("COUNT", starParExpr);
+        } else if (_ctx->AVG()) {
+            auto param = std::make_shared<query::ValueExpr>();
+            ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
+            ValueExprFactory::addValueFactor(param, _valueFactor);
+            funcExpr = query::FuncExpr::newArg1("AVG", param);
+        } else {
+            ASSERT_EXECUTION_CONDITION(false, "Unhandled exit", _ctx);
         }
-        lockedParent()->handleAggregateWindowedFunction("COUNT", "*");
+
+        auto aggValueFactor = query::ValueFactor::newAggFactor(funcExpr);
+        lockedParent()->handleAggregateWindowedFunction(aggValueFactor);
     }
 
 private:
+    shared_ptr<query::ValueFactor> _valueFactor;
     QSMySqlParser::AggregateWindowedFunctionContext* _ctx;
 };
 
@@ -1558,6 +1633,29 @@ public:
 
 private:
     shared_ptr<query::ValueExpr> _args {make_shared<query::ValueExpr>()};
+};
+
+
+class FunctionArgAdapter :
+        public AdapterT<FunctionArgCBH>,
+        public FullColumnNameCBH {
+public:
+    FunctionArgAdapter(shared_ptr<FunctionArgCBH>& parent,
+                        QSMySqlParser::FunctionArgContext* ctx)
+    : AdapterT(parent) {}
+
+    void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
+                "Expected exactly one callback; valueFactor should be NULL.");
+        _valueFactor = columnName;
+    }
+
+    void onExit() override {
+        lockedParent()->handleFunctionArg(_valueFactor);
+    }
+
+private:
+    shared_ptr<query::ValueFactor> _valueFactor;
 };
 
 
@@ -1798,23 +1896,23 @@ private:
 };
 
 
-class UnaryExpressionAtomAdapter :
-        public AdapterT<UnaryExpressionAtomCBH>,
-        public UnaryOperatorCBH {
-public:
-    UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
-    : AdapterT(parent)
-    , _ctx(ctx)
-    {}
-
-    void onExit() override {
-        // todo
-    }
-
-private:
-    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
-};
+//class UnaryExpressionAtomAdapter :
+//        public AdapterT<UnaryExpressionAtomCBH>,
+//        public UnaryOperatorCBH {
+//public:
+//    UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
+//                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
+//    : AdapterT(parent)
+//    , _ctx(ctx)
+//    {}
+//
+//    void onExit() override {
+//        // todo
+//    }
+//
+//private:
+//    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
+//};
 
 
 class NestedExpressionAtomAdapter :
@@ -2312,7 +2410,7 @@ UNHANDLED(SelectIntoDumpFile)
 UNHANDLED(SelectIntoTextFile)
 UNHANDLED(SelectFieldsInto)
 UNHANDLED(SelectLinesInto)
-UNHANDLED(GroupByItem)
+ENTER_EXIT_PARENT(GroupByItem)
 ENTER_EXIT_PARENT(LimitClause)
 UNHANDLED(StartTransaction)
 UNHANDLED(BeginWork)
@@ -2550,7 +2648,7 @@ ENTER_EXIT_PARENT(AggregateWindowedFunction)
 UNHANDLED(ScalarFunctionName)
 UNHANDLED(PasswordFunctionClause)
 ENTER_EXIT_PARENT(FunctionArgs)
-UNHANDLED(FunctionArg)
+ENTER_EXIT_PARENT(FunctionArg)
 UNHANDLED(IsExpression)
 UNHANDLED(NotExpression)
 IGNORED(QservFunctionSpecExpression)
@@ -2562,7 +2660,7 @@ ENTER_EXIT_PARENT(BetweenPredicate)
 UNHANDLED(IsNullPredicate)
 ENTER_EXIT_PARENT(LikePredicate)
 UNHANDLED(RegexpPredicate)
-ENTER_EXIT_PARENT(UnaryExpressionAtom)
+UNHANDLED(UnaryExpressionAtom)
 UNHANDLED(CollateExpressionAtom)
 UNHANDLED(SubqueryExpessionAtom)
 UNHANDLED(MysqlVariableExpressionAtom)
@@ -2583,7 +2681,7 @@ UNHANDLED(TransactionLevelBase)
 UNHANDLED(PrivilegesBase)
 UNHANDLED(IntervalTypeBase)
 UNHANDLED(DataTypeBase)
-UNHANDLED(KeywordsCanBeId)
+IGNORED(KeywordsCanBeId) // todo emit a warning?
 UNHANDLED(FunctionNameBase)
 
 }}} // namespace lsst::qserv::parser
