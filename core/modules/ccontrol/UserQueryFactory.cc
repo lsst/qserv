@@ -165,8 +165,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             LOGS(_log, LOG_LVL_ERROR, "Antlr4 error: " << e.what());
         }
         if (a4stmt) {
-            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4-style Hierarchy: " << *a4stmt);
+            LOGS(_log, LOG_LVL_DEBUG, "Antlr4 generated select statement: " << a4stmt->getQueryTemplate());
         } else {
             LOGS(_log, LOG_LVL_DEBUG, "Antlr4 did not generate a select statement.");
         }
