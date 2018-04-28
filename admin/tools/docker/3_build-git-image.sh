@@ -13,10 +13,10 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 usage() {
     cat << EOD
-Usage: $(basename "$0") [options] [local-path]
+Usage: $(basename "$0") [options] local-path [local-path1] [local-path2] 
 
 Available options:
-  -R git-ref    Use remote git branch/tag for the build
+  -R git-ref    Use git branch/tag for the build
                 (from https://github.com/lsst/qserv)
                 Example: 'tickets/DM-6444'
   -h            This message
@@ -26,13 +26,14 @@ Available options:
 
 Create Docker image containing Qserv binaries.
 
-Qserv is build using a given git repository:
-- without -R option, a local source repository path can be provided
-  as argument, default behaviour is to use \$QSERV_DIR.
-  Repository working tree must point on current branch HEAD, used for
-  the built.
-- with -R option, git-ref will be cloned from GitHub and used
-  for the build. local-path argument must not be provided.
+Qserv is build using a local source repository whose path is provided as argument
+Other source directories supporting eups build can be provided as argument and
+will also be build.
+
+WARNING: Build is performed in Docker image with user with uid=1000 and
+gid=1000. It is better to have same uid/gid on host machine in order for Docker
+to write compilation product on host filesystem. Here's and example describing
+how to start such a machine: https://github.com/fjammes/os-qserv-build-node
 
 All builds use a Docker image containing latest Qserv stack as input
 (i.e. image named $DOCKER_REPO:dev).
@@ -40,17 +41,13 @@ All builds use a Docker image containing latest Qserv stack as input
 EOD
 }
 
-DOCKERDIR="$DIR/git"
 DOCKERTAG=''
-GIT_REF='master'
-GITHUB_REPO="https://github.com/lsst/qserv"
+FORCE="false"
 PUSH_TO_HUB="true"
-SRC_DIR="$QSERV_DIR"
-LOCAL=true
 
-while getopts R:hLST: c ; do
+while getopts hFLST: c ; do
     case $c in
-        R) LOCAL=false &&  GIT_REF="$OPTARG";;
+        F) FORCE="true" ;;
         h) usage ; exit 0 ;;
         L) PUSH_TO_HUB="false" ;;
         T) DOCKERTAG="$OPTARG" ;;
@@ -59,43 +56,50 @@ while getopts R:hLST: c ; do
 done
 shift "$((OPTIND-1))"
 
-if $LOCAL ; then
-    if [ $# -gt 1 ]; then
-        usage
-        exit 2
-    elif [ -n "$1" ]; then
-        SRC_DIR="$1"
-    fi
-    if [ -z "$SRC_DIR" ]; then
-        echo "ERROR: No source directory provided and undefined \$QSERV_DIR."
-        usage
-        exit 2
-    fi
-    GIT_REF=$(git rev-parse --abbrev-ref HEAD)
-    GIT_REPO="$SRC_DIR"
+if [ $# -eq 0 ]; then
+    usage
+    exit 2
+fi
+HOST_SRC_DIRS="$@"
+
+OPT_MOUNT=""
+SRC_DIRS=""
+for HOST_SRC_DIR in $HOST_SRC_DIRS
+do
+    PRODUCT=$(basename $HOST_SRC_DIR)
+    SRC_DIR="/home/qserv/$PRODUCT"
+    SRC_DIRS="$SRC_DIRS $SRC_DIR"
+    OPT_MOUNT="$OPT_MOUNT -v $HOST_SRC_DIR:$SRC_DIR"
+done
+
+# Remove leading whitespace
+SRC_DIRS=$(echo "${SRC_DIRS}" | sed -e 's/^[[:space:]]*//')
+
+# Last product in the list should be qserv, if not change the tag
+if [ "$PRODUCT" = "qserv" ]; then
+    GIT_REF=$(cd "$HOST_SRC_DIR" && git rev-parse --abbrev-ref HEAD)
 else
-    # Path argument and -R option can not be both provided
-    if [ $# -gt 0 ]; then
-        usage
-        exit 2
-    fi
-    # git archive is not supported by GitHub
-    GIT_REPO="$GITHUB_REPO"
+    GIT_REF=$(cd "$HOST_SRC_DIR" && git rev-parse --abbrev-ref HEAD)
+    GIT_REF="${PRODUCT}_${GIT_REF}"
 fi
 
-printf "Using branch/tag %s from %s\n" "$GIT_REF" "$GIT_REPO"
+DOCKER_IMAGE=qserv/qserv:dev
+CONTAINER="qserv_build"
 
-BUILD_DIR="$DOCKERDIR/build"
-
-mkdir -p "$BUILD_DIR"
-
-if [ -d "$BUILD_DIR/qserv" ]; then
-   rm -rf $BUILD_DIR/qserv
+HOST_UID=$(id -u)
+if [ "$FORCE" = "false" -a $HOST_UID != 1000 ]
+then
+    echo "WARN: User on host must have uid=1000 and gid=1000"
+    echo -n "if not run 'chmod o+w' on qserv source directory "
+    echo "and run current script with -F option"
+    exit
 fi
 
-git clone -b "$GIT_REF" --single-branch --depth=1 "$GIT_REPO" "$BUILD_DIR/qserv"
-
-# Put source code inside Docker build directory
+export SRC_DIRS
+docker run -e SRC_DIRS --name "$CONTAINER" -t -u qserv \
+    -v "$DIR"/git/scripts:/home/qserv/bin \
+    $OPT_MOUNT -- "$DOCKER_IMAGE" \
+    bash /home/qserv/bin/eups-builder.sh
 
 if [ -z "$DOCKERTAG" ]; then
     # Docker tags must not contain '/'
@@ -103,18 +107,10 @@ if [ -z "$DOCKERTAG" ]; then
     DOCKERTAG="$DOCKER_REPO:$TAG"
 fi
 
-DOCKERFILE="$DOCKERDIR/Dockerfile"
-
-awk \
--v DOCKER_REPO="$DOCKER_REPO" \
-'{gsub(/<DOCKER_REPO>/, DOCKER_REPO);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
-
-docker build --tag="$DOCKERTAG" "$DOCKERDIR"
+docker commit "$CONTAINER" "$DOCKERTAG"
+docker rm "$CONTAINER"
 
 if [ "$PUSH_TO_HUB" = "true" ]; then
     docker push "$DOCKERTAG"
     printf "Image %s pushed successfully\n" "$TAG"
 fi
-
-rm -rf $BUILD_DIR/qserv
