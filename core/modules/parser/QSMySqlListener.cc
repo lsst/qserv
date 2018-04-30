@@ -81,7 +81,7 @@ std::string getTypeName(T obj) {
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << ctx->getText()); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
     pushAdapterStack<NAME##CBH, NAME##Adapter>(ctx); \
 } \
 \
@@ -93,7 +93,7 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED " << ctx->getText()); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is UNHANDLED '" << getQueryString(ctx) << "'"); \
     throw QSMySqlListener::adapter_order_error(string(__FUNCTION__) + string(" not supported.")); \
 } \
 \
@@ -112,7 +112,7 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 
 #define IGNORED_WARN(NAME, WARNING) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " " << WARNING << ", near '" << ctx->getText() << "'"); \
+    LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " " << WARNING << ", near '" << getQueryString(ctx) << "'"); \
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
 } \
 \
@@ -127,7 +127,7 @@ if (false == (CONDITION)) { \
         ostringstream msg; \
         msg << getTypeName(this) << "::" << __FUNCTION__; \
         msg << " messsage:\"" << MESSAGE << "\""; \
-        msg << ", in or around query segment:" << getQueryString(CTX); \
+        msg << ", in or around query segment: '" << getQueryString(CTX) << "'"; \
         throw QSMySqlListener::adapter_execution_error(msg.str()); \
     } \
 } \
@@ -747,24 +747,24 @@ public:
     {}
 
     void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expeceted one AtomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
     void handleInnerJoin(shared_ptr<query::JoinRef> joinRef) override {
-        _joinRef = joinRef;
+        _joinRefs.push_back(joinRef);
     }
 
     void onExit() override {
-        if (_joinRef != nullptr) {
-            _tableRef->addJoin(_joinRef);
-        }
+        ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "tableRef was not populated.", _ctx);
+        _tableRef->addJoins(_joinRefs);
         lockedParent()->handleTableSource(_tableRef);
     }
 
 private:
     QSMySqlParser::TableSourceBaseContext* _ctx;
     shared_ptr<query::TableRef> _tableRef;
-    shared_ptr<query::JoinRef> _joinRef;
+    vector<shared_ptr<query::JoinRef>> _joinRefs;
 };
 
 
@@ -1188,9 +1188,16 @@ public:
             QSMySqlParser::OrderByExpressionContext* ctx)
     : AdapterT(parent)
     ,  _ctx(ctx)
+    , orderBy(query::OrderByTerm::DEFAULT)
     {
-        ASSERT_EXECUTION_CONDITION(_ctx->ASC() == nullptr && _ctx->DESC() == nullptr,
-                "Can't handle ASC or DESC specificer yet.", _ctx);
+        if (_ctx->ASC() == nullptr && _ctx->DESC() != nullptr) {
+            orderBy = query::OrderByTerm::DESC;
+        } else if (_ctx->ASC() != nullptr && _ctx->DESC() == nullptr) {
+            orderBy = query::OrderByTerm::ASC;
+        } else if (_ctx->ASC() != nullptr && _ctx->DESC() != nullptr) {
+            ASSERT_EXECUTION_CONDITION(false, "having both ASC and DESC is unhandled.", _ctx);
+        }
+        // note that query::OrderByTerm::DEFAULT is the default value of orderBy
     }
 
     void handlePredicateExpression(shared_ptr<query::BoolFactor>& boolFactor) override {
@@ -1203,12 +1210,13 @@ public:
     }
 
     void onExit() override {
-        query::OrderByTerm orderByTerm(_valueExpr, query::OrderByTerm::DEFAULT, "");
+        query::OrderByTerm orderByTerm(_valueExpr, orderBy, "");
         lockedParent()->handleOrderByExpression(orderByTerm);
     }
 
 private:
     QSMySqlParser::OrderByExpressionContext* _ctx;
+    query::OrderByTerm::Order orderBy;
     shared_ptr<query::ValueExpr> _valueExpr;
 };
 
@@ -1228,6 +1236,7 @@ public:
     }
 
     void handleAtomTableItem(shared_ptr<query::TableRef>& tableRef) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _tableRef, "expected only one atomTableItem callback.", _ctx);
         _tableRef = tableRef;
     }
 
@@ -1241,8 +1250,6 @@ public:
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(_tableRef != nullptr, "TableRef was not set.", _ctx);
         ASSERT_EXECUTION_CONDITION(_using != nullptr, "`using` was not set.", _ctx);
-
-
         auto joinSpec = make_shared<query::JoinSpec>(_using);
         // todo where does type get defined?
         auto joinRef = make_shared<query::JoinRef>(_tableRef, query::JoinRef::DEFAULT, false, joinSpec);
@@ -1260,7 +1267,8 @@ private:
 class SelectFunctionElementAdapter :
         public AdapterT<SelectFunctionElementCBH>,
         public AggregateFunctionCallCBH,
-        public UidCBH {
+        public UidCBH,
+        public UdfFunctionCallCBH {
 public:
     SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
                                  QSMySqlParser::SelectFunctionElementContext* ctx)
@@ -1283,6 +1291,12 @@ public:
         ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
                 _ctx);
         _functionValueFactor = aggValueFactor;
+    }
+
+    void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
+                _ctx);
+        _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
     }
 
     void onExit() override {
