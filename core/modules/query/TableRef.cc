@@ -113,6 +113,10 @@ void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
     _joinRefs.push_back(r);
 }
 
+void TableRef::addJoins(const JoinRefPtrVector& r) {
+    _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
+}
+
 void TableRef::apply(TableRef::Func& f) {
     f(*this);
     typedef JoinRefPtrVector::iterator Iter;

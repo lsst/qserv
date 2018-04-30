@@ -83,6 +83,7 @@ public:
     void setTable(std::string const& table_) { _table = table_; }
     JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(std::shared_ptr<JoinRef> r);
+    void addJoins(const JoinRefPtrVector& r);
 
     class Func {
     public:
