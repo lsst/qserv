@@ -87,6 +87,14 @@ FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     return e;
 }
 
+FuncExpr::Ptr
+FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) {
+    FuncExpr::Ptr e = std::make_shared<FuncExpr>();
+    e->setName(newName);
+    e->params = ve;
+    return e;
+}
+
 void
 FuncExpr::setName(const std::string& val) {
     _name = val;
