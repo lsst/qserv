@@ -389,11 +389,6 @@ public:
 };
 
 
-//class UnaryExpressionAtomCBH : public BaseCBH {
-//public:
-//};
-
-
 class NestedExpressionAtomCBH : public BaseCBH {
 public:
     virtual void handleNestedExpressionAtom(const shared_ptr<query::BoolFactorTerm>& boolFactorTerm) = 0;
@@ -901,7 +896,6 @@ class ExpressionAtomPredicateAdapter :
         public ConstantExpressionAtomCBH,
         public FullColumnNameExpressionAtomCBH,
         public FunctionCallExpressionAtomCBH,
-        // public UnaryExpressionAtomCBH,
         public NestedExpressionAtomCBH,
         public MathExpressionAtomCBH {
 public:
@@ -1894,25 +1888,6 @@ private:
     shared_ptr<query::ValueExpr> _valueExprA;
     shared_ptr<query::ValueExpr> _valueExprB;
 };
-
-
-//class UnaryExpressionAtomAdapter :
-//        public AdapterT<UnaryExpressionAtomCBH>,
-//        public UnaryOperatorCBH {
-//public:
-//    UnaryExpressionAtomAdapter(shared_ptr<UnaryExpressionAtomCBH> parent,
-//                               QSMySqlParser::UnaryExpressionAtomContext* ctx)
-//    : AdapterT(parent)
-//    , _ctx(ctx)
-//    {}
-//
-//    void onExit() override {
-//        // todo
-//    }
-//
-//private:
-//    QSMySqlParser::UnaryExpressionAtomContext* _ctx;
-//};
 
 
 class NestedExpressionAtomAdapter :
