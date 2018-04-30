@@ -361,7 +361,7 @@ public:
 
 class FunctionArgsCBH : public BaseCBH {
 public:
-    virtual void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) = 0;
+    virtual void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) = 0;
 };
 
 
@@ -1121,8 +1121,14 @@ public:
         // grammar and used by the query objects.
         if ("=" == _comparison) {
             compPredicate->op = SqlSQL2Tokens::EQUALS_OP;
+        } else if (">" == _comparison) {
+            compPredicate->op = SqlSQL2Tokens::GREATER_THAN_OP;
+        } else if ("<" == _comparison) {
+            compPredicate->op = SqlSQL2Tokens::LESS_THAN_OP;
+        } else if ("<>" == _comparison) {
+            compPredicate->op = SqlSQL2Tokens::NOT_EQUALS_OP;
         } else {
-            ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type" << _comparison, _ctx);
+            ASSERT_EXECUTION_CONDITION(false, "unhandled comparison operator type " << _comparison, _ctx);
         }
 
         compPredicate->right = _right;
@@ -1388,18 +1394,36 @@ private:
 
 class SelectColumnElementAdapter :
         public AdapterT<SelectColumnElementCBH>,
-        public FullColumnNameCBH {
+        public FullColumnNameCBH,
+        public UidCBH {
 public:
     SelectColumnElementAdapter(shared_ptr<SelectColumnElementCBH>& parent, antlr4::ParserRuleContext* ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& valueFactor) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
+                "handleFullColumnName should be called once.", _ctx);
+        _valueFactor = valueFactor;
+    }
+
+    void handleUid(const string& string) override {
+        ASSERT_EXECUTION_CONDITION(_alias.empty(), "handleUid should be called once.", _ctx);
+        _alias = string;
+    }
+
+    void onExit() override {
         auto valueExpr = make_shared<query::ValueExpr>();
-        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        ValueExprFactory::addValueFactor(valueExpr, _valueFactor);
+        valueExpr->setAlias(_alias);
         lockedParent()->handleColumnElement(valueExpr);
     }
 
-    void onExit() override {}
+private:
+    shared_ptr<query::ValueFactor> _valueFactor;
+    string _alias;
+    antlr4::ParserRuleContext* _ctx;
 };
 
 
@@ -1557,11 +1581,11 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleFunctionArgs(shared_ptr<query::ValueExpr> valueExpr) override {
+    void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) override {
         // This is only expected to be called once.
         // Of course the valueExpr may have more than one valueFactor.
-        ASSERT_EXECUTION_CONDITION(nullptr == _args, "Args already assigned.", _ctx);
-        _args = valueExpr;
+        ASSERT_EXECUTION_CONDITION(_args.empty(), "Args already assigned.", _ctx);
+        _args = valueExprs;
     }
 
     // FullIdCBH
@@ -1573,15 +1597,15 @@ public:
     }
 
     void onExit() override {
-        if (_functionName.empty() || nullptr == _args) {
+        if (_functionName.empty() || _args.empty()) {
             throw QSMySqlListener::adapter_execution_error("Function name & args must be populated");
         }
-        auto funcExpr = query::FuncExpr::newArg1(_functionName, _args);
+        auto funcExpr = query::FuncExpr::newWithArgs(_functionName, _args);
         lockedParent()->handleUdfFunctionCall(funcExpr);
     }
 
 private:
-    shared_ptr<query::ValueExpr> _args;
+    vector<shared_ptr<query::ValueExpr>> _args;
     string _functionName;
     QSMySqlParser::UdfFunctionCallContext* _ctx;
 };
@@ -1639,11 +1663,15 @@ public:
 
     // ConstantCBH
     void handleConstant(shared_ptr<query::ValueFactor> const & valueFactor) override {
-        ValueExprFactory::addValueFactor(_args, valueFactor);
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, valueFactor);
+        _args.push_back(valueExpr);
     }
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
-        ValueExprFactory::addValueFactor(_args, columnName);
+        auto valueExpr = make_shared<query::ValueExpr>();
+        ValueExprFactory::addValueFactor(valueExpr, columnName);
+        _args.push_back(valueExpr);
     }
 
     void onExit() override {
@@ -1651,7 +1679,7 @@ public:
     }
 
 private:
-    shared_ptr<query::ValueExpr> _args {make_shared<query::ValueExpr>()};
+    vector<shared_ptr<query::ValueExpr>> _args;
 };
 
 

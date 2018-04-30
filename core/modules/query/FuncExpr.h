@@ -63,6 +63,10 @@ public:
     /// Construct a new FuncExpr with a name and ValueExpr arg
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  ValueExprPtr ve);
+    /// Construct a new FuncExpr with a name and a vector of ValueExpr arg
+    static FuncExpr::Ptr newWithArgs(std::string const& newName,
+                                     const ValueExprPtrVector& ve);
+
 
     void setName(const std::string& val);
 
