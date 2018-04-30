@@ -213,7 +213,7 @@ public:
 
 class UidCBH : public BaseCBH {
 public:
-    virtual void handleUidString(const string& string) = 0;
+    virtual void handleUid(const string& string) = 0;
 };
 
 
@@ -782,7 +782,7 @@ public:
         _table = string;
     }
 
-    void handleUidString(const string& string) override {
+    void handleUid(const string& string) override {
         _alias = string;
     }
 
@@ -823,7 +823,7 @@ public:
 
     virtual ~FullIdAdapter() {}
 
-    void handleUidString(const string& string) override {
+    void handleUid(const string& string) override {
         lockedParent()->handleFullId(string);
     }
 
@@ -841,7 +841,7 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleUidString(const string& string) override {
+    void handleUid(const string& string) override {
         _strings.push_back(string);
     }
 
@@ -1276,13 +1276,13 @@ public:
     , _ctx(ctx)
     {}
 
-    void handleUidString(const string& string) override {
+    void handleUid(const string& string) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName`
         if (false == _asName.empty()) {
-            throw QSMySqlListener::adapter_execution_error("Second call to handleUidString.");
+            throw QSMySqlListener::adapter_execution_error("Second call to handleUid.");
         }
         if (_ctx->AS() == nullptr) {
-            throw QSMySqlListener::adapter_execution_error("Call to handleUidString but AS is null.");
+            throw QSMySqlListener::adapter_execution_error("Call to handleUid but AS is null.");
         }
         _asName = string;
     }
@@ -1413,7 +1413,7 @@ public:
         // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
         // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
-        lockedParent()->handleUidString(_uidContext->getText());
+        lockedParent()->handleUid(_uidContext->getText());
     }
 
 private:
@@ -1467,7 +1467,7 @@ public:
     UidListAdapter(shared_ptr<UidListCBH>& parent, QSMySqlParser::UidListContext* ctx)
     : AdapterT(parent), _ctx(ctx) {}
 
-    void handleUidString(const string& string) override {
+    void handleUid(const string& string) override {
         _strings.push_back(string);
     }
 
