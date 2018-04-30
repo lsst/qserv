@@ -153,7 +153,7 @@ class Loader(object):
         group = parser.add_argument_group('Database options', 'Options for database connection')
         group.add_argument('-H', '--host', dest='czarHost', default='localhost', metavar='HOST',
                            help='Host name for czar wmgr service, def: %(default)s.')
-        group.add_argument('-P', '--port', dest='czarPort', default=5012, metavar='PORT_NUMBER', type=int,
+        group.add_argument('-P', '--port', dest='czarPort', default=25012, metavar='PORT_NUMBER', type=int,
                            help='Port number to use for czar wmgr connection, def: %(default)s.')
         group.add_argument('-W', '--worker', dest='workerNodes', default=[], action='append',
                            metavar='STRING', help='Node name for worker server, may be specified '

@@ -72,7 +72,7 @@ def main():
     wmgrSecret = cfg.get('wmgr', 'secret')
     if cfg.has_option('czar_wmgr', 'host'):
         host = cfg.get('czar_wmgr', 'host')
-        port = 5012
+        port = 25012
         if cfg.has_option('czar_wmgr', 'port'):
             port = cfg.getint('czar_wmgr', 'port')
         extraCzar = (host, port)
