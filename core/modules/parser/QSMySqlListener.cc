@@ -110,6 +110,17 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 } \
 
 
+#define IGNORED_WARN(NAME, WARNING) \
+void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+    LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " " << WARNING << ", near '" << ctx->getText() << "'"); \
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+} \
+\
+void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " is IGNORED"); \
+} \
+
+
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE, CTX) \
 if (false == (CONDITION)) { \
     { \
@@ -1636,11 +1647,12 @@ class FunctionArgAdapter :
 public:
     FunctionArgAdapter(shared_ptr<FunctionArgCBH>& parent,
                         QSMySqlParser::FunctionArgContext* ctx)
-    : AdapterT(parent) {}
+    : AdapterT(parent)
+    , _ctx(ctx) {}
 
     void handleFullColumnName(shared_ptr<query::ValueFactor>& columnName) override {
         ASSERT_EXECUTION_CONDITION(nullptr == _valueFactor,
-                "Expected exactly one callback; valueFactor should be NULL.");
+                "Expected exactly one callback; valueFactor should be NULL.", _ctx);
         _valueFactor = columnName;
     }
 
@@ -1650,6 +1662,7 @@ public:
 
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
+    QSMySqlParser::FunctionArgContext* _ctx;
 };
 
 
@@ -2656,7 +2669,7 @@ UNHANDLED(TransactionLevelBase)
 UNHANDLED(PrivilegesBase)
 UNHANDLED(IntervalTypeBase)
 UNHANDLED(DataTypeBase)
-IGNORED(KeywordsCanBeId) // todo emit a warning?
+IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID") // todo emit a warning?
 UNHANDLED(FunctionNameBase)
 
 }}} // namespace lsst::qserv::parser
