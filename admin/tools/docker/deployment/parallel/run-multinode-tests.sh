@@ -18,7 +18,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 i=1
 for node in $WORKERS;
 do
-    CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=5012 host=${node};"
+    CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=25012 host=${node};"
     i=$((i+1))
 done
 
