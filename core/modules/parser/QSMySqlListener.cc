@@ -348,14 +348,27 @@ public:
 };
 
 
+class ScalarFunctionCallCBH : public BaseCBH {
+public:
+    virtual void handleScalarFunctionCall(const shared_ptr<query::ValueFactor>& funcValueFactor) = 0;
+};
+
+
 class UdfFunctionCallCBH : public BaseCBH {
 public:
     virtual void handleUdfFunctionCall(shared_ptr<query::FuncExpr> valueExpr) = 0;
 };
 
+
 class AggregateWindowedFunctionCBH : public BaseCBH {
 public:
     virtual void handleAggregateWindowedFunction(const shared_ptr<query::ValueFactor>& aggValueFactor) = 0;
+};
+
+
+class ScalarFunctionNameCBH : public BaseCBH {
+public:
+    virtual void handleScalarFunctionName(const string& name) = 0;
 };
 
 
@@ -440,6 +453,11 @@ public:
     virtual void handleMathOperator(OperatorType operatorType) = 0;
 };
 
+
+class FunctionNameBaseCBH : public BaseCBH {
+public:
+    virtual void handleFunctionNameBase(const string& name) = 0;
+};
 
 /// Adapter classes
 
@@ -667,7 +685,7 @@ public:
         shared_ptr<query::BoolTerm> boolTerm = boolFactor;
         andTerm->addBoolTerm(boolTerm);
         shared_ptr<query::BoolTerm> andBoolTerm = andTerm;
-        _rootTerm->addBoolTerm(andBoolTerm);
+        _getRootTerm()->addBoolTerm(andBoolTerm);
     }
 
     void handlePredicateExpression(shared_ptr<query::ValueExpr>& valueExpr) override {
@@ -678,7 +696,7 @@ public:
             antlr4::ParserRuleContext* childCtx) override {
         if (_ctx->whereExpr == childCtx) {
             auto boolTerm = shared_ptr<query::BoolTerm>(logicalTerm);
-            _rootTerm->addBoolTerm(boolTerm);
+            _getRootTerm()->addBoolTerm(boolTerm);
             return;
         } else if (_ctx->havingExpr == childCtx) {
             ASSERT_EXECUTION_CONDITION(false, "The HAVING expression is not yet supported.", _ctx);
@@ -688,6 +706,7 @@ public:
 
     void handleQservFunctionSpec(const string& functionName,
             const vector<shared_ptr<query::ValueFactor>>& args) {
+        _initWhereClause();
         WhereFactory::addQservRestrictor(_whereClause, functionName, args);
     }
 
@@ -700,16 +719,32 @@ public:
 
     void onExit() override {
         shared_ptr<query::FromList> fromList = make_shared<query::FromList>(_tableRefList);
-        _whereClause->setRootTerm(_rootTerm);
+        if (_rootTerm != nullptr) {
+            _initWhereClause();
+            _whereClause->setRootTerm(_rootTerm);
+        }
 
         lockedParent()->handleFromClause(fromList, _whereClause, _groupByClause);
     }
 
 private:
+    void _initWhereClause() {
+        if (nullptr == _whereClause) {
+            _whereClause = make_shared<query::WhereClause>();
+        }
+    }
+
+    shared_ptr<query::OrTerm> const & _getRootTerm() {
+        if (nullptr == _rootTerm) {
+            _rootTerm = make_shared<query::OrTerm>();
+        }
+        return _rootTerm;
+    }
+
     // I think the first term of a where clause is always an OrTerm, and it needs to be added by default.
-    shared_ptr<query::WhereClause> _whereClause{make_shared<query::WhereClause>()};
+    shared_ptr<query::WhereClause> _whereClause;
     query::TableRefListPtr _tableRefList;
-    shared_ptr<query::OrTerm> _rootTerm {make_shared<query::OrTerm>()};
+    shared_ptr<query::OrTerm> _rootTerm;
     shared_ptr<query::GroupByClause> _groupByClause;
     QSMySqlParser::FromClauseContext* _ctx;
 };
@@ -1274,7 +1309,8 @@ class SelectFunctionElementAdapter :
         public AdapterT<SelectFunctionElementCBH>,
         public AggregateFunctionCallCBH,
         public UidCBH,
-        public UdfFunctionCallCBH {
+        public UdfFunctionCallCBH,
+        public ScalarFunctionCallCBH {
 public:
     SelectFunctionElementAdapter(shared_ptr<SelectFunctionElementCBH>& parent,
                                  QSMySqlParser::SelectFunctionElementContext* ctx)
@@ -1300,9 +1336,15 @@ public:
     }
 
     void handleUdfFunctionCall(shared_ptr<query::FuncExpr> funcExpr) override {
-        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be called once.",
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
                 _ctx);
         _functionValueFactor = query::ValueFactor::newFuncFactor(funcExpr);
+    }
+
+    void handleScalarFunctionCall(const shared_ptr<query::ValueFactor>& funcValueFactor) override {
+        ASSERT_EXECUTION_CONDITION(nullptr == _functionValueFactor, "should only be set once.",
+                _ctx);
+        _functionValueFactor = funcValueFactor;
     }
 
     void onExit() override {
@@ -1570,6 +1612,42 @@ public:
 };
 
 
+class ScalarFunctionCallAdapter :
+        public AdapterT<ScalarFunctionCallCBH>,
+        public ScalarFunctionNameCBH,
+        public FunctionArgsCBH {
+public:
+    ScalarFunctionCallAdapter(shared_ptr<ScalarFunctionCallCBH>& parent,
+                              QSMySqlParser::ScalarFunctionCallContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
+
+    void handleScalarFunctionName(const string& name) override {
+        ASSERT_EXECUTION_CONDITION(_name.empty(), "name should be set once.", _ctx);
+        _name = name;
+    }
+
+    void handleFunctionArgs(const vector<shared_ptr<query::ValueExpr>>& valueExprs) override {
+        ASSERT_EXECUTION_CONDITION(_valueExprs.empty(), "FunctionArgs should be set once.", _ctx);
+        _valueExprs = valueExprs;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(_valueExprs.empty() == false && _name.empty() == false,
+                "valueExprs or name is not populated.", _ctx);
+        auto funcExpr = query::FuncExpr::newWithArgs(_name, _valueExprs);
+        auto valueFactor = query::ValueFactor::newFuncFactor(funcExpr);
+        lockedParent()->handleScalarFunctionCall(valueFactor);
+    }
+
+private:
+    QSMySqlParser::ScalarFunctionCallContext* _ctx;
+    vector<shared_ptr<query::ValueExpr>> _valueExprs;
+    string _name;
+};
+
+
 class UdfFunctionCallAdapter :
         public AdapterT<UdfFunctionCallCBH>,
         public FullIdCBH,
@@ -1649,6 +1727,35 @@ public:
 private:
     shared_ptr<query::ValueFactor> _valueFactor;
     QSMySqlParser::AggregateWindowedFunctionContext* _ctx;
+};
+
+
+class ScalarFunctionNameAdapter :
+        public AdapterT<ScalarFunctionNameCBH>,
+        public FunctionNameBaseCBH {
+public:
+    ScalarFunctionNameAdapter(shared_ptr<ScalarFunctionNameCBH>& parent,
+                        QSMySqlParser::ScalarFunctionNameContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx) {}
+
+    void handleFunctionNameBase(const string& name) override {
+        _name = name;
+    }
+
+    void onExit() override {
+        string str;
+        if (_name.empty()) {
+            _name = _ctx->getText();
+        }
+        ASSERT_EXECUTION_CONDITION(_name.empty() == false,
+                "not populated; expected a callback from functionNameBase", _ctx);
+        lockedParent()->handleScalarFunctionName(_name);
+    }
+
+private:
+    QSMySqlParser::ScalarFunctionNameContext* _ctx;
+    string _name;
 };
 
 
@@ -2124,6 +2231,24 @@ public:
 
 private:
     QSMySqlParser::MathOperatorContext* _ctx;
+};
+
+
+class FunctionNameBaseAdapter :
+        public AdapterT<FunctionNameBaseCBH> {
+public:
+    FunctionNameBaseAdapter(shared_ptr<FunctionNameBaseCBH> parent,
+                            QSMySqlParser::FunctionNameBaseContext* ctx)
+    : AdapterT(parent)
+    , _ctx(ctx)
+    {}
+
+    void onExit() override {
+        lockedParent()->handleFunctionNameBase(_ctx->getText());
+    }
+
+private:
+    QSMySqlParser::FunctionNameBaseContext* _ctx;
 };
 
 
@@ -2656,7 +2781,7 @@ UNHANDLED(IfExists)
 UNHANDLED(IfNotExists)
 UNHANDLED(SpecificFunctionCall)
 ENTER_EXIT_PARENT(AggregateFunctionCall)
-UNHANDLED(ScalarFunctionCall)
+ENTER_EXIT_PARENT(ScalarFunctionCall)
 ENTER_EXIT_PARENT(UdfFunctionCall)
 UNHANDLED(PasswordFunctionCall)
 UNHANDLED(SimpleFunctionCall)
@@ -2675,7 +2800,7 @@ UNHANDLED(LevelWeightList)
 UNHANDLED(LevelWeightRange)
 UNHANDLED(LevelInWeightListElement)
 ENTER_EXIT_PARENT(AggregateWindowedFunction)
-UNHANDLED(ScalarFunctionName)
+ENTER_EXIT_PARENT(ScalarFunctionName)
 UNHANDLED(PasswordFunctionClause)
 ENTER_EXIT_PARENT(FunctionArgs)
 ENTER_EXIT_PARENT(FunctionArg)
@@ -2712,6 +2837,6 @@ UNHANDLED(PrivilegesBase)
 UNHANDLED(IntervalTypeBase)
 UNHANDLED(DataTypeBase)
 IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID") // todo emit a warning?
-UNHANDLED(FunctionNameBase)
+ENTER_EXIT_PARENT(FunctionNameBase)
 
 }}} // namespace lsst::qserv::parser
