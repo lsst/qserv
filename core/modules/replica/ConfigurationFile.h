@@ -43,11 +43,11 @@ namespace replica {
 
 /**
   * Class ConfigurationFile loads configuration parameters from a file.
-  * 
+  *
   * The implementation of this class relies upon the basic parser
   * of the INI-style configuration files. In addition to the basic parser,
   * this class also:
-  * 
+  *
   *   - enforces a specific schema of the INI file
   *   - ensures all required parameters are found in the file
   *   - sets default values for the optional parameters

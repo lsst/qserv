@@ -146,7 +146,7 @@ void ConfigurationMySQL::deleteWorker(std::string const& name) {
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context ()<< ex.what());
         if (conn and conn->inTransaction()) {
-            conn->commit();
+            conn->rollback();
         }
     }
 }
@@ -164,8 +164,7 @@ void ConfigurationMySQL::loadConfiguration() {
 
     // Open and keep a database connection for loading other parameters
     // from there.
-    database::mysql::Connection::pointer const conn =
-        database::mysql::Connection::open(_connectionParams);
+    auto const conn = database::mysql::Connection::open(_connectionParams);
 
     database::mysql::Row row;
 
@@ -194,7 +193,7 @@ void ConfigurationMySQL::loadConfiguration() {
 
         ::tryParameter(row, "worker", "technology",                 _workerTechnology) or
         ::tryParameter(row, "worker", "num_svc_processing_threads", _workerNumProcessingThreads) or
-        ::tryParameter(row, "worker", "num_fs_processing_threads",  _workerNumFsProcessingThreads) or
+        ::tryParameter(row, "worker", "num_fs_processing_threads",  _fsNumProcessingThreads) or
         ::tryParameter(row, "worker", "fs_buf_size_bytes",          _workerFsBufferSizeBytes) or
         ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
         ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or

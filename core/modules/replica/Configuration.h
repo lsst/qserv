@@ -30,7 +30,7 @@
 // System headers
 #include <map>
 #include <memory>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -75,7 +75,7 @@ struct WorkerInfo {
 };
 
 /// Overloaded operator for dumping objects of class WorkerInfo
-std::ostream& operator << (std::ostream& os, WorkerInfo const& info);
+std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);
 
 /// The descriptor of a database
 struct DatabaseInfo {
@@ -93,7 +93,7 @@ struct DatabaseInfo {
     std::vector<std::string> regularTables;
 };
 
-/// Overloaded operator for dumping objects of class WorkerInfo
+/// Overloaded operator for dumping objects of class DatabaseInfo
 std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
 
 /**
@@ -153,24 +153,8 @@ public:
      *                     deletion) operations would be allowed against those workers.
      *                     NOTE: this filter only matters for the 'enabled' workers.
      */
-    std::vector<std::string> workers(bool isEnabled,
+    std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const;
-
-    /**
-     * @return the nams of workers which are 'allowed' and which are *NOT* in
-     * the 'read-only' state.
-     *
-     * This method has a similar effcet as the previously defined one called
-     * with the following filter options:
-     *   @code
-     *     bool isEnabled = true;
-     *     bool isReadOnly = false;
-     *     workers (isEnabled, isReadOnly);
-     *   @code
-     */
-    std::vector<std::string> workers() const {
-        return workers(true, false);
-    }
 
     /// @return maximum size of the request buffers in bytes
     size_t requestBufferSizeBytes() const { return _requestBufferSizeBytes; }
@@ -253,9 +237,9 @@ public:
     bool isKnownDatabaseFamily(std::string const& name) const;
 
     /**
-     * Return the minimum number of chunks for a database family
+     * Return the minimum number of chunk replicas for a database family
      *
-     * @param family - the optional name of a database family
+     * @param family - the name of a database family
      *
      * @throw std::invalid_argument - if the specified family was not found in
      *                                the configuration.
@@ -263,7 +247,7 @@ public:
     size_t replicationLevel(std::string const& family) const;
 
     /**
-     * Return the names of known databases. A reslt of the method may be
+     * Return the names of known databases. A result of the method may be
      * limited to a subset of databases belonging ot the specified family.
      *
      * @param family - the optional name of a database family
@@ -322,10 +306,10 @@ public:
      * @code
      *   try {
      *       if (config.disableWorker("worker-name").is_enabled) {
-     *           std::cerr << "failed to disablethe worker" << std::endl;
+     *           std::cerr << "failed to disable the worker" << std::endl;
      *       }
      *   } catch (std::invalid_argument const& ex) {
-     *       std::cerr << "the work is not known" << std::endl;
+     *       std::cerr << "the worker is unknown" << std::endl;
      *   }
      * @code
      *
@@ -355,7 +339,7 @@ public:
     size_t workerNumProcessingThreads() const { return _workerNumProcessingThreads; }
 
     /// The number of request processing threads in each worker's file service
-    size_t workerNumFsProcessingThreads() const { return _workerNumFsProcessingThreads; }
+    size_t fsNumProcessingThreads() const { return _fsNumProcessingThreads; }
 
     /// Return the buffer size for the file I/O operations
     size_t workerFsBufferSizeBytes() const { return _workerFsBufferSizeBytes; }
@@ -394,7 +378,7 @@ protected:
     static unsigned int const defaultXrootdTimeoutSec;
     static std::string  const defaultWorkerTechnology;
     static size_t       const defaultWorkerNumProcessingThreads;
-    static size_t       const defaultWorkerNumFsProcessingThreads;
+    static size_t       const defaultFsNumProcessingThreads;
     static size_t       const defaultWorkerFsBufferSizeBytes;
     static std::string  const defaultWorkerSvcHost;
     static uint16_t     const defaultWorkerSvcPort;
@@ -411,7 +395,7 @@ protected:
     static size_t       const defaultReplicationLevel;
 
     /**
-     * Inplace translation of the the data directory string by finding an optional
+     * In-place translation of the the data directory string by finding an optional
      * placeholder '{worker}' and replacing it with the name of the specified worker.
      *
      * @param dataDir    - the string to be translated
@@ -456,7 +440,7 @@ protected:
     std::string  _workerTechnology;
 
     size_t _workerNumProcessingThreads;
-    size_t _workerNumFsProcessingThreads;
+    size_t _fsNumProcessingThreads;
     size_t _workerFsBufferSizeBytes;
 
     /// The minimum number of replicas for members of each database family

@@ -77,7 +77,7 @@ std::string status2string(ExtendedCompletionStatus status);
 ExtendedCompletionStatus translate(proto::ReplicationStatusExt status);
 
 /// Translate transient extended status into the Protobuf one
-proto::ReplicationStatusExt translate (ExtendedCompletionStatus status);
+proto::ReplicationStatusExt translate(ExtendedCompletionStatus status);
 
 /**
  * The utility class for generating unique identifiers, etc.
@@ -85,14 +85,6 @@ proto::ReplicationStatusExt translate (ExtendedCompletionStatus status);
 class Generators {
 
 public:
-
-    // No construction, copying or destruction
-
-    Generators() = delete;
-    Generators(Generators const&) = delete;
-    Generators& operator=(Generators const&) = delete;
-
-    ~Generators() = delete;
 
     /// Generate a unique identifier
     static std::string uniqueId();

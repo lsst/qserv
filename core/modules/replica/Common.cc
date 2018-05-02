@@ -155,9 +155,9 @@ std::string Generators::uniqueId() {
 
 ReplicationRequestParams::ReplicationRequestParams()
     :   priority(0),
-        database(""),
+        database(),
         chunk(0),
-        sourceWorker("") {
+        sourceWorker() {
 }
 
 ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestReplicate const& message)
@@ -169,7 +169,7 @@ ReplicationRequestParams::ReplicationRequestParams(proto::ReplicationRequestRepl
 
 DeleteRequestParams::DeleteRequestParams()
     :   priority(0),
-        database(""),
+        database(),
         chunk(0) {
 }
 DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& message)
@@ -180,7 +180,7 @@ DeleteRequestParams::DeleteRequestParams(proto::ReplicationRequestDelete const& 
 
 FindRequestParams::FindRequestParams()
     :   priority(0),
-        database(""),
+        database(),
         chunk(0) {
 }
 
@@ -192,7 +192,7 @@ FindRequestParams::FindRequestParams(proto::ReplicationRequestFind const& messag
 
 FindAllRequestParams::FindAllRequestParams()
     :   priority(0),
-        database("") {
+        database() {
 }
 FindAllRequestParams::FindAllRequestParams(proto::ReplicationRequestFindAll const& message)
     :   priority(message.priority()),
