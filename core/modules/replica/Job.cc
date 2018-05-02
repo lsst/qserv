@@ -41,6 +41,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
+#include "util/IterableFormatter.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -48,16 +49,6 @@
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
-
-std::string vector2str(std::vector<std::string> const& names) {
-    std::ostringstream ss;
-    ss << "[";
-    for (auto&& name: names) {
-        ss << " " << name;
-    }
-    ss << " ]";
-    return ss.str();
-}
 
 } /// namespace
 
@@ -207,7 +198,7 @@ void Job::qservAddReplica(unsigned int chunk,
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on ADD replica:"
          << ", chunk="     << chunk
-         << ", databases=" << ::vector2str(databases)
+         << ", databases=" << util::printable(databases)
          << "  worker="    << worker);
 
     auto self = shared_from_this();
@@ -221,7 +212,7 @@ void Job::qservAddReplica(unsigned int chunk,
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on ADD replica:"
                  << "  chunk="         << request->chunk()
-                 << ", databases="     << ::vector2str(request->databases())
+                 << ", databases="     << util::printable(request->databases())
                  << ", worker="        << request->worker()
                  << ", state="         << request->state2string(request->state())
                  << ", extendedState=" << request->state2string(request->extendedState())
@@ -245,7 +236,7 @@ void Job::qservRemoveReplica(unsigned int chunk,
     LOGS(_log, LOG_LVL_DEBUG, context()
          << "** START ** Qserv notification on REMOVE replica:"
          << "  chunk="     << chunk
-         << ", databases=" << ::vector2str(databases)
+         << ", databases=" << util::printable(databases)
          << ", worker="    << worker
          << ", force="     << (force ? "true" : "false"));
 
@@ -261,7 +252,7 @@ void Job::qservRemoveReplica(unsigned int chunk,
             LOGS(_log, LOG_LVL_DEBUG, self->context()
                  << "** FINISH ** Qserv notification on REMOVE replica:"
                  << "  chunk="         << request->chunk()
-                 << ", databases="     << ::vector2str(request->databases())
+                 << ", databases="     << util::printable(request->databases())
                  << ", worker="        << request->worker()
                  << ", force="         << (request->force() ? "true" : "false")
                  << ", state="         << request->state2string(request->state())

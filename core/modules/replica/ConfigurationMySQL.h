@@ -36,7 +36,7 @@
 #include "replica/DatabaseMySQL.h"
 
 // Forward declarations
-    
+
 // This header declarations
 
 namespace lsst {
@@ -45,9 +45,9 @@ namespace replica {
 
 /**
   * Class ConfigurationMySQL loads configuration parameters from a database.
-  * 
+  *
   * The implementation of this class:
-  * 
+  *
   *   - ensures all required parameters are found in the database
   *   - sets default values for the optional parameters
   *   - caches parameters in memory

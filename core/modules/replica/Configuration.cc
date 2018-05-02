@@ -24,6 +24,7 @@
 #include "replica/Configuration.h"
 
 // System headers
+#include <set>
 #include <stdexcept>
 
 // Qserv headers
@@ -31,27 +32,11 @@
 #include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMySQL.h"
 #include "replica/FileUtils.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
-
-/**
- * Print the content of a vector into the provided stream.
- * Assume that proper astreaming operator is defined for the vector
- * elements.
- *
- * @param os - the output stream object
- * @param v  - the vector to stream
- * @return   - the stream object
- */
-template <typename T>
-void vector2stream(std::ostream&         os,
-                   std::vector<T> const& v) {
-    for (size_t i = 0, num = v.size(); i < num; ++i) {
-        os  << (i ? "," : "") << v[i];
-    }
-}
 
 } // namespace
 
@@ -76,36 +61,32 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info) {
     os  << "DatabaseInfo ("
         << "name:'" << info.name << "',"
         << "family:'" << info.family << "',"
-        << "partitionedTables:[";
-    ::vector2stream(os, info.partitionedTables);
-    os  << "],"
-        << "regularTables:[";
-    ::vector2stream(os, info.regularTables);
-    os  << "])";
+        << "partitionedTables:" << util::printable(info.partitionedTables) << ","
+        << "regularTables:" << util::printable(info.regularTables) << ")";
     return os;
 }
 
 Configuration::pointer Configuration::load(std::string const& configUrl) {
 
-    for (auto const& proposedPrefix: std::vector<std::string>{"file:","mysql:"}) {
+    std::string::size_type const pos = configUrl.find(':');
+    if (pos != std::string::npos) {
 
-        std::string::size_type const prefixSize = proposedPrefix.size();
-        std::string const            prefix = configUrl.substr(0, prefixSize);
-        std::string const            suffix = configUrl.substr(prefixSize);
+        std::string const prefix = configUrl.substr(0, pos);
+        std::string const suffix = configUrl.substr(pos+1);
 
-        if ("file:"  == prefix) {
-            return Configuration::pointer(
-                new ConfigurationFile(suffix));
+        if ("file"  == prefix) {
+            return std::make_shared<ConfigurationFile>(suffix);
 
-        } else if ("mysql:" == prefix) {
-            return Configuration::pointer(
-                new ConfigurationMySQL(
-                    database::mysql::ConnectionParams::parse(
-                        suffix,
-                        Configuration::defaultDatabaseHost,
-                        Configuration::defaultDatabasePort,
-                        Configuration::defaultDatabaseUser,
-                        Configuration::defaultDatabasePassword)));
+        } else if ("mysql" == prefix) {
+            return std::make_shared<ConfigurationMySQL>(
+                database::mysql::ConnectionParams::parse(
+                    suffix,
+                    Configuration::defaultDatabaseHost,
+                    Configuration::defaultDatabasePort,
+                    Configuration::defaultDatabaseUser,
+                    Configuration::defaultDatabasePassword
+                )
+            );
         }
     }
     throw std::invalid_argument(
@@ -115,35 +96,35 @@ Configuration::pointer Configuration::load(std::string const& configUrl) {
 
 // Set some reasonable defaults
 
-size_t       const Configuration::defaultRequestBufferSizeBytes      {1024};
-unsigned int const Configuration::defaultRetryTimeoutSec             {1};
-size_t       const Configuration::defaultControllerThreads           {1};
-uint16_t     const Configuration::defaultControllerHttpPort          {80};
-size_t       const Configuration::defaultControllerHttpThreads       {1};
-unsigned int const Configuration::defaultControllerRequestTimeoutSec {3600};
-unsigned int const Configuration::defaultJobTimeoutSec               {6000};
-unsigned int const Configuration::defaultJobHeartbeatTimeoutSec      {60};
-bool         const Configuration::defaultXrootdAutoNotify            {false};
-std::string  const Configuration::defaultXrootdHost                  {"localhost"};
-uint16_t     const Configuration::defaultXrootdPort                  {1094};
-unsigned int const Configuration::defaultXrootdTimeoutSec            {3600};
-std::string  const Configuration::defaultWorkerTechnology            {"TEST"};
-size_t       const Configuration::defaultWorkerNumProcessingThreads  {1};
-size_t       const Configuration::defaultWorkerNumFsProcessingThreads{1};
-size_t       const Configuration::defaultWorkerFsBufferSizeBytes     {1048576};
-std::string  const Configuration::defaultWorkerSvcHost               {"localhost"};
-uint16_t     const Configuration::defaultWorkerSvcPort               {50000};
-std::string  const Configuration::defaultWorkerFsHost                {"localhost"};
-uint16_t     const Configuration::defaultWorkerFsPort                {50001};
-std::string  const Configuration::defaultDataDir                     {"{worker}"};
-std::string  const Configuration::defaultDatabaseTechnology          {"mysql"};
-std::string  const Configuration::defaultDatabaseHost                {"localhost"};
-uint16_t     const Configuration::defaultDatabasePort                {3306};
-std::string  const Configuration::defaultDatabaseUser                {FileUtils::getEffectiveUser()};
-std::string  const Configuration::defaultDatabasePassword            {""};
-std::string  const Configuration::defaultDatabaseName                {"replica"};
-unsigned int const Configuration::defaultJobSchedulerIvalSec         {1};
-size_t       const Configuration::defaultReplicationLevel            {1};
+size_t       const Configuration::defaultRequestBufferSizeBytes      (1024);
+unsigned int const Configuration::defaultRetryTimeoutSec             (1);
+size_t       const Configuration::defaultControllerThreads           (1);
+uint16_t     const Configuration::defaultControllerHttpPort          (80);
+size_t       const Configuration::defaultControllerHttpThreads       (1);
+unsigned int const Configuration::defaultControllerRequestTimeoutSec (3600);
+unsigned int const Configuration::defaultJobTimeoutSec               (6000);
+unsigned int const Configuration::defaultJobHeartbeatTimeoutSec      (60);
+bool         const Configuration::defaultXrootdAutoNotify            (false);
+std::string  const Configuration::defaultXrootdHost                  ("localhost");
+uint16_t     const Configuration::defaultXrootdPort                  (1094);
+unsigned int const Configuration::defaultXrootdTimeoutSec            (3600);
+std::string  const Configuration::defaultWorkerTechnology            ("TEST");
+size_t       const Configuration::defaultWorkerNumProcessingThreads  (1);
+size_t       const Configuration::defaultFsNumProcessingThreads      (1);
+size_t       const Configuration::defaultWorkerFsBufferSizeBytes     (1048576);
+std::string  const Configuration::defaultWorkerSvcHost               ("localhost");
+uint16_t     const Configuration::defaultWorkerSvcPort               (50000);
+std::string  const Configuration::defaultWorkerFsHost                ("localhost");
+uint16_t     const Configuration::defaultWorkerFsPort                (50001);
+std::string  const Configuration::defaultDataDir                     ("{worker}");
+std::string  const Configuration::defaultDatabaseTechnology          ("mysql");
+std::string  const Configuration::defaultDatabaseHost                ("localhost");
+uint16_t     const Configuration::defaultDatabasePort                (3306);
+std::string  const Configuration::defaultDatabaseUser                (FileUtils::getEffectiveUser());
+std::string  const Configuration::defaultDatabasePassword            ("");
+std::string  const Configuration::defaultDatabaseName                ("replica");
+unsigned int const Configuration::defaultJobSchedulerIvalSec         (1);
+size_t       const Configuration::defaultReplicationLevel            (1);
 
 void Configuration::translateDataDir(std::string&       dataDir,
                                      std::string const& workerName) {
@@ -154,6 +135,11 @@ void Configuration::translateDataDir(std::string&       dataDir,
     std::string::size_type const rightPos = dataDir.find('}');
     if (rightPos == std::string::npos) { return; }
 
+    if (rightPos <= leftPos) {
+        throw std::invalid_argument(
+                "Configuration::translateDataDir  misformed template in the data directory path: '" +
+                dataDir + "'");
+    }
     if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
         dataDir.replace(leftPos, rightPos - leftPos + 1, workerName);
     }
@@ -174,7 +160,7 @@ Configuration::Configuration()
         _xrootdTimeoutSec             (defaultXrootdTimeoutSec),
         _workerTechnology             (defaultWorkerTechnology),
         _workerNumProcessingThreads   (defaultWorkerNumProcessingThreads),
-        _workerNumFsProcessingThreads (defaultWorkerNumFsProcessingThreads),
+        _fsNumProcessingThreads       (defaultFsNumProcessingThreads),
         _workerFsBufferSizeBytes      (defaultWorkerFsBufferSizeBytes),
         _databaseTechnology           (defaultDatabaseTechnology),
         _databaseHost                 (defaultDatabaseHost),
@@ -211,13 +197,13 @@ std::vector<std::string> Configuration::workers(bool isEnabled,
 
 std::vector<std::string> Configuration::databaseFamilies() const {
 
-    std::map<std::string, size_t> family2num;
+    std::set<std::string> familyNames;
     for (auto&& elem: _databaseInfo) {
-        family2num[elem.second.family]++;
+        familyNames.insert(elem.second.family);
     }
     std::vector<std::string> families;
-    for (auto const& elem: family2num) {
-        families.push_back(elem.first);
+    for (auto&& name: familyNames) {
+        families.push_back(name);
     }
     return families;
 }
@@ -227,24 +213,27 @@ bool Configuration::isKnownDatabaseFamily(std::string const& name) const {
 }
 
 size_t Configuration::replicationLevel(std::string const& family) const {
-    if (not _replicationLevel.count(family)) {
+    auto const itr = _replicationLevel.find(family);
+    if (itr == _replicationLevel.end()) {
         throw std::invalid_argument(
-                "Configuration::replicationLevel  unknown database family name: '" +
+                "Configuration::replicationLevel  unknown database family: '" +
                 family + "'");
     }
-    return _replicationLevel.at(family);
+    return itr->second;
 }
 
 std::vector<std::string> Configuration::databases(std::string const& family) const {
 
     if (not family.empty() and not _replicationLevel.count(family)) {
         throw std::invalid_argument(
-                "Configuration::databases  unknown database family name: '" +
+                "Configuration::databases  unknown database family: '" +
                 family + "'");
     }
     std::vector<std::string> names;
     for (auto&& entry: _databaseInfo) {
-        if (not family.empty() and (family != entry.second.family)) { continue; }
+        if (not family.empty() and (family != entry.second.family)) {
+            continue;
+        }
         names.push_back(entry.first);
     }
     return names;
@@ -255,11 +244,12 @@ bool Configuration::isKnownWorker(std::string const& name) const {
 }
 
 WorkerInfo const& Configuration::workerInfo(std::string const& name) const {
-    if (not isKnownWorker(name)) {
+    auto const itr = _workerInfo.find(name);
+    if (itr == _workerInfo.end()) {
         throw std::invalid_argument(
-                "Configuration::workerInfo() uknown worker name '" + name + "'");
+                "Configuration::workerInfo() uknown worker: '" + name + "'");
     }
-    return _workerInfo.at(name);
+    return itr->second;
 }
 
 bool Configuration::isKnownDatabase(std::string const& name) const {
@@ -269,7 +259,7 @@ bool Configuration::isKnownDatabase(std::string const& name) const {
 DatabaseInfo const& Configuration::databaseInfo(std::string const& name) const {
     if (not isKnownDatabase(name)) {
         throw std::invalid_argument(
-                "Configuration::databaseInfo() uknown database name '" + name + "'");
+                "Configuration::databaseInfo() uknown database: '" + name + "'");
     }
     return _databaseInfo.at(name);
 }
@@ -290,7 +280,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultXrootdTimeoutSec:             " << defaultXrootdTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerTechnology:             " << defaultWorkerTechnology);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerNumProcessingThreads:   " << defaultWorkerNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerNumFsProcessingThreads: " << defaultWorkerNumFsProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "defaultFsNumProcessingThreads:       " << defaultFsNumProcessingThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerFsBufferSizeBytes:      " << defaultWorkerFsBufferSizeBytes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcHost:                " << defaultWorkerSvcHost);
     LOGS(_log, LOG_LVL_DEBUG, context() << "defaultWorkerSvcPort:                " << defaultWorkerSvcPort);
@@ -319,7 +309,7 @@ void Configuration::dumpIntoLogger() {
     LOGS(_log, LOG_LVL_DEBUG, context() << "_xrootdTimeoutSec:                   " << _xrootdTimeoutSec);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_workerTechnology:                   " << _workerTechnology);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_workerNumProcessingThreads:         " << _workerNumProcessingThreads);
-    LOGS(_log, LOG_LVL_DEBUG, context() << "_workerNumFsProcessingThreads:       " << _workerNumFsProcessingThreads);
+    LOGS(_log, LOG_LVL_DEBUG, context() << "_fsNumProcessingThreads:             " << _fsNumProcessingThreads);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_workerFsBufferSizeBytes:            " << _workerFsBufferSizeBytes);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseTechnology:                 " << _databaseTechnology);
     LOGS(_log, LOG_LVL_DEBUG, context() << "_databaseHost:                       " << _databaseHost);

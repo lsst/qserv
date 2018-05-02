@@ -76,9 +76,9 @@ void FileServer::run() {
     // outstanding operations.
     beginAccept();
 
-    // Launch all threads in the pool    
+    // Launch all threads in the pool
     std::vector<std::shared_ptr<std::thread>> threads(
-                    _serviceProvider->config()->workerNumFsProcessingThreads());
+                    _serviceProvider->config()->fsNumProcessingThreads());
 
     for (std::size_t i = 0; i < threads.size(); ++i) {
         std::shared_ptr<std::thread> ptr(
@@ -101,7 +101,7 @@ void FileServer::beginAccept() {
             _serviceProvider,
             _workerName,
             _io_service);
-        
+
     _acceptor.async_accept(
         connection->socket(),
         boost::bind(

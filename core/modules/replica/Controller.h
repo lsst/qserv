@@ -83,16 +83,16 @@ struct ControllerRequestWrapper {
 
 /**
  * The data structure encapsulating various attributes which identity
- * each instane of the Controller class. This information is meant to
+ * each instance of the Controller class. This information is meant to
  * be used in the multi-Controller setups to coordinate operations
- * betweem multiple instances and to avoid/resolve conflicts.
+ * between multiple instances and to avoid/resolve conflicts.
  */
 struct ControllerIdentity {
 
     /// A unique identifier of the Controller
     std::string id;
 
-    /// The name of a hoste where it runs
+    /// The name of a host where it runs
     std::string host;
 
     /// An identifier of a process

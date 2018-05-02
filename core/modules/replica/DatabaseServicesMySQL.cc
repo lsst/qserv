@@ -56,6 +56,7 @@
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "replica/VerifyJob.h"
+#include "util/IterableFormatter.h"
 
 // This macro to appear witin each block which requires thread safety
 #define LOCK_GUARD std::lock_guard<std::mutex> lock(_mtx)
@@ -286,11 +287,7 @@ std::string toString(QservReplicaCollection const& replicas) {
 
 std::string vector2str(std::vector<std::string> const& names) {
     std::ostringstream ss;
-    ss << "[";
-    for (auto&& name: names) {
-        ss << " " << name;
-    }
-    ss << " ]";
+    ss << lsst::qserv::util::printable(names);
     return ss.str();
 }
 

@@ -162,7 +162,7 @@ void ConfigurationFile::loadConfiguration() {
 
     ::parseKeyVal(configStore, "worker.technology",                 _workerTechnology,             defaultWorkerTechnology);
     ::parseKeyVal(configStore, "worker.num_svc_processing_threads", _workerNumProcessingThreads,   defaultWorkerNumProcessingThreads);
-    ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _workerNumFsProcessingThreads, defaultWorkerNumFsProcessingThreads);
+    ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _fsNumProcessingThreads,       defaultFsNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.fs_buf_size_bytes",          _workerFsBufferSizeBytes,      defaultWorkerFsBufferSizeBytes);
 
 
@@ -190,17 +190,18 @@ void ConfigurationFile::loadConfiguration() {
                     "ConfigurationFile::loadConfiguration() duplicate worker entry: '" +
                     name + "' in: [common] or ["+section+"], configuration file: " + _configFile);
         }
-        _workerInfo[name].name = name;
+        auto& workerInfo = _workerInfo[name];
+        workerInfo.name = name;
 
-        ::parseKeyVal(configStore, section+".is_enabled",   _workerInfo[name].isEnabled,  true);
-        ::parseKeyVal(configStore, section+".is_read_only", _workerInfo[name].isReadOnly, false);
-        ::parseKeyVal(configStore, section+".svc_host",     _workerInfo[name].svcHost,    defaultWorkerSvcHost);
-        ::parseKeyVal(configStore, section+".svc_port",     _workerInfo[name].svcPort,    commonWorkerSvcPort);
-        ::parseKeyVal(configStore, section+".fs_host",      _workerInfo[name].fsHost,     defaultWorkerFsHost);
-        ::parseKeyVal(configStore, section+".fs_port",      _workerInfo[name].fsPort,     commonWorkerFsPort);
-        ::parseKeyVal(configStore, section+".data_dir",     _workerInfo[name].dataDir,    commonDataDir);
+        ::parseKeyVal(configStore, section+".is_enabled",   workerInfo.isEnabled,  true);
+        ::parseKeyVal(configStore, section+".is_read_only", workerInfo.isReadOnly, false);
+        ::parseKeyVal(configStore, section+".svc_host",     workerInfo.svcHost,    defaultWorkerSvcHost);
+        ::parseKeyVal(configStore, section+".svc_port",     workerInfo.svcPort,    commonWorkerSvcPort);
+        ::parseKeyVal(configStore, section+".fs_host",      workerInfo.fsHost,     defaultWorkerFsHost);
+        ::parseKeyVal(configStore, section+".fs_port",      workerInfo.fsPort,     commonWorkerFsPort);
+        ::parseKeyVal(configStore, section+".data_dir",     workerInfo.dataDir,    commonDataDir);
 
-        Configuration::translateDataDir(_workerInfo[name].dataDir, name);
+        Configuration::translateDataDir(workerInfo.dataDir, name);
     }
 
     // Parse mandatory database family-specific configuraton sections

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `config` (
   `param`    VARCHAR(255) NOT NULL ,
   `value`    VARCHAR(255) NOT NULL ,
 
-  UNIQUE  KEY (`category`,`param`)
+  PRIMARY KEY (`category`,`param`)
 )
 ENGINE = InnoDB;
 
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `config_worker_ext` (
   `param`        VARCHAR(255) NOT NULL ,
   `value`        VARCHAR(255) NOT NULL ,
 
-  UNIQUE  KEY (`worker_name`, `param`, `value`) ,
+  PRIMARY KEY (`worker_name`, `param`) ,
 
   CONSTRAINT `config_worker_ext_fk_1`
     FOREIGN KEY (`worker_name` )
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `config_database_family` (
   `name`                   VARCHAR(255)  NOT NULL ,
   `min_replication_level`  INT UNSIGNED  NOT NULL ,    -- minimum number of replicas per chunk
 
-  UNIQUE  KEY (`name`)
+  PRIMARY KEY (`name`)
 )
 ENGINE = InnoDB;
 
@@ -121,7 +121,8 @@ CREATE TABLE IF NOT EXISTS `config_database` (
 
   -- Each database is allowed to belong to one family only
   --
-  UNIQUE  KEY (`database`) ,
+  PRIMARY KEY (`database`) ,
+  UNIQUE  KEY (`database`,`family_name`) ,
 
   CONSTRAINT `config_database_fk_1`
     FOREIGN KEY (`family_name` )
@@ -146,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
 
   `is_partitioned` BOOLEAN NOT NULL ,
 
-  UNIQUE  KEY (`database`, `table`) ,
+  PRIMARY KEY (`database`, `table`) ,
 
   CONSTRAINT `config_database_table_fk_1`
     FOREIGN KEY (`database` )
@@ -243,6 +244,8 @@ CREATE TABLE IF NOT EXISTS `job_fixup` (
 
   `database_family`  VARCHAR(255) NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_fixup_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -264,6 +267,8 @@ CREATE TABLE IF NOT EXISTS `job_find_all` (
   `job_id`  VARCHAR(255) NOT NULL ,
 
   `database_family`  VARCHAR(255) NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
 
   CONSTRAINT `job_find_all_fk_1`
     FOREIGN KEY (`job_id`)
@@ -289,6 +294,8 @@ CREATE TABLE IF NOT EXISTS `job_replicate` (
   `database_family`  VARCHAR(255) NOT NULL ,
   `num_replicas`     INT          NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_replicate_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -313,6 +320,8 @@ CREATE TABLE IF NOT EXISTS `job_purge` (
   `database_family`  VARCHAR(255) NOT NULL ,
   `num_replicas`     INT          NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_purge_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -335,6 +344,8 @@ CREATE TABLE IF NOT EXISTS `job_rebalance` (
   `job_id`  VARCHAR(255) NOT NULL ,
 
   `database_family`  VARCHAR(255) NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
 
   CONSTRAINT `job_rebalance_fk_1`
     FOREIGN KEY (`job_id` )
@@ -360,6 +371,8 @@ CREATE TABLE IF NOT EXISTS `job_verify` (
   `max_replicas`  INT     NOT NULL ,
   `compute_cs`    BOOLEAN NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_verify_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -384,6 +397,8 @@ CREATE TABLE IF NOT EXISTS `job_delete_worker` (
   `worker`    VARCHAR(255) NOT NULL ,
   `permanent` BOOLEAN      NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_delete_worker_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -406,6 +421,8 @@ CREATE TABLE IF NOT EXISTS `job_add_worker` (
   `job_id`  VARCHAR(255) NOT NULL ,
 
   `worker` VARCHAR(255) NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
 
   CONSTRAINT `job_add_worker_fk_1`
     FOREIGN KEY (`job_id` )
@@ -434,6 +451,8 @@ CREATE TABLE IF NOT EXISTS `job_move_replica` (
   `destination_worker` VARCHAR(255) NOT NULL ,
   `purge`              BOOLEAN      NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_move_replica_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -460,6 +479,8 @@ CREATE TABLE IF NOT EXISTS `job_create_replica` (
   `source_worker`      VARCHAR(255) NOT NULL ,
   `destination_worker` VARCHAR(255) NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_create_replica_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -484,6 +505,8 @@ CREATE TABLE IF NOT EXISTS `job_delete_replica` (
   `chunk`           INT UNSIGNED NOT NULL ,
   `worker`          VARCHAR(255) NOT NULL ,
 
+  PRIMARY KEY (`job_id`) ,
+
   CONSTRAINT `job_delete_replica_fk_1`
     FOREIGN KEY (`job_id` )
     REFERENCES `job` (`id` )
@@ -506,6 +529,8 @@ CREATE TABLE IF NOT EXISTS `job_qserv_sync` (
 
   `database_family` VARCHAR(255) NOT NULL ,
   `force`           BOOLEAN      NOT NULL ,
+
+  PRIMARY KEY (`job_id`) ,
 
   CONSTRAINT `job_qserv_sync_fk_1`
     FOREIGN KEY (`job_id` )
@@ -573,6 +598,8 @@ CREATE TABLE IF NOT EXISTS `request_replica_create` (
 
   `source_worker`  VARCHAR(255) NOT NULL ,
 
+  PRIMARY KEY (`request_id`) ,
+
   CONSTRAINT `request_replica_create_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
@@ -596,6 +623,8 @@ CREATE TABLE IF NOT EXISTS `request_replica_delete` (
 
   `database` VARCHAR(255) NOT NULL ,
   `chunk`    INT UNSIGNED NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
 
   CONSTRAINT `request_replica_delete_fk_1`
     FOREIGN KEY (`request_id` )
@@ -621,6 +650,8 @@ CREATE TABLE IF NOT EXISTS `request_qserv_add_replica` (
   `databases`   LONGTEXT     NOT NULL ,
   `chunk`       INT UNSIGNED NOT NULL ,
 
+  PRIMARY KEY (`request_id`) ,
+
   CONSTRAINT `request_qserv_add_replica_fk_1`
     FOREIGN KEY (`request_id` )
     REFERENCES `request` (`id` )
@@ -645,6 +676,8 @@ CREATE TABLE IF NOT EXISTS `request_qserv_remove_replica` (
   `databases`   LONGTEXT     NOT NULL ,
   `chunk`       INT UNSIGNED NOT NULL ,
   `force`       BOOLEAN      NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
 
   CONSTRAINT `request_qserv_remove_replica_fk_1`
     FOREIGN KEY (`request_id` )
@@ -674,6 +707,8 @@ CREATE TABLE IF NOT EXISTS `request_qserv_set_replicas` (
   --
   `replicas` LONGTEXT NOT NULL ,
   `force`    BOOLEAN  NOT NULL ,
+
+  PRIMARY KEY (`request_id`) ,
 
   CONSTRAINT `request_qserv_set_replicas_fk_1`
     FOREIGN KEY (`request_id` )
@@ -706,10 +741,9 @@ CREATE TABLE IF NOT EXISTS `replica` (
 
   `verify_time` BIGINT UNSIGNED NOT NULL ,
 
-  PRIMARY KEY           (`id`) ,
-  KEY                   (`worker`,`database`) ,
-  UNIQUE  KEY `replica` (`worker`,`database`,`chunk`) ,
-
+  PRIMARY KEY (`id`) ,
+  KEY         (`worker`,`database`) ,
+  UNIQUE  KEY (`worker`,`database`,`chunk`) ,
 
   CONSTRAINT `replica_fk_1`
     FOREIGN KEY (`worker` )
@@ -743,7 +777,7 @@ CREATE TABLE IF NOT EXISTS `replica_file` (
   `begin_create_time`  BIGINT UNSIGNED NOT NULL ,
   `end_create_time`    BIGINT UNSIGNED NOT NULL ,
 
-  UNIQUE  KEY `file` (`replica_id`,`name`) ,
+  PRIMARY  KEY (`replica_id`,`name`) ,
 
   CONSTRAINT `replica_file_fk_1`
     FOREIGN KEY (`replica_id` )
