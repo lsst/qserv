@@ -90,7 +90,7 @@ Configuration::pointer Configuration::load(std::string const& configUrl) {
         }
     }
     throw std::invalid_argument(
-            "Configuration::load:  unsupported configUrl: " + configUrl);
+            "Configuration::load:  configUrl must start with 'file:' or 'mysql:'");
 }
 
 

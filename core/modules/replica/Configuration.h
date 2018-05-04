@@ -101,8 +101,7 @@ std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
   * providing configuration services for the components of the Replication
   * system.
   */
-class Configuration
-    :   public std::enable_shared_from_this<Configuration> {
+class Configuration {
 
 public:
 

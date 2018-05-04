@@ -29,6 +29,7 @@
 
 // System headers
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <ostream>
@@ -56,10 +57,11 @@ namespace mysql {
  * Class Error represents a family of exceptions which are specific
  * to the implementation of this API.
  */
-struct Error
-    :   std::runtime_error {
+class Error
+    :   public std::runtime_error {
 
-    /// Constructor
+public:
+
     explicit Error(std::string const& what)
         :   std::runtime_error(what) {
     }
@@ -69,10 +71,11 @@ struct Error
  * Instances of this exception class are thrown on attempts to insert
  * rows with duplicate keys.
  */
-struct DuplicateKeyError
-    :   Error {
+class DuplicateKeyError
+    :   public Error {
 
-    /// Constructor
+public:
+
     explicit DuplicateKeyError(std::string const& what)
         :   Error(what) {
     }
@@ -80,12 +83,13 @@ struct DuplicateKeyError
 
 /**
  * Instances of this exception class are thrown on failed attempts
- * to interpret the contents of the result rest rows.
+ * to interpret the contents of the result set.
  */
-struct InvalidTypeError
-    :   Error {
+class InvalidTypeError
+    :   public Error {
 
-    /// Constructor
+public:
+
     explicit InvalidTypeError(std::string const& what)
         :   Error(what) {
     }
@@ -95,10 +99,11 @@ struct InvalidTypeError
  * Instances of this exception class are thrown on empty result sets
  * by some methods when a query is supposed to return at least one row.
  */
-struct EmptyResultSetError
-    :   Error {
+class EmptyResultSetError
+    :   public Error {
 
-    /// Constructor
+public:
+
     explicit EmptyResultSetError(std::string const& what)
         :   Error(what) {
     }
@@ -129,11 +134,12 @@ struct ConnectionParams {
      * by values of parameters found in the input encoded string. The string is
      * expected to have the following syntax:
      *
-     *   database=<name>[,host=<name>][,port=<number>][,user=<username>][,password=<***>]
+     *   database=<name>,host=[<name-or-ip>],port=[<number>],user=[<username>],password=[<secret>]
      *
-     * Note that the only mandatory parameter in that string is the name of
-     * a database. Default values for other parameters (if missing in the string)
-     * will be assumed.
+     * NOTES ON THE SYNTAX:
+     * 1) all keywords are madatory
+     * 2) the corresponding values for for all but the database are optional
+     * 3) default values for other parameters (if missing in the string) will be assumed.
      *
      * @param params          - connection parameters packed into a string
      * @param defaultHost     - default value for a host name
@@ -168,7 +174,7 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  *
  * All type-specific 'get' methods defined in this class will return 'true' and
  * set the value returned for the specified column if the value was not 'NULL'.
- * They will return 'false' otherwise. All methods have two parameyters:
+ * They will return 'false' otherwise. All methods have two parameters:
  *
  *   columnName - the name of a column
  *   value      - the value (of a type which depends on the method signature)
@@ -180,7 +186,7 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  *   InvalidTypeError      - when the conversion of row data into a value of
  *                           the requested type is not possible.
  *
- * @note the validty of each object of this class is limited by the life
+ * @note the validity of each object of this class is limited by the life
  * span of the database Connection object and a result set of the last
  * query. Use this object only for short periods of time while iterating over
  * a result set after each successful invocation of the iterator method
@@ -226,7 +232,7 @@ public:
     ~Row() = default;
 
     /// @return 'true' of the object has meaningful content
-    bool isValid() const { return _isValid; }
+    bool isValid() const { return _name2indexPtr != nullptr; }
 
     /// @return width of the row
     size_t numColumns() const;
@@ -298,11 +304,12 @@ public:
 
 private:
 
-    /// The status of the object
-    bool _isValid;
-
     /// Mapping column names to the indexes
-    std::map<std::string, size_t> _name2index;
+    ///
+    /// NOTE: if the pointer is set to 'nullptr' then the object is not
+    /// in the valid state. The valid state is set by class Connection
+    /// when iterating over a result set.
+    std::map<std::string, size_t> const* _name2indexPtr;
 
     /// Mapping column indexes to the raw data cells
     std::vector<Cell> _index2cell;
@@ -397,7 +404,7 @@ public:
      * a pointer to the Connection object.
      *
      * @param connectionParams - the connection parameters
-     * @param autoReconnect    - automaticalluy reconnect to the service
+     * @param autoReconnect    - automatically reconnect to the service
      *                           if the dropped connection was discovered.
      *                           This option is useful when the application is inactive
      *                           for a prologed period of time causing the server to kick out
@@ -506,7 +513,7 @@ public:
      * Generate an SQL statement for inserting a single row into the specified
      * table based on a variadic list of values to be inserted. The method allows
      * any number of arguments and any types of argument values. rguments of
-     * types 'std::sting' and 'char*' will be additionally escaped and surrounded by
+     * types 'std::string' and 'char*' will be additionally escaped and surrounded by
      * single quotes as required by the SQL standard.
      *
      * @param tableName - the name of a table
@@ -592,7 +599,7 @@ public:
      *
      * NOTES:
      * - The method allows any number of arguments and any types of value types.
-     * - Values types 'std::sting' and 'char*' will be additionally escaped and
+     * - Values types 'std::string' and 'char*' will be additionally escaped and
      *   surrounded by single quotes as required by the SQL standard.
      * - The column names will be surrounded with back-tick quotes.
      *
@@ -609,8 +616,6 @@ public:
      *     `col1`='st\'r',`col2`="c",`col3`=123,`fk_id`=LAST_INSERT_ID()
      * @code
      *
-     * @param tableName      - the name of a table
-     * @param whereCondition - the optional condition for selecting rows to be updated
      * @param Fargs          - the variadic list of values to be inserted
      */
     template <typename...Targs>
@@ -653,7 +658,7 @@ public:
      *
      * NOTES:
      * - The method allows any number of arguments and any types of value types.
-     * - Values types 'std::sting' and 'char*' will be additionally escaped and
+     * - Values types 'std::string' and 'char*' will be additionally escaped and
      *   surrounded by single quotes as required by the SQL standard.
      * - The column names will be surrounded with back-tick quotes.
      *
@@ -677,9 +682,9 @@ public:
      *       `fk_id`=LAST_INSERT_ID()
      * @code
      *
-     * @param tableName      - the name of a table
-     * @param whereCondition - the optional condition for selecting rows to be updated
-     * @param Fargs          - the variadic list of values to be inserted
+     * @param tableName - the name of a table
+     * @param condition - the optional condition for selecting rows to be updated
+     * @param Fargs     - the variadic list of values to be inserted
      */
     template <typename...Targs>
     std::string sqlSimpleUpdateQuery(std::string const& tableName,
@@ -737,7 +742,7 @@ public:
      * Execute an SQL statement for inserting a new row into a table based
      * on a variadic list of values to be inserted. The method allows
      * any number of arguments and any types of argument values. Arguments of
-     * types 'std::sting' and 'char*' will be additionally escaped and surrounded by
+     * types 'std::string' and 'char*' will be additionally escaped and surrounded by
      * single quotes as required by the SQL standard.
      *
      * The effect:
@@ -755,7 +760,6 @@ public:
      *
      * @return - the smart pointer to self to allow chaned calles.
      *
-     * @throws std::invalid_argument - for empty query strings
      * @throws DuplicateKeyError     - for attempts to insert rows with duplicate keys
      * @throws Error                 - for any other MySQL specific errors
      */
@@ -870,6 +874,7 @@ public:
      * @param query - a query to be executed
      * @param col   - the name of a columnt from which to exctract a value
      * @param val   - a value to be set (unless the field contains NULL)
+     * @param noMoreThanOne - flag (if set) forcing the above explained behavior
      * @return 'true' if the value is not NULL
      */
     template <typename T>
@@ -963,6 +968,8 @@ private:
     size_t _numFields;
 
     std::vector<std::string> _columnNames;
+
+    std::map<std::string, size_t> _name2index;
 
     // Get updated after fetching each row of the result set
 
